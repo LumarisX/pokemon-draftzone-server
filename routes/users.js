@@ -1,29 +1,61 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
+const User = require("../models/usersModel");
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  res.send('respond with a resource');
+
+router.get('/', async (req, res) => {
+  try {
+    const users = await User.find()
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
 });
 
-router.post('/', (req, res) => {
-  res.send("Create User");
+router.post('/', async (req, res) => {
+  const user = new User({
+    username: req.body.username
+  })
+  try {
+    const newUser = await user.save()
+    res.status(201).json(newUser)
+  } catch (error) {
+    res.status(400).json({message: error.message})
+  }
 })
 
 router
   .route('/:id')
   .get((req, res) => {
-    res.send(`Get user with ID ${req.params.id}`)
+    try {
+      res.json(res.user);
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
   })
-  .put((req, res) => {
+  .patch((req, res) => {
     res.send(`Update user with ID ${req.params.id}`)
   })
-  .delete((req, res) => {
-    res.send(`Delete user with ID ${req.params.id}`)
+  .delete(async (req, res) => {
+    try {
+      await res.user.deleteOne()
+      res.json({message: 'Deleted User'})
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
   });
   
-router.param("id", (req,res,next, id) => {
-  console.log(id);
+router.param("id", async (req,res, next, id) => {
+  let user;
+  try {
+    user = await User.findById(req.params.id);
+    if (user == null){
+      return res.status(400).json({ message: 'User id not found'})
+    }
+  } catch (error) {
+    return res.status(500).json({message: error.message});
+  }
+  res.user = user;
   next();
 });
 
