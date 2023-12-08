@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require("../models/usersModel");
+const League = require("../models/teamModel");
 
 
 router.get('/', async (req, res) => {
@@ -45,6 +46,15 @@ router
     }
   });
   
+router.get("/:id/teams", async (req,res)=>{
+  try {
+    const teams = await League.find({owner:req.params.id})
+    res.json(teams);
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
 router.param("id", async (req,res, next, id) => {
   let user;
   try {
