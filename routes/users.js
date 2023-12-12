@@ -48,7 +48,7 @@ router
   
 router.get("/:user_id/teams", async (req,res)=>{
   try {
-    const teams = await League.find({owner:res.user.id}, "leagueId leagueName format ruleset")
+    const teams = await League.find({owner:res.user.id})
     res.json(teams);
   } catch (error) {
     res.status(500).json({ message: error.message })
