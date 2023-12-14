@@ -95,7 +95,7 @@ router.param("team_id", async (req,res, next, team_id) => {
   try {
     let user_id = await res.user.id;
     team = await Draft.find({ owner: user_id, leagueId: team_id});
-    if (user == null){
+    if (team == null){
       return res.status(400).json({ message: 'Team id not found'})
     }
     res.team = team[0];
