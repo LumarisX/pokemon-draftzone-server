@@ -1,18 +1,18 @@
 const mongoose = require('mongoose')
 
-const teamSchema = new mongoose.Schema({
+const draftSchema = new mongoose.Schema({
   leagueName: {
     type: String,
     required: true
   },
   format: {
-    type: String,
+    type: Number,
     required: true
   },
   ruleset: {
-    type: String,
+    type: Number,
     required: true
   }
 })
 
-module.exports = mongoose.model('leagues', teamSchema);
+module.exports = mongoose.model('leagues', draftSchema);

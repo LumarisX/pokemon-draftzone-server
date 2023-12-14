@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const League = require("../models/teamModel.js");
+const League = require("../models/draftModel.js");
 
 
 router.get('/', async (req, res) => {

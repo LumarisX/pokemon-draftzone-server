@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const User = require("../models/usersModel");
-const League = require("../models/teamModel");
-
+const Draft = require("../models/draftModel");
+const Ruleset = require("../rulesets")
 
 router.get('/', async (req, res) => {
   try {
@@ -48,7 +48,12 @@ router
   
 router.get("/:user_id/teams", async (req,res)=>{
   try {
-    const teams = await League.find({owner:res.user.id})
+    let teams = await Draft.find({owner:res.user.id})
+    for(let t of teams){
+      t.ruleset = 1
+      console.log(Ruleset.Generation[t.ruleset])
+      t.format = Ruleset.Format[t.format]
+    }
     res.json(teams);
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -78,24 +83,25 @@ router.param("user_id", async (req,res, next, user_id) => {
     if (user == null){
       return res.status(400).json({ message: 'User id not found'})
     }
+    res.user = user[0];
   } catch (error) {
     return res.status(500).json({message: error.message});
   }
-  res.user = user[0];
   next();
 });
 
 router.param("team_id", async (req,res, next, team_id) => {
   let team;
   try {
-    user = await User.find({ owner: res.user.id, leagueId: team_id});
+    let user_id = await res.user.id;
+    team = await Draft.find({ owner: user_id, leagueId: team_id});
     if (user == null){
       return res.status(400).json({ message: 'Team id not found'})
     }
+    res.team = team[0];
   } catch (error) {
     return res.status(500).json({message: error.message});
   }
-  res.team = team[0];
   next();
 });
 
