@@ -15,4 +15,4 @@ const draftSchema = new mongoose.Schema({
   }
 })
 
-module.exports = mongoose.model('leagues', draftSchema);
+module.exports = mongoose.model('drafts', draftSchema);

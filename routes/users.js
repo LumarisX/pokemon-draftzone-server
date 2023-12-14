@@ -48,13 +48,7 @@ router
   
 router.get("/:user_id/teams", async (req,res)=>{
   try {
-    let teams = await Draft.find({owner:res.user.id})
-    for(let t of teams){
-      t.ruleset = 1
-      console.log(Ruleset.Generation[t.ruleset])
-      t.format = Ruleset.Format[t.format]
-    }
-    res.json(teams);
+    res.json(await Draft.find({owner:res.user.id}));
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
