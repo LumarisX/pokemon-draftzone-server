@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const User = require("../models/usersModel");
-const Draft = require("../models/draftModel");
-const Ruleset = require("../rulesets")
 
 router
   .route('/')
@@ -47,29 +45,6 @@ router
     }
   });
 
-router.get("/:user_id/teams", async (req, res) => {
-  try {
-    res.json(await Draft.find({ owner: res.user.id }));
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-})
-
-router.get("/:user_id/:team_id", async (req, res) => {
-  try {
-    res.json(res.team)
-  } catch (error) {
-    req.status(500).json({ message: error.message })
-  }
-})
-
-router.get("/:user_id/:team_id/:opponent_id", async (req, res) => {
-  try {
-    res.json(res.team.get("opponents")[req.params.opponent_id])
-  } catch (error) {
-    req.status(500).json({ message: error.message })
-  }
-})
 
 router.param("user_id", async (req, res, next, user_id) => {
   let user;
@@ -79,21 +54,6 @@ router.param("user_id", async (req, res, next, user_id) => {
       return res.status(400).json({ message: 'User id not found' })
     }
     res.user = user[0];
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-  next();
-});
-
-router.param("team_id", async (req, res, next, team_id) => {
-  let team;
-  try {
-    let user_id = await res.user.id;
-    team = await Draft.find({ owner: user_id, leagueId: team_id });
-    if (team == null) {
-      return res.status(400).json({ message: 'Team id not found' })
-    }
-    res.team = team[0];
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

@@ -9,6 +9,8 @@ const usersRouter = require('./routes/users');
 const pokedexRouter = require('./routes/pokedexRoute');
 const leagueRouter = require('./routes/leagueRoute');
 const formatRouter = require('./routes/formatRoute')
+const authRouter = require('./routes/authRoute')
+const matchupRouter = require('./routes/matchupRoute')
 const { error } = require('console');
 //mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
 
@@ -38,6 +40,8 @@ app.use('/users', usersRouter);
 app.use('/teams', leagueRouter);
 app.use('/pokedex', pokedexRouter);
 app.use('/formats', formatRouter);
+app.use('/auth', authRouter);
+app.use('/matchup', matchupRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
