@@ -5,8 +5,7 @@ const ss = require("../services/speedtier-service.js");
 router
   .route('/')
   .get(async (req, res) => {
-      res.json(ss.speedTierChart(["blaziken"],["maractus"]));
-
+      res.json(ss.speedTierChart(["blaziken","maractus"]));
   })
   
 

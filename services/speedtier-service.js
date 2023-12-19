@@ -1,13 +1,10 @@
 const pokedexService = require('./pokedex-service.js')
 
 
-function speedTierChart(aTeam, bTeam) {
+function speedTierChart(team) {
   let tiers = [];
-  for (let m in aTeam) {
-    tiers = tiers.concat(getSpeedTiers(aTeam[m], true));
-  }
-  for (let m in bTeam) {
-    tiers = tiers.concat(getSpeedTiers(bTeam[m], false));
+  for (let m in team) {
+    tiers = tiers.concat(getSpeedTiers(team[m]));
   }
 
   let speAsc = 1;
@@ -23,7 +20,7 @@ function speedTierChart(aTeam, bTeam) {
   return tiers;
 }
 
-function getSpeedTiers(pokemonId, isATeam) {
+function getSpeedTiers(pokemonId) {
   let speedAbilities = []
   let tiers = [];
   let level = 50;
@@ -125,7 +122,6 @@ function getSpeedTiers(pokemonId, isATeam) {
     for (let stage of slow.stages) {
       let baseInfo = {
         "name": pokemonName,
-        "team": isATeam,
         "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].ev, slow.spreads[s].nature, slow.spreads[s].iv, level, stage),
         "modifiers": [slow.spreads[s].name]
       }
@@ -147,7 +143,6 @@ function getSpeedTiers(pokemonId, isATeam) {
     for (let stage of fast.stages) {
       let baseInfo = {
         "name": pokemonName,
-        "team": isATeam,
         "speed": pokedexService.getStat("spe", baseSpe, fast.spreads[s].ev, fast.spreads[s].nature, fast.spreads[s].iv, level, stage),
         "modifiers": [fast.spreads[s].name]
       }
