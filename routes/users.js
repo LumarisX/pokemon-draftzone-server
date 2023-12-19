@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require("../models/usersModel");
 const Draft = require("../models/draftModel");
-const Ruleset = require("../rulesets")
+
 
 router
   .route('/')

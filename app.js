@@ -8,7 +8,6 @@ const cors = require('cors');
 const usersRouter = require('./routes/users');
 const pokedexRouter = require('./routes/pokedexRoute');
 const leagueRouter = require('./routes/leagueRoute');
-const formatRouter = require('./routes/formatRoute')
 const authRouter = require('./routes/authRoute')
 const matchupRouter = require('./routes/matchupRoute')
 const testRouter = require('./routes/testRoute')
@@ -40,7 +39,6 @@ app.use(cors({
 app.use('/users', usersRouter);
 app.use('/teams', leagueRouter);
 app.use('/pokedex', pokedexRouter);
-app.use('/formats', formatRouter);
 app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);

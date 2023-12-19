@@ -6,11 +6,11 @@ const draftSchema = new mongoose.Schema({
     required: true
   },
   format: {
-    type: Number,
+    type: String,
     required: true
   },
   ruleset: {
-    type: Number,
+    type: String,
     required: true
   }
 })
