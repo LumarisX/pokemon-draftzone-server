@@ -3,10 +3,41 @@ const router = express.Router();
 const Draft = require("../models/draftModel");
 const summeryService = require('../services/summery-service')
 const speedtierService = require('../services/speedtier-service')
+const TypechartService = require('../services/typechart-service')
+const CoverageService = require('../services/coverage-service')
 
-router.get('/:draft_id/:opp_id', async (req, res) => {
+router.get('/:draft_id/:opp_id/summery', async (req, res) => {
     try {
-      res.json({summery: summeryService.summery(res.myTeam, res.oppTeam) ,aSpeedchart: speedtierService.speedTierChart(res.myTeam), bSpeedchart: speedtierService.speedTierChart(res.oppTeam) })
+      res.json(summeryService.summery(res.myTeam, res.oppTeam))
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
+  
+  router.get('/:draft_id/:opp_id/typechart', async (req, res) => {
+    try {
+      res.json({aTeam: TypechartService.typechart(res.myTeam), bTeam: TypechartService.typechart(res.oppTeam)})
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
+  
+  router.get('/:draft_id/:opp_id/speedchart', async (req, res) => {
+    try {
+      res.json({
+        aTeam: speedtierService.speedTierChart(res.myTeam), 
+        bTeam: speedtierService.speedTierChart(res.oppTeam)
+      })
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
+  
+  router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
+    try {
+      res.json({
+        aTeam: Poke.speedTierChart(res.myTeam)
+      })
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
