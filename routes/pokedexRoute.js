@@ -37,23 +37,6 @@ router.get('/:id/weak', (req, res) => {
       }
     }
   }
-  /*
-  for (let a in pokedex[req.params.id]["abilities"]) {
-    let ability = toKey(pokedex[req.params.id]["abilities"][a]);
-    if (ability in typechart) {
-      var ot = structuredClone(typechart[ability]["damageTaken"]);
-      for (let w in weak) {
-        if (w in ot) {
-          weak[w] = weak[w] * ot[w];
-        }
-        delete ot[w];
-      }
-      for (let w in ot) {
-        weak[w] = ot[w];
-      }
-    }
-  }
-  */
   res.send(weak);
 });
 

@@ -1,6 +1,7 @@
-const Pokedex = require("../public/data/pokedex.js")["BattlePokedex"]
+const Pokedex = require("../public/data/pokedex")["BattlePokedex"]
 const TypeService = require('./type-service')
 const LearnsetService = require('./learnset-service')
+const MoveService = require('./move-service')
 
 function getName(pokemonId) {
   return (Pokedex[pokemonId]["name"]);
@@ -136,8 +137,47 @@ function toKey(pokemonId) {
   return pokemonId;
 }
 
-function getLearnset(pokemonId) {
-  
+function getLearnset(pokemonId, gen = "nd") {
+  let learnset = LearnsetService.getLearnset(pokemonId, gen)
+  if (learnset == null) {
+    return getLearnset(toKey(Pokedex[pokemonId].baseSpecies))
+  }
+  if ("prevo" in Pokedex[pokemonId]) {
+    let subLearnset = getLearnset(toKey(Pokedex[pokemonId].prevo), gen)
+    for (let move of subLearnset) {
+      if (!(move in learnset)) {
+        learnset.push(move)
+      }
+    }
+  }
+  if ("changesFrom" in Pokedex[pokemonId]) {
+    let subLearnset = getLearnset(toKey(Pokedex[pokemonId].changesFrom), gen)
+    for (let move of subLearnset) {
+      if (!(move in learnset)) {
+        learnset.push(move)
+      }
+    }
+  }
+  return learnset
 }
 
-module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset}
+function getCoverage(pokemonId) {
+  let learnset = getLearnset(pokemonId)
+  let coverage = { physical: {}, special: {} }
+  for (let moveId of learnset) {
+    let cat = MoveService.getCategory(moveId)
+    let type = MoveService.getType(moveId)
+    if (cat != "status") {
+      let ePower = MoveService.getEffectivePower(moveId)
+      if (!(type in coverage[cat]) || coverage[cat][type].ePower < ePower) {
+        coverage[cat][type] = {
+          name: MoveService.getName(moveId),
+          ePower: MoveService.getEffectivePower(moveId)
+        }
+      }
+    }
+  }
+  return coverage
+}
+
+module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage }

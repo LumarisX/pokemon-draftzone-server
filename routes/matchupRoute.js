@@ -34,13 +34,15 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   })
   
   router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
-    try {
+    //try {
       res.json({
-        aTeam: Poke.speedTierChart(res.myTeam)
+        aTeam: CoverageService.chart(res.myTeam, "8")
       })
+    /*
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
+    */
   })
 
 router.param("draft_id", async (req, res, next, draft_id) => {
