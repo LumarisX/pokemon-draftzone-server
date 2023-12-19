@@ -4,7 +4,7 @@ const pokedexService = require('./pokedex-service.js')
 function speedTierChart(team) {
   let tiers = [];
   for (let m in team) {
-    tiers = tiers.concat(getSpeedTiers(team[m]));
+    tiers = tiers.concat(getSpeedTiers(team[m].pid));
   }
 
   let speAsc = 1;

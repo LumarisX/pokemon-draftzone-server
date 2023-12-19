@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const Draft = require("../models/draftModel");
-const matchupService = require('../services/matchup-service')
+const summeryService = require('../services/summery-service')
+const speedtierService = require('../services/speedtier-service')
 
-router
-  .route('/:draft_id/:opp_id')
-  .get(async (req, res) => {
+router.get('/:draft_id/:opp_id', async (req, res) => {
     try {
-      res.json(matchupService.summery(res.myTeam,res.oppTeam));
+      res.json({summery: summeryService.summery(res.myTeam, res.oppTeam) ,aSpeedchart: speedtierService.speedTierChart(res.myTeam), bSpeedchart: speedtierService.speedTierChart(res.oppTeam) })
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
   })
-  
+
 router.param("draft_id", async (req, res, next, draft_id) => {
   try {
     let draft = Draft.findById(draft_id).lean();
