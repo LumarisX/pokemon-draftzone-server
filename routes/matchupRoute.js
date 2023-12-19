@@ -5,6 +5,7 @@ const summeryService = require('../services/summery-service')
 const speedtierService = require('../services/speedtier-service')
 const TypechartService = require('../services/typechart-service')
 const CoverageService = require('../services/coverage-service')
+const MovechartService = require('../services/movechart-service')
 
 router.get('/:draft_id/:opp_id/summery', async (req, res) => {
     try {
@@ -34,15 +35,25 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   })
   
   router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
-    //try {
+    try {
       res.json({
-        aTeam: CoverageService.chart(res.myTeam, "8")
+        aTeam: CoverageService.chart(res.myTeam),
+        bTeam: CoverageService.chart(res.oppTeam)
       })
-    /*
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
-    */
+  })
+  
+  router.get('/:draft_id/:opp_id/movechart', async (req, res) => {
+    try {
+      res.json({
+        aTeam: MovechartService.chart(res.myTeam),
+        bTeam: MovechartService.chart(res.myTeam)
+      })
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
   })
 
 router.param("draft_id", async (req, res, next, draft_id) => {

@@ -161,6 +161,23 @@ function getLearnset(pokemonId, gen = "nd") {
   return learnset
 }
 
+function learns(pokemonId, moveId, gen = "nd") {
+  if (LearnsetService.hasLearnset(pokemonId)) {
+    if (LearnsetService.inLearnset(pokemonId, moveId, gen)) {
+      return true
+    }
+    if ("prevo" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].prevo), moveId, gen)) {
+      return true
+    }
+    if ("changesFrom" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].changesFrom), moveId, gen)) {
+      return true
+    }
+  } else if ("baseSpecies" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].baseSpecies), moveId, gen)) {
+    return true
+  }
+  return false
+}
+
 function getCoverage(pokemonId) {
   let learnset = getLearnset(pokemonId)
   let coverage = { physical: {}, special: {} }
@@ -180,4 +197,4 @@ function getCoverage(pokemonId) {
   return coverage
 }
 
-module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage }
+module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, learns }

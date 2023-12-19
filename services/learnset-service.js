@@ -14,6 +14,14 @@ function getLearnset(pokemonId, gen = "nd") {
   }
   return (Object.keys(ls));
 }
+
+function inLearnset(pokemonId, moveId, gen="nd"){
+  return (hasLearnset(pokemonId) && moveId in Learnsets[pokemonId]["learnset"] && genCheck(Learnsets[pokemonId]["learnset"][moveId],gen))
+}
+
+function hasLearnset(pokemonId){
+  return pokemonId in Learnsets
+}
 /*
 
 function getLearnlist(move, gen = "nd", list = Learnsets) {
@@ -60,4 +68,4 @@ function genCheck(move, gen) {
   return false;
 }
 
-module.exports = { getLearnset }
+module.exports = { getLearnset, inLearnset, hasLearnset }
