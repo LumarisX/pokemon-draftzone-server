@@ -1,6 +1,6 @@
 const Learnsets = require("../public/data/learnsets")["BattleLearnsets"]
 
-function getLearnset(pokemonId, gen = "nd") {
+function getLearnset(pokemonId, gen) {
   let ls = [];
   if (pokemonId in Learnsets && "learnset" in Learnsets[pokemonId]) {
     ls = Learnsets[pokemonId]["learnset"];
@@ -15,7 +15,7 @@ function getLearnset(pokemonId, gen = "nd") {
   return (Object.keys(ls));
 }
 
-function inLearnset(pokemonId, moveId, gen="nd"){
+function inLearnset(pokemonId, moveId, gen){
   return (hasLearnset(pokemonId) && moveId in Learnsets[pokemonId]["learnset"] && genCheck(Learnsets[pokemonId]["learnset"][moveId],gen))
 }
 
@@ -56,11 +56,8 @@ function learn(name, moveName, gen = "nd") {
 */
 
 function genCheck(move, gen) {
-  if (gen === "nd") {
-    return true;
-  }
   for (let lk in move) {
-    let genReg = new RegExp("^" + gen + "\\D");
+    let genReg = new RegExp("^[" + gen + "]\\D");
     if (genReg.test(move[lk])) {
       return true;
     }

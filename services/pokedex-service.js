@@ -137,10 +137,11 @@ function toKey(pokemonId) {
   return pokemonId;
 }
 
-function getLearnset(pokemonId, gen = "nd") {
+function getLearnset(pokemonId, gen) {
   let learnset = LearnsetService.getLearnset(pokemonId, gen)
+  console.log(pokemonId, learnset)
   if (learnset == null) {
-    return getLearnset(toKey(Pokedex[pokemonId].baseSpecies))
+    return getLearnset(toKey(Pokedex[pokemonId].baseSpecies),gen)
   }
   if ("prevo" in Pokedex[pokemonId]) {
     let subLearnset = getLearnset(toKey(Pokedex[pokemonId].prevo), gen)
@@ -161,7 +162,7 @@ function getLearnset(pokemonId, gen = "nd") {
   return learnset
 }
 
-function learns(pokemonId, moveId, gen = "nd") {
+function learns(pokemonId, moveId, gen) {
   if (LearnsetService.hasLearnset(pokemonId)) {
     if (LearnsetService.inLearnset(pokemonId, moveId, gen)) {
       return true
@@ -178,8 +179,8 @@ function learns(pokemonId, moveId, gen = "nd") {
   return false
 }
 
-function getCoverage(pokemonId) {
-  let learnset = getLearnset(pokemonId)
+function getCoverage(pokemonId, gen) {
+  let learnset = getLearnset(pokemonId, gen)
   let coverage = { physical: {}, special: {} }
   for (let moveId of learnset) {
     let cat = MoveService.getCategory(moveId)

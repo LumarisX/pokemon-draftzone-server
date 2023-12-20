@@ -1,10 +1,10 @@
 const pokedexService = require('./pokedex-service.js')
 
 
-function speedTierChart(team) {
+function speedTierChart(team, level) {
   let tiers = [];
   for (let m in team) {
-    tiers = tiers.concat(getSpeedTiers(team[m].pid));
+    tiers = tiers.concat(getSpeedTiers(team[m].pid, level));
   }
 
   let speAsc = 1;
@@ -20,10 +20,9 @@ function speedTierChart(team) {
   return tiers;
 }
 
-function getSpeedTiers(pokemonId) {
+function getSpeedTiers(pokemonId, level) {
   let speedAbilities = []
   let tiers = [];
-  let level = 50;
   let baseSpe = pokedexService.getBase(pokemonId)["spe"]
   let pokemonName = pokedexService.getName(pokemonId)
   let slow = {

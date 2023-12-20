@@ -6,6 +6,7 @@ const speedtierService = require('../services/speedtier-service')
 const TypechartService = require('../services/typechart-service')
 const CoverageService = require('../services/coverage-service')
 const MovechartService = require('../services/movechart-service')
+const Rulesets = require('../services/rulesets')
 
 router.get('/:draft_id/:opp_id/summery', async (req, res) => {
     try {
@@ -25,9 +26,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   
   router.get('/:draft_id/:opp_id/speedchart', async (req, res) => {
     try {
+      let level = Rulesets.Format[res.draft["format"]].level
       res.json({
-        aTeam: speedtierService.speedTierChart(res.myTeam), 
-        bTeam: speedtierService.speedTierChart(res.oppTeam)
+        aTeam: speedtierService.speedTierChart(res.myTeam,level), 
+        bTeam: speedtierService.speedTierChart(res.oppTeam,level)
       })
     } catch (error) {
       res.status(500).json({ message: error.message })
@@ -36,9 +38,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   
   router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
     try {
+      let gen = Rulesets.Generation[res.draft["ruleset"]].gen
       res.json({
-        aTeam: CoverageService.chart(res.myTeam),
-        bTeam: CoverageService.chart(res.oppTeam)
+        aTeam: CoverageService.chart(res.myTeam, gen),
+        bTeam: CoverageService.chart(res.oppTeam, gen)
       })
     } catch (error) {
       res.status(500).json({ message: error.message })
@@ -47,9 +50,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   
   router.get('/:draft_id/:opp_id/movechart', async (req, res) => {
     try {
+      let gen = Rulesets.Generation[res.draft["ruleset"]].gen
       res.json({
-        aTeam: MovechartService.chart(res.myTeam),
-        bTeam: MovechartService.chart(res.myTeam)
+        aTeam: MovechartService.chart(res.myTeam, gen),
+        bTeam: MovechartService.chart(res.myTeam, gen)
       })
     } catch (error) {
       res.status(500).json({ message: error.message })
@@ -58,7 +62,7 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
 
 router.param("draft_id", async (req, res, next, draft_id) => {
   try {
-    let draft = Draft.findById(draft_id).lean();
+    let draft = await Draft.findById(draft_id).lean();
     if (draft == null) {
       return res.status(400).json({ message: 'Team id not found' })
     }
@@ -71,7 +75,7 @@ router.param("draft_id", async (req, res, next, draft_id) => {
 
 router.param("opp_id", async (req, res, next, opp_id) => {
   try {
-    let draft = await res.draft;
+    let draft = res.draft;
     if (!(opp_id in draft["opponents"])) {
       return res.status(400).json({ message: 'Opponent id not found' })
     }
