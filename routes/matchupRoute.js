@@ -27,10 +27,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   router.get('/:draft_id/:opp_id/speedchart', async (req, res) => {
     try {
       let level = Rulesets.Format[res.draft["format"]].level
-      res.json({
-        aTeam: speedtierService.speedTierChart(res.myTeam,level), 
-        bTeam: speedtierService.speedTierChart(res.oppTeam,level)
-      })
+      res.json([
+        speedtierService.speedTierChart(res.myTeam,level), 
+        speedtierService.speedTierChart(res.oppTeam,level)
+      ])
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
