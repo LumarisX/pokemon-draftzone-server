@@ -2,14 +2,15 @@ const pokedexService = require('./pokedex-service.js')
 
 
 function summery(ateam, bteam) {
-  let out = {blueTeam: [], redTeam: []}
+  let aOut = []
   for(let m of ateam){
-    out.blueTeam.push(summeryData(m.pid));
+    aOut.push(summeryData(m.pid));
   }
+  let bOut = []
   for (let m of bteam) {
-    out.redTeam.push(summeryData(m.pid));
+    bOut.push(summeryData(m.pid));
   }
-  return out
+  return [aOut, bOut]
 }
 
 function summeryData(pokemonData) {
