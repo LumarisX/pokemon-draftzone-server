@@ -14,12 +14,11 @@ function summery(ateam, bteam) {
 
 function summeryData(pokemonData) {
   let out = {}
-  let data = pokedexService.getData(pokemonData)
   out.pid = pokemonData;
-  out.name = data.name;
-  out.abilities = data.abilities;
-  out.types = data.types;
-  out.baseStats = data.baseStats;
+  out.name = pokedexService.getName(pokemonData)
+  out.abilities = pokedexService.getAbilities(pokemonData)
+  out.types = pokedexService.getTypes(pokemonData)
+  out.baseStats =pokedexService.getBase(pokemonData)
   return out;
 }
 

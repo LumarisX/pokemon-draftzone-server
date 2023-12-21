@@ -122,7 +122,7 @@ function getTypes(pokemonId) {
 }
 
 function getAbilities(pokemonId) {
-  return Pokedex[pokemonId]["abilities"];
+  return Object.values(Pokedex[pokemonId]["abilities"]);
 }
 
 function getFormeChange(pokemonId) {
@@ -198,4 +198,4 @@ function getCoverage(pokemonId, gen) {
   return coverage
 }
 
-module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, learns }
+module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, getTypes, learns }

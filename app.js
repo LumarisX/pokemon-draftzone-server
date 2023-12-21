@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const mongoose = require ('mongoose');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const usersRouter = require('./routes/users');
 const pokedexRouter = require('./routes/pokedexRoute');
@@ -14,7 +14,7 @@ const testRouter = require('./routes/testRoute')
 const { error } = require('console');
 //mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
 
-mongoose.connect("mongodb://lumaris:bjbxmb6SuZ5WMlDA@ac-bbyjpl3-shard-00-00.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-01.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-02.5nc6cbu.mongodb.net:27017/?ssl=true&replicaSet=atlas-b2jrjx-shard-0&authSource=admin&retryWrites=true&w=majority", {dbName: "draftzone"})
+mongoose.connect("mongodb://lumaris:bjbxmb6SuZ5WMlDA@ac-bbyjpl3-shard-00-00.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-01.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-02.5nc6cbu.mongodb.net:27017/?ssl=true&replicaSet=atlas-b2jrjx-shard-0&authSource=admin&retryWrites=true&w=majority", { dbName: "draftzone" })
 
 const db = mongoose.connection;
 db.on('error', (error) => console.error(error));
@@ -44,12 +44,12 @@ app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   next(createError(404));
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
