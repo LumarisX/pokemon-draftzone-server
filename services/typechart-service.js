@@ -33,7 +33,7 @@ function summerizeType(tc) {
       if(pokemon.weak[type]>0){
         tc.differential[type]-=Math.log2(pokemon.weak[type])
       } else {
-        tc.differential[type]-=2
+        tc.differential[type]+=2
       }
       
       
