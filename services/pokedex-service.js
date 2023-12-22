@@ -139,7 +139,6 @@ function toKey(pokemonId) {
 
 function getLearnset(pokemonId, gen) {
   let learnset = LearnsetService.getLearnset(pokemonId, gen)
-  console.log(pokemonId, learnset)
   if (learnset == null) {
     return getLearnset(toKey(Pokedex[pokemonId].baseSpecies),gen)
   }

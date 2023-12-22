@@ -1,6 +1,6 @@
 const Typechart = require("../public/data/typechart")["BattleTypeChart"]
 
-const base = { Bug: 1, Dark: 1, Dragon: 1, Electric: 1, Fairy: 1, Fighting: 1, Fire: 1, Flying: 1, Ghost: 1, Grass: 1, Ground: 1, Ice: 1, Normal: 1, Poison: 1, Psychic: 1, Rock: 1, Steel: 1, Water: 1, brn: 1, par: 1, prankster: 1, tox: 1, psn: 1, frz: 1, slp: 1, powder: 1, sandstorm: 1, hail: 1 }
+const base = { Bug: 1, Dark: 1, Dragon: 1, Electric: 1, Fairy: 1, Fighting: 1, Fire: 1, Flying: 1, Ghost: 1, Grass: 1, Ground: 1, Ice: 1, Normal: 1, Poison: 1, Psychic: 1, Rock: 1, Steel: 1, Water: 1, brn: 1, par: 1, prankster: 1, tox: 1, psn: 1, frz: 1, slp: 1, powder: 1, sandstorm: 1, hail: 1, trapped: 1 }
 
 function defensive(types) {
   let out = structuredClone(base)
@@ -22,4 +22,4 @@ function convert(typeData) {
   return converted
 }
 
-module.exports = { defensive }
+module.exports = { defensive, base}
