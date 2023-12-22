@@ -18,7 +18,7 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   
   router.get('/:draft_id/:opp_id/typechart', async (req, res) => {
     try {
-      res.json({aTeam: TypechartService.typechart(res.myTeam), bTeam: TypechartService.typechart(res.oppTeam)})
+      res.json([TypechartService.typechart(res.myTeam), TypechartService.typechart(res.oppTeam)])
     } catch (error) {
       res.status(500).json({ message: error.message })
     }

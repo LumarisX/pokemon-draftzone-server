@@ -55,7 +55,7 @@ function getSpeedTiers(pokemonId, level) {
     ]
   }
   let fast = {
-    stages: [0, 1, 2],
+    stages: [-1, 0, 1, 2],
     conditions: [
       {
         name: "none",
@@ -64,6 +64,10 @@ function getSpeedTiers(pokemonId, level) {
       {
         name: "tailwind",
         multi: 2
+      },
+      {
+        name: "paralyzed",
+        multi: .5
       }
     ],
     items: [
