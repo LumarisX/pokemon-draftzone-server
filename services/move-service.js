@@ -9,7 +9,9 @@ function getName(moveId){
 }
 
 function getCategory(moveId){
-  return Movedex[moveId].category.toLowerCase()
+  if(moveId in Movedex && "category" in Movedex[moveId])
+    return Movedex[moveId].category.toLowerCase()
+  return null
 }
 
 function getEffectivePower(moveId) {

@@ -184,6 +184,7 @@ function getCoverage(pokemonId, gen) {
   for (let moveId of learnset) {
     let cat = MoveService.getCategory(moveId)
     let type = MoveService.getType(moveId)
+    type = type.charAt(0).toUpperCase() + type.slice(1)
     if (cat != "status") {
       let ePower = MoveService.getEffectivePower(moveId)
       if (!(type in coverage[cat]) || coverage[cat][type].ePower < ePower) {
