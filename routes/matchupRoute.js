@@ -49,15 +49,15 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   })
   
   router.get('/:draft_id/:opp_id/movechart', async (req, res) => {
-    try {
+    //try {
       let gen = Rulesets.Generation[res.draft["ruleset"]].gen
       res.json([
         MovechartService.chart(res.myTeam, gen),
-        MovechartService.chart(res.myTeam, gen)
+        MovechartService.chart(res.oppTeam, gen)
       ])
-    } catch (error) {
+    /*} catch (error) {
       res.status(500).json({ message: error.message })
-    }
+    }*/
   })
 
 router.param("draft_id", async (req, res, next, draft_id) => {

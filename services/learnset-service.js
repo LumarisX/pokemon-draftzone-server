@@ -20,7 +20,7 @@ function inLearnset(pokemonId, moveId, gen){
 }
 
 function hasLearnset(pokemonId){
-  return pokemonId in Learnsets
+  return pokemonId in Learnsets && "learnset" in Learnsets[pokemonId]
 }
 /*
 
