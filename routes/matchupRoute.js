@@ -39,10 +39,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
     try {
       let gen = Rulesets.Generation[res.draft["ruleset"]].gen
-      res.json({
-        aTeam: CoverageService.chart(res.myTeam, gen),
-        bTeam: CoverageService.chart(res.oppTeam, gen)
-      })
+      res.json([
+        CoverageService.chart(res.myTeam, gen),
+        CoverageService.chart(res.oppTeam, gen)
+      ])
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
@@ -51,10 +51,10 @@ router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   router.get('/:draft_id/:opp_id/movechart', async (req, res) => {
     try {
       let gen = Rulesets.Generation[res.draft["ruleset"]].gen
-      res.json({
-        aTeam: MovechartService.chart(res.myTeam, gen),
-        bTeam: MovechartService.chart(res.myTeam, gen)
-      })
+      res.json([
+        MovechartService.chart(res.myTeam, gen),
+        MovechartService.chart(res.myTeam, gen)
+      ])
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
