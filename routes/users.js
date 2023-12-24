@@ -47,9 +47,22 @@ router
     }
   });
 
-router.get("/:user_id/teams", async (req, res) => {
+router.route("/:user_id/teams")
+.get(async (req, res) => {
   try {
     res.json(await Draft.find({ owner: res.user.id }));
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+.post(async (req, res) => {
+  try {
+    let content = req.body;
+    console.log(content)
+    if(!content){
+      return res.status(400).json({ message: error.message })
+    }
+    res.status(201).json({ message: "Draft Created" })
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
