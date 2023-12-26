@@ -68,11 +68,24 @@ router.route("/:user_id/teams")
   }
 })
 
-router.get("/:user_id/:team_id", async (req, res) => {
+router.route("/:user_id/:team_id")
+.get(async (req, res) => {
   try {
     res.json(res.team)
   } catch (error) {
     req.status(500).json({ message: error.message })
+  }
+})
+.post(async (req, res) => {
+  try {
+    let content = req.body;
+    console.log(content)
+    if(!content){
+      return res.status(400).json({ message: error.message })
+    }
+    res.status(201).json({ message: "Opponent Added" })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 })
 
