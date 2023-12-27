@@ -12,6 +12,7 @@ const authRouter = require('./routes/authRoute')
 const matchupRouter = require('./routes/matchupRoute')
 const testRouter = require('./routes/testRoute')
 const { error } = require('console');
+const mongoSanitize = require('express-mongo-sanitize')
 //mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
 
 mongoose.connect("mongodb://lumaris:bjbxmb6SuZ5WMlDA@ac-bbyjpl3-shard-00-00.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-01.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-02.5nc6cbu.mongodb.net:27017/?ssl=true&replicaSet=atlas-b2jrjx-shard-0&authSource=admin&retryWrites=true&w=majority", { dbName: "draftzone" })
@@ -26,6 +27,15 @@ var app = express();
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
+
+app.use(
+  mongoSanitize({
+    replaceWith: '_',
+    onSanitize: ({ req, key }) => {
+      console.warn(`This request[${key}] is sanitized`, req);
+    },
+  }),
+);
 
 app.use(logger('dev'));
 app.use(express.json());
