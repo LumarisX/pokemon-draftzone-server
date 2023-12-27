@@ -138,11 +138,10 @@ router.param("user_id", async (req, res, next, user_id) => {
   try {
     if (ObjectId.isValid(req.params.user_id)) {
       user = await User.find({ username: user_id });
-      if (user == null) {
+      if (user === undefined) {
         return res.status(400).json({ message: 'User id not found' })
       }
       res.user = user[0];
-    } else {
       return res.status(400).json({ message: 'Invalid ID format' })
     }
   } catch (error) {
