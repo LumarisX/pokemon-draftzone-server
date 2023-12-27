@@ -1,25 +1,30 @@
 const Pokemon = require('./pokemon')
+const DraftModel = require("../models/draftModel");
 
 class Draft {
 
-  data = {}
+  model = null
   errors = []
   valid = true
 
-  constructor(formData) {
-    this.data.teamName = formData.leagueName
-    this.data.format = formData.format
-    this.data.ruleset = formData.ruleset
-    this.data.team = []
+  constructor(formData, user_id) {
+    let data = {}
+    data.leagueName = formData.leagueName
+    data.leagueId = formData.leagueName.toLowerCase().replace(/\W/gi,'')
+    data.format = formData.format
+    data.ruleset = formData.ruleset
+    data.owner = user_id
+    data.team = []
     for (let pokemonData of formData.team) {
       let pokemon = new Pokemon(pokemonData)
       if (pokemon.error) {
         this.errors.push(pokemon.error)
         this.valid = false
       } else {
-        this.data.team.push(pokemon.data)
+        data.team.push(pokemon.data)
       }
     }
+    this.model = new DraftModel(data)
   }
 }
 

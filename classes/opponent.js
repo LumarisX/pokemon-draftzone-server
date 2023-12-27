@@ -7,7 +7,7 @@ class Opponent {
   valid = true
 
   constructor(formData) {
-    this.data.teamName = formData.opponentName
+    this.data.opponentName = formData.opponentName
     this.data.stage = formData.stage
     this.data.team = []
     for (let pokemonData of formData.team) {

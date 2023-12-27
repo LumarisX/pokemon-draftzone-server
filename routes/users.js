@@ -94,9 +94,9 @@ router.route("/:user_id/teams")
   })
   .post(async (req, res) => {
     try {
-      let draft = new Draft(req.body)
+      let draft = new Draft(req.body, res.user._id)
       if (draft.valid) {
-        console.log(draft.data)
+        await draft.model.save()
         res.status(201).json({ message: "Draft Added" })
       } else {
         return res.status(400).json({ message: draft.errors })
@@ -117,9 +117,11 @@ router.route("/:user_id/:team_id")
   .post(async (req, res) => {
     try {
       let opponent = new Opponent(req.body)
-      if(opponent.valid){
+      if (opponent.valid) {
         console.log(opponent.data)
-      res.status(201).json({ message: "Opponent Added" })
+        res.team.opponents.push(opponent.data)
+        await res.team.save()
+        res.status(201).json({ message: "Opponent Added" })
       } else {
         return res.status(400).json({ message: opponent.errors })
       }
