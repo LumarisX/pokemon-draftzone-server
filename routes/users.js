@@ -136,15 +136,11 @@ router.get("/:user_id/:team_id/:opponent_id", async (req, res) => {
 router.param("user_id", async (req, res, next, user_id) => {
   let user;
   try {
-    if (ObjectId.isValid(req.params.user_id)) {
-      user = await User.find({ username: user_id });
-      if (user.length === 0) {
-        return res.status(400).json({ message: 'User id not found' })
-      }
-      res.user = user[0];
-    } else {
-      return res.status(400).json({ message: 'Invalid ID format: ' + req.params.user_id })
+    user = await User.find({ username: user_id });
+    if (user.length === 0) {
+      return res.status(400).json({ message: 'User id not found' })
     }
+    res.user = user[0];
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
