@@ -52,7 +52,6 @@ router
       } else {
         return res.status(400).send({ message: "Bad request" })
       }
-      res.status(201).json({ message: "New User" })
     } catch (error) {
       res.status(400).json({ message: error.message })
     }
