@@ -16,7 +16,7 @@ Content-Type: application/json
 
 ###
 
-DELETE http://localhost:9960/users/657250a9ef2832aea1bbf51b
+DELETE http://localhost:9960/users/658b5cf98aee3fb030033317
 
 ###
 

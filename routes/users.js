@@ -76,7 +76,7 @@ router
   })
   .delete(async (req, res) => {
     try {
-      await res.user.deleteOne()
+      await User.findByIdAndDelete(req.params.user_id)
       res.json({ message: 'Deleted User' })
     } catch (error) {
       res.status(500).json({ message: error.message })
