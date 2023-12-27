@@ -3,6 +3,10 @@ const TypeService = require('./type-service')
 const LearnsetService = require('./learnset-service')
 const MoveService = require('./move-service')
 
+function inDex(pokemonId){
+  return pokemonId in Pokedex
+}
+
 function getName(pokemonId) {
   return (Pokedex[pokemonId]["name"]);
 }
@@ -198,4 +202,4 @@ function getCoverage(pokemonId, gen) {
   return coverage
 }
 
-module.exports = { getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, getTypes, learns }
+module.exports = { inDex, getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, getTypes, learns }
