@@ -3,7 +3,6 @@ const router = express.Router();
 const User = require("../models/userModel");
 const Role = require("../models/roleModel")
 const Draft = require("../models/draftModel");
-const { ObjectId } = require('mongodb')
 
 
 router

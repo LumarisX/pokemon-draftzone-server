@@ -149,7 +149,7 @@ function getSpeedTiers(pokemonId, level) {
         "speed": pokedexService.getStat("spe", baseSpe, fast.spreads[s].ev, fast.spreads[s].nature, fast.spreads[s].iv, level, stage),
         "modifiers": [fast.spreads[s].name]
       }
-      if (stage > 0) {
+      if (stage != 0) {
         baseInfo.modifiers.push("Stage " + stage)
       }
       tiers.push(baseInfo)

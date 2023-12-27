@@ -7,6 +7,7 @@ const TypechartService = require('../services/typechart-service')
 const CoverageService = require('../services/coverage-service')
 const MovechartService = require('../services/movechart-service')
 const Rulesets = require('../services/rulesets')
+const { ObjectId } = require('mongodb')
 
 router.get('/:draft_id/:opp_id/summery', async (req, res) => {
   try {
@@ -79,16 +80,12 @@ router.param("draft_id", async (req, res, next, draft_id) => {
 
 router.param("opp_id", async (req, res, next, opp_id) => {
   try {
-    if (ObjectId.isValid(req.params.opp_id)) {
-      let draft = res.draft;
-      if (!(opp_id in draft["opponents"])) {
-        return res.status(400).json({ message: 'Opponent id not found' })
-      }
-      res.myTeam = draft.team;
-      res.oppTeam = draft["opponents"][opp_id]["team"];
-    } else {
-      return res.status(400).json({ message: 'Invalid ID format' })
+    let draft = res.draft;
+    if (!(opp_id in draft["opponents"])) {
+      return res.status(400).json({ message: 'Opponent id not found' })
     }
+    res.myTeam = draft.team;
+    res.oppTeam = draft["opponents"][opp_id]["team"];
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
