@@ -33,5 +33,5 @@ PATCH http://localhost:9960/users/658b5cf98aee3fb030033317
 Content-Type: application/json
 
 {
-    "password": "speedyRocks1235"
+    "password": "speedyRocks12435"
 }

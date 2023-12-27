@@ -68,8 +68,7 @@ router
   })
   .patch(async (req, res) => {
     try {
-      console.log(res.user)
-      await res.user.update(req.body)
+      await User.findByIdAndUpdate(req.params.user_id, req.body)
       res.send(`Update user with ID ${req.params.user_id}`)
     } catch (error) {
       res.status(400).json({ message: error.message })
