@@ -110,7 +110,7 @@ function getSpeedTiers(pokemonId, level) {
       case "Quick Feet":
       case "Quark Drive":
       case "Protosynthesis":
-        speedAbilities.push({ name: abilities[a], multi: 2 })
+        speedAbilities.push({ name: abilities[a], multi: 1.5 })
         break;
       case "Speed Boost":
         fast.stages.push(3, 4, 5, 6)
@@ -124,10 +124,10 @@ function getSpeedTiers(pokemonId, level) {
     for (let stage of slow.stages) {
       let baseInfo = {
         "name": pokemonName,
-        "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].ev, slow.spreads[s].nature, slow.spreads[s].iv, level, stage),
+        "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].evs, slow.spreads[s].nature, slow.spreads[s].ivs, level, stage),
         "modifiers": [slow.spreads[s].name]
       }
-      if (stage < 0) {
+      if (stage != 0) {
         baseInfo.modifiers.push("Stage " + stage)
       }
       tiers.push(baseInfo)
