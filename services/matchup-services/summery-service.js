@@ -1,9 +1,9 @@
-const pokedexService = require('./pokedex-service.js')
+const pokedexService = require('../pokedex-service.js')
 
 
 function summery(ateam, bteam) {
   let aOut = []
-  for(let m of ateam){
+  for (let m of ateam) {
     aOut.push(summeryData(m.pid));
   }
   let bOut = []
@@ -19,8 +19,8 @@ function summeryData(pokemonData) {
   out.name = pokedexService.getName(pokemonData)
   out.abilities = pokedexService.getAbilities(pokemonData)
   out.types = pokedexService.getTypes(pokemonData)
-  out.baseStats =pokedexService.getBase(pokemonData)
+  out.baseStats = pokedexService.getBase(pokemonData)
   return out;
 }
 
-module.exports = {summery}
+module.exports = { summery }

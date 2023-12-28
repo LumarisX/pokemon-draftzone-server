@@ -1,9 +1,9 @@
 const Pokedex = require("../public/data/pokedex")["BattlePokedex"]
 const TypeService = require('./type-service')
-const LearnsetService = require('./learnset-service')
+const LearnsetService = require('./matchup-services/learnset-service')
 const MoveService = require('./move-service')
 
-function inDex(pokemonId){
+function inDex(pokemonId) {
   return pokemonId in Pokedex
 }
 
@@ -144,7 +144,7 @@ function toKey(pokemonId) {
 function getLearnset(pokemonId, gen) {
   let learnset = LearnsetService.getLearnset(pokemonId, gen)
   if (learnset == null) {
-    return getLearnset(toKey(Pokedex[pokemonId].baseSpecies),gen)
+    return getLearnset(toKey(Pokedex[pokemonId].baseSpecies), gen)
   }
   if ("prevo" in Pokedex[pokemonId]) {
     let subLearnset = getLearnset(toKey(Pokedex[pokemonId].prevo), gen)

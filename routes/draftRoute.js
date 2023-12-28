@@ -6,7 +6,6 @@ const DraftModel = require("../models/draftModel");
 const Opponent = require("../classes/opponent")
 const Draft = require("../classes/draft")
 
-
 router
   .route('/')
   .get(async (req, res) => {
@@ -28,31 +27,6 @@ router
         return res.status(400).json({ message: error.message })
       }
 
-    } catch (error) {
-      res.status(400).json({ message: error.message })
-    }
-  })
-
-router
-  .route('/test')
-  .get(async (req, res) => {
-    try {
-      const users = await UserModel.find()
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: error.message })
-    }
-  })
-  .post(async (req, res) => {
-    try {
-      if (req.body.role && req.body.role !== '') {
-        console.log(req.body, "here")
-        const newRole = new RoleModel(req.body);
-        await newRole.save()
-        return res.send({ message: "Role Created!" })
-      } else {
-        return res.status(400).send({ message: "Bad request" })
-      }
     } catch (error) {
       res.status(400).json({ message: error.message })
     }
@@ -94,11 +68,12 @@ router.route("/:user_id/teams")
   })
   .post(async (req, res) => {
     try {
-      if (opponent.valid) {
-        console.log(opponent.da)
+      let draft = new Draft(req.body, res.user._id)
+      if (draft.valid) {
+        await draft.model.save()
         res.status(201).json({ message: "Draft Added" })
       } else {
-        return res.status(400).json({ message: opponent.errors })
+        return res.status(400).json({ message: draft.errors })
       }
     } catch (error) {
       res.status(500).json({ message: error.message })
@@ -116,9 +91,11 @@ router.route("/:user_id/:team_id")
   .post(async (req, res) => {
     try {
       let opponent = new Opponent(req.body)
-      if(opponent.valid){
-        console.log(opponent.da)
-      res.status(201).json({ message: "Opponent Added" })
+      if (opponent.valid) {
+        console.log(opponent.data)
+        res.team.opponents.push(opponent.data)
+        await res.team.save()
+        res.status(201).json({ message: "Opponent Added" })
       } else {
         return res.status(400).json({ message: opponent.errors })
       }

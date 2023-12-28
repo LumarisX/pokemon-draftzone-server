@@ -5,12 +5,13 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const usersRouter = require('./routes/users');
+const usersRouter = require('./routes/usersRoute');
 const pokedexRouter = require('./routes/pokedexRoute');
 const leagueRouter = require('./routes/leagueRoute');
 const authRouter = require('./routes/authRoute')
 const matchupRouter = require('./routes/matchupRoute')
 const testRouter = require('./routes/testRoute')
+const draftRouter = require('./routes/draftRoute')
 const { error } = require('console');
 const mongoSanitize = require('express-mongo-sanitize')
 
@@ -58,6 +59,7 @@ app.use('/pokedex', pokedexRouter);
 app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);
+app.use('/draft', draftRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
