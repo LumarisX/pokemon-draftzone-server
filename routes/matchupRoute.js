@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Draft = require("../models/draftModel");
+const Matchup = require("../models/matchupModel.js")
 const summeryService = require('../services/matchup-services/summery-service')
 const speedtierService = require('../services/matchup-services/speedtier-service')
 const TypechartService = require('../services/matchup-services/typechart-service')
@@ -12,7 +13,7 @@ const { ObjectId } = require('mongodb')
 router.route('/:matchup_id')
   .get(async (req, res) => {
     try {
-      res.json({ message: "done" })
+      res.json(res.matchup)
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
@@ -103,8 +104,16 @@ router.param("opp_id", async (req, res, next, opp_id) => {
 
 router.param("matchup_id", async (req, res, next, matchup_id) => {
   try {
-    let matchup = await Opponent.findById(matchup_id).lean()
-    console.log(matchup)
+    matchup = await Matchup.findById(matchup_id).lean()
+    if(matchup === null){
+      res.status(400).json({ message: "Matchup ID not found"})
+    }
+    aTeam = await Draft.findById(matchup.aTeam._id).lean()
+    if(aTeam === null){
+      res.status(400).json({ message: "Draft ID not found"})
+    }
+    matchup.aTeam = aTeam
+    res.matchup = matchup
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
