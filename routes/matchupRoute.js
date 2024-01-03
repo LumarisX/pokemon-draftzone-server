@@ -19,101 +19,82 @@ router.route('/:matchup_id')
     }
   })
 
-router.get('/:draft_id/:opp_id/summery', async (req, res) => {
+router.get('/:matchup_id/summery', async (req, res) => {
   try {
-    res.json(summeryService.summery(res.myTeam, res.oppTeam))
+    res.json(summeryService.summery(res.matchup.aTeam.team, res.matchup.bTeam.team))
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
 
-router.get('/:draft_id/:opp_id/typechart', async (req, res) => {
+router.get('/:matchup_id/typechart', async (req, res) => {
   try {
-    res.json([TypechartService.typechart(res.myTeam), TypechartService.typechart(res.oppTeam)])
+    res.json([TypechartService.typechart(res.matchup.aTeam.team), TypechartService.typechart(res.matchup.bTeam.team)])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
 
-router.get('/:draft_id/:opp_id/speedchart', async (req, res) => {
+router.get('/:matchup_id/speedchart', async (req, res) => {
   try {
-    let level = Rulesets.Format[res.draft["format"]].level
+    let level = Rulesets.Format[res.matchup.format].level
     res.json([
-      speedtierService.speedTierChart(res.myTeam, level),
-      speedtierService.speedTierChart(res.oppTeam, level)
+      speedtierService.speedTierChart(res.matchup.aTeam.team, level),
+      speedtierService.speedTierChart(res.matchup.bTeam.team, level)
     ])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
 
-router.get('/:draft_id/:opp_id/coveragechart', async (req, res) => {
+router.get('/:matchup_id/coveragechart', async (req, res) => {
   try {
-    let gen = Rulesets.Generation[res.draft["ruleset"]].gen
+    let gen = Rulesets.Generation[res.matchup.ruleset].gen
     res.json([
-      CoverageService.chart(res.myTeam, gen),
-      CoverageService.chart(res.oppTeam, gen)
+      CoverageService.chart(res.matchup.aTeam.team, gen),
+      CoverageService.chart(res.matchup.bTeam.team, gen)
     ])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
 
-router.get('/:draft_id/:opp_id/movechart', async (req, res) => {
+router.get('/:matchup_id/movechart', async (req, res) => {
   try {
-    let gen = Rulesets.Generation[res.draft["ruleset"]].gen
+    let gen = Rulesets.Generation[res.matchup.ruleset].gen
     res.json([
-      MovechartService.chart(res.myTeam, gen),
-      MovechartService.chart(res.oppTeam, gen)
+      MovechartService.chart(res.matchup.aTeam.team, gen),
+      MovechartService.chart(res.matchup.bTeam.team, gen)
     ])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
 })
-
-router.param("draft_id", async (req, res, next, draft_id) => {
-  try {
-    if (ObjectId.isValid(req.params.draft_id)) {
-      let draft = await Draft.findById(draft_id).lean();
-      if (draft == null) {
-        return res.status(400).json({ message: 'Team id not found' })
-      }
-      res.draft = draft;
-    } else {
-      return res.status(400).json({ message: 'Invalid ID format' })
-    }
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-  next();
-});
-
-router.param("opp_id", async (req, res, next, opp_id) => {
-  try {
-    let draft = res.draft;
-    if (!(opp_id in draft["opponents"])) {
-      return res.status(400).json({ message: 'Opponent id not found' })
-    }
-    res.myTeam = draft.team;
-    res.oppTeam = draft["opponents"][opp_id]["team"];
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-  next();
-});
 
 router.param("matchup_id", async (req, res, next, matchup_id) => {
   try {
-    matchup = await Matchup.findById(matchup_id).lean()
-    if(matchup === null){
-      res.status(400).json({ message: "Matchup ID not found"})
+    if (ObjectId.isValid(matchup_id)) {
+      matchup = await Matchup.findById(matchup_id).lean()
+      if (matchup === null) {
+        res.status(400).json({ message: "Matchup ID not found" })
+      }
+      aTeam = await Draft.findById(matchup.aTeam._id).lean()
+      if (aTeam === null) {
+        res.status(400).json({ message: "Draft ID not found" })
+      }
+      matchup.leagueName = aTeam.leagueName
+      matchup.format = aTeam.format
+      matchup.ruleset = aTeam.ruleset
+      matchup.aTeam = {
+        owner: aTeam.owner,
+        team: aTeam.team,
+        _id: aTeam._id
+      }
+      res.matchup = matchup
+    } else {
+      return res.status(400).json({ message: 'Invalid ID format' })
     }
-    aTeam = await Draft.findById(matchup.aTeam._id).lean()
-    if(aTeam === null){
-      res.status(400).json({ message: "Draft ID not found"})
-    }
-    matchup.aTeam = aTeam
-    res.matchup = matchup
+
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
