@@ -184,17 +184,32 @@ function learns(pokemonId, moveId, gen) {
 
 function getCoverage(pokemonId, gen) {
   let learnset = getLearnset(pokemonId, gen)
-  let coverage = { physical: {}, special: {} }
+  let coverage = { physical: [], special: []}
   for (let moveId of learnset) {
     let cat = MoveService.getCategory(moveId)
     let type = MoveService.getType(moveId)
     type = type.charAt(0).toUpperCase() + type.slice(1)
     if (cat != "status") {
       let ePower = MoveService.getEffectivePower(moveId)
-      if (!(type in coverage[cat]) || coverage[cat][type].ePower < ePower) {
-        coverage[cat][type] = {
-          name: MoveService.getName(moveId),
-          ePower: MoveService.getEffectivePower(moveId)
+      let existing = null;
+      for(let i in coverage[cat]){
+        if(coverage[cat][i].type == type){
+          existing = i
+        }
+      }
+      if (existing == null) {
+        coverage[cat].push({
+          id: moveId,
+          ePower: MoveService.getEffectivePower(moveId),
+          type: type,
+          stab: getTypes(pokemonId).includes(type)
+        })
+      } else if(coverage[cat][existing].ePower < ePower) {
+        coverage[cat][existing] = {
+          id: moveId,
+          ePower: MoveService.getEffectivePower(moveId),
+          type: type,
+          stab: getTypes(pokemonId).includes(type)
         }
       }
     }
