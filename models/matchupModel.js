@@ -9,12 +9,15 @@ const teamSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true
+  },
+  _id: {
+    type: mongoose.Schema.Types.ObjectId
   }
 }, { _id: false })
 
 const matchupSchema = new mongoose.Schema({
     aTeam: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: teamSchema,
       required: true
     },
     bTeam: {

@@ -103,6 +103,28 @@ router.route("/:user_id/:team_id")
       res.status(500).json({ message: error.message })
     }
   })
+  
+  router.route("/:user_id/:team_id/opponents")
+  .get(async (req, res) => {
+    try {
+      res.json(await DraftModel.find({ owner: res.user.id }));
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
+  .post(async (req, res) => {
+    try {
+      let draft = new Draft(req.body, res.user._id)
+      if (draft.valid) {
+        await draft.model.save()
+        res.status(201).json({ message: "Draft Added" })
+      } else {
+        return res.status(400).json({ message: draft.errors })
+      }
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
 
 router.get("/:user_id/:team_id/:opponent_id", async (req, res) => {
   try {
