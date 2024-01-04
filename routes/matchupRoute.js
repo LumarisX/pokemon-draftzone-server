@@ -18,6 +18,14 @@ router.route('/:matchup_id')
       res.status(500).json({ message: error.message })
     }
   })
+  .delete(async (req, res) => {
+    try {
+      await res.rawMatchup.deleteOne()
+      res.json({ message: "Matchup deleted" })
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
+  })
 
 router.get('/:matchup_id/summery', async (req, res) => {
   try {
@@ -51,7 +59,7 @@ router.get('/:matchup_id/coveragechart', async (req, res) => {
   try {
     let gen = Rulesets.Generation[res.matchup.ruleset].gen
     res.json([
-      CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team,gen),
+      CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
       CoverageService.chart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen)
     ])
   } catch (error) {
@@ -74,10 +82,11 @@ router.get('/:matchup_id/movechart', async (req, res) => {
 router.param("matchup_id", async (req, res, next, matchup_id) => {
   try {
     if (ObjectId.isValid(matchup_id)) {
-      matchup = await Matchup.findById(matchup_id).lean()
-      if (matchup === null) {
+      let rawMatchup = await Matchup.findById(matchup_id)
+      if (rawMatchup === null) {
         res.status(400).json({ message: "Matchup ID not found" })
       }
+      let matchup = rawMatchup
       aTeam = await Draft.findById(matchup.aTeam._id).lean()
       if (aTeam === null) {
         res.status(400).json({ message: "Draft ID not found" })
@@ -90,6 +99,7 @@ router.param("matchup_id", async (req, res, next, matchup_id) => {
         team: aTeam.team,
         _id: aTeam._id
       }
+      res.rawMatchup = rawMatchup
       res.matchup = matchup
     } else {
       return res.status(400).json({ message: 'Invalid ID format' })
