@@ -3,12 +3,13 @@ const pokemonSchema = require('./pokemonSchema')
 
 const teamSchema = new mongoose.Schema({
   team: {
-    type: [pokemonSchema],
-    required: true
+    type: [pokemonSchema]
   },
   name: {
-    type: String,
-    required: true
+    type: String
+  },
+  teamName: {
+    type: String
   },
   _id: {
     type: mongoose.Schema.Types.ObjectId
@@ -16,23 +17,23 @@ const teamSchema = new mongoose.Schema({
 }, { _id: false })
 
 const matchupSchema = new mongoose.Schema({
-    aTeam: {
-      type: teamSchema,
-      required: true
-    },
-    bTeam: {
-      type: teamSchema,
-      required: true
-    },
-    score: {
-        type: [Number],
-        required: true,
-        default: [0, 0]
-    },
-    stage: {
-        type: String,
-        required: true
-    }
+  aTeam: {
+    type: teamSchema,
+    required: true
+  },
+  bTeam: {
+    type: teamSchema,
+    required: true
+  },
+  score: {
+    type: [Number],
+    required: true,
+    default: [0, 0]
+  },
+  stage: {
+    type: String,
+    required: true
+  }
 }, { timestamps: true })
 
 module.exports = mongoose.model('matchups', matchupSchema);

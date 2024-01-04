@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const UserModel = require("../models/userModel");
-const RoleModel = require("../models/roleModel")
 const DraftModel = require("../models/draftModel");
-const Opponent = require("../classes/opponent")
 
 
 router

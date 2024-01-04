@@ -3,7 +3,7 @@ const router = express.Router();
 const UserModel = require("../models/userModel");
 const MatchupModel = require("../models/matchupModel")
 const DraftModel = require("../models/draftModel");
-const Opponent = require("../classes/opponent")
+const Matchup = require("../classes/matchup")
 const Draft = require("../classes/draft")
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -38,23 +38,8 @@ router.route("/:user_id/:team_id")
       req.status(500).json({ message: error.message })
     }
   })
-  .post(async (req, res) => {
-    try {
-      let opponent = new Opponent(req.body)
-      if (opponent.valid) {
-        console.log(opponent.data)
-        res.team.opponents.push(opponent.data)
-        await res.team.save()
-        res.status(201).json({ message: "Opponent Added" })
-      } else {
-        return res.status(400).json({ message: opponent.errors })
-      }
-    } catch (error) {
-      res.status(500).json({ message: error.message })
-    }
-  })
 
-router.route("/:user_id/:team_id/opponents")
+router.route("/:user_id/:team_id/matchups")
   .get(async (req, res) => {
     try {
       res.json(await MatchupModel.find({ 'aTeam._id': res.team._id }));
@@ -64,12 +49,12 @@ router.route("/:user_id/:team_id/opponents")
   })
   .post(async (req, res) => {
     try {
-      let draft = new Draft(req.body, res.user._id)
-      if (draft.valid) {
-        await draft.model.save()
-        res.status(201).json({ message: "Draft Added" })
+      let matchup = new Matchup(req.body, res.team._id)
+      if (matchup.valid) {
+        await matchup.model.save()
+        res.status(201).json({ message: "Matchup Added" })
       } else {
-        return res.status(400).json({ message: draft.errors })
+        return res.status(400).json({ message: matchup.errors })
       }
     } catch (error) {
       res.status(500).json({ message: error.message })
