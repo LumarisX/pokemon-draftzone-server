@@ -9,10 +9,10 @@ const pokemonSchema = new mongoose.Schema({
     type: Boolean
   },
   captain: {
-    type: [{}],
+    type: Boolean,
     default: undefined
-    
+
   }
-}, {_id: false})
+}, { _id: false })
 
 module.exports = pokemonSchema;
