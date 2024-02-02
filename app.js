@@ -14,6 +14,7 @@ const testRouter = require('./routes/testRoute')
 const draftRouter = require('./routes/draftRoute')
 const { error } = require('console');
 const mongoSanitize = require('express-mongo-sanitize')
+const { auth } = require('express-oauth2-jwt-bearer');
 
 const options = {
   dbName: "draftzone",
@@ -31,6 +32,13 @@ db.once('open', () => console.log('Connected to Database'));
 
 var app = express();
 
+const jwtCheck = auth({
+  secret: '6aHcsc9MrnQIRu9yt1cGXoSr5moLJXxN',
+  audience: 'https://api.pokemondraftzone.com',
+  issuerBaseURL: 'https://dev-wspjxi5f6mjqsjea.us.auth0.com/',
+  tokenSigningAlg: 'HS256'
+});
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -43,6 +51,8 @@ app.use(
     },
   }),
 );
+
+app.use(jwtCheck);
 
 app.use(logger('dev'));
 app.use(express.json());

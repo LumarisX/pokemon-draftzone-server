@@ -162,6 +162,15 @@ function getLearnset(pokemonId, gen) {
       }
     }
   }
+  
+  if ("battleOnly" in Pokedex[pokemonId]) {
+    let subLearnset = getLearnset(toKey(Pokedex[pokemonId].battleOnly), gen)
+    for (let move of subLearnset) {
+      if (!(move in learnset)) {
+        learnset.push(move)
+      }
+    }
+  }
   return learnset
 }
 
@@ -176,7 +185,7 @@ function learns(pokemonId, moveId, gen) {
     if ("changesFrom" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].changesFrom), moveId, gen)) {
       return true
     }
-  } else if ("baseSpecies" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].baseSpecies), moveId, gen)) {
+  } if ("baseSpecies" in Pokedex[pokemonId] && learns(toKey(Pokedex[pokemonId].baseSpecies), moveId, gen)) {
     return true
   }
   return false
