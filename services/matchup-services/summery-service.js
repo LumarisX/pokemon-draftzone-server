@@ -19,7 +19,6 @@ function summery(ateam, bteam) {
 function summeryData(pokemonData) {
   let out = {}
   out.pid = pokemonData.pid;
-  console.log(pokemonData)
   out.captain = pokemonData.captain;
   out.name = pokedexService.getName(pokemonData.pid)
   out.abilities = pokedexService.getAbilities(pokemonData.pid)
