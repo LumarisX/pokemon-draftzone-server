@@ -14,7 +14,7 @@ const testRouter = require('./routes/testRoute')
 const draftRouter = require('./routes/draftRoute')
 const { error } = require('console');
 const mongoSanitize = require('express-mongo-sanitize')
-const { auth } = require('express-oauth2-jwt-bearer');
+const { auth, requiredScopes } = require('express-oauth2-jwt-bearer');
 
 const options = {
   dbName: "draftzone",
@@ -52,8 +52,6 @@ app.use(
   }),
 );
 
-app.use(jwtCheck);
-
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -63,13 +61,13 @@ app.use(cors({
   origin: "http://localhost:4200"
 }));
 
-app.use('/users', usersRouter);
+app.use('/users', jwtCheck, usersRouter);
 app.use('/teams', leagueRouter);
 app.use('/pokedex', pokedexRouter);
 app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);
-app.use('/draft', draftRouter);
+app.use('/draft', jwtCheck, draftRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
