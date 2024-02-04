@@ -33,10 +33,9 @@ db.once('open', () => console.log('Connected to Database'));
 var app = express();
 
 const jwtCheck = auth({
-  secret: '6aHcsc9MrnQIRu9yt1cGXoSr5moLJXxN',
-  audience: 'https://api.pokemondraftzone.com',
+  audience: 'https://dev-wspjxi5f6mjqsjea.us.auth0.com/api/v2/',
   issuerBaseURL: 'https://dev-wspjxi5f6mjqsjea.us.auth0.com/',
-  tokenSigningAlg: 'HS256'
+  tokenSigningAlg: 'RS256'
 });
 
 // view engine setup
@@ -61,7 +60,7 @@ app.use(cors({
   origin: "http://localhost:4200"
 }));
 
-app.use('/users', jwtCheck, usersRouter);
+app.use('/users', usersRouter);
 app.use('/teams', leagueRouter);
 app.use('/pokedex', pokedexRouter);
 app.use('/auth', authRouter);
