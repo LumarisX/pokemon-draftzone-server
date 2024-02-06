@@ -66,7 +66,7 @@ app.use('/pokedex', pokedexRouter);
 app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);
-app.use('/draft', jwtCheck, draftRouter);
+app.use('/draft', jwtCheck, getSub, draftRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -83,5 +83,17 @@ app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+function getSub(req, res, next){
+  try {
+    if (req.headers && req.headers.authorization) {
+       let jwt = req.headers.authorization.split(' ')[1]
+       req.sub =  JSON.parse(atob(jwt.split('.')[1])).sub
+    }
+    next()
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
 
 module.exports = app;

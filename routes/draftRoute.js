@@ -8,10 +8,10 @@ const Draft = require("../classes/draft")
 const ObjectId = require('mongoose').Types.ObjectId;
 
 
-router.route("/:user_id/teams")
+router.route("/teams")
   .get(async (req, res) => {
     try {
-      res.json(await DraftModel.find({ owner: res.user.id }));
+      res.json(await DraftModel.find({ owner: req.sub }));
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
@@ -30,7 +30,7 @@ router.route("/:user_id/teams")
     }
   })
 
-router.route("/:user_id/:team_id")
+router.route("/:team_id")
   .get(async (req, res) => {
     try {
       res.json(res.team)
@@ -39,7 +39,7 @@ router.route("/:user_id/:team_id")
     }
   })
 
-router.route("/:user_id/:team_id/matchups")
+router.route("/:team_id/matchups")
   .get(async (req, res) => {
     try {
       res.json(await MatchupModel.find({ 'aTeam._id': res.team._id }));
@@ -61,7 +61,7 @@ router.route("/:user_id/:team_id/matchups")
     }
   })
 
-router.get("/:user_id/:team_id/:matchup_id", async (req, res) => {
+router.get("/:team_id/:matchup_id", async (req, res) => {
   try {
     res.json(res.team.get("opponents")[req.params.opponent_id])
   } catch (error) {
@@ -69,24 +69,34 @@ router.get("/:user_id/:team_id/:matchup_id", async (req, res) => {
   }
 })
 
-router.param("user_id", async (req, res, next, user_id) => {
-  let user;
-  try {
-    user = await UserModel.find({ username: user_id });
-    if (user.length === 0) {
-      return res.status(400).json({ message: 'User id not found' })
+router.route("/test")
+  .get(async (req, res) => {
+    try {
+      console.log(req.sub)
+      res.json(await DraftModel.find({ owner: req.sub }));
+    } catch (error) {
+      res.status(500).json({ message: error.message })
     }
-    res.user = user[0];
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-  next();
-});
+  })
+
+// router.param("user_id", async (req, res, next, user_id) => {
+//   let user;
+//   try {
+//     user = await UserModel.find({ username: user_id });
+//     if (user.length === 0) {
+//       return res.status(400).json({ message: 'User id not found' })
+//     }
+//     res.user = user[0];
+//   } catch (error) {
+//     return res.status(500).json({ message: error.message });
+//   }
+//   next();
+// });
 
 router.param("team_id", async (req, res, next, team_id) => {
   let team;
   try {
-    let user_id = await res.user.id;
+    let user_id = await req.sub;
     if (ObjectId.isValid(team_id)) {
       team = await DraftModel.findById(team_id).lean();
 
