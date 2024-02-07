@@ -3,29 +3,28 @@ const router = express.Router();
 const League = require("../models/draftModel.js");
 
 
-router.get('/', async (req, res) => {
-  try {
-    const teams = await League.find()
-    res.json(teams);
-  } catch (error) {
-    res.status(500).json({ message: error.message })
-  }
-});
-
-router.post('/', async (req, res) => {
-  const team = new League({
-    username: req.body.username
+router.route('/')
+  .get(async (req, res) => {
+    try {
+      const teams = await League.find()
+      res.json(teams);
+    } catch (error) {
+      res.status(500).json({ message: error.message })
+    }
   })
-  try {
-    const newUser = await team.save()
-    res.status(201).json(newUser)
-  } catch (error) {
-    res.status(400).json({ message: error.message })
-  }
-})
+  .post(async (req, res) => {
+    const team = new League({
+      username: req.body.username
+    })
+    try {
+      const newUser = await team.save()
+      res.status(201).json(newUser)
+    } catch (error) {
+      res.status(400).json({ message: error.message })
+    }
+  })
 
-router
-  .route('/:id')
+router.route('/:id')
   .get((req, res) => {
     try {
       res.json(res.user);

@@ -33,6 +33,7 @@ router.route("/teams")
 router.route("/:team_id")
   .get(async (req, res) => {
     try {
+      res.team.score = DraftService.getScore(res.team._id)
       res.json(res.team)
     } catch (error) {
       req.status(500).json({ message: error.message })

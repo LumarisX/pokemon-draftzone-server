@@ -1,6 +1,28 @@
 const mongoose = require('mongoose')
 const pokemonSchema = require('./pokemonSchema')
 
+const statsSchema = new mongoose.Schema({
+  pid: {
+    type: String,
+    required: true
+  },
+  kills:{
+    type: Number,
+    required: true,
+    default: 0
+  },
+  deaths:{
+    type: Number,
+    required: true,
+    default: 0
+  },
+  brought:{
+    type: Number,
+    required: true,
+    default: 0
+  }
+}, { _id: false })
+
 const teamSchema = new mongoose.Schema({
   team: {
     type: [pokemonSchema]
@@ -10,6 +32,9 @@ const teamSchema = new mongoose.Schema({
   },
   teamName: {
     type: String
+  },
+  stats: {
+    type: [statsSchema]
   },
   _id: {
     type: mongoose.Schema.Types.ObjectId
