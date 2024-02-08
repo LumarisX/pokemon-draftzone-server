@@ -109,7 +109,7 @@ router.param("team_id", async (req, res, next, team_id) => {
     if (team == null) {
       return res.status(400).json({ message: 'Team id not found' })
     }
-    res.team = team;
+    res.team = team.toObject();
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

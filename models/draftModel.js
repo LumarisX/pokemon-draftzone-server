@@ -27,9 +27,6 @@ const draftSchema = new mongoose.Schema({
   team: {
     type: [pokemonSchema],
     required: true
-  },
-  opponents: {
-    type: [opponentSchema]
   }
 }, {timestamps: true})
 
