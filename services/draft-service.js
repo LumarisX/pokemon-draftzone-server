@@ -1,11 +1,13 @@
-function getScore(teamId) {
-  let matchups = getMatchups(teamId)
+const MatchupModel = require('../models/matchupModel')
+
+async function getScore(teamId) {
+  let matchups = await getMatchups(teamId)
   let score = { wins: 0, loses: 0 }
   for (let matchup of matchups) {
-    let muScore = matchup.aTeam.score
-    if (muSore[0] > muScore[1]) {
+    let muScore = matchup.score
+    if (muScore[0] > muScore[1]) {
       score.wins = score.wins + 1
-    } else if (muSore[0] < muScore[1]) {
+    } else if (muScore[0] < muScore[1]) {
       score.loses = score.loses + 1
     }
   }

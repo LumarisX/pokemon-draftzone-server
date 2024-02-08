@@ -5,6 +5,7 @@ const MatchupModel = require("../models/matchupModel")
 const DraftModel = require("../models/draftModel");
 const Matchup = require("../classes/matchup")
 const Draft = require("../classes/draft")
+const DraftService = require("../services/draft-service")
 const ObjectId = require('mongoose').Types.ObjectId;
 
 
@@ -33,10 +34,10 @@ router.route("/teams")
 router.route("/:team_id")
   .get(async (req, res) => {
     try {
-      res.team.score = DraftService.getScore(res.team._id)
+      res.team.score = await DraftService.getScore(res.team._id)
       res.json(res.team)
     } catch (error) {
-      req.status(500).json({ message: error.message })
+      res.status(500).json({ message: error.message })
     }
   })
 
