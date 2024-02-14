@@ -2,10 +2,10 @@ const PokedexService = require('../pokedex-service.js')
 const TypeService = require('../type-service.js')
 
 function typechart(team) {
-  tc = { team: [] }
   for (let m of team) {
-    tc.team.push({ pid: m.pid, weak: PokedexService.getWeak(m.pid) })
+    m.weak = PokedexService.getWeak(m.pid)
   }
+  tc = {"team": team}
   tc = summerizeType(tc)
   return tc
 }

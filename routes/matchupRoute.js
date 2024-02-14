@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Draft = require("../models/draftModel");
 const Matchup = require("../models/matchupModel.js")
-const summeryService = require('../services/matchup-services/summery-service')
-const speedtierService = require('../services/matchup-services/speedtier-service')
+const SummeryService = require('../services/matchup-services/summery-service')
+const SpeedtierService = require('../services/matchup-services/speedtier-service')
 const TypechartService = require('../services/matchup-services/typechart-service')
 const CoverageService = require('../services/matchup-services/coverage-service')
 const MovechartService = require('../services/matchup-services/movechart-service')
@@ -29,7 +29,7 @@ router.route('/:matchup_id')
 
 router.get('/:matchup_id/summery', async (req, res) => {
   try {
-    res.json(summeryService.summery(res.matchup.aTeam.team, res.matchup.bTeam.team))
+    res.json([SummeryService.summery(res.matchup.aTeam.team), SummeryService.summery(res.matchup.bTeam.team)])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
@@ -46,10 +46,7 @@ router.get('/:matchup_id/typechart', async (req, res) => {
 router.get('/:matchup_id/speedchart', async (req, res) => {
   try {
     let level = Rulesets.Format[res.matchup.format].level
-    res.json([
-      speedtierService.speedTierChart(res.matchup.aTeam.team, level),
-      speedtierService.speedTierChart(res.matchup.bTeam.team, level)
-    ])
+    res.json(SpeedtierService.speedTierChart([res.matchup.aTeam.team, level,res.matchup.bTeam.team], level))
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

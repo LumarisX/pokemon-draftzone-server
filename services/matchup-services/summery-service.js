@@ -1,19 +1,13 @@
 const pokedexService = require('../pokedex-service.js')
 
-function summery(ateam, bteam) {
-  let aOut = {}
-  aOut.team = []
-  for (let pokemon of ateam) {
-    aOut.team.push(summeryData(pokemon));
+function summery(team) {
+  let out = {}
+  out.team = []
+  for (let pokemon of team) {
+    out.team.push(summeryData(pokemon));
   }
-  aOut.stats = statistics(aOut.team)
-  let bOut = {}
-  bOut.team = []
-  for (let pokemon of bteam) {
-    bOut.team.push(summeryData(pokemon));
-  }
-  bOut.stats = statistics(bOut.team)
-  return [aOut, bOut]
+  out.stats = statistics(out.team)
+  return out
 }
 
 function summeryData(pokemonData) {

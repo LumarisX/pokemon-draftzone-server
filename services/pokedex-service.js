@@ -2,6 +2,7 @@ const Pokedex = require("../public/data/pokedex")["BattlePokedex"]
 const TypeService = require('./type-service')
 const LearnsetService = require('./matchup-services/learnset-service')
 const MoveService = require('./move-service')
+const FilterService = require('./filter-service')
 
 function inDex(pokemonId) {
   return pokemonId in Pokedex
@@ -111,6 +112,18 @@ function getWeak(pokemonId) {
     }
   }
   return weak;
+}
+
+function filterNames(query){
+  let results = [[],[],[]]
+  for(let mon in Pokedex){
+    let compare = FilterService.compare(query, Pokedex[mon].name)
+    if(compare.result){
+      results[compare.pattern].push(Pokedex[mon].name)
+    }
+  }
+  results = results[0].concat(results[1]).concat(results[2])
+  return results
 }
 
 function getPrevo(pokemonId) {
@@ -226,4 +239,4 @@ function getCoverage(pokemonId, gen) {
   return coverage
 }
 
-module.exports = { inDex, getName, getAbilities, getStat, getBase, getWeak, getLearnset, getCoverage, getTypes, learns }
+module.exports = { inDex, getName, getAbilities, filterNames, getStat, getBase, getWeak, getLearnset, getCoverage, getTypes, learns }
