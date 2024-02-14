@@ -56,9 +56,9 @@ router.get('/:matchup_id/coveragechart', async (req, res) => {
   try {
     let gen = Rulesets.Generation[res.matchup.ruleset].gen
     res.json([
-      CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
-      CoverageService.chart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen)
-    ])
+          CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
+          CoverageService.chart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen)
+        ])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }

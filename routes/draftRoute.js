@@ -62,6 +62,8 @@ router.route("/:team_id/matchups")
       res.status(500).json({ message: error.message })
     }
   })
+  
+
 
 router.get("/:team_id/:matchup_id", async (req, res) => {
   try {

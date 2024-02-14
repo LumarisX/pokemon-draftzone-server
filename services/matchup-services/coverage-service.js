@@ -3,9 +3,8 @@ const TypechartService = require('./typechart-service')
 const MoveService = require('../move-service.js')
 
 function chart(team, oppteam, gen) {
-  let out = []
-  for (let m of team) {
-    let pokemon = { pid: m.pid, coverage: PokedexService.getCoverage(m.pid, gen) }
+  for (let pokemon of team) {
+    pokemon.coverage=PokedexService.getCoverage(pokemon.pid, gen) 
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function(x, y) {
         if (x.stab != y.stab) {
@@ -22,16 +21,13 @@ function chart(team, oppteam, gen) {
     }
     //Update move with recommended
     bestCoverage(pokemon, TypechartService.typechart(oppteam))
-    let formPokemon = {
-      pid: pokemon.pid,
-      coverage: {
+    let coverage={
         physical: [],
         special: []
       }
-    }
     for (let category in pokemon.coverage) {
       for (let move of pokemon.coverage[category]) {
-        formPokemon.coverage[category].push({
+        coverage[category].push({
           name: MoveService.getName(move.id),
           type: move.type,
           stab: move.stab,
@@ -39,9 +35,9 @@ function chart(team, oppteam, gen) {
         })
       }
     }
-    out.push(formPokemon)
+    pokemon.coverage = coverage
   }
-  return out
+  return team
 }
 
 function bestCoverage(team, oppTypechart) {

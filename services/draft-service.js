@@ -4,7 +4,8 @@ async function getScore(teamId) {
   let matchups = await getMatchups(teamId)
   let score = { wins: 0, loses: 0, diff: 0 }
   for (let matchup of matchups) {
-    let muScore = matchup.score
+    if("score" in matchup.results)
+    let muScore = matchup.results.score
     if (muScore[0] > muScore[1]) {
       score.wins++
       score.diff += muScore[0]-muScore[1]
