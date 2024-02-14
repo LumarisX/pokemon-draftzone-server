@@ -19,7 +19,9 @@ router
 router
   .route('/search')
   .get(async (req, res) => {
+    if(req.query && "q" in req.query){
       res.json(PokedexService.filterNames(req.query.q))
+    }
   })
 
 router.get('/speedchart', async (req, res) => {

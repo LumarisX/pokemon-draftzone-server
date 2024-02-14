@@ -10,10 +10,6 @@ function compare(query, string){
   if(pattern.test(string)){
     return({result: true, pattern: 1})
   }
-  pattern= new RegExp(`${query}`, 'i')
-  if (pattern.test(string)) {
-    return ({ result: true, pattern: 2 })
-  }
   return { result: false}
 }
 

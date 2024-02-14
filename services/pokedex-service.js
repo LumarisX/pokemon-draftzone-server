@@ -115,14 +115,24 @@ function getWeak(pokemonId) {
 }
 
 function filterNames(query){
-  let results = [[],[],[]]
+  let results = [[],[]]
+  if(query===''){
+    return []
+  }
   for(let mon in Pokedex){
     let compare = FilterService.compare(query, Pokedex[mon].name)
     if(compare.result){
       results[compare.pattern].push(Pokedex[mon].name)
     }
   }
-  results = results[0].concat(results[1]).concat(results[2])
+  for(let result of results){
+    result.sort((a,b) => {
+      if(a > b) return 1
+      if(a < b) return -1
+      return 0
+    })
+  }
+  results = results[0].concat(results[1])
   return results
 }
 
