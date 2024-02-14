@@ -5,14 +5,11 @@ const pokemonSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  shiny: {
-    type: Boolean
+  shiny: Boolean,
+  capt: {
+      tera: [String]
   },
-  captain: {
-    type: Boolean,
-    default: undefined
-
-  }
+  weak: Object
 }, { _id: false })
 
 module.exports = pokemonSchema;
