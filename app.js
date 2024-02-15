@@ -59,10 +59,10 @@ app.use(cors({
   origin: "http://localhost:4200"
 }));
 
-app.use('/users', usersRouter);
-app.use('/teams', leagueRouter);
+//app.use('/users', usersRouter);
+//app.use('/teams', leagueRouter);
 app.use('/pokedex', pokedexRouter);
-app.use('/auth', authRouter);
+//app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);
 app.use('/draft', jwtCheck, getSub, draftRouter);
