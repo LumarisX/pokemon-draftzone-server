@@ -10,6 +10,7 @@ const { ObjectId } = require('mongodb')
 const SpeedtierService = require('../services/matchup-services/speedtier-service')
 const FilterService = require('../services/filter-service')
 const CoverageService = require('../services/matchup-services/coverage-service')
+const SummeryService = require('../services/matchup-services/summery-service')
 
 router
   .route('/names')
@@ -36,6 +37,20 @@ router.get('/coverage', async (req, res) => {
           CoverageService.chart(aTeam.team, aTeam.team, gen),
           CoverageService.chart(aTeam.team, aTeam.team, gen)
         ])
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+router.get('/summery', async (req, res) => {
+  try {
+    aTeam = await Draft.findById("65cbb6ea62c19728d4000000").lean()
+    if (aTeam === null) {
+      res.status(400).json({ message: "Draft ID not found" })
+    }
+    
+    res.json(SummeryService.summery(aTeam.team))
+
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
