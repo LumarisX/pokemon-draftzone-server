@@ -6,11 +6,11 @@ const typechart = require("../public/data/typechart.js")["BattleTypeChart"]
 const rulesetService = require("../services/ruleset-service")
 
 router.get('/formats/', (req, res) => {
-  res.send(rulesetService.getFormats());
+  res.json(rulesetService.getFormats());
 });
 
 router.get('/rulesets/', (req, res) => {
-  res.send(rulesetService.getRulesets());
+  res.json(rulesetService.getRulesets());
 });
 
 router.get('/pokedex/', (req, res) => {

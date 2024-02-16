@@ -45,7 +45,7 @@ router.get('/:matchup_id/typechart', async (req, res) => {
 
 router.get('/:matchup_id/speedchart', async (req, res) => {
   try {
-    let level = Rulesets.Format[res.matchup.format].level
+    let level = Rulesets.Formats[res.matchup.format].level
     res.json(SpeedtierService.speedTierChart([res.matchup.aTeam.team, level,res.matchup.bTeam.team], level))
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -54,7 +54,7 @@ router.get('/:matchup_id/speedchart', async (req, res) => {
 
 router.get('/:matchup_id/coveragechart', async (req, res) => {
   try {
-    let gen = Rulesets.Generation[res.matchup.ruleset].gen
+    let gen = Rulesets.Rulesets[res.matchup.ruleset].gen
     res.json([
           CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
           CoverageService.chart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen)
@@ -66,7 +66,7 @@ router.get('/:matchup_id/coveragechart', async (req, res) => {
 
 router.get('/:matchup_id/movechart', async (req, res) => {
   try {
-    let gen = Rulesets.Generation[res.matchup.ruleset].gen
+    let gen = Rulesets.Rulesets[res.matchup.ruleset].gen
     res.json([
       MovechartService.chart(res.matchup.aTeam.team, gen),
       MovechartService.chart(res.matchup.bTeam.team, gen)
