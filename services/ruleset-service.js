@@ -1,12 +1,20 @@
-const Gens = require("../public/data/rulesets")["Generation"]
-const Formats = require("../public/data/rulesets")["Format"]
+const Rulesets = require("../public/data/rulesets")["Rulesets"]
+const Formats = require("../public/data/rulesets")["Formats"]
 
-function getGen(genId) {
-  return Gens[genId]
+function getRuleset(rulesetId) {
+  return Rulesets[rulesetId]
 }
 
 function getFormat(formatId) {
   return Formats[formatId]
 }
 
-module.exports = { getGen, getFormat }
+function getRulesets(){
+  return Object.keys(Rulesets)
+}
+
+function getFormats(){
+  return Object.keys(Formats)
+}
+
+module.exports = { getRuleset, getFormat, getRulesets, getFormats }

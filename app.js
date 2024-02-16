@@ -6,7 +6,7 @@ const logger = require('morgan');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const usersRouter = require('./routes/usersRoute');
-const pokedexRouter = require('./routes/pokedexRoute');
+const dataRouter = require('./routes/dataRoute');
 const leagueRouter = require('./routes/leagueRoute');
 const authRouter = require('./routes/authRoute')
 const matchupRouter = require('./routes/matchupRoute')
@@ -61,7 +61,7 @@ app.use(cors({
 
 //app.use('/users', usersRouter);
 //app.use('/teams', leagueRouter);
-app.use('/pokedex', pokedexRouter);
+app.use('/data', dataRouter);
 //app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
 app.use('/test', testRouter);

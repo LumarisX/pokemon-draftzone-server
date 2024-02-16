@@ -7,7 +7,7 @@ const SpeedtierService = require('../services/matchup-services/speedtier-service
 const TypechartService = require('../services/matchup-services/typechart-service')
 const CoverageService = require('../services/matchup-services/coverage-service')
 const MovechartService = require('../services/matchup-services/movechart-service')
-const Rulesets = require('../services/rulesets')
+const Rulesets = require('../public/data/rulesets')
 const { ObjectId } = require('mongodb')
 
 router.route('/:matchup_id')

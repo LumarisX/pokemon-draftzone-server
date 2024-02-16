@@ -3,9 +3,17 @@ var router = express.Router();
 
 const pokedex = require("../public/data/pokedex.js")["BattlePokedex"]
 const typechart = require("../public/data/typechart.js")["BattleTypeChart"]
+const rulesetService = require("../services/ruleset-service")
 
-/* GET users listing. */
-router.get('/', (req, res) => {
+router.get('/formats/', (req, res) => {
+  res.send(rulesetService.getFormats());
+});
+
+router.get('/rulesets/', (req, res) => {
+  res.send(rulesetService.getRulesets());
+});
+
+router.get('/pokedex/', (req, res) => {
   res.send(Object.keys(pokedex));
 });
 
