@@ -120,6 +120,9 @@ function filterNames(query){
     return []
   }
   for(let mon in Pokedex){
+    if(Pokedex[mon].tier == "CAP") {
+      continue
+    }
     let compare = FilterService.compare(query, Pokedex[mon].name)
     if(compare.result){
       results[compare.pattern].push(Pokedex[mon].name)

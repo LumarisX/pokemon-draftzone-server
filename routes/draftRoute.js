@@ -103,7 +103,6 @@ router.param("team_id", async (req, res, next, team_id) => {
     let user_id = await req.sub;
     if (ObjectId.isValid(team_id)) {
       team = await DraftModel.findById(team_id).lean();
-
     } else {
       team = await DraftModel.find({ owner: user_id, leagueId: team_id });
       team = team[0]
@@ -112,6 +111,9 @@ router.param("team_id", async (req, res, next, team_id) => {
       return res.status(400).json({ message: 'Team id not found' })
     }
     res.team = team.toObject();
+    for (let pokemon of res.team) {
+      pokemon.name = PokedexService.getName(pokemon.pid)
+    }
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

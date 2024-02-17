@@ -22,7 +22,7 @@ router
   .route('/search')
   .get(async (req, res) => {
     if(req.query && "q" in req.query){
-      res.json(PokedexService.filterNames(req.query.q))
+      res.json(PokedexService.filterNames(req.query.q),)
     }
   })
 
@@ -48,8 +48,7 @@ router.get('/summery', async (req, res) => {
     if (aTeam === null) {
       res.status(400).json({ message: "Draft ID not found" })
     }
-    
-    res.json(SummeryService.summery(aTeam.team))
+    res.json(SummeryService.summery(aTeam))
 
   } catch (error) {
     res.status(500).json({ message: error.message })

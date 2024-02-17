@@ -9,6 +9,7 @@ const CoverageService = require('../services/matchup-services/coverage-service')
 const MovechartService = require('../services/matchup-services/movechart-service')
 const Rulesets = require('../public/data/rulesets')
 const { ObjectId } = require('mongodb')
+const PokedexService = ('../services/pokedex-service')
 
 router.route('/:matchup_id')
   .get(async (req, res) => {
@@ -29,7 +30,7 @@ router.route('/:matchup_id')
 
 router.get('/:matchup_id/summery', async (req, res) => {
   try {
-    res.json([SummeryService.summery(res.matchup.aTeam.team), SummeryService.summery(res.matchup.bTeam.team)])
+    res.json([SummeryService.summery(res.matchup.aTeam), SummeryService.summery(res.matchup.bTeam)])
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
@@ -84,6 +85,9 @@ router.param("matchup_id", async (req, res, next, matchup_id) => {
         res.status(400).json({ message: "Matchup ID not found" })
       }
       aTeam = await Draft.findById(matchup.aTeam._id).lean()
+      for(let pokemon of aTeam.team){
+        pokemon.name = PokedexService.getName(pokemon.pid)
+      }
       if (aTeam === null) {
         res.status(400).json({ message: "Draft ID not found" })
       }
@@ -92,8 +96,12 @@ router.param("matchup_id", async (req, res, next, matchup_id) => {
       matchup.ruleset = aTeam.ruleset
       matchup.aTeam = {
         owner: aTeam.owner,
+        teamName: aTeam.teamName,
         team: aTeam.team,
         _id: aTeam._id
+      }
+      for(let pokemon of matchup.aTeam.team){
+        pokemon.name = PokedexService.getName(pokemon.pid)
       }
       res.matchup = matchup
     } else {

@@ -1,10 +1,10 @@
 const pokedexService = require('../pokedex-service.js')
 
-function summery(team) {
-  for (let pokemon of team) {
+function summery(draft) {
+  for (let pokemon of draft.team) {
     summeryData(pokemon);
   }
-  return {team: team, stats: statistics(team)}
+  return {team: draft.team, teamName: draft.teamName, stats: statistics(draft.team)}
 }
 
 function summeryData(pokemonData) {
