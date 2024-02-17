@@ -9,7 +9,7 @@ const CoverageService = require('../services/matchup-services/coverage-service')
 const MovechartService = require('../services/matchup-services/movechart-service')
 const Rulesets = require('../public/data/rulesets')
 const { ObjectId } = require('mongodb')
-const PokedexService = ('../services/pokedex-service')
+const PokedexService = require('../services/pokedex-service')
 
 router.route('/:matchup_id')
   .get(async (req, res) => {
@@ -86,6 +86,7 @@ router.param("matchup_id", async (req, res, next, matchup_id) => {
       }
       aTeam = await Draft.findById(matchup.aTeam._id).lean()
       for(let pokemon of aTeam.team){
+        console.log(PokedexService)
         pokemon.name = PokedexService.getName(pokemon.pid)
       }
       if (aTeam === null) {
@@ -101,13 +102,13 @@ router.param("matchup_id", async (req, res, next, matchup_id) => {
         _id: aTeam._id
       }
       for(let pokemon of matchup.aTeam.team){
+        console.log(pokemon)
         pokemon.name = PokedexService.getName(pokemon.pid)
       }
       res.matchup = matchup
     } else {
       return res.status(400).json({ message: 'Invalid ID format' })
     }
-
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

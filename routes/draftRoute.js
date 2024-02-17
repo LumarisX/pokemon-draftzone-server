@@ -7,6 +7,7 @@ const Matchup = require("../classes/matchup")
 const Draft = require("../classes/draft")
 const DraftService = require("../services/draft-service")
 const ObjectId = require('mongoose').Types.ObjectId;
+const PokedexService = require('../services/pokedex-service')
 
 
 router.route("/teams")
