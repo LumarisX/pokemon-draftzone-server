@@ -36,6 +36,7 @@ router.route("/:team_id")
   .get(async (req, res) => {
     try {
       res.draft.score = await DraftService.getScore(res.draft._id) 
+      console.log(res.draft.score)
       res.json(res.draft)
     } catch (error) {
       res.status(500).json({ message: error.message })
@@ -111,7 +112,7 @@ router.param("team_id", async (req, res, next, team_id) => {
     if (draft == null) {
       return res.status(400).json({ message: 'Team id not found' })
     }
-    res.draft = draft;
+    res.draft = draft.toObject();
     console.log(res.draft)
     for (let pokemon of res.draft.team) {
       pokemon.name = PokedexService.getName(pokemon.pid)
