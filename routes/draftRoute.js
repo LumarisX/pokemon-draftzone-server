@@ -113,7 +113,6 @@ router.param("team_id", async (req, res, next, team_id) => {
       return res.status(400).json({ message: 'Team id not found' })
     }
     res.draft = draft.toObject();
-    console.log(res.draft)
     for (let pokemon of res.draft.team) {
       pokemon.name = PokedexService.getName(pokemon.pid)
     }

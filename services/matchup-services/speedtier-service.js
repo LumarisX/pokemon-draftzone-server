@@ -4,7 +4,7 @@ function speedTierChart(teams, level) {
   let tiers = [];
   for(let team in teams){
   for (let m in teams[team]) {
-    tiers = tiers.concat(getSpeedTiers(teams[team][m].pid, level, team));
+    tiers = tiers.concat(getSpeedTiers(teams[team][m], level, team));
   }
   }
 
@@ -23,11 +23,10 @@ function speedTierChart(teams, level) {
   return {"modifiers":modifiers,"tiers":tiers};
 }
 
-function getSpeedTiers(pokemonId, level, team) {
+function getSpeedTiers(pokemon, level, team) {
   let speedAbilities = []
   let tiers = [];
-  let baseSpe = pokedexService.getBase(pokemonId)["spe"]
-  let pokemonName = pokedexService.getName(pokemonId)
+  let baseSpe = pokedexService.getBase(pokemon.pid)["spe"]
   let slow = {
     stages: [-1, 0],
     items: [
@@ -100,7 +99,7 @@ function getSpeedTiers(pokemonId, level, team) {
       }
     ]
   }
-  let abilities = pokedexService.getAbilities(pokemonId)
+  let abilities = pokedexService.getAbilities(pokemon.pid)
   for (let a in abilities) {
     switch (abilities[a]) {
       case "Chlorophyll":
@@ -127,7 +126,7 @@ function getSpeedTiers(pokemonId, level, team) {
   for (let s in slow.spreads) {
     for (let stage of slow.stages) {
       let baseInfo = {
-        "name": pokemonName,
+        "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].evs, slow.spreads[s].nature, slow.spreads[s].ivs, level, stage),
         "modifiers": [slow.spreads[s].name]
@@ -149,7 +148,7 @@ function getSpeedTiers(pokemonId, level, team) {
   for (let s in fast.spreads) {
     for (let stage of fast.stages) {
       let baseInfo = {
-        "name": pokemonName,
+        "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, fast.spreads[s].ev, fast.spreads[s].nature, fast.spreads[s].iv, level, stage),
         "modifiers": [fast.spreads[s].name]
