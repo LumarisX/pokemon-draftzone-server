@@ -42,14 +42,14 @@ router.get('/coverage', async (req, res) => {
   }
 })
 
-router.get('/summery', async (req, res) => {
+router.get('/typechart', async (req, res) => {
   try {
     aTeam = await Draft.findById("65cbb6ea62c19728d4000000").lean()
     if (aTeam === null) {
       res.status(400).json({ message: "Draft ID not found" })
     }
-    res.json(SummeryService.summery(aTeam))
-
+    console.log(aTeam)
+    res.json(TypechartService.typechart(aTeam.team))
   } catch (error) {
     res.status(500).json({ message: error.message })
   }
