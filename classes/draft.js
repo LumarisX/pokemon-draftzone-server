@@ -9,6 +9,7 @@ class Draft {
       data.leagueName = formData.leagueName
       data.leagueId = formData.leagueName.toLowerCase().replace(/\W/gi,'')
       data.format = formData.format
+      data.teamName = formData.teamName
       data.ruleset = formData.ruleset
       data.owner = user_id
       data.team = []
