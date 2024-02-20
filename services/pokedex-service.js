@@ -125,7 +125,7 @@ function filterNames(query){
     }
     let compare = FilterService.compare(query, Pokedex[mon].name)
     if(compare.result){
-      results[compare.pattern].push(Pokedex[mon].name)
+      results[compare.pattern].push({name: Pokedex[mon].name, pid: mon})
     }
   }
   for(let result of results){

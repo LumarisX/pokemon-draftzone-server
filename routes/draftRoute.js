@@ -20,13 +20,16 @@ router.route("/teams")
   })
   .post(async (req, res) => {
     try {
-      let draft = new Draft(req.body, res.user._id)
-      if (draft.valid) {
-        await draft.model.save()
-        res.status(201).json({ message: "Draft Added" })
-      } else {
-        return res.status(400).json({ message: draft.errors })
-      }
+      new Draft(req.body, req.sub).then(draft => {
+            draft.save().then(() => {
+                res.status(201).json({ message: "Draft Added" });
+            }).catch(error => {
+                console.error('Error saving draft:', error);
+                res.status(500).json({ message: "Internal Server Error" });
+            });
+    }).catch(error => {
+        res.status(400).json({ message: error });
+    });
     } catch (error) {
       res.status(500).json({ message: error.message })
     }
@@ -74,16 +77,6 @@ router.get("/:team_id/:matchup_id", async (req, res) => {
     req.status(500).json({ message: error.message })
   }
 })
-
-router.route("/test")
-  .get(async (req, res) => {
-    try {
-      console.log(req.sub)
-      res.json(await DraftModel.find({ owner: req.sub }));
-    } catch (error) {
-      res.status(500).json({ message: error.message })
-    }
-  })
 
 // router.param("user_id", async (req, res, next, user_id) => {
 //   let user;

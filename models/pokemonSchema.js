@@ -7,9 +7,24 @@ const pokemonSchema = new mongoose.Schema({
   },
   shiny: Boolean,
   capt: {
-      tera: [String]
-  },
-  weak: Object
-}, { _id: false })
+    type: {
+      tera: {
+        type: [String],
+        validate: {
+          validator: function(array) {
+            return array.length > 0;
+          },
+          message: props => `${props.path} must not be an empty array.`
+        }
+      }
+    },
+    default: function() {
+      if (this.tera && this.tera.length > 0) {
+        return { tera: this.tera };
+      }
+      return undefined;
+    }
+  }
+}, { _id: false });
 
 module.exports = pokemonSchema;

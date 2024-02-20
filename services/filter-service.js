@@ -1,7 +1,7 @@
 
 
 function compare(query, string){
-  query = query.trim()
+  query = query.replace(/[^a-zA-Z0-9 -]/g, '');
   let pattern = new RegExp(`^${query}`, 'i')
   if(pattern.test(string)){
     return({result: true, pattern: 0})

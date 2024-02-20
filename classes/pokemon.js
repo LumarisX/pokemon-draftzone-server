@@ -6,11 +6,10 @@ class Pokemon {
   error;
 
   constructor(pokemonData) {
-
-    if (!Pokedex.inDex(pokemonData.pokemonName)) {
-      this.error = `${pokemonData.pokemonName} not found in the pokedex`
+    if (!Pokedex.inDex(pokemonData.pid)) {
+      this.error = `${pokemonData.name} not found in the pokedex`
     } else {
-      this.data.pid = pokemonData.pokemonName
+      this.data.pid = pokemonData.pid
       if (pokemonData.shiny) {
         this.data.shiny = true
       }
