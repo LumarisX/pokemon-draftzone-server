@@ -1,12 +1,12 @@
-GET http://localhost:9960/users/
+GET http://api.pokemonshowdown.com:9960/users/
 
 ###
 
-GET http://localhost:9960/users/657250a9ef2832aea1bbf51b
+GET http://api.pokemonshowdown.com:9960/users/657250a9ef2832aea1bbf51b
 
 ###
 
-POST http://localhost:9960/users/
+POST http://api.pokemonshowdown.com:9960/users/
 Content-Type: application/json
 
 {
@@ -16,11 +16,11 @@ Content-Type: application/json
 
 ###
 
-DELETE http://localhost:9960/users/658b5cf98aee3fb030033317
+DELETE http://api.pokemonshowdown.com:9960/users/658b5cf98aee3fb030033317
 
 ###
 
-POST http://localhost:9960/users/test
+POST http://api.pokemonshowdown.com:9960/users/test
 Content-Type: application/json
 
 {
@@ -29,7 +29,7 @@ Content-Type: application/json
 
 ###
 
-PATCH http://localhost:9960/users/658b5cf98aee3fb030033317
+PATCH http://api.pokemonshowdown.com:9960/users/658b5cf98aee3fb030033317
 Content-Type: application/json
 
 {
