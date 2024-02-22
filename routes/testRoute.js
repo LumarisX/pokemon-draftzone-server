@@ -1,16 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const ps = require("../services/pokedex-service");
 const Pokedex = require("../public/data/pokedex")["BattlePokedex"]
 const PokedexService = require('../services/pokedex-service')
 const TypechartService = require('../services/matchup-services/typechart-service')
 const Draft = require("../models/draftModel");
-const Matchup = require("../models/matchupModel.js")
 const { ObjectId } = require('mongodb')
-const SpeedtierService = require('../services/matchup-services/speedtier-service')
-const FilterService = require('../services/filter-service')
 const CoverageService = require('../services/matchup-services/coverage-service')
-const SummeryService = require('../services/matchup-services/summery-service')
 
 router
   .route('/names')
