@@ -12,18 +12,15 @@ const authRouter = require('./routes/authRoute')
 const matchupRouter = require('./routes/matchupRoute')
 const testRouter = require('./routes/testRoute')
 const draftRouter = require('./routes/draftRoute')
-const { error } = require('console');
 const mongoSanitize = require('express-mongo-sanitize')
-const { auth, requiredScopes } = require('express-oauth2-jwt-bearer');
+const { auth } = require('express-oauth2-jwt-bearer');
 
 const options = {
   dbName: "draftzone",
   autoIndex: true
 }
 
-//mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
-
-mongoose.connect("mongodb://lumaris:bjbxmb6SuZ5WMlDA@ac-bbyjpl3-shard-00-00.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-01.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-02.5nc6cbu.mongodb.net:27017/?ssl=true&replicaSet=atlas-b2jrjx-shard-0&authSource=admin&retryWrites=true&w=majority", options)
+mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
 
 const db = mongoose.connection;
 db.on('error', (error) => console.error(error));
@@ -65,7 +62,7 @@ app.use(cors({
 app.use('/data', dataRouter);
 //app.use('/auth', authRouter);
 app.use('/matchup', matchupRouter);
-app.use('/test', testRouter);
+//app.use('/test', testRouter);
 app.use('/draft', jwtCheck, getSub, draftRouter);
 
 // catch 404 and forward to error handler

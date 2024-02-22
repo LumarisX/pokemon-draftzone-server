@@ -9,6 +9,14 @@ router.get('/formats/', (req, res) => {
   res.json(rulesetService.getFormats());
 });
 
+router
+  .route('/search')
+  .get(async (req, res) => {
+    if(req.query && "q" in req.query){
+      res.json(PokedexService.filterNames(req.query.q),)
+    }
+  })
+
 router.get('/rulesets/', (req, res) => {
   res.json(rulesetService.getRulesets());
 });
