@@ -56,7 +56,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 //update with pokemondraftzone.com
 
-// app.use(cors());
+app.use(cors());
 
 //app.use('/users', usersRouter);
 //app.use('/teams', leagueRouter);

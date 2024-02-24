@@ -2,7 +2,15 @@ GET http://api.pokemondraftzone.com:9960/users/
 
 ###
 
-GET http://api.pokemondraftzone.com:9960/users/657250a9ef2832aea1bbf51b
+GET http://api.pokemondraftzone.com/data/search?q=fly
+
+###
+
+GET http://api.pokemondraftzone.com:9960/data/search?q=fly
+
+###
+
+GET http://ec2-18-189-4-121.us-east-2.compute.amazonaws.com:9960/data/search?q=fly
 
 ###
 
