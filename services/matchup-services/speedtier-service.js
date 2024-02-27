@@ -20,7 +20,7 @@ function speedTierChart(teams, level) {
   });
   
   let modifiers = getModifiers(tiers)
-  return {"modifiers":modifiers,"tiers":tiers};
+  return {"modifiers":modifiers,"tiers":tiers, "level":level};
 }
 
 function getSpeedTiers(pokemon, level, team) {
@@ -31,11 +31,11 @@ function getSpeedTiers(pokemon, level, team) {
     stages: [-1, 0],
     items: [
       {
-        name: "none",
+        name: "None",
         multi: 1
       },
       {
-        name: "ironball",
+        name: "Ironball",
         multi: .5
       }
     ],
@@ -44,15 +44,13 @@ function getSpeedTiers(pokemon, level, team) {
         evs: 0,
         ivs: 0,
         nature: .9,
-        stage: 0,
-        name: "min-"
+        stage: 0
       },
       {
         evs: 0,
         ivs: 31,
         nature: 1,
-        stage: 0,
-        name: "base"
+        stage: 0
       }
     ]
   }
@@ -60,25 +58,25 @@ function getSpeedTiers(pokemon, level, team) {
     stages: [-1, 0, 1, 2],
     conditions: [
       {
-        name: "none",
+        name: "None",
         multi: 1
       },
       {
-        name: "tailwind",
+        name: "Tailwind",
         multi: 2
       },
       {
-        name: "paralyzed",
+        name: "Paralyzed",
         multi: .5
       }
     ],
     items: [
       {
-        name: "none",
+        name: "None",
         multi: 1
       },
       {
-        name: "scarf",
+        name: "Scarf",
         multi: 1.5
       }
     ],
@@ -87,15 +85,13 @@ function getSpeedTiers(pokemon, level, team) {
         evs: 252,
         ivs: 31,
         nature: 1,
-        stage: 0,
-        name: "max"
+        stage: 0
       },
       {
         evs: 252,
         ivs: 31,
         nature: 1.1,
-        stage: 0,
-        name: "max+"
+        stage: 0
       }
     ]
   }
@@ -129,7 +125,12 @@ function getSpeedTiers(pokemon, level, team) {
         "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].evs, slow.spreads[s].nature, slow.spreads[s].ivs, level, stage),
-        "modifiers": [slow.spreads[s].name]
+        "modifiers": [slow.spreads[s].evs]
+      }
+      if (nature > 1) {
+        baseInfo.modifiers.push("Positive")
+      } else if (nature < 1) {
+        baseInfo.modifiers.push("Negative")
       }
       if (stage != 0) {
         baseInfo.modifiers.push("Stage " + stage)
@@ -138,7 +139,7 @@ function getSpeedTiers(pokemon, level, team) {
       for (let i in slow.items) {
         let iInfo = structuredClone(baseInfo)
         iInfo.speed = Math.floor(baseInfo.speed * slow.items[i].multi)
-        if (slow.items[i].name != "none") {
+        if (slow.items[i].name != "None") {
           iInfo.modifiers.push(slow.items[i].name)
           tiers.push(iInfo)
         }
@@ -160,14 +161,14 @@ function getSpeedTiers(pokemon, level, team) {
       for (let i in fast.items) {
         let iInfo = structuredClone(baseInfo)
         iInfo.speed = Math.floor(baseInfo.speed * fast.items[i].multi)
-        if (fast.items[i].name != "none") {
+        if (fast.items[i].name != "None") {
           iInfo.modifiers.push(fast.items[i].name)
           tiers.push(iInfo)
         }
         for (let c in fast.conditions) {
           let cInfo = structuredClone(iInfo)
           cInfo.speed = Math.floor(iInfo.speed * fast.conditions[c].multi)
-          if (fast.conditions[c].name != "none") {
+          if (fast.conditions[c].name != "None") {
             cInfo.modifiers.push(fast.conditions[c].name)
             tiers.push(cInfo)
           }
