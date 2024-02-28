@@ -125,7 +125,7 @@ function getSpeedTiers(pokemon, level, team) {
         "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].evs, slow.spreads[s].nature, slow.spreads[s].ivs, level, stage),
-        "modifiers": [slow.spreads[s].evs.evs.toString()]
+        "modifiers": [slow.spreads[s].evs.toString()]
       }
       if (slow.spreads[s].nature > 1) {
         baseInfo.modifiers.push("Positive")
