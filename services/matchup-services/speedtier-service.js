@@ -125,11 +125,11 @@ function getSpeedTiers(pokemon, level, team) {
         "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, slow.spreads[s].evs, slow.spreads[s].nature, slow.spreads[s].ivs, level, stage),
-        "modifiers": [slow.spreads[s].evs]
+        "modifiers": [slow.spreads[s].evs.evs.toString()]
       }
-      if (nature > 1) {
+      if (slow.spreads[s].nature > 1) {
         baseInfo.modifiers.push("Positive")
-      } else if (nature < 1) {
+      } else if (slow.spreads[s].nature < 1) {
         baseInfo.modifiers.push("Negative")
       }
       if (stage != 0) {
@@ -152,7 +152,12 @@ function getSpeedTiers(pokemon, level, team) {
         "pokemon": pokemon,
         "team": team,
         "speed": pokedexService.getStat("spe", baseSpe, fast.spreads[s].ev, fast.spreads[s].nature, fast.spreads[s].iv, level, stage),
-        "modifiers": [fast.spreads[s].name]
+        "modifiers": [fast.spreads[s].evs.toString()]
+      }
+      if (fast.spreads[s].nature > 1) {
+        baseInfo.modifiers.push("Positive")
+      } else if (fast.spreads[s].nature < 1) {
+        baseInfo.modifiers.push("Negative")
       }
       if (stage != 0) {
         baseInfo.modifiers.push("Stage " + stage)
