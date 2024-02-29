@@ -20,7 +20,9 @@ const options = {
   autoIndex: true,
 };
 
-mongoose.connect("mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone");
+mongoose.connect(
+  "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
+);
 
 //mongoose.connect("mongodb://lumaris:bjbxmb6SuZ5WMlDA@ac-bbyjpl3-shard-00-00.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-01.5nc6cbu.mongodb.net:27017,ac-bbyjpl3-shard-00-02.5nc6cbu.mongodb.net:27017/?ssl=true&replicaSet=atlas-b2jrjx-shard-0&authSource=admin&retryWrites=true&w=majority", options)
 
@@ -49,7 +51,7 @@ app.use(
   })
 );
 
-app.use(logger("dev"));
+// app.use(logger("dev"));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.json());
@@ -64,7 +66,7 @@ app.use("/data", dataRouter);
 //app.use('/auth', authRouter);
 app.use("/matchup", matchupRouter);
 //app.use('/test', testRouter);
-app.use("/draft", jwtCheck, getSub, draftRouter);
+app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

@@ -57,7 +57,6 @@ router
   .get(async (req, res) => {
     try {
       res.draft.score = await DraftService.getScore(res.draft._id);
-      console.log(res.draft.score);
       res.json(res.draft);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -113,39 +112,70 @@ router
   })
   .post(async (req, res) => {
     try {
-      let matchup = new Matchup(req.body, res.draft._id);
-      if (matchup.valid) {
-        await matchup.model.save();
-        res.status(201).json({ message: "Matchup Added" });
-      } else {
-        return res.status(400).json({ message: matchup.errors });
-      }
+      new Matchup(req.body, res.draft._id)
+        .then((matchup) => {
+          matchup
+            .save()
+            .then(() => {
+              res.status(201).json({ message: "Matchup Added" });
+            })
+            .catch((error) => {
+              console.error("Error saving draft:", error);
+              res.status(500).json({ message: "Internal Server Error" });
+            });
+        })
+        .catch((error) => {
+          res.status(400).json({ message: error.message });
+        });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
   });
 
-router.get("/:team_id/:matchup_id", async (req, res) => {
-  try {
-    res.json(res.draft.get("opponents")[req.params.opponent_id]);
-  } catch (error) {
-    req.status(500).json({ message: error.message });
-  }
-});
-
-// router.param("user_id", async (req, res, next, user_id) => {
-//   let user;
-//   try {
-//     user = await UserModel.find({ username: user_id });
-//     if (user.length === 0) {
-//       return res.status(400).json({ message: 'User id not found' })
-//     }
-//     res.user = user[0];
-//   } catch (error) {
-//     return res.status(500).json({ message: error.message });
-//   }
-//   next();
-// });
+router
+  .route("/:team_id/:matchup_id")
+  .get(async (req, res) => {
+    try {
+      res.json(res.matchup);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  })
+  .patch((req, res) => {
+    try {
+      new Matchup(req.body, res.draft._id)
+        .then((matchup) => {
+          MatchupModel.findByIdAndUpdate(
+            req.params.matchup_id,
+            {
+              teamName: matchup.teamName,
+              stage: matchup.stage,
+              "bTeam.team": matchup.bTeam.team,
+            },
+            { new: true, upsert: true }
+          )
+            .then((updatedMatchup) => {
+              if (updatedMatchup) {
+                res
+                  .status(200)
+                  .json({ message: "Matchup Updated", draft: updatedMatchup });
+              } else {
+                res.status(404).json({ message: "Matchup not found" });
+              }
+            })
+            .catch((error) => {
+              console.error("Error updating matchup:", error);
+              res.status(500).json({ message: "Internal Server Error" });
+            });
+        })
+        .catch((error) => {
+          res.status(400).json({ message: error.message });
+        });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
 router.param("team_id", async (req, res, next, team_id) => {
   let draft;

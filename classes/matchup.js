@@ -1,34 +1,35 @@
-const matchupModel = require('../models/matchupModel')
-const Pokemon = require('./pokemon')
-const mongoose = require('mongoose')
+const matchupModel = require("../models/matchupModel");
+const Pokemon = require("./pokemon");
+const mongoose = require("mongoose");
 
 class Matchup {
-
-  model = null
-  errors = []
-  valid = true
-
   constructor(formData, aTeamId) {
-    let data = {}
-    data.aTeam = {
-      _id: new mongoose.Types.ObjectId(aTeamId)
-    }
-    data.bTeam = {}
-    data.bTeam.teamName = formData.teamName
-    data.stage = formData.stage
-    data.bTeam.team = []
-    for (let pokemonData of formData.team) {
-      let pokemon = new Pokemon(pokemonData)
-      if (pokemon.error) {
-        this.errors.push(pokemon.error)
-        this.valid = false
-      } else {
-        data.bTeam.team.push(pokemon.data)
+    return new Promise((resolve, reject) => {
+      let data = {};
+      data.aTeam = {
+        _id: new mongoose.Types.ObjectId(aTeamId),
+      };
+      data.bTeam = {};
+      data.bTeam.teamName = formData.teamName;
+      data.stage = formData.stage;
+      data.bTeam.team = [];
+      let errors = [];
+      for (let pokemonData of formData.team) {
+        let pokemon = new Pokemon(pokemonData);
+        if (pokemon.error) {
+          errors.push(pokemon.error);
+        } else {
+          data.bTeam.team.push(pokemon.data);
+        }
       }
-    }
+      if (errors.length > 0) {
+        reject(errors);
+      }
 
-    this.model = new matchupModel(data)
+      const model = new matchupModel(data);
+      resolve(model);
+    });
   }
 }
 
-module.exports = Matchup
+module.exports = Matchup;
