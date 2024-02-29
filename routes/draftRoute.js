@@ -203,10 +203,13 @@ router.param("team_id", async (req, res, next, team_id) => {
 router.param("matchup_id", async (req, res, next, matchup_id) => {
   let matchup;
   try {
-    matchup = await MatchupModel.findById(matchup_id);
     if (matchup_id == null) {
       return res.status(400).json({ message: "Team id not found" });
     }
+    matchup = await MatchupModel.findById(matchup_id).lean();
+    data = await DraftModel.findById(matchup.aTeam._id);
+    matchup.aTeam.teamName = data.teamName;
+    matchup.aTeam.team = data.team;
     res.matchup = matchup;
   } catch (error) {
     return res.status(500).json({ message: error.message });
