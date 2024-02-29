@@ -133,7 +133,7 @@ router
   });
 
 router
-  .route("/:team_id/:matchup_id")
+  .route("/matchup/:matchup_id")
   .get(async (req, res) => {
     try {
       res.json(res.matchup);
