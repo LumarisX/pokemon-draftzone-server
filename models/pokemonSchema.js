@@ -15,12 +15,6 @@ const pokemonSchema = new mongoose.Schema(
       type: {
         tera: {
           type: [String],
-          validate: {
-            validator: function (array) {
-              return array.length > 0;
-            },
-            message: (props) => `${props.path} must not be an empty array.`,
-          },
         },
       },
       default: function () {
