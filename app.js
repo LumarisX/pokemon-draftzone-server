@@ -64,7 +64,7 @@ app.use(cors());
 //app.use('/teams', leagueRouter);
 app.use("/data", dataRouter);
 //app.use('/auth', authRouter);
-app.use("/matchup", matchupRouter);
+app.use("/matchup", logger("common"), matchupRouter);
 //app.use('/test', testRouter);
 app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 
