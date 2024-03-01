@@ -1,4 +1,4 @@
-const Learnsets = require("../../public/data/learnsets")["BattleLearnsets"]
+const Learnsets = require("../public/data/learnsets")["BattleLearnsets"];
 
 function getLearnset(pokemonId, gen) {
   let ls = [];
@@ -12,15 +12,19 @@ function getLearnset(pokemonId, gen) {
       delete ls[m];
     }
   }
-  return (Object.keys(ls));
+  return Object.keys(ls);
 }
 
 function inLearnset(pokemonId, moveId, gen) {
-  return (hasLearnset(pokemonId) && moveId in Learnsets[pokemonId]["learnset"] && genCheck(Learnsets[pokemonId]["learnset"][moveId], gen))
+  return (
+    hasLearnset(pokemonId) &&
+    moveId in Learnsets[pokemonId]["learnset"] &&
+    genCheck(Learnsets[pokemonId]["learnset"][moveId], gen)
+  );
 }
 
 function hasLearnset(pokemonId) {
-  return pokemonId in Learnsets && "learnset" in Learnsets[pokemonId]
+  return pokemonId in Learnsets && "learnset" in Learnsets[pokemonId];
 }
 /*
 
@@ -65,4 +69,4 @@ function genCheck(move, gen) {
   return false;
 }
 
-module.exports = { getLearnset, inLearnset, hasLearnset }
+module.exports = { getLearnset, inLearnset, hasLearnset };
