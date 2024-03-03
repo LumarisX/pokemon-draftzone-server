@@ -41,18 +41,18 @@ class Score {
       data.bTeam = { stats: {} };
       const pastePattern = /^(https:\/\/)?pokepast\.es\/[a-zA-Z0-9]{16}$/;
       if (scoreData.aTeam.paste != null && scoreData.aTeam.paste != "") {
-        if (pastePattern.test(scoreData.aTeam.paste)) {
-          data.aTeam.paste = scoreData.aTeam.paste;
-        } else {
-          errors.push("Invalid paste format:", scoreData.aTeam.paste);
-        }
+        // if (pastePattern.test(scoreData.aTeam.paste)) {
+        data.aTeam.paste = scoreData.aTeam.paste;
+        // } else {
+        //   errors.push("Invalid paste format:", scoreData.aTeam.paste);
+        // }
       }
       if (scoreData.bTeam.paste != null && scoreData.bTeam.paste != "") {
-        if (pastePattern.test(scoreData.bTeam.paste)) {
-          data.bTeam.paste = scoreData.bTeam.paste;
-        } else {
-          errors.push("Invalid paste format:", scoreData.bTeam.paste);
-        }
+        // if (pastePattern.test(scoreData.bTeam.paste)) {
+        data.bTeam.paste = scoreData.bTeam.paste;
+        // } else {
+        //   errors.push("Invalid paste format:", scoreData.bTeam.paste);
+        // }
       }
       if (scoreData.replay != null && scoreData.replay != "") {
         data.replay = scoreData.replay;
