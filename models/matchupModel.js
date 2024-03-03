@@ -38,6 +38,9 @@ const teamSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    paste: {
+      type: String,
+    },
     _id: {
       type: mongoose.Schema.Types.ObjectId,
     },
