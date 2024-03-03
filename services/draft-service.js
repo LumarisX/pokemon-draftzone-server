@@ -13,7 +13,6 @@ async function getScore(teamId) {
     }
   }
   score.diff = (score.diff < 0 ? "" : "+") + score.diff;
-  console.log(score);
   return score;
 }
 
