@@ -54,7 +54,7 @@ class Score {
           errors.push("Invalid paste format:", scoreData.bTeam.paste);
         }
       }
-      if (scoreData.bTeam.paste != null && scoreData.bTeam.paste != "") {
+      if (scoreData.replay != null && scoreData.replay != "") {
         data.replay = scoreData.replay;
       }
       data.aTeam.score = scoreData.aTeam.score;
@@ -77,7 +77,7 @@ class Score {
           data.aTeam.stats[stat.pokemon.pid] = pokemonStats;
         }
       }
-      for (let stat of scoreData.aTeam.team) {
+      for (let stat of scoreData.bTeam.team) {
         let pokemonStats = {};
         if (stat.kills != null && stat.kills > 0) {
           pokemonStats.kills = stat.kills;
