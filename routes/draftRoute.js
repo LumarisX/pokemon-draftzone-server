@@ -3,7 +3,7 @@ const router = express.Router();
 const UserModel = require("../models/userModel");
 const MatchupModel = require("../models/matchupModel");
 const DraftModel = require("../models/draftModel");
-const Matchup = require("../classes/matchup");
+const { Matchup, Score } = require("../classes/matchup");
 const Draft = require("../classes/draft");
 const DraftService = require("../services/draft-service");
 const ObjectId = require("mongoose").Types.ObjectId;
@@ -176,6 +176,47 @@ router
       res.status(500).json({ message: error.message });
     }
   });
+
+router.route("/matchup/:matchup_id/score").patch((req, res) => {
+  try {
+    new Score(req.body)
+      .then((score) => {
+        MatchupModel.findByIdAndUpdate(
+          req.params.matchup_id,
+          {
+            "aTeam.stats": score.aTeam.stats,
+            "bTeam.stats": score.bTeam.stats,
+            "aTeam.paste": score.aTeam.paste,
+            "bTeam.paste": score.bTeam.paste,
+            "aTeam.score": score.aTeam.score,
+            "bTeam.score": score.bTeam.score,
+            replay: score.replay,
+          },
+          { new: true, upsert: true }
+        )
+          .then((updatedMatchup) => {
+            if (updatedMatchup) {
+              res
+                .status(200)
+                .json({ message: "Matchup Updated", draft: updatedMatchup });
+            } else {
+              res.status(404).json({ message: "Matchup not found" });
+            }
+          })
+          .catch((error) => {
+            console.error("Error updating matchup:", error);
+            res.status(500).json({ message: "Internal Server Error" });
+          });
+      })
+      .catch((error) => {
+        console.log(error);
+        res.status(400).json({ message: error.message });
+      });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.param("team_id", async (req, res, next, team_id) => {
   let draft;

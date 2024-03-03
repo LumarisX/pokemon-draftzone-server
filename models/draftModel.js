@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const pokemonSchema = require("./pokemonSchema");
-const opponentSchema = require("./opponentSchema");
 
 const draftSchema = new mongoose.Schema(
   {

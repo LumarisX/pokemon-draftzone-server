@@ -1,64 +1,69 @@
-const mongoose = require('mongoose')
-const pokemonSchema = require('./pokemonSchema')
+const mongoose = require("mongoose");
+const pokemonSchema = require("./pokemonSchema");
 
-const statsSchema = new mongoose.Schema({
-  pid: {
-    type: String,
-    required: true
+const statsSchema = new mongoose.Schema(
+  {
+    indirect: {
+      type: Number,
+    },
+    kills: {
+      type: Number,
+    },
+    deaths: {
+      type: Number,
+    },
+    brought: {
+      type: Number,
+    },
   },
-  kills:{
-    type: Number,
-    required: true,
-    default: 0
-  },
-  deaths:{
-    type: Number,
-    required: true,
-    default: 0
-  },
-  brought:{
-    type: Number,
-    required: true,
-    default: 0
-  }
-}, { _id: false })
+  { _id: false }
+);
 
-const teamSchema = new mongoose.Schema({
-  team: {
-    type: [pokemonSchema]
+const teamSchema = new mongoose.Schema(
+  {
+    team: {
+      type: [pokemonSchema],
+    },
+    name: {
+      type: String,
+    },
+    teamName: {
+      type: String,
+    },
+    stats: {
+      type: Map,
+      of: statsSchema,
+    },
+    score: {
+      type: Number,
+      default: 0,
+    },
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+    },
   },
-  name: {
-    type: String
-  },
-  teamName: {
-    type: String
-  },
-  stats: {
-    type: [statsSchema]
-  },
-  _id: {
-    type: mongoose.Schema.Types.ObjectId
-  }
-}, { _id: false })
+  { _id: false }
+);
 
-const matchupSchema = new mongoose.Schema({
-  aTeam: {
-    type: teamSchema,
-    required: true
+const matchupSchema = new mongoose.Schema(
+  {
+    aTeam: {
+      type: teamSchema,
+      required: true,
+    },
+    bTeam: {
+      type: teamSchema,
+      required: true,
+    },
+    stage: {
+      type: String,
+      required: true,
+    },
+    replay: {
+      type: String,
+    },
   },
-  bTeam: {
-    type: teamSchema,
-    required: true
-  },
-  score: {
-    type: [Number],
-    required: true,
-    default: [0, 0]
-  },
-  stage: {
-    type: String,
-    required: true
-  }
-}, { timestamps: true })
+  { timestamps: true }
+);
 
-module.exports = mongoose.model('matchups', matchupSchema);
+module.exports = mongoose.model("matchups", matchupSchema);
