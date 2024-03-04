@@ -177,7 +177,7 @@ router
     }
   });
 
-router.route("/matchup/:matchup_id/score").patch((req, res) => {
+router.route("/:team_id/:matchup_id/score").patch((req, res) => {
   try {
     new Score(req.body)
       .then((score) => {
