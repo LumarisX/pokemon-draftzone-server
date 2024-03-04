@@ -14,7 +14,7 @@ router
   .get(async (req, res) => {
     try {
       res.json(
-        await DraftModel.find({ owner: req.sub }).sort({ createdAt: -1 })
+        await DraftModel.find({ owner: req.sub }).sort({ createdAt: 1 })
       );
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -26,9 +26,7 @@ router
         .then((draft) => {
           DraftModel.find({ owner: req.sub, leagueId: draft.leagueId }).then(
             (foundDrafts) => {
-              console.log(foundDrafts);
               if (foundDrafts.length > 0) {
-                console.log();
                 res.status(400).json({ message: "Draft ID already exists" });
               } else {
                 draft
@@ -67,7 +65,6 @@ router
       let team_id = req.params.team_id;
       new Draft(req.body, req.sub)
         .then((draft) => {
-          console.log({ owner: req.sub, leagueId: team_id });
           DraftModel.findOneAndUpdate(
             { owner: req.sub, leagueId: team_id },
             {
@@ -105,7 +102,11 @@ router
   .route("/:team_id/matchups")
   .get(async (req, res) => {
     try {
-      res.json(await MatchupModel.find({ "aTeam._id": res.draft._id }));
+      res.json(
+        await MatchupModel.find({ "aTeam._id": res.draft._id }).sort({
+          createdAt: -1,
+        })
+      );
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -133,7 +134,7 @@ router
   });
 
 router
-  .route("/matchup/:matchup_id")
+  .route("/:team_id/:matchup_id")
   .get(async (req, res) => {
     try {
       res.json(res.matchup);
@@ -172,7 +173,6 @@ router
           res.status(400).json({ message: error.message });
         });
     } catch (error) {
-      console.log(error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -209,11 +209,9 @@ router.route("/matchup/:matchup_id/score").patch((req, res) => {
           });
       })
       .catch((error) => {
-        console.log(error);
         res.status(400).json({ message: error.message });
       });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: error.message });
   }
 });
