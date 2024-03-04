@@ -18,7 +18,7 @@ async function getScore(teamId) {
 
 async function getMatchups(teamId) {
   return await MatchupModel.find({ "aTeam._id": teamId })
-    .sort({ createdAt: 1 })
+    .sort({ createdAt: -1 })
     .lean();
 }
 
