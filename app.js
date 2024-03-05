@@ -12,6 +12,7 @@ const authRouter = require("./routes/authRoute");
 const matchupRouter = require("./routes/matchupRoute");
 const testRouter = require("./routes/testRoute");
 const draftRouter = require("./routes/draftRoute");
+const plannerRouter = require("./routes/plannerRoute");
 const mongoSanitize = require("express-mongo-sanitize");
 const { auth } = require("express-oauth2-jwt-bearer");
 
@@ -66,6 +67,7 @@ app.use("/data", dataRouter);
 //app.use('/auth', authRouter);
 app.use("/matchup", logger("common"), matchupRouter);
 //app.use('/test', testRouter);
+app.use("/planner", logger("common"), plannerRouter);
 app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 
 // catch 404 and forward to error handler

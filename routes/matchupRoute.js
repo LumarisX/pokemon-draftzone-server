@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Draft = require("../models/draftModel");
 const Matchup = require("../models/matchupModel.js");
-const SummeryService = require("../services/matchup-services/summery-service");
+const summaryService = require("../services/matchup-services/summary-service");
 const SpeedtierService = require("../services/matchup-services/speedtier-service");
 const TypechartService = require("../services/matchup-services/typechart-service");
 const CoverageService = require("../services/matchup-services/coverage-service");
@@ -29,12 +29,13 @@ router
     }
   });
 
-router.get("/:matchup_id/summery", async (req, res) => {
+router.get("/:matchup_id/summary", async (req, res) => {
   try {
-    res.json([
-      SummeryService.summery(res.matchup.aTeam),
-      SummeryService.summery(res.matchup.bTeam),
-    ]);
+    let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
+    let bTeamsummary = summaryService.summary(res.matchup.aTeam.team);
+    (aTeamsummary.teamName = res.matchup.aTeam.teamName),
+      (bTeamsummary.teamName = res.matchup.bTeam.teamName),
+      res.json([aTeamsummary, bTeamsummary]);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
