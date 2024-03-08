@@ -32,7 +32,7 @@ router
 router.get("/:matchup_id/summary", async (req, res) => {
   try {
     let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
-    let bTeamsummary = summaryService.summary(res.matchup.aTeam.team);
+    let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);
     (aTeamsummary.teamName = res.matchup.aTeam.teamName),
       (bTeamsummary.teamName = res.matchup.bTeam.teamName),
       res.json([aTeamsummary, bTeamsummary]);
