@@ -15,7 +15,45 @@ router
   .route("/:matchup_id")
   .get(async (req, res) => {
     try {
-      res.json(res.matchup);
+      console.log("here")
+      let level = Rulesets.Formats[res.matchup.format].level;
+      let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
+      let data = {
+        format: res.matchup.format,
+        ruleset: res.matchup.ruleset,
+        level: level,
+        stage: res.matchup.stage,
+      };
+      let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
+      let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);
+      aTeamsummary.teamName = res.matchup.aTeam.teamName;
+      bTeamsummary.teamName = res.matchup.bTeam.teamName;
+      data.summery = [aTeamsummary, bTeamsummary];
+      data.typechart = [
+        TypechartService.typechart(res.matchup.aTeam.team),
+        TypechartService.typechart(res.matchup.bTeam.team),
+      ];
+      data.speedchart = SpeedtierService.speedTierChart(
+        [res.matchup.aTeam.team, level, res.matchup.bTeam.team],
+        level
+      );
+      data.coveragechart = [
+        CoverageService.chart(
+          res.matchup.aTeam.team,
+          res.matchup.bTeam.team,
+          gen
+        ),
+        CoverageService.chart(
+          res.matchup.bTeam.team,
+          res.matchup.aTeam.team,
+          gen
+        ),
+      ];
+      data.movechart = [
+        MovechartService.chart(res.matchup.aTeam.team, gen),
+        MovechartService.chart(res.matchup.bTeam.team, gen),
+      ];
+      res.json(data);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -33,9 +71,9 @@ router.get("/:matchup_id/summary", async (req, res) => {
   try {
     let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
     let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);
-    (aTeamsummary.teamName = res.matchup.aTeam.teamName),
-      (bTeamsummary.teamName = res.matchup.bTeam.teamName),
-      res.json([aTeamsummary, bTeamsummary]);
+    aTeamsummary.teamName = res.matchup.aTeam.teamName;
+    bTeamsummary.teamName = res.matchup.bTeam.teamName;
+    res.json([aTeamsummary, bTeamsummary]);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -67,15 +105,23 @@ router.get("/:matchup_id/speedchart", async (req, res) => {
 });
 
 router.get("/:matchup_id/coveragechart", async (req, res) => {
-  // try {
-  let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
-  res.json([
-    CoverageService.chart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
-    CoverageService.chart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen),
-  ]);
-  // } catch (error) {
-  //   res.status(500).json({ message: error.message })
-  // }
+  try {
+    let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
+    res.json([
+      CoverageService.chart(
+        res.matchup.aTeam.team,
+        res.matchup.bTeam.team,
+        gen
+      ),
+      CoverageService.chart(
+        res.matchup.bTeam.team,
+        res.matchup.aTeam.team,
+        gen
+      ),
+    ]);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 router.get("/:matchup_id/movechart", async (req, res) => {
