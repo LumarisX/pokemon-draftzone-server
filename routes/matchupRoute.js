@@ -22,6 +22,7 @@ router
         ruleset: res.matchup.ruleset,
         level: level,
         stage: res.matchup.stage,
+        leagueName: res.matchup.leagueName,
       };
       let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
       let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);
