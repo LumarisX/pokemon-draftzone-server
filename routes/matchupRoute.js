@@ -15,7 +15,6 @@ router
   .route("/:matchup_id")
   .get(async (req, res) => {
     try {
-      console.log("here")
       let level = Rulesets.Formats[res.matchup.format].level;
       let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
       let data = {

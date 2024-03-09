@@ -280,7 +280,7 @@ function getCoverage(pokemonId, gen) {
 }
 
 function needsItem(pokemonId) {
-  return "requiredItem" in Pokedex[pid];
+  return "requiredItem" in Pokedex[pokemonId];
 }
 
 module.exports = {
