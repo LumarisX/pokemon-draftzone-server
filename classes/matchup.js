@@ -13,6 +13,8 @@ class Matchup {
       data.bTeam.teamName = formData.teamName;
       data.stage = formData.stage;
       data.bTeam.team = [];
+      data.aTeam.stats = {};
+      data.bTeam.stats = {};
       let errors = [];
       for (let pokemonData of formData.team) {
         let pokemon = new Pokemon(pokemonData);
@@ -36,7 +38,6 @@ class Score {
   constructor(scoreData) {
     return new Promise((resolve, reject) => {
       let data = {};
-      let errors = [];
       data.aTeam = { stats: {} };
       data.bTeam = { stats: {} };
       const pastePattern = /^(https:\/\/)?pokepast\.es\/[a-zA-Z0-9]{16}$/;
