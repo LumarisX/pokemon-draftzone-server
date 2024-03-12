@@ -15,7 +15,7 @@ router
   .route("/:matchup_id")
   .get(async (req, res) => {
     try {
-      console.log("here")
+      console.log("here");
       let level = Rulesets.Formats[res.matchup.format].level;
       let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
       let data = {
@@ -28,7 +28,7 @@ router
       let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
-      data.summery = [aTeamsummary, bTeamsummary];
+      data.summary = [aTeamsummary, bTeamsummary];
       data.typechart = [
         TypechartService.typechart(res.matchup.aTeam.team),
         TypechartService.typechart(res.matchup.bTeam.team),
