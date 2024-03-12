@@ -5,7 +5,10 @@ const PokedexService = require("../services/pokedex-service");
 const LearnsetService = require("../services/learnset-service");
 const TypechartService = require("../services/matchup-services/typechart-service");
 const MoveChartService = require("../services/matchup-services/movechart-service");
+const SpeedtierService = require("../services/matchup-services/speedtier-service");
 const Draft = require("../models/draftModel");
+const Matchup = require("../models/matchupModel");
+
 const { ObjectId } = require("mongodb");
 const CoverageService = require("../services/matchup-services/coverage-service");
 
@@ -31,6 +34,25 @@ router.get("/coverage", async (req, res) => {
       CoverageService.chart(aTeam.team, aTeam.team, gen),
     ]);
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/speedchart", async (req, res) => {
+  try {
+    matchup = await Matchup.findById("65ecb9ed2f6bf04ab58146ba").lean();
+    if (matchup === null) {
+      res.status(400).json({ message: "Draft ID not found" });
+    }
+    aTeam = await Draft.findById(matchup.aTeam._id).lean();
+    res.json(
+      SpeedtierService.speedTierChart(
+        [[{ pid: "deoxys" }], [{ pid: "deoxys" }]],
+        50
+      )
+    );
+  } catch (error) {
+    console.log(error);
     res.status(500).json({ message: error.message });
   }
 });

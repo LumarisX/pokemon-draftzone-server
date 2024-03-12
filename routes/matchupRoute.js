@@ -15,7 +15,6 @@ router
   .route("/:matchup_id")
   .get(async (req, res) => {
     try {
-      console.log("here");
       let level = Rulesets.Formats[res.matchup.format].level;
       let gen = Rulesets.Rulesets[res.matchup.ruleset].gen;
       let data = {
@@ -23,6 +22,7 @@ router
         ruleset: res.matchup.ruleset,
         level: level,
         stage: res.matchup.stage,
+        leagueName: res.matchup.leagueName,
       };
       let aTeamsummary = summaryService.summary(res.matchup.aTeam.team);
       let bTeamsummary = summaryService.summary(res.matchup.bTeam.team);

@@ -279,9 +279,14 @@ function getCoverage(pokemonId, gen) {
   return coverage;
 }
 
+function needsItem(pokemonId) {
+  return "requiredItem" in Pokedex[pokemonId];
+}
+
 module.exports = {
   inDex,
   getName,
+  needsItem,
   getAbilities,
   filterNames,
   getStat,
