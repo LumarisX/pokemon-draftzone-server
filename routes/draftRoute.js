@@ -132,6 +132,26 @@ router
       res.status(500).json({ message: error.message });
     }
   });
+  
+router
+  .route("/:team_id/stats")
+  .get(async (req, res) => {
+    try {
+      res.json(DraftService.getStats(req.params.team_id));
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  })
+  
+router
+  .route("/:team_id/archive")
+  .post(async (req, res) => {
+    try {
+      res.json({message: 'Draft was archived'});
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  })
 
 router
   .route("/:team_id/:matchup_id")
