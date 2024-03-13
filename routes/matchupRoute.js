@@ -139,7 +139,8 @@ router.get("/:matchup_id/movechart", async (req, res) => {
 router.param("matchup_id", async (req, res, next, matchup_id) => {
   try {
     if (ObjectId.isValid(matchup_id)) {
-      let matchup = await Matchup.findById(matchup_id).lean();
+      res.rawMatchup = await Matchup.findById(matchup_id);
+      let matchup = res.rawMatchup.toObject();
       if (matchup === null) {
         res.status(400).json({ message: "Matchup ID not found" });
       }
