@@ -1,4 +1,5 @@
 const MatchupModel = require("../models/matchupModel");
+const pokedexService = require("./pokedex-service");
 
 async function getScore(teamId) {
   let matchups = await getMatchups(teamId);
@@ -17,43 +18,55 @@ async function getScore(teamId) {
 }
 
 async function getStats(draftId) {
-  let matchups = await getMatchups(draftId)
-  let stats = {}
+  let matchups = await getMatchups(draftId);
+  let stats = {};
   for (let matchup of matchups) {
     for (let pid of Object.keys(matchup.aTeam.stats)) {
       if (!(pid in stats)) {
         stats[pid] = {
+          pokemon: { pid: pid, name: pokedexService.getName(pid) },
           kills: 0,
           brought: 0,
           indirect: 0,
-          deaths: 0
-        }
+          deaths: 0,
+        };
       }
-      stats[pid].kills += matchup.aTeam.stats[pid].kills ? matchup.aTeam.stats[pid].kills : 0
-      stats[pid].brought += matchup.aTeam.stats[pid].brought ? matchup.aTeam.stats[pid].brought : 0
-      stats[pid].indirect += matchup.aTeam.stats[pid].indirect ? matchup.aTeam.stats[pid].indirect : 0,
-        stats[pid].deaths += matchup.aTeam.stats[pid].deaths ? matchup.aTeam.stats[pid].deaths : 0
+      stats[pid].kills += matchup.aTeam.stats[pid].kills
+        ? matchup.aTeam.stats[pid].kills
+        : 0;
+      stats[pid].brought += matchup.aTeam.stats[pid].brought
+        ? matchup.aTeam.stats[pid].brought
+        : 0;
+      stats[pid].indirect += matchup.aTeam.stats[pid].indirect
+        ? matchup.aTeam.stats[pid].indirect
+        : 0;
+      stats[pid].deaths += matchup.aTeam.stats[pid].deaths
+        ? matchup.aTeam.stats[pid].deaths
+        : 0;
+      for (let pid in stats) {
+        stats[pid].kdr =
+          stats[pid].kills + stats[pid].indirect - stats[pid].deaths;
+        stats[pid].kpg =
+          stats[pid].brought > 0
+            ? (stats[pid].kills + stats[pid].indirect) / stats[pid].brought
+            : 0;
+      }
     }
-    /*for(let pid in stats){
-      stats[pid].kd = stats[pid].kills + stats[pid].indirect - stats[pid].deaths
-      stats[pid].kpg = stats[pid].brought > 0 ? stats[pid].kills / stats[pid].brought : 0
-    }*/
   }
-  return stats
+  return Object.values(stats);
 }
 
-async function archive(team_id){
-  let matchups = await getMatchups(team_id)
-  let matches = []
-  for(let matchup in matchups){
-    console.log(matchups)
+async function archive(team_id) {
+  let matchups = await getMatchups(team_id);
+  let matches = [];
+  for (let matchup in matchups) {
     matches.push({
       stage: matchup.stage,
       teamName: matchup.bTeam,
-      score: []
-    })
+      score: [],
+    });
   }
-  return matches
+  return matches;
 }
 
 async function getMatchups(draftId) {
