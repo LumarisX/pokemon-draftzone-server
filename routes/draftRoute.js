@@ -97,6 +97,21 @@ router
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
+  })
+  .delete((req, res) => {
+    try {
+      res.rawDraft
+        .deleteOne()
+        .then(() => {
+          res.status(201).json({ message: "Archive added" });
+        })
+        .catch((error) => {
+          console.error("Error deleteing draft:", error);
+          res.status(500).json({ message: error.message });
+        });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
   });
 
 router
