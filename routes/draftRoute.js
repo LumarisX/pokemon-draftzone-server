@@ -65,17 +65,14 @@ router
       let team_id = req.params.team_id;
       new Draft(req.body, req.sub)
         .then((draft) => {
-          DraftModel.findOneAndUpdate(
-            { owner: req.sub, leagueId: team_id },
+          DraftModel.findOneAndUpdate({ owner: req.sub, leagueId: team_id },
             {
               teamName: draft.teamName,
               leagueName: draft.leagueName,
               team: draft.team,
               format: draft.format,
               ruleset: draft.ruleset,
-            },
-            { new: true, upsert: true }
-          )
+            }, { new: true, upsert: true })
             .then((updatedDraft) => {
               if (updatedDraft) {
                 res
@@ -143,10 +140,24 @@ router.route("/:team_id/stats").get(async (req, res) => {
 
 router.route("/:team_id/archive").delete(async (req, res) => {
   try {
-    res.json({ message: "Draft was archived" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    new Archive(res.draft)
+      .then((archive) => {
+          /*archive
+            .save()
+            .then(() => {
+              res.status(201).json({ message: "Archive added" });
+            })
+            .catch((error) => {
+              console.error("Error saving archive:", error);
+              res.status(500).json({ message: error.message });
+            });*/
+        })
+        .catch((error) => {
+          res.status(400).json({ message: error.message });
+        });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
 });
 
 router
@@ -163,14 +174,13 @@ router
       new Matchup(req.body, res.draft._id)
         .then((matchup) => {
           MatchupModel.findByIdAndUpdate(
-            req.params.matchup_id,
-            {
-              teamName: matchup.teamName,
-              stage: matchup.stage,
-              "bTeam.team": matchup.bTeam.team,
-            },
-            { new: true, upsert: true }
-          )
+              req.params.matchup_id,
+              {
+                teamName: matchup.teamName,
+                stage: matchup.stage,
+                "bTeam.team": matchup.bTeam.team,
+              }, { new: true, upsert: true }
+            )
             .then((updatedMatchup) => {
               if (updatedMatchup) {
                 res
@@ -198,18 +208,17 @@ router.route("/:team_id/:matchup_id/score").patch((req, res) => {
     new Score(req.body)
       .then((score) => {
         MatchupModel.findByIdAndUpdate(
-          req.params.matchup_id,
-          {
-            "aTeam.stats": score.aTeam.stats,
-            "bTeam.stats": score.bTeam.stats,
-            "aTeam.paste": score.aTeam.paste,
-            "bTeam.paste": score.bTeam.paste,
-            "aTeam.score": score.aTeam.score,
-            "bTeam.score": score.bTeam.score,
-            replay: score.replay,
-          },
-          { new: true, upsert: true }
-        )
+            req.params.matchup_id,
+            {
+              "aTeam.stats": score.aTeam.stats,
+              "bTeam.stats": score.bTeam.stats,
+              "aTeam.paste": score.aTeam.paste,
+              "bTeam.paste": score.bTeam.paste,
+              "aTeam.score": score.aTeam.score,
+              "bTeam.score": score.bTeam.score,
+              replay: score.replay,
+            }, { new: true, upsert: true }
+          )
           .then((updatedMatchup) => {
             if (updatedMatchup) {
               res
@@ -237,7 +246,7 @@ router.param("team_id", async (req, res, next, team_id) => {
   try {
     let user_id = await req.sub;
     if (ObjectId.isValid(team_id)) {
-      draft = await DraftModel.findById(team_id).lean();
+      draft = await DraftModel.findById(team_id);
     } else {
       draft = await DraftModel.find({ owner: user_id, leagueId: team_id });
       draft = draft[0];

@@ -64,10 +64,6 @@ const archiveSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    leagueId: {
-      type: String,
-      required: true,
-    },
     teamName: {
       type: String,
     },
@@ -85,7 +81,7 @@ const archiveSchema = new mongoose.Schema(
       required: true,
     },
     team: {
-      type: [pokemonSchema],
+      type: [String],
       required: true,
     },
     matches: {
