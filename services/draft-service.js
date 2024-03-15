@@ -10,7 +10,7 @@ async function getScore(teamId) {
       score.diff += matchup.aTeam.score - matchup.bTeam.score;
     } else if (matchup.aTeam.score < matchup.bTeam.score) {
       score.loses++;
-      score.diff -= matchup.aTeam.score - matchup.bTeam.score;
+      score.diff += matchup.aTeam.score - matchup.bTeam.score;
     }
   }
   score.diff = (score.diff < 0 ? "" : "+") + score.diff;
