@@ -4,15 +4,18 @@
  * Module dependencies.
  */
 
-var app = require("../app");
-var debug = require("debug")("tpl-express-pro:server");
-var http = require("http");
+import app from "./app";
+import debug from "debug";
+import http from "http";
+import { AddressInfo } from "net";
+
+const debugLogger = debug("tpl-express-pro:server");
 
 /**
  * Get port from environment and store in Express.
  */
 
-var port = normalizePort(process.env.PORT || "9960");
+const port: string = normalizePort(process.env.PORT || "9960");
 console.log(port);
 app.set("port", port);
 
@@ -20,7 +23,7 @@ app.set("port", port);
  * Create HTTP server.
  */
 
-var server = http.createServer(app);
+const server: http.Server = http.createServer(app);
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -34,32 +37,21 @@ server.on("listening", onListening);
  * Normalize a port into a number, string, or false.
  */
 
-function normalizePort(val) {
-  var port = parseInt(val, 10);
-
-  if (isNaN(port)) {
-    // named pipe
-    return val;
-  }
-
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-
-  return false;
+function normalizePort(val: string | number): string {
+  return val.toString();
 }
 
 /**
  * Event listener for HTTP server "error" event.
  */
 
-function onError(error) {
+function onError(error: NodeJS.ErrnoException): void {
   if (error.syscall !== "listen") {
     throw error;
   }
 
-  var bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
+  const bind: string =
+    typeof port === "string" ? "Pipe " + port : "Port " + port;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -80,8 +72,9 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 
-function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
-  debug("Listening on " + bind);
+function onListening(): void {
+  const addr: string | AddressInfo | null = server.address();
+  const bind: string =
+    typeof addr === "string" ? "pipe " + addr : "port " + addr?.port;
+  debugLogger("Listening on " + bind);
 }
