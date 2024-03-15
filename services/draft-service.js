@@ -56,18 +56,7 @@ async function getStats(draftId) {
   return Object.values(stats);
 }
 
-async function archive(team_id) {
-  let matchups = await getMatchups(team_id);
-  let matches = [];
-  for (let matchup in matchups) {
-    matches.push({
-      stage: matchup.stage,
-      teamName: matchup.bTeam,
-      score: [],
-    });
-  }
-  return matches;
-}
+async function archive(team_id) {}
 
 async function getMatchups(draftId) {
   return await MatchupModel.find({ "aTeam._id": draftId })
@@ -75,4 +64,4 @@ async function getMatchups(draftId) {
     .lean();
 }
 
-module.exports = { getScore, getStats, archive };
+module.exports = { getScore, getStats, getMatchups, archive };

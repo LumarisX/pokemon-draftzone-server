@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const pokemonSchema = require("./pokemonSchema");
 
 const statsSchema = new mongoose.Schema(
   {
@@ -41,22 +40,24 @@ const sideSchema = new mongoose.Schema(
 
 const matchSchema = new mongoose.Schema(
   {
-    name: {
+    stage: {
+      type: String,
+    },
+    replay: {
       type: String,
     },
     teamName: {
       type: String,
     },
     aTeam: {
-      type: sideSchema
+      type: sideSchema,
     },
     bTeam: {
-      type: sideSchema
-    }
+      type: sideSchema,
+    },
   },
   { _id: false }
 );
-
 
 const archiveSchema = new mongoose.Schema(
   {
@@ -87,11 +88,9 @@ const archiveSchema = new mongoose.Schema(
     matches: {
       type: [matchSchema],
       required: true,
-    }
+    },
   },
   { timestamps: true }
 );
-
-archiveSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
 module.exports = mongoose.model("archives", archiveSchema);
