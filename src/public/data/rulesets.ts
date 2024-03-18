@@ -1,3 +1,11 @@
+export type RulesetId = keyof typeof Rulesets;
+
+type Rulesets = {
+  [key: string]: {
+    gen: string;
+  };
+};
+
 export const Rulesets = {
   "Gen9 NatDex": { gen: "1-9" },
   "Paldea Dex": { gen: "9" },
@@ -17,12 +25,4 @@ export const Rulesets = {
   "Johto Dex": { gen: "2" },
   "Kanto Dex": { gen: "1" },
   CAP: { gen: "1-9" },
-};
-
-export const Formats = {
-  Singles: { level: 100, choose: 6 },
-  VGC: { level: 50, choose: 4 },
-  Doubles: { level: 100, choose: 6 },
-  LC: { level: 5, choose: 6 },
-  DPeC: { level: 5, choose: 4 },
 };

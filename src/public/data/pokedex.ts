@@ -2,9 +2,9 @@ export type PokemonId = keyof typeof Pokedex;
 
 export type Stat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
 
-export type Pokemon = {
+export type PokemonData = {
   abilities: {
-    [key: string]: string;
+    [key in PokemonId]?: string;
   };
   baseForme?: string;
   baseSpecies?: string;
@@ -57,7 +57,11 @@ export type Pokemon = {
   eggGroups: string[];
 };
 
-export const Pokedex = {
+type Pokedex = {
+  [key: string]: PokemonData;
+};
+
+export const Pokedex: Pokedex = {
   bulbasaur: {
     num: 1,
     name: "Bulbasaur",
