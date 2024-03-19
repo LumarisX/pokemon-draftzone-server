@@ -258,7 +258,7 @@ function learns(pid: PokemonId, moveId: MoveId, gen: string) {
   return false;
 }
 
-function getCoverage(pid: PokemonId, gen: string) {
+export function getCoverage(pid: PokemonId, gen: string) {
   let learnset = getLearnset(pid, gen);
   let coverage: {
     Physical: {
@@ -297,7 +297,10 @@ function getCoverage(pid: PokemonId, gen: string) {
       }
     }
   }
-  return coverage;
+  return {
+    physical: Object.values(coverage.Physical),
+    special: Object.values(coverage.Special),
+  };
 }
 
 function needsItem(pid: PokemonId) {
