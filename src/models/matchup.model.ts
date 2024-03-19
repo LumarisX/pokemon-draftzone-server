@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const pokemonSchema = require("./pokemonSchema");
+import mongoose from "mongoose";
+import { pokemonSchema } from "./pokemon.schema";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -68,4 +68,4 @@ const matchupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("matchups", matchupSchema);
+export const MatchupModel = mongoose.model("matchups", matchupSchema);

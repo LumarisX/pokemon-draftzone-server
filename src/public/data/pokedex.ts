@@ -1,6 +1,6 @@
 export type PokemonId = keyof typeof Pokedex;
 
-export type Stat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
+export type BaseStat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
 
 export type PokemonData = {
   abilities: {

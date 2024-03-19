@@ -1,11 +1,29 @@
-const Pokedex = require("../../.old/pokedex-service");
+import { Pokedex, PokemonId } from "../public/data/pokedex";
 
-class Pokemon {
-  data = {};
+export type Pokemon = {
+  pid: PokemonId;
+  shiny?: boolean;
+  name: string;
+  capt?: {
+    tera?: string[];
+    z?: boolean;
+  };
+};
+
+export class PokemonBuilder {
+  data: Pokemon = {
+    pid: "",
+    name: "",
+  };
   error;
-
-  constructor(pokemonData) {
-    if (!Pokedex.inDex(pokemonData.pid)) {
+  constructor(pokemonData: {
+    pid: any;
+    shiny: any;
+    name: any;
+    capt: any;
+    captCheck?: any;
+  }) {
+    if (!inDex(pokemonData.pid)) {
       this.error = `${pokemonData.name} not found in the pokedex`;
     } else {
       this.data.pid = pokemonData.pid;
@@ -30,5 +48,3 @@ class Pokemon {
     }
   }
 }
-
-module.exports = Pokemon;

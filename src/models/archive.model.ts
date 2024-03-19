@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -93,4 +93,4 @@ const archiveSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("archives", archiveSchema);
+export const ArchiveSchema = mongoose.model("archives", archiveSchema);

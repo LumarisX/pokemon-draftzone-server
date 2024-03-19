@@ -2,8 +2,7 @@ import { ObjectId } from "mongoose";
 import { PokemonId } from "../public/data/pokedex";
 import { FormatId } from "../public/data/formats";
 import { RulesetId } from "../public/data/rulesets";
-
-const Pokemon = require("./pokemon");
+import { Pokemon, PokemonBuilder } from "./pokemon";
 const DraftModel = require("../models/draftModel");
 
 type DraftDoc = {
@@ -19,16 +18,6 @@ type DraftDoc = {
   };
   owner: ObjectId;
   team: Pokemon[];
-};
-
-type Pokemon = {
-  pid: PokemonId;
-  shiny?: boolean;
-  name: string;
-  capt?: {
-    tera?: string[];
-    z?: boolean;
-  };
 };
 
 export class Draft {
@@ -59,7 +48,7 @@ export class Draft {
       };
       let errors = [];
       for (let pokemonData of formData.team) {
-        let pokemon = new Pokemon(pokemonData);
+        let pokemon = new PokemonBuilder(pokemonData);
         if (pokemon.error) {
           errors.push(pokemon.error);
         } else {

@@ -1,23 +1,62 @@
-const matchupModel = require("../models/matchupModel");
-const Pokemon = require("./pokemon");
-const mongoose = require("mongoose");
+import mongoose, { ObjectId } from "mongoose";
+import { PokemonId } from "../public/data/pokedex";
+import { Pokemon, PokemonBuilder } from "./pokemon";
+import { MatchupModel } from "../models/matchup.model";
 
-class Matchup {
-  constructor(formData, aTeamId) {
+type MatchupDoc = {
+  aTeam: Side;
+  bTeam: Side;
+  stage: string;
+  replay?: String;
+};
+
+export type Side = {
+  _id?: ObjectId;
+  teamName: string;
+  team: Pokemon[];
+  name?: string;
+  stats: {
+    [key in PokemonId]: {
+      kills?: number;
+      deaths?: number;
+      indirect?: number;
+      brought: number;
+    };
+  };
+  score: number;
+  paste?: String;
+};
+
+export class Matchup {
+  constructor(
+    formData: { teamName: string; stage: string; team: Pokemon[] },
+    aTeamId: string
+  ) {
     return new Promise((resolve, reject) => {
-      let data = {};
-      data.aTeam = {
-        _id: new mongoose.Types.ObjectId(aTeamId),
+      let data: MatchupDoc = {
+        aTeam: {
+          _id: new mongoose.Types.ObjectId(aTeamId),
+          teamName: "",
+          team: [],
+          name: undefined,
+          stats: {},
+          score: 0,
+          paste: undefined,
+        },
+        bTeam: {
+          teamName: formData.teamName,
+          team: [],
+          name: undefined,
+          stats: {},
+          score: 0,
+          paste: undefined,
+        },
+        stage: formData.stage,
       };
-      data.bTeam = {};
-      data.bTeam.teamName = formData.teamName;
       data.stage = formData.stage;
-      data.bTeam.team = [];
-      data.aTeam.stats = {};
-      data.bTeam.stats = {};
       let errors = [];
       for (let pokemonData of formData.team) {
-        let pokemon = new Pokemon(pokemonData);
+        let pokemon = new PokemonBuilder(pokemonData);
         if (pokemon.error) {
           errors.push(pokemon.error);
         } else {
@@ -28,7 +67,7 @@ class Matchup {
         reject(errors);
       }
 
-      const model = new matchupModel(data);
+      const model = new MatchupModel(data);
       resolve(model);
     });
   }
