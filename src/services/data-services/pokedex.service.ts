@@ -235,7 +235,7 @@ function getLearnset(pid: PokemonId, gen: string) {
   return learnset;
 }
 
-function learns(pid: PokemonId, moveId: MoveId, gen: string) {
+export function learns(pid: PokemonId, moveId: MoveId, gen: string) {
   if (hasLearnset(pid)) {
     if (inLearnset(pid, moveId, gen)) {
       return true;
