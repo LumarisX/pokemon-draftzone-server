@@ -68,12 +68,13 @@ function statistics(
   stats.median = {};
   stats.max = {};
   for (let stat in all) {
-    all[stat].sort((a, b) => b - a);
-    stats.mean[stat] = Math.round(
-      all[stat].reduce((x, y) => x + y) / team.length
+    all[stat as BaseStat].sort((a, b) => b - a);
+    stats.mean[stat as BaseStat] = Math.round(
+      all[stat as BaseStat].reduce((x, y) => x + y) / team.length
     );
-    stats.median[stat] = all[stat][Math.round(all[stat].length / 2)];
-    stats.max[stat] = all[stat][0];
+    stats.median[stat as BaseStat] =
+      all[stat as BaseStat][Math.round(all[stat as BaseStat].length / 2)];
+    stats.max[stat as BaseStat] = all[stat as BaseStat][0];
   }
   return stats;
 }
