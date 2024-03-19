@@ -21,7 +21,7 @@ export function getBaseStats(pid: PokemonId) {
   return Pokedex[pid]["baseStats"];
 }
 
-function getStat(
+export function getStat(
   stat: BaseStat,
   base: number,
   ev = 252,
@@ -173,8 +173,8 @@ function getTypes(pid: PokemonId) {
   return Pokedex[pid]["types"];
 }
 
-function getAbilities(pid: PokemonId) {
-  return Object.values(Pokedex[pid]["abilities"]);
+export function getAbilities(pid: PokemonId): string[] {
+  return Object.values(Pokedex[pid].abilities);
 }
 
 function getFormeChange(pid: PokemonId) {
@@ -303,6 +303,6 @@ export function getCoverage(pid: PokemonId, gen: string) {
   };
 }
 
-function needsItem(pid: PokemonId) {
+export function needsItem(pid: PokemonId) {
   return "requiredItem" in Pokedex[pid];
 }

@@ -4,7 +4,7 @@ export type BaseStat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
 
 export type PokemonData = {
   abilities: {
-    [key in PokemonId]?: string;
+    [key in PokemonId]: string;
   };
   baseForme?: string;
   baseSpecies?: string;
