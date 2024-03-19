@@ -1,6 +1,12 @@
 import { MoveId } from "../../public/data/moves";
 import { Pokedex, PokemonId, BaseStat } from "../../public/data/pokedex";
-import { inLearnset } from "./learnset.service";
+import { compareString } from "../filter.service";
+import {
+  hasLearnset,
+  inLearnset,
+  getLearnset as LearnsetgetLearnset,
+} from "./learnset.service";
+import { getCategory, getEffectivePower, getType } from "./move.service";
 import { defensive } from "./type.service";
 
 export function inDex(pid: PokemonId) {
@@ -131,8 +137,8 @@ export function getWeak(pid: PokemonId) {
   return weak;
 }
 
-function filterNames(query: string) {
-  let results = [[], []];
+function filterNames(query: string): { name: string; pid: PokemonId }[] {
+  let results: { name: string; pid: PokemonId }[][] = [[], []];
   if (query === "") {
     return [];
   }
@@ -140,8 +146,8 @@ function filterNames(query: string) {
     if (Pokedex[mon].tier == "CAP") {
       continue;
     }
-    let compare = FilterService.compare(query, Pokedex[mon].name);
-    if (compare.result) {
+    let compare = compareString(query, Pokedex[mon].name);
+    if (compare.result && compare.pattern) {
       results[compare.pattern].push({ name: Pokedex[mon].name, pid: mon });
     }
   }
@@ -152,16 +158,15 @@ function filterNames(query: string) {
       return 0;
     });
   }
-  results = results[0].concat(results[1]);
-  return results;
+  return results[0].concat(results[1]);
 }
 
 function getPrevo(pid: PokemonId) {
-  return toKey(Pokedex[pid]["prevo"]);
+  return toKey(Pokedex[pid]?.prevo);
 }
 
 function getBaseForm(pid: PokemonId) {
-  return toKey(Pokedex[pid]["baseSpecies"]);
+  return toKey(Pokedex[pid]?.baseSpecies);
 }
 
 function getTypes(pid: PokemonId) {
@@ -173,21 +178,21 @@ function getAbilities(pid: PokemonId) {
 }
 
 function getFormeChange(pid: PokemonId) {
-  let forme = toKey(Pokedex[pid]["changesFrom"]);
+  let forme = toKey(Pokedex[pid]?.changesFrom);
   return forme;
 }
 
-function toKey(pid: PokemonId) {
+function toKey(pid: string | undefined): string {
   if (pid != undefined) {
-    pid = pid.toLowerCase().replace(/[ .-]+/g, "");
+    return pid.toLowerCase().replace(/[ .-]+/g, "");
   }
-  return pid;
+  return "";
 }
 
 function getLearnset(pid: PokemonId, gen: string) {
-  let learnset = LearnsetService.getLearnset(pid, gen);
+  let learnset = LearnsetgetLearnset(pid, gen);
   if (learnset == null) {
-    return getLearnset(toKey(Pokedex[pid].baseSpecies), gen);
+    return getLearnset(toKey(Pokedex[pid]?.baseSpecies), gen);
   }
   if ("prevo" in Pokedex[pid]) {
     let subLearnset = getLearnset(toKey(Pokedex[pid].prevo), gen);
@@ -207,10 +212,23 @@ function getLearnset(pid: PokemonId, gen: string) {
   }
 
   if ("battleOnly" in Pokedex[pid]) {
-    let subLearnset = getLearnset(toKey(Pokedex[pid].battleOnly), gen);
-    for (let move of subLearnset) {
-      if (!(move in learnset)) {
-        learnset.push(move);
+    let battleOnly = Pokedex[pid].battleOnly || "";
+
+    if (typeof battleOnly === "string") {
+      let subLearnset = getLearnset(toKey(battleOnly), gen);
+      for (let move of subLearnset) {
+        if (!(move in learnset)) {
+          learnset.push(move);
+        }
+      }
+    } else if (Array.isArray(Pokedex[pid])) {
+      for (let item of battleOnly) {
+        let subLearnset = getLearnset(toKey(item), gen);
+        for (let move of subLearnset) {
+          if (!(move in learnset)) {
+            learnset.push(move);
+          }
+        }
       }
     }
   }
@@ -218,7 +236,7 @@ function getLearnset(pid: PokemonId, gen: string) {
 }
 
 function learns(pid: PokemonId, moveId: MoveId, gen: string) {
-  if (LearnsetService.hasLearnset(pid)) {
+  if (hasLearnset(pid)) {
     if (inLearnset(pid, moveId, gen)) {
       return true;
     }
@@ -242,30 +260,37 @@ function learns(pid: PokemonId, moveId: MoveId, gen: string) {
 
 function getCoverage(pid: PokemonId, gen: string) {
   let learnset = getLearnset(pid, gen);
-  let coverage = { physical: [], special: [] };
+  let coverage: {
+    Physical: {
+      [key: string]: {
+        ePower: number;
+        id: MoveId;
+        type: string;
+        stab: boolean;
+      };
+    };
+    Special: {
+      [key: string]: {
+        ePower: number;
+        id: MoveId;
+        type: string;
+        stab: boolean;
+      };
+    };
+  } = { Physical: {}, Special: {} };
   for (let moveId of learnset) {
-    let cat = getCategory(moveId);
+    let category = getCategory(moveId);
     let type = getType(moveId);
     type = type.charAt(0).toUpperCase() + type.slice(1);
-    if (cat != "status") {
-      let ePower = MoveService.getEffectivePower(moveId);
-      let existing = null;
-      for (let i in coverage[cat]) {
-        if (coverage[cat][i].type == type) {
-          existing = i;
-        }
-      }
-      if (existing == null) {
-        coverage[cat].push({
+    if (category != "Status") {
+      let ePower = getEffectivePower(moveId);
+      if (
+        !(type in coverage[category]) ||
+        coverage[category][type].ePower < ePower
+      ) {
+        coverage[category][type] = {
           id: moveId,
-          ePower: MoveService.getEffectivePower(moveId),
-          type: type,
-          stab: getTypes(pid).includes(type),
-        });
-      } else if (coverage[cat][existing].ePower < ePower) {
-        coverage[cat][existing] = {
-          id: moveId,
-          ePower: MoveService.getEffectivePower(moveId),
+          ePower: getEffectivePower(moveId),
           type: type,
           stab: getTypes(pid).includes(type),
         };

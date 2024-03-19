@@ -1,7 +1,7 @@
 import { BaseStat } from "./pokedex";
 import { BaseTypes, Status } from "./typechart";
 
-export type MoveId = keyof typeof Movedex;
+export type MoveId = keyof typeof Movedex & string;
 
 export type Movedex = {
   [key: string]: {

@@ -28,3 +28,7 @@ function genCheck(move: { [key: string]: any }, gen: string): boolean {
   }
   return false;
 }
+
+export function hasLearnset(pokemonId: PokemonId) {
+  return pokemonId in Learnsets && "learnset" in Learnsets[pokemonId];
+}

@@ -1,4 +1,4 @@
-export type PokemonId = keyof typeof Pokedex;
+export type PokemonId = keyof typeof Pokedex & string;
 
 export type BaseStat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
 
