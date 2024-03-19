@@ -1,3 +1,5 @@
+import { TypeId } from "./typechart";
+
 export type PokemonId = keyof typeof Pokedex & string;
 
 export type BaseStat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
@@ -52,7 +54,7 @@ export type PokemonData = {
   requiredMove?: string;
   tags?: string[];
   tier?: string;
-  types: string[];
+  types: TypeId[];
   weightkg: number;
   eggGroups: string[];
 };

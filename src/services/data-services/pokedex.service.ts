@@ -169,7 +169,7 @@ function getBaseForm(pid: PokemonId) {
   return toKey(Pokedex[pid]?.baseSpecies);
 }
 
-function getTypes(pid: PokemonId) {
+export function getTypes(pid: PokemonId) {
   return Pokedex[pid]["types"];
 }
 

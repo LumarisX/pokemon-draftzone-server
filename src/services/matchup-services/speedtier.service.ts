@@ -250,5 +250,3 @@ function getModifiers(
   }
   return modifiers;
 }
-
-module.exports = { speedTierChart, getSpeedTiers };

@@ -1,4 +1,4 @@
-export type TypeId = keyof typeof Typechart;
+export type TypeId = keyof typeof Typechart & string;
 
 export type BaseTypes =
   | "bug"
