@@ -31,7 +31,8 @@ const teamSchema = new mongoose.Schema(
       type: String,
     },
     stats: {
-      type: [statsSchema],
+      type: Map,
+      of: statsSchema,
     },
     score: {
       type: Number,
