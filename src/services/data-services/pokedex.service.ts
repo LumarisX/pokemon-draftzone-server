@@ -17,7 +17,7 @@ export function getName(pid: PokemonId) {
   return Pokedex[pid]["name"];
 }
 
-function getBase(pid: PokemonId) {
+export function getBaseStats(pid: PokemonId) {
   return Pokedex[pid]["baseStats"];
 }
 
