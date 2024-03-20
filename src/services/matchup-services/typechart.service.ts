@@ -1,4 +1,4 @@
-import { PokemonId } from "../../public/data/pokedex";
+import { PokemonId } from "../../data/pokedex";
 import { getWeak } from "../data-services/pokedex.service";
 import { defensive } from "../data-services/type.service";
 

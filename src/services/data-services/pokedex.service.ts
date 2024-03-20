@@ -1,5 +1,5 @@
-import { MoveId } from "../../public/data/moves";
-import { Pokedex, PokemonId, BaseStat } from "../../public/data/pokedex";
+import { MoveId } from "../../data/moves";
+import { PokemonId, Pokedex, BaseStat } from "../../data/pokedex";
 import { compareString } from "../filter.service";
 import {
   hasLearnset,

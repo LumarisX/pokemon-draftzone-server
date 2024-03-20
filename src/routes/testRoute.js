@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const Pokedex = require("../public/data/pokedex")["BattlePokedex"];
 const PokedexService = require("../services/pokedex-service");
 const DraftService = require("../services/draft-service.js");
 const LearnsetService = require("../services/learnset-service");
@@ -14,13 +13,13 @@ const { ObjectId } = require("mongodb");
 const CoverageService = require("../services/matchup-services/coverage-service");
 
 router.route("/stats").get(async (req, res) => {
-  res.json(await DraftService.getStats('65cbb6ea62c19728d4000000'));
+  res.json(await DraftService.getStats("65cbb6ea62c19728d4000000"));
 });
 
 router.route("/archive").get(async (req, res) => {
-  team_id = '65cbb6ea62c19728d4000000'
+  team_id = "65cbb6ea62c19728d4000000";
   let draft = await Draft.findById(team_id).lean();
-  draft.matches = DraftService.archive(team_id)
+  draft.matches = DraftService.archive(team_id);
   res.json(draft);
 });
 

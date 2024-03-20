@@ -1,5 +1,5 @@
-import { PokemonId } from "../../public/data/pokedex";
-import { Learnsets } from "../../public/data/learnsets";
+import { Learnsets } from "../../data/learnsets";
+import { PokemonId } from "../../data/pokedex";
 
 export function getLearnset(pid: PokemonId, gen: string): string[] {
   let learnset = Learnsets[pid].learnset ?? {};

@@ -1,5 +1,5 @@
-import { FormatId } from "../public/data/formats";
-import { RulesetId } from "../public/data/rulesets";
+import { FormatId } from "../data/formats";
+import { RulesetId } from "../data/rulesets";
 import { getMatchups } from "../services/database-services/draft.services";
 
 interface ArchiveModel {

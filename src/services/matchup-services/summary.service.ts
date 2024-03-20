@@ -1,12 +1,11 @@
-import { Stats } from "fs";
-import { BaseStat, PokemonId } from "../../public/data/pokedex";
+import { PokemonId, BaseStat } from "../../data/pokedex";
+import { TypeId } from "../../data/typechart";
 import {
   getName,
   getAbilities,
   getBaseStats,
   getTypes,
 } from "../data-services/pokedex.service";
-import { TypeId } from "../../public/data/typechart";
 
 function summary(
   team: {

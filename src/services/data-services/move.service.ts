@@ -1,4 +1,4 @@
-import { MoveId, Movedex } from "../../public/data/moves";
+import { MoveId, Movedex } from "../../data/moves";
 
 export function getType(moveId: MoveId) {
   return Movedex[moveId].type;

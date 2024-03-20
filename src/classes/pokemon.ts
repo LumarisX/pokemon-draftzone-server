@@ -1,4 +1,4 @@
-import { PokemonId } from "../public/data/pokedex";
+import { PokemonId } from "../data/pokedex";
 import { getName, inDex } from "../services/data-services/pokedex.service";
 
 export type Pokemon = {

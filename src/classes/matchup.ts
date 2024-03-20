@@ -1,7 +1,7 @@
 import mongoose, { ObjectId } from "mongoose";
-import { PokemonId } from "../public/data/pokedex";
 import { Pokemon, PokemonBuilder } from "./pokemon";
 import { MatchupModel } from "../models/matchup.model";
+import { PokemonId } from "../data/pokedex";
 
 interface MatchupDoc {
   aTeam: Side;

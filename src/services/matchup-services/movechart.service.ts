@@ -1,4 +1,4 @@
-import { PokemonId } from "../../public/data/pokedex";
+import { PokemonId } from "../../data/pokedex";
 import { getName, learns } from "../data-services/pokedex.service";
 
 const chartMoves: {

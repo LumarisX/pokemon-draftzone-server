@@ -1,4 +1,4 @@
-import { DamageTypes, TypeId, Typechart } from "../../public/data/typechart";
+import { DamageTypes, TypeId, Typechart } from "../../data/typechart";
 
 const base: DamageTypes = {
   bug: 1,

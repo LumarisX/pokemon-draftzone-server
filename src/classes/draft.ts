@@ -1,9 +1,9 @@
 import { ObjectId } from "mongoose";
-import { FormatId } from "../public/data/formats";
-import { RulesetId } from "../public/data/rulesets";
 import { Pokemon, PokemonBuilder } from "./pokemon";
 import { Document } from "mongoose";
 import { DraftModel } from "../models/draft.model";
+import { FormatId } from "../data/formats";
+import { RulesetId } from "../data/rulesets";
 
 interface DraftDoc {
   leagueName: string;

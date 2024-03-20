@@ -1,8 +1,6 @@
 var express = require("express");
 var router = express.Router();
 const PokedexService = require("../services/pokedex-service");
-const pokedex = require("../public/data/pokedex.js")["BattlePokedex"];
-const typechart = require("../public/data/typechart.js")["BattleTypeChart"];
 const rulesetService = require("../services/ruleset-service");
 
 router.get("/formats/", (req, res) => {

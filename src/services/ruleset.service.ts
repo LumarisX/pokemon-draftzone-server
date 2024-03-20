@@ -1,5 +1,5 @@
-import { FormatId, Formats } from "../public/data/formats";
-import { RulesetId, Rulesets } from "../public/data/rulesets";
+import { FormatId, Formats } from "../data/formats";
+import { RulesetId, Rulesets } from "../data/rulesets";
 
 function getRuleset(rulesetId: RulesetId) {
   return Rulesets[rulesetId];
