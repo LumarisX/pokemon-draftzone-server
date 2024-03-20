@@ -1,4 +1,4 @@
-import { getName } from "./data-services/pokedex.service";
+import { getName } from "../data-services/pokedex.service";
 
 async function getScore(teamId: string) {
   let matchups = await getMatchups(teamId);
