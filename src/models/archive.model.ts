@@ -93,4 +93,4 @@ const archiveSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const ArchiveSchema = mongoose.model("archives", archiveSchema);
+export const ArchiveModel = mongoose.model("archives", archiveSchema);

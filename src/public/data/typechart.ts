@@ -1,5 +1,13 @@
 export type TypeId = keyof typeof Typechart & string;
 
+export type DamageTypes = {
+  [key in BaseTypes]: number;
+} & {
+  [key in Status]?: number;
+} & {
+  [key in Immunities]?: number;
+};
+
 export type BaseTypes =
   | "bug"
   | "dark"
@@ -19,49 +27,13 @@ export type BaseTypes =
   | "rock"
   | "steel"
   | "water";
-export type Status = "brn" | "frz" | "par" | "slp" | "psn" | "tox" | "hail";
+type Status = "brn" | "frz" | "par" | "slp" | "psn" | "tox";
 
-export type ExtendedTypes =
-  | BaseTypes
-  | Status
-  | "prankster"
-  | "sandstorm"
-  | "powder"
-  | "trapped";
+type Immunities = "prankster" | "sandstorm" | "powder" | "trapped" | "hail";
 
 type Typechart = {
   [key: string]: {
-    damageTaken: {
-      bug: number;
-      dark: number;
-      dragon: number;
-      electric: number;
-      fairy: number;
-      fighting: number;
-      fire: number;
-      flying: number;
-      ghost: number;
-      grass: number;
-      ground: number;
-      ice: number;
-      normal: number;
-      poison: number;
-      psychic: number;
-      rock: number;
-      steel: number;
-      water: number;
-      prankster?: number;
-      brn?: number;
-      par?: number;
-      slp?: number;
-      frz?: number;
-      psn?: number;
-      tox?: number;
-      trapped?: number;
-      powder?: number;
-      hail?: number;
-      sandstorm?: number;
-    };
+    damageTaken: DamageTypes;
     HPivs?: {
       hp?: number;
       atk?: number;

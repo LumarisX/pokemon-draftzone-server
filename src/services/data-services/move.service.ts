@@ -13,32 +13,23 @@ export function getCategory(moveId: MoveId) {
 }
 
 export function getEffectivePower(moveId: MoveId) {
-  let move = Movedex[moveId];
-  let value;
-  if (move["accuracy"] === true) {
-    value = move["basePower"];
-  } else {
-    value = (move["basePower"] * move["accuracy"]) / 100;
-  }
-  let flags = move["flags"];
+  const move = Movedex[moveId];
+  let value =
+    move.accuracy === true
+      ? move.basePower
+      : (move.basePower * move.accuracy) / 100;
+  const flags = move.flags;
   if ("charge" in flags || "recharge" in flags) {
-    value = value / 2;
+    value /= 2;
   }
-  if (move["condition"] && "duration" in move["condition"]) {
-    let duration = move["condition"]["duration"];
-    if (duration == 1) {
-      value = value / 4;
-    }
-    if (duration == 2) {
-      value = value / 2;
-    }
+  const condition = move.condition;
+  if (condition?.duration) {
+    const duration = condition.duration;
+    value /= duration === 1 ? 4 : 2;
   }
-  if (
-    move["self"] &&
-    move["self"]["volatileStatus"] &&
-    move["self"]["volatileStatus"] === "lockedmove"
-  ) {
-    value = value / 2;
+  if (move.self?.volatileStatus === "lockedmove") {
+    value /= 2;
   }
+
   return value;
 }

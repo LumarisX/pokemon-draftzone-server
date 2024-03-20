@@ -1,8 +1,6 @@
-import { ExtendedTypes, TypeId, Typechart } from "../../public/data/typechart";
+import { DamageTypes, TypeId, Typechart } from "../../public/data/typechart";
 
-const base: {
-  [key in ExtendedTypes]: number;
-} = {
+const base: DamageTypes = {
   bug: 1,
   dark: 1,
   dragon: 1,
@@ -34,11 +32,12 @@ const base: {
 };
 
 export function defensive(types: TypeId[]) {
-  let out = structuredClone(base);
-  for (let t of types) {
-    for (let type in Typechart[t].damageTaken) {
-      out[type] = out[type] * def[type];
+  const out: DamageTypes = { ...base };
+  types.forEach((typeId) => {
+    for (const type in Typechart[typeId].damageTaken) {
+      const damageType = type as keyof DamageTypes;
+      out[damageType] *= Typechart[typeId].damageTaken[damageType]!;
     }
-  }
+  });
   return out;
 }

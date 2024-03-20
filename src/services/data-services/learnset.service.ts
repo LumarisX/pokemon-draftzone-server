@@ -2,13 +2,11 @@ import { PokemonId } from "../../public/data/pokedex";
 import { Learnsets } from "../../public/data/learnsets";
 
 export function getLearnset(pid: PokemonId, gen: string): string[] {
-  let ls = Learnsets[pid].learnset ?? {};
-  for (let m in ls) {
-    if (!genCheck(ls[m], gen)) {
-      delete ls[m];
-    }
-  }
-  return Object.keys(ls);
+  let learnset = Learnsets[pid].learnset ?? {};
+  const filteredLearnset = Object.keys(learnset).filter((moveId) =>
+    genCheck(learnset[moveId], gen)
+  );
+  return filteredLearnset;
 }
 
 export function inLearnset(
@@ -20,13 +18,10 @@ export function inLearnset(
 }
 
 function genCheck(move: { [key: string]: any }, gen: string): boolean {
-  for (let lk in move) {
-    let genReg = new RegExp("^[" + gen + "]\\D");
-    if (genReg.test(move[lk])) {
-      return true;
-    }
-  }
-  return false;
+  return Object.values(move).some((value) => {
+    const genReg = new RegExp("^[" + gen + "]\\D");
+    return genReg.test(value);
+  });
 }
 
 export function hasLearnset(pokemonId: PokemonId) {

@@ -1,4 +1,5 @@
-import { Pokedex, PokemonId } from "../public/data/pokedex";
+import { PokemonId } from "../public/data/pokedex";
+import { getName, inDex } from "../services/data-services/pokedex.service";
 
 export type Pokemon = {
   pid: PokemonId;
@@ -11,40 +12,37 @@ export type Pokemon = {
 };
 
 export class PokemonBuilder {
-  data: Pokemon = {
-    pid: "",
-    name: "",
-  };
-  error;
+  data: Pokemon;
+  error: string | undefined;
+
   constructor(pokemonData: {
-    pid: any;
-    shiny: any;
-    name: any;
-    capt: any;
-    captCheck?: any;
+    pid: PokemonId;
+    shiny?: boolean;
+    name?: string;
+    capt?: {
+      tera?: string[];
+      z?: boolean;
+    };
+    captCheck?: { z: boolean; teraCheck?: { [key: string]: boolean } };
   }) {
+    this.data = {
+      pid: pokemonData.pid,
+      name: pokemonData.name ?? getName(pokemonData.pid),
+    };
+
     if (!inDex(pokemonData.pid)) {
-      this.error = `${pokemonData.name} not found in the pokedex`;
-    } else {
-      this.data.pid = pokemonData.pid;
-      this.data.name = Pokedex.getName(pokemonData.pid);
-      if (pokemonData.shiny) {
-        this.data.shiny = true;
-      }
-      if (pokemonData.captCheck) {
-        this.data.capt = {};
-        if (pokemonData.capt.z) {
-          this.data.capt.z = pokemonData.capt.z;
-        }
-        if (pokemonData.capt.teraCheck) {
-          this.data.capt.tera = [];
-          for (let type in pokemonData.capt.tera) {
-            if (pokemonData.capt.tera[type]) {
-              this.data.capt.tera.push(type);
-            }
-          }
-        }
-      }
+      this.error = `${this.data.name} not found in the pokedex`;
+      return;
+    }
+
+    const { captCheck } = pokemonData;
+    if (captCheck?.z) {
+      this.data.capt = {
+        z: true,
+        tera: Object.keys(captCheck.teraCheck || {}).filter(
+          (type) => captCheck.teraCheck![type]
+        ),
+      };
     }
   }
 }

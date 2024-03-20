@@ -191,44 +191,25 @@ function toKey(pid: string | undefined): string {
 
 function getLearnset(pid: PokemonId, gen: string) {
   let learnset = LearnsetgetLearnset(pid, gen);
-  if (learnset == null) {
+  if (!learnset) {
     return getLearnset(toKey(Pokedex[pid]?.baseSpecies), gen);
   }
-  if ("prevo" in Pokedex[pid]) {
-    let subLearnset = getLearnset(toKey(Pokedex[pid].prevo), gen);
-    for (let move of subLearnset) {
-      if (!(move in learnset)) {
-        learnset.push(move);
-      }
+
+  function addMovesFromSubLearnset(subLearnset: string[] | undefined) {
+    if (subLearnset) {
+      learnset = [...new Set(learnset.concat(subLearnset))];
     }
   }
-  if ("changesFrom" in Pokedex[pid]) {
-    let subLearnset = getLearnset(toKey(Pokedex[pid].changesFrom), gen);
-    for (let move of subLearnset) {
-      if (!(move in learnset)) {
-        learnset.push(move);
-      }
-    }
-  }
+  addMovesFromSubLearnset(getLearnset(toKey(Pokedex[pid]?.prevo), gen));
+  addMovesFromSubLearnset(getLearnset(toKey(Pokedex[pid]?.changesFrom), gen));
 
-  if ("battleOnly" in Pokedex[pid]) {
-    let battleOnly = Pokedex[pid].battleOnly || "";
-
+  const battleOnly = Pokedex[pid]?.battleOnly;
+  if (battleOnly) {
     if (typeof battleOnly === "string") {
-      let subLearnset = getLearnset(toKey(battleOnly), gen);
-      for (let move of subLearnset) {
-        if (!(move in learnset)) {
-          learnset.push(move);
-        }
-      }
-    } else if (Array.isArray(Pokedex[pid])) {
-      for (let item of battleOnly) {
-        let subLearnset = getLearnset(toKey(item), gen);
-        for (let move of subLearnset) {
-          if (!(move in learnset)) {
-            learnset.push(move);
-          }
-        }
+      addMovesFromSubLearnset(getLearnset(toKey(battleOnly), gen));
+    } else if (Array.isArray(battleOnly)) {
+      for (const item of battleOnly) {
+        addMovesFromSubLearnset(getLearnset(toKey(item), gen));
       }
     }
   }
@@ -278,19 +259,19 @@ export function getCoverage(pid: PokemonId, gen: string) {
       };
     };
   } = { Physical: {}, Special: {} };
-  for (let moveId of learnset) {
-    let category = getCategory(moveId);
+  for (const moveId of learnset) {
+    const category = getCategory(moveId);
     let type = getType(moveId);
     type = type.charAt(0).toUpperCase() + type.slice(1);
-    if (category != "Status") {
-      let ePower = getEffectivePower(moveId);
+    if (category !== "Status") {
+      const ePower = getEffectivePower(moveId);
       if (
         !(type in coverage[category]) ||
         coverage[category][type].ePower < ePower
       ) {
         coverage[category][type] = {
           id: moveId,
-          ePower: getEffectivePower(moveId),
+          ePower: ePower,
           type: type,
           stab: getTypes(pid).includes(type),
         };
