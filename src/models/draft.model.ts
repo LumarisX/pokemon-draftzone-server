@@ -39,6 +39,11 @@ export interface DraftData {
   leagueName: string;
   leagueId: string;
   teamName: string;
+  score?: {
+    wins: number;
+    loses: number;
+    diff: string;
+  };
   owner: string;
   format: string;
   ruleset: string;

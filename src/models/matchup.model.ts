@@ -83,7 +83,7 @@ export interface MatchupData {
         brought?: number;
       };
     };
-    score?: number;
+    score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };
@@ -99,7 +99,7 @@ export interface MatchupData {
         brought?: number;
       };
     };
-    score?: number;
+    score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };

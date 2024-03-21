@@ -1,7 +1,7 @@
 import { MatchupModel } from "../../models/matchup.model";
 import { getName } from "../data-services/pokedex.service";
 
-async function getScore(teamId: string) {
+export async function getScore(teamId: string) {
   let matchups = await getMatchups(teamId);
   let score = { wins: 0, loses: 0, diff: "+0" };
   let numDiff = 0;
@@ -17,7 +17,7 @@ async function getScore(teamId: string) {
   return score;
 }
 
-async function getStats(draftId: string) {
+export async function getStats(draftId: string) {
   let matchups = await getMatchups(draftId);
   let stats: {
     [key: string]: {

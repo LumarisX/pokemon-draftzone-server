@@ -1,8 +1,10 @@
 import { FormatId } from "../data/formats";
 import { RulesetId } from "../data/rulesets";
+import { ArchiveDocument, ArchiveModel } from "../models/archive.model";
+import { DraftData, DraftDocument } from "../models/draft.model";
 import { getMatchups } from "../services/database-services/draft.services";
 
-interface ArchiveModel {
+interface ArchiveDoc {
   leagueName: string;
   format: FormatId;
   teamName: string;
@@ -49,36 +51,25 @@ interface ArchiveModel {
 }
 
 class Archive {
-  constructor(
-    private draft: {
-      leagueName: string;
-      format: FormatId;
-      teamName: string;
-      ruleset: RulesetId;
-      owner: string;
-      team: { pid: string }[];
-      _id: any;
-    }
-  ) {}
+  constructor(private draft: DraftDocument) {}
 
-  async createArchive(): Promise<ArchiveModel> {
+  async createArchive(): Promise<ArchiveDocument> {
     const data = await this.prepareData();
-    return data;
+    const model = new ArchiveModel(data);
+    return model;
   }
 
-  private async prepareData(): Promise<ArchiveModel> {
-    const { leagueName, format, teamName, ruleset, owner, team, _id } =
-      this.draft;
-    const data: ArchiveModel = {
-      leagueName,
-      format,
-      teamName,
-      ruleset,
-      owner,
-      team: team.map((pokemon) => pokemon.pid),
+  private async prepareData(): Promise<ArchiveDoc> {
+    const data: ArchiveDoc = {
+      leagueName: this.draft.leagueName,
+      format: this.draft.format as FormatId,
+      teamName: this.draft.teamName,
+      ruleset: this.draft.ruleset as RulesetId,
+      owner: this.draft.owner,
+      team: this.draft.team.map((pokemon) => pokemon.pid),
       matches: [],
     };
-    const matchups = await getMatchups(_id);
+    const matchups = await getMatchups(this.draft._id);
     data.matches = matchups.map((matchup) => this.prepareMatch(matchup));
     return data;
   }

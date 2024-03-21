@@ -4,13 +4,11 @@ import express, { NextFunction, Request, Response } from "express";
 import mongoSanitize from "express-mongo-sanitize";
 import { auth } from "express-oauth2-jwt-bearer";
 import createError from "http-errors";
-import mongoose from "mongoose";
-import logger from "morgan";
+import mongoose, { ObjectId } from "mongoose";
 import path from "path";
-// import dataRouter from "./routes/dataRoute";
-// import draftRouter from "./routes/draftRoute";
-// import matchupRouter from "./routes/matchupRoute";
-// import plannerRouter from "./routes/plannerRoute";
+import logger from "morgan";
+import { draftRouter } from "./routes/draft.route";
+import { matchupRouter } from "./routes/matchup.route";
 
 const options = {
   dbName: "draftzone",
@@ -48,12 +46,10 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.json());
-
 app.use(cors());
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("Express - TypeScript Server 1");
-});
+app.use("/draft", logger("common"), draftRouter);
+app.use("/matchup", logger("common"), matchupRouter);
 
 // app.use("/data", dataRouter);
 // app.use("/matchup", logger("common"), matchupRouter);
@@ -71,17 +67,21 @@ app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   res.render("error");
 });
 
-// function getSub(req: Request, res: Response, next: NextFunction) {
-//   try {
-//     if (req.headers && req.headers.authorization) {
-//       let jwt = req.headers.authorization.split(" ")[1];
-//       req.sub = JSON.parse(atob(jwt.split(".")[1])).sub;
-//     }
-//     next();
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// }
+export type SubRequest = Request & {
+  sub?: ObjectId;
+};
+
+function getSub(req: SubRequest, res: Response, next: NextFunction) {
+  try {
+    if (req.headers && req.headers.authorization) {
+      let jwt = req.headers.authorization.split(" ")[1];
+      req.sub = JSON.parse(atob(jwt.split(".")[1])).sub;
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ message: (error as Error).message });
+  }
+}
 
 export = app;
 

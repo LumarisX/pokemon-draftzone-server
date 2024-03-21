@@ -27,7 +27,7 @@ import {
   typechart,
 } from "../services/matchup-services/typechart.service";
 
-const router = express.Router();
+export const matchupRouter = express.Router();
 
 interface MatchupResponse extends Response {
   rawMatchup?: MatchupDocument | null;
@@ -38,7 +38,7 @@ interface MatchupResponse extends Response {
   };
 }
 
-router
+matchupRouter
   .route("/:matchup_id")
   .get(async (req: Request, res: MatchupResponse) => {
     if (!res.matchup) {
@@ -110,7 +110,7 @@ router
     }
   });
 
-router.get(
+matchupRouter.get(
   "/:matchup_id/summary",
   async (req: Request, res: MatchupResponse) => {
     if (!res.matchup || !res.rawMatchup) {
@@ -132,7 +132,7 @@ router.get(
   }
 );
 
-router.get(
+matchupRouter.get(
   "/:matchup_id/typechart",
   async (req: Request, res: MatchupResponse) => {
     if (!res.matchup || !res.rawMatchup) {
@@ -149,7 +149,7 @@ router.get(
   }
 );
 
-router.get(
+matchupRouter.get(
   "/:matchup_id/speedchart",
   async (req: Request, res: MatchupResponse) => {
     if (!res.matchup) {
@@ -166,7 +166,7 @@ router.get(
   }
 );
 
-router.get(
+matchupRouter.get(
   "/:matchup_id/coveragechart",
   async (req: Request, res: MatchupResponse) => {
     if (!res.matchup) {
@@ -184,7 +184,7 @@ router.get(
   }
 );
 
-router.get(
+matchupRouter.get(
   "/:matchup_id/movechart",
   async (req: Request, res: MatchupResponse) => {
     if (!res.matchup) {
@@ -202,7 +202,7 @@ router.get(
   }
 );
 
-router.param(
+matchupRouter.param(
   "matchup_id",
   async (req: Request, res: MatchupResponse, next, matchup_id) => {
     try {
@@ -246,5 +246,3 @@ router.param(
     next();
   }
 );
-
-module.exports = router;

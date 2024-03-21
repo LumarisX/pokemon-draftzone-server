@@ -1,9 +1,8 @@
 import { ObjectId } from "mongoose";
-import { Pokemon, PokemonBuilder } from "./pokemon";
-import { Document } from "mongoose";
-import { DraftModel } from "../models/draft.model";
 import { FormatId } from "../data/formats";
 import { RulesetId } from "../data/rulesets";
+import { DraftDocument, DraftModel } from "../models/draft.model";
+import { Pokemon, PokemonBuilder } from "./pokemon";
 
 interface DraftDoc {
   leagueName: string;
@@ -32,7 +31,7 @@ export class Draft {
     private user_id: ObjectId
   ) {}
 
-  async createDraft(): Promise<Document> {
+  async createDraft(): Promise<DraftDocument> {
     const data = await this.prepareData();
     const draftModel = new DraftModel(data);
     return draftModel;

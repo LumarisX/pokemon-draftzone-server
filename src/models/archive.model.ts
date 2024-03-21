@@ -1,4 +1,6 @@
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
+import { PokemonData } from "./pokemon.schema";
+import { PokemonId } from "../data/pokedex";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -93,4 +95,24 @@ const archiveSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const ArchiveModel = mongoose.model("archives", archiveSchema);
+export interface ArchiveData {
+  leagueName: string;
+  leagueId: string;
+  teamName: string;
+  score?: {
+    wins: number;
+    loses: number;
+    diff: string;
+  };
+  owner: string;
+  format: string;
+  ruleset: string;
+  team: PokemonId[];
+}
+
+export interface ArchiveDocument extends ArchiveData, Document<any, any> {}
+
+export const ArchiveModel = mongoose.model<ArchiveDocument>(
+  "archives",
+  archiveSchema
+);

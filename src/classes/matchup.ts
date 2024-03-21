@@ -1,6 +1,6 @@
 import mongoose, { ObjectId } from "mongoose";
 import { Pokemon, PokemonBuilder } from "./pokemon";
-import { MatchupModel } from "../models/matchup.model";
+import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { PokemonId } from "../data/pokedex";
 
 interface MatchupDoc {
@@ -33,7 +33,7 @@ export class Matchup {
     private aTeamId: string
   ) {}
 
-  async createMatchup(): Promise<mongoose.Document> {
+  async createMatchup(): Promise<MatchupDocument> {
     const data = await this.prepareData();
     const model = new MatchupModel(data);
     return model;
@@ -89,9 +89,8 @@ export class Score {
 
   private async prepareData(): Promise<any> {
     const data: any = {};
-    data.aTeam = { stats: {} };
-    data.bTeam = { stats: {} };
-
+    data.aTeam = { stats: {}, paste: "", score: 0 };
+    data.bTeam = { stats: {}, paste: "", score: 0 };
     const pastePattern = /^(https:\/\/)?pokepast\.es\/[a-zA-Z0-9]{16}$/;
     if (
       this.scoreData.aTeam.paste != null &&
