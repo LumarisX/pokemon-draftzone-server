@@ -27,7 +27,7 @@ export type BaseTypes =
   | "rock"
   | "steel"
   | "water";
-type Status = "brn" | "frz" | "par" | "slp" | "psn" | "tox";
+export type Status = "brn" | "frz" | "par" | "slp" | "psn" | "tox";
 
 type Immunities = "prankster" | "sandstorm" | "powder" | "trapped" | "hail";
 

@@ -23,7 +23,7 @@ const db = mongoose.connection;
 db.on("error", (error) => console.error(error));
 db.once("open", () => console.log("Connected to Database"));
 
-const app = express();
+export const app = express();
 
 // const jwtCheck = auth({
 //   audience: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/api/v2/",
@@ -82,8 +82,6 @@ function getSub(req: SubRequest, res: Response, next: NextFunction) {
     res.status(500).json({ message: (error as Error).message });
   }
 }
-
-export = app;
 
 // import express, { Express, Request, Response } from "express";
 // import dotenv from "dotenv";
