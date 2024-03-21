@@ -1,4 +1,5 @@
 import { PokemonId } from "../../data/pokedex";
+import { PokemonData } from "../../models/pokemon.schema";
 import {
   getAbilities,
   getBaseStats,
@@ -6,11 +7,7 @@ import {
   needsItem,
 } from "../data-services/pokedex.service";
 
-type Team = {
-  pid: PokemonId;
-}[];
-
-export function speedchart(teams: Team[], level: number) {
+export function speedchart(teams: PokemonData[][], level: number) {
   let tiers: {
     pokemon: {
       pid: PokemonId;
@@ -42,11 +39,7 @@ export function speedchart(teams: Team[], level: number) {
   return { modifiers: modifiers, tiers: tiers, level: level };
 }
 
-function getSpeedTiers(
-  pokemon: { pid: PokemonId },
-  level: number,
-  teamIndex: string
-) {
+function getSpeedTiers(pokemon: PokemonData, level: number, teamIndex: string) {
   let speedAbilities: {
     name: string;
     multi: number;

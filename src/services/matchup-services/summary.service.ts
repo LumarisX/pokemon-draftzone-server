@@ -1,17 +1,14 @@
-import { PokemonId, BaseStat } from "../../data/pokedex";
+import { BaseStat, PokemonId } from "../../data/pokedex";
 import { TypeId } from "../../data/typechart";
+import { PokemonData } from "../../models/pokemon.schema";
 import {
-  getName,
   getAbilities,
   getBaseStats,
+  getName,
   getTypes,
 } from "../data-services/pokedex.service";
 
-export function summary(
-  team: {
-    pid: PokemonId;
-  }[]
-) {
+export function summary(team: PokemonData[]) {
   for (let pokemon of team) {
     summaryData(pokemon);
   }

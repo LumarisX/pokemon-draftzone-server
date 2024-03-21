@@ -4,7 +4,7 @@ export type PokemonId = keyof typeof Pokedex & string;
 
 export type BaseStat = "hp" | "atk" | "def" | "spa" | "spd" | "spe";
 
-export type PokemonData = {
+export type Pokemon = {
   abilities: {
     [key in PokemonId]: string;
   };
@@ -60,7 +60,7 @@ export type PokemonData = {
 };
 
 type Pokedex = {
-  [key: string]: PokemonData;
+  [key: string]: Pokemon;
 };
 
 export const Pokedex: Pokedex = {

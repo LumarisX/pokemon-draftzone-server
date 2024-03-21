@@ -1,4 +1,5 @@
 import { PokemonId } from "../../data/pokedex";
+import { PokemonData } from "../../models/pokemon.schema";
 import {
   getBaseStats,
   getCoverage,
@@ -21,12 +22,7 @@ export function coveragechart(
     pid: PokemonId;
     name: string;
   }[],
-  oppteam: {
-    pid: string;
-    name: string;
-    weak?: {};
-    capt?: { tera?: string[] };
-  }[],
+  oppteam: PokemonData[],
   gen: string
 ) {
   for (let pokemon of team) {

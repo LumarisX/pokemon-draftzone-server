@@ -1,15 +1,9 @@
-import { PokemonId } from "../../data/pokedex";
+import { DamageTypes } from "../../data/typechart";
+import { PokemonData } from "../../models/pokemon.schema";
 import { getWeak } from "../data-services/pokedex.service";
 import { defensive } from "../data-services/type.service";
 
-export function typechart(
-  team: {
-    pid: PokemonId;
-    name: string;
-    weak?: {};
-    capt?: { tera?: string[] };
-  }[]
-) {
+export function typechart(team: PokemonData[]) {
   let teraTypes: { [key: string]: {} } = {};
   for (let pokemon of team) {
     pokemon.weak = getWeak(pokemon.pid);

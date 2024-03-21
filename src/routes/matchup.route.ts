@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import mongoose, { Document } from "mongoose";
+import mongoose from "mongoose";
 import { FormatId, Formats } from "../data/formats";
 import { RulesetId, Rulesets } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
@@ -42,28 +42,28 @@ router
         stage: res.matchup.stage,
         leagueName: res.matchup.leagueName,
         summary: [],
+        speedchart: speedchart(
+          [res.matchup.aTeam.team, res.matchup.bTeam.team],
+          level
+        ),
+        coveragechart: [
+          coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
+          coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen),
+        ],
+        typechart: [
+          typechart(res.matchup.aTeam.team),
+          typechart(res.matchup.bTeam.team),
+        ],
+        movechart: [
+          movechart(res.matchup.aTeam.team, gen),
+          movechart(res.matchup.bTeam.team, gen),
+        ],
       };
       let aTeamsummary = summary(res.matchup.aTeam.team);
       let bTeamsummary = summary(res.matchup.bTeam.team);
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       data.summary = [aTeamsummary, bTeamsummary];
-      data.typechart = [
-        typechart(res.matchup.aTeam.team),
-        typechart(res.matchup.bTeam.team),
-      ];
-      data.speedchart = speedchart(
-        [res.matchup.aTeam.team, level, res.matchup.bTeam.team],
-        level
-      );
-      data.coveragechart = [
-        coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
-        coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen),
-      ];
-      data.movechart = [
-        movechart(res.matchup.aTeam.team, gen),
-        movechart(res.matchup.bTeam.team, gen),
-      ];
       res.json(data);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -84,6 +84,9 @@ router
 router.get(
   "/:matchup_id/summary",
   async (req: Request, res: MatchupResponse) => {
+    if (!res.matchup || !res.rawMatchup) {
+      return;
+    }
     try {
       let aTeamsummary = summary(res.matchup.aTeam.team);
       let bTeamsummary = summary(res.matchup.bTeam.team);
@@ -99,6 +102,9 @@ router.get(
 router.get(
   "/:matchup_id/typechart",
   async (req: Request, res: MatchupResponse) => {
+    if (!res.matchup || !res.rawMatchup) {
+      return;
+    }
     try {
       res.json([
         typechart(res.matchup.aTeam.team),
@@ -119,10 +125,7 @@ router.get(
     try {
       let level = Formats[res.matchup.format].level;
       res.json(
-        speedchart(
-          [res.matchup.aTeam.team, level, res.matchup.bTeam.team],
-          level
-        )
+        speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
       );
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });

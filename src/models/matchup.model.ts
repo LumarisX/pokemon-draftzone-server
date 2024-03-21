@@ -72,22 +72,7 @@ const matchupSchema = new mongoose.Schema(
 
 export interface MatchupData {
   aTeam: {
-    team: {
-      team: PokemonData[];
-      name?: string;
-      teamName?: string;
-      stats: {
-        [key in PokemonId]: {
-          indirect?: number;
-          kills?: number;
-          deaths?: number;
-          brought?: number;
-        };
-      };
-      score?: number;
-      paste?: string;
-      _id?: mongoose.Schema.Types.ObjectId;
-    };
+    team: PokemonData[];
     name?: string;
     teamName?: string;
     stats: {
@@ -103,34 +88,17 @@ export interface MatchupData {
     _id?: mongoose.Schema.Types.ObjectId;
   };
   bTeam: {
-    team: {
-      team: PokemonData[];
-      name?: string;
-      teamName?: string;
-      stats: Map<
-        string,
-        {
-          indirect?: number;
-          kills?: number;
-          deaths?: number;
-          brought?: number;
-        }
-      >;
-      score?: number;
-      paste?: string;
-      _id?: mongoose.Schema.Types.ObjectId;
-    };
+    team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: Map<
-      string,
-      {
+    stats: {
+      [key in PokemonId]: {
         indirect?: number;
         kills?: number;
         deaths?: number;
         brought?: number;
-      }
-    >;
+      };
+    };
     score?: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
