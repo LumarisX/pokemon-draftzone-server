@@ -216,7 +216,7 @@ const chartMoves: {
   ],
 };
 
-function chart(
+export function movechart(
   team: {
     coverage?: {
       [key: string]: {

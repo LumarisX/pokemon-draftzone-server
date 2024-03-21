@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
-import { pokemonSchema } from "./pokemon.schema";
+import mongoose, { Document } from "mongoose";
+import { PokemonData, pokemonSchema } from "./pokemon.schema";
 
 const draftSchema = new mongoose.Schema(
   {
@@ -35,6 +35,18 @@ const draftSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+export interface DraftData {
+  leagueName: string;
+  leagueId: string;
+  teamName: string;
+  owner: string;
+  format: string;
+  ruleset: string;
+  team: PokemonData[];
+}
+
+export interface DraftDocument extends DraftData, Document<any, any> {}
+
 draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
-export const DraftModel = mongoose.model("drafts", draftSchema);
+export const DraftModel = mongoose.model<DraftDocument>("drafts", draftSchema);

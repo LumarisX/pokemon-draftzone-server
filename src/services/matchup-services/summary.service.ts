@@ -7,7 +7,7 @@ import {
   getTypes,
 } from "../data-services/pokedex.service";
 
-function summary(
+export function summary(
   team: {
     pid: PokemonId;
   }[]

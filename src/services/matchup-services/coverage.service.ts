@@ -6,7 +6,7 @@ import {
 } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
 
-function chart(
+export function coveragechart(
   team: {
     coverage?: {
       [key: string]: {

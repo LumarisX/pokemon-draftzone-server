@@ -1,4 +1,4 @@
-import { PokemonId } from "../../public/data/pokedex";
+import { PokemonId } from "../../data/pokedex";
 import {
   getAbilities,
   getBaseStats,
@@ -10,7 +10,7 @@ type Team = {
   pid: PokemonId;
 }[];
 
-function speedTierChart(teams: Team[], level: number) {
+export function speedchart(teams: Team[], level: number) {
   let tiers: {
     pokemon: {
       pid: PokemonId;

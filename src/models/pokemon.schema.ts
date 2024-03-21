@@ -26,3 +26,12 @@ export const pokemonSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+export interface PokemonData {
+  pid: string;
+  name: string;
+  shiny?: boolean;
+  capt?: {
+    tera: string[];
+  };
+}

@@ -1,5 +1,6 @@
-import mongoose from "mongoose";
-import { pokemonSchema } from "./pokemon.schema";
+import mongoose, { Document } from "mongoose";
+import { PokemonData, pokemonSchema } from "./pokemon.schema";
+import { PokemonId } from "../data/pokedex";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -69,4 +70,80 @@ const matchupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const MatchupModel = mongoose.model("matchups", matchupSchema);
+export interface MatchupData {
+  aTeam: {
+    team: {
+      team: PokemonData[];
+      name?: string;
+      teamName?: string;
+      stats: {
+        [key in PokemonId]: {
+          indirect?: number;
+          kills?: number;
+          deaths?: number;
+          brought?: number;
+        };
+      };
+      score?: number;
+      paste?: string;
+      _id?: mongoose.Schema.Types.ObjectId;
+    };
+    name?: string;
+    teamName?: string;
+    stats: {
+      [key in PokemonId]: {
+        indirect?: number;
+        kills?: number;
+        deaths?: number;
+        brought?: number;
+      };
+    };
+    score?: number;
+    paste?: string;
+    _id?: mongoose.Schema.Types.ObjectId;
+  };
+  bTeam: {
+    team: {
+      team: PokemonData[];
+      name?: string;
+      teamName?: string;
+      stats: Map<
+        string,
+        {
+          indirect?: number;
+          kills?: number;
+          deaths?: number;
+          brought?: number;
+        }
+      >;
+      score?: number;
+      paste?: string;
+      _id?: mongoose.Schema.Types.ObjectId;
+    };
+    name?: string;
+    teamName?: string;
+    stats: Map<
+      string,
+      {
+        indirect?: number;
+        kills?: number;
+        deaths?: number;
+        brought?: number;
+      }
+    >;
+    score?: number;
+    paste?: string;
+    _id?: mongoose.Schema.Types.ObjectId;
+  };
+  stage: string;
+  replay?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface MatchupDocument extends Document<any, any>, MatchupData {}
+
+export const MatchupModel = mongoose.model<MatchupDocument>(
+  "matchups",
+  matchupSchema
+);

@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import { DraftModel } from "../models/draft.model";
 import { Draft } from "../classes/draft";
 import { MatchupModel } from "../models/matchup.model";
