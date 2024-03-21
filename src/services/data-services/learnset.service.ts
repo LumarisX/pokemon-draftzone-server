@@ -1,12 +1,17 @@
 import { Learnsets } from "../../data/learnsets";
-import { PokemonId } from "../../data/pokedex";
+import { Pokedex, PokemonId } from "../../data/pokedex";
+import { toKey } from "./pokedex.service";
 
 export function getLearnset(pid: PokemonId, gen: string): string[] {
-  let learnset = Learnsets[pid].learnset ?? {};
-  const filteredLearnset = Object.keys(learnset).filter((moveId) =>
-    genCheck(learnset[moveId], gen)
-  );
-  return filteredLearnset;
+  if (hasLearnset(pid)) {
+    let learnset = Learnsets[pid].learnset ?? {};
+    const filteredLearnset = Object.keys(learnset).filter((moveId) =>
+      genCheck(learnset[moveId], gen)
+    );
+    return filteredLearnset;
+  } else {
+    return getLearnset(toKey(Pokedex[pid].baseSpecies ?? ""), gen);
+  }
 }
 
 export function inLearnset(
@@ -24,6 +29,6 @@ function genCheck(move: { [key: string]: any }, gen: string): boolean {
   });
 }
 
-export function hasLearnset(pokemonId: PokemonId) {
-  return pokemonId in Learnsets && "learnset" in Learnsets[pokemonId];
+export function hasLearnset(pid: PokemonId) {
+  return Learnsets[pid] && Learnsets[pid].learnset;
 }

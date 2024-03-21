@@ -165,7 +165,7 @@ function getPrevo(pid: PokemonId) {
   return toKey(Pokedex[pid]?.prevo);
 }
 
-function getBaseForm(pid: PokemonId) {
+export function getBaseForme(pid: PokemonId) {
   return toKey(Pokedex[pid]?.baseSpecies);
 }
 
@@ -182,7 +182,7 @@ function getFormeChange(pid: PokemonId) {
   return forme;
 }
 
-function toKey(pid: string | undefined): string {
+export function toKey(pid: string | undefined): string {
   if (pid != undefined) {
     return pid.toLowerCase().replace(/[ .-]+/g, "");
   }
@@ -217,26 +217,18 @@ function getLearnset(pid: PokemonId, gen: string) {
 }
 
 export function learns(pid: PokemonId, moveId: MoveId, gen: string) {
-  if (hasLearnset(pid)) {
-    if (inLearnset(pid, moveId, gen)) {
-      return true;
-    }
-    if (
-      "prevo" in Pokedex[pid] &&
-      learns(toKey(Pokedex[pid].prevo), moveId, gen)
-    ) {
-      return true;
-    }
-    if (learns(toKey(Pokedex[pid].changesFrom), moveId, gen)) {
-      return true;
-    }
-  } else if (
-    "baseSpecies" in Pokedex[pid] &&
-    learns(toKey(Pokedex[pid].baseSpecies), moveId, gen)
+  if (inLearnset(pid, moveId, gen)) {
+    return true;
+  }
+  if (
+    "prevo" in Pokedex[pid] &&
+    learns(toKey(Pokedex[pid].prevo), moveId, gen)
   ) {
     return true;
   }
-  return false;
+  if (learns(toKey(Pokedex[pid].changesFrom), moveId, gen)) {
+    return true;
+  }
 }
 
 export function getCoverage(pid: PokemonId, gen: string) {

@@ -82,8 +82,6 @@ matchupRouter
           movechart(res.matchup.bTeam.team, gen),
         ],
       };
-
-      let move;
       let aTeamsummary: Summary & { teamName?: string } = summary(
         res.matchup.aTeam.team
       );
@@ -95,6 +93,7 @@ matchupRouter
       data.summary = [aTeamsummary, bTeamsummary];
       res.json(data);
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: (error as Error).message });
     }
   })

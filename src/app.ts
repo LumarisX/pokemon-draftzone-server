@@ -9,27 +9,28 @@ import path from "path";
 import logger from "morgan";
 import { draftRouter } from "./routes/draft.route";
 import { matchupRouter } from "./routes/matchup.route";
+import { testRouter } from "./routes/test.route";
 
 const options = {
   dbName: "draftzone",
   autoIndex: true,
 };
 
-mongoose.connect(
-  "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
-);
+// mongoose.connect(
+//   "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
+// );
 
-const db = mongoose.connection;
-db.on("error", (error) => console.error(error));
-db.once("open", () => console.log("Connected to Database"));
+// const db = mongoose.connection;
+// db.on("error", (error) => console.error(error));
+// db.once("open", () => console.log("Connected to Database"));
 
 export const app = express();
 
-// const jwtCheck = auth({
-//   audience: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/api/v2/",
-//   issuerBaseURL: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/",
-//   tokenSigningAlg: "RS256",
-// });
+const jwtCheck = auth({
+  audience: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/api/v2/",
+  issuerBaseURL: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/",
+  tokenSigningAlg: "RS256",
+});
 
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
@@ -48,13 +49,12 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(cors());
 
-app.use("/draft", logger("common"), draftRouter);
+app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 app.use("/matchup", logger("common"), matchupRouter);
+app.use("/test", logger("common"), testRouter);
 
 // app.use("/data", dataRouter);
-// app.use("/matchup", logger("common"), matchupRouter);
 // app.use("/planner", logger("common"), plannerRouter);
-// app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 
 app.use(function (req: Request, res: Response, next: NextFunction) {
   next(createError(404));
