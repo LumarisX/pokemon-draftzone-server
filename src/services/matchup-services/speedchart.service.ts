@@ -7,7 +7,20 @@ import {
   needsItem,
 } from "../data-services/pokedex.service";
 
-export function speedchart(teams: PokemonData[][], level: number) {
+export type Speedchart = {
+  modifiers: string[];
+  tiers: {
+    pokemon: {
+      pid: string;
+    };
+    team: string;
+    speed: number;
+    modifiers: string[];
+  }[];
+  level: number;
+};
+
+export function speedchart(teams: PokemonData[][], level: number): Speedchart {
   let tiers: {
     pokemon: {
       pid: PokemonId;

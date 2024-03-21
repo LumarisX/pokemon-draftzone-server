@@ -3,10 +3,29 @@ import { PokemonData } from "../../models/pokemon.schema";
 import { getWeak } from "../data-services/pokedex.service";
 import { defensive } from "../data-services/type.service";
 
-export function typechart(team: PokemonData[]) {
+export type Typechart = {
+  team: (
+    | PokemonData & {
+        weak: DamageTypes;
+      }
+  )[];
+  teraTypes: {
+    [key: string]: {};
+  };
+};
+
+export function typechart(team: PokemonData[]): Typechart {
   let teraTypes: { [key: string]: {} } = {};
-  for (let pokemon of team) {
-    pokemon.weak = getWeak(pokemon.pid);
+  let result: (
+    | PokemonData & {
+        weak: DamageTypes;
+      }
+  )[] = [];
+  for (let p of team) {
+    let pokemon: PokemonData & { weak: DamageTypes } = {
+      ...p,
+      weak: getWeak(p.pid),
+    };
     if (pokemon.capt && pokemon.capt.tera) {
       for (let type of pokemon.capt.tera) {
         if (!(type in teraTypes) && type != "Stellar") {
@@ -15,5 +34,5 @@ export function typechart(team: PokemonData[]) {
       }
     }
   }
-  return { team: team, teraTypes: teraTypes };
+  return { team: result, teraTypes: teraTypes };
 }

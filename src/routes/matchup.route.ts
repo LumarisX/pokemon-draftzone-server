@@ -9,11 +9,23 @@ import {
   MatchupModel,
 } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
-import { coveragechart } from "../services/matchup-services/coverage.service";
-import { movechart } from "../services/matchup-services/movechart.service";
-import { speedchart } from "../services/matchup-services/speedtier.service";
-import { summary } from "../services/matchup-services/summary.service";
-import { typechart } from "../services/matchup-services/typechart.service";
+import {
+  Coveragechart,
+  coveragechart,
+} from "../services/matchup-services/coverage.service";
+import {
+  Movechart,
+  movechart,
+} from "../services/matchup-services/movechart.service";
+import {
+  Speedchart,
+  speedchart,
+} from "../services/matchup-services/speedchart.service";
+import { Summary, summary } from "../services/matchup-services/summary.service";
+import {
+  Typechart,
+  typechart,
+} from "../services/matchup-services/typechart.service";
 
 const router = express.Router();
 
@@ -35,7 +47,18 @@ router
     try {
       let level = Formats[res.matchup.format].level;
       let gen = Rulesets[res.matchup.ruleset].gen;
-      let data = {
+      let data: {
+        format: FormatId;
+        ruleset: RulesetId;
+        level: number;
+        stage: string;
+        leagueName: string;
+        summary: (Summary & { teamName?: string })[];
+        speedchart: Speedchart;
+        coveragechart: Coveragechart[];
+        typechart: Typechart[];
+        movechart: Movechart[];
+      } = {
         format: res.matchup.format,
         ruleset: res.matchup.ruleset,
         level: level,
@@ -59,8 +82,14 @@ router
           movechart(res.matchup.bTeam.team, gen),
         ],
       };
-      let aTeamsummary = summary(res.matchup.aTeam.team);
-      let bTeamsummary = summary(res.matchup.bTeam.team);
+
+      let move;
+      let aTeamsummary: Summary & { teamName?: string } = summary(
+        res.matchup.aTeam.team
+      );
+      let bTeamsummary: Summary & { teamName?: string } = summary(
+        res.matchup.bTeam.team
+      );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       data.summary = [aTeamsummary, bTeamsummary];
@@ -88,8 +117,12 @@ router.get(
       return;
     }
     try {
-      let aTeamsummary = summary(res.matchup.aTeam.team);
-      let bTeamsummary = summary(res.matchup.bTeam.team);
+      let aTeamsummary: Summary & { teamName?: string } = summary(
+        res.matchup.aTeam.team
+      );
+      let bTeamsummary: Summary & { teamName?: string } = summary(
+        res.matchup.bTeam.team
+      );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       res.json([aTeamsummary, bTeamsummary]);

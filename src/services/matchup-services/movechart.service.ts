@@ -216,6 +216,14 @@ const chartMoves: {
   ],
 };
 
+export type Movechart = {
+  catName: keyof typeof chartMoves;
+  moves: {
+    moveName: string;
+    pokemon: string[];
+  }[];
+}[];
+
 export function movechart(
   team: {
     coverage?: {
@@ -232,7 +240,7 @@ export function movechart(
     name: string;
   }[],
   gen: string
-) {
+): Movechart {
   let chartData: {
     catName: keyof typeof chartMoves;
     moves: { moveName: string; pokemon: string[] }[];

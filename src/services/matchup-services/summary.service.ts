@@ -8,7 +8,37 @@ import {
   getTypes,
 } from "../data-services/pokedex.service";
 
-export function summary(team: PokemonData[]) {
+export type Summary = {
+  team: PokemonData[];
+  stats: {
+    mean: {
+      hp?: number | undefined;
+      atk?: number | undefined;
+      def?: number | undefined;
+      spa?: number | undefined;
+      spd?: number | undefined;
+      spe?: number | undefined;
+    };
+    median: {
+      hp?: number | undefined;
+      atk?: number | undefined;
+      def?: number | undefined;
+      spa?: number | undefined;
+      spd?: number | undefined;
+      spe?: number | undefined;
+    };
+    max: {
+      hp?: number | undefined;
+      atk?: number | undefined;
+      def?: number | undefined;
+      spa?: number | undefined;
+      spd?: number | undefined;
+      spe?: number | undefined;
+    };
+  };
+};
+
+export function summary(team: PokemonData[]): Summary {
   for (let pokemon of team) {
     summaryData(pokemon);
   }

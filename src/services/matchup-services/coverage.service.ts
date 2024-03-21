@@ -7,26 +7,32 @@ import {
 } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
 
+export type Coveragechart = (
+  | PokemonData & {
+      coverage: {
+        [key: string]: {
+          ePower: number;
+          id?: string | undefined;
+          name?: string | undefined;
+          type: string;
+          stab: boolean;
+          recommended?: number[] | undefined;
+        }[];
+      };
+    }
+)[];
+
 export function coveragechart(
-  team: {
-    coverage?: {
-      [key: string]: {
-        ePower: number;
-        id?: string;
-        name?: string;
-        type: string;
-        stab: boolean;
-        recommended?: number[] | undefined;
-      }[];
-    };
-    pid: PokemonId;
-    name: string;
-  }[],
+  team: PokemonData[],
   oppteam: PokemonData[],
   gen: string
-) {
-  for (let pokemon of team) {
-    pokemon.coverage = getCoverage(pokemon.pid, gen);
+): Coveragechart {
+  let result: Coveragechart = [];
+  for (let p of team) {
+    let pokemon: PokemonData & { coverage: any } = {
+      ...p,
+      coverage: getCoverage(p.pid, gen),
+    };
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
         x: { stab: boolean; ePower: number },
@@ -66,8 +72,9 @@ export function coveragechart(
       }
     }
     pokemon.coverage = coverage;
+    result.push(pokemon);
   }
-  return team;
+  return result;
 }
 
 function bestCoverage(
