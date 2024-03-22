@@ -12,10 +12,18 @@ testRouter.route("/test").get(async (req, res) => {
   const gens = new Generations(Dex);
   const gen = gens.get(9);
   res.json(
-    await movechart(gen, [
-      { pid: "pikachu" as ID, name: "Pikachu" },
-      { pid: "charizard" as ID, name: "Charizard" },
-      { pid: "heatran" as ID, name: "Heatran" },
-    ])
+    await coveragechart(
+      gen,
+      [
+        { pid: "gallade" as ID, name: "Gallade" },
+        { pid: "deoxys" as ID, name: "Deoxys" },
+        { pid: "mew" as ID, name: "Mew" },
+      ],
+      [
+        { pid: "pikachu" as ID, name: "Pikachu" },
+        { pid: "charizard" as ID, name: "Charizard" },
+        { pid: "heatran" as ID, name: "Heatran" },
+      ]
+    )
   );
 });

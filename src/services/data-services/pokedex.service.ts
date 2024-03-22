@@ -141,8 +141,9 @@ export function getAbilities(gen: Generation, pokemonID: ID) {
   return Object.values(gen.dex.species.getByID(pokemonID).abilities);
 }
 
-export function getCoverage(gen: Generation, pokemonID: ID) {
-  let learnset = getLearnset(gen, pokemonID);
+export async function getCoverage(gen: Generation, pokemonID: ID) {
+  let learnset = await getLearnset(gen, pokemonID);
+  console.log(pokemonID, learnset);
   let coverage: {
     Physical: {
       [key: string]: {
@@ -161,7 +162,7 @@ export function getCoverage(gen: Generation, pokemonID: ID) {
       };
     };
   } = { Physical: {}, Special: {} };
-  for (const move of learnset) {
+  for (const move in learnset) {
     let moveID = toID(move);
     const category = getCategory(gen, moveID);
     let type = getType(gen, moveID);

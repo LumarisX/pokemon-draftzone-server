@@ -70,12 +70,12 @@ matchupRouter
         //   level
         // ),
         coveragechart: [
-          coveragechart(
+          await coveragechart(
             res.gen,
             res.matchup.aTeam.team,
             res.matchup.bTeam.team
           ),
-          coveragechart(
+          await coveragechart(
             res.gen,
             res.matchup.bTeam.team,
             res.matchup.aTeam.team

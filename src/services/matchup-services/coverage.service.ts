@@ -23,17 +23,18 @@ export type Coveragechart = (
     }
 )[];
 
-export function coveragechart(
+export async function coveragechart(
   gen: Generation,
   team: PokemonData[],
   oppteam: PokemonData[]
-): Coveragechart {
+): Promise<Coveragechart> {
   let result: Coveragechart = [];
   for (let p of team) {
     let pokemon: PokemonData & { coverage: any } = {
       ...p,
-      coverage: getCoverage(gen, p.pid),
+      coverage: await getCoverage(gen, p.pid),
     };
+    console.log(pokemon.coverage);
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
         x: { stab: boolean; ePower: number },
@@ -67,7 +68,7 @@ export function coveragechart(
           name: getName(gen, move.id || ""),
           type: move.type,
           stab: move.stab,
-          ePower: 0,
+          ePower: move.ePower,
           recommended: move.recommended,
         });
       }

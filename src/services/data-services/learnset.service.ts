@@ -1,38 +1,9 @@
-import { Generation, ID } from "@pkmn/data";
+import { Generation, ID, Learnset } from "@pkmn/data";
 import { Learnsets } from "../../data/learnsets";
 import { Pokedex, PokemonId } from "../../data/pokedex";
 
-export function getLearnset(gen: Generation, pid: ID): string[] {
-  let totalLearnset: string[] = [];
-  if (Learnsets.hasOwnProperty(pid)) {
-    if ("learnset" in Learnsets[pid]) {
-      let learnset = Learnsets[pid].learnset;
-      if (learnset !== undefined) {
-        const filteredLearnset = Object.keys(learnset).filter((moveId) => {
-          if (learnset !== undefined) {
-            genCheck(gen, learnset[moveId]);
-          }
-        });
-        totalLearnset.push(...filteredLearnset);
-      }
-    } else {
-      const base = Pokedex[pid].baseSpecies;
-      if (base !== undefined) {
-        if ("learnset" in Learnsets[pid]) {
-          let learnset = Learnsets[base].learnset;
-          if (learnset !== undefined) {
-            const filteredLearnset = Object.keys(learnset).filter((moveId) => {
-              if (learnset !== undefined) {
-                genCheck(gen, learnset[moveId]);
-              }
-            });
-            totalLearnset.push(...filteredLearnset);
-          }
-        }
-      }
-    }
-  }
-  return totalLearnset;
+export async function getLearnset(gen: Generation, pid: ID) {
+  return (await gen.dex.learnsets.getByID(pid)).learnset;
 }
 
 // export function findLearnset(pid: PokemonId, gen: string): string[] {
