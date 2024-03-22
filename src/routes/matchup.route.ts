@@ -86,8 +86,8 @@ matchupRouter
           typechart(res.gen, res.matchup.bTeam.team),
         ],
         movechart: [
-          movechart(res.gen, res.matchup.aTeam.team),
-          movechart(res.gen, res.matchup.bTeam.team),
+          await movechart(res.gen, res.matchup.aTeam.team),
+          await movechart(res.gen, res.matchup.bTeam.team),
         ],
       };
       let aTeamsummary: Summary & { teamName?: string } = summary(

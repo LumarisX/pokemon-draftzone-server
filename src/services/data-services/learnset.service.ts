@@ -92,5 +92,6 @@ export function hasLearnset(pid: PokemonId) {
 }
 
 export async function canLearn(gen: Generation, pokemonID: ID, moveId: ID) {
-  return await gen.learnsets.canLearn(pokemonID, moveId);
+  let can = await gen.learnsets.canLearn(pokemonID, moveId);
+  return can;
 }

@@ -226,7 +226,7 @@ export type Movechart = {
   }[];
 }[];
 
-export function movechart(
+export async function movechart(
   gen: Generation,
   team: {
     coverage?: {
@@ -242,32 +242,38 @@ export function movechart(
     pid: ID;
     name: string;
   }[]
-): Movechart {
+): Promise<Movechart> {
   let chartData: {
     catName: keyof typeof chartMoves;
-    moves: { moveName: string; pokemon: string[] }[];
+    moves: { moveName: string; pokemon: ID[] }[];
   }[] = [];
-  Object.entries(chartMoves).forEach(async ([catName, moves]) => {
+
+  for (const [catName, moves] of Object.entries(chartMoves)) {
     let catData = {
       catName: catName as keyof typeof chartMoves,
-      moves: [] as { moveName: string; pokemon: string[] }[],
+      moves: [] as { moveName: string; pokemon: ID[] }[],
     };
-    for (let move of moves) {
+
+    for (const move of moves) {
       const moveID = toID(move);
       let moveData = {
         moveName: getName(gen, moveID),
-        pokemon: [] as string[],
+        pokemon: [] as ID[],
       };
-      for (let pokemon of team) {
+
+      for (const pokemon of team) {
         if (await canLearn(gen, pokemon.pid, moveID)) {
           moveData.pokemon.push(pokemon.pid);
         }
       }
+
       if (moveData.pokemon.length > 0) {
         catData.moves.push(moveData);
       }
     }
+
     chartData.push(catData);
-  });
+  }
+
   return chartData;
 }
