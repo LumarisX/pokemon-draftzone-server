@@ -9,7 +9,7 @@ import {
 import { Pokedex, PokemonId } from "../../data/pokedex";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
-import { damageTaken } from "./type.services";
+import { typeWeak } from "./type.services";
 
 export function getName(gen: Generation, pokemonID: ID): SpeciesName {
   return gen.dex.species.getByID(pokemonID).name;
@@ -19,46 +19,45 @@ export function getBaseStats(gen: Generation, pokemonID: ID): StatsTable {
   return gen.dex.species.getByID(pokemonID).baseStats;
 }
 
-export function getWeak(gen: Generation, pokemonID: PokemonId) {
-  let types = Pokedex[pokemonID].types;
-  let weak = damageTaken(gen, types);
-  for (let a in Pokedex[pokemonID]["abilities"]) {
-    let ability = Pokedex[pokemonID]["abilities"][a];
+export function getWeak(gen: Generation, pid: ID) {
+  let types = getTypes(gen, pid);
+  let weak = typeWeak(gen, types);
+  for (let ability of getAbilities(gen, pid)) {
     switch (ability) {
       case "Fluffy":
-        weak.fire = weak.fire * 2;
+        weak.Fire = weak.Fire * 2;
         break;
       case "Dry Skin":
-        weak.fire = weak.fire * 1.25;
-      case "water Absorb":
+        weak.Fire = weak.Fire * 1.25;
+      case "Water Absorb":
       case "Storm Drain":
-        weak.water = 0;
+        weak.Water = 0;
         break;
       case "Volt Absorb":
       case "Lightning Rod":
       case "Motor Drive":
-        weak.electric = 0;
+        weak.Electric = 0;
         break;
-      case "Flash fire":
+      case "Flash Fire":
       case "Well-Baked Body":
-        weak.fire = 0;
+        weak.Fire = 0;
         break;
       case "Sap Sipper":
-        weak.grass = 0;
+        weak.Grass = 0;
         break;
       case "Levitate":
       case "Earth Eater":
-        weak.ground = 0;
+        weak.Ground = 0;
         break;
       case "Thick Fat":
-        weak.ice = weak.ice * 0.5;
+        weak.Ice = weak.Ice * 0.5;
       case "Heatproof":
-        weak.fire = weak.fire * 0.5;
+        weak.Fire = weak.Fire * 0.5;
         break;
-      case "water Bubble":
-        weak.fire = weak.fire * 0.5;
+      case "Water Bubble":
+        weak.Fire = weak.Fire * 0.5;
       case "Thermal Exchange":
-      case "water Veil":
+      case "Water Veil":
         weak.brn = 0;
         break;
       case "Limber":
@@ -94,7 +93,7 @@ export function getWeak(gen: Generation, pokemonID: PokemonId) {
       case "Sand Veil":
         weak.sandstorm = 0;
         break;
-      case "ice Body":
+      case "Ice Body":
       case "Snow Cloak":
         weak.hail = 0;
         break;

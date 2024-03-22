@@ -10,9 +10,10 @@ testRouter.route("/test").get(async (req, res) => {
   const gens = new Generations(Dex);
   const gen = gens.get(9);
   res.json(
-    summary(gen, [
+    typechart(gen, [
       { pid: "pikachu" as ID, name: "Pikachu" },
       { pid: "charizard" as ID, name: "Charizard" },
+      { pid: "heatran" as ID, name: "Heatran" },
     ])
   );
 });
