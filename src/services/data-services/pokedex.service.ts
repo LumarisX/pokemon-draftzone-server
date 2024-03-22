@@ -6,7 +6,6 @@ import {
   TypeName,
   toID,
 } from "@pkmn/data";
-import { Pokedex, PokemonId } from "../../data/pokedex";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";

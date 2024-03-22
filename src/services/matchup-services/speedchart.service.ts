@@ -1,267 +1,173 @@
-// import { Generation } from "@pkmn/data";
-// import { PokemonId } from "../../data/pokedex";
-// import { PokemonData } from "../../models/pokemon.schema";
-// import {
-//   getAbilities,
-//   getBaseStats,
-//   needsItem,
-// } from "../data-services/pokedex.service";
+import { Generation, StatusName } from "@pkmn/data";
+import { Field, Pokemon, Side } from "@smogon/calc";
+import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
+import { PokemonData } from "../../models/pokemon.schema";
 
-// export type Speedchart = {
-//   modifiers: string[];
-//   tiers: {
-//     pokemon: {
-//       pid: string;
-//     };
-//     team: string;
-//     speed: number;
-//     modifiers: string[];
-//   }[];
-//   level: number;
-// };
+export type Speedchart = {
+  modifiers: string[];
+  tiers: {
+    pokemon: {
+      pid: string;
+    };
+    team: string;
+    speed: number;
+    modifiers: string[];
+  }[];
+  level: number;
+};
 
-// export function speedchart(
-//   gen: Generation,
-//   teams: PokemonData[][],
-//   level: number
-// ): Speedchart {
-//   let tiers: {
-//     pokemon: {
-//       pid: PokemonId;
-//     };
-//     team: string;
-//     speed: number;
-//     modifiers: string[];
-//   }[] = [];
-//   for (let teamIndex in teams) {
-//     for (let m in teams[teamIndex]) {
-//       tiers = tiers.concat(
-//         getSpeedTiers(gen, teams[teamIndex][m], level, teamIndex)
-//       );
-//     }
-//   }
+type Configurations = {
+  boosts: number[];
+  status: { status: StatusName | ""; modifier?: string }[];
+  sides: { tailwind?: boolean; modifiers: string[] }[];
+  fields: { modifiers: string[] }[];
+  pokemons: {
+    evs?: { spe: number };
+    ivs?: { spe: number };
+    nature?: string;
+    item?: string;
+    modifiers: string[];
+  }[];
+};
+function getSpeedTiers(
+  gen: Generation,
+  p: PokemonData,
+  level: number,
+  teamIndex: string
+) {
+  return [
+    ...generateTiers(gen, p, level, teamIndex, fastConfigurations),
+    ...generateTiers(gen, p, level, teamIndex, slowConfigurations),
+  ];
+}
 
-//   let speAsc = 1;
-//   tiers.sort(function (x, y) {
-//     if (x["speed"] < y["speed"]) {
-//       return 1 * speAsc;
-//     }
-//     if (x["speed"] > y["speed"]) {
-//       return -1 * speAsc;
-//     }
-//     return 0;
-//   });
+function getModifiers(tiers: Speedchart["tiers"]): string[] {
+  const uniqueModifiers: Set<string> = new Set();
+  for (const tier of tiers) {
+    for (const modifier of tier.modifiers) {
+      uniqueModifiers.add(modifier);
+    }
+  }
+  return Array.from(uniqueModifiers);
+}
 
-//   let modifiers = getModifiers(tiers);
-//   return { modifiers: modifiers, tiers: tiers, level: level };
-// }
+const fastConfigurations: Configurations = {
+  boosts: [-1, 0, 1, 2],
+  status: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
+  pokemons: [
+    { evs: { spe: 252 }, modifiers: ["Max"] },
+    { evs: { spe: 252 }, nature: "Timid", modifiers: ["Max", "Positive"] },
+    { evs: { spe: 252 }, item: "Choice Scarf", modifiers: ["Max", "Scarf"] },
+    {
+      evs: { spe: 252 },
+      nature: "Timid",
+      item: "Choice Scarf",
+      modifiers: ["Max", "Positive", "Scarf"],
+    },
+  ],
+  fields: [{ modifiers: [] }],
+  sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
+};
 
-// function getSpeedTiers(
-//   gen: Generation,
-//   pokemon: PokemonData,
-//   level: number,
-//   teamIndex: string
-// ) {
-//   let speedAbilities: {
-//     name: string;
-//     multi: number;
-//   }[] = [];
-//   let tiers = [];
-//   let baseSpe = getBaseStats(gen, pokemon.pid)["spe"];
-//   let slow = {
-//     stages: [-1, 0],
-//     items: [
-//       {
-//         name: "None",
-//         multi: 1,
-//       },
-//       {
-//         name: "Ironball",
-//         multi: 0.5,
-//       },
-//     ],
-//     spreads: [
-//       {
-//         evs: 0,
-//         ivs: 0,
-//         nature: 0.9,
-//         stage: 0,
-//       },
-//       {
-//         evs: 0,
-//         ivs: 31,
-//         nature: 1,
-//         stage: 0,
-//       },
-//     ],
-//   };
-//   let fast = {
-//     stages: [-1, 0, 1, 2],
-//     conditions: [
-//       {
-//         name: "None",
-//         multi: 1,
-//       },
-//       {
-//         name: "Tailwind",
-//         multi: 2,
-//       },
-//       {
-//         name: "Paralyzed",
-//         multi: 0.5,
-//       },
-//     ],
-//     items: [
-//       {
-//         name: "None",
-//         multi: 1,
-//       },
-//       {
-//         name: "Scarf",
-//         multi: 1.5,
-//       },
-//     ],
-//     spreads: [
-//       {
-//         evs: 252,
-//         ivs: 31,
-//         nature: 1,
-//         stage: 0,
-//       },
-//       {
-//         evs: 252,
-//         ivs: 31,
-//         nature: 1.1,
-//         stage: 0,
-//       },
-//     ],
-//   };
-//   let abilities = getAbilities(gen, pokemon.pid);
-//   for (let a in abilities) {
-//     switch (abilities[a]) {
-//       case "Chlorophyll":
-//       case "Sand Rush":
-//       case "Slush Rush":
-//       case "Swift Swim":
-//       case "Unburden":
-//       case "Surge Surfer":
-//         speedAbilities.push({ name: abilities[a], multi: 2 });
-//         break;
-//       case "Quick Feet":
-//       case "Quark Drive":
-//       case "Protosynthesis":
-//         speedAbilities.push({ name: abilities[a], multi: 1.5 });
-//         break;
-//       case "Speed Boost":
-//         fast.stages.push(3, 4, 5, 6);
-//         break;
-//       case "Steam Engine":
-//         fast.stages.push(6);
-//         break;
-//     }
-//   }
-//   for (let s in slow.spreads) {
-//     for (let stage of slow.stages) {
-//       let baseInfo = {
-//         pokemon: pokemon,
-//         team: teamIndex,
-//         speed: getStat(
-//           "spe",
-//           baseSpe,
-//           slow.spreads[s].evs,
-//           slow.spreads[s].nature,
-//           slow.spreads[s].ivs,
-//           level,
-//           stage
-//         ),
-//         modifiers: [slow.spreads[s].evs.toString()],
-//       };
-//       if (slow.spreads[s].nature > 1) {
-//         baseInfo.modifiers.push("Positive");
-//       } else if (slow.spreads[s].nature < 1) {
-//         baseInfo.modifiers.push("Negative");
-//       }
-//       if (stage != 0) {
-//         baseInfo.modifiers.push("Stage " + stage);
-//       }
-//       tiers.push(baseInfo);
-//       for (let i in slow.items) {
-//         let iInfo = structuredClone(baseInfo);
-//         iInfo.speed = Math.floor(baseInfo.speed * slow.items[i].multi);
-//         if (slow.items[i].name != "None") {
-//           iInfo.modifiers.push(slow.items[i].name);
-//           tiers.push(iInfo);
-//         }
-//       }
-//     }
-//   }
-//   for (let s in fast.spreads) {
-//     for (let stage of fast.stages) {
-//       let baseInfo = {
-//         pokemon: pokemon,
-//         team: teamIndex,
-//         speed: getStat(
-//           "spe",
-//           baseSpe,
-//           fast.spreads[s].evs,
-//           fast.spreads[s].nature,
-//           fast.spreads[s].ivs,
-//           level,
-//           stage
-//         ),
-//         modifiers: [fast.spreads[s].evs.toString()],
-//       };
-//       if (fast.spreads[s].nature > 1) {
-//         baseInfo.modifiers.push("Positive");
-//       } else if (fast.spreads[s].nature < 1) {
-//         baseInfo.modifiers.push("Negative");
-//       }
-//       if (stage != 0) {
-//         baseInfo.modifiers.push("Stage " + stage);
-//       }
-//       tiers.push(baseInfo);
-//       for (let i in fast.items) {
-//         let iInfo = structuredClone(baseInfo);
-//         iInfo.speed = Math.floor(baseInfo.speed * fast.items[i].multi);
-//         if (!needsItem(gen, pokemon.pid) && fast.items[i].name != "None") {
-//           iInfo.modifiers.push(fast.items[i].name);
-//           tiers.push(iInfo);
-//         }
-//         for (let c in fast.conditions) {
-//           let cInfo = structuredClone(iInfo);
-//           cInfo.speed = Math.floor(iInfo.speed * fast.conditions[c].multi);
-//           if (fast.conditions[c].name != "None") {
-//             cInfo.modifiers.push(fast.conditions[c].name);
-//             tiers.push(cInfo);
-//           }
-//           for (let a in speedAbilities) {
-//             let aInfo = structuredClone(cInfo);
-//             aInfo.speed = Math.floor(cInfo.speed * speedAbilities[a].multi);
-//             aInfo.modifiers.push(speedAbilities[a].name);
-//             tiers.push(aInfo);
-//           }
-//         }
-//       }
-//     }
-//   }
-//   return tiers;
-// }
+const slowConfigurations: Configurations = {
+  boosts: [-1, 0],
+  status: [{ status: "" }],
+  pokemons: [
+    { evs: { spe: 0 }, modifiers: [] },
+    { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["Min"] },
+    {
+      evs: { spe: 0 },
+      ivs: { spe: 0 },
+      nature: "Brave",
+      modifiers: ["Min", "Negative"],
+    },
+    {
+      evs: { spe: 0 },
+      ivs: { spe: 0 },
+      item: "Iron Ball",
+      modifiers: ["Min", "Iron Ball"],
+    },
+    {
+      evs: { spe: 0 },
+      ivs: { spe: 0 },
+      nature: "Brave",
+      item: "Iron Ball",
+      modifiers: ["Min", "Negative", "Iron Ball"],
+    },
+    {
+      evs: { spe: 252 },
+      nature: "Timid",
+      item: "Choice Scarf",
+      modifiers: ["Max", "Positive", "Scarf"],
+    },
+  ],
+  fields: [{ modifiers: [] }],
+  sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
+};
 
-// function getModifiers(
-//   tiers: {
-//     pokemon: { pid: string };
-//     team: string;
-//     speed: number;
-//     modifiers: string[];
-//   }[]
-// ) {
-//   let modifiers: string[] = [];
-//   for (let tier of tiers) {
-//     for (let modifier of tier.modifiers) {
-//       if (!modifiers.includes(modifier)) {
-//         modifiers.push(modifier);
-//       }
-//     }
-//   }
-//   return modifiers;
-// }
+function generateTiers(
+  gen: Generation,
+  p: PokemonData,
+  level: number,
+  teamIndex: string,
+  configurations: Configurations
+) {
+  const tiers: Speedchart["tiers"] = [];
+  for (const status of configurations.status) {
+    for (const boost of configurations.boosts) {
+      for (const sConfig of configurations.sides) {
+        const side = new Side({ isTailwind: sConfig.tailwind });
+        for (const fConfig of configurations.fields) {
+          const field = new Field();
+          for (const pConfig of configurations.pokemons) {
+            const pokemon = new Pokemon(gen, p.pid, {
+              level,
+              evs: pConfig.evs,
+              nature: pConfig.nature,
+              item: pConfig.item,
+              boosts: { spe: boost },
+              status: status.status,
+            });
+            const modifiers = [
+              ...(pConfig.modifiers || []),
+              ...(sConfig.modifiers || []),
+              ...(fConfig.modifiers || []),
+            ];
+            if (boost !== 0) {
+              modifiers.push("Stage " + boost);
+            }
+            if (status.modifier) {
+              modifiers.push(status.modifier);
+            }
+            tiers.push({
+              pokemon: p,
+              speed: getFinalSpeed(gen, pokemon, field, side),
+              team: teamIndex,
+              modifiers,
+            });
+          }
+        }
+      }
+    }
+  }
+  return tiers;
+}
+
+export function speedchart(
+  gen: Generation,
+  teams: PokemonData[][],
+  level: number
+): Speedchart {
+  let tiers: Speedchart["tiers"] = [];
+
+  for (const teamIndex in teams) {
+    for (const pokemon of teams[teamIndex]) {
+      tiers = tiers.concat(getSpeedTiers(gen, pokemon, level, teamIndex));
+    }
+  }
+
+  tiers.sort((x, y) => y.speed - x.speed);
+
+  const modifiers = getModifiers(tiers);
+  return { modifiers, tiers, level };
+}
