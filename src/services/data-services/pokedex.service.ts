@@ -1,11 +1,7 @@
 import { MoveId } from "../../data/moves";
-import { PokemonId, Pokedex, BaseStat } from "../../data/pokedex";
+import { BaseStat, Pokedex, PokemonId } from "../../data/pokedex";
 import { compareString } from "../filter.service";
-import {
-  hasLearnset,
-  inLearnset,
-  getLearnset as LearnsetgetLearnset,
-} from "./learnset.service";
+import { getLearnset, inLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { defensive } from "./type.service";
 
@@ -187,33 +183,6 @@ export function toKey(pid: string | undefined): string {
     return pid.toLowerCase().replace(/[ .-]+/g, "");
   }
   return "";
-}
-
-function getLearnset(pid: PokemonId, gen: string) {
-  let learnset = LearnsetgetLearnset(pid, gen);
-  if (!learnset) {
-    return getLearnset(toKey(Pokedex[pid]?.baseSpecies), gen);
-  }
-
-  function addMovesFromSubLearnset(subLearnset: string[] | undefined) {
-    if (subLearnset) {
-      learnset = [...new Set(learnset.concat(subLearnset))];
-    }
-  }
-  addMovesFromSubLearnset(getLearnset(toKey(Pokedex[pid]?.prevo), gen));
-  addMovesFromSubLearnset(getLearnset(toKey(Pokedex[pid]?.changesFrom), gen));
-
-  const battleOnly = Pokedex[pid]?.battleOnly;
-  if (battleOnly) {
-    if (typeof battleOnly === "string") {
-      addMovesFromSubLearnset(getLearnset(toKey(battleOnly), gen));
-    } else if (Array.isArray(battleOnly)) {
-      for (const item of battleOnly) {
-        addMovesFromSubLearnset(getLearnset(toKey(item), gen));
-      }
-    }
-  }
-  return learnset;
 }
 
 export function learns(pid: PokemonId, moveId: MoveId, gen: string) {

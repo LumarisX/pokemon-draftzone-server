@@ -1,6 +1,6 @@
 import express from "express";
-import { getLearnset } from "../services/data-services/learnset.service";
 import { Pokedex } from "../data/pokedex";
+import { getLearnset } from "../services/data-services/learnset.service";
 
 export const testRouter = express.Router();
 
@@ -31,4 +31,8 @@ testRouter.route("/test").get(async (req, res) => {
       message: "Failed to retrieve learnset for some Pokémon.",
     });
   }
+});
+
+testRouter.route("/oger").get(async (req, res) => {
+  res.json(getLearnset("ogerponcornerstone", "1-9"));
 });
