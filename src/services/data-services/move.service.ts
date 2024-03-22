@@ -1,19 +1,20 @@
+import { Generation, ID, MoveCategory, MoveName, TypeName } from "@pkmn/data";
 import { MoveId, Movedex } from "../../data/moves";
 
-export function getType(moveId: MoveId) {
-  return Movedex[moveId].type;
+export function getType(gen: Generation, moveID: ID): TypeName {
+  return gen.dex.moves.getByID(moveID).type;
 }
 
-function getName(moveId: MoveId) {
-  return Movedex[moveId].name;
+export function getName(gen: Generation, moveID: ID): MoveName {
+  return gen.dex.moves.getByID(moveID).name;
 }
 
-export function getCategory(moveId: MoveId) {
-  return Movedex[moveId].category;
+export function getCategory(gen: Generation, moveID: ID): MoveCategory {
+  return gen.dex.moves.getByID(moveID).category;
 }
 
-export function getEffectivePower(moveId: MoveId) {
-  const move = Movedex[moveId];
+export function getEffectivePower(gen: Generation, moveID: ID) {
+  const move = gen.dex.moves.getByID(moveID);
   let value =
     move.accuracy === true
       ? move.basePower
@@ -30,6 +31,5 @@ export function getEffectivePower(moveId: MoveId) {
   if (move.self?.volatileStatus === "lockedmove") {
     value /= 2;
   }
-
   return value;
 }

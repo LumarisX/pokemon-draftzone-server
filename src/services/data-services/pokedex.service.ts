@@ -1,59 +1,29 @@
-import { MoveId } from "../../data/moves";
-import { BaseStat, Pokedex, PokemonId } from "../../data/pokedex";
-import { compareString } from "../filter.service";
-import { getLearnset, inLearnset } from "./learnset.service";
+import {
+  Generation,
+  ID,
+  SpeciesName,
+  StatsTable,
+  TypeName,
+  toID,
+} from "@pkmn/data";
+import { Pokedex, PokemonId } from "../../data/pokedex";
+import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
-import { defensive } from "./type.service";
+import { damageTaken } from "./type.services";
 
-export function inDex(pid: PokemonId) {
-  return pid in Pokedex;
+export function getName(gen: Generation, pokemonID: ID): SpeciesName {
+  return gen.dex.species.getByID(pokemonID).name;
 }
 
-export function getName(pid: PokemonId) {
-  return Pokedex[pid]["name"];
+export function getBaseStats(gen: Generation, pokemonID: ID): StatsTable {
+  return gen.dex.species.getByID(pokemonID).baseStats;
 }
 
-export function getBaseStats(pid: PokemonId) {
-  return Pokedex[pid]["baseStats"];
-}
-
-export function getStat(
-  stat: BaseStat,
-  base: number,
-  ev = 252,
-  nature = 1.1,
-  iv = 31,
-  level = 100,
-  stage = 0,
-  mult = 1
-) {
-  if (stat === "hp") {
-    return (
-      Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) +
-      level +
-      10
-    );
-  } else {
-    if (stage > 0) {
-      mult = (mult * (2 + stage)) / 2;
-    } else if (stage < 0) {
-      mult = (mult * 2) / (2 - stage);
-    }
-  }
-
-  return Math.floor(
-    Math.floor(
-      (Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5) *
-        nature
-    ) * mult
-  );
-}
-
-export function getWeak(pid: PokemonId) {
-  let types = Pokedex[pid].types;
-  let weak = defensive(types);
-  for (let a in Pokedex[pid]["abilities"]) {
-    let ability = Pokedex[pid]["abilities"][a];
+export function getWeak(gen: Generation, pokemonID: PokemonId) {
+  let types = Pokedex[pokemonID].types;
+  let weak = damageTaken(gen, types);
+  for (let a in Pokedex[pokemonID]["abilities"]) {
+    let ability = Pokedex[pokemonID]["abilities"][a];
     switch (ability) {
       case "Fluffy":
         weak.fire = weak.fire * 2;
@@ -133,80 +103,52 @@ export function getWeak(pid: PokemonId) {
   return weak;
 }
 
-function filterNames(query: string): { name: string; pid: PokemonId }[] {
-  let results: { name: string; pid: PokemonId }[][] = [[], []];
-  if (query === "") {
-    return [];
-  }
-  for (let mon in Pokedex) {
-    if (Pokedex[mon].tier == "CAP") {
-      continue;
-    }
-    let compare = compareString(query, Pokedex[mon].name);
-    if (compare.result && compare.pattern) {
-      results[compare.pattern].push({ name: Pokedex[mon].name, pid: mon });
-    }
-  }
-  for (let result of results) {
-    result.sort((a, b) => {
-      if (a > b) return 1;
-      if (a < b) return -1;
-      return 0;
-    });
-  }
-  return results[0].concat(results[1]);
+// function filterNames(query: string): { name: string; pokemonID: ID }[] {
+//   let results: { name: string; pokemonID: PokemonId }[][] = [[], []];
+//   if (query === "") {
+//     return [];
+//   }
+//   for (let mon in Pokedex) {
+//     if (Pokedex[mon].tier == "CAP") {
+//       continue;
+//     }
+//     let compare = compareString(query, Pokedex[mon].name);
+//     if (compare.result && compare.pattern) {
+//       results[compare.pattern].push({
+//         name: Pokedex[mon].name,
+//         pokemonID: mon,
+//       });
+//     }
+//   }
+//   for (let result of results) {
+//     result.sort((a, b) => {
+//       if (a > b) return 1;
+//       if (a < b) return -1;
+//       return 0;
+//     });
+//   }
+//   return results[0].concat(results[1]);
+// }
+
+export function getBaseForme(gen: Generation, pokemonID: ID) {
+  return gen.dex.species.getByID(pokemonID).baseForme;
 }
 
-function getPrevo(pid: PokemonId) {
-  return toKey(Pokedex[pid]?.prevo);
+export function getTypes(gen: Generation, pokemonID: ID) {
+  return gen.dex.species.getByID(pokemonID).types;
 }
 
-export function getBaseForme(pid: PokemonId) {
-  return toKey(Pokedex[pid]?.baseSpecies);
+export function getAbilities(gen: Generation, pokemonID: ID) {
+  return Object.values(gen.dex.species.getByID(pokemonID).abilities);
 }
 
-export function getTypes(pid: PokemonId) {
-  return Pokedex[pid]["types"];
-}
-
-export function getAbilities(pid: PokemonId): string[] {
-  return Object.values(Pokedex[pid].abilities);
-}
-
-function getFormeChange(pid: PokemonId) {
-  let forme = toKey(Pokedex[pid]?.changesFrom);
-  return forme;
-}
-
-export function toKey(pid: string | undefined): string {
-  if (pid != undefined) {
-    return pid.toLowerCase().replace(/[ .-]+/g, "");
-  }
-  return "";
-}
-
-export function learns(pid: PokemonId, moveId: MoveId, gen: string) {
-  if (inLearnset(pid, moveId, gen)) {
-    return true;
-  }
-  if (
-    "prevo" in Pokedex[pid] &&
-    learns(toKey(Pokedex[pid].prevo), moveId, gen)
-  ) {
-    return true;
-  }
-  if (learns(toKey(Pokedex[pid].changesFrom), moveId, gen)) {
-    return true;
-  }
-}
-
-export function getCoverage(pid: PokemonId, gen: string) {
-  let learnset = getLearnset(pid, gen);
+export function getCoverage(gen: Generation, pokemonID: ID) {
+  let learnset = getLearnset(gen, pokemonID);
   let coverage: {
     Physical: {
       [key: string]: {
         ePower: number;
-        id: MoveId;
+        id: ID;
         type: string;
         stab: boolean;
       };
@@ -214,30 +156,32 @@ export function getCoverage(pid: PokemonId, gen: string) {
     Special: {
       [key: string]: {
         ePower: number;
-        id: MoveId;
+        id: ID;
         type: string;
         stab: boolean;
       };
     };
   } = { Physical: {}, Special: {} };
-  for (const moveId of learnset) {
-    const category = getCategory(moveId);
-    let type = getType(moveId);
+  for (const move of learnset) {
+    let moveID = toID(move);
+    const category = getCategory(gen, moveID);
+    let type = getType(gen, moveID);
     type = type.charAt(0).toUpperCase() + type.slice(1);
     if (category !== "Status") {
-      const ePower = getEffectivePower(moveId);
+      const ePower = getEffectivePower(gen, moveID);
       if (
         !(type in coverage[category]) ||
         coverage[category][type].ePower < ePower
       ) {
         coverage[category][type] = {
-          id: moveId,
+          id: moveID,
           ePower: ePower,
           type: type,
-          stab: getTypes(pid).includes(type),
+          stab: getTypes(gen, pokemonID).includes(type as TypeName),
         };
       }
     }
+    ``;
   }
   return {
     physical: Object.values(coverage.Physical),
@@ -245,6 +189,6 @@ export function getCoverage(pid: PokemonId, gen: string) {
   };
 }
 
-export function needsItem(pid: PokemonId) {
-  return "requiredItem" in Pokedex[pid];
+export function needsItem(gen: Generation, pokemonID: ID) {
+  return gen.dex.species.getByID(pokemonID).requiredItem;
 }

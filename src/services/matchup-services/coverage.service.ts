@@ -1,3 +1,4 @@
+import { Generation, ID } from "@pkmn/data";
 import { PokemonId } from "../../data/pokedex";
 import { PokemonData } from "../../models/pokemon.schema";
 import {
@@ -23,15 +24,15 @@ export type Coveragechart = (
 )[];
 
 export function coveragechart(
+  gen: Generation,
   team: PokemonData[],
-  oppteam: PokemonData[],
-  gen: string
+  oppteam: PokemonData[]
 ): Coveragechart {
   let result: Coveragechart = [];
   for (let p of team) {
     let pokemon: PokemonData & { coverage: any } = {
       ...p,
-      coverage: getCoverage(p.pid, gen),
+      coverage: getCoverage(gen, p.pid),
     };
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
@@ -47,7 +48,7 @@ export function coveragechart(
         return 0;
       });
     }
-    bestCoverage(pokemon, typechart(oppteam));
+    bestCoverage(gen, pokemon, typechart(gen, oppteam));
     let coverage: {
       [key: string]: {
         name: string;
@@ -63,7 +64,7 @@ export function coveragechart(
     for (let category in pokemon.coverage) {
       for (let move of pokemon.coverage[category]) {
         coverage[category].push({
-          name: getName(move.id || ""),
+          name: getName(gen, move.id || ""),
           type: move.type,
           stab: move.stab,
           ePower: 0,
@@ -78,8 +79,9 @@ export function coveragechart(
 }
 
 function bestCoverage(
+  gen: Generation,
   pokemon: {
-    pid: PokemonId;
+    pid: ID;
     name: string;
     coverage?: {
       [key: string]: {
@@ -94,7 +96,7 @@ function bestCoverage(
   },
   oppTypechart: {
     team: {
-      pid: string;
+      pid: ID;
       name: string;
       weak?: {} | undefined;
       capt?: { tera?: string[] | undefined } | undefined;
@@ -135,9 +137,10 @@ function bestCoverage(
         moves.push(coverageMoves[index]);
       }
       let coverageEffectiveness = teamCoverageEffectiveness(
+        gen,
+        pokemon.pid,
         moves,
-        oppTypechart,
-        pokemon.pid
+        oppTypechart
       );
       if (coverageEffectiveness > best.maxEffectiveness) {
         best.maxEffectiveness = coverageEffectiveness;
@@ -163,6 +166,8 @@ function bestCoverage(
 }
 
 function teamCoverageEffectiveness(
+  gen: Generation,
+  userMon: ID,
   moveArray: {
     ePower: number;
     id?: string | undefined;
@@ -171,8 +176,7 @@ function teamCoverageEffectiveness(
     type: string;
     stab: boolean;
   }[],
-  oppTypechart: { team: any },
-  userMon: string
+  oppTypechart: { team: any }
 ) {
   let total = 0;
   for (let pokemon of oppTypechart.team) {
@@ -181,9 +185,9 @@ function teamCoverageEffectiveness(
       //change out for damage calc eventually
       let stat = 1;
       if (move.category == "physical") {
-        stat = getBaseStats(userMon)["atk"];
+        stat = getBaseStats(gen, userMon)["atk"];
       } else {
-        stat = getBaseStats(userMon)["spa"];
+        stat = getBaseStats(gen, userMon)["spa"];
       }
       let value = move.ePower * pokemon.weak[move.type] * stat;
       if (move.stab) {

@@ -17,15 +17,13 @@ import {
   Movechart,
   movechart,
 } from "../services/matchup-services/movechart.service";
-import {
-  Speedchart,
-  speedchart,
-} from "../services/matchup-services/speedchart.service";
 import { Summary, summary } from "../services/matchup-services/summary.service";
 import {
   Typechart,
   typechart,
 } from "../services/matchup-services/typechart.service";
+import { Dex } from "@pkmn/dex";
+import { Generation, Generations } from "@pkmn/data";
 
 export const matchupRouter = express.Router();
 
@@ -36,12 +34,13 @@ interface MatchupResponse extends Response {
     ruleset: RulesetId;
     leagueName: string;
   };
+  gen?: Generation;
 }
 
 matchupRouter
   .route("/:matchup_id")
   .get(async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
+    if (!res.matchup || !res.gen?.exists) {
       return;
     }
     try {
@@ -54,7 +53,7 @@ matchupRouter
         stage: string;
         leagueName: string;
         summary: (Summary & { teamName?: string })[];
-        speedchart: Speedchart;
+        // speedchart: Speedchart;
         coveragechart: Coveragechart[];
         typechart: Typechart[];
         movechart: Movechart[];
@@ -65,27 +64,38 @@ matchupRouter
         stage: res.matchup.stage,
         leagueName: res.matchup.leagueName,
         summary: [],
-        speedchart: speedchart(
-          [res.matchup.aTeam.team, res.matchup.bTeam.team],
-          level
-        ),
+        // speedchart: speedchart(
+        //   res.gen,
+        //   [res.matchup.aTeam.team, res.matchup.bTeam.team],
+        //   level
+        // ),
         coveragechart: [
-          coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
-          coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen),
+          coveragechart(
+            res.gen,
+            res.matchup.aTeam.team,
+            res.matchup.bTeam.team
+          ),
+          coveragechart(
+            res.gen,
+            res.matchup.bTeam.team,
+            res.matchup.aTeam.team
+          ),
         ],
         typechart: [
-          typechart(res.matchup.aTeam.team),
-          typechart(res.matchup.bTeam.team),
+          typechart(res.gen, res.matchup.aTeam.team),
+          typechart(res.gen, res.matchup.bTeam.team),
         ],
         movechart: [
-          movechart(res.matchup.aTeam.team, gen),
-          movechart(res.matchup.bTeam.team, gen),
+          movechart(res.gen, res.matchup.aTeam.team),
+          movechart(res.gen, res.matchup.bTeam.team),
         ],
       };
       let aTeamsummary: Summary & { teamName?: string } = summary(
+        res.gen,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
+        res.gen,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -112,14 +122,16 @@ matchupRouter
 matchupRouter.get(
   "/:matchup_id/summary",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup) {
+    if (!res.matchup || !res.rawMatchup || !res.gen?.exists) {
       return;
     }
     try {
       let aTeamsummary: Summary & { teamName?: string } = summary(
+        res.gen,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
+        res.gen,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -134,13 +146,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/typechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup) {
+    if (!res.matchup || !res.rawMatchup || !res.gen?.exists) {
       return;
     }
     try {
       res.json([
-        typechart(res.matchup.aTeam.team),
-        typechart(res.matchup.bTeam.team),
+        typechart(res.gen, res.matchup.aTeam.team),
+        typechart(res.gen, res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -148,34 +160,37 @@ matchupRouter.get(
   }
 );
 
-matchupRouter.get(
-  "/:matchup_id/speedchart",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
-      return;
-    }
-    try {
-      let level = Formats[res.matchup.format].level;
-      res.json(
-        speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
-      );
-    } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
-    }
-  }
-);
+// matchupRouter.get(
+//   "/:matchup_id/speedchart",
+//   async (req: Request, res: MatchupResponse) => {
+//     if (!res.matchup || !res.gen?.exists) {
+//       return;
+//     }
+//     try {
+//       let level = Formats[res.matchup.format].level;
+//       res.json(
+//         speedchart(
+//           res.gen,
+//           [res.matchup.aTeam.team, res.matchup.bTeam.team],
+//           level
+//         )
+//       );
+//     } catch (error) {
+//       res.status(500).json({ message: (error as Error).message });
+//     }
+//   }
+// );
 
 matchupRouter.get(
   "/:matchup_id/coveragechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
+    if (!res.matchup || !res.gen?.exists) {
       return;
     }
     try {
-      let gen = Rulesets[res.matchup.ruleset].gen;
       res.json([
-        coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team, gen),
-        coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team, gen),
+        coveragechart(res.gen, res.matchup.aTeam.team, res.matchup.bTeam.team),
+        coveragechart(res.gen, res.matchup.bTeam.team, res.matchup.aTeam.team),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -186,14 +201,14 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/movechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
+    if (!res.matchup || !res.gen?.exists) {
       return;
     }
     try {
       let gen = Rulesets[res.matchup.ruleset].gen;
       res.json([
-        movechart(res.matchup.aTeam.team, gen),
-        movechart(res.matchup.bTeam.team, gen),
+        movechart(res.gen, res.matchup.aTeam.team),
+        movechart(res.gen, res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -217,9 +232,6 @@ matchupRouter.param(
           next();
           return;
         }
-        for (let pokemon of aTeam.team) {
-          pokemon.name = getName(pokemon.pid);
-        }
         matchup.leagueName = aTeam.leagueName;
         matchup.format = aTeam.format;
         matchup.ruleset = aTeam.ruleset;
@@ -229,11 +241,13 @@ matchupRouter.param(
           team: aTeam.team,
           _id: aTeam._id,
         };
+        let gens = new Generations(Dex);
+        res.gen = gens.get(matchup.format);
         for (let pokemon of matchup.aTeam.team) {
-          pokemon.name = getName(pokemon.pid);
+          pokemon.name = getName(res.gen, pokemon.pid);
         }
         for (let pokemon of matchup.bTeam.team) {
-          pokemon.name = getName(pokemon.pid);
+          pokemon.name = getName(res.gen, pokemon.pid);
         }
         res.matchup = matchup;
       } else {

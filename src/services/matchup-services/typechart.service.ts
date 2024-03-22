@@ -1,8 +1,8 @@
+import { Generation } from "@pkmn/data";
 import { DamageTypes } from "../../data/typechart";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getWeak } from "../data-services/pokedex.service";
-import { defensive } from "../data-services/type.service";
-
+import { getTypes } from "../data-services/pokedex.service";
+import { damageTaken } from "../data-services/type.services";
 export type Typechart = {
   team: (
     | PokemonData & {
@@ -14,22 +14,22 @@ export type Typechart = {
   };
 };
 
-export function typechart(team: PokemonData[]): Typechart {
+export function typechart(gen: Generation, team: PokemonData[]): Typechart {
   let teraTypes: { [key: string]: {} } = {};
   let result: (
     | PokemonData & {
-        weak: DamageTypes;
+        weak: any;
       }
   )[] = [];
   for (let p of team) {
-    let pokemon: PokemonData & { weak: DamageTypes } = {
+    let pokemon: PokemonData & { weak: any } = {
       ...p,
-      weak: getWeak(p.pid),
+      weak: damageTaken(gen, getTypes(gen, p.pid)),
     };
     if (pokemon.capt && pokemon.capt.tera) {
       for (let type of pokemon.capt.tera) {
         if (!(type in teraTypes) && type != "Stellar") {
-          teraTypes[type] = defensive([type]);
+          teraTypes[type] = [type];
         }
       }
     }

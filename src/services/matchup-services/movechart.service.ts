@@ -1,5 +1,7 @@
+import { Generation, ID, toID } from "@pkmn/data";
 import { PokemonId } from "../../data/pokedex";
-import { getName, learns } from "../data-services/pokedex.service";
+import { getName } from "../data-services/pokedex.service";
+import { canLearn } from "../data-services/learnset.service";
 
 const chartMoves: {
   Priority: string[];
@@ -225,6 +227,7 @@ export type Movechart = {
 }[];
 
 export function movechart(
+  gen: Generation,
   team: {
     coverage?: {
       [key: string]: {
@@ -236,24 +239,27 @@ export function movechart(
         recommended?: number[] | undefined;
       }[];
     };
-    pid: PokemonId;
+    pid: ID;
     name: string;
-  }[],
-  gen: string
+  }[]
 ): Movechart {
   let chartData: {
     catName: keyof typeof chartMoves;
     moves: { moveName: string; pokemon: string[] }[];
   }[] = [];
-  Object.entries(chartMoves).forEach(([catName, moves]) => {
+  Object.entries(chartMoves).forEach(async ([catName, moves]) => {
     let catData = {
       catName: catName as keyof typeof chartMoves,
       moves: [] as { moveName: string; pokemon: string[] }[],
     };
-    for (let moveId of moves) {
-      let moveData = { moveName: getName(moveId), pokemon: [] as string[] };
+    for (let move of moves) {
+      const moveID = toID(move);
+      let moveData = {
+        moveName: getName(gen, moveID),
+        pokemon: [] as string[],
+      };
       for (let pokemon of team) {
-        if (learns(pokemon.pid, moveId, gen)) {
+        if (await canLearn(gen, pokemon.pid, moveID)) {
           moveData.pokemon.push(pokemon.pid);
         }
       }

@@ -17,6 +17,8 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
+import { Generation, Generations } from "@pkmn/data";
+import { Dex } from "@pkmn/dex";
 
 export const draftRouter = express.Router();
 
@@ -24,6 +26,7 @@ type DraftResponse = Response & {
   rawDraft?: DraftDocument | null;
   rawMatchup?: MatchupDocument | null;
   draft?: DraftDocument;
+  gen?: Generation;
   matchup?: MatchupData & {
     format: FormatId;
     ruleset: RulesetId;
@@ -47,7 +50,7 @@ draftRouter
       return;
     }
     try {
-      const draft = new Draft(req.body, req.sub);
+      const draft = new Draft(res.gen!, req.body, req.sub);
       const draftDoc = await draft.createDraft();
       const foundDrafts = await DraftModel.find({
         owner: req.sub,
@@ -83,7 +86,7 @@ draftRouter
     }
     try {
       let team_id = req.params.team_id;
-      const draft = await new Draft(req.body, req.sub).createDraft();
+      const draft = await new Draft(res.gen!, req.body, req.sub).createDraft();
 
       const updatedDraft = await DraftModel.findOneAndUpdate(
         { owner: req.sub, leagueId: team_id },
@@ -141,7 +144,7 @@ draftRouter
       return;
     }
     try {
-      const matchup = new Matchup(req.body, res.draft._id);
+      const matchup = new Matchup(res.gen!, req.body, res.draft._id);
       await matchup.createMatchup();
       res.status(201).json({ message: "Matchup Added" });
     } catch (error) {
@@ -150,18 +153,18 @@ draftRouter
     }
   });
 
-draftRouter
-  .route("/:team_id/stats")
-  .get(async (req: SubRequest, res: DraftResponse) => {
-    if (!res.draft) {
-      return;
-    }
-    try {
-      res.json(await getStats(res.draft._id));
-    } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
+// draftRouter
+//   .route("/:team_id/stats")
+//   .get(async (req: SubRequest, res: DraftResponse) => {
+//     if (!res.draft) {
+//       return;
+//     }
+//     try {
+//       res.json(await getStats(res.draft._id));
+//     } catch (error) {
+//       res.status(500).json({ message: (error as Error).message });
+//     }
+//   });
 
 draftRouter
   .route("/:team_id/archive")
@@ -195,7 +198,7 @@ draftRouter
       return;
     }
     try {
-      const matchup = new Matchup(req.body, res.draft._id);
+      const matchup = new Matchup(res.gen!, req.body, res.draft._id);
       const matchupDoc = await matchup.createMatchup();
       const updatedMatchup = await MatchupModel.findByIdAndUpdate(
         req.params.matchup_id,
@@ -269,8 +272,10 @@ draftRouter.param(
         return res.status(400).json({ message: "Team id not found" });
       }
       res.draft = res.rawDraft.toObject();
+      let gens = new Generations(Dex);
+      res.gen = gens.get(res.draft.format);
       for (let pokemon of res.draft.team) {
-        pokemon.name = getName(pokemon.pid);
+        pokemon.name = getName(res.gen, pokemon.pid);
       }
     } catch (error) {
       return res.status(500).json({ message: (error as Error).message });

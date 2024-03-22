@@ -1,3 +1,4 @@
+import { Generation, ID } from "@pkmn/data";
 import { BaseStat, PokemonId } from "../../data/pokedex";
 import { TypeId } from "../../data/typechart";
 import { PokemonData } from "../../models/pokemon.schema";
@@ -38,24 +39,27 @@ export type Summary = {
   };
 };
 
-export function summary(team: PokemonData[]): Summary {
+export function summary(gen: Generation, team: PokemonData[]): Summary {
   for (let pokemon of team) {
-    summaryData(pokemon);
+    summaryData(gen, pokemon);
   }
   return { team: team, stats: statistics(team) };
 }
 
-function summaryData(pokemon: {
-  pid: PokemonId;
-  name?: string;
-  abilities?: string[];
-  types?: TypeId[];
-  baseStats?: { [key in BaseStat]: number };
-}) {
-  pokemon.name = getName(pokemon.pid);
-  pokemon.abilities = getAbilities(pokemon.pid);
-  pokemon.types = getTypes(pokemon.pid);
-  pokemon.baseStats = getBaseStats(pokemon.pid);
+function summaryData(
+  gen: Generation,
+  pokemon: {
+    pid: ID;
+    name?: string;
+    abilities?: string[];
+    types?: TypeId[];
+    baseStats?: { [key in BaseStat]: number };
+  }
+) {
+  pokemon.name = getName(gen, pokemon.pid);
+  pokemon.abilities = getAbilities(gen, pokemon.pid);
+  pokemon.types = getTypes(gen, pokemon.pid);
+  pokemon.baseStats = getBaseStats(gen, pokemon.pid);
   return pokemon;
 }
 

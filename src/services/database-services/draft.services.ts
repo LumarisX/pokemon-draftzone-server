@@ -1,3 +1,4 @@
+import { Generation, ID, toID } from "@pkmn/data";
 import { MatchupModel } from "../../models/matchup.model";
 import { getName } from "../data-services/pokedex.service";
 
@@ -17,11 +18,11 @@ export async function getScore(teamId: string) {
   return score;
 }
 
-export async function getStats(draftId: string) {
+export async function getStats(gen: Generation, draftId: string) {
   let matchups = await getMatchups(draftId);
   let stats: {
     [key: string]: {
-      pokemon: { pid: string; name: string };
+      pokemon: { pid: ID; name: string };
       kills: number;
       brought: number;
       indirect: number;
@@ -34,7 +35,7 @@ export async function getStats(draftId: string) {
     for (const pid in matchup.aTeam.stats) {
       if (!(pid in stats)) {
         stats[pid] = {
-          pokemon: { pid: pid, name: getName(pid) },
+          pokemon: { pid: toID(pid), name: getName(gen, toID(pid)) },
           kills: 0,
           brought: 0,
           indirect: 0,
@@ -43,7 +44,7 @@ export async function getStats(draftId: string) {
           kpg: 0,
         };
       }
-      const teamStats = matchup.aTeam.stats[pid];
+      const teamStats = matchup.aTeam.stats[toID(pid)];
       if (teamStats) {
         stats[pid].kills += teamStats.kills ?? 0;
         stats[pid].brought += teamStats.brought ?? 0;

@@ -1,38 +1,18 @@
+import { Generations } from "@pkmn/data";
+import { Dex, ID } from "@pkmn/dex";
 import express from "express";
-import { Pokedex } from "../data/pokedex";
-import { getLearnset } from "../services/data-services/learnset.service";
+import { typechart } from "../services/matchup-services/typechart.service";
+import { summary } from "../services/matchup-services/summary.service";
 
 export const testRouter = express.Router();
 
 testRouter.route("/test").get(async (req, res) => {
-  const gen = "1-9"; // Define the generation string for testing
-
-  const results: Record<string, string[]> = {}; // Store the results of getLearnset calls for each Pokemon
-  let success = true; // Flag to indicate overall success
-  // Iterate over each key in the Pokedex
-  for (const pid in Pokedex) {
-    if (Object.prototype.hasOwnProperty.call(Pokedex, pid)) {
-      console.log(pid);
-      const learnset = getLearnset(pid, gen); // Call getLearnset for the current Pokemon
-      if (learnset === undefined) {
-        // If getLearnset returns undefined, set success to false and break the loop
-        success = false;
-        break;
-      }
-      results[pid] = learnset; // Store the learnset for the current Pokemon
-    }
-  }
-  // Send response based on overall success
-  if (success) {
-    res.json({ success: true, results });
-  } else {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve learnset for some Pokémon.",
-    });
-  }
-});
-
-testRouter.route("/oger").get(async (req, res) => {
-  res.json(getLearnset("ogerponcornerstone", "1-9"));
+  const gens = new Generations(Dex);
+  const gen = gens.get(9);
+  res.json(
+    summary(gen, [
+      { pid: "pikachu" as ID, name: "Pikachu" },
+      { pid: "charizard" as ID, name: "Charizard" },
+    ])
+  );
 });

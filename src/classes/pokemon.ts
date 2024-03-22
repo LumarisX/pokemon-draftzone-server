@@ -1,8 +1,8 @@
-import { PokemonId } from "../data/pokedex";
-import { getName, inDex } from "../services/data-services/pokedex.service";
+import { Generation, ID } from "@pkmn/data";
+import { getName } from "../services/data-services/pokedex.service";
 
 export type Pokemon = {
-  pid: PokemonId;
+  pid: ID;
   shiny?: boolean;
   name: string;
   capt?: {
@@ -15,25 +15,28 @@ export class PokemonBuilder {
   data: Pokemon;
   error: string | undefined;
 
-  constructor(pokemonData: {
-    pid: PokemonId;
-    shiny?: boolean;
-    name?: string;
-    capt?: {
-      tera?: string[];
-      z?: boolean;
-    };
-    captCheck?: { z: boolean; teraCheck?: { [key: string]: boolean } };
-  }) {
+  constructor(
+    gen: Generation,
+    pokemonData: {
+      pid: ID;
+      shiny?: boolean;
+      name?: string;
+      capt?: {
+        tera?: string[];
+        z?: boolean;
+      };
+      captCheck?: { z: boolean; teraCheck?: { [key: string]: boolean } };
+    }
+  ) {
     this.data = {
       pid: pokemonData.pid,
-      name: pokemonData.name ?? getName(pokemonData.pid),
+      name: pokemonData.name ?? getName(gen, pokemonData.pid),
     };
 
-    if (!inDex(pokemonData.pid)) {
-      this.error = `${this.data.name} not found in the pokedex`;
-      return;
-    }
+    // if (!inDex(pokemonData.pid)) {
+    //   this.error = `${this.data.name} not found in the pokedex`;
+    //   return;
+    // }
 
     const { captCheck } = pokemonData;
     if (captCheck?.z) {
