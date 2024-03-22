@@ -18,14 +18,14 @@ export type Speedchart = {
 
 type Configurations = {
   boosts: number[];
-  status: { status: StatusName | ""; modifier?: string }[];
+  statuses: { status: StatusName | ""; modifier?: string }[];
   sides: { tailwind?: boolean; modifiers: string[] }[];
   fields: { modifiers: string[] }[];
-  pokemons: {
+  items: { item?: string }[];
+  spreads: {
     evs?: { spe: number };
     ivs?: { spe: number };
     nature?: string;
-    item?: string;
     modifiers: string[];
   }[];
 };
@@ -38,6 +38,7 @@ function getSpeedTiers(
   return [
     ...generateTiers(gen, p, level, teamIndex, fastConfigurations),
     ...generateTiers(gen, p, level, teamIndex, slowConfigurations),
+    ...generateTiers(gen, p, level, teamIndex, baseConfiugrations),
   ];
 }
 
@@ -53,27 +54,30 @@ function getModifiers(tiers: Speedchart["tiers"]): string[] {
 
 const fastConfigurations: Configurations = {
   boosts: [-1, 0, 1, 2],
-  status: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
-  pokemons: [
+  statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
+  items: [{}, { item: "Choice Scarf" }],
+  spreads: [
     { evs: { spe: 252 }, modifiers: ["Max"] },
     { evs: { spe: 252 }, nature: "Timid", modifiers: ["Max", "Positive"] },
-    { evs: { spe: 252 }, item: "Choice Scarf", modifiers: ["Max", "Scarf"] },
-    {
-      evs: { spe: 252 },
-      nature: "Timid",
-      item: "Choice Scarf",
-      modifiers: ["Max", "Positive", "Scarf"],
-    },
   ],
   fields: [{ modifiers: [] }],
   sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
 };
 
+const baseConfiugrations: Configurations = {
+  boosts: [0],
+  statuses: [{ status: "" }],
+  items: [{}],
+  spreads: [{ evs: { spe: 0 }, modifiers: [] }],
+  fields: [{ modifiers: [] }],
+  sides: [{ modifiers: [] }],
+};
+
 const slowConfigurations: Configurations = {
   boosts: [-1, 0],
-  status: [{ status: "" }],
-  pokemons: [
-    { evs: { spe: 0 }, modifiers: [] },
+  statuses: [{ status: "" }],
+  items: [{ item: "Iron Ball" }],
+  spreads: [
     { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["Min"] },
     {
       evs: { spe: 0 },
@@ -81,28 +85,9 @@ const slowConfigurations: Configurations = {
       nature: "Brave",
       modifiers: ["Min", "Negative"],
     },
-    {
-      evs: { spe: 0 },
-      ivs: { spe: 0 },
-      item: "Iron Ball",
-      modifiers: ["Min", "Iron Ball"],
-    },
-    {
-      evs: { spe: 0 },
-      ivs: { spe: 0 },
-      nature: "Brave",
-      item: "Iron Ball",
-      modifiers: ["Min", "Negative", "Iron Ball"],
-    },
-    {
-      evs: { spe: 252 },
-      nature: "Timid",
-      item: "Choice Scarf",
-      modifiers: ["Max", "Positive", "Scarf"],
-    },
   ],
   fields: [{ modifiers: [] }],
-  sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
+  sides: [{ modifiers: [] }],
 };
 
 function generateTiers(
@@ -113,38 +98,43 @@ function generateTiers(
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  for (const status of configurations.status) {
-    for (const boost of configurations.boosts) {
-      for (const sConfig of configurations.sides) {
-        const side = new Side({ isTailwind: sConfig.tailwind });
-        for (const fConfig of configurations.fields) {
-          const field = new Field();
-          for (const pConfig of configurations.pokemons) {
-            const pokemon = new Pokemon(gen, p.pid, {
-              level,
-              evs: pConfig.evs,
-              nature: pConfig.nature,
-              item: pConfig.item,
-              boosts: { spe: boost },
-              status: status.status,
-            });
-            const modifiers = [
-              ...(pConfig.modifiers || []),
-              ...(sConfig.modifiers || []),
-              ...(fConfig.modifiers || []),
-            ];
-            if (boost !== 0) {
-              modifiers.push("Stage " + boost);
+  for (const item of configurations.items) {
+    for (const status of configurations.statuses) {
+      for (const boost of configurations.boosts) {
+        for (const sConfig of configurations.sides) {
+          const side = new Side({ isTailwind: sConfig.tailwind });
+          for (const fConfig of configurations.fields) {
+            const field = new Field();
+            for (const pConfig of configurations.spreads) {
+              const pokemon = new Pokemon(gen, p.pid, {
+                level,
+                evs: pConfig.evs,
+                nature: pConfig.nature,
+                item: item.item,
+                boosts: { spe: boost },
+                status: status.status,
+              });
+              const modifiers = [
+                ...(pConfig.modifiers || []),
+                ...(sConfig.modifiers || []),
+                ...(fConfig.modifiers || []),
+              ];
+              if (boost !== 0) {
+                modifiers.push("Stage " + boost);
+              }
+              if (status.modifier) {
+                modifiers.push(status.modifier);
+              }
+              if (item.item) {
+                modifiers.push(item.item);
+              }
+              tiers.push({
+                pokemon: p,
+                speed: getFinalSpeed(gen, pokemon, field, side),
+                team: teamIndex,
+                modifiers,
+              });
             }
-            if (status.modifier) {
-              modifiers.push(status.modifier);
-            }
-            tiers.push({
-              pokemon: p,
-              speed: getFinalSpeed(gen, pokemon, field, side),
-              team: teamIndex,
-              modifiers,
-            });
           }
         }
       }
