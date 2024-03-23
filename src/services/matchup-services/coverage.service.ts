@@ -34,7 +34,6 @@ export async function coveragechart(
       ...p,
       coverage: await getCoverage(gen, p.pid),
     };
-    console.log(pokemon.coverage);
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
         x: { stab: boolean; ePower: number },
