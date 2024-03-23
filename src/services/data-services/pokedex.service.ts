@@ -142,7 +142,6 @@ export function getAbilities(gen: Generation, pokemonID: ID) {
 
 export async function getCoverage(gen: Generation, pokemonID: ID) {
   let learnset = await getLearnset(gen, pokemonID);
-  console.log(pokemonID, learnset);
   let coverage: {
     Physical: {
       [key: string]: {

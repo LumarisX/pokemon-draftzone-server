@@ -4,17 +4,20 @@ import { speedchart } from "../services/matchup-services/speedchart.service";
 import { typechart } from "../services/matchup-services/typechart.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { coveragechart } from "../services/matchup-services/coverage.service";
+import { summary } from "../services/matchup-services/summary.service";
 
 const gens = new Generations(Dex);
 const gen = gens.get(9);
 const aTeam = [
-  // { pid: "gallade" as ID, name: "Gallade" },
+  // { pid: "charmander" as ID, name: "Charmander" },
+  { pid: "charizard" as ID, name: "Charizard" },
+
   // { pid: "deoxys" as ID, name: "Deoxys" },
-  { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
+  // { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
 ];
 const bTeam = [
   { pid: "pikachu" as ID, name: "Pikachu" },
-  { pid: "charizard" as ID, name: "Charizard" },
+  // { pid: "gallade" as ID, name: "Gallade" },
   { pid: "heatran" as ID, name: "Heatran" },
 ];
 
@@ -24,6 +27,10 @@ function speedchartTest() {
 
 function typechartTest() {
   console.log(JSON.stringify(typechart(gen, aTeam)));
+}
+
+function summaryTest() {
+  console.log(JSON.stringify(summary(gen, aTeam)));
 }
 
 async function movechartTest() {

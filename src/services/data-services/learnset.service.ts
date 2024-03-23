@@ -3,22 +3,22 @@ import { Learnsets } from "../../data/learnsets";
 import { PokemonId } from "../../data/pokedex";
 
 export async function getLearnset(gen: Generation, pid: ID) {
-  return (await gen.dex.learnsets.getByID(pid)).learnset;
+  let learnset = await gen.learnsets.learnable(pid);
+  if (true) {
+    let localLearnset: { [key: string]: string[] } = {};
+    for (let move in learnset) {
+      if (genCheck(gen, learnset[move])) {
+        localLearnset[move] = learnset[move];
+      }
+    }
+    learnset = localLearnset;
+  }
+  return learnset;
 }
 
-export function inLearnset(
-  gen: Generation,
-  pid: PokemonId,
-  moveId: string
-): boolean {
-  return genCheck(gen, Learnsets[pid]?.learnset?.[moveId] ?? {});
-}
-
-function genCheck(gen: Generation, move: { [key: string]: any }): boolean {
-  return Object.values(move).some((value) => {
-    const genReg = new RegExp("^[" + gen + "]\\D");
-    return genReg.test(value);
-  });
+function genCheck(gen: Generation, move: string[]): boolean {
+  const genReg = new RegExp("^[" + gen.num + "]\\D");
+  return genReg.test(move[0]);
 }
 
 export function hasLearnset(pid: PokemonId) {
@@ -26,6 +26,5 @@ export function hasLearnset(pid: PokemonId) {
 }
 
 export async function canLearn(gen: Generation, pokemonID: ID, moveId: ID) {
-  let can = await gen.learnsets.canLearn(pokemonID, moveId);
-  return can;
+  return await gen.learnsets.canLearn(pokemonID, moveId);
 }
