@@ -5,7 +5,7 @@ import Archive from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { Matchup, Score } from "../classes/matchup";
 import { FormatId } from "../data/formats";
-import { RulesetId } from "../data/rulesets";
+import { RulesetId, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import {
   MatchupData,
@@ -273,12 +273,15 @@ draftRouter.param(
       }
       res.draft = res.rawDraft.toObject();
       let gens = new Generations(Dex);
-      res.gen = gens.get(res.draft.format);
+      res.gen = gens.get(Rulesets[res.draft.ruleset].gen);
       for (let pokemon of res.draft.team) {
         pokemon.name = getName(res.gen, pokemon.pid);
       }
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+      console.log(error);
+      return res
+        .status(500)
+        .json({ message: (error as Error).message, code: "D-P2-01" });
     }
     next();
   }
@@ -308,7 +311,9 @@ draftRouter.param(
       matchup.aTeam.team = draft.team;
       res.matchup = matchup;
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+      return res
+        .status(500)
+        .json({ message: (error as Error).message, code: "D-P1-01" });
     }
     next();
   }

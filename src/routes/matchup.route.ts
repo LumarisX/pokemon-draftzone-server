@@ -24,6 +24,10 @@ import {
 } from "../services/matchup-services/typechart.service";
 import { Dex } from "@pkmn/dex";
 import { Generation, Generations } from "@pkmn/data";
+import {
+  Speedchart,
+  speedchart,
+} from "../services/matchup-services/speedchart.service";
 
 export const matchupRouter = express.Router();
 
@@ -53,7 +57,7 @@ matchupRouter
         stage: string;
         leagueName: string;
         summary: (Summary & { teamName?: string })[];
-        // speedchart: Speedchart;
+        speedchart: Speedchart;
         coveragechart: Coveragechart[];
         typechart: Typechart[];
         movechart: Movechart[];
@@ -64,11 +68,11 @@ matchupRouter
         stage: res.matchup.stage,
         leagueName: res.matchup.leagueName,
         summary: [],
-        // speedchart: speedchart(
-        //   res.gen,
-        //   [res.matchup.aTeam.team, res.matchup.bTeam.team],
-        //   level
-        // ),
+        speedchart: speedchart(
+          res.gen,
+          [res.matchup.aTeam.team, res.matchup.bTeam.team],
+          level
+        ),
         coveragechart: [
           await coveragechart(
             res.gen,
@@ -242,7 +246,7 @@ matchupRouter.param(
           _id: aTeam._id,
         };
         let gens = new Generations(Dex);
-        res.gen = gens.get(matchup.format);
+        res.gen = gens.get(Rulesets[matchup.ruleset].gen);
         for (let pokemon of matchup.aTeam.team) {
           pokemon.name = getName(res.gen, pokemon.pid);
         }

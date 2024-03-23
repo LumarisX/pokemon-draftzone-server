@@ -5,7 +5,7 @@ export function getType(gen: Generation, moveID: ID): TypeName {
   return gen.dex.moves.getByID(moveID).type;
 }
 
-export function getName(gen: Generation, moveID: ID): MoveName {
+export function getMoveName(gen: Generation, moveID: ID): MoveName {
   return gen.dex.moves.getByID(moveID).name;
 }
 
