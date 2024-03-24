@@ -1,11 +1,7 @@
 import { Generation, ID } from "@pkmn/data";
-import { PokemonId } from "../../data/pokedex";
 import { PokemonData } from "../../models/pokemon.schema";
-import {
-  getBaseStats,
-  getCoverage,
-  getName,
-} from "../data-services/pokedex.service";
+import { getCategory, getMoveName } from "../data-services/move.service";
+import { getBaseStats, getCoverage } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
 
 export type Coveragechart = (
@@ -55,7 +51,7 @@ export async function coveragechart(
         type: string;
         stab: boolean;
         ePower: number;
-        recommended: number[] | undefined;
+        recommended?: true;
       }[];
     } = {
       physical: [],
@@ -64,7 +60,7 @@ export async function coveragechart(
     for (let category in pokemon.coverage) {
       for (let move of pokemon.coverage[category]) {
         coverage[category].push({
-          name: getName(gen, move.id || ""),
+          name: getMoveName(gen, move.id || ""),
           type: move.type,
           stab: move.stab,
           ePower: move.ePower,
@@ -86,11 +82,11 @@ function bestCoverage(
     coverage?: {
       [key: string]: {
         ePower: number;
-        id?: string;
+        id: ID;
         name?: string;
         type: string;
         stab: boolean;
-        recommended?: number[];
+        recommended?: true;
       }[];
     };
   },
@@ -106,63 +102,62 @@ function bestCoverage(
 ) {
   const physicalCoverage = pokemon.coverage?.physical || [];
   const specialCoverage = pokemon.coverage?.special || [];
-  const coverageMoves = [
-    ...physicalCoverage.map((move) => ({ ...move, category: "physical" })),
-    ...specialCoverage.map((move) => ({ ...move, category: "special" })),
-  ];
 
-  for (let i = 4; i < coverageMoves.length && i < 5; i++) {
-    let indices = [];
-    for (let j = i - 1; j >= 0; j--) {
-      indices.push(j);
+  let best: {
+    moves: {
+      ePower: number;
+      id: ID;
+      name?: string | undefined;
+      type: string;
+      stab: boolean;
+      recommended?: true;
+    }[];
+    maxEffectiveness: number;
+  } = {
+    maxEffectiveness: 0,
+    moves: [],
+  };
+  let indices = [3, 2, 1, 0];
+  for (
+    let j = 0;
+    j < choose(physicalCoverage.length + specialCoverage.length, 4);
+    j++
+  ) {
+    let moves = [];
+    for (let index of indices) {
+      if (index < physicalCoverage.length) {
+        moves.push(physicalCoverage[index]);
+      } else {
+        moves.push(specialCoverage[index - physicalCoverage.length]);
+      }
     }
-    let best: {
-      moves: {
-        ePower: number;
-        id?: string | undefined;
-        name?: string | undefined;
-        type: string;
-        category: string;
-        stab: boolean;
-        recommended?: number[] | undefined;
-      }[];
-      maxEffectiveness: number;
-    } = {
-      maxEffectiveness: 0,
-      moves: [],
-    };
-    for (let j = 0; j < choose(coverageMoves.length, i); j++) {
-      let moves = [];
-      for (let index of indices) {
-        moves.push(coverageMoves[index]);
-      }
-      let coverageEffectiveness = teamCoverageEffectiveness(
-        gen,
-        pokemon.pid,
-        moves,
-        oppTypechart
-      );
-      if (coverageEffectiveness > best.maxEffectiveness) {
-        best.maxEffectiveness = coverageEffectiveness;
-        best.moves = moves;
-      }
-      indices[0]++;
-      for (let k = 1; k < i; k++) {
-        if (indices[k - 1] > coverageMoves.length - k) {
-          indices[k]++;
-          for (let l = k - 1; l >= 0; l--) {
-            indices[l] = indices[l + 1] + 1;
-          }
+    let coverageEffectiveness = teamCoverageEffectiveness(
+      gen,
+      pokemon.pid,
+      moves,
+      oppTypechart
+    );
+    if (coverageEffectiveness > best.maxEffectiveness) {
+      best.maxEffectiveness = coverageEffectiveness;
+      best.moves = moves;
+    }
+    indices[0]++;
+    for (let k = 1; k < 4; k++) {
+      if (
+        indices[k - 1] >
+        physicalCoverage.length + specialCoverage.length - k
+      ) {
+        indices[k]++;
+        for (let l = k - 1; l >= 0; l--) {
+          indices[l] = indices[l + 1] + 1;
         }
       }
     }
-    for (let move of best.moves) {
-      if (move.recommended === undefined) {
-        move.recommended = [];
-      }
-      move.recommended.push(i);
-    }
   }
+  for (let move of best.moves) {
+    move.recommended = true;
+  }
+  return best.moves;
 }
 
 function teamCoverageEffectiveness(
@@ -170,9 +165,8 @@ function teamCoverageEffectiveness(
   userMon: ID,
   moveArray: {
     ePower: number;
-    id?: string | undefined;
+    id: ID;
     name?: string | undefined;
-    category: string;
     type: string;
     stab: boolean;
   }[],
@@ -184,7 +178,7 @@ function teamCoverageEffectiveness(
     for (let move of moveArray) {
       //change out for damage calc eventually
       let stat = 1;
-      if (move.category == "physical") {
+      if (getCategory(gen, move.id) == "Physical") {
         stat = getBaseStats(gen, userMon)["atk"];
       } else {
         stat = getBaseStats(gen, userMon)["spa"];

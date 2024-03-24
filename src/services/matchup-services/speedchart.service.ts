@@ -57,8 +57,8 @@ const fastConfigurations: Configurations = {
   statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
   items: [{}, { item: "Choice Scarf" }],
   spreads: [
-    { evs: { spe: 252 }, modifiers: ["Max"] },
-    { evs: { spe: 252 }, nature: "Timid", modifiers: ["Max", "Positive"] },
+    { evs: { spe: 252 }, modifiers: ["252"] },
+    { evs: { spe: 252 }, nature: "Timid", modifiers: ["252", "Positive"] },
   ],
   fields: [{ modifiers: [] }],
   sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
@@ -78,12 +78,12 @@ const slowConfigurations: Configurations = {
   statuses: [{ status: "" }],
   items: [{ item: "Iron Ball" }],
   spreads: [
-    { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["Min"] },
+    { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["0"] },
     {
       evs: { spe: 0 },
       ivs: { spe: 0 },
       nature: "Brave",
-      modifiers: ["Min", "Negative"],
+      modifiers: ["0", "Negative"],
     },
   ],
   fields: [{ modifiers: [] }],

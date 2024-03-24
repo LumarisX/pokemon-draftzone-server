@@ -1,6 +1,4 @@
 import { Generation, ID, toID } from "@pkmn/data";
-import { PokemonId } from "../../data/pokedex";
-import { getName } from "../data-services/pokedex.service";
 import { canLearn } from "../data-services/learnset.service";
 import { getMoveName } from "../data-services/move.service";
 

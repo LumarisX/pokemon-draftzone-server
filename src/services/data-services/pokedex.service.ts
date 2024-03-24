@@ -18,7 +18,7 @@ export function getBaseStats(gen: Generation, pokemonID: ID): StatsTable {
   return gen.dex.species.getByID(pokemonID).baseStats;
 }
 
-export function getWeak(gen: Generation, pid: ID) {
+export function getWeak(gen: Generation, pid: ID): { [key: string]: number } {
   let types = getTypes(gen, pid);
   let weak = typeWeak(gen, types);
   for (let ability of getAbilities(gen, pid)) {

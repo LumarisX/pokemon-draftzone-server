@@ -1,6 +1,4 @@
 import { Generation, ID } from "@pkmn/data";
-import { Learnsets } from "../../data/learnsets";
-import { PokemonId } from "../../data/pokedex";
 
 export async function getLearnset(gen: Generation, pid: ID) {
   let learnset = await gen.learnsets.learnable(pid);
@@ -21,8 +19,8 @@ function genCheck(gen: Generation, move: string[]): boolean {
   return genReg.test(move[0]);
 }
 
-export function hasLearnset(pid: PokemonId) {
-  return Learnsets[pid] && Learnsets[pid].learnset;
+export async function hasLearnset(gen: Generation, pid: ID) {
+  return (await gen.learnsets.learnable(pid)) !== undefined;
 }
 
 export async function canLearn(gen: Generation, pokemonID: ID, moveId: ID) {

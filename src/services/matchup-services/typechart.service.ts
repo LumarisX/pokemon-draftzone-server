@@ -1,12 +1,10 @@
 import { Generation } from "@pkmn/data";
-import { DamageTypes } from "../../data/typechart";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getTypes, getWeak } from "../data-services/pokedex.service";
-import { typeWeak } from "../data-services/type.services";
+import { getWeak } from "../data-services/pokedex.service";
 export type Typechart = {
   team: (
     | PokemonData & {
-        weak: DamageTypes;
+        weak: { [key: string]: number };
       }
   )[];
   teraTypes: {

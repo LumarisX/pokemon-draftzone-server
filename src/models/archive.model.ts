@@ -1,6 +1,5 @@
+import { ID } from "@pkmn/data";
 import mongoose, { Document } from "mongoose";
-import { PokemonData } from "./pokemon.schema";
-import { PokemonId } from "../data/pokedex";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -107,7 +106,7 @@ export interface ArchiveData {
   owner: string;
   format: string;
   ruleset: string;
-  team: PokemonId[];
+  team: ID[];
 }
 
 export interface ArchiveDocument extends ArchiveData, Document<any, any> {}

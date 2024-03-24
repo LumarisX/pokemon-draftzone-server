@@ -1,8 +1,7 @@
 import mongoose, { ObjectId } from "mongoose";
 import { Pokemon, PokemonBuilder } from "./pokemon";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
-import { PokemonId } from "../data/pokedex";
-import { Generation } from "@pkmn/data";
+import { Generation, ID } from "@pkmn/data";
 
 interface MatchupDoc {
   aTeam: Side;
@@ -17,7 +16,7 @@ export interface Side {
   team: Pokemon[];
   name?: string;
   stats: {
-    [key in PokemonId]: {
+    [key: string]: {
       kills?: number;
       deaths?: number;
       indirect?: number;

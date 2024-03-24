@@ -1,5 +1,4 @@
 import { Generation, ID, MoveCategory, MoveName, TypeName } from "@pkmn/data";
-import { MoveId, Movedex } from "../../data/moves";
 
 export function getType(gen: Generation, moveID: ID): TypeName {
   return gen.dex.moves.getByID(moveID).type;

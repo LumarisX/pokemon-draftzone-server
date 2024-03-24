@@ -41,4 +41,4 @@ async function coveragechartTest() {
   console.log(JSON.stringify(await coveragechart(gen, aTeam, bTeam)));
 }
 
-movechartTest();
+coveragechartTest();

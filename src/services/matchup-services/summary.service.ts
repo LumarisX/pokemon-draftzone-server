@@ -1,6 +1,4 @@
-import { Generation, ID } from "@pkmn/data";
-import { BaseStat, PokemonId } from "../../data/pokedex";
-import { TypeId } from "../../data/typechart";
+import { Generation, ID, StatID, TypeName } from "@pkmn/data";
 import { PokemonData } from "../../models/pokemon.schema";
 import {
   getAbilities,
@@ -52,8 +50,8 @@ function summaryData(
     pid: ID;
     name?: string;
     abilities?: string[];
-    types?: TypeId[];
-    baseStats?: { [key in BaseStat]: number };
+    types?: TypeName[];
+    baseStats?: { [key in StatID]: number };
   }
 ) {
   pokemon.name = getName(gen, pokemon.pid);
@@ -65,23 +63,23 @@ function summaryData(
 
 function statistics(
   team: {
-    pid: PokemonId;
+    pid: ID;
     name?: string;
     abilities?: string[];
-    types?: TypeId[];
-    baseStats?: { [key in BaseStat]: number };
+    types?: TypeName[];
+    baseStats?: { [key in StatID]: number };
   }[]
 ) {
   let stats: {
-    mean: { [key in BaseStat]?: number };
-    median: { [key in BaseStat]?: number };
-    max: { [key in BaseStat]?: number };
+    mean: { [key in StatID]?: number };
+    median: { [key in StatID]?: number };
+    max: { [key in StatID]?: number };
   } = {
     mean: {},
     median: {},
     max: {},
   };
-  let all: { [key in BaseStat]: number[] } = {
+  let all: { [key in StatID]: number[] } = {
     hp: [],
     atk: [],
     def: [],
@@ -91,14 +89,14 @@ function statistics(
   };
   team.forEach((pokemon) => {
     Object.keys(all).forEach((statKey: string) => {
-      const stat = statKey as BaseStat;
+      const stat = statKey as StatID;
       if (pokemon.baseStats && pokemon.baseStats[stat]) {
         all[stat].push(pokemon.baseStats[stat]);
       }
     });
   });
   Object.keys(all).forEach((statKey: string) => {
-    const stat = statKey as BaseStat;
+    const stat = statKey as StatID;
     all[stat].sort((a, b) => b - a);
     stats.mean[stat] = Math.round(
       all[stat].reduce((x, y) => x + y, 0) / team.length
