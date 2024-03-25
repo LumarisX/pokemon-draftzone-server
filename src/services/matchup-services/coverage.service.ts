@@ -29,7 +29,7 @@ export async function coveragechart(
   for (let p of team) {
     let pokemon: PokemonData & { coverage: any } = {
       ...p,
-      coverage: await getCoverage(ruleset, p.pid),
+      coverage: await getCoverage(ruleset, p),
     };
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (

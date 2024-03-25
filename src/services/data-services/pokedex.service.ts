@@ -3,6 +3,7 @@ import { Ruleset } from "../../data/rulesets";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";
+import { PokemonData } from "../../models/pokemon.schema";
 
 export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
   return ruleset.gen.dex.species.getByID(pokemonID).name;
@@ -18,10 +19,10 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
   for (let ability of getAbilities(ruleset, pid)) {
     switch (ability) {
       case "Fluffy":
-        weak.Fire = weak.Fire * 2;
+        weak.Fire *= 2;
         break;
       case "Dry Skin":
-        weak.Fire = weak.Fire * 1.25;
+        weak.Fire *= 1.25;
       case "Water Absorb":
       case "Storm Drain":
         weak.Water = 0;
@@ -43,12 +44,12 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
         weak.Ground = 0;
         break;
       case "Thick Fat":
-        weak.Ice = weak.Ice * 0.5;
+        weak.Ice *= 0.5;
       case "Heatproof":
-        weak.Fire = weak.Fire * 0.5;
+        weak.Fire *= 0.5;
         break;
       case "Water Bubble":
-        weak.Fire = weak.Fire * 0.5;
+        weak.Fire *= 0.5;
       case "Thermal Exchange":
       case "Water Veil":
         weak.brn = 0;
@@ -65,7 +66,7 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
         weak.frz = 0;
         break;
       case "Purifying Salt":
-        weak.ghost = weak.ghost * 0.5;
+        weak.Ghost *= 0.5;
       case "Shields Down":
       case "Comatose":
         weak.brn = 0;
@@ -107,8 +108,8 @@ export function getAbilities(ruleset: Ruleset, pokemonID: ID) {
   return Object.values(ruleset.gen.dex.species.getByID(pokemonID).abilities);
 }
 
-export async function getCoverage(ruleset: Ruleset, pokemonID: ID) {
-  let learnset = await getLearnset(ruleset, pokemonID);
+export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
+  let learnset = await getLearnset(ruleset, pokemon.pid);
   let coverage: {
     Physical: {
       [key: string]: {
@@ -126,7 +127,24 @@ export async function getCoverage(ruleset: Ruleset, pokemonID: ID) {
         stab: boolean;
       };
     };
+    teraBlast?: true;
   } = { Physical: {}, Special: {} };
+  if (learnset.terablast && pokemon.capt?.tera) {
+    for (const type of pokemon.capt.tera) {
+      coverage.Physical[type] = {
+        id: "terablast" as ID,
+        ePower: -1,
+        type: type,
+        stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
+      };
+      coverage.Special[type] = {
+        id: "terablast" as ID,
+        ePower: -1,
+        type: type,
+        stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
+      };
+    }
+  }
   for (const move in learnset) {
     let moveID = toID(move);
     const category = getCategory(ruleset, moveID);
@@ -142,7 +160,7 @@ export async function getCoverage(ruleset: Ruleset, pokemonID: ID) {
           id: moveID,
           ePower: ePower,
           type: type,
-          stab: getTypes(ruleset, pokemonID).includes(type as TypeName),
+          stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
         };
       }
     }

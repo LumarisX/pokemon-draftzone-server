@@ -6,17 +6,22 @@ import { movechart } from "../services/matchup-services/movechart.service";
 import { coveragechart } from "../services/matchup-services/coverage.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { Rulesets } from "../data/rulesets";
+import { PokemonData } from "../models/pokemon.schema";
 
 const ruleset = Rulesets["Gen9 NatDex"];
-const aTeam = [
-  { pid: "charizard" as ID, name: "Charizard" },
-  { pid: "deoxys" as ID, name: "Deoxys" },
-  { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
+const aTeam: PokemonData[] = [
+  {
+    pid: "beartic" as ID,
+    name: "Beartic",
+    capt: { tera: ["Fire", "Ground", "Electric"] },
+  },
+  // { pid: "deoxys" as ID, name: "Deoxys" },
+  // { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
 ];
-const bTeam = [
+const bTeam: PokemonData[] = [
   { pid: "pikachu" as ID, name: "Pikachu" },
-  { pid: "gallade" as ID, name: "Gallade" },
-  { pid: "heatran" as ID, name: "Heatran" },
+  // { pid: "gallade" as ID, name: "Gallade" },
+  // { pid: "heatran" as ID, name: "Heatran" },
 ];
 
 function speedchartTest() {
