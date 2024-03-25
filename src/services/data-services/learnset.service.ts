@@ -1,23 +1,21 @@
 import { ID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 
-export async function getLearnset(ruleset: Ruleset, pid: ID) {
+export async function getLearnset(
+  ruleset: Ruleset,
+  pid: ID
+): Promise<{ [moveid: string]: string[] }> {
   let learnset = await ruleset.gen.learnsets.learnable(pid);
-  if (true) {
-    let localLearnset: { [key: string]: string[] } = {};
-    for (let move in learnset) {
-      if (genCheck(ruleset, learnset[move])) {
-        localLearnset[move] = learnset[move];
-      }
-    }
-    learnset = localLearnset;
+  if (!ruleset.natdex && learnset) {
+    learnset = Object.fromEntries(
+      Object.entries(learnset).filter(([move, types]) => {
+        const genReg = new RegExp("^[" + ruleset.gen.num + "]\\D");
+        return genReg.test(types[0]);
+      })
+    );
   }
-  return learnset;
-}
 
-function genCheck(ruleset: Ruleset, move: string[]): boolean {
-  const genReg = new RegExp("^[" + ruleset.gen.num + "]\\D");
-  return genReg.test(move[0]);
+  return learnset || {};
 }
 
 export async function hasLearnset(ruleset: Ruleset, pid: ID) {
