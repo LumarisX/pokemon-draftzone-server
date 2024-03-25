@@ -59,8 +59,8 @@ function getSpeedTiers(
     stages: [0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }],
-    items: [{ addStages: [0] }],
-    spreads: [{ evs: { spe: 0 }, modifiers: [] }],
+    items: [{}],
+    spreads: [{ evs: { spe: 0 }, modifiers: ["0"] }],
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
@@ -71,7 +71,6 @@ function getSpeedTiers(
     statuses: [{ status: "" }],
     items: [{}, { item: "Iron Ball" }],
     spreads: [
-      { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["0"] },
       {
         evs: { spe: 0 },
         ivs: { spe: 0 },
@@ -107,8 +106,8 @@ function getSpeedTiers(
   }
   return [
     ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
-    ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
     ...generateTiers(ruleset, p, level, teamIndex, baseConfiugrations),
+    ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
   ];
 }
 
@@ -150,6 +149,7 @@ function generateTiers(
                 const pokemon = new Pokemon(ruleset.gen, p.pid, {
                   level,
                   evs: pConfig.evs,
+                  ivs: pConfig.ivs,
                   nature: pConfig.nature,
                   item: item.item,
                   boosts: { spe: stage },
