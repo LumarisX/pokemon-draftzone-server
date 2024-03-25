@@ -37,7 +37,9 @@ draftRouter
         await DraftModel.find({ owner: req.sub }).sort({ createdAt: -1 })
       );
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R1-01" });
     }
   })
   .post(async (req: SubRequest, res: DraftResponse) => {
@@ -52,13 +54,17 @@ draftRouter
         leagueId: draftDoc.leagueId,
       });
       if (foundDrafts.length > 0) {
-        res.status(400).json({ message: "Draft ID already exists" });
+        res
+          .status(400)
+          .json({ message: "Draft ID already exists", code: "DR-R1-02" });
       } else {
         await draftDoc.save();
         res.status(201).json({ message: "Draft Added" });
       }
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R1-03" });
     }
   });
 
@@ -72,7 +78,9 @@ draftRouter
       res.draft.score = await getScore(res.draft._id);
       res.json(res.draft);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R2-01" });
     }
   })
   .patch(async (req: SubRequest, res: DraftResponse) => {
@@ -102,11 +110,13 @@ draftRouter
       if (updatedDraft) {
         res.status(200).json({ message: "Draft Updated", draft: updatedDraft });
       } else {
-        res.status(404).json({ message: "Draft not found" });
+        res.status(404).json({ message: "Draft not found", code: "DR-R2-02" });
       }
     } catch (error) {
       console.error("Error updating draft:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+      res
+        .status(500)
+        .json({ message: "Internal Server Error", code: "DR-R2-03" });
     }
   })
   .delete(async (req: SubRequest, res: DraftResponse) => {
@@ -118,7 +128,9 @@ draftRouter
       res.status(201).json({ message: "Archive added" });
     } catch (error) {
       console.error("Error deleting draft:", error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R2-04" });
     }
   });
 
@@ -135,7 +147,9 @@ draftRouter
         })
       );
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R3-01" });
     }
   })
   .post(async (req: SubRequest, res: DraftResponse) => {
@@ -148,7 +162,9 @@ draftRouter
       res.status(201).json({ message: "Matchup Added" });
     } catch (error) {
       console.error("Error saving matchup:", error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R3-02" });
     }
   });
 
@@ -179,7 +195,9 @@ draftRouter
       res.status(201).json({ message: "Archive added" });
     } catch (error) {
       console.error("Error handling archive:", error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R4-01" });
     }
   });
 
@@ -189,7 +207,9 @@ draftRouter
     try {
       res.json(res.matchup);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R5-01" });
     }
   })
   .patch(async (req: SubRequest, res: DraftResponse) => {
@@ -213,11 +233,15 @@ draftRouter
           .status(200)
           .json({ message: "Matchup Updated", draft: updatedMatchup });
       } else {
-        res.status(404).json({ message: "Matchup not found" });
+        res
+          .status(404)
+          .json({ message: "Matchup not found", code: "DR-R5-02" });
       }
     } catch (error) {
       console.error("Error updating matchup:", error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R5-03" });
     }
   });
 
@@ -245,11 +269,15 @@ draftRouter
           .status(200)
           .json({ message: "Matchup Updated", draft: updatedMatchup });
       } else {
-        res.status(404).json({ message: "Matchup not found" });
+        res
+          .status(404)
+          .json({ message: "Matchup not found", code: "DR-R6-01" });
       }
     } catch (error) {
       console.error("Error updating matchup:", error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R6-02" });
     }
   });
 
@@ -268,7 +296,9 @@ draftRouter.param(
         res.rawDraft = drafts[0];
       }
       if (res.rawDraft == null) {
-        return res.status(400).json({ message: "Team id not found" });
+        return res
+          .status(400)
+          .json({ message: "Team id not found", code: "DR-P1-02" });
       }
       res.draft = res.rawDraft.toObject();
       res.ruleset = Rulesets[res.draft.ruleset];
@@ -279,7 +309,7 @@ draftRouter.param(
       console.log(error);
       return res
         .status(500)
-        .json({ message: (error as Error).message, code: "D-P2-01" });
+        .json({ message: (error as Error).message, code: "DR-P2-02" });
     }
     next();
   }
@@ -290,18 +320,24 @@ draftRouter.param(
   async (req: SubRequest, res: DraftResponse, next, matchup_id) => {
     try {
       if (matchup_id == null) {
-        return res.status(400).json({ message: "Team id not found" });
+        return res
+          .status(400)
+          .json({ message: "Team id not found", code: "DR-P1-01" });
       }
       const rawMatchup = await MatchupModel.findById(matchup_id).lean();
       const matchup = rawMatchup?.toObject();
       if (matchup === null) {
-        res.status(400).json({ message: "Matchup ID not found" });
+        res
+          .status(400)
+          .json({ message: "Matchup ID not found", code: "DR-P1-02" });
         next();
         return;
       }
       const draft = await DraftModel.findById(matchup.aTeam._id);
       if (draft === null) {
-        res.status(400).json({ message: "Matchup ID not found" });
+        res
+          .status(400)
+          .json({ message: "Matchup ID not found", code: "DR-P1-03" });
         next();
         return;
       }
@@ -311,7 +347,7 @@ draftRouter.param(
     } catch (error) {
       return res
         .status(500)
-        .json({ message: (error as Error).message, code: "D-P1-01" });
+        .json({ message: (error as Error).message, code: "DR-P1-04" });
     }
     next();
   }

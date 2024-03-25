@@ -47,7 +47,6 @@ matchupRouter
     }
     try {
       let level = Formats[res.matchup.format].level;
-      let gen = Rulesets[res.matchup.rulesetId].gen;
       let data: {
         format: FormatId;
         ruleset: RulesetId;
@@ -106,7 +105,9 @@ matchupRouter
       res.json(data);
     } catch (error) {
       console.log(error);
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R1-01" });
     }
   })
   .delete(async (req: Request, res: MatchupResponse) => {
@@ -117,7 +118,9 @@ matchupRouter
       await res.rawMatchup.deleteOne();
       res.json({ message: "Matchup deleted" });
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R1-02" });
     }
   });
 
@@ -140,7 +143,9 @@ matchupRouter.get(
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       res.json([aTeamsummary, bTeamsummary]);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R2-02" });
     }
   }
 );
@@ -157,31 +162,35 @@ matchupRouter.get(
         typechart(res.ruleset, res.matchup.bTeam.team),
       ]);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R3-01" });
     }
   }
 );
 
-// matchupRouter.get(
-//   "/:matchup_id/speedchart",
-//   async (req: Request, res: MatchupResponse) => {
-//     if (!res.matchup || !res.ruleset?.exists) {
-//       return;
-//     }
-//     try {
-//       let level = Formats[res.matchup.format].level;
-//       res.json(
-//         speedchart(
-//           res.ruleset,
-//           [res.matchup.aTeam.team, res.matchup.bTeam.team],
-//           level
-//         )
-//       );
-//     } catch (error) {
-//       res.status(500).json({ message: (error as Error).message });
-//     }
-//   }
-// );
+matchupRouter.get(
+  "/:matchup_id/speedchart",
+  async (req: Request, res: MatchupResponse) => {
+    if (!res.matchup || !res.ruleset) {
+      return;
+    }
+    try {
+      let level = Formats[res.matchup.format].level;
+      res.json(
+        speedchart(
+          res.ruleset,
+          [res.matchup.aTeam.team, res.matchup.bTeam.team],
+          level
+        )
+      );
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R4-01" });
+    }
+  }
+);
 
 matchupRouter.get(
   "/:matchup_id/coveragechart",
@@ -203,7 +212,9 @@ matchupRouter.get(
         ),
       ]);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R5-01" });
     }
   }
 );
@@ -215,13 +226,14 @@ matchupRouter.get(
       return;
     }
     try {
-      let gen = Rulesets[res.matchup.rulesetId].gen;
       res.json([
         movechart(res.ruleset, res.matchup.aTeam.team),
         movechart(res.ruleset, res.matchup.bTeam.team),
       ]);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-R6-01" });
     }
   }
 );
@@ -234,11 +246,15 @@ matchupRouter.param(
         res.rawMatchup = await MatchupModel.findById(matchup_id);
         let matchup = res.rawMatchup?.toObject();
         if (matchup === null) {
-          res.status(400).json({ message: "Matchup ID not found" });
+          res
+            .status(400)
+            .json({ message: "Matchup ID not found", code: "MR-P1-01" });
         }
         const aTeam = await DraftModel.findById(matchup.aTeam._id).lean();
         if (aTeam === null) {
-          res.status(400).json({ message: "Draft ID not found" });
+          res
+            .status(400)
+            .json({ message: "Draft ID not found", code: "MR-P1-02" });
           next();
           return;
         }
@@ -260,10 +276,14 @@ matchupRouter.param(
         }
         res.matchup = matchup;
       } else {
-        return res.status(400).json({ message: "Invalid ID format" });
+        return res
+          .status(400)
+          .json({ message: "Invalid ID format", code: "MR-P1-03" });
       }
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+      return res
+        .status(500)
+        .json({ message: (error as Error).message, code: "MR-P1-04" });
     }
     next();
   }

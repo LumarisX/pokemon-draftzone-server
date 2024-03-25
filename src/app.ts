@@ -11,11 +11,6 @@ import { draftRouter } from "./routes/draft.route";
 import { matchupRouter } from "./routes/matchup.route";
 import { testRouter } from "./routes/test.route";
 
-const options = {
-  dbName: "draftzone",
-  autoIndex: true,
-};
-
 mongoose.connect(
   "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
 );
@@ -32,7 +27,7 @@ const jwtCheck = auth({
   tokenSigningAlg: "RS256",
 });
 
-app.set("views", path.join(__dirname, "views"));
+app.set("views", path.join(__dirname, "../views"));
 app.set("view engine", "pug");
 
 app.use(
@@ -82,19 +77,3 @@ function getSub(req: SubRequest, res: Response, next: NextFunction) {
     res.status(500).json({ message: (error as Error).message });
   }
 }
-
-// import express, { Express, Request, Response } from "express";
-// import dotenv from "dotenv";
-
-// dotenv.config();
-
-// const app: Express = express();
-// const port = process.env.PORT || 3000;
-
-// app.get("/", (req: Request, res: Response) => {
-//   res.send("Express + TypeScript Server");
-// });
-
-// app.listen(port, () => {
-//   console.log(`[server]: Server is running at http://localhost:${port}`);
-// });

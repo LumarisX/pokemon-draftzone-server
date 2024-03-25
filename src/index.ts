@@ -16,7 +16,7 @@ const debugLogger = debug("tpl-express-pro:server");
  */
 
 const port: string = normalizePort(process.env.PORT || "9960");
-console.log(port);
+console.log(`[server]: Server is running at http://localhost:${port}`);
 app.set("port", port);
 
 /**
