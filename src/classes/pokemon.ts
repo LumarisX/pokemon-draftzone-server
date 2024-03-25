@@ -1,6 +1,6 @@
-import { Generation, ID } from "@pkmn/data";
-import { getName } from "../services/data-services/pokedex.service";
+import { ID, toID } from "@pkmn/data";
 import { Ruleset } from "../data/rulesets";
+import { getName } from "../services/data-services/pokedex.service";
 
 export type Pokemon = {
   pid: ID;
@@ -30,8 +30,8 @@ export class PokemonBuilder {
     }
   ) {
     this.data = {
-      pid: pokemonData.pid,
-      name: pokemonData.name ?? getName(ruleset, pokemonData.pid),
+      pid: toID(pokemonData.pid),
+      name: getName(ruleset, pokemonData.pid),
     };
 
     // if (!inDex(pokemonData.pid)) {

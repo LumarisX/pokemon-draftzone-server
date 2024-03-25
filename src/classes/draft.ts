@@ -3,7 +3,6 @@ import { FormatId } from "../data/formats";
 import { Ruleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { Pokemon, PokemonBuilder } from "./pokemon";
-import { Generation, ID } from "@pkmn/data";
 
 interface DraftDoc {
   leagueName: string;
@@ -25,9 +24,9 @@ export class Draft {
     private ruleset: Ruleset,
     private formData: {
       leagueName: string;
-      format: FormatId;
+      format: string;
       teamName: string;
-      ruleset: RulesetId;
+      ruleset: string;
       team: Pokemon[];
     },
     private user_id: ObjectId
@@ -41,11 +40,14 @@ export class Draft {
 
   private async prepareData(): Promise<DraftDoc> {
     const data: DraftDoc = {
-      leagueName: this.formData.leagueName,
-      teamName: this.formData.teamName,
-      leagueId: this.formData.leagueName.toLowerCase().replace(/\W/gi, ""),
-      format: this.formData.format,
-      ruleset: this.formData.ruleset,
+      leagueName: this.formData.leagueName.trim(),
+      teamName: this.formData.teamName.trim(),
+      leagueId: this.formData.leagueName
+        .toLowerCase()
+        .trim()
+        .replace(/\W/gi, ""),
+      format: this.formData.format.trim() as FormatId,
+      ruleset: this.formData.ruleset.trim() as RulesetId,
       score: {
         wins: 0,
         loses: 0,

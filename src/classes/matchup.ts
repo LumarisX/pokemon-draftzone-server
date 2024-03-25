@@ -1,8 +1,7 @@
 import mongoose, { ObjectId } from "mongoose";
-import { Pokemon, PokemonBuilder } from "./pokemon";
-import { MatchupDocument, MatchupModel } from "../models/matchup.model";
-import { Generation, ID } from "@pkmn/data";
 import { Ruleset } from "../data/rulesets";
+import { MatchupDocument, MatchupModel } from "../models/matchup.model";
+import { Pokemon, PokemonBuilder } from "./pokemon";
 
 interface MatchupDoc {
   aTeam: Side;
@@ -53,14 +52,14 @@ export class Matchup {
         paste: undefined,
       },
       bTeam: {
-        teamName: this.formData.teamName,
+        teamName: this.formData.teamName.trim(),
         team: [],
         name: undefined,
         stats: {},
         score: 0,
         paste: undefined,
       },
-      stage: this.formData.stage,
+      stage: this.formData.stage.trim(),
     };
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
