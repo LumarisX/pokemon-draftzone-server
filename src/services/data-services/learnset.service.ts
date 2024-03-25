@@ -23,5 +23,17 @@ export async function hasLearnset(ruleset: Ruleset, pid: ID) {
 }
 
 export async function canLearn(ruleset: Ruleset, pokemonID: ID, moveId: ID) {
-  return await ruleset.gen.learnsets.canLearn(pokemonID, moveId);
+  if (ruleset.natdex) {
+    return await ruleset.gen.learnsets.canLearn(pokemonID, moveId);
+  }
+  let learnset = await ruleset.gen.learnsets.learnable(pokemonID);
+  if (
+    learnset &&
+    learnset.hasOwnProperty(moveId) &&
+    learnset[moveId][0].charAt(0) == ruleset.gen.num.toString()
+  ) {
+    return true;
+  }
+
+  return false;
 }

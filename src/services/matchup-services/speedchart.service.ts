@@ -82,10 +82,7 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-
-  const abilities = getAbilities(ruleset, p.pid);
-  console.log(abilities);
-  for (let ability of abilities) {
+  for (let ability of getAbilities(ruleset, p.pid)) {
     switch (ability) {
       case "Chlorophyll":
       case "Sand Rush":
@@ -108,7 +105,6 @@ function getSpeedTiers(
         break;
     }
   }
-
   return [
     ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
     ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),

@@ -8,11 +8,11 @@ import { summary } from "../services/matchup-services/summary.service";
 import { Rulesets } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
 
-const ruleset = Rulesets["Gen9 NatDex"];
+const ruleset = Rulesets["Paldea Dex"];
 const aTeam: PokemonData[] = [
   {
-    pid: "beartic" as ID,
-    name: "Beartic",
+    pid: "rotomheat" as ID,
+    name: "Rotom-Heat",
     capt: { tera: ["Fire", "Ground", "Electric"] },
   },
   // { pid: "deoxys" as ID, name: "Deoxys" },
@@ -44,4 +44,4 @@ async function coveragechartTest() {
   console.log(JSON.stringify(await coveragechart(ruleset, aTeam, bTeam)));
 }
 
-coveragechartTest();
+movechartTest();
