@@ -273,7 +273,7 @@ draftRouter.param(
       }
       res.draft = res.rawDraft.toObject();
       let gens = new Generations(Dex);
-      res.gen = gens.get(Rulesets[res.draft.ruleset].gen);
+      res.gen = Rulesets[res.draft.ruleset].gen;
       for (let pokemon of res.draft.team) {
         pokemon.name = getName(res.gen, pokemon.pid);
       }

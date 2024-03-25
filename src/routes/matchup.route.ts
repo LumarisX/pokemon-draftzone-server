@@ -246,7 +246,7 @@ matchupRouter.param(
           _id: aTeam._id,
         };
         let gens = new Generations(Dex);
-        res.gen = gens.get(Rulesets[matchup.ruleset].gen);
+        res.gen = Rulesets[matchup.ruleset].gen;
         for (let pokemon of matchup.aTeam.team) {
           pokemon.name = getName(res.gen, pokemon.pid);
         }
