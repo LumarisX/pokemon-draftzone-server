@@ -1,7 +1,0 @@
-{
-  "run": {
-    "type": "task",
-    "ignoreCurrent": true,
-    "task": "npm/start"
-  }
-}
