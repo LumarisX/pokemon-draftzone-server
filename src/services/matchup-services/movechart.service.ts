@@ -1,6 +1,7 @@
 import { Generation, ID, toID } from "@pkmn/data";
 import { canLearn } from "../data-services/learnset.service";
 import { getMoveName } from "../data-services/move.service";
+import { Ruleset } from "../../data/rulesets";
 
 const chartMoves: {
   Priority: string[];
@@ -226,7 +227,7 @@ export type Movechart = {
 }[];
 
 export async function movechart(
-  gen: Generation,
+  ruleset: Ruleset,
   team: {
     coverage?: {
       [key: string]: {
@@ -256,12 +257,12 @@ export async function movechart(
     for (const move of moves) {
       const moveID = toID(move);
       let moveData = {
-        moveName: getMoveName(gen, moveID),
+        moveName: getMoveName(ruleset, moveID),
         pokemon: [] as ID[],
       };
 
       for (const pokemon of team) {
-        if (await canLearn(gen, pokemon.pid, moveID)) {
+        if (await canLearn(ruleset, pokemon.pid, moveID)) {
           moveData.pokemon.push(pokemon.pid);
         }
       }

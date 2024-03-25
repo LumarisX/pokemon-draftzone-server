@@ -1,27 +1,21 @@
-import {
-  Generation,
-  ID,
-  SpeciesName,
-  StatsTable,
-  TypeName,
-  toID,
-} from "@pkmn/data";
+import { ID, SpeciesName, StatsTable, TypeName, toID } from "@pkmn/data";
+import { Ruleset } from "../../data/rulesets";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";
 
-export function getName(gen: Generation, pokemonID: ID): SpeciesName {
-  return gen.dex.species.getByID(pokemonID).name;
+export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
+  return ruleset.gen.dex.species.getByID(pokemonID).name;
 }
 
-export function getBaseStats(gen: Generation, pokemonID: ID): StatsTable {
-  return gen.dex.species.getByID(pokemonID).baseStats;
+export function getBaseStats(ruleset: Ruleset, pokemonID: ID): StatsTable {
+  return ruleset.gen.dex.species.getByID(pokemonID).baseStats;
 }
 
-export function getWeak(gen: Generation, pid: ID): { [key: string]: number } {
-  let types = getTypes(gen, pid);
-  let weak = typeWeak(gen, types);
-  for (let ability of getAbilities(gen, pid)) {
+export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
+  let types = getTypes(ruleset, pid);
+  let weak = typeWeak(ruleset, types);
+  for (let ability of getAbilities(ruleset, pid)) {
     switch (ability) {
       case "Fluffy":
         weak.Fire = weak.Fire * 2;
@@ -101,47 +95,20 @@ export function getWeak(gen: Generation, pid: ID): { [key: string]: number } {
   return weak;
 }
 
-// function filterNames(query: string): { name: string; pokemonID: ID }[] {
-//   let results: { name: string; pokemonID: PokemonId }[][] = [[], []];
-//   if (query === "") {
-//     return [];
-//   }
-//   for (let mon in Pokedex) {
-//     if (Pokedex[mon].tier == "CAP") {
-//       continue;
-//     }
-//     let compare = compareString(query, Pokedex[mon].name);
-//     if (compare.result && compare.pattern) {
-//       results[compare.pattern].push({
-//         name: Pokedex[mon].name,
-//         pokemonID: mon,
-//       });
-//     }
-//   }
-//   for (let result of results) {
-//     result.sort((a, b) => {
-//       if (a > b) return 1;
-//       if (a < b) return -1;
-//       return 0;
-//     });
-//   }
-//   return results[0].concat(results[1]);
-// }
-
-export function getBaseForme(gen: Generation, pokemonID: ID) {
-  return gen.dex.species.getByID(pokemonID).baseForme;
+export function getBaseForme(ruleset: Ruleset, pokemonID: ID) {
+  return ruleset.gen.dex.species.getByID(pokemonID).baseForme;
 }
 
-export function getTypes(gen: Generation, pokemonID: ID) {
-  return gen.dex.species.getByID(pokemonID).types;
+export function getTypes(ruleset: Ruleset, pokemonID: ID) {
+  return ruleset.gen.dex.species.getByID(pokemonID).types;
 }
 
-export function getAbilities(gen: Generation, pokemonID: ID) {
-  return Object.values(gen.dex.species.getByID(pokemonID).abilities);
+export function getAbilities(ruleset: Ruleset, pokemonID: ID) {
+  return Object.values(ruleset.gen.dex.species.getByID(pokemonID).abilities);
 }
 
-export async function getCoverage(gen: Generation, pokemonID: ID) {
-  let learnset = await getLearnset(gen, pokemonID);
+export async function getCoverage(ruleset: Ruleset, pokemonID: ID) {
+  let learnset = await getLearnset(ruleset, pokemonID);
   let coverage: {
     Physical: {
       [key: string]: {
@@ -162,11 +129,11 @@ export async function getCoverage(gen: Generation, pokemonID: ID) {
   } = { Physical: {}, Special: {} };
   for (const move in learnset) {
     let moveID = toID(move);
-    const category = getCategory(gen, moveID);
-    let type = getType(gen, moveID);
+    const category = getCategory(ruleset, moveID);
+    let type = getType(ruleset, moveID);
     type = type.charAt(0).toUpperCase() + type.slice(1);
     if (category !== "Status") {
-      const ePower = getEffectivePower(gen, moveID);
+      const ePower = getEffectivePower(ruleset, moveID);
       if (
         !(type in coverage[category]) ||
         coverage[category][type].ePower < ePower
@@ -175,7 +142,7 @@ export async function getCoverage(gen: Generation, pokemonID: ID) {
           id: moveID,
           ePower: ePower,
           type: type,
-          stab: getTypes(gen, pokemonID).includes(type as TypeName),
+          stab: getTypes(ruleset, pokemonID).includes(type as TypeName),
         };
       }
     }
@@ -187,6 +154,6 @@ export async function getCoverage(gen: Generation, pokemonID: ID) {
   };
 }
 
-export function needsItem(gen: Generation, pokemonID: ID) {
-  return gen.dex.species.getByID(pokemonID).requiredItem;
+export function needsItem(ruleset: Ruleset, pokemonID: ID) {
+  return ruleset.gen.dex.species.getByID(pokemonID).requiredItem;
 }

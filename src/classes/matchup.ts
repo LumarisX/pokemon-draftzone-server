@@ -2,6 +2,7 @@ import mongoose, { ObjectId } from "mongoose";
 import { Pokemon, PokemonBuilder } from "./pokemon";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { Generation, ID } from "@pkmn/data";
+import { Ruleset } from "../data/rulesets";
 
 interface MatchupDoc {
   aTeam: Side;
@@ -29,7 +30,7 @@ export interface Side {
 
 export class Matchup {
   constructor(
-    private gen: Generation,
+    private ruleset: Ruleset,
     private formData: { teamName: string; stage: string; team: Pokemon[] },
     private aTeamId: string
   ) {}
@@ -63,7 +64,7 @@ export class Matchup {
     };
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      const pokemon = new PokemonBuilder(this.gen, pokemonData);
+      const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
       if (pokemon.error) {
         errors.push(pokemon.error);
       } else {

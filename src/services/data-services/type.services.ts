@@ -1,10 +1,10 @@
-import { Generation } from "@pkmn/data";
+import { Ruleset } from "../../data/rulesets";
 
-export function typeWeak(gen: Generation, types: string[]) {
+export function typeWeak(ruleset: Ruleset, types: string[]) {
   const conversion = [1, 2, 0.5, 0];
   let adjustedDamage: { [key: string]: number } = {};
   types.forEach((type) => {
-    const damageTaken = gen.dex.types.get(type).damageTaken;
+    const damageTaken = ruleset.gen.dex.types.get(type).damageTaken;
     Object.keys(damageTaken).forEach((key) => {
       adjustedDamage[key] = adjustedDamage[key]
         ? adjustedDamage[key] * conversion[damageTaken[key]]

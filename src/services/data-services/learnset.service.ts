@@ -1,11 +1,12 @@
-import { Generation, ID } from "@pkmn/data";
+import { ID } from "@pkmn/data";
+import { Ruleset } from "../../data/rulesets";
 
-export async function getLearnset(gen: Generation, pid: ID) {
-  let learnset = await gen.learnsets.learnable(pid);
+export async function getLearnset(ruleset: Ruleset, pid: ID) {
+  let learnset = await ruleset.gen.learnsets.learnable(pid);
   if (true) {
     let localLearnset: { [key: string]: string[] } = {};
     for (let move in learnset) {
-      if (genCheck(gen, learnset[move])) {
+      if (genCheck(ruleset, learnset[move])) {
         localLearnset[move] = learnset[move];
       }
     }
@@ -14,15 +15,15 @@ export async function getLearnset(gen: Generation, pid: ID) {
   return learnset;
 }
 
-function genCheck(gen: Generation, move: string[]): boolean {
-  const genReg = new RegExp("^[" + gen.num + "]\\D");
+function genCheck(ruleset: Ruleset, move: string[]): boolean {
+  const genReg = new RegExp("^[" + ruleset.gen.num + "]\\D");
   return genReg.test(move[0]);
 }
 
-export async function hasLearnset(gen: Generation, pid: ID) {
-  return (await gen.learnsets.learnable(pid)) !== undefined;
+export async function hasLearnset(ruleset: Ruleset, pid: ID) {
+  return (await ruleset.gen.learnsets.learnable(pid)) !== undefined;
 }
 
-export async function canLearn(gen: Generation, pokemonID: ID, moveId: ID) {
-  return await gen.learnsets.canLearn(pokemonID, moveId);
+export async function canLearn(ruleset: Ruleset, pokemonID: ID, moveId: ID) {
+  return await ruleset.gen.learnsets.canLearn(pokemonID, moveId);
 }

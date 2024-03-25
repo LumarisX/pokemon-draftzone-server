@@ -1,5 +1,6 @@
 import { Generation, ID } from "@pkmn/data";
 import { getName } from "../services/data-services/pokedex.service";
+import { Ruleset } from "../data/rulesets";
 
 export type Pokemon = {
   pid: ID;
@@ -16,7 +17,7 @@ export class PokemonBuilder {
   error: string | undefined;
 
   constructor(
-    gen: Generation,
+    ruleset: Ruleset,
     pokemonData: {
       pid: ID;
       shiny?: boolean;
@@ -30,7 +31,7 @@ export class PokemonBuilder {
   ) {
     this.data = {
       pid: pokemonData.pid,
-      name: pokemonData.name ?? getName(gen, pokemonData.pid),
+      name: pokemonData.name ?? getName(ruleset, pokemonData.pid),
     };
 
     // if (!inDex(pokemonData.pid)) {

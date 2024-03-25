@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import { FormatId, Formats } from "../data/formats";
-import { RulesetId, Rulesets } from "../data/rulesets";
+import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
 import {
   MatchupData,
@@ -17,17 +17,15 @@ import {
   Movechart,
   movechart,
 } from "../services/matchup-services/movechart.service";
+import {
+  Speedchart,
+  speedchart,
+} from "../services/matchup-services/speedchart.service";
 import { Summary, summary } from "../services/matchup-services/summary.service";
 import {
   Typechart,
   typechart,
 } from "../services/matchup-services/typechart.service";
-import { Dex } from "@pkmn/dex";
-import { Generation, Generations } from "@pkmn/data";
-import {
-  Speedchart,
-  speedchart,
-} from "../services/matchup-services/speedchart.service";
 
 export const matchupRouter = express.Router();
 
@@ -35,21 +33,21 @@ interface MatchupResponse extends Response {
   rawMatchup?: MatchupDocument | null;
   matchup?: MatchupData & {
     format: FormatId;
-    ruleset: RulesetId;
+    rulesetId: RulesetId;
     leagueName: string;
   };
-  gen?: Generation;
+  ruleset?: Ruleset;
 }
 
 matchupRouter
   .route("/:matchup_id")
   .get(async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.gen?.exists) {
+    if (!res.matchup || !res.ruleset) {
       return;
     }
     try {
       let level = Formats[res.matchup.format].level;
-      let gen = Rulesets[res.matchup.ruleset].gen;
+      let gen = Rulesets[res.matchup.rulesetId].gen;
       let data: {
         format: FormatId;
         ruleset: RulesetId;
@@ -63,43 +61,43 @@ matchupRouter
         movechart: Movechart[];
       } = {
         format: res.matchup.format,
-        ruleset: res.matchup.ruleset,
+        ruleset: res.matchup.rulesetId,
         level: level,
         stage: res.matchup.stage,
         leagueName: res.matchup.leagueName,
         summary: [],
         speedchart: speedchart(
-          res.gen,
+          res.ruleset,
           [res.matchup.aTeam.team, res.matchup.bTeam.team],
           level
         ),
         coveragechart: [
           await coveragechart(
-            res.gen,
+            res.ruleset,
             res.matchup.aTeam.team,
             res.matchup.bTeam.team
           ),
           await coveragechart(
-            res.gen,
+            res.ruleset,
             res.matchup.bTeam.team,
             res.matchup.aTeam.team
           ),
         ],
         typechart: [
-          typechart(res.gen, res.matchup.aTeam.team),
-          typechart(res.gen, res.matchup.bTeam.team),
+          typechart(res.ruleset, res.matchup.aTeam.team),
+          typechart(res.ruleset, res.matchup.bTeam.team),
         ],
         movechart: [
-          await movechart(res.gen, res.matchup.aTeam.team),
-          await movechart(res.gen, res.matchup.bTeam.team),
+          await movechart(res.ruleset, res.matchup.aTeam.team),
+          await movechart(res.ruleset, res.matchup.bTeam.team),
         ],
       };
       let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.gen,
+        res.ruleset,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.gen,
+        res.ruleset,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -126,16 +124,16 @@ matchupRouter
 matchupRouter.get(
   "/:matchup_id/summary",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup || !res.gen?.exists) {
+    if (!res.matchup || !res.rawMatchup || !res.ruleset) {
       return;
     }
     try {
       let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.gen,
+        res.ruleset,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.gen,
+        res.ruleset,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -150,13 +148,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/typechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup || !res.gen?.exists) {
+    if (!res.matchup || !res.rawMatchup || !res.ruleset) {
       return;
     }
     try {
       res.json([
-        typechart(res.gen, res.matchup.aTeam.team),
-        typechart(res.gen, res.matchup.bTeam.team),
+        typechart(res.ruleset, res.matchup.aTeam.team),
+        typechart(res.ruleset, res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -167,14 +165,14 @@ matchupRouter.get(
 // matchupRouter.get(
 //   "/:matchup_id/speedchart",
 //   async (req: Request, res: MatchupResponse) => {
-//     if (!res.matchup || !res.gen?.exists) {
+//     if (!res.matchup || !res.ruleset?.exists) {
 //       return;
 //     }
 //     try {
 //       let level = Formats[res.matchup.format].level;
 //       res.json(
 //         speedchart(
-//           res.gen,
+//           res.ruleset,
 //           [res.matchup.aTeam.team, res.matchup.bTeam.team],
 //           level
 //         )
@@ -188,13 +186,21 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/coveragechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.gen?.exists) {
+    if (!res.matchup || !res.ruleset) {
       return;
     }
     try {
       res.json([
-        coveragechart(res.gen, res.matchup.aTeam.team, res.matchup.bTeam.team),
-        coveragechart(res.gen, res.matchup.bTeam.team, res.matchup.aTeam.team),
+        coveragechart(
+          res.ruleset,
+          res.matchup.aTeam.team,
+          res.matchup.bTeam.team
+        ),
+        coveragechart(
+          res.ruleset,
+          res.matchup.bTeam.team,
+          res.matchup.aTeam.team
+        ),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -205,14 +211,14 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/movechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.gen?.exists) {
+    if (!res.matchup || !res.ruleset) {
       return;
     }
     try {
-      let gen = Rulesets[res.matchup.ruleset].gen;
+      let gen = Rulesets[res.matchup.rulesetId].gen;
       res.json([
-        movechart(res.gen, res.matchup.aTeam.team),
-        movechart(res.gen, res.matchup.bTeam.team),
+        movechart(res.ruleset, res.matchup.aTeam.team),
+        movechart(res.ruleset, res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -238,20 +244,19 @@ matchupRouter.param(
         }
         matchup.leagueName = aTeam.leagueName;
         matchup.format = aTeam.format;
-        matchup.ruleset = aTeam.ruleset;
+        matchup.rulesetId = aTeam.ruleset;
         matchup.aTeam = {
           owner: aTeam.owner,
           teamName: aTeam.teamName,
           team: aTeam.team,
           _id: aTeam._id,
         };
-        let gens = new Generations(Dex);
-        res.gen = Rulesets[matchup.ruleset].gen;
+        res.ruleset = Rulesets[matchup.rulesetId];
         for (let pokemon of matchup.aTeam.team) {
-          pokemon.name = getName(res.gen, pokemon.pid);
+          pokemon.name = getName(res.ruleset, pokemon.pid);
         }
         for (let pokemon of matchup.bTeam.team) {
-          pokemon.name = getName(res.gen, pokemon.pid);
+          pokemon.name = getName(res.ruleset, pokemon.pid);
         }
         res.matchup = matchup;
       } else {

@@ -3,6 +3,7 @@ import { PokemonData } from "../../models/pokemon.schema";
 import { getCategory, getMoveName } from "../data-services/move.service";
 import { getBaseStats, getCoverage } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
+import { Ruleset } from "../../data/rulesets";
 
 export type Coveragechart = (
   | PokemonData & {
@@ -20,7 +21,7 @@ export type Coveragechart = (
 )[];
 
 export async function coveragechart(
-  gen: Generation,
+  ruleset: Ruleset,
   team: PokemonData[],
   oppteam: PokemonData[]
 ): Promise<Coveragechart> {
@@ -28,7 +29,7 @@ export async function coveragechart(
   for (let p of team) {
     let pokemon: PokemonData & { coverage: any } = {
       ...p,
-      coverage: await getCoverage(gen, p.pid),
+      coverage: await getCoverage(ruleset, p.pid),
     };
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
@@ -44,7 +45,7 @@ export async function coveragechart(
         return 0;
       });
     }
-    bestCoverage(gen, pokemon, typechart(gen, oppteam));
+    bestCoverage(ruleset, pokemon, typechart(ruleset, oppteam));
     let coverage: {
       [key: string]: {
         name: string;
@@ -60,7 +61,7 @@ export async function coveragechart(
     for (let category in pokemon.coverage) {
       for (let move of pokemon.coverage[category]) {
         coverage[category].push({
-          name: getMoveName(gen, move.id || ""),
+          name: getMoveName(ruleset, move.id || ""),
           type: move.type,
           stab: move.stab,
           ePower: move.ePower,
@@ -75,7 +76,7 @@ export async function coveragechart(
 }
 
 function bestCoverage(
-  gen: Generation,
+  ruleset: Ruleset,
   pokemon: {
     pid: ID;
     name: string;
@@ -132,7 +133,7 @@ function bestCoverage(
       }
     }
     let coverageEffectiveness = teamCoverageEffectiveness(
-      gen,
+      ruleset,
       pokemon.pid,
       moves,
       oppTypechart
@@ -161,7 +162,7 @@ function bestCoverage(
 }
 
 function teamCoverageEffectiveness(
-  gen: Generation,
+  ruleset: Ruleset,
   userMon: ID,
   moveArray: {
     ePower: number;
@@ -178,10 +179,10 @@ function teamCoverageEffectiveness(
     for (let move of moveArray) {
       //change out for damage calc eventually
       let stat = 1;
-      if (getCategory(gen, move.id) == "Physical") {
-        stat = getBaseStats(gen, userMon)["atk"];
+      if (getCategory(ruleset, move.id) == "Physical") {
+        stat = getBaseStats(ruleset, userMon)["atk"];
       } else {
-        stat = getBaseStats(gen, userMon)["spa"];
+        stat = getBaseStats(ruleset, userMon)["spa"];
       }
       let value = move.ePower * pokemon.weak[move.type] * stat;
       if (move.stab) {

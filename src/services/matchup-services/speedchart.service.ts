@@ -1,6 +1,7 @@
-import { Generation, StatusName } from "@pkmn/data";
+import { StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
+import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 
 export type Speedchart = {
@@ -30,15 +31,15 @@ type Configurations = {
   }[];
 };
 function getSpeedTiers(
-  gen: Generation,
+  ruleset: Ruleset,
   p: PokemonData,
   level: number,
   teamIndex: string
 ) {
   return [
-    ...generateTiers(gen, p, level, teamIndex, fastConfigurations),
-    ...generateTiers(gen, p, level, teamIndex, slowConfigurations),
-    ...generateTiers(gen, p, level, teamIndex, baseConfiugrations),
+    ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
+    ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
+    ...generateTiers(ruleset, p, level, teamIndex, baseConfiugrations),
   ];
 }
 
@@ -91,7 +92,7 @@ const slowConfigurations: Configurations = {
 };
 
 function generateTiers(
-  gen: Generation,
+  ruleset: Ruleset,
   p: PokemonData,
   level: number,
   teamIndex: string,
@@ -106,7 +107,7 @@ function generateTiers(
           for (const fConfig of configurations.fields) {
             const field = new Field();
             for (const pConfig of configurations.spreads) {
-              const pokemon = new Pokemon(gen, p.pid, {
+              const pokemon = new Pokemon(ruleset.gen, p.pid, {
                 level,
                 evs: pConfig.evs,
                 nature: pConfig.nature,
@@ -130,7 +131,7 @@ function generateTiers(
               }
               tiers.push({
                 pokemon: p,
-                speed: getFinalSpeed(gen, pokemon, field, side),
+                speed: getFinalSpeed(ruleset.gen, pokemon, field, side),
                 team: teamIndex,
                 modifiers,
               });
@@ -144,7 +145,7 @@ function generateTiers(
 }
 
 export function speedchart(
-  gen: Generation,
+  ruleset: Ruleset,
   teams: PokemonData[][],
   level: number
 ): Speedchart {
@@ -152,7 +153,7 @@ export function speedchart(
 
   for (const teamIndex in teams) {
     for (const pokemon of teams[teamIndex]) {
-      tiers = tiers.concat(getSpeedTiers(gen, pokemon, level, teamIndex));
+      tiers = tiers.concat(getSpeedTiers(ruleset, pokemon, level, teamIndex));
     }
   }
 

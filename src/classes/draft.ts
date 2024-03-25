@@ -1,6 +1,6 @@
 import { ObjectId } from "mongoose";
 import { FormatId } from "../data/formats";
-import { RulesetId } from "../data/rulesets";
+import { Ruleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { Pokemon, PokemonBuilder } from "./pokemon";
 import { Generation, ID } from "@pkmn/data";
@@ -22,7 +22,7 @@ interface DraftDoc {
 
 export class Draft {
   constructor(
-    private gen: Generation,
+    private ruleset: Ruleset,
     private formData: {
       leagueName: string;
       format: FormatId;
@@ -57,7 +57,7 @@ export class Draft {
 
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      const pokemon = new PokemonBuilder(this.gen, pokemonData);
+      const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
       if (pokemon.error) {
         errors.push(pokemon.error);
       } else {

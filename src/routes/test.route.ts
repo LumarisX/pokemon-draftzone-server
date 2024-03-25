@@ -1,20 +1,15 @@
-import { Generations } from "@pkmn/data";
-import { Dex, ID } from "@pkmn/dex";
+import { ID } from "@pkmn/dex";
 import express from "express";
-import { typechart } from "../services/matchup-services/typechart.service";
-import { summary } from "../services/matchup-services/summary.service";
-import { coveragechart } from "../services/matchup-services/coverage.service";
-import { movechart } from "../services/matchup-services/movechart.service";
+import { Rulesets } from "../data/rulesets";
 import { speedchart } from "../services/matchup-services/speedchart.service";
 
 export const testRouter = express.Router();
 
 testRouter.route("/test").get(async (req, res) => {
-  const gens = new Generations(Dex);
-  const gen = gens.get(9);
+  const ruleset = Rulesets["Paldea Dex"];
   res.json(
     speedchart(
-      gen,
+      ruleset,
       [
         [
           { pid: "gallade" as ID, name: "Gallade" },
