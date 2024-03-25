@@ -3,6 +3,7 @@ import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
+import { getAbilities, getTypes } from "../data-services/pokedex.service";
 
 export type Speedchart = {
   modifiers: string[];
@@ -18,11 +19,12 @@ export type Speedchart = {
 };
 
 type Configurations = {
-  boosts: number[];
+  stages: number[];
+  additional: { modifier?: string; mult: number }[];
   statuses: { status: StatusName | ""; modifier?: string }[];
   sides: { tailwind?: boolean; modifiers: string[] }[];
   fields: { modifiers: string[] }[];
-  items: { item?: string }[];
+  items: { addStages?: number[]; item?: string }[];
   spreads: {
     evs?: { spe: number };
     ivs?: { spe: number };
@@ -30,12 +32,83 @@ type Configurations = {
     modifiers: string[];
   }[];
 };
+
 function getSpeedTiers(
   ruleset: Ruleset,
   p: PokemonData,
   level: number,
   teamIndex: string
 ) {
+  let fastConfigurations: Configurations = {
+    stages: [0],
+    additional: [{ mult: 1 }],
+    statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
+    items: [
+      { addStages: [-1, 1, 2] },
+      { addStages: [-1], item: "Choice Scarf" },
+    ],
+    spreads: [
+      { evs: { spe: 252 }, modifiers: ["252"] },
+      { evs: { spe: 252 }, nature: "Timid", modifiers: ["252", "Positive"] },
+    ],
+    fields: [{ modifiers: [] }],
+    sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
+  };
+
+  let baseConfiugrations: Configurations = {
+    stages: [0],
+    additional: [{ mult: 1 }],
+    statuses: [{ status: "" }],
+    items: [{ addStages: [0] }],
+    spreads: [{ evs: { spe: 0 }, modifiers: [] }],
+    fields: [{ modifiers: [] }],
+    sides: [{ modifiers: [] }],
+  };
+
+  let slowConfigurations: Configurations = {
+    stages: [-1, 0],
+    additional: [{ mult: 1 }],
+    statuses: [{ status: "" }],
+    items: [{}, { item: "Iron Ball" }],
+    spreads: [
+      { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["0"] },
+      {
+        evs: { spe: 0 },
+        ivs: { spe: 0 },
+        nature: "Brave",
+        modifiers: ["0", "Negative"],
+      },
+    ],
+    fields: [{ modifiers: [] }],
+    sides: [{ modifiers: [] }],
+  };
+
+  const abilities = getAbilities(ruleset, p.pid);
+  console.log(abilities);
+  for (let ability of abilities) {
+    switch (ability) {
+      case "Chlorophyll":
+      case "Sand Rush":
+      case "Slush Rush":
+      case "Swift Swim":
+      case "Unburden":
+      case "Surge Surfer":
+        fastConfigurations.additional.push({ modifier: ability, mult: 2 });
+        break;
+      case "Quick Feet":
+      case "Quark Drive":
+      case "Protosynthesis":
+        fastConfigurations.additional.push({ modifier: ability, mult: 1.5 });
+        break;
+      case "Speed Boost":
+        fastConfigurations.stages.push(3, 4, 5, 6);
+        break;
+      case "Steam Engine":
+        fastConfigurations.stages.push(3, 4, 5, 6);
+        break;
+    }
+  }
+
   return [
     ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
     ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
@@ -53,44 +126,6 @@ function getModifiers(tiers: Speedchart["tiers"]): string[] {
   return Array.from(uniqueModifiers);
 }
 
-const fastConfigurations: Configurations = {
-  boosts: [-1, 0, 1, 2],
-  statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
-  items: [{}, { item: "Choice Scarf" }],
-  spreads: [
-    { evs: { spe: 252 }, modifiers: ["252"] },
-    { evs: { spe: 252 }, nature: "Timid", modifiers: ["252", "Positive"] },
-  ],
-  fields: [{ modifiers: [] }],
-  sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
-};
-
-const baseConfiugrations: Configurations = {
-  boosts: [0],
-  statuses: [{ status: "" }],
-  items: [{}],
-  spreads: [{ evs: { spe: 0 }, modifiers: [] }],
-  fields: [{ modifiers: [] }],
-  sides: [{ modifiers: [] }],
-};
-
-const slowConfigurations: Configurations = {
-  boosts: [-1, 0],
-  statuses: [{ status: "" }],
-  items: [{ item: "Iron Ball" }],
-  spreads: [
-    { evs: { spe: 0 }, ivs: { spe: 0 }, modifiers: ["0"] },
-    {
-      evs: { spe: 0 },
-      ivs: { spe: 0 },
-      nature: "Brave",
-      modifiers: ["0", "Negative"],
-    },
-  ],
-  fields: [{ modifiers: [] }],
-  sides: [{ modifiers: [] }],
-};
-
 function generateTiers(
   ruleset: Ruleset,
   p: PokemonData,
@@ -101,40 +136,56 @@ function generateTiers(
   const tiers: Speedchart["tiers"] = [];
   for (const item of configurations.items) {
     for (const status of configurations.statuses) {
-      for (const boost of configurations.boosts) {
+      if (
+        status.status == "par" &&
+        getTypes(ruleset, p.pid).includes("Electric")
+      )
+        continue;
+      for (const stage of [
+        ...configurations.stages,
+        ...(item.addStages || []),
+      ]) {
         for (const sConfig of configurations.sides) {
           const side = new Side({ isTailwind: sConfig.tailwind });
           for (const fConfig of configurations.fields) {
             const field = new Field();
             for (const pConfig of configurations.spreads) {
-              const pokemon = new Pokemon(ruleset.gen, p.pid, {
-                level,
-                evs: pConfig.evs,
-                nature: pConfig.nature,
-                item: item.item,
-                boosts: { spe: boost },
-                status: status.status,
-              });
-              const modifiers = [
-                ...(pConfig.modifiers || []),
-                ...(sConfig.modifiers || []),
-                ...(fConfig.modifiers || []),
-              ];
-              if (boost !== 0) {
-                modifiers.push("Stage " + boost);
+              for (const additional of configurations.additional) {
+                const pokemon = new Pokemon(ruleset.gen, p.pid, {
+                  level,
+                  evs: pConfig.evs,
+                  nature: pConfig.nature,
+                  item: item.item,
+                  boosts: { spe: stage },
+                  status: status.status,
+                });
+                const modifiers = [
+                  ...(pConfig.modifiers || []),
+                  ...(sConfig.modifiers || []),
+                  ...(fConfig.modifiers || []),
+                ];
+                if (stage !== 0) {
+                  modifiers.push("Stage " + stage);
+                }
+                if (status.modifier) {
+                  modifiers.push(status.modifier);
+                }
+                if (item.item) {
+                  modifiers.push(item.item);
+                }
+                if (additional.modifier) {
+                  modifiers.push(additional.modifier);
+                }
+                tiers.push({
+                  pokemon: p,
+                  speed: Math.floor(
+                    getFinalSpeed(ruleset.gen, pokemon, field, side) *
+                      additional.mult
+                  ),
+                  team: teamIndex,
+                  modifiers,
+                });
               }
-              if (status.modifier) {
-                modifiers.push(status.modifier);
-              }
-              if (item.item) {
-                modifiers.push(item.item);
-              }
-              tiers.push({
-                pokemon: p,
-                speed: getFinalSpeed(ruleset.gen, pokemon, field, side),
-                team: teamIndex,
-                modifiers,
-              });
             }
           }
         }
