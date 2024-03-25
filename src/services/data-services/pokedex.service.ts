@@ -149,7 +149,6 @@ export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
     let moveID = toID(move);
     const category = getCategory(ruleset, moveID);
     let type = getType(ruleset, moveID);
-    type = type.charAt(0).toUpperCase() + type.slice(1);
     if (category !== "Status") {
       const ePower = getEffectivePower(ruleset, moveID);
       if (
