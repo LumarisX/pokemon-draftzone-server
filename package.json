@@ -1,6 +1,6 @@
 {
-  "name": "tpl-express-pro",
-  "version": "0.0.0",
+  "name": "pokemon-draftzone-server",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "npx tsc",
@@ -9,7 +9,6 @@
     "install-dep": "npm i --no-bin-links",
     "test": "nodemon src/tests/matchup.test.ts",
     "testOne": "ts-node src/tests/matchup.test.ts"
-
   },
   "dependencies": {
     "@pkmn/data": "^0.9.0",
