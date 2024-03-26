@@ -15,7 +15,7 @@ export async function getScore(teamId: string) {
     }
     numDiff += matchup.aTeam.score - matchup.bTeam.score;
   }
-  score.diff = (numDiff < 0 ? "" : "+") + score.diff;
+  score.diff = (numDiff < 0 ? "" : "+") + numDiff;
   return score;
 }
 
