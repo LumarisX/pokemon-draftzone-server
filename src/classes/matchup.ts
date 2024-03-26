@@ -31,7 +31,7 @@ export class Matchup {
   constructor(
     private ruleset: Ruleset,
     private formData: { teamName: string; stage: string; team: Pokemon[] },
-    private aTeamId: string
+    private aTeamId: ObjectId
   ) {}
 
   async createMatchup(): Promise<MatchupDocument> {
@@ -41,9 +41,10 @@ export class Matchup {
   }
 
   private async prepareData(): Promise<MatchupDoc> {
+    console.log(this.aTeamId);
     const data: MatchupDoc = {
       aTeam: {
-        _id: new mongoose.Schema.Types.ObjectId(this.aTeamId),
+        _id: this.aTeamId,
         teamName: "",
         team: [],
         name: undefined,

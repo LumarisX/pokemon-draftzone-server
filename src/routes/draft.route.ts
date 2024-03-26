@@ -22,11 +22,7 @@ type DraftResponse = Response & {
   rawMatchup?: MatchupDocument | null;
   draft?: DraftDocument;
   ruleset?: Ruleset;
-  matchup?: MatchupData & {
-    format: FormatId;
-    ruleset: RulesetId;
-    leagueName: string;
-  };
+  matchup?: MatchupDocument;
 };
 
 draftRouter
@@ -158,7 +154,7 @@ draftRouter
     }
     try {
       const matchup = new Matchup(res.ruleset!, req.body, res.draft._id);
-      await matchup.createMatchup();
+      (await matchup.createMatchup()).save();
       res.status(201).json({ message: "Matchup Added" });
     } catch (error) {
       console.error("Error saving matchup:", error);
@@ -324,9 +320,9 @@ draftRouter.param(
           .status(400)
           .json({ message: "Team id not found", code: "DR-P1-01" });
       }
-      const rawMatchup = await MatchupModel.findById(matchup_id).lean();
+      const rawMatchup = await MatchupModel.findById(matchup_id);
       const matchup = rawMatchup?.toObject();
-      if (matchup === null) {
+      if (!matchup) {
         res
           .status(400)
           .json({ message: "Matchup ID not found", code: "DR-P1-02" });
