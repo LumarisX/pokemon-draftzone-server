@@ -7,7 +7,7 @@
     "start": "ts-node src/index.ts",
     "monitor": "nodemon src/index.ts",
     "install-dep": "npm i --no-bin-links",
-    "test": "nodemon src/tests/matchup.test.ts",
+    "test": "nodemon src/tests/run.test.ts",
     "testOne": "ts-node src/tests/matchup.test.ts"
   },
   "dependencies": {

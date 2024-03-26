@@ -32,5 +32,5 @@ export const Rulesets: Rulesets = {
   "Gen2 NatDex": { gen: gens.get(2), natdex: true },
   "Johto Dex": { gen: gens.get(2), natdex: false },
   "Kanto Dex": { gen: gens.get(1), natdex: false },
-  CAP: { gen: gens.get(9), natdex: true },
+  // CAP: { gen: gens.get(9), natdex: true },
 };

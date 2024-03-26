@@ -9,10 +9,10 @@ function getFormat(formatId: FormatId) {
   return Formats[formatId];
 }
 
-function getRulesets() {
+export function getRulesets() {
   return Object.keys(Rulesets);
 }
 
-function getFormats() {
+export function getFormats() {
   return Object.keys(Formats);
 }
