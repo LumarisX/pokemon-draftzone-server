@@ -146,7 +146,7 @@ function generateTiers(
             const field = new Field();
             for (const pConfig of configurations.spreads) {
               for (const additional of configurations.additional) {
-                const pokemon = new Pokemon(ruleset.gen, p.pid, {
+                const pokemon = new Pokemon(ruleset.gen.num, p.pid, {
                   level,
                   evs: pConfig.evs,
                   ivs: pConfig.ivs,

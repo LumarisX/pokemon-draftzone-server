@@ -11,8 +11,8 @@ import { PokemonData } from "../models/pokemon.schema";
 const ruleset = Rulesets["Paldea Dex"];
 const aTeam: PokemonData[] = [
   {
-    pid: "talonflame" as ID,
-    name: "talonflame",
+    pid: "togedemaru" as ID,
+    name: "togedemaru",
     capt: { tera: ["Fire", "Ground", "Electric"] },
   },
   // { pid: "deoxys" as ID, name: "Deoxys" },
@@ -21,10 +21,10 @@ const aTeam: PokemonData[] = [
 const bTeam: PokemonData[] = [
   // { pid: "pikachu" as ID, name: "Pikachu" },
   // { pid: "gallade" as ID, name: "Gallade" },
-  // { pid: "heatran" as ID, name: "Heatran" },
+  { pid: "heatran" as ID, name: "Heatran" },
 ];
 
-function speedchartTest() {
+export function speedchartTest() {
   return JSON.stringify(speedchart(ruleset, [aTeam, bTeam], 100));
 }
 
