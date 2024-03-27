@@ -7,7 +7,7 @@ import { speedchart } from "../services/matchup-services/speedchart.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { typechart } from "../services/matchup-services/typechart.service";
 
-const ruleset = Rulesets["Paldea Dex"];
+const ruleset = Rulesets["Gen9 NatDex"];
 const aTeam: PokemonData[] = [
   {
     pid: "togedemaru" as ID,
@@ -15,7 +15,7 @@ const aTeam: PokemonData[] = [
     capt: { tera: ["Fire", "Ground", "Electric"] },
   },
   // { pid: "deoxys" as ID, name: "Deoxys" },
-  // { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
+  { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
 ];
 const bTeam: PokemonData[] = [
   // { pid: "pikachu" as ID, name: "Pikachu" },
@@ -44,5 +44,7 @@ export async function coveragechartTest() {
 }
 
 export async function matchupTests() {
-  coveragechartTest();
+  let startTime = performance.now();
+  console.log(await movechartTest());
+  console.log(performance.now() - startTime);
 }

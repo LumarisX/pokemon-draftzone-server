@@ -1,7 +1,9 @@
-import { Generation, ID, toID } from "@pkmn/data";
-import { canLearn } from "../data-services/learnset.service";
-import { getMoveName } from "../data-services/move.service";
+import { ID, toID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
+import { getLearnset } from "../data-services/learnset.service";
+import { getMoveName } from "../data-services/move.service";
+import { PokemonData } from "../../models/pokemon.schema";
+import { Pokemon } from "@smogon/calc";
 
 const chartMoves: {
   Priority: string[];
@@ -218,62 +220,29 @@ const chartMoves: {
   ],
 };
 
-export type Movechart = {
-  catName: keyof typeof chartMoves;
-  moves: {
-    moveName: string;
-    pokemon: string[];
-  }[];
-}[];
-
-export async function movechart(
-  ruleset: Ruleset,
-  team: {
-    coverage?: {
-      [key: string]: {
-        ePower: number;
-        id?: string;
-        name?: string;
-        type: string;
-        stab: boolean;
-        recommended?: number[] | undefined;
-      }[];
-    };
-    pid: ID;
-    name: string;
-  }[]
-): Promise<Movechart> {
-  let chartData: {
-    catName: keyof typeof chartMoves;
-    moves: { moveName: string; pokemon: ID[] }[];
-  }[] = [];
-
-  for (const [catName, moves] of Object.entries(chartMoves)) {
-    let catData = {
-      catName: catName as keyof typeof chartMoves,
-      moves: [] as { moveName: string; pokemon: ID[] }[],
-    };
-
-    for (const move of moves) {
-      const moveID = toID(move);
-      let moveData = {
-        moveName: getMoveName(ruleset, moveID),
-        pokemon: [] as ID[],
-      };
-
-      for (const pokemon of team) {
-        if (await canLearn(ruleset, pokemon.pid, moveID)) {
-          moveData.pokemon.push(pokemon.pid);
+export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
+  let movechart: {
+    [key: string]: { [key: string]: { name: string; pokemon: PokemonData[] } };
+  } = {};
+  for (const pokemon of team) {
+    let learnset = await getLearnset(ruleset, pokemon.pid);
+    for (let catName in chartMoves) {
+      for (const move of chartMoves[catName as keyof typeof chartMoves]) {
+        const moveID = toID(move);
+        if (moveID in learnset) {
+          if (!movechart[catName]) {
+            movechart[catName] = {};
+          }
+          if (!movechart[catName][moveID]) {
+            movechart[catName][moveID] = {
+              name: getMoveName(ruleset, moveID),
+              pokemon: [],
+            };
+          }
+          movechart[catName][moveID].pokemon.push(pokemon);
         }
       }
-
-      if (moveData.pokemon.length > 0) {
-        catData.moves.push(moveData);
-      }
     }
-
-    chartData.push(catData);
   }
-
-  return chartData;
+  return movechart;
 }
