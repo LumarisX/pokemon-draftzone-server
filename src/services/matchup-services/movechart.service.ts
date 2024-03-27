@@ -222,24 +222,31 @@ const chartMoves: {
 
 export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
   let movechart: {
-    [key: string]: { [key: string]: { name: string; pokemon: PokemonData[] } };
-  } = {};
+    categoryName: string;
+    moves: { moveName: string; pokemon: PokemonData[] }[];
+  }[] = [];
   for (const pokemon of team) {
     let learnset = await getLearnset(ruleset, pokemon.pid);
     for (let catName in chartMoves) {
       for (const move of chartMoves[catName as keyof typeof chartMoves]) {
         const moveID = toID(move);
         if (moveID in learnset) {
-          if (!movechart[catName]) {
-            movechart[catName] = {};
+          let category = movechart.find(
+            (entry) => entry.categoryName === catName
+          );
+          if (!category) {
+            category = { categoryName: catName, moves: [] };
+            movechart.push(category);
           }
-          if (!movechart[catName][moveID]) {
-            movechart[catName][moveID] = {
-              name: getMoveName(ruleset, moveID),
-              pokemon: [],
-            };
+          let moveName = getMoveName(ruleset, moveID);
+          let moveEntry = category.moves.find(
+            (moveEntry) => moveEntry.moveName === moveName
+          );
+          if (!moveEntry) {
+            moveEntry = { moveName: moveName, pokemon: [] };
+            category.moves.push(moveEntry);
           }
-          movechart[catName][moveID].pokemon.push(pokemon);
+          moveEntry.pokemon.push(pokemon);
         }
       }
     }
