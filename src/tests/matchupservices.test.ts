@@ -1,12 +1,11 @@
-import { Generations } from "@pkmn/data";
-import { Dex, ID } from "@pkmn/dex";
-import { speedchart } from "../services/matchup-services/speedchart.service";
-import { typechart } from "../services/matchup-services/typechart.service";
-import { movechart } from "../services/matchup-services/movechart.service";
-import { coveragechart } from "../services/matchup-services/coverage.service";
-import { summary } from "../services/matchup-services/summary.service";
+import { ID } from "@pkmn/dex";
 import { Rulesets } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
+import { coveragechart } from "../services/matchup-services/coverage.service";
+import { movechart } from "../services/matchup-services/movechart.service";
+import { speedchart } from "../services/matchup-services/speedchart.service";
+import { summary } from "../services/matchup-services/summary.service";
+import { typechart } from "../services/matchup-services/typechart.service";
 
 const ruleset = Rulesets["Paldea Dex"];
 const aTeam: PokemonData[] = [
@@ -40,8 +39,10 @@ async function movechartTest() {
   return JSON.stringify(await movechart(ruleset, aTeam));
 }
 
-async function coveragechartTest() {
+export async function coveragechartTest() {
   return JSON.stringify(await coveragechart(ruleset, aTeam, bTeam));
 }
 
-console.log(speedchartTest());
+export async function matchupTests() {
+  coveragechartTest();
+}
