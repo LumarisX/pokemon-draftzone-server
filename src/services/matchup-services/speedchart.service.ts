@@ -130,7 +130,7 @@ function getModifiers(tiers: Speedchart["tiers"]): string[] {
       uniqueModifiers.add(modifier);
     }
   }
-  return Array.from(uniqueModifiers);
+  return Array.from(uniqueModifiers).sort();
 }
 
 function generateTiers(
