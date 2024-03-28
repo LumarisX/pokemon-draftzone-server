@@ -11,6 +11,7 @@ import { draftRouter } from "./routes/draft.route";
 import { matchupRouter } from "./routes/matchup.route";
 import { testRouter } from "./routes/test.route";
 import { dataRouter } from "./routes/data.route";
+import { plannerRouter } from "./routes/planner.route";
 
 mongoose.connect(
   "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
@@ -49,9 +50,9 @@ app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 app.use("/matchup", logger("common"), matchupRouter);
 app.use("/data", logger("common"), dataRouter);
 app.use("/test", logger("common"), testRouter);
+app.use("/planner", logger("common"), plannerRouter);
 
 // app.use("/data", dataRouter);
-// app.use("/planner", logger("common"), plannerRouter);
 
 app.use(function (req: Request, res: Response, next: NextFunction) {
   next(createError(404));

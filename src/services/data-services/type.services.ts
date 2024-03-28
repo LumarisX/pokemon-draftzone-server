@@ -9,9 +9,6 @@ export function typeWeak(ruleset: Ruleset, types: string[]) {
       adjustedDamage[key] = adjustedDamage.hasOwnProperty(key)
         ? adjustedDamage[key] * conversion[damageTaken[key]]
         : conversion[damageTaken[key]];
-      if (key === "Psychic") {
-        console.log(adjustedDamage[key]);
-      }
     });
   });
 
