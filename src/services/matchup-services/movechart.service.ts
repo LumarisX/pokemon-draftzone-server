@@ -220,6 +220,14 @@ const chartMoves: {
   ],
 };
 
+export type Movechart = {
+  categoryName: string;
+  moves: {
+    moveName: string;
+    pokemon: PokemonData[];
+  }[];
+}[];
+
 export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
   let movechart: {
     categoryName: string;
