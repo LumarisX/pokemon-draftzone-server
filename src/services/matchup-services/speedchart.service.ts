@@ -112,7 +112,7 @@ function getSpeedTiers(
         fastConfigurations.stages.push(3, 4, 5, 6);
         break;
       case "Steam Engine":
-        fastConfigurations.stages.push(3, 4, 5, 6);
+        fastConfigurations.stages.push(6);
         break;
     }
   }
