@@ -6,8 +6,9 @@ import { movechart } from "../services/matchup-services/movechart.service";
 import { speedchart } from "../services/matchup-services/speedchart.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { typechart } from "../services/matchup-services/typechart.service";
+import { getWeak } from "../services/data-services/pokedex.service";
 
-const ruleset = Rulesets["Gen9 NatDex"];
+const ruleset = Rulesets["Paldea Dex"];
 const aTeam: PokemonData[] = [
   {
     pid: "togedemaru" as ID,
@@ -44,7 +45,5 @@ export async function coveragechartTest() {
 }
 
 export async function matchupTests() {
-  let startTime = performance.now();
-  console.log(await movechartTest());
-  console.log(performance.now() - startTime);
+  console.log(getWeak(ruleset, "overqwil" as ID));
 }

@@ -6,9 +6,12 @@ export function typeWeak(ruleset: Ruleset, types: string[]) {
   types.forEach((type) => {
     const damageTaken = ruleset.gen.dex.types.get(type).damageTaken;
     Object.keys(damageTaken).forEach((key) => {
-      adjustedDamage[key] = adjustedDamage[key]
+      adjustedDamage[key] = adjustedDamage.hasOwnProperty(key)
         ? adjustedDamage[key] * conversion[damageTaken[key]]
         : conversion[damageTaken[key]];
+      if (key === "Psychic") {
+        console.log(adjustedDamage[key]);
+      }
     });
   });
 
