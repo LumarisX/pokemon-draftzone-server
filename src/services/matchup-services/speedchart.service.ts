@@ -20,7 +20,7 @@ export type Speedchart = {
 
 type Configurations = {
   stages: number[];
-  additional: { modifier?: string; mult: number }[];
+  additional: { modifier?: string; mult: number; noItem?: true }[];
   statuses: { status: StatusName | ""; modifier?: string }[];
   sides: { tailwind?: boolean; modifiers: string[] }[];
   fields: { modifiers: string[] }[];
@@ -83,15 +83,27 @@ function getSpeedTiers(
   };
   for (let ability of getAbilities(ruleset, p.pid)) {
     switch (ability) {
+      case "Unburden":
+        fastConfigurations.additional.push({
+          modifier: ability,
+          mult: 2,
+          noItem: true,
+        });
+        break;
       case "Chlorophyll":
       case "Sand Rush":
       case "Slush Rush":
       case "Swift Swim":
-      case "Unburden":
       case "Surge Surfer":
         fastConfigurations.additional.push({ modifier: ability, mult: 2 });
         break;
       case "Quick Feet":
+        fastConfigurations.additional.push({
+          modifier: ability,
+          mult: 1.5,
+          noItem: true,
+        });
+        break;
       case "Quark Drive":
       case "Protosynthesis":
         fastConfigurations.additional.push({ modifier: ability, mult: 1.5 });
@@ -129,23 +141,22 @@ function generateTiers(
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  for (const item of configurations.items) {
-    for (const status of configurations.statuses) {
-      if (
-        status.status == "par" &&
-        getTypes(ruleset, p.pid).includes("Electric")
-      )
-        continue;
-      for (const stage of [
-        ...configurations.stages,
-        ...(item.addStages || []),
-      ]) {
-        for (const sConfig of configurations.sides) {
-          const side = new Side({ isTailwind: sConfig.tailwind });
-          for (const fConfig of configurations.fields) {
-            const field = new Field();
-            for (const pConfig of configurations.spreads) {
-              for (const additional of configurations.additional) {
+  for (const status of configurations.statuses) {
+    if (status.status == "par" && getTypes(ruleset, p.pid).includes("Electric"))
+      continue;
+    for (const sConfig of configurations.sides) {
+      const side = new Side({ isTailwind: sConfig.tailwind });
+      for (const fConfig of configurations.fields) {
+        const field = new Field();
+        for (const pConfig of configurations.spreads) {
+          for (const additional of configurations.additional) {
+            for (const item of additional.noItem
+              ? [{}]
+              : configurations.items) {
+              for (const stage of [
+                ...configurations.stages,
+                ...(item.addStages || []),
+              ]) {
                 const pokemon = new Pokemon(ruleset.gen.num, p.pid, {
                   level,
                   evs: pConfig.evs,

@@ -84,11 +84,6 @@ export class Score {
   constructor(private scoreData: any) {}
 
   async processScore(): Promise<any> {
-    const data = await this.prepareData();
-    return data;
-  }
-
-  private async prepareData(): Promise<any> {
     const data: any = {};
     data.aTeam = { stats: {}, paste: "", score: 0 };
     data.bTeam = { stats: {}, paste: "", score: 0 };
@@ -148,7 +143,6 @@ export class Score {
         data.bTeam.stats[stat.pokemon.pid] = pokemonStats;
       }
     }
-
     return data;
   }
 }
