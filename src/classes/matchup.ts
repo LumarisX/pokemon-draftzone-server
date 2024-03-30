@@ -126,7 +126,6 @@ export class Score {
       }
     }
     data.aTeam.stats = Object.entries(aTeamStats);
-    console.log(data.aTeam.stats);
 
     let bTeamStats: { [key: string]: any } = {};
     for (const stat of this.scoreData.bTeam.team) {
