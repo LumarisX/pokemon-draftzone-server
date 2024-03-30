@@ -139,6 +139,7 @@ const chartMoves: {
     "bleakwindstorm",
     "bulldoze",
     "cottonspore",
+    "stringshot",
     "electroweb",
     "glaciate",
     "icywind",
