@@ -4,14 +4,9 @@ import { SubRequest } from "../app";
 import Archive from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { Matchup, Score } from "../classes/matchup";
-import { FormatId } from "../data/formats";
-import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
+import { Ruleset, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
-import {
-  MatchupData,
-  MatchupDocument,
-  MatchupModel,
-} from "../models/matchup.model";
+import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
 import { getScore } from "../services/database-services/draft.services";
 
@@ -247,19 +242,22 @@ draftRouter
     try {
       const score = new Score(req.body);
       const processedScore = await score.processScore();
-      const updatedMatchup = await MatchupModel.findByIdAndUpdate(
-        req.params.matchup_id,
-        {
-          "aTeam.stats": processedScore.aTeam.stats,
-          "bTeam.stats": processedScore.bTeam.stats,
-          "aTeam.paste": processedScore.aTeam.paste,
-          "bTeam.paste": processedScore.bTeam.paste,
-          "aTeam.score": processedScore.aTeam.score,
-          "bTeam.score": processedScore.bTeam.score,
-          replay: processedScore.replay,
-        },
-        { new: true, upsert: true }
-      );
+      console.log(processedScore);
+      console.log(JSON.stringify(processedScore));
+      const updatedMatchup = true;
+      // await MatchupModel.findByIdAndUpdate(
+      //   req.params.matchup_id,
+      //   {
+      //     "aTeam.stats": processedScore.aTeam.stats,
+      //     "bTeam.stats": processedScore.bTeam.stats,
+      //     "aTeam.paste": processedScore.aTeam.paste,
+      //     "bTeam.paste": processedScore.bTeam.paste,
+      //     "aTeam.score": processedScore.aTeam.score,
+      //     "bTeam.score": processedScore.bTeam.score,
+      //     replay: processedScore.replay,
+      //   },
+      //   { new: true, upsert: true }
+      // );
       if (updatedMatchup) {
         res
           .status(200)
@@ -321,6 +319,7 @@ draftRouter.param(
           .json({ message: "Team id not found", code: "DR-P1-01" });
       }
       const rawMatchup = await MatchupModel.findById(matchup_id);
+      console.log(JSON.stringify(rawMatchup));
       const matchup = rawMatchup?.toObject();
       if (!matchup) {
         res

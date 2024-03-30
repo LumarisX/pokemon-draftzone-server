@@ -33,7 +33,8 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
     };
   } = {};
   for (const matchup of matchups) {
-    for (const pid in matchup.aTeam.stats) {
+    let stat = Object.fromEntries(matchup.aTeam.stats);
+    for (const pid in stat) {
       if (!(pid in stats)) {
         stats[pid] = {
           pokemon: { pid: toID(pid), name: getName(ruleset, toID(pid)) },
@@ -45,7 +46,7 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
           kpg: 0,
         };
       }
-      const teamStats = matchup.aTeam.stats[toID(pid)];
+      const teamStats = stat[toID(pid)];
       if (teamStats) {
         stats[pid].kills += teamStats.kills ?? 0;
         stats[pid].brought += teamStats.brought ?? 0;

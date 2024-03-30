@@ -8,7 +8,8 @@
     "monitor": "nodemon src/index.ts",
     "install-dep": "npm i --no-bin-links",
     "test": "nodemon src/tests/run.test.ts",
-    "testOne": "ts-node src/tests/matchup.test.ts"
+    "testOne": "ts-node src/tests/matchup.test.ts",
+    "mongoAction": "ts-node src/tests/database/database.functions.ts"
   },
   "dependencies": {
     "@pkmn/data": "^0.9.0",

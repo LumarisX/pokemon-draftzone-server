@@ -85,8 +85,8 @@ export class Score {
 
   async processScore(): Promise<any> {
     const data: any = {};
-    data.aTeam = { stats: {}, paste: "", score: 0 };
-    data.bTeam = { stats: {}, paste: "", score: 0 };
+    data.aTeam = { stats: [], paste: "", score: 0 };
+    data.bTeam = { stats: [], paste: "", score: 0 };
     const pastePattern = /^(https:\/\/)?pokepast\.es\/[a-zA-Z0-9]{16}$/;
     if (
       this.scoreData.aTeam.paste != null &&
@@ -106,6 +106,7 @@ export class Score {
     data.aTeam.score = this.scoreData.aTeam.score;
     data.bTeam.score = this.scoreData.bTeam.score;
 
+    let aTeamStats: { [key: string]: any } = {};
     for (const stat of this.scoreData.aTeam.team) {
       const pokemonStats: any = {};
       if (stat.kills != null && stat.kills > 0) {
@@ -121,10 +122,13 @@ export class Score {
         pokemonStats.brought = stat.brought;
       }
       if (Object.keys(pokemonStats).length > 0) {
-        data.aTeam.stats[stat.pokemon.pid] = pokemonStats;
+        aTeamStats[stat.pokemon.pid] = pokemonStats;
       }
     }
+    data.aTeam.stats = Object.entries(aTeamStats);
+    console.log(data.aTeam.stats);
 
+    let bTeamStats: { [key: string]: any } = {};
     for (const stat of this.scoreData.bTeam.team) {
       const pokemonStats: any = {};
       if (stat.kills != null && stat.kills > 0) {
@@ -140,9 +144,10 @@ export class Score {
         pokemonStats.brought = stat.brought;
       }
       if (Object.keys(pokemonStats).length > 0) {
-        data.bTeam.stats[stat.pokemon.pid] = pokemonStats;
+        bTeamStats[stat.pokemon.pid] = pokemonStats;
       }
     }
+    data.bTeam.stats = Object.entries(bTeamStats);
     return data;
   }
 }

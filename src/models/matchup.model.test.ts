@@ -2,6 +2,24 @@ import mongoose, { Document } from "mongoose";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
 import { ID } from "@pkmn/data";
 
+const statsSchema = new mongoose.Schema(
+  {
+    indirect: {
+      type: Number,
+    },
+    kills: {
+      type: Number,
+    },
+    deaths: {
+      type: Number,
+    },
+    brought: {
+      type: Number,
+    },
+  },
+  { _id: false }
+);
+
 const teamSchema = new mongoose.Schema(
   {
     team: {
@@ -14,7 +32,8 @@ const teamSchema = new mongoose.Schema(
       type: String,
     },
     stats: {
-      type: [[]],
+      type: Map,
+      of: statsSchema,
     },
     score: {
       type: Number,
@@ -51,20 +70,19 @@ const matchupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+interface Stats {
+  indirect?: number;
+  kills?: number;
+  deaths?: number;
+  brought?: number;
+}
+
 export interface MatchupData {
   aTeam: {
     team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: [
-      string,
-      {
-        indirect?: number;
-        kills?: number;
-        deaths?: number;
-        brought?: number;
-      }
-    ][];
+    stats: Map<string, Stats>;
     score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
@@ -73,14 +91,7 @@ export interface MatchupData {
     team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: {
-      [key in ID]: {
-        indirect?: number;
-        kills?: number;
-        deaths?: number;
-        brought?: number;
-      };
-    };
+    stats: Map<string, Stats>;
     score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
@@ -91,9 +102,9 @@ export interface MatchupData {
   updatedAt?: Date;
 }
 
-export interface MatchupDocument extends Document<any, any>, MatchupData {}
+export interface MatchupDocumentTest extends Document<any, any>, MatchupData {}
 
-export const MatchupModel = mongoose.model<MatchupDocument>(
+export const MatchupModelTest = mongoose.model<MatchupDocumentTest>(
   "matchupstest",
   matchupSchema
 );
