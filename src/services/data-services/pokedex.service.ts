@@ -115,6 +115,13 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
           weak.Rock *= 0.5;
         }
         break;
+      case "Wonder Guard":
+        for (let type in weak) {
+          if (weak[type] <= 1) {
+            weak[type] = 0;
+          }
+        }
+        break;
     }
   }
   return weak;
