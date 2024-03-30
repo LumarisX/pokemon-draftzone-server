@@ -31,6 +31,7 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
       case "Dry Skin":
         weak.Fire *= 1.25;
       case "Water Absorb":
+      case "Desolate Land":
       case "Storm Drain":
         weak.Water = 0;
         break;
@@ -53,6 +54,7 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
       case "Thick Fat":
         weak.Ice *= 0.5;
       case "Heatproof":
+      case "Drizzle":
         weak.Fire *= 0.5;
         break;
       case "Water Bubble":
@@ -97,6 +99,21 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
       case "Ice Body":
       case "Snow Cloak":
         weak.hail = 0;
+        break;
+      case "Drought":
+      case "Orichalcum Pulse":
+        weak.Water *= 0.5;
+        break;
+      case "Primordial Sea":
+        weak.Fire = 0;
+        weak.brn = 0;
+        break;
+      case "Delta Stream":
+        if (types.includes("Flying")) {
+          weak.Ice *= 0.5;
+          weak.Electric *= 0.5;
+          weak.Rock *= 0.5;
+        }
         break;
     }
   }
