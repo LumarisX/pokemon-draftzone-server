@@ -1,9 +1,8 @@
-import { ID, toID } from "@pkmn/data";
+import { toID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
+import { PokemonData } from "../../models/pokemon.schema";
 import { getLearnset } from "../data-services/learnset.service";
 import { getMoveName } from "../data-services/move.service";
-import { PokemonData } from "../../models/pokemon.schema";
-import { Pokemon } from "@smogon/calc";
 
 const chartMoves: {
   Priority: string[];
@@ -15,7 +14,7 @@ const chartMoves: {
   Support: string[];
   Status: string[];
   Disruption: string[];
-  Condition: string[];
+  "Field Manipulation": string[];
 } = {
   Priority: [
     "accelerock",
@@ -139,6 +138,7 @@ const chartMoves: {
     "trickroom",
     "bleakwindstorm",
     "bulldoze",
+    "cottonspore",
     "electroweb",
     "glaciate",
     "icywind",
@@ -196,7 +196,7 @@ const chartMoves: {
     "haze",
     "clearsmog",
   ],
-  Condition: [
+  "Field Manipulation": [
     "chillyreception",
     "electricterrain",
     "grassyterrain",
