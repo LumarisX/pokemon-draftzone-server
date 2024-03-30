@@ -41,6 +41,7 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
         weak.Electric = 0;
         break;
       case "Flash Fire":
+      case "Primordial Sea":
       case "Well-Baked Body":
         weak.Fire = 0;
         break;
@@ -103,10 +104,6 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
       case "Drought":
       case "Orichalcum Pulse":
         weak.Water *= 0.5;
-        break;
-      case "Primordial Sea":
-        weak.Fire = 0;
-        weak.brn = 0;
         break;
       case "Delta Stream":
         if (types.includes("Flying")) {
