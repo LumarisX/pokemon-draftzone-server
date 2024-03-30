@@ -8,7 +8,10 @@ import { Ruleset, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
-import { getScore } from "../services/database-services/draft.services";
+import {
+  getScore,
+  getStats,
+} from "../services/database-services/draft.services";
 
 export const draftRouter = express.Router();
 
@@ -159,18 +162,18 @@ draftRouter
     }
   });
 
-// draftRouter
-//   .route("/:team_id/stats")
-//   .get(async (req: SubRequest, res: DraftResponse) => {
-//     if (!res.draft) {
-//       return;
-//     }
-//     try {
-//       res.json(await getStats(res.draft._id));
-//     } catch (error) {
-//       res.status(500).json({ message: (error as Error).message });
-//     }
-//   });
+draftRouter
+  .route("/:team_id/stats")
+  .get(async (req: SubRequest, res: DraftResponse) => {
+    if (!res.draft || !res.ruleset) {
+      return;
+    }
+    try {
+      res.json(await getStats(res.ruleset, res.draft._id));
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  });
 
 draftRouter
   .route("/:team_id/archive")
