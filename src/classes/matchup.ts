@@ -1,16 +1,16 @@
-import mongoose, { ObjectId } from "mongoose";
+import { ObjectId } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
-import { Pokemon, PokemonBuilder } from "./pokemon";
+import { Pokemon, PokemonBuilder, PokemonFormData } from "./pokemon";
 
-interface MatchupDoc {
+type MatchupDoc = {
   aTeam: Side;
   bTeam: Side;
   stage: string;
   replay?: string;
-}
+};
 
-export interface Side {
+export type Side = {
   _id?: ObjectId;
   teamName: string;
   team: Pokemon[];
@@ -25,12 +25,16 @@ export interface Side {
   };
   score: number;
   paste?: string;
-}
+};
 
 export class Matchup {
   constructor(
     private ruleset: Ruleset,
-    private formData: { teamName: string; stage: string; team: Pokemon[] },
+    private formData: {
+      teamName: string;
+      stage: string;
+      team: PokemonFormData[];
+    },
     private aTeamId: ObjectId
   ) {}
 
@@ -41,7 +45,6 @@ export class Matchup {
   }
 
   private async prepareData(): Promise<MatchupDoc> {
-    console.log(this.aTeamId);
     const data: MatchupDoc = {
       aTeam: {
         _id: this.aTeamId,

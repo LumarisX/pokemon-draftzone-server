@@ -2,6 +2,18 @@ import { ID, toID } from "@pkmn/data";
 import { Ruleset } from "../data/rulesets";
 import { getName } from "../services/data-services/pokedex.service";
 
+export type PokemonFormData = {
+  pid: ID;
+  shiny?: boolean;
+  name?: string;
+  capt?: {
+    tera?: { [key: string]: boolean };
+    z?: boolean;
+    teraCheck: boolean;
+  };
+  captCheck?: boolean;
+};
+
 export type Pokemon = {
   pid: ID;
   shiny?: boolean;
@@ -16,22 +28,11 @@ export class PokemonBuilder {
   data: Pokemon;
   error: string | undefined;
 
-  constructor(
-    ruleset: Ruleset,
-    pokemonData: {
-      pid: ID;
-      shiny?: boolean;
-      name?: string;
-      capt?: {
-        tera?: string[];
-        z?: boolean;
-      };
-      captCheck?: { z: boolean; teraCheck?: { [key: string]: boolean } };
-    }
-  ) {
+  constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
     this.data = {
       pid: toID(pokemonData.pid),
       name: getName(ruleset, pokemonData.pid),
+      shiny: pokemonData.shiny,
     };
 
     // if (!inDex(pokemonData.pid)) {
@@ -40,12 +41,14 @@ export class PokemonBuilder {
     // }
 
     const { captCheck } = pokemonData;
-    if (captCheck?.z) {
+    if (captCheck) {
       this.data.capt = {
-        z: true,
-        tera: Object.keys(captCheck.teraCheck || {}).filter(
-          (type) => captCheck.teraCheck![type]
-        ),
+        z: pokemonData.capt?.z ? true : undefined,
+        tera: pokemonData.capt?.teraCheck
+          ? Object.keys(pokemonData.capt?.tera || {}).filter(
+              (type) => pokemonData.capt!.tera![type]
+            )
+          : undefined,
       };
     }
   }
