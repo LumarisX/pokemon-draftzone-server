@@ -1,16 +1,9 @@
-import {
-  ID,
-  Specie,
-  SpeciesName,
-  StatsTable,
-  TypeName,
-  toID,
-} from "@pkmn/data";
+import { ID, SpeciesName, StatsTable, TypeName, toID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
+import { PokemonData } from "../../models/pokemon.schema";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";
-import { PokemonData } from "../../models/pokemon.schema";
 
 export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
   return ruleset.gen.dex.species.getByID(pokemonID).name;
@@ -197,6 +190,13 @@ export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
     physical: Object.values(coverage.Physical),
     special: Object.values(coverage.Special),
   };
+}
+
+export function getSpecies(ruleset: Ruleset) {
+  return Object.entries(ruleset.gen.dex.data.Species).map(([key, specie]) => [
+    key,
+    specie.name,
+  ]);
 }
 
 export function filterNames(ruleset: Ruleset, query: string) {

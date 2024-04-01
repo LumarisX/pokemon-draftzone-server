@@ -1,7 +1,10 @@
-import { matchupTests } from "./matchupservices.test";
+import { pokedexName } from "./data.test";
 
 function runTest() {
-  matchupTests();
+  console.log(pokedexName());
 }
-
+const startTime = performance.now();
 runTest();
+const endTime = performance.now();
+const elapsedTime = endTime - startTime;
+console.log(`${elapsedTime} milliseconds elapsed.`);
