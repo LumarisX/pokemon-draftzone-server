@@ -41,7 +41,7 @@ draftRouter
       return;
     }
     try {
-      const draft = new Draft(res.ruleset!, req.body, req.sub);
+      const draft = new Draft(req.body, req.sub);
       const draftDoc = await draft.createDraft();
       const foundDrafts = await DraftModel.find({
         owner: req.sub,
@@ -56,6 +56,7 @@ draftRouter
         res.status(201).json({ message: "Draft Added" });
       }
     } catch (error) {
+      console.log(error);
       res
         .status(500)
         .json({ message: (error as Error).message, code: "DR-R1-03" });
@@ -83,11 +84,7 @@ draftRouter
     }
     try {
       let team_id = req.params.team_id;
-      const draft = await new Draft(
-        res.ruleset!,
-        req.body,
-        req.sub
-      ).createDraft();
+      const draft = await new Draft(req.body, req.sub).createDraft();
 
       const updatedDraft = await DraftModel.findOneAndUpdate(
         { owner: req.sub, leagueId: team_id },

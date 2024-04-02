@@ -1,7 +1,7 @@
 import { Generation, Generations } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
-export type RulesetId = keyof typeof Rulesets;
+export type RulesetId = keyof typeof Rulesets & string;
 
 export type Ruleset = {
   gen: Generation;

@@ -52,8 +52,9 @@ dataRouter.route("/search").get(async (req: Request, res: DataResponse) => {
         ruleset = "Gen9 NatDex";
       }
       res.json(filterNames(Rulesets[ruleset], query));
+    } else {
+      res.status(400).json({ error: "Ruleset type error", code: "DT-R3-01" });
     }
-    res.status(400).json({ error: "Ruleset type error", code: "DT-R3-01" });
   } catch (error) {
     console.error("Error in /search route:", error);
     res.status(500).json({ error: "Internal Server Error", code: "DT-R3-02" });
