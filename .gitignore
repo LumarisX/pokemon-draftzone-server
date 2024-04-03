@@ -1,3 +1,4 @@
 node_modules/
 src/routes/test.rest
 package-lock.json
+output.json

@@ -121,6 +121,9 @@ const chartMoves: {
     "teleport",
     "uturn",
     "voltswitch",
+    "explosion",
+    "selfdestruct",
+    "mistyexplosion",
   ],
   "Hazard Control": [
     "spikes",
