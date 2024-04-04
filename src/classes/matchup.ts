@@ -15,14 +15,15 @@ export type Side = {
   teamName: string;
   team: Pokemon[];
   name?: string;
-  stats: {
-    [key: string]: {
+  stats: [
+    string,
+    {
+      indirect?: number;
       kills?: number;
       deaths?: number;
-      indirect?: number;
-      brought: number;
-    };
-  };
+      brought?: number;
+    }
+  ][];
   score: number;
   paste?: string;
 };
@@ -51,7 +52,7 @@ export class Matchup {
         teamName: "",
         team: [],
         name: undefined,
-        stats: {},
+        stats: [],
         score: 0,
         paste: undefined,
       },
@@ -59,7 +60,7 @@ export class Matchup {
         teamName: this.formData.teamName.trim(),
         team: [],
         name: undefined,
-        stats: {},
+        stats: [],
         score: 0,
         paste: undefined,
       },
@@ -78,7 +79,6 @@ export class Matchup {
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }
-
     return data;
   }
 }
@@ -129,7 +129,6 @@ export class Score {
       }
     }
     data.aTeam.stats = Object.entries(aTeamStats);
-
     let bTeamStats: { [key: string]: any } = {};
     for (const stat of this.scoreData.bTeam.team) {
       const pokemonStats: any = {};

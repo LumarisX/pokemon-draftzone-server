@@ -1,6 +1,5 @@
 import mongoose, { Document } from "mongoose";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
-import { ID } from "@pkmn/data";
 
 const teamSchema = new mongoose.Schema(
   {
@@ -14,7 +13,7 @@ const teamSchema = new mongoose.Schema(
       type: String,
     },
     stats: {
-      type: [[]],
+      type: [],
     },
     score: {
       type: Number,
@@ -73,14 +72,15 @@ export interface MatchupData {
     team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: {
-      [key in ID]: {
+    stats: [
+      string,
+      {
         indirect?: number;
         kills?: number;
         deaths?: number;
         brought?: number;
-      };
-    };
+      }
+    ][];
     score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
