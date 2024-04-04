@@ -94,6 +94,6 @@ export interface MatchupData {
 export interface MatchupDocument extends Document<any, any>, MatchupData {}
 
 export const MatchupModel = mongoose.model<MatchupDocument>(
-  "matchupstest",
+  "matchups",
   matchupSchema
 );

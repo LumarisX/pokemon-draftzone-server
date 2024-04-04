@@ -1,9 +1,9 @@
-import { nameList, pokedexName } from "./data.test";
+import { nameList } from "./data.test";
 import fs from "fs";
+import { statsTest } from "./draft.test";
 
-function runTest() {
-  const data = JSON.stringify(nameList());
-  fs.writeFileSync("output.json", data); // Write data to output.json file
+async function runTest() {
+  console.log(JSON.stringify(await statsTest()));
 }
 const startTime = performance.now();
 runTest();

@@ -11,10 +11,10 @@ export function testFilter() {
   return filterNames(natDexRuleset, "toge");
 }
 
-export function pokedexName() {
-  const specie = getSpecies(ruleset).find(([pid, name]) => pid === "pikachu");
-  return specie ? specie[1] : "";
-}
+// export function pokedexName() {
+//   const specie = getSpecies(ruleset).find(([pid, name]) => pid === "pikachu");
+//   return specie ? specie[1] : "";
+// }
 
 export function nameList() {
   return Object.fromEntries(

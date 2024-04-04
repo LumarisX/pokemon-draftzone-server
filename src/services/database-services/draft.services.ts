@@ -33,7 +33,9 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
     };
   } = {};
   for (const matchup of matchups) {
+    console.log(matchup.bTeam.teamName, matchup.aTeam.stats);
     let stat = Object.fromEntries(matchup.aTeam.stats);
+    console.log(stat);
     for (const pid in stat) {
       if (!(pid in stats)) {
         stats[pid] = {
