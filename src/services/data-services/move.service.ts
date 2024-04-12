@@ -1,8 +1,12 @@
-import { ID, MoveCategory, MoveName, TypeName } from "@pkmn/data";
+import { ID, Move, MoveCategory, MoveName, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 
 export function getType(ruleset: Ruleset, moveID: ID): TypeName {
   return ruleset.gen.dex.moves.getByID(moveID).type;
+}
+
+export function getMove(ruleset: Ruleset, moveID: ID): Move {
+  return ruleset.gen.dex.moves.getByID(moveID);
 }
 
 export function getMoveName(ruleset: Ruleset, moveID: ID): MoveName {
