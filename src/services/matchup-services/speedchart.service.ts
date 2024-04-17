@@ -1,5 +1,5 @@
-import { StatusName } from "@pkmn/data";
-import { Field, Pokemon, Side } from "@smogon/calc";
+import { Species, StatusName } from "@pkmn/data";
+import { Field, Pokemon, Side, toID } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
@@ -141,6 +141,7 @@ function generateTiers(
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
+  let pid: string = p.pid;
   for (const status of configurations.statuses) {
     if (status.status == "par" && getTypes(ruleset, p.pid).includes("Electric"))
       continue;
@@ -157,7 +158,10 @@ function generateTiers(
                 ...configurations.stages,
                 ...(item.addStages || []),
               ]) {
-                const pokemon = new Pokemon(ruleset.gen.num, p.pid, {
+                if (pid === "aegislash") {
+                  pid = "aegislash-shield";
+                }
+                const pokemon = new Pokemon(ruleset.gen.num, pid, {
                   level,
                   evs: pConfig.evs,
                   ivs: pConfig.ivs,
