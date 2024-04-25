@@ -10,18 +10,18 @@ import { getWeak } from "../services/data-services/pokedex.service";
 
 const ruleset = Rulesets["Paldea Dex"];
 const aTeam: PokemonData[] = [
-  {
-    pid: "togedemaru" as ID,
-    name: "togedemaru",
-    capt: { tera: ["Fire", "Ground", "Electric"] },
-  },
+  // {
+  //   pid: "togedemaru" as ID,
+  //   name: "togedemaru",
+  //   capt: { tera: ["Fire", "Ground", "Electric"] },
+  // },
   // { pid: "deoxys" as ID, name: "Deoxys" },
   { pid: "ogerponcornerstone" as ID, name: "Ogerpon Cornerstone" },
 ];
 const bTeam: PokemonData[] = [
   // { pid: "pikachu" as ID, name: "Pikachu" },
-  // { pid: "gallade" as ID, name: "Gallade" },
-  { pid: "heatran" as ID, name: "Heatran" },
+  // { pid: "gallademega" as ID, name: "Mega Gallade" },
+  // { pid: "heatran" as ID, name: "Heatran" },
 ];
 
 export function speedchartTest() {

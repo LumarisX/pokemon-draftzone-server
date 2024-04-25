@@ -1,5 +1,5 @@
-import { Species, StatusName } from "@pkmn/data";
-import { Field, Pokemon, Side, toID } from "@smogon/calc";
+import { ID, StatusName } from "@pkmn/data";
+import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
@@ -141,9 +141,10 @@ function generateTiers(
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  let pid: string = p.pid;
+  let pid: ID = p.pid;
+  let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
-    if (status.status == "par" && getTypes(ruleset, p.pid).includes("Electric"))
+    if (status.status == "par" && getTypes(ruleset, pid).includes("Electric"))
       continue;
     for (const sConfig of configurations.sides) {
       const side = new Side({ isTailwind: sConfig.tailwind });
@@ -151,7 +152,9 @@ function generateTiers(
         const field = new Field();
         for (const pConfig of configurations.spreads) {
           for (const additional of configurations.additional) {
-            for (const item of additional.noItem
+            for (const item of additional.noItem ||
+            dexmon.requiredItem ||
+            dexmon.requiredItems
               ? [{}]
               : configurations.items) {
               for (const stage of [
@@ -159,7 +162,7 @@ function generateTiers(
                 ...(item.addStages || []),
               ]) {
                 if (pid === "aegislash") {
-                  pid = "aegislash-shield";
+                  pid = "aegislash-shield" as ID;
                 }
                 const pokemon = new Pokemon(ruleset.gen.num, pid, {
                   level,
