@@ -58,7 +58,7 @@ function getSpeedTiers(
   let baseConfiugrations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
-    statuses: [{ status: "" }],
+    statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
     items: [{}],
     spreads: [{ evs: { spe: 0 }, modifiers: ["0"] }],
     fields: [{ modifiers: [] }],
