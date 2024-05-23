@@ -1,10 +1,7 @@
-import { nameList } from "./data.test";
-import fs from "fs";
-import { statsTest } from "./draft.test";
-import { speedchartTest } from "./matchupservices.test";
+import { recommendedTest } from "./finder.test";
 
 async function runTest() {
-  console.log(speedchartTest());
+  recommendedTest();
 }
 const startTime = performance.now();
 runTest();
