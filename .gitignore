@@ -3,3 +3,4 @@ src/routes/test.rest
 src/test/
 package-lock.json
 output.json
+.env

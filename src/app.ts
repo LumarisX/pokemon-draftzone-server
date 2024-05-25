@@ -12,9 +12,12 @@ import { matchupRouter } from "./routes/matchup.route";
 import { testRouter } from "./routes/test.route";
 import { dataRouter } from "./routes/data.route";
 import { plannerRouter } from "./routes/planner.route";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 mongoose.connect(
-  "mongodb+srv://lumaris:bjbxmb6SuZ5WMlDA@draftzonedatabase.5nc6cbu.mongodb.net/draftzone"
+  `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/?retryWrites=true&w=majority&appName=DraftzoneDatabase`
 );
 
 const db = mongoose.connection;
@@ -24,8 +27,8 @@ db.once("open", () => console.log("Connected to Database"));
 export const app = express();
 
 const jwtCheck = auth({
-  audience: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/api/v2/",
-  issuerBaseURL: "https://dev-wspjxi5f6mjqsjea.us.auth0.com/",
+  audience: process.env.AUTH0_AUDIENCE,
+  issuerBaseURL: process.env.AUTH0_ISSUER,
   tokenSigningAlg: "RS256",
 });
 

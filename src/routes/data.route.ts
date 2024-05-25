@@ -1,10 +1,10 @@
-import express, { NextFunction, Request, Response } from "express";
-import { getFormats, getRulesets } from "../services/ruleset.service";
+import express, { Request, Response } from "express";
+import { Ruleset, Rulesets } from "../data/rulesets";
 import {
   filterNames,
   getSpecies,
 } from "../services/data-services/pokedex.service";
-import { Ruleset, Rulesets } from "../data/rulesets";
+import { getFormats, getRulesets } from "../services/ruleset.service";
 
 export const dataRouter = express.Router();
 
@@ -60,57 +60,3 @@ dataRouter.route("/search").get(async (req: Request, res: DataResponse) => {
     res.status(500).json({ error: "Internal Server Error", code: "DT-R3-02" });
   }
 });
-
-// router.get("/:id", (req: Request, res: Response) => {
-//   try {
-//     res.send(pokedex[req.params.id]);
-//   } catch (error) {
-//     console.error("Error in /:id route:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-// router.get("/:id/weak", (req: Request, res: Response) => {
-//   try {
-//     var weak = null;
-//     const dmgConvert = [1, 2, 0.5, 0];
-//     let types = pokedex[req.params.id]["types"];
-//     for (let t of types) {
-//       t = t.toLowerCase();
-//       if (weak === null) {
-//         weak = structuredClone(typechart[t]["damageTaken"]);
-//         for (let w in weak) {
-//           weak[w] = dmgConvert[weak[w]];
-//         }
-//       } else {
-//         var ot = structuredClone(typechart[t]["damageTaken"]);
-//         for (let w in weak) {
-//           if (w in ot) {
-//             weak[w] = weak[w] * dmgConvert[ot[w]];
-//           }
-//           delete ot[w];
-//         }
-//         for (let w in ot) {
-//           weak[w] = ot[w];
-//         }
-//       }
-//     }
-//     res.send(weak);
-//   } catch (error) {
-//     console.error("Error in /:id/weak route:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-// router.get("/:id/:key", (req: Request, res: Response) => {
-//   try {
-//     res.send(pokedex[req.params.id][req.params.key]);
-//   } catch (error) {
-//     console.error("Error in /:id/:key route:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-// router.param("id", (req, res, next, id) => {
-//   next();
-// });
