@@ -17,7 +17,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 mongoose.connect(
-  `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/?retryWrites=true&w=majority&appName=DraftzoneDatabase`
+  `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
 );
 
 const db = mongoose.connection;
