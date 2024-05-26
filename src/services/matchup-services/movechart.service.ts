@@ -173,6 +173,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "matblock",
       "mist",
       "safeguard",
+      "dragoncheer",
     ],
   },
   {
