@@ -1,6 +1,7 @@
 node_modules/
+src/tests/
 src/routes/test.rest
-src/test/
 package-lock.json
 output.json
 .env
+

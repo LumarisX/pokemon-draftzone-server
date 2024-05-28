@@ -204,6 +204,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
     moves: [
       "taunt",
       "encore",
+      "magiccoat",
       "knockoff",
       "trick",
       "switcheroo",
