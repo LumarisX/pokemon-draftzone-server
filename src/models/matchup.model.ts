@@ -39,6 +39,12 @@ const matchupSchema = new mongoose.Schema(
       type: teamSchema,
       required: true,
     },
+    gameTime: {
+      type: String,
+    },
+    reminder: {
+      type: Number,
+    },
     stage: {
       type: String,
       required: true,
@@ -85,6 +91,8 @@ export interface MatchupData {
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };
+  gameTime?: string;
+  reminder?: number;
   stage: string;
   replay?: string;
   createdAt?: Date;

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { SubRequest } from "../app";
 import Archive from "../classes/archive";
 import { Draft } from "../classes/draft";
-import { Matchup, Score } from "../classes/matchup";
+import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Ruleset, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
@@ -242,8 +242,7 @@ draftRouter
     try {
       const score = new Score(req.body);
       const processedScore = await score.processScore();
-      const updatedMatchup = true;
-      await MatchupModel.findByIdAndUpdate(
+      const updatedMatchup = await MatchupModel.findByIdAndUpdate(
         req.params.matchup_id,
         {
           "aTeam.stats": processedScore.aTeam.stats,
@@ -256,6 +255,56 @@ draftRouter
         },
         { new: true, upsert: true }
       );
+      if (updatedMatchup) {
+        res
+          .status(200)
+          .json({ message: "Matchup Updated", draft: updatedMatchup });
+      } else {
+        res
+          .status(404)
+          .json({ message: "Matchup not found", code: "DR-R6-01" });
+      }
+    } catch (error) {
+      console.error("Error updating matchup:", error);
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R6-02" });
+    }
+  });
+
+draftRouter
+  .route("/:team_id/:matchup_id/schedule")
+  .get(async (req: SubRequest, res: DraftResponse) => {
+    if (!res.draft) {
+      return;
+    }
+    try {
+      if (res.matchup) {
+        console.log(res.matchup);
+        res.json({
+          gameTime: res.matchup.gameTime,
+          reminder: res.matchup.reminder,
+        });
+      }
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: (error as Error).message, code: "DR-R3-01" });
+    }
+  })
+  .patch(async (req: SubRequest, res: DraftResponse) => {
+    try {
+      const time = new GameTime(req.body);
+      const processedTime = await time.processTime();
+      const updatedMatchup = await MatchupModel.findByIdAndUpdate(
+        req.params.matchup_id,
+        {
+          gameTime: processedTime.dateTime,
+          reminder: processedTime.emailTime,
+        },
+        { new: true, upsert: true }
+      );
+      console.log(updatedMatchup);
       if (updatedMatchup) {
         res
           .status(200)

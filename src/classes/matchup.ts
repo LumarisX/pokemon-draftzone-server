@@ -152,3 +152,18 @@ export class Score {
     return data;
   }
 }
+
+export class GameTime {
+  constructor(
+    private timeData: { dateTime: string; email: boolean; emailTime: number }
+  ) {}
+
+  async processTime(): Promise<{ dateTime: string; emailTime: number }> {
+    return {
+      dateTime: this.timeData.dateTime,
+      emailTime: this.timeData.email
+        ? Math.floor(this.timeData.emailTime * 60)
+        : -1,
+    };
+  }
+}
