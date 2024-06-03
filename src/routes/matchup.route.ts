@@ -51,6 +51,7 @@ matchupRouter
         format: FormatId;
         ruleset: RulesetId;
         level: number;
+        gameTime: string;
         stage: string;
         leagueName: string;
         summary: (Summary & { teamName?: string })[];
@@ -62,6 +63,7 @@ matchupRouter
         format: res.matchup.format,
         ruleset: res.matchup.rulesetId,
         level: level,
+        gameTime: res.matchup.gameTime || "",
         stage: res.matchup.stage,
         leagueName: res.matchup.leagueName,
         summary: [],

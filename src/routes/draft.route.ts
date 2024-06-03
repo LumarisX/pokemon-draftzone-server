@@ -280,16 +280,19 @@ draftRouter
     }
     try {
       if (res.matchup) {
-        console.log(res.matchup);
         res.json({
           gameTime: res.matchup.gameTime,
           reminder: res.matchup.reminder,
         });
+      } else {
+        res
+          .status(500)
+          .json({ message: "Matchup not found", code: "DR-R6-01" });
       }
     } catch (error) {
       res
         .status(500)
-        .json({ message: (error as Error).message, code: "DR-R3-01" });
+        .json({ message: (error as Error).message, code: "DR-R6-02" });
     }
   })
   .patch(async (req: SubRequest, res: DraftResponse) => {
@@ -312,13 +315,13 @@ draftRouter
       } else {
         res
           .status(404)
-          .json({ message: "Matchup not found", code: "DR-R6-01" });
+          .json({ message: "Matchup not found", code: "DR-R6-03" });
       }
     } catch (error) {
       console.error("Error updating matchup:", error);
       res
         .status(500)
-        .json({ message: (error as Error).message, code: "DR-R6-02" });
+        .json({ message: (error as Error).message, code: "DR-R6-04" });
     }
   });
 
