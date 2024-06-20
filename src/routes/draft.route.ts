@@ -132,11 +132,13 @@ draftRouter
       return;
     }
     try {
-      res.json(
-        await MatchupModel.find({ "aTeam._id": res.draft._id }).sort({
-          createdAt: -1,
-        })
-      );
+      let matchups = await MatchupModel.find({
+        "aTeam._id": res.draft._id,
+      }).sort({
+        createdAt: -1,
+      });
+      console.log(matchups);
+      res.json(matchups);
     } catch (error) {
       res
         .status(500)

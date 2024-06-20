@@ -12,6 +12,18 @@ const teamSchema = new mongoose.Schema(
     teamName: {
       type: String,
     },
+    paste: {
+      type: String,
+    },
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+    },
+  },
+  { _id: false }
+);
+
+const matchTeamSchema = new mongoose.Schema(
+  {
     stats: {
       type: [],
     },
@@ -19,11 +31,29 @@ const teamSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    paste: {
-      type: String,
+  },
+  { _id: false }
+);
+
+const matchSchema = new mongoose.Schema(
+  {
+    aTeam: {
+      type: matchTeamSchema,
+      required: true,
     },
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
+    bTeam: {
+      type: teamSchema,
+      required: true,
+    },
+    stats: {
+      type: [],
+    },
+    score: {
+      type: Number,
+      default: 0,
+    },
+    replay: {
+      type: String,
     },
   },
   { _id: false }
@@ -49,8 +79,9 @@ const matchupSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    replay: {
-      type: String,
+    matches: {
+      type: [matchSchema],
+      required: true,
     },
   },
   { timestamps: true }
@@ -61,16 +92,6 @@ export interface MatchupData {
     team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: [
-      string,
-      {
-        indirect?: number;
-        kills?: number;
-        deaths?: number;
-        brought?: number;
-      }
-    ][];
-    score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };
@@ -78,30 +99,46 @@ export interface MatchupData {
     team: PokemonData[];
     name?: string;
     teamName?: string;
-    stats: [
-      string,
-      {
-        indirect?: number;
-        kills?: number;
-        deaths?: number;
-        brought?: number;
-      }
-    ][];
-    score: number;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };
   gameTime?: string;
   reminder?: number;
   stage: string;
-  replay?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  matches: {
+    aTeam: {
+      stats: [
+        string,
+        {
+          indirect?: number;
+          kills?: number;
+          deaths?: number;
+          brought?: number;
+        }
+      ][];
+      score: number;
+    };
+    bTeam: {
+      stats: [
+        string,
+        {
+          indirect?: number;
+          kills?: number;
+          deaths?: number;
+          brought?: number;
+        }
+      ][];
+      score: number;
+    };
+    replay?: string;
+  }[];
 }
 
 export interface MatchupDocument extends Document<any, any>, MatchupData {}
 
 export const MatchupModel = mongoose.model<MatchupDocument>(
-  "matchups",
+  "matchupstests",
   matchupSchema
 );
