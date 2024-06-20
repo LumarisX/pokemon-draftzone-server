@@ -8,12 +8,14 @@ export async function getScore(teamId: string) {
   let score = { wins: 0, loses: 0, diff: "+0" };
   let numDiff = 0;
   for (let matchup of matchups) {
-    if (matchup.aTeam.score > matchup.bTeam.score) {
+    if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
       score.wins++;
-    } else if (matchup.aTeam.score < matchup.bTeam.score) {
+    } else if (
+      matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
+    ) {
       score.loses++;
     }
-    numDiff += matchup.aTeam.score - matchup.bTeam.score;
+    numDiff += matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
   }
   score.diff = (numDiff < 0 ? "" : "+") + numDiff;
   return score;
@@ -33,8 +35,8 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
     };
   } = {};
   for (const matchup of matchups) {
-    console.log(matchup.bTeam.teamName, matchup.aTeam.stats);
-    let stat = Object.fromEntries(matchup.aTeam.stats);
+    console.log(matchup.bTeam.teamName, matchup.matches[0].aTeam.stats);
+    let stat = Object.fromEntries(matchup.matches[0].aTeam.stats);
     console.log(stat);
     for (const pid in stat) {
       if (!(pid in stats)) {
