@@ -217,6 +217,9 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "whirlwind",
       "haze",
       "clearsmog",
+      "copycat",
+      "mefirst",
+      "snatch",
     ],
   },
   {
