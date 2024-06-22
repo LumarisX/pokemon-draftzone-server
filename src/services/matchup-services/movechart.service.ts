@@ -209,7 +209,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "trick",
       "switcheroo",
       "corrosivegas",
-      "magicrmagicroom",
+      "magicroom",
       "imprison",
       "circlethrow",
       "dragontail",
