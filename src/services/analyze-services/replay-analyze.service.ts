@@ -31,8 +31,15 @@ export class Replay {
     }[] = [];
 
     let field: {
-      a: { mon: undefined | Team; vStatus: string[] };
-      b: { mon: undefined | Team; vStatus: string[] };
+      a: {
+        mon: undefined | Team;
+        vStatus: { status: string; setter: string }[];
+      };
+      b: {
+        mon: undefined | Team;
+        vStatus: { status: string; setter: string }[];
+      };
+      sideStatus: { status: string; setter: Team }[];
     }[] = [];
     let gen: string | undefined = undefined;
     let turn: number = 0;
@@ -40,6 +47,7 @@ export class Replay {
     let tf: number = 0;
     let events: string[] = [];
     let lastMove: string[] = [];
+    let lastDamage: number = -1;
     for (let i = 0; i < this.replayData.length; i++) {
       let lineData = this.replayData[i];
       switch (lineData[0]) {
@@ -47,6 +55,7 @@ export class Replay {
           break;
         //|-damage|POKEMON|HP STATUS|[from]EFFECT|[of] SOURCE
         case "-damage":
+          lastDamage = i;
           let damagePosition =
             field[+lineData[1].charAt(1) - 1][
               lineData[1].charAt(2) as "a" | "b"
@@ -153,19 +162,46 @@ export class Replay {
             let faintString = `Turn ${turn}: ${
               playerData[+lineData[1].charAt(1) - 1].username
             }'s ${faintPosition.detail.split(", ")[0]} fainted`;
-            if (lastMove[0] === "move") {
-              let faintAttacker =
-                field[+lastMove[1].charAt(1) - 1][
-                  lastMove[1].charAt(2) as "a" | "b"
-                ].mon;
-              faintString += ` from ${lastMove[2]} by ${
-                playerData[+lastMove[1].charAt(1) - 1].username
-              }'s`;
-              if (faintAttacker) {
-                faintAttacker.kills[0]++;
-                faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
+            if (
+              lastDamage > 0 &&
+              this.replayData[lastDamage][1] === lineData[1]
+            ) {
+              let lastFaintDamage = this.replayData[lastDamage];
+              if (lastFaintDamage.length > 3) {
+                for (let j = 3; j < lastFaintDamage.length; j++) {
+                  let [first, ...rest] = lastFaintDamage[j].split(" ");
+                  let faintStatus = rest.join(" ");
+                  faintString += ` from ${faintStatus}`;
+                  if (lastFaintDamage[1]) {
+                    let faintSideStatus = field[
+                      +lastFaintDamage[1].charAt(1) - 1
+                    ].sideStatus.find((s) => s.status === faintStatus);
+                    if (faintSideStatus) {
+                      faintSideStatus.setter.kills[1]++;
+                      faintString += ` indirectly by ${
+                        faintSideStatus.setter.detail.split(", ")[0]
+                      } `;
+                    }
+                  }
+                }
               } else {
-                faintString += `${lastMove[1].split(": ")[1]}`;
+                if (lastMove[0] === "move") {
+                  let faintAttacker =
+                    field[+lastMove[1].charAt(1) - 1][
+                      lastMove[1].charAt(2) as "a" | "b"
+                    ].mon;
+                  faintString += ` from ${lastMove[2]} by ${
+                    playerData[+lastMove[1].charAt(1) - 1].username
+                  }'s`;
+                  if (faintAttacker) {
+                    faintAttacker.kills[0]++;
+                    faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
+                  } else {
+                    faintString += `${lastMove[1].split(": ")[1]}`;
+                  }
+                } else {
+                  faintString += ` somehow`;
+                }
               }
             } else {
               faintString += ` somehow`;
@@ -196,6 +232,7 @@ export class Replay {
           field.push({
             a: { mon: undefined, vStatus: [] },
             b: { mon: undefined, vStatus: [] },
+            sideStatus: [],
           });
           break;
         //|teamsize|PLAYER|NUMBER
@@ -251,7 +288,22 @@ export class Replay {
           break;
         case "-end":
           break;
+        //|-sidestart|SIDE|CONDITION
         case "-sidestart":
+          let sideParent = this.getParent(i);
+
+          if (sideParent[0] == "move") {
+            let sideMon =
+              field[+sideParent[1].charAt(1) - 1][
+                sideParent[1].charAt(2) as "a" | "b"
+              ].mon;
+            if (sideMon) {
+              field[+lineData[1].charAt(1) - 1].sideStatus.push({
+                status: lineData[2],
+                setter: sideMon,
+              });
+            }
+          }
           break;
         //|win|USER
         case "win":
@@ -264,7 +316,7 @@ export class Replay {
           console.log(`Error: unknown identifier '${lineData[0]}'`);
       }
     }
-    // console.log(JSON.stringify(playerData, undefined, 2));
+    console.log(JSON.stringify(playerData, undefined, 2));
     // console.log(JSON.stringify(field, undefined, 2));
     let seconds = tf - t0;
     console.log(
@@ -280,9 +332,10 @@ export class Replay {
   }
 
   private getParent(index: number) {
-    for (let i = index; i > 0; i--) {
-      return this.replayData[i];
+    for (let i = index - 1; i > 0; i--) {
+      if (this.replayData[i][0].charAt(0) !== "-") return this.replayData[i];
     }
+    return [];
   }
 
   guessTeams() {}
@@ -292,8 +345,7 @@ type Gametype = `singles` | `doubles` | `triples` | `multi` | `freeforall`;
 type ReplayData =
   | [""]
   | ["-damage", string, string]
-  | ["-damage", string, string, string]
-  | ["-damage", string, string, string, string]
+  | ["-damage", string, string, ...string[]]
   | ["t:", string]
   | ["move", string, string, string]
   | ["turn", string]
@@ -334,5 +386,5 @@ type ReplayData =
   | ["-fieldactivate"]
   | ["-end"]
   | ["-message"]
-  | ["-sidestart"]
+  | ["-sidestart", string, string]
   | ["win", string];
