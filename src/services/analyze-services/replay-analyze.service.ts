@@ -26,6 +26,8 @@ export class Replay {
     let playerData: {
       username: undefined | string;
       teamSize: undefined | number;
+      totalKills: number;
+      totalDeaths: number;
       team: Team[];
       win: boolean;
     }[] = [];
@@ -94,6 +96,8 @@ export class Replay {
           break;
         case "upkeep":
           break;
+        case "-anim":
+          break;
         //|switch|POKEMON|DETAILS|HP STATUS or |drag|POKEMON|DETAILS|HP STATUS
         case "drag":
         case "switch":
@@ -101,15 +105,31 @@ export class Replay {
           let switchedMon = playerData[switchPlayer].team.find(
             (mon) => mon.detail == lineData[2]
           );
-          if (switchedMon && !switchedMon.brought) {
-            switchedMon.brought = true;
-            switchedMon.name = lineData[1].split(" ")[1];
+          if (switchedMon) {
+            if (!switchedMon.brought) {
+              switchedMon.brought = true;
+              switchedMon.name = lineData[1].split(" ")[1];
+            }
+          } else {
+            playerData[switchPlayer].team.push({
+              detail: lineData[2],
+              name: lineData[1].split(" ")[1],
+              hpp: 100,
+              hpRestored: 0,
+              damageDealt: 0,
+              damageTaken: 0,
+              kills: [0, 0],
+              fainted: false,
+              brought: true,
+            });
           }
+
           field[switchPlayer][lineData[1].charAt(2) as "a" | "b"].mon =
             playerData[switchPlayer].team.find(
               (mon) => mon.detail == lineData[2]
             );
           break;
+        case "c:":
         case "c":
           break;
         case "debug":
@@ -138,14 +158,21 @@ export class Replay {
           break;
         //|-heal|POKEMON|HP STATUS
         case "-heal":
+          // console.log(JSON.stringify(playerData, null, 2));
+          let [healIdentifier, healName] = lineData[1].split(": ");
           let healPosition =
-            field[+lineData[1].charAt(1) - 1][
-              lineData[1].charAt(2) as "a" | "b"
-            ].mon;
+            healIdentifier.length > 2
+              ? field[+healIdentifier.charAt(1) - 1][
+                  healIdentifier.charAt(2) as "a" | "b"
+                ].mon
+              : playerData[+healIdentifier.charAt(1)].team.find(
+                  (mon) => mon.name == healName
+                );
           if (healPosition) {
             let newHealth = +lineData[2].split(" ")[0].split("/")[0];
             let healthDiff = newHealth - healPosition.hpp;
             healPosition.hpp = newHealth;
+            healPosition.fainted = false;
             healPosition.hpRestored += healthDiff;
           }
           break;
@@ -200,11 +227,10 @@ export class Replay {
                     faintString += `${lastMove[1].split(": ")[1]}`;
                   }
                 } else {
+                  console.log(lineData);
                   faintString += ` somehow`;
                 }
               }
-            } else {
-              faintString += ` somehow`;
             }
             events.push(faintString);
           } else {
@@ -215,25 +241,27 @@ export class Replay {
           break;
         case "-ability":
           break;
-        case "cant":
-          break;
         case "-unboost":
           break;
         case "-supereffective":
           break;
         //|player|PLAYER|USERNAME|AVATAR|RATING
         case "player":
-          playerData.push({
-            username: lineData[2],
-            teamSize: 0,
-            team: [],
-            win: false,
-          });
-          field.push({
-            a: { mon: undefined, vStatus: [] },
-            b: { mon: undefined, vStatus: [] },
-            sideStatus: [],
-          });
+          if (lineData[2]) {
+            playerData.push({
+              username: lineData[2],
+              teamSize: 0,
+              totalKills: 0,
+              totalDeaths: 0,
+              team: [],
+              win: false,
+            });
+            field.push({
+              a: { mon: undefined, vStatus: [] },
+              b: { mon: undefined, vStatus: [] },
+              sideStatus: [],
+            });
+          }
           break;
         //|teamsize|PLAYER|NUMBER
         case "teamsize":
@@ -256,11 +284,17 @@ export class Replay {
           break;
         case "-crit":
           break;
+        case "-miss":
+          break;
+        case "cant":
+          break;
         case "l":
           break;
+        case "raw":
         case "html":
-          break;
         case "uhtml":
+          break;
+        case "-item":
           break;
         case "-enditem":
           break;
@@ -278,12 +312,20 @@ export class Replay {
           break;
         case "teampreview":
           break;
+        case "-singlemove":
+          break;
+        case "-singleturn":
+          break;
         case "start":
           break;
         case "-mega":
           break;
+        case "-terastallize":
+          break;
         case "-fieldactivate":
           break;
+        case "-hint":
+        case "message":
         case "-message":
           break;
         case "-end":
@@ -305,6 +347,12 @@ export class Replay {
             }
           }
           break;
+        case "-sideend":
+          break;
+        case "-fieldstart":
+          break;
+        case "-fieldend":
+          break;
         //|win|USER
         case "win":
           let winPlayer = playerData.find(
@@ -312,10 +360,27 @@ export class Replay {
           );
           if (winPlayer) winPlayer.win = true;
           break;
+        //|rated|MESSAGE
+        case "rated":
+          break;
         default:
           console.log(`Error: unknown identifier '${lineData[0]}'`);
       }
     }
+    playerData.forEach(
+      (player) =>
+        (player.totalKills = player.team.reduce(
+          (sum, mon) => sum + mon.kills[0] + mon.kills[1],
+          0
+        ))
+    );
+    playerData.forEach(
+      (player) =>
+        (player.totalDeaths = player.team.reduce(
+          (sum, mon) => sum + (mon.fainted ? 1 : 0),
+          0
+        ))
+    );
     console.log(JSON.stringify(playerData, undefined, 2));
     // console.log(JSON.stringify(field, undefined, 2));
     let seconds = tf - t0;
@@ -351,8 +416,11 @@ type ReplayData =
   | ["turn", string]
   | ["upkeep"]
   | ["switch" | "drag", string, string, string]
+  | ["-hint"]
+  | ["c:"]
   | ["c"]
   | ["debug"]
+  | ["-anim"]
   | ["inactive"]
   | ["-boost"]
   | ["-resisted"]
@@ -364,7 +432,6 @@ type ReplayData =
   | ["j"]
   | ["-ability"]
   | ["-unboost"]
-  | ["cant"]
   | ["-supereffective"]
   | ["player", string, string, string]
   | ["teamsize", string, string]
@@ -372,9 +439,13 @@ type ReplayData =
   | ["-activate"]
   | ["-status"]
   | ["-crit"]
+  | ["-miss"]
+  | ["cant"]
   | ["l"]
+  | ["raw"]
   | ["html"]
   | ["uhtml"]
+  | ["-item"]
   | ["-enditem"]
   | ["gametype", Gametype]
   | ["gen", string]
@@ -383,8 +454,16 @@ type ReplayData =
   | ["teampreview"]
   | ["start"]
   | ["-mega"]
+  | ["-terastallize"]
   | ["-fieldactivate"]
   | ["-end"]
+  | ["message"]
   | ["-message"]
+  | ["-singleturn"]
+  | ["-singlemove"]
   | ["-sidestart", string, string]
-  | ["win", string];
+  | ["-sideend"]
+  | ["-fieldstart"]
+  | ["-fieldend"]
+  | ["win", string]
+  | ["rated", string];
