@@ -155,7 +155,7 @@ function generateTiers(
             for (const item of additional.noItem ||
             dexmon.requiredItem ||
             dexmon.requiredItems
-              ? configurations.items.splice(1)
+              ? [configurations.items[0]]
               : configurations.items) {
               for (const stage of [
                 ...configurations.stages,
