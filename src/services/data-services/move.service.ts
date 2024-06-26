@@ -35,5 +35,8 @@ export function getEffectivePower(ruleset: Ruleset, moveID: ID) {
   if (move.self?.volatileStatus === "lockedmove") {
     value /= 2;
   }
+  if (move.id === "steelroller") {
+    value = 1;
+  }
   return value;
 }
