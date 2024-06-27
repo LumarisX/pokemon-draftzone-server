@@ -152,11 +152,10 @@ function generateTiers(
         const field = new Field();
         for (const pConfig of configurations.spreads) {
           for (const additional of configurations.additional) {
-            for (const item of false
-              ? //   additional.noItem ||
-                // dexmon.requiredItem ||
-                // dexmon.requiredItems
-                [{}]
+            for (const item of additional.noItem ||
+            dexmon.requiredItem ||
+            dexmon.requiredItems
+              ? [{ addStages: [-1, 1, 2] }]
               : configurations.items) {
               for (const stage of [
                 ...configurations.stages,
