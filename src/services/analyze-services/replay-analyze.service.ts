@@ -215,7 +215,10 @@ export class Replay {
         case "-supereffective":
           break;
         case "player":
-          if (lineData[2]) {
+          if (
+            lineData[2] &&
+            !playerData.find((player) => player.username === lineData[2])
+          ) {
             playerData.push({
               username: lineData[2],
               teamSize: 0,
@@ -284,6 +287,11 @@ export class Replay {
         case "-mega":
           break;
         case "-terastallize":
+          let teraMon = this.getMonByFieldPos(field, lineData[1]);
+          if (teraMon) {
+            console;
+            teraMon.detail += `, tera:${lineData[2]}`;
+          }
           break;
         case "-fieldactivate":
           break;
@@ -344,14 +352,30 @@ export class Replay {
           0
         ))
     );
+
     // console.log(JSON.stringify(playerData, undefined, 2));
+
     let seconds = tf - t0;
     console.log(
       `${gametype} | Gen ${genNum} | ${turn} turns | Game time: ${Math.floor(
         seconds / 60
-      )} minutes ${seconds % 60} seconds`
+      )} minutes ${seconds % 60} seconds\n`
     );
-    console.log(events);
+    playerData.forEach((player) => {
+      console.log(player.username);
+      player.team.forEach((team) => {
+        let teamString = `${team.detail.split(",")[0]}: ${
+          team.kills[0]
+        } Direct Kills, `;
+        teamString +=
+          team.kills[1] > 0 ? `${team.kills[1]} Indirect Kills, ` : "";
+        teamString += team.fainted ? `Fainted` : "Survived";
+        console.log(teamString);
+      });
+      console.log();
+    });
+
+    events.forEach((event) => console.log(event));
   }
 
   private getPlayer(position: string): number {
@@ -434,6 +458,7 @@ type STATS = string;
 type STATUS = string;
 type TARGET = string;
 type TIMESTAMP = string;
+type TYPE = string;
 type USER = string;
 type USERNAME = string;
 type WEATHER = string;
@@ -494,7 +519,7 @@ type ReplayData =
   | ["-supereffective", POKEMON]
   | ["-swapboost", SOURCE, TARGET, STATS]
   | ["-swapsideconditions"]
-  | ["-terastallize"]
+  | ["-terastallize", POKEMON, TYPE]
   | ["-transform", POKEMON, SPECIES]
   | ["-unboost", POKEMON, STAT, AMOUNT]
   | ["-waiting", SOURCE, TARGET]
