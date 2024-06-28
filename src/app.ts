@@ -13,6 +13,7 @@ import { testRouter } from "./routes/test.route";
 import { dataRouter } from "./routes/data.route";
 import { plannerRouter } from "./routes/planner.route";
 import dotenv from "dotenv";
+import { replayRouter } from "./routes/replay.route";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 app.use("/matchup", logger("common"), matchupRouter);
 app.use("/data", logger("common"), dataRouter);
 app.use("/test", logger("common"), testRouter);
+app.use("/replay", logger("common"), replayRouter);
 app.use("/planner", logger("common"), plannerRouter);
 
 // app.use("/data", dataRouter);
