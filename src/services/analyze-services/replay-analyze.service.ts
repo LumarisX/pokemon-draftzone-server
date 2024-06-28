@@ -1,4 +1,4 @@
-import { Generation, Generations } from "@pkmn/data";
+import { Generations } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class Replay {
@@ -71,9 +71,14 @@ export class Replay {
         case "drag":
         case "switch":
           let switchPlayer = +lineData[1].charAt(1) - 1;
-          let switchedMon = playerData[switchPlayer].team.find(
-            (mon) => mon.detail == lineData[2]
-          );
+          let switchedMon = playerData[switchPlayer].team.find((mon) => {
+            return mon.brought
+              ? new RegExp(
+                  String.raw`\s${mon.name.replace("*", "w*")}\s`,
+                  "g"
+                ).test(lineData[2])
+              : mon.detail == lineData[2];
+          });
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
@@ -284,6 +289,72 @@ export class Replay {
           break;
         case "start":
           break;
+        case "-transform":
+          break;
+        case "-block":
+          break;
+        case "-burst":
+          break;
+        case "-center":
+          break;
+        case "-clearallboost":
+          break;
+        case "-clearboost":
+          break;
+        case "-clearnegativeboost":
+          break;
+        case "-clearpositiveboost":
+          break;
+        case "-combine":
+          break;
+        case "-swapsideconditions":
+          break;
+        case "error":
+          break;
+        case "tie":
+          break;
+        case "-copyboost":
+          break;
+        case "-curestatus":
+          break;
+        case "-cureteam":
+          break;
+        case "-endability":
+          break;
+        case "-fail":
+          break;
+        case "-hitcount":
+          break;
+        case "-invertboost":
+          break;
+        case "-mustrecharge":
+          break;
+        case "-notarget":
+          break;
+        case "-prepare":
+          break;
+        case "-primal":
+          break;
+        case "-setboost":
+          break;
+        case "-sethp":
+          break;
+        case "-swapboost":
+          break;
+        case "-waiting":
+          break;
+        case "-zbroken":
+          break;
+        case "-zpower":
+          break;
+        case "inactiveoff":
+          break;
+        case "replace":
+          break;
+        case "request":
+          break;
+        case "swap":
+          break;
         case "-mega":
           break;
         case "-terastallize":
@@ -296,6 +367,7 @@ export class Replay {
         case "-fieldactivate":
           break;
         case "-hint":
+
         case "message":
         case "-message":
           break;
@@ -376,6 +448,7 @@ export class Replay {
     });
 
     events.forEach((event) => console.log(event));
+    return playerData;
   }
 
   private getPlayer(position: string): number {
