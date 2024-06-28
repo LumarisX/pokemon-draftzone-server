@@ -1,4 +1,4 @@
-import { Generations } from "@pkmn/data";
+import { Generations, ID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class Replay {
@@ -25,9 +25,11 @@ export class Replay {
     let turn: number = 0;
     let t0: number = 0;
     let tf: number = 0;
-    let events: string[] = [];
+    let events: { player: number; turn: number; message: string }[] = [];
     let lastMove: ReplayData = [""];
     let lastDamage: number = -1;
+    let gens = new Generations(Dex);
+    let gen = gens.dex;
     for (let i = 0; i < this.replayData.length; i++) {
       let lineData = this.replayData[i];
       switch (lineData[0]) {
@@ -37,15 +39,17 @@ export class Replay {
           lastDamage = i;
           let damagePosition = this.getMonByFieldPos(field, lineData[1]);
           if (damagePosition) {
-            let newDamage = +lineData[2].split(" ")[0].split("/")[0];
-            let damageDiff = damagePosition.hpp - newDamage;
-            damagePosition.hpp = newDamage;
+            let newDamage = lineData[2].split(" ")[0].split("/");
+            let newDamagePercent =
+              +newDamage[0] > 0 ? +newDamage[0] / (+newDamage[1] / 100) : 0;
+            let damageDiff = damagePosition.hpp - newDamagePercent;
+            damagePosition.hpp = newDamagePercent;
             if (lastMove[0] === "move") {
               let moveDamagePosition = this.getMonByFieldPos(
                 field,
                 lastMove[1]
               );
-              if (moveDamagePosition) {
+              if (moveDamagePosition && moveDamagePosition != damagePosition) {
                 moveDamagePosition.damageDealt += damageDiff;
               }
             }
@@ -74,7 +78,7 @@ export class Replay {
           let switchedMon = playerData[switchPlayer].team.find((mon) => {
             return mon.brought
               ? new RegExp(
-                  String.raw`\s${mon.name.replace("*", "w*")}\s`,
+                  String.raw`^${mon.detail.replace("*", "w*")}$`,
                   "g"
                 ).test(lineData[2] as string)
               : mon.detail == lineData[2];
@@ -82,13 +86,15 @@ export class Replay {
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
-              switchedMon.name = lineData[1].split(" ")[1];
+              switchedMon.nickname = lineData[1].split(" ")[1];
+              switchedMon.pid = gen.species.get(lineData[2].split(",")[0])?.id;
             }
           } else {
             playerData[switchPlayer].team.push({
               detail: lineData[2],
-              name: lineData[1].split(" ")[1],
+              nickname: lineData[1].split(" ")[1],
               hpp: 100,
+              pid: gen.species.get(lineData[2].split(",")[0])?.id,
               hpRestored: 0,
               damageDealt: 0,
               damageTaken: 0,
@@ -117,8 +123,9 @@ export class Replay {
         case "poke":
           playerData[this.getPlayer(lineData[1])].team.push({
             detail: lineData[2],
-            name: "",
+            nickname: "",
             hpp: 100,
+            pid: gen.species.get(lineData[2].split(",")[0])?.id,
             hpRestored: 0,
             damageDealt: 0,
             damageTaken: 0,
@@ -135,7 +142,7 @@ export class Replay {
             healIdentifier.length > 2
               ? this.getMonByFieldPos(field, lineData[1])
               : playerData[+healIdentifier.charAt(1)].team.find(
-                  (mon) => mon.name == healName
+                  (mon) => mon.nickname == healName
                 );
           if (healPosition) {
             let newHealth = +lineData[2].split(" ")[0].split("/")[0];
@@ -151,7 +158,7 @@ export class Replay {
           let faintPosition = this.getMonByFieldPos(field, lineData[1]);
           if (faintPosition) {
             faintPosition.fainted = true;
-            let faintString = `Turn ${turn}: ${
+            let faintString = `${
               playerData[+lineData[1].charAt(1) - 1].username
             }'s ${faintPosition.detail.split(", ")[0]} fainted`;
             if (
@@ -170,7 +177,6 @@ export class Replay {
                     ].sideStatus.find(
                       (s) => s.status.split(": ")[1] === faintStatus
                     );
-                    console.log(JSON.stringify(field, null, 2));
                     if (faintSideStatus) {
                       faintSideStatus.setter.kills[1]++;
                       faintString += ` indirectly by ${
@@ -192,21 +198,22 @@ export class Replay {
                     faintString += `${lastMove[1].split(": ")[1]}`;
                   }
                 } else {
-                  console.log(lineData);
                 }
               }
             } else {
               if (lastMove[0] === "move") {
-                let gens = new Generations(Dex);
-                let faintMove = gens.get(genNum).dex.moves.get(lastMove[2]);
+                let faintMove = gen.moves.get(lastMove[2]);
                 if ("selfdestruct" in faintMove) {
                   faintString += ` itself by using ${faintMove.name}`;
                 }
               }
             }
-            events.push(faintString);
+            events.push({
+              player: +lineData[1].charAt(1),
+              turn: turn,
+              message: faintString,
+            });
           } else {
-            console.log(lineData);
           }
           break;
         case "j":
@@ -247,6 +254,7 @@ export class Replay {
           let detailField = this.getMonByFieldPos(field, lineData[1]);
           if (detailField) {
             detailField.detail = lineData[2];
+            detailField.pid = gen.species.get(lineData[2].split(",")[0])?.id;
           }
           break;
         case "-activate":
@@ -367,9 +375,10 @@ export class Replay {
         case "-fieldactivate":
           break;
         case "-hint":
-
         case "message":
+          break;
         case "-message":
+          events.push({ player: 0, turn: turn, message: `${lineData[1]}` });
           break;
         case "-end":
           break;
@@ -399,15 +408,21 @@ export class Replay {
         case "-fieldend":
           break;
         case "win":
-          let winPlayer = playerData.find(
+          let winPlayer = playerData.findIndex(
             (player) => player.username == lineData[1]
           );
-          if (winPlayer) winPlayer.win = true;
+          if (winPlayer >= 0) {
+            playerData[winPlayer].win = true;
+            events.push({
+              turn: turn,
+              player: winPlayer + 1,
+              message: `${lineData[1]} wins`,
+            });
+          }
           break;
         case "rated":
           break;
         default:
-          console.log(`Error: unknown identifier '${lineData[0]}'`);
       }
     }
     playerData.forEach(
@@ -424,31 +439,15 @@ export class Replay {
           0
         ))
     );
-
-    // console.log(JSON.stringify(playerData, undefined, 2));
-
-    let seconds = tf - t0;
-    console.log(
-      `${gametype} | Gen ${genNum} | ${turn} turns | Game time: ${Math.floor(
-        seconds / 60
-      )} minutes ${seconds % 60} seconds\n`
-    );
-    playerData.forEach((player) => {
-      console.log(player.username);
-      player.team.forEach((team) => {
-        let teamString = `${team.detail.split(",")[0]}: ${
-          team.kills[0]
-        } Direct Kills, `;
-        teamString +=
-          team.kills[1] > 0 ? `${team.kills[1]} Indirect Kills, ` : "";
-        teamString += team.fainted ? `Fainted` : "Survived";
-        console.log(teamString);
-      });
-      console.log();
-    });
-
-    events.forEach((event) => console.log(event));
-    return playerData;
+    let gameTime = tf - t0;
+    return {
+      gametype: gametype,
+      genNum: genNum,
+      turns: turn,
+      gameTime: gameTime,
+      stats: playerData,
+      events: events,
+    };
   }
 
   private getPlayer(position: string): number {
@@ -465,13 +464,12 @@ export class Replay {
     }
     return [];
   }
-
-  guessTeams() {}
 }
 
 type Team = {
   detail: string;
-  name: string;
+  nickname: string;
+  pid: ID | undefined;
   hpp: number;
   kills: [number, number];
   damageDealt: number;
@@ -541,7 +539,7 @@ type ReplayData =
   | [""]
   | ["-ability", POKEMON, ABILITY, FROMEFFECT]
   | ["-ability", POKEMON, ABILITY]
-  | ["-activate", EFFECT]
+  | ["-activate", POKEMON, EFFECT]
   | ["-anim"]
   | ["-block", POKEMON, EFFECT, MOVE, ATTACKER]
   | ["-boost", POKEMON, STAT, AMOUNT]
