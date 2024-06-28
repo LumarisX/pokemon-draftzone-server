@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { SubRequest } from "../app";
-import { Replay } from "../services/analyze-services/replay-analyze.service";
+import { Replay } from "../services/replay-services/replay-analyze.service";
 
 export const replayRouter = express.Router();
 
