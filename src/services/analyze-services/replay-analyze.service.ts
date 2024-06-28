@@ -76,7 +76,7 @@ export class Replay {
               ? new RegExp(
                   String.raw`\s${mon.name.replace("*", "w*")}\s`,
                   "g"
-                ).test(lineData[2])
+                ).test(lineData[2] as string)
               : mon.detail == lineData[2];
           });
           if (switchedMon) {
@@ -523,6 +523,7 @@ type PPosition = "a" | "b";
 type RATING = string;
 type REASON = string;
 type REQUEST = string;
+type RULE = string;
 type SIDE = string;
 type SOURCE = string;
 type SPECIES = string;
@@ -623,7 +624,7 @@ type ReplayData =
   | ["raw"]
   | ["replace", POKEMON, DETAILS, HPSTATUS]
   | ["request", REQUEST]
-  | ["rule", RULE: DESCRIPTION]
+  | ["rule", `${RULE}: ${DESCRIPTION}`]
   | ["start"]
   | ["swap", POKEMON, POSITION]
   | ["switch" | "drag", POKEMON, DETAILS, HPSTATUS]
