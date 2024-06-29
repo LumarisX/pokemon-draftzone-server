@@ -72,20 +72,24 @@ export class Replay {
           break;
         case "-anim":
           break;
+        case "replace":
         case "drag":
         case "switch":
           let switchPlayer = +lineData[1].charAt(1) - 1;
           let switchedMon = playerData[switchPlayer].team.find((mon) => {
-            return mon.brought
-              ? new RegExp(
-                  String.raw`^${mon.detail.replace("*", "w*")}$`,
-                  "g"
-                ).test(lineData[2] as string)
-              : mon.detail == lineData[2];
+            if (!mon.brought) {
+              return new RegExp(
+                String.raw`^${mon.detail.replace("*", "\\w+")}$`
+              ).test(lineData[2] as string);
+            } else {
+              let detailSet = new Set(lineData[2].split(", "));
+              return mon.detail.split(", ").every((e) => detailSet.has(e));
+            }
           });
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
+              switchedMon.detail = lineData[2];
               switchedMon.nickname = lineData[1].split(" ")[1];
               switchedMon.pid = gen.species.get(lineData[2].split(",")[0])?.id;
             }
@@ -357,8 +361,6 @@ export class Replay {
           break;
         case "inactiveoff":
           break;
-        case "replace":
-          break;
         case "request":
           break;
         case "swap":
@@ -620,12 +622,11 @@ type ReplayData =
   | ["poke", PLAYER, DETAILS, ITEM]
   | ["rated", MESSAGE]
   | ["raw"]
-  | ["replace", POKEMON, DETAILS, HPSTATUS]
   | ["request", REQUEST]
   | ["rule", `${RULE}: ${DESCRIPTION}`]
   | ["start"]
   | ["swap", POKEMON, POSITION]
-  | ["switch" | "drag", POKEMON, DETAILS, HPSTATUS]
+  | ["switch" | "drag" | "replace", POKEMON, DETAILS, HPSTATUS]
   | ["t:", TIMESTAMP]
   | ["teampreview"]
   | ["teamsize", PLAYER, NUMBER]
