@@ -1,6 +1,5 @@
 import { Generations, ID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
-import { stat } from "fs";
 
 export class Replay {
   replayData: ReplayData[] = [];
@@ -83,7 +82,7 @@ export class Replay {
           let switchedMon = playerData[switchPlayer].team.find((mon) => {
             if (!mon.brought) {
               return new RegExp(
-                String.raw`^${mon.detail.replace("*", "\\w+")}$`
+                String.raw`^${mon.detail.replace("*", "\\w+")}`
               ).test(lineData[2] as string);
             } else {
               let detailSet = new Set(lineData[2].split(", "));
@@ -300,7 +299,7 @@ export class Replay {
             }
             statusPosition.statuses.push(statusStart);
           }
-
+          console.log(lineData, statusPosition);
           break;
         case "-weather":
           if (lineData[1] !== field.weather.status) {
@@ -312,6 +311,10 @@ export class Replay {
               );
               weatherStatus.setter = weatherPosition;
             } else {
+              if (lastMove) {
+                let weatherPosition = this.getMonByFieldPos(field, lastMove[1]);
+                weatherStatus.setter = weatherPosition;
+              }
             }
             field.weather = weatherStatus;
           }
@@ -419,7 +422,6 @@ export class Replay {
         case "-terastallize":
           let teraMon = this.getMonByFieldPos(field, lineData[1]);
           if (teraMon) {
-            console;
             teraMon.detail += `, tera:${lineData[2]}`;
           }
           break;
@@ -521,9 +523,6 @@ export class Replay {
     mon: Mon,
     status: string
   ): Status | undefined {
-    if (status === "brn") {
-      console.log(status, mon.statuses);
-    }
     if (mon.lastDamage && mon.lastDamage[1]) {
       let monStatus = mon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
