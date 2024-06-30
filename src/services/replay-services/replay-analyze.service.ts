@@ -12,14 +12,7 @@ export class Replay {
 
   analyze() {
     let gametype: undefined | GAMETYPE = undefined;
-    let playerData: {
-      username: undefined | string;
-      teamSize: undefined | number;
-      totalKills: number;
-      totalDeaths: number;
-      team: Mon[];
-      win: boolean;
-    }[] = [];
+    let playerData: Player[] = [];
     let field: Field = {
       sides: [],
       statuses: [],
@@ -39,7 +32,11 @@ export class Replay {
         case "":
           break;
         case "-damage":
-          let damagePosition = this.getMonByFieldPos(field, lineData[1]);
+          let damagePosition = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
           if (damagePosition) {
             damagePosition.lastDamage = lineData;
             let newDamage = lineData[2].split(" ")[0].split("/");
@@ -48,9 +45,10 @@ export class Replay {
             let damageDiff = damagePosition.hpp - newDamagePercent;
             damagePosition.hpp = newDamagePercent;
             if (lastMove) {
-              let moveDamagePosition = this.getMonByFieldPos(
+              let moveDamagePosition = this.getMonByString(
+                lastMove[1],
                 field,
-                lastMove[1]
+                playerData
               );
               if (moveDamagePosition && moveDamagePosition != damagePosition) {
                 moveDamagePosition.damageDealt += damageDiff;
@@ -107,6 +105,8 @@ export class Replay {
               damageDealt: 0,
               damageTaken: 0,
               kills: [0, 0],
+              player: playerData[switchPlayer],
+              status: { status: "healthy" },
               statuses: [],
               fainted: false,
               brought: true,
@@ -139,6 +139,8 @@ export class Replay {
             damageDealt: 0,
             lastDamage: undefined,
             damageTaken: 0,
+            player: playerData[this.getPlayer(lineData[1])],
+            status: { status: "healthy" },
             statuses: [],
             kills: [0, 0],
             fainted: false,
@@ -151,7 +153,7 @@ export class Replay {
           let [healIdentifier, healName] = lineData[1].split(": ");
           let healPosition =
             healIdentifier.length > 2
-              ? this.getMonByFieldPos(field, lineData[1])
+              ? this.getMonByString(lineData[1], field, playerData)
               : playerData[+healIdentifier.charAt(1)].team.find(
                   (mon) => mon.nickname == healName
                 );
@@ -166,7 +168,11 @@ export class Replay {
         case "rule":
           break;
         case "faint":
-          let faintPosition = this.getMonByFieldPos(field, lineData[1]);
+          let faintPosition = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
           if (faintPosition) {
             faintPosition.fainted = true;
             let faintString = `${
@@ -176,56 +182,76 @@ export class Replay {
               faintPosition.lastDamage &&
               faintPosition.lastDamage[1] === lineData[1]
             ) {
-              if (faintPosition.lastDamage.length > 3) {
-                for (let j = 3; j < faintPosition.lastDamage.length; j++) {
-                  let faintStatus = faintPosition.lastDamage[j]
-                    .substring(7)
-                    .split(": ");
-                  if (faintStatus.length === 1) {
-                    faintString += ` from ${faintStatus}`;
-                    let faintSideStatus = this.searchStatuses(
+              if (faintPosition.lastDamage[3]) {
+                let faintStatus = faintPosition.lastDamage[3]
+                  .substring(7)
+                  .split(": ");
+                if (faintStatus.length === 1) {
+                  let faintSideStatus = this.searchStatuses(
+                    field,
+                    faintPosition,
+                    faintStatus[0]
+                  );
+                  faintString += ` from ${
+                    faintSideStatus && faintSideStatus.name
+                      ? faintSideStatus.name
+                      : faintStatus[0]
+                  }`;
+                  if (faintSideStatus && faintSideStatus.setter) {
+                    faintString += ` indirectly by ${
+                      faintSideStatus.setter.player.username
+                    }'s ${faintSideStatus.setter.detail.split(", ")[0]} `;
+                    if (
+                      this.checkOwnKill(
+                        faintSideStatus.setter,
+                        faintPosition,
+                        playerData
+                      )
+                    ) {
+                      faintSideStatus.setter.kills[1]++;
+                    }
+                  }
+                } else {
+                  faintString += ` from ${faintStatus.slice(1).join(" ")}`;
+                  if (faintPosition.lastDamage[4]) {
+                    let faintAttacker = this.getMonByString(
+                      this.ofP2P(faintPosition.lastDamage[4]),
                       field,
-                      faintPosition,
-                      faintStatus[0]
+                      playerData
                     );
-                    if (faintSideStatus && faintSideStatus.setter) {
+                    if (faintAttacker) {
                       faintString += ` indirectly by ${
-                        faintSideStatus.setter.detail.split(", ")[0]
-                      } `;
-                      //check own kill
+                        faintAttacker.detail.split(", ")[0]
+                      }`;
                       if (
-                        playerData.find(
-                          (player) =>
-                            faintSideStatus &&
-                            faintSideStatus.setter &&
-                            player.team.includes(faintSideStatus.setter)
-                        ) !==
-                        playerData.find((player) =>
-                          player.team.includes(faintPosition!)
+                        this.checkOwnKill(
+                          faintAttacker,
+                          faintPosition,
+                          playerData
                         )
                       ) {
-                        faintSideStatus.setter.kills[1]++;
+                        faintAttacker.kills[1]++;
                       }
                     }
-                  } else {
-                    faintString += ` from ${faintStatus.slice(1).join(" ")}`;
                   }
                 }
               } else {
                 if (lastMove) {
-                  let faintAttacker = this.getMonByFieldPos(field, lastMove[1]);
+                  let faintAttacker = this.getMonByString(
+                    lastMove[1],
+                    field,
+                    playerData
+                  );
                   faintString += ` from ${lastMove[2]} by ${
                     playerData[+lastMove[1].charAt(1) - 1].username
                   }'s`;
-                  //check own kill
                   if (faintAttacker) {
                     faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
                     if (
-                      playerData.find((player) =>
-                        player.team.includes(faintAttacker!)
-                      ) !==
-                      playerData.find((player) =>
-                        player.team.includes(faintPosition!)
+                      this.checkOwnKill(
+                        faintAttacker,
+                        faintPosition,
+                        playerData
                       )
                     ) {
                       faintAttacker.kills[0]++;
@@ -279,7 +305,7 @@ export class Replay {
               a: { mon: undefined, statuses: [] },
               b: { mon: undefined, statuses: [] },
               c: { mon: undefined, statuses: [] },
-              sideStatus: [],
+              statuses: [],
             });
           }
           break;
@@ -288,7 +314,7 @@ export class Replay {
           break;
         case "-formechange":
         case "detailschange":
-          let detailField = this.getMonByFieldPos(field, lineData[1]);
+          let detailField = this.getMonByString(lineData[1], field, playerData);
           if (detailField) {
             detailField.detail = lineData[2];
             detailField.pid = gen.species.get(lineData[2].split(",")[0])?.id;
@@ -297,24 +323,56 @@ export class Replay {
         case "-activate":
           break;
         case "-status":
-          let statusPosition = this.getMonByFieldPos(field, lineData[1]);
+          let statusPosition = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
           if (statusPosition) {
-            let statusStart: Status | undefined;
-            if (lineData[2] === "tox") {
-              statusStart = { status: "psn" };
-            } else {
-              statusStart = { status: lineData[2] };
+            let statusStart: Status = { status: lineData[2] };
+            switch (lineData[2]) {
+              case "tox":
+                statusStart = { status: "psn", name: "Toxic" };
+                break;
+              case "psn":
+                statusStart = { status: "psn", name: "Poison" };
+                break;
+              case "brn":
+                statusStart = { status: "brn", name: "Burn" };
+                break;
             }
-            if (lineData.length > 4 && lineData[4]) {
-              statusStart.setter = this.getMonByFieldPos(
-                field,
-                lineData[4].substring(5) as POKEMON
-              );
+            if (lineData[3]) {
+              if (lineData[3].startsWith("[from] item: ")) {
+                statusStart.setter = statusPosition;
+              } else if (lastMove && lastMove[3] === lineData[1]) {
+                statusStart.setter = this.getMonByString(
+                  lastMove[1],
+                  field,
+                  playerData
+                );
+              } else if (lineData[4]) {
+                statusStart.setter = this.getMonByString(
+                  this.ofP2P(lineData[4]),
+                  field,
+                  playerData
+                );
+              }
             } else {
-              if (lastMove && lastMove[3] === lineData[1]) {
-                statusStart.setter = this.getMonByFieldPos(field, lastMove[1]);
+              let statusParent = this.getParent(i);
+              if (statusParent) {
+                if (
+                  statusParent[0] === "switch" &&
+                  statusStart.status === "psn"
+                ) {
+                  statusStart.setter = field.sides[
+                    +lineData[1].charAt(1) - 1
+                  ].statuses.find(
+                    (status) => status.status === "move: Toxic Spikes"
+                  )?.setter;
+                }
               }
             }
+
             statusPosition.statuses.push(statusStart);
           }
           break;
@@ -322,14 +380,19 @@ export class Replay {
           if (lineData[1] !== field.weather.status) {
             let weatherStatus: Status = { status: lineData[1] };
             if (lineData.length > 3 && typeof lineData[3] === "string") {
-              let weatherPosition = this.getMonByFieldPos(
+              let weatherPosition = this.getMonByString(
+                this.ofP2P(lineData[3]),
                 field,
-                lineData[3].substring(5) as POKEMON
+                playerData
               );
               weatherStatus.setter = weatherPosition;
             } else {
               if (lastMove) {
-                let weatherPosition = this.getMonByFieldPos(field, lastMove[1]);
+                let weatherPosition = this.getMonByString(
+                  lastMove[1],
+                  field,
+                  playerData
+                );
                 weatherStatus.setter = weatherPosition;
               }
             }
@@ -397,9 +460,17 @@ export class Replay {
         case "-copyboost":
           break;
         case "-curestatus":
+          let curePosition = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
+          if (curePosition) {
+            curePosition.status = { status: "healthy" };
+          }
           break;
-        case "-cureteam":
-          break;
+        // case "-cureteam":
+        //   break;
         case "-endability":
           break;
         case "-fail":
@@ -445,7 +516,7 @@ export class Replay {
         case "-mega":
           break;
         case "-terastallize":
-          let teraMon = this.getMonByFieldPos(field, lineData[1]);
+          let teraMon = this.getMonByString(lineData[1], field, playerData);
           if (teraMon) {
             teraMon.detail += `, tera:${lineData[2]}`;
           }
@@ -462,10 +533,10 @@ export class Replay {
           break;
         case "-sidestart":
           let sideParent = this.getParent(i);
-          if (sideParent[0] == "move") {
-            let sideMon = this.getMonByFieldPos(field, sideParent[1]);
+          if (sideParent && sideParent[0] == "move") {
+            let sideMon = this.getMonByString(sideParent[1], field, playerData);
             if (sideMon) {
-              field.sides[+lineData[1].charAt(1) - 1].sideStatus.push({
+              field.sides[+lineData[1].charAt(1) - 1].statuses.push({
                 status: lineData[2],
                 setter: sideMon,
               });
@@ -473,8 +544,8 @@ export class Replay {
           }
           break;
         case "-sideend":
-          field.sides[+lineData[1].charAt(1) - 1].sideStatus.splice(
-            field.sides[+lineData[1].charAt(1) - 1].sideStatus.findIndex(
+          field.sides[+lineData[1].charAt(1) - 1].statuses.splice(
+            field.sides[+lineData[1].charAt(1) - 1].statuses.findIndex(
               (s) => s.status === lineData[2]
             ),
             1
@@ -482,8 +553,24 @@ export class Replay {
 
           break;
         case "-fieldstart":
+          let fieldStartStatus: Status = { status: lineData[1] };
+          if (lineData[3]) {
+            let fieldStartSetter = this.getMonByString(
+              this.ofP2P(lineData[3]),
+              field,
+              playerData
+            );
+            if (fieldStartSetter) {
+              fieldStartStatus.setter = fieldStartSetter;
+            }
+          }
+          field.statuses.push(fieldStartStatus);
           break;
         case "-fieldend":
+          field.statuses.splice(
+            field.statuses.findIndex((status) => status.status === lineData[1]),
+            1
+          );
           break;
         case "win":
           let winPlayer = playerData.findIndex(
@@ -501,6 +588,7 @@ export class Replay {
         case "rated":
           break;
         default:
+          console.log(lineData);
       }
     }
     playerData.forEach(
@@ -532,15 +620,28 @@ export class Replay {
     return +position.charAt(1) - 1;
   }
 
-  private getMonByFieldPos(field: Field, pos: POKEMON): Mon | undefined {
-    return field.sides[+pos.charAt(1) - 1][pos.charAt(2) as PPosition].mon;
+  private getMonByString(
+    pos: POKEMON,
+    field: Field,
+    playerData: Player[]
+  ): Mon | undefined {
+    if (
+      pos.charAt(2) === "a" ||
+      pos.charAt(2) === "b" ||
+      pos.charAt(2) === "c"
+    ) {
+      return field.sides[+pos.charAt(1) - 1][pos.charAt(2) as PPosition].mon;
+    } else {
+      return playerData[+pos.charAt(1) - 1].team.find(
+        (mon) => mon.nickname === pos.substring(4)
+      );
+    }
   }
 
-  private getParent(index: number) {
+  private getParent(index: number): ReplayData | undefined {
     for (let i = index - 1; i > 0; i--) {
       if (this.replayData[i][0].charAt(0) !== "-") return this.replayData[i];
     }
-    return [];
   }
 
   private searchStatuses(
@@ -548,6 +649,9 @@ export class Replay {
     mon: Mon,
     status: string
   ): Status | undefined {
+    if (mon.status.status === status) {
+      return field.weather;
+    }
     if (mon.lastDamage && mon.lastDamage[1]) {
       let monStatus = mon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
@@ -558,10 +662,27 @@ export class Replay {
     if (mon.lastDamage && mon.lastDamage[1]) {
       let sideStatus = field.sides[
         +mon.lastDamage[1].charAt(1) - 1
-      ].sideStatus.find((s) => s.status.split(": ")[1] === status);
+      ].statuses.find((s) => s.status.split(": ")[1] === status);
       if (sideStatus) return sideStatus;
     }
     return;
+  }
+
+  private checkOwnKill(
+    attacker: Mon | undefined,
+    fainter: Mon | undefined,
+    playerData: Player[]
+  ) {
+    return (
+      playerData.find(
+        (player) => attacker && player.team.includes(attacker)
+      ) !==
+      playerData.find((player) => fainter && player.team.includes(fainter))
+    );
+  }
+
+  private ofP2P(ofPokemon: OFPOKEMON): POKEMON {
+    return ofPokemon.substring(5) as POKEMON;
   }
 }
 
@@ -574,9 +695,15 @@ type Mon = {
   damageDealt: number;
   damageTaken: number;
   hpRestored: number;
-  lastDamage: ReplayData | undefined;
+  lastDamage:
+    | ["-damage", POKEMON, HPSTATUS]
+    | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
+    | ["-damage", POKEMON, HPSTATUS, FROMEFFECT, OFPOKEMON]
+    | undefined;
   fainted: boolean;
   brought: boolean;
+  status: Status;
+  player: Player;
   statuses: Status[];
 };
 
@@ -593,15 +720,24 @@ type Side = {
     mon: undefined | Mon;
     statuses: Status[];
   };
-  sideStatus: Status[];
+  statuses: Status[];
 };
 
-type Status = { status: string; setter?: Mon };
+type Status = { status: string; setter?: Mon; name?: string };
 
 type Field = {
   sides: Side[];
   statuses: Status[];
   weather: Status;
+};
+
+type Player = {
+  username: undefined | string;
+  teamSize: undefined | number;
+  totalKills: number;
+  totalDeaths: number;
+  team: Mon[];
+  win: boolean;
 };
 
 type ABILITY = string;
@@ -628,7 +764,7 @@ type NUM = string;
 type NUMBER = string;
 type OFPOKEMON = `[of] ${POKEMON}`;
 type PLAYER = string;
-type POKEMON = `p${PPlayer}${PPosition}: ${string}`;
+type POKEMON = `p${PPlayer}${PPosition}: ${string}` | `p${PPlayer}: ${string}`;
 type POSITION = "0" | "1" | "2";
 type PPlayer = "1" | "2" | "3" | "4";
 type PPosition = "a" | "b" | "c";
@@ -669,8 +805,9 @@ type ReplayData =
   | ["-crit", POKEMON]
   | ["-curestatus", POKEMON, STATUS]
   | ["-cureteam", POKEMON]
-  | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
   | ["-damage", POKEMON, HPSTATUS]
+  | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
+  | ["-damage", POKEMON, HPSTATUS, FROMEFFECT, OFPOKEMON]
   | ["-end", POKEMON, EFFECT]
   | ["-endability", POKEMON]
   | ["-enditem", POKEMON, ITEM, FROMEFFECT]
@@ -679,6 +816,8 @@ type ReplayData =
   | ["-fieldactivate"]
   | ["-fieldend", CONDITION]
   | ["-fieldstart", CONDITION]
+  | ["-fieldstart", CONDITION, FROMEFFECT]
+  | ["-fieldstart", CONDITION, FROMEFFECT, OFPOKEMON]
   | ["-heal", POKEMON, HPSTATUS]
   | ["-hint", MESSAGE]
   | ["-hitcount", POKEMON, NUM]
@@ -703,6 +842,7 @@ type ReplayData =
   | ["-singleturn", POKEMON, MOVE]
   | ["-start", POKEMON, EFFECT]
   | ["-status", POKEMON, STATUS]
+  | ["-status", POKEMON, STATUS, FROMEFFECT]
   | ["-status", POKEMON, STATUS, FROMEFFECT, OFPOKEMON]
   | ["-supereffective", POKEMON]
   | ["-swapboost", SOURCE, TARGET, STATS]
