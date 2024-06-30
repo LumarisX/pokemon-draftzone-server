@@ -1,5 +1,6 @@
 import { Generations, ID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
+import { stat } from "fs";
 
 export class Replay {
   replayData: ReplayData[] = [];
@@ -17,17 +18,20 @@ export class Replay {
       teamSize: undefined | number;
       totalKills: number;
       totalDeaths: number;
-      team: Team[];
+      team: Mon[];
       win: boolean;
     }[] = [];
-    let field: Field = [];
+    let field: Field = {
+      sides: [],
+      statuses: [],
+      weather: { status: "none" },
+    };
     let genNum: number = 9;
     let turn: number = 0;
     let t0: number = 0;
     let tf: number = 0;
     let events: { player: number; turn: number; message: string }[] = [];
-    let lastMove: ReplayData = [""];
-    let lastDamage: number = -1;
+    let lastMove: MoveData | undefined;
     let gens = new Generations(Dex);
     let gen = gens.dex;
     for (let i = 0; i < this.replayData.length; i++) {
@@ -36,15 +40,15 @@ export class Replay {
         case "":
           break;
         case "-damage":
-          lastDamage = i;
           let damagePosition = this.getMonByFieldPos(field, lineData[1]);
           if (damagePosition) {
+            damagePosition.lastDamage = lineData;
             let newDamage = lineData[2].split(" ")[0].split("/");
             let newDamagePercent =
               +newDamage[0] > 0 ? +newDamage[0] / (+newDamage[1] / 100) : 0;
             let damageDiff = damagePosition.hpp - newDamagePercent;
             damagePosition.hpp = newDamagePercent;
-            if (lastMove[0] === "move") {
+            if (lastMove) {
               let moveDamagePosition = this.getMonByFieldPos(
                 field,
                 lastMove[1]
@@ -100,15 +104,17 @@ export class Replay {
               hpp: 100,
               pid: gen.species.get(lineData[2].split(",")[0])?.id,
               hpRestored: 0,
+              lastDamage: undefined,
               damageDealt: 0,
               damageTaken: 0,
               kills: [0, 0],
+              statuses: [],
               fainted: false,
               brought: true,
             });
           }
 
-          field[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
+          field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
             playerData[switchPlayer].team.find(
               (mon) => mon.detail == lineData[2]
             );
@@ -132,7 +138,9 @@ export class Replay {
             pid: gen.species.get(lineData[2].split(",")[0])?.id,
             hpRestored: 0,
             damageDealt: 0,
+            lastDamage: undefined,
             damageTaken: 0,
+            statuses: [],
             kills: [0, 0],
             fainted: false,
             brought: false,
@@ -166,38 +174,57 @@ export class Replay {
               playerData[+lineData[1].charAt(1) - 1].username
             }'s ${faintPosition.detail.split(", ")[0]} fainted`;
             if (
-              lastDamage > 0 &&
-              this.replayData[lastDamage][1] === lineData[1]
+              faintPosition.lastDamage &&
+              faintPosition.lastDamage[1] === lineData[1]
             ) {
-              let lastFaintDamage = this.replayData[lastDamage];
-              if (lastFaintDamage.length > 3) {
-                for (let j = 3; j < lastFaintDamage.length; j++) {
-                  let [first, ...rest] = lastFaintDamage[j].split(" ");
+              if (faintPosition.lastDamage.length > 3) {
+                for (let j = 3; j < faintPosition.lastDamage.length; j++) {
+                  let [first, ...rest] = faintPosition.lastDamage[j].split(" ");
                   let faintStatus = rest.join(" ");
                   faintString += ` from ${faintStatus}`;
-                  if (lastFaintDamage[1]) {
-                    let faintSideStatus = field[
-                      +lastFaintDamage[1].charAt(1) - 1
-                    ].sideStatus.find(
-                      (s) => s.status.split(": ")[1] === faintStatus
-                    );
-                    if (faintSideStatus) {
+                  let faintSideStatus = this.searchStatuses(
+                    field,
+                    faintPosition,
+                    faintStatus
+                  );
+                  if (faintSideStatus && faintSideStatus.setter) {
+                    faintString += ` indirectly by ${
+                      faintSideStatus.setter.detail.split(", ")[0]
+                    } `;
+                    //check own kill
+                    if (
+                      playerData.find(
+                        (player) =>
+                          faintSideStatus.setter &&
+                          player.team.includes(faintSideStatus.setter)
+                      ) !==
+                      playerData.find((player) =>
+                        player.team.includes(faintPosition)
+                      )
+                    ) {
                       faintSideStatus.setter.kills[1]++;
-                      faintString += ` indirectly by ${
-                        faintSideStatus.setter.detail.split(", ")[0]
-                      } `;
                     }
                   }
                 }
               } else {
-                if (lastMove[0] === "move") {
+                if (lastMove) {
                   let faintAttacker = this.getMonByFieldPos(field, lastMove[1]);
                   faintString += ` from ${lastMove[2]} by ${
                     playerData[+lastMove[1].charAt(1) - 1].username
                   }'s`;
+                  //check own kill
                   if (faintAttacker) {
-                    faintAttacker.kills[0]++;
                     faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
+                    if (
+                      playerData.find((player) =>
+                        player.team.includes(faintAttacker)
+                      ) !==
+                      playerData.find((player) =>
+                        player.team.includes(faintPosition)
+                      )
+                    ) {
+                      faintAttacker.kills[0]++;
+                    }
                   } else {
                     faintString += `${lastMove[1].split(": ")[1]}`;
                   }
@@ -205,7 +232,7 @@ export class Replay {
                 }
               }
             } else {
-              if (lastMove[0] === "move") {
+              if (lastMove) {
                 let faintMove = gen.moves.get(lastMove[2]);
                 if ("selfdestruct" in faintMove) {
                   faintString += ` itself by using ${faintMove.name}`;
@@ -243,9 +270,10 @@ export class Replay {
               team: [],
               win: false,
             });
-            field.push({
-              a: { mon: undefined, vStatus: [] },
-              b: { mon: undefined, vStatus: [] },
+            field.sides.push({
+              a: { mon: undefined, statuses: [] },
+              b: { mon: undefined, statuses: [] },
+              c: { mon: undefined, statuses: [] },
               sideStatus: [],
             });
           }
@@ -264,8 +292,29 @@ export class Replay {
         case "-activate":
           break;
         case "-status":
+          let statusPosition = this.getMonByFieldPos(field, lineData[1]);
+          if (statusPosition) {
+            let statusStart: Status = { status: lineData[2] };
+            if (lastMove && lastMove[3] === lineData[1]) {
+              statusStart.setter = this.getMonByFieldPos(field, lastMove[1]);
+            }
+            statusPosition.statuses.push(statusStart);
+          }
+
           break;
         case "-weather":
+          if (lineData[1] !== field.weather.status) {
+            let weatherStatus: Status = { status: lineData[1] };
+            if (lineData.length > 3 && typeof lineData[3] === "string") {
+              let weatherPosition = this.getMonByFieldPos(
+                field,
+                lineData[3].substring(5) as POKEMON
+              );
+              weatherStatus.setter = weatherPosition;
+            } else {
+            }
+            field.weather = weatherStatus;
+          }
           break;
         case "-crit":
           break;
@@ -389,7 +438,7 @@ export class Replay {
           if (sideParent[0] == "move") {
             let sideMon = this.getMonByFieldPos(field, sideParent[1]);
             if (sideMon) {
-              field[+lineData[1].charAt(1) - 1].sideStatus.push({
+              field.sides[+lineData[1].charAt(1) - 1].sideStatus.push({
                 status: lineData[2],
                 setter: sideMon,
               });
@@ -397,8 +446,8 @@ export class Replay {
           }
           break;
         case "-sideend":
-          field[+lineData[1].charAt(1) - 1].sideStatus.splice(
-            field[+lineData[1].charAt(1) - 1].sideStatus.findIndex(
+          field.sides[+lineData[1].charAt(1) - 1].sideStatus.splice(
+            field.sides[+lineData[1].charAt(1) - 1].sideStatus.findIndex(
               (s) => s.status === lineData[2]
             ),
             1
@@ -456,8 +505,8 @@ export class Replay {
     return +position.charAt(1) - 1;
   }
 
-  private getMonByFieldPos(field: Field, pos: POKEMON): Team | undefined {
-    return field[+pos.charAt(1) - 1][pos.charAt(2) as PPosition].mon;
+  private getMonByFieldPos(field: Field, pos: POKEMON): Mon | undefined {
+    return field.sides[+pos.charAt(1) - 1][pos.charAt(2) as PPosition].mon;
   }
 
   private getParent(index: number) {
@@ -466,9 +515,33 @@ export class Replay {
     }
     return [];
   }
+
+  private searchStatuses(
+    field: Field,
+    mon: Mon,
+    status: string
+  ): Status | undefined {
+    if (status === "brn") {
+      console.log(status, mon.statuses);
+    }
+    if (mon.lastDamage && mon.lastDamage[1]) {
+      let monStatus = mon.statuses.find((s) => s.status === status);
+      if (monStatus) return monStatus;
+    }
+    if (field.weather.status === status) {
+      return field.weather;
+    }
+    if (mon.lastDamage && mon.lastDamage[1]) {
+      let sideStatus = field.sides[
+        +mon.lastDamage[1].charAt(1) - 1
+      ].sideStatus.find((s) => s.status.split(": ")[1] === status);
+      if (sideStatus) return sideStatus;
+    }
+    return;
+  }
 }
 
-type Team = {
+type Mon = {
   detail: string;
   nickname: string;
   pid: ID | undefined;
@@ -477,21 +550,35 @@ type Team = {
   damageDealt: number;
   damageTaken: number;
   hpRestored: number;
+  lastDamage: ReplayData | undefined;
   fainted: boolean;
   brought: boolean;
+  statuses: Status[];
 };
 
-type Field = {
+type Side = {
   a: {
-    mon: undefined | Team;
-    vStatus: { status: string; setter: string }[];
+    mon: undefined | Mon;
+    statuses: Status[];
   };
   b: {
-    mon: undefined | Team;
-    vStatus: { status: string; setter: string }[];
+    mon: undefined | Mon;
+    statuses: Status[];
   };
-  sideStatus: { status: string; setter: Team }[];
-}[];
+  c: {
+    mon: undefined | Mon;
+    statuses: Status[];
+  };
+  sideStatus: Status[];
+};
+
+type Status = { status: string; setter?: Mon };
+
+type Field = {
+  sides: Side[];
+  statuses: Status[];
+  weather: Status;
+};
 
 type ABILITY = string;
 type ACTION = string;
@@ -515,11 +602,12 @@ type MESSAGE = string;
 type MOVE = string;
 type NUM = string;
 type NUMBER = string;
+type OFPOKEMON = `[of] ${POKEMON}`;
 type PLAYER = string;
 type POKEMON = `p${PPlayer}${PPosition}: ${string}`;
 type POSITION = "0" | "1" | "2";
 type PPlayer = "1" | "2" | "3" | "4";
-type PPosition = "a" | "b";
+type PPosition = "a" | "b" | "c";
 type RATING = string;
 type REASON = string;
 type REQUEST = string;
@@ -537,6 +625,7 @@ type USER = string;
 type USERNAME = string;
 type WEATHER = string;
 
+type MoveData = ["move", POKEMON, MOVE, TARGET];
 type ReplayData =
   | [""]
   | ["-ability", POKEMON, ABILITY, FROMEFFECT]
@@ -598,6 +687,7 @@ type ReplayData =
   | ["-unboost", POKEMON, STAT, AMOUNT]
   | ["-waiting", SOURCE, TARGET]
   | ["-weather", WEATHER]
+  | ["-weather", WEATHER, FROMEFFECT, OFPOKEMON]
   | ["-zbroken", POKEMON]
   | ["-zpower", POKEMON]
   | ["c"]
@@ -617,7 +707,7 @@ type ReplayData =
   | ["j"]
   | ["l"]
   | ["message"]
-  | ["move", POKEMON, MOVE, TARGET]
+  | MoveData
   | ["player", PLAYER, USERNAME, AVATAR, RATING]
   | ["poke", PLAYER, DETAILS, ITEM]
   | ["rated", MESSAGE]
