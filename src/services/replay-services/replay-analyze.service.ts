@@ -178,31 +178,36 @@ export class Replay {
             ) {
               if (faintPosition.lastDamage.length > 3) {
                 for (let j = 3; j < faintPosition.lastDamage.length; j++) {
-                  let [first, ...rest] = faintPosition.lastDamage[j].split(" ");
-                  let faintStatus = rest.join(" ");
-                  faintString += ` from ${faintStatus}`;
-                  let faintSideStatus = this.searchStatuses(
-                    field,
-                    faintPosition,
-                    faintStatus
-                  );
-                  if (faintSideStatus && faintSideStatus.setter) {
-                    faintString += ` indirectly by ${
-                      faintSideStatus.setter.detail.split(", ")[0]
-                    } `;
-                    //check own kill
-                    if (
-                      playerData.find(
-                        (player) =>
-                          faintSideStatus.setter &&
-                          player.team.includes(faintSideStatus.setter)
-                      ) !==
-                      playerData.find((player) =>
-                        player.team.includes(faintPosition)
-                      )
-                    ) {
-                      faintSideStatus.setter.kills[1]++;
+                  let faintStatus = faintPosition.lastDamage[j]
+                    .substring(7)
+                    .split(": ");
+                  if (faintStatus.length === 1) {
+                    faintString += ` from ${faintStatus}`;
+                    let faintSideStatus = this.searchStatuses(
+                      field,
+                      faintPosition,
+                      faintStatus[0]
+                    );
+                    if (faintSideStatus && faintSideStatus.setter) {
+                      faintString += ` indirectly by ${
+                        faintSideStatus.setter.detail.split(", ")[0]
+                      } `;
+                      //check own kill
+                      if (
+                        playerData.find(
+                          (player) =>
+                            faintSideStatus.setter &&
+                            player.team.includes(faintSideStatus.setter)
+                        ) !==
+                        playerData.find((player) =>
+                          player.team.includes(faintPosition)
+                        )
+                      ) {
+                        faintSideStatus.setter.kills[1]++;
+                      }
                     }
+                  } else {
+                    faintString += ` from ${faintStatus.slice(1).join(" ")}`;
                   }
                 }
               } else {
