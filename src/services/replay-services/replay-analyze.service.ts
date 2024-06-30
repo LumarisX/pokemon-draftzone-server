@@ -422,6 +422,14 @@ export class Replay {
         case "request":
           break;
         case "swap":
+          let swapSide = field.sides[+lineData[1].charAt(1) - 1];
+          [
+            swapSide[lineData[1].charAt(2) as PPosition],
+            swapSide[["a", "b", "c"][+lineData[2]] as PPosition],
+          ] = [
+            swapSide[["a", "b", "c"][+lineData[2]] as PPosition],
+            swapSide[lineData[1].charAt(2) as PPosition],
+          ];
           break;
         case "-mega":
           break;
