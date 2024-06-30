@@ -85,7 +85,7 @@ export class Replay {
                 String.raw`^${mon.detail.replace("*", "\\w+")}`
               ).test(lineData[2] as string);
             } else {
-              let detailSet = new Set(lineData[2].split(", "));
+              let detailSet = new Set(lineData[2]!.split(", "));
               return mon.detail.split(", ").every((e) => detailSet.has(e));
             }
           });
@@ -196,11 +196,12 @@ export class Replay {
                       if (
                         playerData.find(
                           (player) =>
+                            faintSideStatus &&
                             faintSideStatus.setter &&
                             player.team.includes(faintSideStatus.setter)
                         ) !==
                         playerData.find((player) =>
-                          player.team.includes(faintPosition)
+                          player.team.includes(faintPosition!)
                         )
                       ) {
                         faintSideStatus.setter.kills[1]++;
@@ -221,10 +222,10 @@ export class Replay {
                     faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
                     if (
                       playerData.find((player) =>
-                        player.team.includes(faintAttacker)
+                        player.team.includes(faintAttacker!)
                       ) !==
                       playerData.find((player) =>
-                        player.team.includes(faintPosition)
+                        player.team.includes(faintPosition!)
                       )
                     ) {
                       faintAttacker.kills[0]++;
