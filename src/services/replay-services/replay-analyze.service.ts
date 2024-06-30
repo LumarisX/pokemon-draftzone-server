@@ -299,13 +299,24 @@ export class Replay {
         case "-status":
           let statusPosition = this.getMonByFieldPos(field, lineData[1]);
           if (statusPosition) {
-            let statusStart: Status = { status: lineData[2] };
-            if (lastMove && lastMove[3] === lineData[1]) {
-              statusStart.setter = this.getMonByFieldPos(field, lastMove[1]);
+            let statusStart: Status | undefined;
+            if (lineData[2] === "tox") {
+              statusStart = { status: "psn" };
+            } else {
+              statusStart = { status: lineData[2] };
+            }
+            if (lineData.length > 4 && lineData[4]) {
+              statusStart.setter = this.getMonByFieldPos(
+                field,
+                lineData[4].substring(5) as POKEMON
+              );
+            } else {
+              if (lastMove && lastMove[3] === lineData[1]) {
+                statusStart.setter = this.getMonByFieldPos(field, lastMove[1]);
+              }
             }
             statusPosition.statuses.push(statusStart);
           }
-          console.log(lineData, statusPosition);
           break;
         case "-weather":
           if (lineData[1] !== field.weather.status) {
@@ -692,6 +703,7 @@ type ReplayData =
   | ["-singleturn", POKEMON, MOVE]
   | ["-start", POKEMON, EFFECT]
   | ["-status", POKEMON, STATUS]
+  | ["-status", POKEMON, STATUS, FROMEFFECT, OFPOKEMON]
   | ["-supereffective", POKEMON]
   | ["-swapboost", SOURCE, TARGET, STATS]
   | ["-swapsideconditions"]
