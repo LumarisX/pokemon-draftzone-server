@@ -645,7 +645,18 @@ export class Replay {
       genNum: genNum,
       turns: turn,
       gameTime: gameTime,
-      stats: playerData,
+      stats: playerData.forEach((player) =>
+        player.team.map((mon) => ({
+          brought: mon.brought,
+          kills: mon.kills,
+          fainted: mon.fainted,
+          pid: mon.pid,
+          detail: mon.detail,
+          damageDealt: mon.damageDealt,
+          damageTaken: mon.damageTaken,
+          hpRestored: mon.hpRestored,
+        }))
+      ),
       events: events,
     };
   }
