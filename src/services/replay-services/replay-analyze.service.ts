@@ -38,7 +38,7 @@ export class Replay {
             playerData
           );
           if (damagePosition) {
-            damagePosition.lastDamage = lineData;
+            damagePosition.lastDamage = { data: lineData, index: i };
             let newDamage = lineData[2].split(" ")[0].split("/");
             let newDamagePercent =
               +newDamage[0] > 0 ? +newDamage[0] / (+newDamage[1] / 100) : 0;
@@ -65,6 +65,9 @@ export class Replay {
           break;
         case "move":
           lastMove = lineData;
+          if (lineData[2] === "Future Sight") {
+            console.log(lineData);
+          }
           break;
         case "turn":
           turn = +lineData[1];
@@ -180,10 +183,10 @@ export class Replay {
             }'s ${faintPosition.detail.split(", ")[0]} fainted`;
             if (
               faintPosition.lastDamage &&
-              faintPosition.lastDamage[1] === lineData[1]
+              faintPosition.lastDamage.data[1] === lineData[1]
             ) {
-              if (faintPosition.lastDamage[3]) {
-                let faintStatus = faintPosition.lastDamage[3]
+              if (faintPosition.lastDamage.data[3]) {
+                let faintStatus = faintPosition.lastDamage.data[3]
                   .substring(7)
                   .split(": ");
                 if (faintStatus.length === 1) {
@@ -198,66 +201,76 @@ export class Replay {
                       : faintStatus[0]
                   }`;
                   if (faintSideStatus && faintSideStatus.setter) {
-                    faintString += ` indirectly by ${
-                      faintSideStatus.setter.player.username
-                    }'s ${faintSideStatus.setter.detail.split(", ")[0]} `;
-                    if (
-                      this.checkOwnKill(
+                    if (faintSideStatus.setter === faintPosition) {
+                      faintString += ` self-inflicted`;
+                    } else {
+                      let faintOwnKill = this.checkOwnKill(
                         faintSideStatus.setter,
                         faintPosition,
                         playerData
-                      )
-                    ) {
-                      faintSideStatus.setter.kills[1]++;
+                      );
+                      if (faintOwnKill != "self") {
+                        faintString += ` indirectly by ${
+                          faintSideStatus.setter.player.username
+                        }'s ${faintSideStatus.setter.detail.split(", ")[0]} `;
+                        if (faintOwnKill != "ff") {
+                          faintSideStatus.setter.kills[1]++;
+                        }
+                      }
                     }
                   }
                 } else {
                   faintString += ` from ${faintStatus.slice(1).join(" ")}`;
-                  if (faintPosition.lastDamage[4]) {
+                  if (faintPosition.lastDamage.data[4]) {
                     let faintAttacker = this.getMonByString(
-                      this.ofP2P(faintPosition.lastDamage[4]),
+                      this.ofP2P(faintPosition.lastDamage.data[4]),
                       field,
                       playerData
                     );
                     if (faintAttacker) {
-                      faintString += ` indirectly by ${
-                        faintAttacker.detail.split(", ")[0]
-                      }`;
-                      if (
-                        this.checkOwnKill(
-                          faintAttacker,
-                          faintPosition,
-                          playerData
-                        )
-                      ) {
-                        faintAttacker.kills[1]++;
+                      let faintOwnKill = this.checkOwnKill(
+                        faintAttacker,
+                        faintPosition,
+                        playerData
+                      );
+                      if (faintOwnKill != "self") {
+                        faintString += ` indirectly by ${
+                          faintAttacker.player.username
+                        }'s ${faintAttacker.detail.split(", ")[0]} `;
+                        if (faintOwnKill != "ff") {
+                          faintAttacker.kills[1]++;
+                        }
                       }
                     }
                   }
                 }
               } else {
+                let faintParent = this.getParent(
+                  faintPosition.lastDamage.index
+                );
                 if (lastMove) {
                   let faintAttacker = this.getMonByString(
                     lastMove[1],
                     field,
                     playerData
                   );
-                  faintString += ` from ${lastMove[2]} by ${
-                    playerData[+lastMove[1].charAt(1) - 1].username
-                  }'s`;
+                  faintString += ` from ${lastMove[2]}`;
                   if (faintAttacker) {
-                    faintString += ` ${faintAttacker.detail.split(", ")[0]}`;
-                    if (
-                      this.checkOwnKill(
-                        faintAttacker,
-                        faintPosition,
-                        playerData
-                      )
-                    ) {
-                      faintAttacker.kills[0]++;
+                    let faintOwnKill = this.checkOwnKill(
+                      faintAttacker,
+                      faintPosition,
+                      playerData
+                    );
+                    if (faintOwnKill != "self") {
+                      faintString += ` by ${
+                        playerData[+lastMove[1].charAt(1) - 1].username
+                      }'s ${faintAttacker.detail.split(", ")[0]}`;
+                      if (faintOwnKill != "ff") {
+                        faintAttacker.kills[0]++;
+                      }
                     }
                   } else {
-                    faintString += `${lastMove[1].split(": ")[1]}`;
+                    faintString += ` by ${lastMove[1].split(": ")[1]}`;
                   }
                 } else {
                 }
@@ -359,16 +372,31 @@ export class Replay {
               }
             } else {
               let statusParent = this.getParent(i);
-              if (statusParent) {
-                if (
-                  statusParent[0] === "switch" &&
-                  statusStart.status === "psn"
-                ) {
-                  statusStart.setter = field.sides[
-                    +lineData[1].charAt(1) - 1
-                  ].statuses.find(
-                    (status) => status.status === "move: Toxic Spikes"
-                  )?.setter;
+              if (
+                statusParent.main[0] === "switch" &&
+                statusStart.status === "psn"
+              ) {
+                statusStart.setter = field.sides[
+                  +lineData[1].charAt(1) - 1
+                ].statuses.find(
+                  (status) => status.status === "move: Toxic Spikes"
+                )?.setter;
+              } else if (statusParent.main[0] === "move") {
+                let statusOnProtect = statusParent.sub.find(
+                  (sub) => sub[0] === "-activate" && sub[2] === "move: Protect"
+                );
+                if (statusOnProtect && statusOnProtect[0] === "-activate") {
+                  statusStart.setter = this.getMonByString(
+                    statusOnProtect[1],
+                    field,
+                    playerData
+                  );
+                } else {
+                  statusStart.setter = this.getMonByString(
+                    statusParent.main[1],
+                    field,
+                    playerData
+                  );
                 }
               }
             }
@@ -533,8 +561,12 @@ export class Replay {
           break;
         case "-sidestart":
           let sideParent = this.getParent(i);
-          if (sideParent && sideParent[0] == "move") {
-            let sideMon = this.getMonByString(sideParent[1], field, playerData);
+          if (sideParent.main[0] == "move") {
+            let sideMon = this.getMonByString(
+              sideParent.main[1],
+              field,
+              playerData
+            );
             if (sideMon) {
               field.sides[+lineData[1].charAt(1) - 1].statuses.push({
                 status: lineData[2],
@@ -584,6 +616,8 @@ export class Replay {
               message: `${lineData[1]} wins`,
             });
           }
+          break;
+        case "n":
           break;
         case "rated":
           break;
@@ -638,10 +672,17 @@ export class Replay {
     }
   }
 
-  private getParent(index: number): ReplayData | undefined {
-    for (let i = index - 1; i > 0; i--) {
-      if (this.replayData[i][0].charAt(0) !== "-") return this.replayData[i];
+  private getParent(index: number): { main: ReplayData; sub: ReplayData[] } {
+    let data = { main: this.replayData[index], sub: [] as ReplayData[] };
+    for (let i = index; i > 0; i--) {
+      if (this.replayData[i][0].charAt(0) !== "-") {
+        data.main = this.replayData[i];
+        i = 0;
+      } else {
+        data.sub.push(this.replayData[i]);
+      }
     }
+    return data;
   }
 
   private searchStatuses(
@@ -652,16 +693,16 @@ export class Replay {
     if (mon.status.status === status) {
       return field.weather;
     }
-    if (mon.lastDamage && mon.lastDamage[1]) {
+    if (mon.lastDamage && mon.lastDamage.data[1]) {
       let monStatus = mon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
     }
     if (field.weather.status === status) {
       return field.weather;
     }
-    if (mon.lastDamage && mon.lastDamage[1]) {
+    if (mon.lastDamage && mon.lastDamage.data[1]) {
       let sideStatus = field.sides[
-        +mon.lastDamage[1].charAt(1) - 1
+        +mon.lastDamage.data[1].charAt(1) - 1
       ].statuses.find((s) => s.status.split(": ")[1] === status);
       if (sideStatus) return sideStatus;
     }
@@ -672,13 +713,15 @@ export class Replay {
     attacker: Mon | undefined,
     fainter: Mon | undefined,
     playerData: Player[]
-  ) {
-    return (
-      playerData.find(
-        (player) => attacker && player.team.includes(attacker)
-      ) !==
-      playerData.find((player) => fainter && player.team.includes(fainter))
-    );
+  ): "self" | "ff" | "opp" {
+    if (attacker === fainter) {
+      return "self";
+    }
+    return playerData.find(
+      (player) => attacker && player.team.includes(attacker)
+    ) === playerData.find((player) => fainter && player.team.includes(fainter))
+      ? "ff"
+      : "opp";
   }
 
   private ofP2P(ofPokemon: OFPOKEMON): POKEMON {
@@ -696,10 +739,15 @@ type Mon = {
   damageTaken: number;
   hpRestored: number;
   lastDamage:
-    | ["-damage", POKEMON, HPSTATUS]
-    | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
-    | ["-damage", POKEMON, HPSTATUS, FROMEFFECT, OFPOKEMON]
+    | {
+        data:
+          | ["-damage", POKEMON, HPSTATUS]
+          | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
+          | ["-damage", POKEMON, HPSTATUS, FROMEFFECT, OFPOKEMON];
+        index: number;
+      }
     | undefined;
+
   fainted: boolean;
   brought: boolean;
   status: Status;
@@ -873,6 +921,7 @@ type ReplayData =
   | ["l"]
   | ["message"]
   | MoveData
+  | ["n"]
   | ["player", PLAYER, USERNAME, AVATAR, RATING]
   | ["poke", PLAYER, DETAILS, ITEM]
   | ["rated", MESSAGE]
