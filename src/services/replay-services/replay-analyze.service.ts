@@ -95,14 +95,16 @@ export class Replay {
               switchedMon.brought = true;
               switchedMon.detail = lineData[2];
               switchedMon.nickname = lineData[1].split(" ")[1];
-              switchedMon.pid = gen.species.get(lineData[2].split(",")[0])?.id;
+              switchedMon.base = gen.species.get(
+                lineData[2].split(",")[0]
+              )?.baseSpecies;
             }
           } else {
             playerData[switchPlayer].team.push({
               detail: lineData[2],
               nickname: lineData[1].split(" ")[1],
               hpp: 100,
-              pid: gen.species.get(lineData[2].split(",")[0])?.id,
+              base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
               hpRestored: 0,
               lastDamage: undefined,
               damageDealt: 0,
@@ -137,7 +139,7 @@ export class Replay {
             detail: lineData[2],
             nickname: "",
             hpp: 100,
-            pid: gen.species.get(lineData[2].split(",")[0])?.id,
+            base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
             hpRestored: 0,
             damageDealt: 0,
             lastDamage: undefined,
@@ -330,7 +332,9 @@ export class Replay {
           let detailField = this.getMonByString(lineData[1], field, playerData);
           if (detailField) {
             detailField.detail = lineData[2];
-            detailField.pid = gen.species.get(lineData[2].split(",")[0])?.id;
+            detailField.base = gen.species.get(
+              lineData[2].split(",")[0]
+            )?.baseSpecies;
           }
           break;
         case "-activate":
@@ -640,23 +644,50 @@ export class Replay {
         ))
     );
     let gameTime = tf - t0;
+
+    let stats: {
+      username: string | undefined;
+      win: boolean;
+      totalDeaths: number;
+      totalKills: number;
+      team: {
+        kills: [number, number];
+        brought: boolean;
+        fainted: boolean;
+        damageDealt: number;
+        damageTaken: number;
+        hpRestored: number;
+        name: string;
+      }[];
+    }[] = [];
+    playerData.forEach((player) => {
+      let playerStat = {
+        username: player.username,
+        win: player.win,
+        totalDeaths: player.totalDeaths,
+        totalKills: player.totalKills,
+        team: [] as any[],
+      };
+      player.team.forEach((mon) => {
+        playerStat.team.push({
+          kills: mon.kills,
+          brought: mon.brought,
+          fainted: mon.fainted,
+          damageDealt: mon.damageDealt,
+          damageTaken: mon.damageTaken,
+          hpRestored: mon.hpRestored,
+          name: mon.base,
+        });
+      });
+      stats.push(playerStat);
+    });
+
     return {
       gametype: gametype,
       genNum: genNum,
       turns: turn,
       gameTime: gameTime,
-      stats: playerData.forEach((player) =>
-        player.team.map((mon) => ({
-          brought: mon.brought,
-          kills: mon.kills,
-          fainted: mon.fainted,
-          pid: mon.pid,
-          detail: mon.detail,
-          damageDealt: mon.damageDealt,
-          damageTaken: mon.damageTaken,
-          hpRestored: mon.hpRestored,
-        }))
-      ),
+      stats: stats,
       events: events,
     };
   }
@@ -743,7 +774,7 @@ export class Replay {
 type Mon = {
   detail: string;
   nickname: string;
-  pid: ID | undefined;
+  base: string | undefined;
   hpp: number;
   kills: [number, number];
   damageDealt: number;
