@@ -377,7 +377,7 @@ export class Replay {
                 statusStart.status === "psn"
               ) {
                 statusStart.setter = field.sides[
-                  +lineData[1].charAt(1) - 1
+                  +(lineData[1] as POKEMON).charAt(1) - 1
                 ].statuses.find(
                   (status) => status.status === "move: Toxic Spikes"
                 )?.setter;
