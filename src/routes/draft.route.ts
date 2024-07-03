@@ -132,11 +132,12 @@ draftRouter
       return;
     }
     try {
-      res.json(
-        await MatchupModel.find({ "aTeam._id": res.draft._id }).sort({
-          createdAt: -1,
-        })
-      );
+      let matchups = await MatchupModel.find({
+        "aTeam._id": res.draft._id,
+      }).sort({
+        createdAt: -1,
+      });
+      res.json(matchups);
     } catch (error) {
       res
         .status(500)
@@ -245,13 +246,9 @@ draftRouter
       const updatedMatchup = await MatchupModel.findByIdAndUpdate(
         req.params.matchup_id,
         {
-          "aTeam.stats": processedScore.aTeam.stats,
-          "bTeam.stats": processedScore.bTeam.stats,
-          "aTeam.paste": processedScore.aTeam.paste,
-          "bTeam.paste": processedScore.bTeam.paste,
-          "aTeam.score": processedScore.aTeam.score,
-          "bTeam.score": processedScore.bTeam.score,
-          replay: processedScore.replay,
+          matches: processedScore.matches,
+          "aTeam.paste": processedScore.aTeamPaste,
+          "bteam.paste": processedScore.bTeamPaste,
         },
         { new: true, upsert: true }
       );
@@ -307,7 +304,6 @@ draftRouter
         },
         { new: true, upsert: true }
       );
-      console.log(updatedMatchup);
       if (updatedMatchup) {
         res
           .status(200)

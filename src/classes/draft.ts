@@ -59,11 +59,13 @@ export class Draft {
 
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      const pokemon = new PokemonBuilder(ruleset, pokemonData);
-      if (pokemon.error) {
-        errors.push(pokemon.error);
-      } else {
-        data.team.push(pokemon.data);
+      if (pokemonData.pid != "") {
+        const pokemon = new PokemonBuilder(ruleset, pokemonData);
+        if (pokemon.error) {
+          errors.push(pokemon.error);
+        } else {
+          data.team.push(pokemon.data);
+        }
       }
     }
 
