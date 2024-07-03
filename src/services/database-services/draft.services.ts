@@ -28,15 +28,17 @@ export async function getScore(teamId: string) {
     });
   } else {
     for (let matchup of matchups) {
-      if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
-        score.wins++;
-      } else if (
-        matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
-      ) {
-        score.loses++;
+      if (matchup.matches[0]) {
+        if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
+          score.wins++;
+        } else if (
+          matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
+        ) {
+          score.loses++;
+        }
+        numDiff +=
+          matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
       }
-      numDiff +=
-        matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
     }
   }
   score.diff = (numDiff < 0 ? "" : "+") + numDiff;
