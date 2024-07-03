@@ -13,5 +13,5 @@ export const Formats = {
   VGC: { level: 50, choose: 4 },
   Doubles: { level: 100, choose: 6 },
   LC: { level: 5, choose: 6 },
-  DPeC: { level: 5, choose: 4 },
+  "LC VGC": { level: 5, choose: 4 },
 };
