@@ -15,15 +15,6 @@ export type Side = {
   teamName: string;
   team: Pokemon[];
   name?: string;
-  stats: [
-    string,
-    {
-      indirect?: number;
-      kills?: number;
-      deaths?: number;
-      brought?: number;
-    }
-  ][];
   score: number;
   paste?: string;
 };
@@ -52,7 +43,6 @@ export class Matchup {
         teamName: "",
         team: [],
         name: undefined,
-        stats: [],
         score: 0,
         paste: undefined,
       },
@@ -60,7 +50,6 @@ export class Matchup {
         teamName: this.formData.teamName.trim(),
         team: [],
         name: undefined,
-        stats: [],
         score: 0,
         paste: undefined,
       },
@@ -84,71 +73,140 @@ export class Matchup {
 }
 
 export class Score {
-  constructor(private scoreData: any) {}
+  constructor(
+    private scoreData: {
+      bTeamPaste: string;
+      aTeamPaste: string;
+      matches: {
+        replay: string;
+        winner: "a" | "b" | "";
+        aTeam: {
+          team: {
+            pokemon: { pid: string };
+            kills: number;
+            fainted: number;
+            indirect: number;
+            brought: number;
+          }[];
+        };
+        bTeam: {
+          team: {
+            pokemon: { pid: string };
+            kills: number;
+            fainted: number;
+            indirect: number;
+            brought: number;
+          }[];
+        };
+      }[];
+    }
+  ) {}
 
-  async processScore(): Promise<any> {
-    const data: any = {};
-    data.aTeam = { stats: [], paste: "", score: 0 };
-    data.bTeam = { stats: [], paste: "", score: 0 };
+  async processScore(): Promise<{
+    matches: {}[];
+    aTeamPaste?: string | undefined;
+    bTeamPaste?: string | undefined;
+  }> {
+    const data: {
+      matches: {}[];
+      aTeamPaste?: string;
+      bTeamPaste?: string;
+    } = {
+      matches: [],
+    };
     const pastePattern = /^(https:\/\/)?pokepast\.es\/[a-zA-Z0-9]{16}$/;
-    if (
-      this.scoreData.aTeam.paste != null &&
-      this.scoreData.aTeam.paste != ""
-    ) {
-      data.aTeam.paste = this.scoreData.aTeam.paste;
-    }
-    if (
-      this.scoreData.bTeam.paste != null &&
-      this.scoreData.bTeam.paste != ""
-    ) {
-      data.bTeam.paste = this.scoreData.bTeam.paste;
-    }
-    if (this.scoreData.replay != null && this.scoreData.replay != "") {
-      data.replay = this.scoreData.replay;
-    }
-    data.aTeam.score = this.scoreData.aTeam.score;
-    data.bTeam.score = this.scoreData.bTeam.score;
 
-    let aTeamStats: { [key: string]: any } = {};
-    for (const stat of this.scoreData.aTeam.team) {
-      const pokemonStats: any = {};
-      if (stat.kills != null && stat.kills > 0) {
-        pokemonStats.kills = stat.kills;
-      }
-      if (stat.deaths != null && stat.deaths > 0) {
-        pokemonStats.deaths = stat.deaths;
-      }
-      if (stat.indirect != null && stat.indirect > 0) {
-        pokemonStats.indirect = stat.indirect;
-      }
-      if (stat.brought != null && stat.brought > 0) {
-        pokemonStats.brought = stat.brought;
-      }
-      if (Object.keys(pokemonStats).length > 0) {
-        aTeamStats[stat.pokemon.pid] = pokemonStats;
-      }
+    if (this.scoreData.aTeamPaste != "") {
+      data.aTeamPaste = this.scoreData.aTeamPaste;
     }
-    data.aTeam.stats = Object.entries(aTeamStats);
-    let bTeamStats: { [key: string]: any } = {};
-    for (const stat of this.scoreData.bTeam.team) {
-      const pokemonStats: any = {};
-      if (stat.kills != null && stat.kills > 0) {
-        pokemonStats.kills = stat.kills;
-      }
-      if (stat.deaths != null && stat.deaths > 0) {
-        pokemonStats.deaths = stat.deaths;
-      }
-      if (stat.indirect != null && stat.indirect > 0) {
-        pokemonStats.indirect = stat.indirect;
-      }
-      if (stat.brought != null && stat.brought > 0) {
-        pokemonStats.brought = stat.brought;
-      }
-      if (Object.keys(pokemonStats).length > 0) {
-        bTeamStats[stat.pokemon.pid] = pokemonStats;
-      }
+    if (this.scoreData.bTeamPaste != "") {
+      data.bTeamPaste = this.scoreData.bTeamPaste;
     }
-    data.bTeam.stats = Object.entries(bTeamStats);
+    this.scoreData.matches.forEach((match) => {
+      let matchData: {
+        replay?: string;
+        winner: "" | "a" | "b";
+        aTeam: { stats: [string, any][]; score: number };
+        bTeam: { stats: [string, any][]; score: number };
+      } = {
+        aTeam: { stats: [], score: 0 },
+        bTeam: { stats: [], score: 0 },
+        winner: "",
+      };
+      if (match.replay != "") {
+        matchData.replay = match.replay;
+      }
+      if (match.winner) {
+        matchData.winner = match.winner;
+      }
+      let aTeamStats: { [key: string]: any } = {};
+      for (const stat of match.aTeam.team) {
+        if (stat.brought) {
+          const pokemonStats: {
+            kills?: number;
+            indirect?: number;
+            deaths?: number;
+            brought?: number;
+          } = {};
+          if (stat.kills > 0) {
+            pokemonStats.kills = stat.kills;
+          }
+          if (stat.fainted > 0) {
+            pokemonStats.deaths = stat.fainted;
+          }
+          if (stat.indirect > 0) {
+            pokemonStats.indirect = stat.indirect;
+          }
+          if (stat.brought > 0) {
+            pokemonStats.brought = stat.brought;
+          }
+          if (Object.keys(pokemonStats).length > 0) {
+            aTeamStats[stat.pokemon.pid] = pokemonStats;
+          }
+        }
+      }
+      matchData.aTeam.stats = Object.entries(aTeamStats);
+      let bTeamStats: { [key: string]: any } = {};
+      for (const stat of match.bTeam.team) {
+        if (stat.brought) {
+          const pokemonStats: {
+            kills?: number;
+            indirect?: number;
+            deaths?: number;
+            brought?: number;
+          } = {};
+          if (stat.kills > 0) {
+            pokemonStats.kills = stat.kills;
+          }
+          if (stat.fainted > 0) {
+            pokemonStats.deaths = stat.fainted;
+          }
+          if (stat.indirect > 0) {
+            pokemonStats.indirect = stat.indirect;
+          }
+          if (stat.brought > 0) {
+            pokemonStats.brought = stat.brought;
+          }
+          if (Object.keys(pokemonStats).length > 0) {
+            bTeamStats[stat.pokemon.pid] = pokemonStats;
+          }
+        }
+      }
+      matchData.bTeam.stats = Object.entries(bTeamStats);
+      matchData.aTeam.score =
+        matchData.aTeam.stats.length -
+        matchData.aTeam.stats.reduce(
+          (deaths, mon) => (deaths += +(mon[1].deaths > 0)),
+          0
+        );
+      matchData.bTeam.score =
+        matchData.bTeam.stats.length -
+        matchData.bTeam.stats.reduce(
+          (deaths, mon) => (deaths += +(mon[1].deaths > 0)),
+          0
+        );
+      data.matches.push(matchData);
+    });
     return data;
   }
 }

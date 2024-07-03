@@ -246,13 +246,9 @@ draftRouter
       const updatedMatchup = await MatchupModel.findByIdAndUpdate(
         req.params.matchup_id,
         {
-          "aTeam.stats": processedScore.aTeam.stats,
-          "bTeam.stats": processedScore.bTeam.stats,
-          "aTeam.paste": processedScore.aTeam.paste,
-          "bTeam.paste": processedScore.bTeam.paste,
-          "aTeam.score": processedScore.aTeam.score,
-          "bTeam.score": processedScore.bTeam.score,
-          replay: processedScore.replay,
+          matches: processedScore.matches,
+          "aTeam.paste": processedScore.aTeamPaste,
+          "bteam.paste": processedScore.bTeamPaste,
         },
         { new: true, upsert: true }
       );

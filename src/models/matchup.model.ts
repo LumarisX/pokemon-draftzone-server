@@ -42,7 +42,7 @@ const matchSchema = new mongoose.Schema(
       required: true,
     },
     bTeam: {
-      type: teamSchema,
+      type: matchTeamSchema,
       required: true,
     },
     replay: {
