@@ -7,15 +7,37 @@ export async function getScore(teamId: string) {
   let matchups = await getMatchups(teamId);
   let score = { wins: 0, loses: 0, diff: "+0" };
   let numDiff = 0;
-  for (let matchup of matchups) {
-    if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
-      score.wins++;
-    } else if (
-      matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
-    ) {
-      score.loses++;
+  let gameDiff = matchups.some((matchup) => matchup.matches.length > 1);
+  if (gameDiff) {
+    matchups.forEach((matchup) => {
+      let matchupWins = 0;
+      let matchupLoses = 0;
+      matchup.matches.forEach((match) => {
+        if (match.winner === "a") {
+          matchupWins++;
+        } else if (match.winner === "b") {
+          matchupLoses++;
+        }
+      });
+      if (matchupWins > matchupLoses) {
+        score.wins++;
+      } else if (matchupLoses > matchupWins) {
+        score.loses++;
+      }
+      numDiff += matchupWins - matchupLoses;
+    });
+  } else {
+    for (let matchup of matchups) {
+      if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
+        score.wins++;
+      } else if (
+        matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
+      ) {
+        score.loses++;
+      }
+      numDiff +=
+        matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
     }
-    numDiff += matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
   }
   score.diff = (numDiff < 0 ? "" : "+") + numDiff;
   return score;

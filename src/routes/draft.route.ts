@@ -137,7 +137,6 @@ draftRouter
       }).sort({
         createdAt: -1,
       });
-      console.log(matchups);
       res.json(matchups);
     } catch (error) {
       res

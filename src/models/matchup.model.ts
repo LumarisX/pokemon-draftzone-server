@@ -45,14 +45,10 @@ const matchSchema = new mongoose.Schema(
       type: teamSchema,
       required: true,
     },
-    stats: {
-      type: [],
-    },
-    score: {
-      type: Number,
-      default: 0,
-    },
     replay: {
+      type: String,
+    },
+    winner: {
       type: String,
     },
   },
@@ -133,6 +129,7 @@ export interface MatchupData {
       score: number;
     };
     replay?: string;
+    winner?: "a" | "b" | null;
   }[];
 }
 
