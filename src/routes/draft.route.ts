@@ -304,7 +304,6 @@ draftRouter
         },
         { new: true, upsert: true }
       );
-      console.log(updatedMatchup);
       if (updatedMatchup) {
         res
           .status(200)

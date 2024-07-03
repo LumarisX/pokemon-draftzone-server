@@ -15,7 +15,6 @@ export type Side = {
   teamName: string;
   team: Pokemon[];
   name?: string;
-  score: number;
   paste?: string;
 };
 
@@ -43,25 +42,25 @@ export class Matchup {
         teamName: "",
         team: [],
         name: undefined,
-        score: 0,
         paste: undefined,
       },
       bTeam: {
         teamName: this.formData.teamName.trim(),
         team: [],
         name: undefined,
-        score: 0,
         paste: undefined,
       },
       stage: this.formData.stage.trim(),
     };
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
-      if (pokemon.error) {
-        errors.push(pokemon.error);
-      } else {
-        data.bTeam.team.push(pokemon.data);
+      if (pokemonData.pid !== "") {
+        const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
+        if (pokemon.error) {
+          errors.push(pokemon.error);
+        } else {
+          data.bTeam.team.push(pokemon.data);
+        }
       }
     }
 
