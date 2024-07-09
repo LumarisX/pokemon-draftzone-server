@@ -102,14 +102,13 @@ export class Replay {
           let switchedMon = playerData[switchPlayer].team.find((mon) => {
             if (!mon.brought) {
               return new RegExp(
-                String.raw`^${mon.detail.replace("*", "\\w+")}`
+                String.raw`^${mon.detail.replace("-*", ".+")}`
               ).test(lineData[2] as string);
             } else {
               let detailSet = new Set(lineData[2]!.split(", "));
               return mon.detail.split(", ").every((e) => detailSet.has(e));
             }
           });
-
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
@@ -137,10 +136,12 @@ export class Replay {
               brought: true,
             });
           }
-          field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
-            playerData[switchPlayer].team.find((mon) =>
-              lineData[2].startsWith(mon.detail)
-            );
+          if (lineData[2]) {
+            field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
+              playerData[switchPlayer].team.find((mon) =>
+                lineData[2].startsWith(mon.detail)
+              );
+          }
           break;
         case "c:":
         case "c":
