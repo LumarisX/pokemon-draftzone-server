@@ -44,6 +44,7 @@ export class Replay {
               +newDamage[0] > 0 ? +newDamage[0] / (+newDamage[1] / 100) : 0;
             let damageDiff = damagePosition.hpp - newDamagePercent;
             damagePosition.hpp = newDamagePercent;
+            damagePosition.damageTaken += damageDiff;
             if (lastMove) {
               let moveDamagePosition = this.getMonByString(
                 lastMove[1],
@@ -77,11 +78,11 @@ export class Replay {
           if (moveAttacker) {
             if (lineData[3]) {
               if (lineData[2]) {
-                let move = gen.moves.get(lineData[2]).accuracy;
-                if (move === true) {
-                  move = 100;
+                let moveAcc = gen.moves.get(lineData[2]).accuracy;
+                if (moveAcc === true) {
+                  moveAcc = 100;
                 }
-                moveAttacker.player.accuracy.expected += move;
+                moveAttacker.player.accuracy.expected += moveAcc;
                 moveAttacker.player.accuracy.total++;
                 moveAttacker.player.accuracy.hits++;
               }
