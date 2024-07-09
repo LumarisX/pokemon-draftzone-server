@@ -90,6 +90,7 @@ export class Replay {
           }
           break;
         case "turn":
+          this.updateChart(turn, playerData);
           turn = +lineData[1];
           break;
         case "upkeep":
@@ -332,6 +333,7 @@ export class Replay {
               username: lineData[2],
               teamSize: 0,
               totalKills: 0,
+              turnChart: [],
               totalDeaths: 0,
               team: [],
               win: false,
@@ -641,6 +643,7 @@ export class Replay {
           );
           break;
         case "win":
+          this.updateChart(turn, playerData);
           let winPlayer = playerData.findIndex(
             (player) => player.username == lineData[1]
           );
@@ -705,6 +708,7 @@ export class Replay {
         win: player.win,
         totalDeaths: player.totalDeaths,
         totalKills: player.totalKills,
+        turnChart: player.turnChart,
         accuracy: {
           total: player.accuracy.total,
           hits: player.accuracy.hits,
@@ -776,6 +780,15 @@ export class Replay {
       }
     }
     return data;
+  }
+
+  private updateChart(turn: number, playerData: Player[]) {
+    playerData.forEach((player) =>
+      player.turnChart.push({
+        turn: turn,
+        damage: player.team.reduce((sum, mon) => (sum += 100 - mon.hpp), 0),
+      })
+    );
   }
 
   private searchStatuses(
@@ -878,6 +891,7 @@ type Player = {
   totalKills: number;
   totalDeaths: number;
   team: Mon[];
+  turnChart: { turn: number; damage: number }[];
   win: boolean;
   accuracy: {
     total: number;
