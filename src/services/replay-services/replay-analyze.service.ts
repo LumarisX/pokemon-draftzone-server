@@ -136,12 +136,10 @@ export class Replay {
               brought: true,
             });
           }
-          if (lineData[2]) {
-            field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
-              playerData[switchPlayer].team.find((mon) =>
-                lineData[2].startsWith(mon.detail)
-              );
-          }
+          field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
+            playerData[switchPlayer].team.find((mon) =>
+              lineData[2]!.startsWith(mon.detail)
+            );
           break;
         case "c:":
         case "c":
@@ -398,7 +396,9 @@ export class Replay {
             } else {
               let statusParent = this.getParent(i);
               if (
-                statusParent.main[0] === "switch" &&
+                (statusParent.main[0] === "switch" ||
+                  statusParent.main[0] === "drag" ||
+                  statusParent.main[0] === "replace") &&
                 statusStart.status === "psn"
               ) {
                 statusStart.setter = field.sides[
