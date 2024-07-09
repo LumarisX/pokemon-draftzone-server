@@ -68,6 +68,25 @@ export class Replay {
           if (lineData[2] === "Future Sight") {
             console.log(lineData);
           }
+
+          let moveAttacker = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
+          if (moveAttacker) {
+            if (lineData[3]) {
+              if (lineData[2]) {
+                let move = gen.moves.get(lineData[2]).accuracy;
+                if (move === true) {
+                  move = 100;
+                }
+                moveAttacker.player.accuracy.expected += move;
+                moveAttacker.player.accuracy.total++;
+                moveAttacker.player.accuracy.hits++;
+              }
+            }
+          }
           break;
         case "turn":
           turn = +lineData[1];
@@ -90,6 +109,7 @@ export class Replay {
               return mon.detail.split(", ").every((e) => detailSet.has(e));
             }
           });
+
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
@@ -117,10 +137,9 @@ export class Replay {
               brought: true,
             });
           }
-
           field.sides[switchPlayer][lineData[1].charAt(2) as PPosition].mon =
-            playerData[switchPlayer].team.find(
-              (mon) => mon.detail == lineData[2]
+            playerData[switchPlayer].team.find((mon) =>
+              lineData[2].startsWith(mon.detail)
             );
           break;
         case "c:":
@@ -309,6 +328,7 @@ export class Replay {
             !playerData.find((player) => player.username === lineData[2])
           ) {
             playerData.push({
+              accuracy: { total: 0, hits: 0, expected: 0 },
               username: lineData[2],
               teamSize: 0,
               totalKills: 0,
@@ -434,6 +454,16 @@ export class Replay {
         case "-crit":
           break;
         case "-miss":
+          let missAttacker = this.getMonByString(
+            lineData[1],
+            field,
+            playerData
+          );
+          if (missAttacker) {
+            if (lineData[1]) {
+              missAttacker.player.accuracy.hits--;
+            }
+          }
           break;
         case "cant":
           break;
@@ -650,6 +680,13 @@ export class Replay {
       win: boolean;
       totalDeaths: number;
       totalKills: number;
+      accuracy: {
+        total: number;
+        hits: number;
+        expected: number;
+        actual: number;
+        luck: number;
+      };
       team: {
         kills: [number, number];
         brought: boolean;
@@ -666,6 +703,13 @@ export class Replay {
         win: player.win,
         totalDeaths: player.totalDeaths,
         totalKills: player.totalKills,
+        accuracy: {
+          total: player.accuracy.total,
+          hits: player.accuracy.hits,
+          expected: player.accuracy.expected,
+          actual: 0,
+          luck: 0,
+        },
         team: [] as any[],
       };
       player.team.forEach((mon) => {
@@ -679,6 +723,11 @@ export class Replay {
           name: mon.base,
         });
       });
+      playerStat.accuracy.expected /= playerStat.accuracy.total * 100;
+      playerStat.accuracy.actual =
+        playerStat.accuracy.hits / playerStat.accuracy.total;
+      playerStat.accuracy.luck =
+        playerStat.accuracy.actual / playerStat.accuracy.expected;
       stats.push(playerStat);
     });
 
@@ -828,6 +877,11 @@ type Player = {
   totalDeaths: number;
   team: Mon[];
   win: boolean;
+  accuracy: {
+    total: number;
+    hits: number;
+    expected: number;
+  };
 };
 
 type ABILITY = string;
@@ -863,12 +917,12 @@ type REASON = string;
 type REQUEST = string;
 type RULE = string;
 type SIDE = string;
-type SOURCE = string;
+type SOURCE = POKEMON;
 type SPECIES = string;
 type STAT = string;
 type STATS = string;
 type STATUS = string;
-type TARGET = string;
+type TARGET = POKEMON;
 type TIMESTAMP = string;
 type TYPE = string;
 type USER = string;

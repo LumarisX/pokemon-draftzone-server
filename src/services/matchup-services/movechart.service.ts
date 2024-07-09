@@ -234,7 +234,6 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "sandstorm",
       "snowscape",
       "hail",
-
       "sunnyday",
       "terrainpulse",
       "naturepower",
