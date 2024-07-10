@@ -44,15 +44,27 @@ export class Replay {
               +newDamage[0] > 0 ? +newDamage[0] / (+newDamage[1] / 100) : 0;
             let damageDiff = damagePosition.hpp - newDamagePercent;
             damagePosition.hpp = newDamagePercent;
-            damagePosition.damageTaken += damageDiff;
-            if (lastMove) {
+            if (this.getParent(i).main === lastMove) {
+              damagePosition.damageTaken[0] += damageDiff;
               let moveDamagePosition = this.getMonByString(
                 lastMove[1],
                 field,
                 playerData
               );
               if (moveDamagePosition && moveDamagePosition != damagePosition) {
-                moveDamagePosition.damageDealt += damageDiff;
+                moveDamagePosition.damageDealt[0] += damageDiff;
+              }
+            } else {
+              damagePosition.damageTaken[1] += damageDiff;
+              if (lineData[3]) {
+                let damageIndirect = this.searchStatuses(
+                  field,
+                  damagePosition,
+                  this.fromE2S(lineData[3])
+                );
+                if (damageIndirect && damageIndirect.setter) {
+                  damageIndirect.setter.damageDealt[1] += damageDiff;
+                }
               }
             }
           }
@@ -128,8 +140,8 @@ export class Replay {
               base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
               hpRestored: 0,
               lastDamage: undefined,
-              damageDealt: 0,
-              damageTaken: 0,
+              damageDealt: [0, 0],
+              damageTaken: [0, 0],
               kills: [0, 0],
               player: playerData[switchPlayer],
               status: { status: "healthy" },
@@ -161,9 +173,9 @@ export class Replay {
             hpp: 100,
             base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
             hpRestored: 0,
-            damageDealt: 0,
+            damageDealt: [0, 0],
             lastDamage: undefined,
-            damageTaken: 0,
+            damageTaken: [0, 0],
             player: playerData[this.getPlayer(lineData[1])],
             status: { status: "healthy" },
             statuses: [],
@@ -332,9 +344,7 @@ export class Replay {
               accuracy: { total: 0, hits: 0, expected: 0 },
               username: lineData[2],
               teamSize: 0,
-              totalKills: 0,
               turnChart: [],
-              totalDeaths: 0,
               team: [],
               win: false,
             });
@@ -664,27 +674,16 @@ export class Replay {
           console.log(lineData);
       }
     }
-    playerData.forEach(
-      (player) =>
-        (player.totalKills = player.team.reduce(
-          (sum, mon) => sum + mon.kills[0] + mon.kills[1],
-          0
-        ))
-    );
-    playerData.forEach(
-      (player) =>
-        (player.totalDeaths = player.team.reduce(
-          (sum, mon) => sum + (mon.fainted ? 1 : 0),
-          0
-        ))
-    );
+
     let gameTime = tf - t0;
 
     let stats: {
       username: string | undefined;
       win: boolean;
-      totalDeaths: number;
-      totalKills: number;
+      total: {
+        kills: number;
+        deaths: number;
+      };
       accuracy: {
         total: number;
         hits: number;
@@ -706,8 +705,24 @@ export class Replay {
       let playerStat = {
         username: player.username,
         win: player.win,
-        totalDeaths: player.totalDeaths,
-        totalKills: player.totalKills,
+        total: {
+          kills: player.team.reduce(
+            (sum, mon) => sum + mon.kills[0] + mon.kills[1],
+            0
+          ),
+          deaths: player.team.reduce(
+            (sum, mon) => sum + (mon.fainted ? 1 : 0),
+            0
+          ),
+          damageDealt: player.team.reduce(
+            (sum, mon) => sum + mon.damageDealt[0] + mon.damageDealt[1],
+            0
+          ),
+          damageTaken: player.team.reduce(
+            (sum, mon) => sum + mon.damageTaken[0] + mon.damageTaken[1],
+            0
+          ),
+        },
         turnChart: player.turnChart,
         accuracy: {
           total: player.accuracy.total,
@@ -787,6 +802,10 @@ export class Replay {
       player.turnChart.push({
         turn: turn,
         damage: player.team.reduce((sum, mon) => (sum += 100 - mon.hpp), 0),
+        remaining: player.team.reduce(
+          (sum, mon) => (sum += mon.fainted ? 0 : 1),
+          0
+        ),
       })
     );
   }
@@ -833,6 +852,10 @@ export class Replay {
   private ofP2P(ofPokemon: OFPOKEMON): POKEMON {
     return ofPokemon.substring(5) as POKEMON;
   }
+
+  private fromE2S(fromEffect: FROMEFFECT): string {
+    return fromEffect.substring(7);
+  }
 }
 
 type Mon = {
@@ -841,8 +864,8 @@ type Mon = {
   base: string | undefined;
   hpp: number;
   kills: [number, number];
-  damageDealt: number;
-  damageTaken: number;
+  damageDealt: [number, number];
+  damageTaken: [number, number];
   hpRestored: number;
   lastDamage:
     | {
@@ -888,10 +911,8 @@ type Field = {
 type Player = {
   username: undefined | string;
   teamSize: undefined | number;
-  totalKills: number;
-  totalDeaths: number;
   team: Mon[];
-  turnChart: { turn: number; damage: number }[];
+  turnChart: { turn: number; damage: number; remaining: number }[];
   win: boolean;
   accuracy: {
     total: number;
