@@ -160,7 +160,7 @@ export class Replay {
           let healPosition = this.getMonByString(lineData[1]);
           if (healPosition) {
             let newHp = this.getHPP(lineData[2]);
-            this.heal(healPosition, newHp);
+            this.heal(healPosition, newHp, lineData[3]);
           }
           break;
         case "rule":
@@ -186,12 +186,12 @@ export class Replay {
                     faintPosition,
                     faintStatus[0]
                   );
-                  faintString += ` from ${
-                    faintSideStatus && faintSideStatus.name
-                      ? faintSideStatus.name
-                      : faintStatus[0]
-                  }`;
                   if (faintSideStatus && faintSideStatus.setter) {
+                    faintString += ` from ${
+                      faintSideStatus && faintSideStatus.name
+                        ? faintSideStatus.name
+                        : faintStatus[0]
+                    }`;
                     if (faintSideStatus.setter === faintPosition) {
                       faintString += ` self-inflicted`;
                     } else {
@@ -208,6 +208,17 @@ export class Replay {
                           faintSideStatus.setter.kills[1]++;
                         }
                       }
+                    }
+                  } else {
+                    let move = gen.moves.get(faintStatus[0]);
+                    if (
+                      move.exists &&
+                      this.lastMove &&
+                      this.lastMove[2] === move.fullname.split(": ")[1]
+                    ) {
+                      faintString += ` itself by using ${this.lastMove[2]}`;
+                    } else {
+                      faintString += ` somehow`;
                     }
                   }
                 } else {
@@ -234,9 +245,6 @@ export class Replay {
                   }
                 }
               } else {
-                let faintParent = this.getParent(
-                  faintPosition.lastDamage.index
-                );
                 if (this.lastMove) {
                   let faintAttacker = this.getMonByString(this.lastMove[1]);
                   faintString += ` from ${this.lastMove[2]}`;
@@ -258,7 +266,6 @@ export class Replay {
                   } else {
                     faintString += ` by ${this.lastMove[1].split(": ")[1]}`;
                   }
-                } else {
                 }
               }
             } else {
@@ -495,7 +502,7 @@ export class Replay {
             if (hpDiff > 0) {
               this.damage(hpTarget, newHpp, lineData[3]);
             } else if (hpDiff < 0) {
-              this.heal(hpTarget, newHpp);
+              this.heal(hpTarget, newHpp, lineData[3]);
             }
           }
           break;
@@ -778,7 +785,7 @@ export class Replay {
     return hpp;
   }
 
-  private heal(healed: Mon, newHp: number) {
+  private heal(healed: Mon, newHp: number, fromEffect: FROMEFFECT | undefined) {
     let hpDiff = newHp - healed.hpp;
     healed.hpp = newHp;
     healed.fainted = false;
@@ -965,6 +972,7 @@ type ReplayData =
   | ["-fieldstart", CONDITION, FROMEFFECT]
   | ["-fieldstart", CONDITION, FROMEFFECT, OFPOKEMON]
   | ["-heal", POKEMON, HPSTATUS]
+  | ["-heal", POKEMON, HPSTATUS, FROMEFFECT]
   | ["-hint", MESSAGE]
   | ["-hitcount", POKEMON, NUM]
   | ["-immune", POKEMON]
