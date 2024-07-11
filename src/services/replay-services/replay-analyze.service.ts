@@ -85,28 +85,34 @@ export class Replay {
           let switchedMon = this.playerData[switchPlayer].team.find((mon) => {
             if (!mon.brought) {
               return new RegExp(
-                String.raw`^${mon.detail.replace("-*", ".+")}`
+                String.raw`^${mon.formes[0].detail.replace("-*", ".+")}`
               ).test(lineData[2] as string);
             } else {
               let detailSet = new Set(lineData[2]!.split(", "));
-              return mon.detail.split(", ").every((e) => detailSet.has(e));
+              return mon.formes.some((forme) =>
+                forme.detail.split(", ").every((e) => detailSet.has(e))
+              );
             }
           });
           if (switchedMon) {
             if (!switchedMon.brought) {
               switchedMon.brought = true;
-              switchedMon.detail = lineData[2];
+              switchedMon.formes[0] = {
+                detail: lineData[2],
+                id: gen.species.get(lineData[2].split(",")[0])?.id,
+              };
               switchedMon.nickname = lineData[1].split(" ")[1];
-              switchedMon.base = gen.species.get(
-                lineData[2].split(",")[0]
-              )?.baseSpecies;
             }
           } else {
             this.playerData[switchPlayer].team.push({
-              detail: lineData[2],
+              formes: [
+                {
+                  detail: lineData[2],
+                  id: gen.species.get(lineData[2].split(",")[0])?.id,
+                },
+              ],
               nickname: lineData[1].split(" ")[1],
               hpp: 100,
-              base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
               hpRestored: 0,
               lastDamage: undefined,
               damageDealt: [0, 0],
@@ -122,7 +128,7 @@ export class Replay {
           this.field.sides[switchPlayer][
             lineData[1].charAt(2) as PPosition
           ].mon = this.playerData[switchPlayer].team.find((mon) =>
-            lineData[2]!.startsWith(mon.detail)
+            mon.formes.some((forme) => lineData[2]!.startsWith(forme.detail))
           );
           break;
         case "c:":
@@ -138,10 +144,14 @@ export class Replay {
           break;
         case "poke":
           this.playerData[this.getPlayer(lineData[1])].team.push({
-            detail: lineData[2],
+            formes: [
+              {
+                detail: lineData[2],
+                id: gen.species.get(lineData[2].split(",")[0])?.id,
+              },
+            ],
             nickname: "",
             hpp: 100,
-            base: gen.species.get(lineData[2].split(",")[0])?.baseSpecies,
             hpRestored: 0,
             damageDealt: [0, 0],
             lastDamage: undefined,
@@ -171,7 +181,11 @@ export class Replay {
             faintPosition.fainted = true;
             let faintString = `${
               this.playerData[+lineData[1].charAt(1) - 1].username
-            }'s ${faintPosition.detail.split(", ")[0]} fainted`;
+            }'s ${
+              faintPosition.formes[
+                faintPosition.formes.length - 1
+              ].detail.split(", ")[0]
+            } fainted`;
             if (
               faintPosition.lastDamage &&
               faintPosition.lastDamage.data[1] === lineData[1]
@@ -203,7 +217,11 @@ export class Replay {
                       if (faintOwnKill != "self") {
                         faintString += ` indirectly by ${
                           faintSideStatus.setter.player.username
-                        }'s ${faintSideStatus.setter.detail.split(", ")[0]} `;
+                        }'s ${
+                          faintSideStatus.setter.formes[
+                            faintSideStatus.setter.formes.length - 1
+                          ].detail.split(", ")[0]
+                        } `;
                         if (faintOwnKill != "ff") {
                           faintSideStatus.setter.kills[1]++;
                         }
@@ -236,7 +254,11 @@ export class Replay {
                       if (faintOwnKill != "self") {
                         faintString += ` indirectly by ${
                           faintAttacker.player.username
-                        }'s ${faintAttacker.detail.split(", ")[0]} `;
+                        }'s ${
+                          faintAttacker.formes[
+                            faintAttacker.formes.length - 1
+                          ].detail.split(", ")[0]
+                        } `;
                         if (faintOwnKill != "ff") {
                           faintAttacker.kills[1]++;
                         }
@@ -258,7 +280,11 @@ export class Replay {
                       faintString += ` by ${
                         this.playerData[+this.lastMove[1].charAt(1) - 1]
                           .username
-                      }'s ${faintAttacker.detail.split(", ")[0]}`;
+                      }'s ${
+                        faintAttacker.formes[
+                          faintAttacker.formes.length - 1
+                        ].detail.split(", ")[0]
+                      }`;
                       if (faintOwnKill != "ff") {
                         faintAttacker.kills[0]++;
                       }
@@ -320,12 +346,12 @@ export class Replay {
           break;
         case "-formechange":
         case "detailschange":
-          let detailField = this.getMonByString(lineData[1]);
-          if (detailField) {
-            detailField.detail = lineData[2];
-            detailField.base = gen.species.get(
-              lineData[2].split(",")[0]
-            )?.baseSpecies;
+          let detailMon = this.getMonByString(lineData[1]);
+          if (detailMon) {
+            detailMon.formes.push({
+              detail: lineData[2],
+              id: gen.species.get(lineData[2].split(",")[0])?.id,
+            });
           }
           break;
         case "-activate":
@@ -533,7 +559,10 @@ export class Replay {
         case "-terastallize":
           let teraMon = this.getMonByString(lineData[1]);
           if (teraMon) {
-            teraMon.detail += `, tera:${lineData[2]}`;
+            teraMon.formes.map((forme) => ({
+              detail: `${forme.detail}, tera:${lineData[2]}`,
+              base: forme.id,
+            }));
           }
           break;
         case "-fieldactivate":
@@ -674,7 +703,7 @@ export class Replay {
           damageDealt: mon.damageDealt,
           damageTaken: mon.damageTaken,
           hpRestored: mon.hpRestored,
-          name: mon.base,
+          formes: mon.formes,
         });
       });
       playerStat.accuracy.expected /= playerStat.accuracy.total * 100;
@@ -830,9 +859,8 @@ export class Replay {
 }
 
 type Mon = {
-  detail: string;
+  formes: { detail: string; id: string | undefined }[];
   nickname: string;
-  base: string | undefined;
   hpp: number;
   kills: [number, number];
   damageDealt: [number, number];
