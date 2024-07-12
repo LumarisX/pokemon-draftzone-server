@@ -29,6 +29,7 @@ export class Replay {
     let events: { player: number; turn: number; message: string }[] = [];
     let gens = new Generations(Dex);
     let gen = gens.dex;
+    let critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
     for (this.i = 0; this.i < this.replayData.length; this.i++) {
       let lineData = this.replayData[this.i];
       switch (lineData[0]) {
@@ -54,18 +55,31 @@ export class Replay {
           if (lineData[2] === "Future Sight") {
             console.log(lineData);
           }
-
           let moveAttacker = this.getMonByString(lineData[1]);
           if (moveAttacker) {
-            if (lineData[3]) {
-              if (lineData[2]) {
-                let moveAcc = gen.moves.get(lineData[2]).accuracy;
-                if (moveAcc === true) {
-                  moveAcc = 100;
+            if (lineData[3] && lineData[2]) {
+              let move = gen.moves.get(lineData[2]);
+              if (move.exists === true) {
+                if (move.target && move.target !== "self") {
+                  moveAttacker.player.luck.moves.expected +=
+                    move.accuracy === true ? 1 : move.accuracy / 100;
+                  moveAttacker.player.luck.moves.total++;
+                  moveAttacker.player.luck.moves.hits++;
+                  if (
+                    move.critRatio &&
+                    (move.category === "Physical" ||
+                      move.category === "Special")
+                  ) {
+                    let critChance = move.critRatio;
+                    moveAttacker.player.luck.crits.expected +=
+                      critChance > 6 ? 1 : critChances[critChance];
+                    moveAttacker.player.luck.crits.total++;
+                  }
                 }
-                moveAttacker.player.accuracy.expected += moveAcc;
-                moveAttacker.player.accuracy.total++;
-                moveAttacker.player.accuracy.hits++;
+              }
+              if (moveAttacker.status.status === "par") {
+                moveAttacker.player.luck.status.total++;
+                moveAttacker.player.luck.status.expected += 0.25;
               }
             }
           }
@@ -326,7 +340,11 @@ export class Replay {
             !this.playerData.find((player) => player.username === lineData[2])
           ) {
             this.playerData.push({
-              accuracy: { total: 0, hits: 0, expected: 0 },
+              luck: {
+                moves: { total: 0, hits: 0, expected: 0 },
+                crits: { total: 0, hits: 0, expected: 0 },
+                status: { total: 0, full: 0, expected: 0 },
+              },
               username: lineData[2],
               teamSize: 0,
               turnChart: [],
@@ -370,6 +388,12 @@ export class Replay {
               case "brn":
                 statusStart = { status: "brn", name: "Burn" };
                 break;
+              case "par":
+                statusStart = { status: "par", name: "Paralysis" };
+                break;
+              case "frz":
+                statusStart = { status: "frz", name: "Freeze" };
+                break;
             }
             if (lineData[3]) {
               if (lineData[3].startsWith("[from] item: ")) {
@@ -382,7 +406,7 @@ export class Replay {
                 );
               }
             } else {
-              let statusParent = this.getParent(this.i);
+              let statusParent = this.getParent();
               if (
                 (statusParent.main[0] === "switch" ||
                   statusParent.main[0] === "drag" ||
@@ -408,7 +432,7 @@ export class Replay {
               }
             }
 
-            statusPosition.statuses.push(statusStart);
+            statusPosition.status = statusStart;
           }
           break;
         case "-weather":
@@ -429,16 +453,31 @@ export class Replay {
           }
           break;
         case "-crit":
+          let critMain = this.getParent().main;
+          if (critMain[0] === "move") {
+            let critAttacker = this.getMonByString(critMain[1]);
+            if (critAttacker) {
+              critAttacker.player.luck.crits.hits++;
+            }
+          }
           break;
         case "-miss":
           let missAttacker = this.getMonByString(lineData[1]);
           if (missAttacker) {
             if (lineData[1]) {
-              missAttacker.player.accuracy.hits--;
+              missAttacker.player.luck.moves.hits--;
             }
           }
           break;
         case "cant":
+          let cantMon = this.getMonByString(lineData[1]);
+          if (cantMon) {
+            if (lineData[2] === "par") {
+              cantMon.player.luck.status.full++;
+              cantMon.player.luck.status.total++;
+              cantMon.player.luck.status.expected += 0.25;
+            }
+          }
           break;
         case "l":
           break;
@@ -576,7 +615,7 @@ export class Replay {
         case "-end":
           break;
         case "-sidestart":
-          let sideParent = this.getParent(this.i);
+          let sideParent = this.getParent();
           if (sideParent.main[0] == "move") {
             let sideMon = this.getMonByString(sideParent.main[1]);
             if (sideMon) {
@@ -646,12 +685,25 @@ export class Replay {
         kills: number;
         deaths: number;
       };
-      accuracy: {
-        total: number;
-        hits: number;
-        expected: number;
-        actual: number;
-        luck: number;
+      luck: {
+        moves: {
+          total: number;
+          hits: number;
+          expected: number;
+          actual: number;
+        };
+        crits: {
+          total: number;
+          hits: number;
+          expected: number;
+          actual: number;
+        };
+        status: {
+          total: number;
+          full: number;
+          expected: number;
+          actual: number;
+        };
       };
       team: {
         kills: [number, number];
@@ -686,12 +738,25 @@ export class Replay {
           ),
         },
         turnChart: player.turnChart,
-        accuracy: {
-          total: player.accuracy.total,
-          hits: player.accuracy.hits,
-          expected: player.accuracy.expected,
-          actual: 0,
-          luck: 0,
+        luck: {
+          moves: {
+            total: player.luck.moves.total,
+            hits: player.luck.moves.hits,
+            expected: player.luck.moves.expected,
+            actual: 0,
+          },
+          crits: {
+            total: player.luck.crits.total,
+            hits: player.luck.crits.hits,
+            expected: player.luck.crits.expected,
+            actual: 0,
+          },
+          status: {
+            total: player.luck.status.total,
+            full: player.luck.status.full,
+            expected: player.luck.status.expected,
+            actual: 0,
+          },
         },
         team: [] as any[],
       };
@@ -706,11 +771,20 @@ export class Replay {
           formes: mon.formes,
         });
       });
-      playerStat.accuracy.expected /= playerStat.accuracy.total * 100;
-      playerStat.accuracy.actual =
-        playerStat.accuracy.hits / playerStat.accuracy.total;
-      playerStat.accuracy.luck =
-        playerStat.accuracy.actual / playerStat.accuracy.expected;
+      playerStat.luck.moves.expected /= playerStat.luck.moves.total;
+      playerStat.luck.moves.actual =
+        playerStat.luck.moves.hits / playerStat.luck.moves.total;
+
+      playerStat.luck.crits.expected /= playerStat.luck.crits.total;
+      playerStat.luck.crits.actual =
+        playerStat.luck.crits.hits / playerStat.luck.crits.total;
+
+      playerStat.luck.status.expected /= playerStat.luck.status.total;
+      playerStat.luck.status.actual =
+        playerStat.luck.status.full / playerStat.luck.status.total;
+
+      console.log(player.username, playerStat.luck);
+
       stats.push(playerStat);
     });
 
@@ -743,9 +817,9 @@ export class Replay {
     }
   }
 
-  private getParent(index: number): { main: ReplayData; sub: ReplayData[] } {
-    let data = { main: this.replayData[index], sub: [] as ReplayData[] };
-    for (let i = index; i > 0; i--) {
+  private getParent(): { main: ReplayData; sub: ReplayData[] } {
+    let data = { main: this.replayData[this.i], sub: [] as ReplayData[] };
+    for (let i = this.i; i > 0; i--) {
       if (this.replayData[i][0].charAt(0) !== "-") {
         data.main = this.replayData[i];
         i = 0;
@@ -775,7 +849,7 @@ export class Replay {
     status: string
   ): Status | undefined {
     if (mon.status.status === status) {
-      return field.weather;
+      return mon.status;
     }
     if (mon.lastDamage && mon.lastDamage.data[1]) {
       let monStatus = mon.statuses.find((s) => s.status === status);
@@ -828,7 +902,7 @@ export class Replay {
   ) {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
-    if (this.getParent(this.i).main === this.lastMove) {
+    if (this.getParent().main === this.lastMove) {
       target.damageTaken[0] += hppDiff;
       let moveDamagePosition = this.getMonByString(this.lastMove[1]);
       if (moveDamagePosition && moveDamagePosition != target) {
@@ -910,10 +984,22 @@ type Player = {
   team: Mon[];
   turnChart: { turn: number; damage: number; remaining: number }[];
   win: boolean;
-  accuracy: {
-    total: number;
-    hits: number;
-    expected: number;
+  luck: {
+    moves: {
+      total: number;
+      hits: number;
+      expected: number;
+    };
+    crits: {
+      total: number;
+      hits: number;
+      expected: number;
+    };
+    status: {
+      total: number;
+      full: number;
+      expected: number;
+    };
   };
 };
 
@@ -931,7 +1017,7 @@ type FORMATNAME = string;
 type FROMEFFECT = `[from] ${EFFECT}`;
 type GAMETYPE = `singles` | `doubles` | `triples` | `multi` | `freeforall`;
 type GENNUM = string;
-type HP = string;
+type HP = `${string}/${string}`;
 type HPSTATUS = `${HP} ${STATUS}`;
 type ITEM = "item" | "";
 type MEGASTONE = string;
