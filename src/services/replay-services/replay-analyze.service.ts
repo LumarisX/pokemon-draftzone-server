@@ -324,15 +324,21 @@ export class Replay {
                               subEnd[2].toLowerCase().replace(" ", "")
                             )
                         );
-                        if (subEndMonStatus && subEndMonStatus.setter) {
-                          subEndMonStatus.setter.kills[0]++;
-                          faintString += ` by ${
-                            subEndMonStatus.setter.player.username
-                          }'s ${
-                            subEndMonStatus.setter.formes[
-                              subEndMonStatus.setter.formes.length - 1
-                            ].detail.split(", ")[0]
-                          }`;
+                        if (subEndMonStatus) {
+                          faintString += ` from ${subEndMonStatus.status.replace(
+                            "move: ",
+                            ""
+                          )}`;
+                          if (subEndMonStatus.setter) {
+                            subEndMonStatus.setter.kills[0]++;
+                            faintString += ` by ${
+                              subEndMonStatus.setter.player.username
+                            }'s ${
+                              subEndMonStatus.setter.formes[
+                                subEndMonStatus.setter.formes.length - 1
+                              ].detail.split(", ")[0]
+                            }`;
+                          }
                         }
                       }
                     }
