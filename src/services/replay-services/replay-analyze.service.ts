@@ -7,7 +7,6 @@ export class Replay {
   playerData!: Player[];
   i: number = 0;
   lastMove: MoveData | undefined;
-  lastDamage: { lineData: DamageData; index: number } | undefined;
 
   constructor(data: string) {
     this.replayData = data
@@ -43,7 +42,6 @@ export class Replay {
             let newDamagePercent = this.getHPP(lineData[2]);
             this.damage(damageTarget, newDamagePercent, lineData[3]);
           }
-          this.lastDamage = { lineData: lineData, index: this.i };
           break;
         case "t:":
           if (t0) {
@@ -88,6 +86,7 @@ export class Replay {
           turn = +lineData[1];
           break;
         case "upkeep":
+          this.cleanStatuses();
           break;
         case "-anim":
           break;
@@ -280,56 +279,60 @@ export class Replay {
                 }
               } //Fainted from direct damage
               else {
-                if (this.lastDamage) {
-                  let damageLastDamageParent = this.getParent(
-                    this.lastDamage.index
-                  );
-                  if (this.lastMove) {
-                    if (this.lastMove === damageLastDamageParent.main) {
-                      let faintAttacker = this.getMonByString(this.lastMove[1]);
-                      faintString += ` from ${this.lastMove[2]}`;
-                      if (faintAttacker) {
-                        let faintOwnKill = this.checkOwnKill(
-                          faintAttacker,
-                          faintPosition,
-                          this.playerData
+                let damageLastDamageParent = this.getParent(
+                  faintPosition.lastDamage.index
+                );
+                if (this.lastMove) {
+                  if (this.lastMove === damageLastDamageParent.main) {
+                    let faintAttacker = this.getMonByString(this.lastMove[1]);
+                    faintString += ` from ${this.lastMove[2]}`;
+                    if (faintAttacker) {
+                      let faintOwnKill = this.checkOwnKill(
+                        faintAttacker,
+                        faintPosition,
+                        this.playerData
+                      );
+                      if (faintOwnKill != "self") {
+                        faintString += ` by ${
+                          this.playerData[+this.lastMove[1].charAt(1) - 1]
+                            .username
+                        }'s ${
+                          faintAttacker.formes[
+                            faintAttacker.formes.length - 1
+                          ].detail.split(", ")[0]
+                        }`;
+                        if (faintOwnKill != "ff") {
+                          faintAttacker.kills[0]++;
+                        }
+                      }
+                    } else {
+                      faintString += ` by ${this.lastMove[1].split(": ")[1]}`;
+                    }
+                  }
+                  //Damaged from not a direct move
+                  else {
+                    let subEnd = damageLastDamageParent.sub.find(
+                      (sub) => sub[0] === "-end"
+                    );
+                    if (subEnd) {
+                      let subEndMon = this.getMonByString(subEnd[1]);
+                      if (subEndMon) {
+                        let subEndMonStatus = subEndMon.statuses.find(
+                          (status) =>
+                            status.status === subEnd[2] ||
+                            status.status.startsWith(
+                              subEnd[2].toLowerCase().replace(" ", "")
+                            )
                         );
-                        if (faintOwnKill != "self") {
+                        if (subEndMonStatus && subEndMonStatus.setter) {
+                          subEndMonStatus.setter.kills[0]++;
                           faintString += ` by ${
-                            this.playerData[+this.lastMove[1].charAt(1) - 1]
-                              .username
+                            subEndMonStatus.setter.player.username
                           }'s ${
-                            faintAttacker.formes[
-                              faintAttacker.formes.length - 1
+                            subEndMonStatus.setter.formes[
+                              subEndMonStatus.setter.formes.length - 1
                             ].detail.split(", ")[0]
                           }`;
-                          if (faintOwnKill != "ff") {
-                            faintAttacker.kills[0]++;
-                          }
-                        }
-                      } else {
-                        faintString += ` by ${this.lastMove[1].split(": ")[1]}`;
-                      }
-                    }
-                    //Damaged from not a direct move
-                    else {
-                      let subEnd = this.getParent(
-                        this.lastDamage.index
-                      ).sub.find((sub) => sub[0] === "-end");
-                      if (subEnd) {
-                        let subEndMon = this.getMonByString(subEnd[1]);
-                        if (subEndMon) {
-                          let subEndMonStatus = subEndMon.statuses.find(
-                            (status) =>
-                              status.status === subEnd[2] ||
-                              status.status.startsWith(
-                                subEnd[2].toLowerCase().replace(" ", "")
-                              )
-                          );
-                          if (subEndMonStatus && subEndMonStatus.setter) {
-                            console.log(subEndMonStatus);
-                            subEndMonStatus.setter.kills[0]++;
-                          }
                         }
                       }
                     }
@@ -920,7 +923,22 @@ export class Replay {
     return;
   }
 
-  private cleanStatuses() {}
+  private cleanStatuses() {
+    this.field.statuses = this.field.statuses.filter((status) => !status.ended);
+    this.field.sides.forEach((side) => {
+      side.statuses = side.statuses.filter((status) => !status.ended);
+      side.a.statuses = side.a.statuses.filter((status) => !status.ended);
+      side.b.statuses = side.b.statuses.filter((status) => !status.ended);
+      side.c.statuses = side.c.statuses.filter((status) => !status.ended);
+    });
+    this.playerData.forEach((player) =>
+      player.team.forEach((mon) => {
+        mon.status = mon.status.ended ? { status: "healthy" } : mon.status;
+        mon.statuses = mon.statuses.filter((status) => !status.ended);
+      })
+    );
+    return;
+  }
 
   private checkOwnKill(
     attacker: Mon | undefined,
