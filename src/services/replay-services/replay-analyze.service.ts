@@ -1,4 +1,4 @@
-import { Generations } from "@pkmn/data";
+import { Generations, Move } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class Replay {
@@ -6,7 +6,7 @@ export class Replay {
   field!: Field;
   playerData!: Player[];
   i: number = 0;
-  lastMove: MoveData | undefined;
+  lastMove: { data: MoveData; move: Move } | undefined;
 
   constructor(data: string) {
     this.replayData = data
@@ -51,12 +51,18 @@ export class Replay {
           }
           break;
         case "move":
-          this.lastMove = lineData;
           let moveAttacker = this.getMonByString(lineData[1]);
           if (moveAttacker) {
             if (lineData[3] && lineData[2]) {
-              let move = gen.moves.get(lineData[2]);
+              let move = moveAttacker.moveset.find(
+                (move) => move.name === lineData[2]
+              );
+              if (!move) {
+                move = gen.moves.get(lineData[2]);
+                moveAttacker.moveset.push(move);
+              }
               if (move.exists === true) {
+                this.lastMove = { data: lineData, move: move };
                 if (move.target && move.target !== "self") {
                   moveAttacker.player.luck.moves.expected +=
                     move.accuracy === true ? 1 : move.accuracy / 100;
@@ -68,7 +74,6 @@ export class Replay {
                       move.category === "Special")
                   ) {
                     let critChance = move.critRatio;
-                    console.log(move.name, move.critRatio);
                     moveAttacker.player.luck.crits.expected +=
                       critChance > 6 ? 1 : critChances[critChance];
                     moveAttacker.player.luck.crits.total++;
@@ -91,9 +96,10 @@ export class Replay {
           break;
         case "-anim":
           break;
+        case "switch":
+          this.playerData[+lineData[1].charAt(1) - 1].stats.switches++;
         case "replace":
         case "drag":
-        case "switch":
           let switchPlayer = +lineData[1].charAt(1) - 1;
           let switchedMon = this.playerData[switchPlayer].team.find((mon) => {
             if (!mon.brought) {
@@ -126,9 +132,14 @@ export class Replay {
               ],
               nickname: lineData[1].split(" ")[1],
               hpp: 100,
+              moveset: [],
               hpRestored: 0,
               lastDamage: undefined,
               damageDealt: [0, 0],
+              calcLog: {
+                damageTaken: [],
+                damageDealt: [],
+              },
               damageTaken: [0, 0],
               kills: [0, 0],
               player: this.playerData[switchPlayer],
@@ -165,10 +176,15 @@ export class Replay {
             ],
             nickname: "",
             hpp: 100,
+            moveset: [],
             hpRestored: 0,
             damageDealt: [0, 0],
             lastDamage: undefined,
             damageTaken: [0, 0],
+            calcLog: {
+              damageTaken: [],
+              damageDealt: [],
+            },
             player: this.playerData[this.getPlayer(lineData[1])],
             status: { status: "healthy" },
             statuses: [],
@@ -238,9 +254,11 @@ export class Replay {
                   faintMon.lastDamage.index
                 );
                 if (this.lastMove) {
-                  if (this.lastMove === damageLastDamageParent.main) {
-                    let faintAttacker = this.getMonByString(this.lastMove[1]);
-                    faintString += ` from ${this.lastMove[2]}`;
+                  if (this.lastMove.data === damageLastDamageParent.main) {
+                    let faintAttacker = this.getMonByString(
+                      this.lastMove.data[1]
+                    );
+                    faintString += ` from ${this.lastMove.data[2]}`;
                     if (faintAttacker) {
                       let faintOwnKill = this.checkOwnKill(
                         faintAttacker,
@@ -248,7 +266,7 @@ export class Replay {
                       );
                       if (faintOwnKill != "self") {
                         faintString += ` by ${
-                          this.playerData[+this.lastMove[1].charAt(1) - 1]
+                          this.playerData[+this.lastMove.data[1].charAt(1) - 1]
                             .username
                         }'s ${
                           faintAttacker.formes[
@@ -260,7 +278,9 @@ export class Replay {
                         }
                       }
                     } else {
-                      faintString += ` by ${this.lastMove[1].split(": ")[1]}`;
+                      faintString += ` by ${
+                        this.lastMove.data[1].split(": ")[1]
+                      }`;
                     }
                   }
                   //Damaged from not a direct move
@@ -301,7 +321,7 @@ export class Replay {
               }
             } else {
               if (this.lastMove) {
-                let faintMove = gen.moves.get(this.lastMove[2]);
+                let faintMove = gen.moves.get(this.lastMove.data[2]);
                 if ("selfdestruct" in faintMove) {
                   faintString += ` itself by using ${faintMove.name}`;
                 }
@@ -336,6 +356,7 @@ export class Replay {
                 crits: { total: 0, hits: 0, expected: 0 },
                 status: { total: 0, full: 0, expected: 0 },
               },
+              stats: { switches: 0 },
               username: lineData[2],
               teamSize: 0,
               turnChart: [],
@@ -403,8 +424,11 @@ export class Replay {
             if (lineData[3]) {
               if (lineData[3].startsWith("[from] item: ")) {
                 statusStart.setter = statusPosition;
-              } else if (this.lastMove && this.lastMove[3] === lineData[1]) {
-                statusStart.setter = this.getMonByString(this.lastMove[1]);
+              } else if (
+                this.lastMove &&
+                this.lastMove.data[3] === lineData[1]
+              ) {
+                statusStart.setter = this.getMonByString(this.lastMove.data[1]);
               } else if (lineData[4] && lineData[4].startsWith("[of] ")) {
                 statusStart.setter = this.getMonByString(
                   this.ofP2P(lineData[4] as OFPOKEMON)
@@ -450,7 +474,9 @@ export class Replay {
               weatherStatus.setter = weatherPosition;
             } else {
               if (this.lastMove) {
-                let weatherPosition = this.getMonByString(this.lastMove[1]);
+                let weatherPosition = this.getMonByString(
+                  this.lastMove.data[1]
+                );
                 weatherStatus.setter = weatherPosition;
               }
             }
@@ -552,9 +578,9 @@ export class Replay {
           break;
         case "-hitcount":
           if (this.lastMove) {
-            let hitAttacker = this.getMonByString(this.lastMove[1]);
+            let hitAttacker = this.getMonByString(this.lastMove.data[1]);
             if (hitAttacker) {
-              let hitMove = gen.moves.get(this.lastMove[2]);
+              let hitMove = gen.moves.get(this.lastMove.data[2]);
               if (hitMove.exists === true) {
                 if (hitMove.target && hitMove.target !== "self") {
                   let hitCount = +lineData[2];
@@ -746,47 +772,12 @@ export class Replay {
 
     let gameTime = tf - t0;
 
-    let stats: {
-      username: string | undefined;
-      win: boolean;
-      total: {
-        kills: number;
-        deaths: number;
-      };
-      luck: {
-        moves: {
-          total: number;
-          hits: number;
-          expected: number;
-          actual: number;
-        };
-        crits: {
-          total: number;
-          hits: number;
-          expected: number;
-          actual: number;
-        };
-        status: {
-          total: number;
-          full: number;
-          expected: number;
-          actual: number;
-        };
-      };
-      team: {
-        kills: [number, number];
-        brought: boolean;
-        fainted: boolean;
-        damageDealt: number;
-        damageTaken: number;
-        hpRestored: number;
-        formes: { detail: string; id?: string }[];
-      }[];
-    }[] = [];
+    let stats: ReplayStats[] = [];
     this.playerData.forEach((player) => {
-      let playerStat = {
+      let playerStat: ReplayStats = {
         username: player.username,
         win: player.win,
+        stats: player.stats,
         total: {
           kills: player.team.reduce(
             (sum, mon) => sum + mon.kills[0] + mon.kills[1],
@@ -833,8 +824,21 @@ export class Replay {
           kills: mon.kills,
           brought: mon.brought,
           fainted: mon.fainted,
+          moveset: mon.moveset.map((move) => move.name),
           damageDealt: mon.damageDealt,
           damageTaken: mon.damageTaken,
+          calcLog: {
+            damageDealt: mon.calcLog.damageDealt.map((log) => ({
+              target: log.target.formes[0].detail,
+              hpDiff: log.hpDiff,
+              move: log.move.name,
+            })),
+            damageTaken: mon.calcLog.damageTaken.map((log) => ({
+              attacker: log.attacker.formes[0].detail,
+              hpDiff: log.hpDiff,
+              move: log.move.name,
+            })),
+          },
           hpRestored: mon.hpRestored,
           formes: mon.formes,
         });
@@ -980,11 +984,21 @@ export class Replay {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
     let damageParent = this.getParent(this.i);
-    if (damageParent.main === this.lastMove) {
+    if (this.lastMove && damageParent.main === this.lastMove.data) {
       target.damageTaken[0] += hppDiff;
-      let moveDamagePosition = this.getMonByString(this.lastMove[1]);
-      if (moveDamagePosition && moveDamagePosition != target) {
-        moveDamagePosition.damageDealt[0] += hppDiff;
+      let moveDamageAttacker = this.getMonByString(this.lastMove.data[1]);
+      if (moveDamageAttacker && moveDamageAttacker != target) {
+        moveDamageAttacker.damageDealt[0] += hppDiff;
+        target.calcLog.damageTaken.push({
+          attacker: moveDamageAttacker,
+          move: this.lastMove.move,
+          hpDiff: hppDiff,
+        });
+        moveDamageAttacker.calcLog.damageDealt.push({
+          target: target,
+          move: this.lastMove.move,
+          hpDiff: hppDiff,
+        });
       }
     } else {
       target.damageTaken[1] += hppDiff;
@@ -1025,13 +1039,71 @@ export class Replay {
   }
 }
 
+type ReplayStats = {
+  username: string | undefined;
+  win: boolean;
+  total: {
+    kills: number;
+    deaths: number;
+    damageDealt: number;
+    damageTaken: number;
+  };
+  stats: {
+    switches: number;
+  };
+  turnChart: {
+    turn: number;
+    damage: number;
+    remaining: number;
+  }[];
+  luck: {
+    moves: {
+      total: number;
+      hits: number;
+      expected: number;
+      actual: number;
+    };
+    crits: {
+      total: number;
+      hits: number;
+      expected: number;
+      actual: number;
+    };
+    status: {
+      total: number;
+      full: number;
+      expected: number;
+      actual: number;
+    };
+  };
+  team: {
+    kills: [number, number];
+    brought: boolean;
+    fainted: boolean;
+    moveset: string[];
+    damageDealt: [number, number];
+    damageTaken: [number, number];
+    calcLog: {
+      damageTaken: { attacker: string; move: string; hpDiff: number }[];
+      damageDealt: { target: string; move: string; hpDiff: number }[];
+    };
+    hpRestored: number;
+    formes: { detail: string; id?: string }[];
+  }[];
+};
+
 type Mon = {
   formes: { detail: string; id?: string }[];
   nickname: string;
   hpp: number;
+  moveset: Move[];
   kills: [number, number];
   damageDealt: [number, number];
   damageTaken: [number, number];
+  calcLog: {
+    damageTaken: { attacker: Mon; move: Move; hpDiff: number }[];
+    damageDealt: { target: Mon; move: Move; hpDiff: number }[];
+  };
   hpRestored: number;
   lastDamage:
     | {
@@ -1077,6 +1149,9 @@ type Player = {
   team: Mon[];
   turnChart: { turn: number; damage: number; remaining: number }[];
   win: boolean;
+  stats: {
+    switches: number;
+  };
   luck: {
     moves: {
       total: number;
