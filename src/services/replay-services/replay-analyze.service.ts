@@ -203,6 +203,8 @@ export class Replay {
             ) {
               //Fainted from a status
               if (faintPosition.lastDamage.data[3]) {
+                if (faintPosition.lastDamage.data[3].startsWith("[")) {
+                }
                 let faintStatus = faintPosition.lastDamage.data[3]
                   .substring(7)
                   .split(": ");
@@ -253,9 +255,18 @@ export class Replay {
                 } else {
                   faintString += ` from ${faintStatus.slice(1).join(" ")}`;
                   if (faintPosition.lastDamage.data[4]) {
-                    let faintAttacker = this.getMonByString(
-                      this.ofP2P(faintPosition.lastDamage.data[4])
-                    );
+                    let faintAttacker: Mon | undefined = undefined;
+                    if (faintPosition.lastDamage.data[4].startsWith("[of] ")) {
+                      faintAttacker = this.getMonByString(
+                        this.ofP2P(
+                          faintPosition.lastDamage.data[4] as OFPOKEMON
+                        )
+                      );
+                    } else if (
+                      faintPosition.lastDamage.data[4].startsWith("[from] ")
+                    ) {
+                    } else {
+                    }
                     if (faintAttacker) {
                       let faintOwnKill = this.checkOwnKill(
                         faintAttacker,
@@ -410,6 +421,7 @@ export class Replay {
           }
           break;
         case "-activate":
+          console.log(lineData);
           break;
         case "-status":
           let statusPosition = this.getMonByString(lineData[1]);
@@ -437,9 +449,9 @@ export class Replay {
                 statusStart.setter = statusPosition;
               } else if (this.lastMove && this.lastMove[3] === lineData[1]) {
                 statusStart.setter = this.getMonByString(this.lastMove[1]);
-              } else if (lineData[4]) {
+              } else if (lineData[4] && lineData[4].startsWith("[of] ")) {
                 statusStart.setter = this.getMonByString(
-                  this.ofP2P(lineData[4])
+                  this.ofP2P(lineData[4] as OFPOKEMON)
                 );
               }
             } else {
@@ -475,9 +487,9 @@ export class Replay {
         case "-weather":
           if (lineData[1] !== this.field.weather.status) {
             let weatherStatus: Status = { status: lineData[1] };
-            if (lineData.length > 3 && typeof lineData[3] === "string") {
+            if (lineData.length > 3 && lineData[3].startsWith("[of] ")) {
               let weatherPosition = this.getMonByString(
-                this.ofP2P(lineData[3])
+                this.ofP2P(lineData[3] as OFPOKEMON)
               );
               weatherStatus.setter = weatherPosition;
             } else {
@@ -708,8 +720,10 @@ export class Replay {
           break;
         case "-fieldstart":
           let fieldStartStatus: Status = { status: lineData[1] };
-          if (lineData[3]) {
-            let fieldStartSetter = this.getMonByString(this.ofP2P(lineData[3]));
+          if (lineData[3] && lineData[3].startsWith("[of] ")) {
+            let fieldStartSetter = this.getMonByString(
+              this.ofP2P(lineData[3] as OFPOKEMON)
+            );
             if (fieldStartSetter) {
               fieldStartStatus.setter = fieldStartSetter;
             }
@@ -868,7 +882,8 @@ export class Replay {
     return +position.charAt(1) - 1;
   }
 
-  private getMonByString(pos: POKEMON): Mon | undefined {
+  private getMonByString(pos: POKEMON | undefined): Mon | undefined {
+    if (pos === undefined) return;
     if (
       pos.charAt(2) === "a" ||
       pos.charAt(2) === "b" ||
@@ -967,7 +982,7 @@ export class Replay {
     return hpp;
   }
 
-  private heal(healed: Mon, newHp: number, fromEffect: FROMEFFECT | undefined) {
+  private heal(healed: Mon, newHp: number, action: MARJORACTION | undefined) {
     let hpDiff = newHp - healed.hpp;
     healed.hpp = newHp;
     healed.fainted = false;
@@ -977,7 +992,7 @@ export class Replay {
   private damage(
     target: Mon,
     newHpp: number,
-    fromEffect: FROMEFFECT | undefined
+    action: MARJORACTION | undefined
   ) {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
@@ -990,10 +1005,10 @@ export class Replay {
       }
     } else {
       target.damageTaken[1] += hppDiff;
-      if (fromEffect) {
+      if (action && action.startsWith("[from] ")) {
         let damageIndirect = this.searchStatuses(
           target,
-          this.fromE2S(fromEffect)
+          this.fromE2S(action as FROMEFFECT)
         );
         if (damageIndirect && damageIndirect.setter) {
           damageIndirect.setter.damageDealt[1] += hppDiff;
@@ -1015,8 +1030,11 @@ export class Replay {
     }
   }
 
-  private ofP2P(ofPokemon: OFPOKEMON): POKEMON {
-    return ofPokemon.substring(5) as POKEMON;
+  private ofP2P(ofPokemon: OFPOKEMON): POKEMON | undefined {
+    if (ofPokemon.startsWith("[of] ")) {
+      return ofPokemon.substring(5) as POKEMON;
+    }
+    return undefined;
   }
 
   private fromE2S(fromEffect: FROMEFFECT): string {
@@ -1117,7 +1135,7 @@ type MESSAGE = string;
 type MOVE = string;
 type NUM = string;
 type NUMBER = string;
-type OFPOKEMON = `[of] ${POKEMON}`;
+type OFPOKEMON = `[of] ${SOURCE}`;
 type PLAYER = string;
 type POKEMON = `p${PPlayer}${PPosition}: ${string}` | `p${PPlayer}: ${string}`;
 type POSITION = "0" | "1" | "2";
@@ -1140,14 +1158,19 @@ type USER = string;
 type USERNAME = string;
 type WEATHER = string;
 
-type MoveData = ["move", POKEMON, MOVE, TARGET];
-type DamageData =
-  | ["-damage", POKEMON, HPSTATUS]
-  | ["-damage", POKEMON, HPSTATUS, FROMEFFECT]
-  | ["-damage", POKEMON, HPSTATUS, FROMEFFECT, OFPOKEMON];
-type SetHPData = ["-sethp", POKEMON, HP] | ["-sethp", POKEMON, HP, FROMEFFECT];
+type MARJORACTION = OFPOKEMON | FROMEFFECT | EFFECT;
+
+type MoveData = ["move", POKEMON, MOVE, TARGET, ...MARJORACTION[]];
+type DamageData = ["-damage", POKEMON, HPSTATUS, ...MARJORACTION[]];
+type SetHPData = ["-sethp", POKEMON, HP, ...MARJORACTION[]];
 
 type ReplayData =
+  | [...SubReplayData, ...MARJORACTION[]]
+  | DamageData
+  | SetHPData
+  | MoveData;
+
+type SubReplayData =
   | [""]
   | ["-ability", POKEMON, ABILITY, FROMEFFECT]
   | ["-ability", POKEMON, ABILITY]
@@ -1166,24 +1189,18 @@ type ReplayData =
   | ["-crit", POKEMON]
   | ["-curestatus", POKEMON, STATUS]
   | ["-cureteam", POKEMON]
-  | DamageData
   | ["-end", POKEMON, EFFECT]
   | ["-endability", POKEMON]
-  | ["-enditem", POKEMON, ITEM, FROMEFFECT]
   | ["-enditem", POKEMON, ITEM]
   | ["-fail", POKEMON, ACTION]
   | ["-fieldactivate"]
   | ["-fieldend", CONDITION]
   | ["-fieldstart", CONDITION]
-  | ["-fieldstart", CONDITION, FROMEFFECT]
-  | ["-fieldstart", CONDITION, FROMEFFECT, OFPOKEMON]
   | ["-heal", POKEMON, HPSTATUS]
-  | ["-heal", POKEMON, HPSTATUS, FROMEFFECT]
   | ["-hint", MESSAGE]
   | ["-hitcount", POKEMON, NUM]
   | ["-immune", POKEMON]
   | ["-invertboost", POKEMON]
-  | ["-item", POKEMON, ITEM, FROMEFFECT]
   | ["-item", POKEMON, ITEM]
   | ["-mega", POKEMON, MEGASTONE]
   | ["-message", MESSAGE]
@@ -1195,15 +1212,12 @@ type ReplayData =
   | ["-primal", POKEMON]
   | ["-resisted", POKEMON]
   | ["-setboost", POKEMON, STAT, AMOUNT]
-  | SetHPData
   | ["-sideend", SIDE, CONDITION]
   | ["-sidestart", SIDE, CONDITION]
   | ["-singlemove", POKEMON, MOVE]
   | ["-singleturn", POKEMON, MOVE]
   | ["-start", POKEMON, EFFECT]
   | ["-status", POKEMON, STATUS]
-  | ["-status", POKEMON, STATUS, FROMEFFECT]
-  | ["-status", POKEMON, STATUS, FROMEFFECT, OFPOKEMON]
   | ["-supereffective", POKEMON]
   | ["-swapboost", SOURCE, TARGET, STATS]
   | ["-swapsideconditions"]
@@ -1212,7 +1226,6 @@ type ReplayData =
   | ["-unboost", POKEMON, STAT, AMOUNT]
   | ["-waiting", SOURCE, TARGET]
   | ["-weather", WEATHER]
-  | ["-weather", WEATHER, FROMEFFECT, OFPOKEMON]
   | ["-zbroken", POKEMON]
   | ["-zpower", POKEMON]
   | ["c"]
@@ -1232,7 +1245,6 @@ type ReplayData =
   | ["j"]
   | ["l"]
   | ["message"]
-  | MoveData
   | ["n"]
   | ["player", PLAYER, USERNAME, AVATAR, RATING]
   | ["poke", PLAYER, DETAILS, ITEM]
