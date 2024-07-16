@@ -203,8 +203,8 @@ export class Replay {
             ) {
               //Fainted from a status
               if (faintPosition.lastDamage.data[3]) {
-                if (faintPosition.lastDamage.data[3].startsWith("[")) {
-                }
+                console.log(faintPosition.lastDamage);
+
                 let faintStatus = faintPosition.lastDamage.data[3]
                   .substring(7)
                   .split(": ");
@@ -421,7 +421,19 @@ export class Replay {
           }
           break;
         case "-activate":
-          console.log(lineData);
+          let activateMon = this.getMonByString(lineData[1]);
+          if (activateMon) {
+            let activateSetter = undefined;
+            if (lineData[3] && lineData[3].startsWith("[of] ")) {
+              activateSetter = this.getMonByString(
+                this.ofP2P(lineData[3] as OFPOKEMON)
+              );
+            }
+            activateMon.statuses.push({
+              status: lineData[2],
+              setter: activateSetter,
+            });
+          }
           break;
         case "-status":
           let statusPosition = this.getMonByString(lineData[1]);
