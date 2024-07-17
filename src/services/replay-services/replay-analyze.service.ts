@@ -40,7 +40,7 @@ export class Replay {
           if (damageTarget) {
             damageTarget.lastDamage = { data: lineData, index: this.i };
             let newDamagePercent = this.getHPP(lineData[2]);
-            this.damage(damageTarget, newDamagePercent, lineData[3]);
+            this.damage(damageTarget, newDamagePercent, lineData.slice(3));
           }
           break;
         case "t:":
@@ -53,31 +53,28 @@ export class Replay {
         case "move":
           let moveAttacker = this.getMonByString(lineData[1]);
           if (moveAttacker) {
-            if (lineData[3] && lineData[2]) {
-              let move = moveAttacker.moveset.find(
-                (move) => move.name === lineData[2]
-              );
-              if (!move) {
-                move = gen.moves.get(lineData[2]);
-                moveAttacker.moveset.push(move);
-              }
-              if (move.exists === true) {
-                this.lastMove = { data: lineData, move: move };
-                if (move.target && move.target !== "self") {
-                  moveAttacker.player.luck.moves.expected +=
-                    move.accuracy === true ? 1 : move.accuracy / 100;
-                  moveAttacker.player.luck.moves.total++;
-                  moveAttacker.player.luck.moves.hits++;
-                  if (
-                    move.critRatio &&
-                    (move.category === "Physical" ||
-                      move.category === "Special")
-                  ) {
-                    let critChance = move.critRatio;
-                    moveAttacker.player.luck.crits.expected +=
-                      critChance > 6 ? 1 : critChances[critChance];
-                    moveAttacker.player.luck.crits.total++;
-                  }
+            let move = moveAttacker.moveset.find(
+              (move) => move.name === lineData[2]
+            );
+            if (!move) {
+              move = gen.moves.get(lineData[2]);
+              moveAttacker.moveset.push(move);
+            }
+            if (move.exists === true) {
+              this.lastMove = { data: lineData, move: move };
+              if (move.target && move.target !== "self") {
+                moveAttacker.player.luck.moves.expected +=
+                  move.accuracy === true ? 1 : move.accuracy / 100;
+                moveAttacker.player.luck.moves.total++;
+                moveAttacker.player.luck.moves.hits++;
+                if (
+                  move.critRatio &&
+                  (move.category === "Physical" || move.category === "Special")
+                ) {
+                  let critChance = move.critRatio;
+                  moveAttacker.player.luck.crits.expected +=
+                    critChance > 6 ? 1 : critChances[critChance];
+                  moveAttacker.player.luck.crits.total++;
                 }
               }
               if (moveAttacker.status.status === "par") {
@@ -214,37 +211,38 @@ export class Replay {
             } fainted`;
             if (faintMon.lastDamage) {
               //Fainted from a status
-              if (faintMon.lastDamage.data[3]) {
-                if (faintMon.lastDamage.data[3].startsWith("[from] ")) {
-                  let faintFromStatus = this.searchStatuses(
-                    faintMon,
-                    this.fromE2S(faintMon.lastDamage.data[3] as FROMEFFECT)
-                  );
-                  if (faintFromStatus) {
-                    faintString += ` from ${
-                      faintFromStatus.name
-                        ? faintFromStatus.name
-                        : faintFromStatus.status
-                    }`;
-                    if (faintFromStatus.setter) {
-                      let faintFromOwnKill = this.checkOwnKill(
-                        faintFromStatus.setter,
-                        faintMon
-                      );
-                      if (faintFromOwnKill != "self") {
-                        faintString += ` indirectly by ${
-                          faintFromStatus.setter.player.username
-                        }'s ${
-                          faintFromStatus.setter.formes[
-                            faintFromStatus.setter.formes.length - 1
-                          ].detail.split(", ")[0]
-                        } `;
-                      } else {
-                        faintString += ` self-inflicted`;
-                      }
-                      if (faintFromOwnKill === "opp") {
-                        faintFromStatus.setter.kills[1]++;
-                      }
+              if (
+                faintMon.lastDamage.data[3] &&
+                faintMon.lastDamage.data[3].startsWith("[from] ")
+              ) {
+                let faintFromStatus = this.searchStatuses(
+                  faintMon,
+                  this.fromE2S(faintMon.lastDamage.data[3] as FROMEFFECT)
+                );
+                if (faintFromStatus) {
+                  faintString += ` from ${
+                    faintFromStatus.name
+                      ? faintFromStatus.name
+                      : faintFromStatus.status
+                  }`;
+                  if (faintFromStatus.setter) {
+                    let faintFromOwnKill = this.checkOwnKill(
+                      faintFromStatus.setter,
+                      faintMon
+                    );
+                    if (faintFromOwnKill != "self") {
+                      faintString += ` indirectly by ${
+                        faintFromStatus.setter.player.username
+                      }'s ${
+                        faintFromStatus.setter.formes[
+                          faintFromStatus.setter.formes.length - 1
+                        ].detail.split(", ")[0]
+                      } `;
+                    } else {
+                      faintString += ` self-inflicted`;
+                    }
+                    if (faintFromOwnKill === "opp") {
+                      faintFromStatus.setter.kills[1]++;
                     }
                   }
                 }
@@ -623,7 +621,7 @@ export class Replay {
             let newHpp = this.getHPP(lineData[2]);
             let hpDiff = hpTarget.hpp - newHpp;
             if (hpDiff > 0) {
-              this.damage(hpTarget, newHpp, lineData[3]);
+              this.damage(hpTarget, newHpp, lineData.slice(3));
             } else if (hpDiff < 0) {
               this.heal(hpTarget, newHpp, lineData[3]);
             }
@@ -919,6 +917,14 @@ export class Replay {
       let monStatus = mon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
     }
+
+    for (let side of this.field.sides) {
+      let sideStatus = side.statuses.find((s) => s.status === status);
+      if (sideStatus) {
+        return sideStatus;
+      }
+    }
+
     if (this.field.weather.status === status) {
       return this.field.weather;
     }
@@ -979,10 +985,39 @@ export class Replay {
   private damage(
     target: Mon,
     newHpp: number,
-    action: MARJORACTION | undefined
+    actions: MARJORACTION[] | undefined
   ) {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
+
+    let from: EFFECT | undefined = undefined;
+    let of: POKEMON | undefined = undefined;
+    for (let action of actions || []) {
+      if (action.startsWith("[from] ")) {
+        from = this.fromE2S(action as FROMEFFECT);
+      } else if (action.startsWith("[of] ")) {
+        of = this.ofP2P(action as OFPOKEMON);
+      }
+    }
+    //Indirect Damage
+    if (from) {
+      if (from.startsWith("item: ")) {
+        if (of) {
+          let ofMon = this.getMonByString(of);
+          if (ofMon) {
+            ofMon.damageDealt[1] += hppDiff;
+          }
+        }
+      } else {
+        let damageIndirect = this.searchStatuses(target, from);
+        if (damageIndirect && damageIndirect.setter) {
+          damageIndirect.setter.damageDealt[1] += hppDiff;
+        }
+      }
+      target.damageTaken[1] += hppDiff;
+      return;
+    }
+    //Direct Damage
     let damageParent = this.getParent(this.i);
     if (this.lastMove && damageParent.main === this.lastMove.data) {
       target.damageTaken[0] += hppDiff;
@@ -1002,25 +1037,15 @@ export class Replay {
       }
     } else {
       target.damageTaken[1] += hppDiff;
-      if (action && action.startsWith("[from] ")) {
-        let damageIndirect = this.searchStatuses(
-          target,
-          this.fromE2S(action as FROMEFFECT)
-        );
-        if (damageIndirect && damageIndirect.setter) {
-          damageIndirect.setter.damageDealt[1] += hppDiff;
-        }
-      } else {
-        let endSub = damageParent.sub.find((sub) => sub[0] === "-end");
-        if (endSub) {
-          let endMon = this.getMonByString(endSub[1] as POKEMON);
-          if (endMon) {
-            let endStatus = endMon.statuses.find(
-              (status) => status.status === endSub[2]
-            );
-            if (endStatus && endStatus.setter) {
-              endStatus.setter.damageDealt[0] += hppDiff;
-            }
+      let endSub = damageParent.sub.find((sub) => sub[0] === "-end");
+      if (endSub) {
+        let endMon = this.getMonByString(endSub[1] as POKEMON);
+        if (endMon) {
+          let endStatus = endMon.statuses.find(
+            (status) => status.status === endSub[2]
+          );
+          if (endStatus && endStatus.setter) {
+            endStatus.setter.damageDealt[0] += hppDiff;
           }
         }
       }
@@ -1034,7 +1059,7 @@ export class Replay {
     return undefined;
   }
 
-  private fromE2S(fromEffect: FROMEFFECT): string {
+  private fromE2S(fromEffect: FROMEFFECT): EFFECT {
     return fromEffect.substring(7);
   }
 }
