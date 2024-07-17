@@ -886,7 +886,10 @@ export class Replay {
   private getParent(index: number): { main: ReplayData; sub: ReplayData[] } {
     let data = { main: this.replayData[index], sub: [] as ReplayData[] };
     for (let i = index; i > 0; i--) {
-      if (this.replayData[i][0].charAt(0) !== "-") {
+      if (
+        this.replayData[i][0].charAt(0) !== "-" &&
+        this.replayData[i][0] !== "debug"
+      ) {
         data.main = this.replayData[i];
         i = 0;
       } else {
