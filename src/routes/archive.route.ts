@@ -12,23 +12,24 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
+import { ArchiveModel } from "../models/archive.model";
 
-export const draftRouter = express.Router();
+export const archiveRouter = express.Router();
 
-type DraftResponse = Response & {
-  rawDraft?: DraftDocument | null;
+type ArchiveResponse = Response & {
+  rawArchive?: DraftDocument | null;
   rawMatchup?: MatchupDocument | null;
   draft?: DraftDocument;
   ruleset?: Ruleset;
   matchup?: MatchupDocument;
 };
 
-draftRouter
+archiveRouter
   .route("/teams")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     try {
       res.json(
-        await DraftModel.find({ owner: req.sub }).sort({ createdAt: -1 })
+        await ArchiveModel.find({ owner: req.sub }).sort({ createdAt: -1 })
       );
     } catch (error) {
       res
@@ -36,7 +37,7 @@ draftRouter
         .json({ message: (error as Error).message, code: "DR-R1-01" });
     }
   })
-  .post(async (req: SubRequest, res: DraftResponse) => {
+  .post(async (req: SubRequest, res: ArchiveResponse) => {
     if (!req.sub) {
       return;
     }
@@ -63,9 +64,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft) {
       return;
     }
@@ -78,7 +79,7 @@ draftRouter
         .json({ message: (error as Error).message, code: "DR-R2-01" });
     }
   })
-  .patch(async (req: SubRequest, res: DraftResponse) => {
+  .patch(async (req: SubRequest, res: ArchiveResponse) => {
     if (!req.sub) {
       return;
     }
@@ -110,12 +111,12 @@ draftRouter
         .json({ message: "Internal Server Error", code: "DR-R2-03" });
     }
   })
-  .delete(async (req: SubRequest, res: DraftResponse) => {
-    if (!res.rawDraft) {
+  .delete(async (req: SubRequest, res: ArchiveResponse) => {
+    if (!res.rawArchive) {
       return;
     }
     try {
-      await res.rawDraft.deleteOne();
+      await res.rawArchive.deleteOne();
       res.status(201).json({ message: "Draft deleted" });
     } catch (error) {
       console.error("Error deleting draft:", error);
@@ -125,9 +126,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/matchups")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft) {
       return;
     }
@@ -144,7 +145,7 @@ draftRouter
         .json({ message: (error as Error).message, code: "DR-R3-01" });
     }
   })
-  .post(async (req: SubRequest, res: DraftResponse) => {
+  .post(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft) {
       return;
     }
@@ -160,9 +161,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/stats")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft || !res.ruleset) {
       return;
     }
@@ -173,16 +174,16 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/archive")
-  .delete(async (req: SubRequest, res: DraftResponse) => {
-    if (!res.draft || !res.rawDraft) {
+  .delete(async (req: SubRequest, res: ArchiveResponse) => {
+    if (!res.draft || !res.rawArchive) {
       return;
     }
     try {
       const archive = new Archive(res.draft);
       const archiveData = await archive.createArchive();
-      // await res.rawDraft.deleteOne();
+      await res.rawArchive.deleteOne();
       archiveData.save();
       res.status(201).json({ message: "Archive added" });
     } catch (error) {
@@ -193,9 +194,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/:matchup_id")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     try {
       res.json(res.matchup);
     } catch (error) {
@@ -204,7 +205,7 @@ draftRouter
         .json({ message: (error as Error).message, code: "DR-R5-01" });
     }
   })
-  .patch(async (req: SubRequest, res: DraftResponse) => {
+  .patch(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft) {
       return;
     }
@@ -237,9 +238,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/:matchup_id/score")
-  .patch(async (req: SubRequest, res: DraftResponse) => {
+  .patch(async (req: SubRequest, res: ArchiveResponse) => {
     try {
       const score = new Score(req.body);
       const processedScore = await score.processScore();
@@ -269,9 +270,9 @@ draftRouter
     }
   });
 
-draftRouter
+archiveRouter
   .route("/:team_id/:matchup_id/schedule")
-  .get(async (req: SubRequest, res: DraftResponse) => {
+  .get(async (req: SubRequest, res: ArchiveResponse) => {
     if (!res.draft) {
       return;
     }
@@ -292,7 +293,7 @@ draftRouter
         .json({ message: (error as Error).message, code: "DR-R6-02" });
     }
   })
-  .patch(async (req: SubRequest, res: DraftResponse) => {
+  .patch(async (req: SubRequest, res: ArchiveResponse) => {
     try {
       const time = new GameTime(req.body);
       const processedTime = await time.processTime();
@@ -321,26 +322,26 @@ draftRouter
     }
   });
 
-draftRouter.param(
+archiveRouter.param(
   "team_id",
-  async (req: SubRequest, res: DraftResponse, next, team_id) => {
+  async (req: SubRequest, res: ArchiveResponse, next, team_id) => {
     try {
       let user_id = await req.sub;
       if (mongoose.Types.ObjectId.isValid(team_id)) {
-        res.rawDraft = await DraftModel.findById(team_id);
+        res.rawArchive = await DraftModel.findById(team_id);
       } else {
-        let drafts = await DraftModel.find({
+        let archives = await DraftModel.find({
           owner: user_id,
           leagueId: team_id,
         });
-        res.rawDraft = drafts[0];
+        res.rawArchive = archives[0];
       }
-      if (res.rawDraft == null) {
+      if (res.rawArchive == null) {
         return res
           .status(400)
           .json({ message: "Team id not found", code: "DR-P1-02" });
       }
-      res.draft = res.rawDraft.toObject();
+      res.draft = res.rawArchive.toObject();
       res.ruleset = Rulesets[res.draft.ruleset];
       for (let pokemon of res.draft.team) {
         pokemon.name = getName(res.ruleset, pokemon.pid);
@@ -350,44 +351,6 @@ draftRouter.param(
       return res
         .status(500)
         .json({ message: (error as Error).message, code: "DR-P2-02" });
-    }
-    next();
-  }
-);
-
-draftRouter.param(
-  "matchup_id",
-  async (req: SubRequest, res: DraftResponse, next, matchup_id) => {
-    try {
-      if (matchup_id == null) {
-        return res
-          .status(400)
-          .json({ message: "Team id not found", code: "DR-P1-01" });
-      }
-      const rawMatchup = await MatchupModel.findById(matchup_id);
-      const matchup = rawMatchup?.toObject();
-      if (!matchup) {
-        res
-          .status(400)
-          .json({ message: "Matchup ID not found", code: "DR-P1-02" });
-        next();
-        return;
-      }
-      const draft = await DraftModel.findById(matchup.aTeam._id);
-      if (draft === null) {
-        res
-          .status(400)
-          .json({ message: "Matchup ID not found", code: "DR-P1-03" });
-        next();
-        return;
-      }
-      matchup.aTeam.teamName = draft.teamName;
-      matchup.aTeam.team = draft.team;
-      res.matchup = matchup;
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ message: (error as Error).message, code: "DR-P1-04" });
     }
     next();
   }
