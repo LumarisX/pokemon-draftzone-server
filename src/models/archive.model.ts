@@ -49,6 +49,9 @@ const matchSchema = new mongoose.Schema(
       required: true,
       default: [0, 0],
     },
+    winner: {
+      type: String,
+    },
     replay: {
       type: String,
     },
@@ -101,6 +104,7 @@ export interface ArchiveData {
   ruleset: RulesetId;
   team: { pid: ID }[];
   matches: {
+    winner: "a" | "b" | undefined;
     teamName?: string;
     stage: string;
     stats: [
@@ -120,6 +124,6 @@ export interface ArchiveData {
 export interface ArchiveDocument extends ArchiveData, Document<any, any> {}
 
 export const ArchiveModel = mongoose.model<ArchiveDocument>(
-  "archivesTests",
+  "archives",
   archiveSchema
 );

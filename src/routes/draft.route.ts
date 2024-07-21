@@ -182,7 +182,7 @@ draftRouter
     try {
       const archive = new Archive(res.draft);
       const archiveData = await archive.createArchive();
-      // await res.rawDraft.deleteOne();
+      await res.rawDraft.deleteOne();
       archiveData.save();
       res.status(201).json({ message: "Archive added" });
     } catch (error) {

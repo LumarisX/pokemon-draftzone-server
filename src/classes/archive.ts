@@ -1,4 +1,3 @@
-import { match } from "assert";
 import { FormatId } from "../data/formats";
 import { RulesetId } from "../data/rulesets";
 import {
@@ -7,8 +6,8 @@ import {
   ArchiveModel,
 } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
+import { MatchData, StatData } from "../models/matchup.model";
 import { getMatchups } from "../services/database-services/draft.services";
-import { stat } from "fs";
 
 export class Archive {
   constructor(private draft: DraftDocument) {}
@@ -30,60 +29,47 @@ export class Archive {
       matches: [],
     };
     const matchups = await getMatchups(this.draft._id);
-    data.matches = matchups.map((matchup) => ({
-      teamName: matchup.bTeam.teamName,
-      stage: matchup.stage,
-      score: [
-        matchup.matches.reduce((sum, match) => (sum += match.aTeam.score), 0),
-        matchup.matches.reduce((sum, match) => (sum += match.aTeam.score), 0),
-      ],
-      replays: matchup.matches.map((match) => match.replay),
-      stats: this.prepareStats(matchup.matches),
-    }));
+    data.matches = matchups.map((matchup) => {
+      let [winner, score] = this.matchupScore(matchup.matches);
+      return {
+        teamName: matchup.bTeam.teamName,
+        stage: matchup.stage,
+        score: score,
+        winner: winner,
+        replays: matchup.matches.map((match) => match.replay),
+        stats: this.matchupStats(matchup.matches),
+      };
+    });
 
     return data;
   }
 
-  private prepareMatch(matchup: any): any {
-    return {
-      stage: matchup.stage,
-      replay: matchup.replay,
-      teamName: matchup.bTeam.teamName,
-      aTeam: this.prepareStats(matchup.aTeam),
-      bTeam: this.prepareStats(matchup.bTeam),
-    };
+  matchupScore(
+    matches: MatchData[]
+  ): ["a" | "b" | undefined, [number, number]] {
+    let winner: "a" | "b" | undefined;
+    let score: [number, number] = [0, 0];
+    if (matches.length > 1) {
+      score = [
+        matches.reduce(
+          (sum, match) => (sum += match.winner === "a" ? 1 : 0),
+          0
+        ),
+        matches.reduce(
+          (sum, match) => (sum += match.winner === "b" ? 1 : 0),
+          0
+        ),
+      ];
+      if (score[0] > score[1]) winner = "a";
+      if (score[1] > score[0]) winner = "b";
+    } else if (matches.length > 0) {
+      score = [matches[0].aTeam.score, matches[0].bTeam.score];
+      winner = matches[0].winner;
+    }
+    return [winner, score];
   }
 
-  private prepareStats(
-    matches: {
-      aTeam: {
-        stats: [
-          string,
-          {
-            indirect?: number;
-            kills?: number;
-            deaths?: number;
-            brought?: number;
-          }
-        ][];
-        score: number;
-      };
-      bTeam: {
-        stats: [
-          string,
-          {
-            indirect?: number;
-            kills?: number;
-            deaths?: number;
-            brought?: number;
-          }
-        ][];
-        score: number;
-      };
-      replay?: string;
-      winner?: "a" | "b" | null;
-    }[]
-  ): any {
+  private matchupStats(matches: MatchData[]): StatData[] {
     let stats: {
       [key: string]: {
         indirect?: number;
