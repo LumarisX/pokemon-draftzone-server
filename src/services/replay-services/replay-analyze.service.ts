@@ -38,7 +38,6 @@ export class Replay {
         case "-damage":
           let damageTarget = this.getMonByString(lineData[1]);
           if (damageTarget) {
-            damageTarget.lastDamage = { data: lineData, index: this.i };
             let newDamagePercent = this.getHPP(lineData[2]);
             this.damage(damageTarget, newDamagePercent, lineData.slice(3));
           }
@@ -210,44 +209,8 @@ export class Replay {
               faintMon.formes[faintMon.formes.length - 1].detail.split(", ")[0]
             } fainted`;
             if (faintMon.lastDamage) {
-              //Fainted from a status
-              if (
-                faintMon.lastDamage.data[3] &&
-                faintMon.lastDamage.data[3].startsWith("[from] ")
-              ) {
-                let faintFromStatus = this.searchStatuses(
-                  faintMon,
-                  this.fromE2S(faintMon.lastDamage.data[3] as FROMEFFECT)
-                );
-                if (faintFromStatus) {
-                  faintString += ` from ${
-                    faintFromStatus.name
-                      ? faintFromStatus.name
-                      : faintFromStatus.status
-                  }`;
-                  if (faintFromStatus.setter) {
-                    let faintFromOwnKill = this.checkOwnKill(
-                      faintFromStatus.setter,
-                      faintMon
-                    );
-                    if (faintFromOwnKill != "self") {
-                      faintString += ` indirectly by ${
-                        faintFromStatus.setter.player.username
-                      }'s ${
-                        faintFromStatus.setter.formes[
-                          faintFromStatus.setter.formes.length - 1
-                        ].detail.split(", ")[0]
-                      } `;
-                    } else {
-                      faintString += ` self-inflicted`;
-                    }
-                    if (faintFromOwnKill === "opp") {
-                      faintFromStatus.setter.kills[1]++;
-                    }
-                  }
-                }
-              } //Fainted from direct damage
-              else {
+              //Fainted from direct damage
+              if (faintMon.lastDamage.type === "direct") {
                 let damageLastDamageParent = this.getParent(
                   faintMon.lastDamage.index
                 );
@@ -282,38 +245,45 @@ export class Replay {
                     }
                   }
                   //Damaged from not a direct move
-                  else {
-                    let subEnd = damageLastDamageParent.sub.find(
-                      (sub) => sub[0] === "-end"
-                    );
-                    if (subEnd && subEnd[1]) {
-                      let subEndMon = this.getMonByString(subEnd[1] as POKEMON);
-                      if (subEndMon) {
-                        let subEndMonStatus = subEndMon.statuses.find(
-                          (status) =>
-                            status.status === subEnd[2] ||
-                            status.status.startsWith(
-                              subEnd[2].toLowerCase().replace(" ", "")
-                            )
-                        );
-                        if (subEndMonStatus) {
-                          faintString += ` from ${subEndMonStatus.status.replace(
-                            "move: ",
-                            ""
-                          )}`;
-                          if (subEndMonStatus.setter) {
-                            subEndMonStatus.setter.kills[0]++;
-                            faintString += ` by ${
-                              subEndMonStatus.setter.player.username
-                            }'s ${
-                              subEndMonStatus.setter.formes[
-                                subEndMonStatus.setter.formes.length - 1
-                              ].detail.split(", ")[0]
-                            }`;
-                          }
-                        }
-                      }
+                  else if (faintMon.lastDamage.status) {
+                    faintString += ` from ${faintMon.lastDamage.status.status.replace(
+                      "move: ",
+                      ""
+                    )}`;
+                    if (faintMon.lastDamage.status.setter) {
+                      faintMon.lastDamage.status.setter.kills[0]++;
+                      faintString += ` by ${
+                        faintMon.lastDamage.status.setter.player.username
+                      }'s ${
+                        faintMon.lastDamage.status.setter.formes[
+                          faintMon.lastDamage.status.setter.formes.length - 1
+                        ].detail.split(", ")[0]
+                      }`;
                     }
+                  } else {
+                    console.log("Direct faint but no status");
+                  }
+                }
+              } //Fainted from indirect damage
+              else if (faintMon.lastDamage.type === "indirect") {
+                if (faintMon.lastDamage.damager) {
+                  let faintFromOwnKill = this.checkOwnKill(
+                    faintMon.lastDamage.damager,
+                    faintMon
+                  );
+                  if (faintFromOwnKill != "self") {
+                    faintString += ` indirectly by ${
+                      faintMon.lastDamage.damager.player.username
+                    }'s ${
+                      faintMon.lastDamage.damager.formes[
+                        faintMon.lastDamage.damager.formes.length - 1
+                      ].detail.split(", ")[0]
+                    }`;
+                  } else {
+                    faintString += ` itself`;
+                  }
+                  if (faintFromOwnKill === "opp") {
+                    faintMon.lastDamage.damager.kills[1]++;
                   }
                 }
               }
@@ -328,7 +298,7 @@ export class Replay {
             events.push({
               player: +lineData[1].charAt(1),
               turn: turn,
-              message: faintString,
+              message: `${faintString}.`,
             });
           } else {
           }
@@ -755,7 +725,7 @@ export class Replay {
             events.push({
               turn: turn,
               player: winPlayer + 1,
-              message: `${lineData[1]} wins`,
+              message: `${lineData[1]} wins.`,
             });
           }
           break;
@@ -913,6 +883,9 @@ export class Replay {
   }
 
   private searchStatuses(mon: Mon, status: string): Status | undefined {
+    if (status === "Recoil") {
+      return { status: status, setter: mon };
+    }
     if (mon.status.status === status) {
       return mon.status;
     }
@@ -992,7 +965,11 @@ export class Replay {
   ) {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
-
+    let lastDamage: LastDamage = {
+      data: this.replayData[this.i] as DamageData,
+      index: this.i,
+      type: "indirect",
+    };
     let from: EFFECT | undefined = undefined;
     let of: POKEMON | undefined = undefined;
     for (let action of actions || []) {
@@ -1004,55 +981,67 @@ export class Replay {
     }
     //Indirect Damage
     if (from) {
-      if (from.startsWith("item: ")) {
-        if (of) {
-          let ofMon = this.getMonByString(of);
-          if (ofMon) {
-            ofMon.damageDealt[1] += hppDiff;
-          }
+      if (of) {
+        let ofMon = this.getMonByString(of);
+        if (ofMon) {
+          ofMon.damageDealt[1] += hppDiff;
+          lastDamage.damager = ofMon;
         }
+      } else if (from.startsWith("item: ")) {
+      } else if (from.startsWith("ability: ")) {
       } else {
         let damageIndirect = this.searchStatuses(target, from);
-        if (damageIndirect && damageIndirect.setter) {
-          damageIndirect.setter.damageDealt[1] += hppDiff;
+        if (damageIndirect) {
+          lastDamage.status = damageIndirect;
+          if (damageIndirect.setter) {
+            damageIndirect.setter.damageDealt[1] += hppDiff;
+            lastDamage.damager = damageIndirect.setter;
+          }
         }
       }
       target.damageTaken[1] += hppDiff;
-      return;
-    }
-    //Direct Damage
-    let damageParent = this.getParent(this.i);
-    if (this.lastMove && damageParent.main === this.lastMove.data) {
-      target.damageTaken[0] += hppDiff;
-      let moveDamageAttacker = this.getMonByString(this.lastMove.data[1]);
-      if (moveDamageAttacker && moveDamageAttacker != target) {
-        moveDamageAttacker.damageDealt[0] += hppDiff;
-        target.calcLog.damageTaken.push({
-          attacker: moveDamageAttacker,
-          move: this.lastMove.move,
-          hpDiff: hppDiff,
-        });
-        moveDamageAttacker.calcLog.damageDealt.push({
-          target: target,
-          move: this.lastMove.move,
-          hpDiff: hppDiff,
-        });
-      }
-    } else {
-      target.damageTaken[1] += hppDiff;
-      let endSub = damageParent.sub.find((sub) => sub[0] === "-end");
-      if (endSub) {
-        let endMon = this.getMonByString(endSub[1] as POKEMON);
-        if (endMon) {
-          let endStatus = endMon.statuses.find(
-            (status) => status.status === endSub[2]
-          );
-          if (endStatus && endStatus.setter) {
-            endStatus.setter.damageDealt[0] += hppDiff;
+    } //Direct Damage
+    else {
+      let damageParent = this.getParent(this.i);
+      lastDamage.type = "direct";
+      if (this.lastMove && damageParent.main === this.lastMove.data) {
+        target.damageTaken[0] += hppDiff;
+        let moveDamageAttacker = this.getMonByString(this.lastMove.data[1]);
+        if (moveDamageAttacker && moveDamageAttacker != target) {
+          lastDamage.damager = moveDamageAttacker;
+          moveDamageAttacker.damageDealt[0] += hppDiff;
+          target.calcLog.damageTaken.push({
+            attacker: moveDamageAttacker,
+            move: this.lastMove.move,
+            hpDiff: hppDiff,
+          });
+          moveDamageAttacker.calcLog.damageDealt.push({
+            target: target,
+            move: this.lastMove.move,
+            hpDiff: hppDiff,
+          });
+        }
+      } else {
+        target.damageTaken[1] += hppDiff;
+        let endSub = damageParent.sub.find((sub) => sub[0] === "-end");
+        if (endSub) {
+          let endMon = this.getMonByString(endSub[1] as POKEMON);
+          if (endMon) {
+            let endStatus = endMon.statuses.find(
+              (status) => status.status === endSub[2]
+            );
+            if (endStatus) {
+              lastDamage.status = endStatus;
+              if (endStatus.setter) {
+                lastDamage.damager = endStatus.setter;
+                endStatus.setter.damageDealt[0] += hppDiff;
+              }
+            }
           }
         }
       }
     }
+    target.lastDamage = lastDamage;
   }
 
   private ofP2P(ofPokemon: OFPOKEMON): POKEMON | undefined {
@@ -1120,6 +1109,14 @@ type ReplayStats = {
   }[];
 };
 
+type LastDamage = {
+  data: ReplayData;
+  index: number;
+  damager?: Mon;
+  type: "indirect" | "direct";
+  status?: Status;
+};
+
 type Mon = {
   formes: { detail: string; id?: string }[];
   nickname: string;
@@ -1133,13 +1130,7 @@ type Mon = {
     damageDealt: { target: Mon; move: Move; hpDiff: number }[];
   };
   hpRestored: number;
-  lastDamage:
-    | {
-        data: DamageData | SetHPData;
-        index: number;
-      }
-    | undefined;
-
+  lastDamage: LastDamage | undefined;
   fainted: boolean;
   brought: boolean;
   status: Status;
