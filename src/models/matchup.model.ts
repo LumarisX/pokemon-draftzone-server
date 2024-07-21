@@ -83,6 +83,29 @@ const matchupSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+export type StatData = [
+  string,
+  {
+    indirect?: number;
+    kills?: number;
+    deaths?: number;
+    brought?: number;
+  }
+];
+
+export type MatchData = {
+  aTeam: {
+    stats: StatData[];
+    score: number;
+  };
+  bTeam: {
+    stats: StatData[];
+    score: number;
+  };
+  replay?: string;
+  winner?: "a" | "b";
+};
+
 export interface MatchupData {
   aTeam: {
     team: PokemonData[];
@@ -103,34 +126,7 @@ export interface MatchupData {
   stage: string;
   createdAt?: Date;
   updatedAt?: Date;
-  matches: {
-    aTeam: {
-      stats: [
-        string,
-        {
-          indirect?: number;
-          kills?: number;
-          deaths?: number;
-          brought?: number;
-        }
-      ][];
-      score: number;
-    };
-    bTeam: {
-      stats: [
-        string,
-        {
-          indirect?: number;
-          kills?: number;
-          deaths?: number;
-          brought?: number;
-        }
-      ][];
-      score: number;
-    };
-    replay?: string;
-    winner?: "a" | "b" | null;
-  }[];
+  matches: MatchData[];
 }
 
 export interface MatchupDocument extends Document<any, any>, MatchupData {}

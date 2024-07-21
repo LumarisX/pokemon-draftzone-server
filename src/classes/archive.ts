@@ -1,56 +1,15 @@
 import { FormatId } from "../data/formats";
 import { RulesetId } from "../data/rulesets";
-import { ArchiveDocument, ArchiveModel } from "../models/archive.model";
-import { DraftData, DraftDocument } from "../models/draft.model";
+import {
+  ArchiveData,
+  ArchiveDocument,
+  ArchiveModel,
+} from "../models/archive.model";
+import { DraftDocument } from "../models/draft.model";
+import { MatchData, StatData } from "../models/matchup.model";
 import { getMatchups } from "../services/database-services/draft.services";
 
-interface ArchiveDoc {
-  leagueName: string;
-  format: FormatId;
-  teamName: string;
-  ruleset: RulesetId;
-  owner: string;
-  team: string[];
-  matches: {
-    stage: string;
-    replay: string | undefined | null;
-    teamName: string | undefined | null;
-    aTeam: {
-      score: number;
-      paste: string | undefined | null;
-      stats:
-        | Record<
-            string,
-            {
-              indirect?: number | null | undefined;
-              kills?: number | null | undefined;
-              deaths?: number | null | undefined;
-              brought?: number | null | undefined;
-            }
-          >
-        | null
-        | undefined;
-    };
-    bTeam: {
-      score: number;
-      paste: string | undefined | null;
-      stats:
-        | Record<
-            string,
-            {
-              indirect?: number | null | undefined;
-              kills?: number | null | undefined;
-              deaths?: number | null | undefined;
-              brought?: number | null | undefined;
-            }
-          >
-        | null
-        | undefined;
-    };
-  }[];
-}
-
-class Archive {
+export class Archive {
   constructor(private draft: DraftDocument) {}
 
   async createArchive(): Promise<ArchiveDocument> {
@@ -59,38 +18,82 @@ class Archive {
     return model;
   }
 
-  private async prepareData(): Promise<ArchiveDoc> {
-    const data: ArchiveDoc = {
+  private async prepareData(): Promise<ArchiveData> {
+    const data: ArchiveData = {
       leagueName: this.draft.leagueName,
       format: this.draft.format as FormatId,
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,
       owner: this.draft.owner,
-      team: this.draft.team.map((pokemon) => pokemon.pid),
+      team: this.draft.team.map((pokemon) => ({ pid: pokemon.pid })),
       matches: [],
     };
     const matchups = await getMatchups(this.draft._id);
-    data.matches = matchups.map((matchup) => this.prepareMatch(matchup));
+    data.matches = matchups.map((matchup) => {
+      let [winner, score] = this.matchupScore(matchup.matches);
+      return {
+        teamName: matchup.bTeam.teamName,
+        stage: matchup.stage,
+        score: score,
+        winner: winner,
+        replays: matchup.matches.map((match) => match.replay),
+        stats: this.matchupStats(matchup.matches),
+      };
+    });
+
     return data;
   }
 
-  private prepareMatch(matchup: any): any {
-    return {
-      stage: matchup.stage,
-      replay: matchup.replay,
-      teamName: matchup.bTeam.teamName,
-      aTeam: this.prepareTeam(matchup.aTeam),
-      bTeam: this.prepareTeam(matchup.bTeam),
-    };
+  matchupScore(
+    matches: MatchData[]
+  ): ["a" | "b" | undefined, [number, number]] {
+    let winner: "a" | "b" | undefined;
+    let score: [number, number] = [0, 0];
+    if (matches.length > 1) {
+      score = [
+        matches.reduce(
+          (sum, match) => (sum += match.winner === "a" ? 1 : 0),
+          0
+        ),
+        matches.reduce(
+          (sum, match) => (sum += match.winner === "b" ? 1 : 0),
+          0
+        ),
+      ];
+      if (score[0] > score[1]) winner = "a";
+      if (score[1] > score[0]) winner = "b";
+    } else if (matches.length > 0) {
+      score = [matches[0].aTeam.score, matches[0].bTeam.score];
+      winner = matches[0].winner;
+    }
+    return [winner, score];
   }
 
-  private prepareTeam(team: any): any {
-    return {
-      score: team.score,
-      paste: team.paste,
-      stats: team.stats,
-    };
+  private matchupStats(matches: MatchData[]): StatData[] {
+    let stats: {
+      [key: string]: {
+        indirect?: number;
+        kills?: number;
+        deaths?: number;
+        brought?: number;
+      };
+    } = {};
+    matches.forEach((match) => {
+      let stat = Object.fromEntries(match.aTeam.stats);
+      for (let pid in stat) {
+        if (pid in stats) {
+          stats[pid].brought =
+            (stats[pid].brought || 0) + (stat[pid].brought || 0);
+          stats[pid].deaths =
+            (stats[pid].deaths || 0) + (stat[pid].deaths || 0);
+          stats[pid].deaths = (stats[pid].kills || 0) + (stat[pid].kills || 0);
+          stats[pid].indirect =
+            (stats[pid].indirect || 0) + (stat[pid].indirect || 0);
+        } else {
+          stats[pid] = stat[pid];
+        }
+      }
+    });
+    return Object.entries(stats);
   }
 }
-
-export = Archive;

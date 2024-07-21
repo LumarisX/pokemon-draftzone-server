@@ -1,5 +1,7 @@
 import { ID } from "@pkmn/data";
 import mongoose, { Document } from "mongoose";
+import { FormatId } from "../data/formats";
+import { RulesetId } from "../data/rulesets";
 
 const statsSchema = new mongoose.Schema(
   {
@@ -23,17 +25,11 @@ const statsSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const sideSchema = new mongoose.Schema(
+const pokemonSchema = new mongoose.Schema(
   {
-    score: {
-      type: Number,
-      default: 0,
-    },
-    stats: {
-      type: [statsSchema],
-    },
-    paste: {
+    pid: {
       type: String,
+      required: true,
     },
   },
   { _id: false }
@@ -41,20 +37,26 @@ const sideSchema = new mongoose.Schema(
 
 const matchSchema = new mongoose.Schema(
   {
+    teamName: {
+      type: String,
+    },
     stage: {
+      type: String,
+      required: true,
+    },
+    score: {
+      type: [],
+      required: true,
+      default: [0, 0],
+    },
+    winner: {
       type: String,
     },
     replay: {
       type: String,
     },
-    teamName: {
-      type: String,
-    },
-    aTeam: {
-      type: sideSchema,
-    },
-    bTeam: {
-      type: sideSchema,
+    stats: {
+      type: [],
     },
   },
   { _id: false }
@@ -83,7 +85,7 @@ const archiveSchema = new mongoose.Schema(
       required: true,
     },
     team: {
-      type: [String],
+      type: [pokemonSchema],
       required: true,
     },
     matches: {
@@ -96,17 +98,27 @@ const archiveSchema = new mongoose.Schema(
 
 export interface ArchiveData {
   leagueName: string;
-  leagueId: string;
   teamName: string;
-  score?: {
-    wins: number;
-    loses: number;
-    diff: string;
-  };
   owner: string;
-  format: string;
-  ruleset: string;
-  team: ID[];
+  format: FormatId;
+  ruleset: RulesetId;
+  team: { pid: ID }[];
+  matches: {
+    winner: "a" | "b" | undefined;
+    teamName?: string;
+    stage: string;
+    stats: [
+      string,
+      {
+        indirect?: number;
+        kills?: number;
+        deaths?: number;
+        brought?: number;
+      }
+    ][];
+    score: [number, number];
+    replays?: (string | undefined)[];
+  }[];
 }
 
 export interface ArchiveDocument extends ArchiveData, Document<any, any> {}

@@ -14,6 +14,7 @@ import { dataRouter } from "./routes/data.route";
 import { plannerRouter } from "./routes/planner.route";
 import dotenv from "dotenv";
 import { replayRouter } from "./routes/replay.route";
+import { archiveRouter } from "./routes/archive.route";
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
+app.use("/archive", logger("common"), jwtCheck, getSub, archiveRouter);
 app.use("/matchup", logger("common"), matchupRouter);
 app.use("/data", logger("common"), dataRouter);
 app.use("/test", logger("common"), testRouter);

@@ -38,8 +38,11 @@ export class Replay {
         case "-damage":
           let damageTarget = this.getMonByString(lineData[1]);
           if (damageTarget) {
-            let newDamagePercent = this.getHPP(lineData[2]);
-            this.damage(damageTarget, newDamagePercent, lineData.slice(3));
+            this.damage(
+              damageTarget,
+              this.getHPP(lineData[2]),
+              lineData.slice(3)
+            );
           }
           break;
         case "t:":
@@ -211,11 +214,8 @@ export class Replay {
             if (faintMon.lastDamage) {
               //Fainted from direct damage
               if (faintMon.lastDamage.type === "direct") {
-                let damageLastDamageParent = this.getParent(
-                  faintMon.lastDamage.index
-                );
                 if (this.lastMove) {
-                  if (this.lastMove.data === damageLastDamageParent.main) {
+                  if (this.lastMove.data === faintMon.lastDamage.parent.main) {
                     let faintAttacker = this.getMonByString(
                       this.lastMove.data[1]
                     );
@@ -853,7 +853,7 @@ export class Replay {
     }
   }
 
-  private getParent(index: number): { main: ReplayData; sub: ReplayData[] } {
+  private getParent(index: number): ParentData {
     let data = { main: this.replayData[index], sub: [] as ReplayData[] };
     for (let i = index; i > 0; i--) {
       if (
@@ -967,8 +967,8 @@ export class Replay {
     target.hpp = newHpp;
     let lastDamage: LastDamage = {
       data: this.replayData[this.i] as DamageData,
-      index: this.i,
       type: "indirect",
+      parent: this.getParent(this.i),
     };
     let from: EFFECT | undefined = undefined;
     let of: POKEMON | undefined = undefined;
@@ -1002,9 +1002,8 @@ export class Replay {
       target.damageTaken[1] += hppDiff;
     } //Direct Damage
     else {
-      let damageParent = this.getParent(this.i);
       lastDamage.type = "direct";
-      if (this.lastMove && damageParent.main === this.lastMove.data) {
+      if (this.lastMove && lastDamage.parent.main === this.lastMove.data) {
         target.damageTaken[0] += hppDiff;
         let moveDamageAttacker = this.getMonByString(this.lastMove.data[1]);
         if (moveDamageAttacker && moveDamageAttacker != target) {
@@ -1023,12 +1022,12 @@ export class Replay {
         }
       } else {
         target.damageTaken[1] += hppDiff;
-        let endSub = damageParent.sub.find((sub) => sub[0] === "-end");
+        let endSub = lastDamage.parent.sub.find((sub) => sub[0] === "-end");
         if (endSub) {
           let endMon = this.getMonByString(endSub[1] as POKEMON);
           if (endMon) {
             let endStatus = endMon.statuses.find(
-              (status) => status.status === endSub[2]
+              (status) => status.status === endSub[2]!
             );
             if (endStatus) {
               lastDamage.status = endStatus;
@@ -1109,9 +1108,11 @@ type ReplayStats = {
   }[];
 };
 
+type ParentData = { main: ReplayData; sub: ReplayData[] };
+
 type LastDamage = {
   data: ReplayData;
-  index: number;
+  parent: ParentData;
   damager?: Mon;
   type: "indirect" | "direct";
   status?: Status;

@@ -1,7 +1,7 @@
 import express, { Response } from "express";
 import mongoose from "mongoose";
 import { SubRequest } from "../app";
-import Archive from "../classes/archive";
+import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Ruleset, Rulesets } from "../data/rulesets";
@@ -116,7 +116,7 @@ draftRouter
     }
     try {
       await res.rawDraft.deleteOne();
-      res.status(201).json({ message: "Archive added" });
+      res.status(201).json({ message: "Draft deleted" });
     } catch (error) {
       console.error("Error deleting draft:", error);
       res
