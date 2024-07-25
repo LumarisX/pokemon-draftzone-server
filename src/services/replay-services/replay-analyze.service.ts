@@ -997,11 +997,6 @@ export class Replay {
         if (damageIndirect) {
           lastDamage.status = damageIndirect;
           if (damageIndirect.setter) {
-            console.log(
-              damageIndirect.status,
-              target.nickname,
-              damageIndirect.setter.nickname
-            );
             if (target != damageIndirect.setter) {
               damageIndirect.setter.damageDealt[1] += hppDiff;
             }
@@ -1038,7 +1033,7 @@ export class Replay {
           let endMon = this.getMonByString(endSub[1] as POKEMON);
           if (endMon) {
             let endStatus = endMon.statuses.find(
-              (status) => status.status === endSub[2]!
+              (status) => status.status === endSub![2]
             );
             if (endStatus) {
               lastDamage.status = endStatus;
