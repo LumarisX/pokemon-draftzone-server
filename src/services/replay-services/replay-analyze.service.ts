@@ -318,12 +318,19 @@ export class Replay {
             lineData[2] &&
             !this.playerData.find((player) => player.username === lineData[2])
           ) {
+            let side = {
+              a: { mon: undefined, statuses: [] },
+              b: { mon: undefined, statuses: [] },
+              c: { mon: undefined, statuses: [] },
+              statuses: [],
+            };
             this.playerData.push({
               luck: {
                 moves: { total: 0, hits: 0, expected: 0 },
                 crits: { total: 0, hits: 0, expected: 0 },
                 status: { total: 0, full: 0, expected: 0 },
               },
+              side: side,
               stats: { switches: 0 },
               username: lineData[2],
               teamSize: 0,
@@ -331,12 +338,7 @@ export class Replay {
               team: [],
               win: false,
             });
-            this.field.sides.push({
-              a: { mon: undefined, statuses: [] },
-              b: { mon: undefined, statuses: [] },
-              c: { mon: undefined, statuses: [] },
-              statuses: [],
-            });
+            this.field.sides.push(side);
           }
           break;
         case "teamsize":
@@ -658,8 +660,12 @@ export class Replay {
           if (sideParent.main[0] == "move") {
             let sideMon = this.getMonByString(sideParent.main[1]);
             if (sideMon) {
+              let sideStartStatus = lineData[2].split(": ");
               this.field.sides[+lineData[1].charAt(1) - 1].statuses.push({
-                status: lineData[2],
+                status:
+                  sideStartStatus.length === 2
+                    ? sideStartStatus[1]
+                    : sideStartStatus[0],
                 setter: sideMon,
               });
             }
@@ -893,12 +899,9 @@ export class Replay {
       let monStatus = mon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
     }
-
-    for (let side of this.field.sides) {
-      let sideStatus = side.statuses.find((s) => s.status === status);
-      if (sideStatus) {
-        return sideStatus;
-      }
+    let sideStatus = mon.player.side.statuses.find((s) => s.status === status);
+    if (sideStatus) {
+      return sideStatus;
     }
 
     if (this.field.weather.status === status) {
@@ -994,11 +997,19 @@ export class Replay {
         if (damageIndirect) {
           lastDamage.status = damageIndirect;
           if (damageIndirect.setter) {
-            damageIndirect.setter.damageDealt[1] += hppDiff;
+            console.log(
+              damageIndirect.status,
+              target.nickname,
+              damageIndirect.setter.nickname
+            );
+            if (target != damageIndirect.setter) {
+              damageIndirect.setter.damageDealt[1] += hppDiff;
+            }
             lastDamage.damager = damageIndirect.setter;
           }
         }
       }
+
       target.damageTaken[1] += hppDiff;
     } //Direct Damage
     else {
@@ -1167,6 +1178,7 @@ type Player = {
   username: undefined | string;
   teamSize: undefined | number;
   team: Mon[];
+  side: Side;
   turnChart: { turn: number; damage: number; remaining: number }[];
   win: boolean;
   stats: {
