@@ -1,10 +1,11 @@
-import { ID, toID } from "@pkmn/data";
+import { Generations, ID, toID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 import { Species } from "@pkmn/dex-types/index";
+import { Dex } from "@pkmn/dex";
 
 export async function getLearnset(
-  ruleset: Ruleset,
-  pid: ID
+  pid: ID,
+  ruleset: Ruleset = { gen: new Generations(Dex).get(9), natdex: true }
 ): Promise<{ [moveid: string]: string[] }> {
   let restriction = undefined;
   let species = ruleset.gen.dex.species.get(pid);
