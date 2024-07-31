@@ -223,6 +223,18 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
     ],
   },
   {
+    categoryName: "Trapping",
+    moves: [
+      "block",
+      "pursuit",
+      "meanlook",
+      "firespin",
+      "sandtomb",
+      "whirlpool",
+      "magmastorm",
+    ],
+  },
+  {
     categoryName: "Field Manipulation",
     moves: [
       "chillyreception",
@@ -262,10 +274,11 @@ export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await getLearnset(ruleset, pokemon.pid);
+    let mon = ruleset.gen.species.get(pokemon.pid);
+    if (!mon) continue;
+    let learnset = await getLearnset(mon, ruleset);
     for (let cat of chartMoves) {
-      for (const move of cat.moves) {
-        const moveID = toID(move);
+      for (const moveID of cat.moves) {
         if (moveID in learnset) {
           let category = movechart.find(
             (entry) => entry.categoryName === cat.categoryName
@@ -274,7 +287,8 @@ export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
             category = { categoryName: cat.categoryName, moves: [] };
             movechart.push(category);
           }
-          let move = getMove(ruleset, moveID);
+          let move = ruleset.gen.moves.get(moveID);
+          if (!move) continue;
           let moveEntry = category.moves.find(
             (moveEntry) => moveEntry.name === move.name
           );

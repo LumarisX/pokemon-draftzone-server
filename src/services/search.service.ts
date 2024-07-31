@@ -1,10 +1,12 @@
-import { Generations, Specie } from "@pkmn/data";
+import { Generations, ID, Specie } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 import {
-  newgetImmune,
-  newgetResists,
-  newgetWeak,
+  getAbilities,
+  getImmune,
+  getResists,
+  getWeak,
 } from "./data-services/pokedex.service";
+import { RulesetId, Rulesets } from "../data/rulesets";
 
 // Types for tokens and AST nodes
 type Token = { type: string; value: string };
@@ -16,13 +18,19 @@ type ASTNode = {
   operator?: string;
 };
 
-export function searchPokemon(query: string, genNum: number) {
+let gen = new Generations(Dex).get(9);
+
+export async function searchPokemon(query: string, ruleset: RulesetId) {
   const tokens = tokenize(query);
   const ast = parse(tokens);
-  let gens = new Generations(Dex);
-  return Array.from(gens.get(genNum).species).filter((pokemon) =>
-    evaluate(ast, pokemon)
+  gen = Rulesets[ruleset].gen;
+  let searchResults = await Promise.all(
+    Array.from(gen.species).map(async (pokemon) => {
+      return [pokemon.id, await evaluate(ast, pokemon)];
+    })
   );
+
+  return searchResults.filter((result) => result[1]).map((result) => result[0]);
 }
 
 // Tokenizer function
@@ -109,61 +117,93 @@ function parse(tokens: Token[]): ASTNode {
 }
 
 // Evaluator function
-function evaluate(node: ASTNode | undefined, data: Specie): boolean {
+async function evaluate(
+  node: ASTNode | undefined,
+  mon: Specie
+): Promise<boolean> {
   if (node) {
     switch (node.type) {
       case "LogicalExpression":
         if (node.operator === "and") {
-          return evaluate(node.left, data) && evaluate(node.right!, data);
+          return (
+            (await evaluate(node.left, mon)) &&
+            (await evaluate(node.right!, mon))
+          );
         }
         if (node.operator === "or") {
-          return evaluate(node.left, data) || evaluate(node.right!, data);
+          return (
+            (await evaluate(node.left, mon)) ||
+            (await evaluate(node.right!, mon))
+          );
         }
         break;
       case "BinaryExpression":
         let leftValue: any;
         let rightValue: any;
-
         switch (node.left!.value) {
+          case "name":
+            leftValue = mon.name;
+            break;
           case "bst":
             leftValue =
-              data.baseStats.hp +
-              data.baseStats.atk +
-              data.baseStats.def +
-              data.baseStats.spa +
-              data.baseStats.spd +
-              data.baseStats.spe;
+              mon.baseStats.hp +
+              mon.baseStats.atk +
+              mon.baseStats.def +
+              mon.baseStats.spa +
+              mon.baseStats.spd +
+              mon.baseStats.spe;
             break;
           case "hp":
-            leftValue = data.baseStats.hp;
+            leftValue = mon.baseStats.hp;
             break;
           case "atk":
-            leftValue = data.baseStats.atk;
+            leftValue = mon.baseStats.atk;
             break;
           case "def":
-            leftValue = data.baseStats.def;
+            leftValue = mon.baseStats.def;
             break;
           case "spa":
-            leftValue = data.baseStats.spa;
+            leftValue = mon.baseStats.spa;
             break;
           case "spd":
-            leftValue = data.baseStats.spd;
+            leftValue = mon.baseStats.spd;
             break;
           case "spe":
-            leftValue = data.baseStats.spe;
+            leftValue = mon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = newgetWeak(data);
+            leftValue = getWeak(mon);
             break;
           case "resists":
-            leftValue = newgetResists(data);
+            leftValue = getResists(mon);
             break;
           case "immunities":
-            leftValue = newgetImmune(data);
+            leftValue = getImmune(mon);
             break;
           case "coverage":
-          case "moveset":
-            leftValue = [];
+            leftValue = Object.keys(
+              (await gen.learnsets.learnable(mon.id)) || {}
+            )
+              .map((moveid) => gen.dex.moves.getByID(moveid as ID))
+              .filter((move) => move.category != "Status")
+              .reduce<string[]>(
+                (coverage, move) =>
+                  coverage.includes(move.type)
+                    ? coverage
+                    : [...coverage, move.type],
+                []
+              );
+            break;
+          case "learns":
+            leftValue = (await gen.learnsets.canLearn(
+              mon.id,
+              node.right?.value || ""
+            ))
+              ? node.right?.value
+              : "";
+            break;
+          case "abilities":
+            leftValue = getAbilities(mon);
             break;
           case "tier":
             let tiers = [
@@ -182,22 +222,47 @@ function evaluate(node: ASTNode | undefined, data: Specie): boolean {
               "AG",
             ];
             leftValue =
-              tiers.indexOf(data.tier) > 0
-                ? tiers.indexOf(data.tier)
-                : data.tier;
+              tiers.indexOf(mon.tier) > 0 ? tiers.indexOf(mon.tier) : mon.tier;
             rightValue =
               tiers.indexOf(node.right?.value) > 0
                 ? tiers.indexOf(node.right?.value)
                 : node.right?.value;
             break;
+          case "nfe":
+            leftValue = mon.nfe;
+            break;
+          case "dexNum":
+            leftValue = mon.num;
+            rightValue = +node.right?.value;
+            break;
+          case "tags":
+            let tags = [
+              "Paradox",
+              "Sub-Legendary",
+              "Mythical",
+              "Restricted Legendary",
+            ];
+            leftValue = mon.tags
+              .map((tag) => tags.indexOf(tag))
+              .reduce((max, i) => (max = i > max ? i : max), -1);
+            rightValue = tags.indexOf(node.right?.value);
+            break;
+          case "type":
+          case "types":
+            leftValue = mon.types;
+            break;
+          case "gen":
+            leftValue = mon.gen;
+            rightValue = +node.right?.value;
+            break;
+          case "weight":
+            leftValue = mon.weightkg;
+            break;
+          case "egggroups":
+            leftValue = mon.eggGroups;
+            break;
           default:
-            if (node.left) {
-              if (node.left.value in data) {
-                leftValue = data[node.left!.value as keyof Specie];
-              } else {
-                console.log(`Data does not have value ${node.left.value}`);
-              }
-            }
+            console.log(`Unknown value: ${node.left?.value}`);
         }
 
         if (rightValue === undefined) {
@@ -208,11 +273,13 @@ function evaluate(node: ASTNode | undefined, data: Specie): boolean {
             case "true":
               rightValue = true;
               break;
+            case "none":
+            case "undefined":
+              rightValue = undefined;
             default:
               rightValue = node.right!.value;
           }
         }
-
         if (Array.isArray(leftValue)) {
           switch (node.operator) {
             case "includes":
@@ -250,7 +317,7 @@ function evaluate(node: ASTNode | undefined, data: Specie): boolean {
         }
         break;
       case "Identifier":
-        return !!data[node.value as keyof Specie];
+        return !!mon[node.value as keyof Specie];
       case "Literal":
         return node.value;
     }

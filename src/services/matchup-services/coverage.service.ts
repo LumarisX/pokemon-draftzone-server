@@ -1,11 +1,11 @@
-import { Generation, ID } from "@pkmn/data";
+import { ID, Move } from "@pkmn/data";
+import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getCategory, getMoveName } from "../data-services/move.service";
-import { getBaseStats, getCoverage } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
-import { Ruleset } from "../../data/rulesets";
+import { getCoverage } from "../data-services/learnset.service";
 
-export type Coveragechart = (
+export type CoverageChart = (
   | PokemonData & {
       coverage: {
         [key: string]: {
@@ -24,27 +24,45 @@ export async function coveragechart(
   ruleset: Ruleset,
   team: PokemonData[],
   oppteam: PokemonData[]
-): Promise<Coveragechart> {
-  let result: Coveragechart = [];
-  for (let p of team) {
-    let pokemon: PokemonData & { coverage: any } = {
-      ...p,
-      coverage: await getCoverage(ruleset, p),
+): Promise<CoverageChart> {
+  let result: CoverageChart = [];
+  for (let pdata of team) {
+    let mon = ruleset.gen.species.get(pdata.pid);
+    if (!mon) continue;
+    let pokemon: PokemonData & {
+      coverage: {
+        physical: (Move & {
+          stab: boolean;
+          ePower: number;
+        })[];
+        special: (Move & {
+          stab: boolean;
+          ePower: number;
+        })[];
+      };
+    } = {
+      ...pdata,
+      coverage: await getCoverage(mon, ruleset),
     };
-    for (let category in pokemon.coverage) {
-      pokemon.coverage[category].sort(function (
-        x: { stab: boolean; ePower: number },
-        y: { stab: boolean; ePower: number }
-      ) {
-        if (x.stab != y.stab) {
-          if (x.stab) return -1;
-          return 1;
-        }
-        if (x.ePower < y.ePower) return 1;
-        if (x.ePower > y.ePower) return -1;
-        return 0;
-      });
-    }
+    pokemon.coverage["physical"].sort((x, y) => {
+      if (x.stab != y.stab) {
+        if (x.stab) return -1;
+        return 1;
+      }
+      if (x.ePower < y.ePower) return 1;
+      if (x.ePower > y.ePower) return -1;
+      return 0;
+    });
+    pokemon.coverage["special"].sort((x, y) => {
+      if (x.stab != y.stab) {
+        if (x.stab) return -1;
+        return 1;
+      }
+      if (x.ePower < y.ePower) return 1;
+      if (x.ePower > y.ePower) return -1;
+      return 0;
+    });
+
     bestCoverage(ruleset, pokemon, typechart(ruleset, oppteam));
     let coverage: {
       [key: string]: {
@@ -58,17 +76,26 @@ export async function coveragechart(
       physical: [],
       special: [],
     };
-    for (let category in pokemon.coverage) {
-      for (let move of pokemon.coverage[category]) {
-        coverage[category].push({
-          name: getMoveName(ruleset, move.id || ""),
-          type: move.type,
-          stab: move.stab,
-          ePower: move.ePower,
-          recommended: move.recommended,
-        });
-      }
+
+    for (let move of pokemon.coverage["physical"]) {
+      coverage["physcical"].push({
+        name: move.name,
+        type: move.type,
+        stab: move.stab,
+        ePower: move.ePower,
+        recommended: move.recommended,
+      });
     }
+    for (let move of pokemon.coverage["special"]) {
+      coverage["special"].push({
+        name: move.name,
+        type: move.type,
+        stab: move.stab,
+        ePower: move.ePower,
+        recommended: move.recommended,
+      });
+    }
+
     pokemon.coverage = coverage;
     result.push(pokemon);
   }

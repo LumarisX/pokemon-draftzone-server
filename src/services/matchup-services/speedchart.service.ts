@@ -81,7 +81,7 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of getAbilities(ruleset, p.pid)) {
+  for (let ability of getAbilities(mon)) {
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -144,8 +144,7 @@ function generateTiers(
   let pid: ID = p.pid;
   let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
-    if (status.status == "par" && getTypes(ruleset, pid).includes("Electric"))
-      continue;
+    if (status.status == "par" && mon.types.includes("Electric")) continue;
     for (const sConfig of configurations.sides) {
       const side = new Side({ isTailwind: sConfig.tailwind });
       for (const fConfig of configurations.fields) {

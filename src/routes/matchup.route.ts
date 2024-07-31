@@ -10,7 +10,7 @@ import {
 } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
-  Coveragechart,
+  CoverageChart,
   coveragechart,
 } from "../services/matchup-services/coverage.service";
 import {
@@ -56,7 +56,7 @@ matchupRouter
         leagueName: string;
         summary: (Summary & { teamName?: string })[];
         speedchart: Speedchart;
-        coveragechart: Coveragechart[];
+        coveragechart: CoverageChart[];
         typechart: Typechart[];
         movechart: Movechart[];
       } = {
@@ -266,7 +266,6 @@ matchupRouter.param(
         matchup.aTeam = {
           owner: aTeam.owner,
           teamName: aTeam.teamName,
-          team: aTeam.team,
           _id: aTeam._id,
         };
         res.ruleset = Rulesets[matchup.rulesetId];
