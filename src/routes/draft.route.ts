@@ -343,7 +343,8 @@ draftRouter.param(
       res.draft = res.rawDraft.toObject();
       res.ruleset = Rulesets[res.draft.ruleset];
       for (let pokemon of res.draft.team) {
-        pokemon.name = getName(res.ruleset, pokemon.pid);
+        pokemon.name =
+          res.ruleset.gen.species.get(pokemon.pid)?.name || pokemon.pid;
       }
     } catch (error) {
       console.log(error);

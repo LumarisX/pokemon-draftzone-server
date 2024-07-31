@@ -1,6 +1,5 @@
-import { ID, toID } from "@pkmn/data";
+import { ID, Specie } from "@pkmn/data";
 import { Ruleset } from "../data/rulesets";
-import { getName } from "../services/data-services/pokedex.service";
 
 export type PokemonFormData = {
   pid: ID;
@@ -25,21 +24,19 @@ export type Pokemon = {
 };
 
 export class PokemonBuilder {
-  data: Pokemon;
+  data: Specie & { shiny?: boolean };
   error: string | undefined;
 
   constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
+    let pokemon = ruleset.gen.species.get(pokemonData.pid);
+    if (!pokemon) {
+      this.error = `${pokemonData.pid} not found in the pokedex`;
+      return;
+    }
     this.data = {
-      pid: toID(pokemonData.pid),
-      name: getName(ruleset, pokemonData.pid),
+      ...pokemon,
       shiny: pokemonData.shiny,
     };
-
-    // if (!inDex(pokemonData.pid)) {
-    //   this.error = `${this.data.name} not found in the pokedex`;
-    //   return;
-    // }
-
     const { captCheck } = pokemonData;
     if (captCheck) {
       this.data.capt = {

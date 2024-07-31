@@ -1,11 +1,12 @@
-import { Generation, ID, Specie } from "@pkmn/data";
-import { RulesetId, Rulesets } from "../data/rulesets";
+import { Generation, Generations, ID, Specie } from "@pkmn/data";
+import { Dex } from "@pkmn/dex";
 import {
-  newgetAbilities,
-  newgetImmune,
-  newgetResists,
-  newgetWeak,
+  getAbilities,
+  getImmune,
+  getResists,
+  getWeak,
 } from "./data-services/pokedex.service";
+import { RulesetId, Rulesets } from "../data/rulesets";
 
 type Token = { type: string; value: string };
 type ASTNode = {
@@ -223,13 +224,13 @@ async function evaluate(
             leftValue = mon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = newgetWeak(mon);
+            leftValue = getWeak(mon);
             break;
           case "resists":
-            leftValue = newgetResists(mon);
+            leftValue = getResists(mon);
             break;
           case "immunities":
-            leftValue = newgetImmune(mon);
+            leftValue = getImmune(mon);
             break;
           case "coverage":
             leftValue = Object.keys(
@@ -254,7 +255,7 @@ async function evaluate(
               : "";
             break;
           case "abilities":
-            leftValue = newgetAbilities(mon);
+            leftValue = getAbilities(mon);
             break;
           case "tier":
             let tiers = [

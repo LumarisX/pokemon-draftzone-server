@@ -1,12 +1,6 @@
 import { ID, StatID, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
-import { PokemonData } from "../../models/pokemon.schema";
-import {
-  getAbilities,
-  getBaseStats,
-  getName,
-  getTypes,
-} from "../data-services/pokedex.service";
+import { NewPokemonData, PokemonData } from "../../models/pokemon.schema";
 
 export type Summary = {
   team: PokemonData[];
@@ -38,28 +32,11 @@ export type Summary = {
   };
 };
 
-export function summary(ruleset: Ruleset, team: PokemonData[]): Summary {
+export function summary(ruleset: Ruleset, team: NewPokemonData[]): Summary {
   for (let pokemon of team) {
     summaryData(ruleset, pokemon);
   }
   return { team: team, stats: statistics(team) };
-}
-
-function summaryData(
-  ruleset: Ruleset,
-  pokemon: {
-    pid: ID;
-    name?: string;
-    abilities?: string[];
-    types?: TypeName[];
-    baseStats?: { [key in StatID]: number };
-  }
-) {
-  pokemon.name = getName(ruleset, pokemon.pid);
-  pokemon.abilities = getAbilities(ruleset, pokemon.pid);
-  pokemon.types = getTypes(ruleset, pokemon.pid);
-  pokemon.baseStats = getBaseStats(ruleset, pokemon.pid);
-  return pokemon;
 }
 
 function statistics(

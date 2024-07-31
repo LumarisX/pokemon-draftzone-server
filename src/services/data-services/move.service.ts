@@ -1,24 +1,23 @@
-import { ID, Move, MoveCategory, MoveName, TypeName } from "@pkmn/data";
+import { Move, MoveCategory, MoveName, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 
-export function getType(ruleset: Ruleset, moveID: ID): TypeName {
-  return ruleset.gen.dex.moves.getByID(moveID).type;
+export function getType(move: Move): TypeName {
+  return move.type;
 }
 
-export function getMove(ruleset: Ruleset, moveID: ID): Move {
-  return ruleset.gen.dex.moves.getByID(moveID);
+export function getMove(moveID: string, ruleset: Ruleset): Move {
+  return ruleset.gen.dex.moves.get(moveID);
 }
 
-export function getMoveName(ruleset: Ruleset, moveID: ID): MoveName {
-  return ruleset.gen.dex.moves.getByID(moveID).name;
+export function getMoveName(move: Move): MoveName {
+  return move.name;
 }
 
-export function getCategory(ruleset: Ruleset, moveID: ID): MoveCategory {
-  return ruleset.gen.dex.moves.getByID(moveID).category;
+export function getCategory(move: Move): MoveCategory {
+  return move.category;
 }
 
-export function getEffectivePower(ruleset: Ruleset, moveID: ID) {
-  const move = ruleset.gen.dex.moves.getByID(moveID);
+export function getEffectivePower(move: Move) {
   let value =
     move.accuracy === true
       ? move.basePower

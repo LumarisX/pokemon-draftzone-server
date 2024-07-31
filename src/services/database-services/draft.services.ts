@@ -1,7 +1,6 @@
-import { ID, toID } from "@pkmn/data";
+import { ID } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 import { MatchupModel } from "../../models/matchup.model";
-import { getName } from "../data-services/pokedex.service";
 
 export async function getScore(teamId: string) {
   let matchups = await getMatchups(teamId);
@@ -61,23 +60,26 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
   for (const matchup of matchups) {
     let stat = Object.fromEntries(matchup.matches[0].aTeam.stats);
     for (const pid in stat) {
-      if (!(pid in stats)) {
-        stats[pid] = {
-          pokemon: { pid: toID(pid), name: getName(ruleset, toID(pid)) },
-          kills: 0,
-          brought: 0,
-          indirect: 0,
-          deaths: 0,
-          kdr: 0,
-          kpg: 0,
-        };
-      }
-      const teamStats = stat[toID(pid)];
-      if (teamStats) {
-        stats[pid].kills += teamStats.kills ?? 0;
-        stats[pid].brought += teamStats.brought ?? 0;
-        stats[pid].indirect += teamStats.indirect ?? 0;
-        stats[pid].deaths += teamStats.deaths ?? 0;
+      let mon = ruleset.gen.species.get(pid);
+      if (mon) {
+        if (!(pid in stats)) {
+          stats[pid] = {
+            pokemon: { pid: mon.id, name: mon.name },
+            kills: 0,
+            brought: 0,
+            indirect: 0,
+            deaths: 0,
+            kdr: 0,
+            kpg: 0,
+          };
+        }
+        const teamStats = stat[pid];
+        if (teamStats) {
+          stats[pid].kills += teamStats.kills ?? 0;
+          stats[pid].brought += teamStats.brought ?? 0;
+          stats[pid].indirect += teamStats.indirect ?? 0;
+          stats[pid].deaths += teamStats.deaths ?? 0;
+        }
       }
     }
   }
