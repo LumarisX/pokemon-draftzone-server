@@ -1,12 +1,11 @@
-import { Generation, Generations, ID, Specie } from "@pkmn/data";
-import { Dex } from "@pkmn/dex";
+import { Generation, ID, Specie } from "@pkmn/data";
+import { RulesetId, Rulesets } from "../data/rulesets";
 import {
   getAbilities,
   getImmune,
   getResists,
   getWeak,
 } from "./data-services/pokedex.service";
-import { RulesetId, Rulesets } from "../data/rulesets";
 
 type Token = { type: string; value: string };
 type ASTNode = {
