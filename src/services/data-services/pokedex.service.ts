@@ -281,6 +281,7 @@ export function learns(pokemonID: ID, moveID: string): boolean {
 
 export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
   let learnset = await getLearnset(pokemon.pid, ruleset);
+  let monTypes = getTypes(ruleset, pokemon.pid);
   let coverage: {
     Physical: {
       [key: string]: {
@@ -306,20 +307,20 @@ export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
         id: "terablast" as ID,
         ePower: -1,
         type: type,
-        stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
+        stab: monTypes.includes(type as TypeName),
       };
       coverage.Special[type] = {
         id: "terablast" as ID,
         ePower: -1,
         type: type,
-        stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
+        stab: monTypes.includes(type as TypeName),
       };
     }
   }
   for (const move in learnset) {
     let moveID = toID(move);
     const category = getCategory(ruleset, moveID);
-    let type = getType(ruleset, moveID);
+    let type = getType(ruleset, moveID, monTypes);
     if (category !== "Status") {
       const ePower = getEffectivePower(ruleset, moveID);
       if (
@@ -330,7 +331,7 @@ export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
           id: moveID,
           ePower: ePower,
           type: type,
-          stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
+          stab: monTypes.includes(type as TypeName),
         };
       }
     }

@@ -1,7 +1,22 @@
 import { ID, Move, MoveCategory, MoveName, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 
-export function getType(ruleset: Ruleset, moveID: ID): TypeName {
+export function getType(
+  ruleset: Ruleset,
+  moveID: ID,
+  pokemonTypes?: [TypeName] | [TypeName, TypeName]
+): TypeName {
+  if (pokemonTypes) {
+    if (
+      moveID === "judgment" ||
+      moveID === "multiattack" ||
+      moveID === "revelationdance"
+    ) {
+      return pokemonTypes[0];
+    } else if (moveID === "ragingbull" || moveID === "ivycudgel") {
+      return pokemonTypes[1] ? pokemonTypes[1] : pokemonTypes[0];
+    }
+  }
   return ruleset.gen.dex.moves.getByID(moveID).type;
 }
 
