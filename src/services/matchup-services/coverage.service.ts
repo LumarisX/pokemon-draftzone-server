@@ -1,9 +1,10 @@
 import { ID, Move } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getCategory, getMoveName } from "../data-services/move.service";
-import { typechart } from "./typechart.service";
 import { getCoverage } from "../data-services/learnset.service";
+import { getCategory } from "../data-services/move.service";
+import { typechart } from "./typechart.service";
+import { DraftSpecie } from "../../classes/pokemon";
 
 export type CoverageChart = (
   | PokemonData & {
@@ -103,21 +104,7 @@ export async function coveragechart(
 }
 
 function bestCoverage(
-  ruleset: Ruleset,
-  pokemon: {
-    pid: ID;
-    name: string;
-    coverage?: {
-      [key: string]: {
-        ePower: number;
-        id: ID;
-        name?: string;
-        type: string;
-        stab: boolean;
-        recommended?: true;
-      }[];
-    };
-  },
+  pokemon: DraftSpecie,
   oppTypechart: {
     team: {
       pid: ID;

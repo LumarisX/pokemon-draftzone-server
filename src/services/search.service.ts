@@ -1,11 +1,11 @@
-import { Generation, ID, Specie } from "@pkmn/data";
+import { Generation, ID } from "@pkmn/data";
 import { RulesetId, Rulesets } from "../data/rulesets";
 import {
-  getAbilities,
   getImmune,
   getResists,
   getWeak,
 } from "./data-services/pokedex.service";
+import { DraftSpecie } from "../classes/pokemon";
 
 type Token = { type: string; value: string };
 type ASTNode = {
@@ -169,7 +169,7 @@ function parse(tokens: Token[]): ASTNode {
 
 async function evaluate(
   node: ASTNode | undefined,
-  mon: Specie,
+  mon: DraftSpecie,
   gen: Generation
 ): Promise<boolean> {
   if (node) {
@@ -254,7 +254,7 @@ async function evaluate(
               : "";
             break;
           case "abilities":
-            leftValue = getAbilities(mon);
+            leftValue = Object.values(mon.abilities);
             break;
           case "tier":
             let tiers = [
@@ -368,7 +368,7 @@ async function evaluate(
         }
         break;
       case "Identifier":
-        return !!mon[node.value as keyof Specie];
+        return !!mon[node.value as keyof DraftSpecie];
       case "Literal":
         return node.value;
     }

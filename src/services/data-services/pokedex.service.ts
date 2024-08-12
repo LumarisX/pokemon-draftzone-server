@@ -1,18 +1,10 @@
-import { Specie } from "@pkmn/data";
+import { DraftSpecie } from "../../classes/pokemon";
 import { typeWeak } from "./type.services";
 
-export function getName(mon: Specie) {
-  return mon.name;
-}
-
-export function etBaseStats(mon: Specie) {
-  return mon.baseStats;
-}
-
-export function getTypechart(mon: Specie): { [key: string]: number } {
+export function getTypechart(mon: DraftSpecie): { [key: string]: number } {
   let types = mon.types;
   let weak = typeWeak(mon);
-  for (let ability of getAbilities(mon)) {
+  for (let ability of Object.values(mon.abilities)) {
     switch (ability) {
       case "Fluffy":
         weak.Fire *= 2;
@@ -113,55 +105,43 @@ export function getTypechart(mon: Specie): { [key: string]: number } {
   return weak;
 }
 
-export function getWeak(mon: Specie) {
+export function getWeak(mon: DraftSpecie) {
   let tc = getTypechart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] > 1)
     .map((value: [string, number]) => value[0]);
 }
 
-export function getResists(mon: Specie) {
+export function getResists(mon: DraftSpecie) {
   let tc = getTypechart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] < 1)
     .map((value: [string, number]) => value[0]);
 }
 
-export function getImmune(mon: Specie) {
+export function getImmune(mon: DraftSpecie) {
   let tc = getTypechart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] === 0)
     .map((value: [string, number]) => value[0]);
 }
 
-export function getBaseForme(mon: Specie) {
-  return mon.baseForme;
-}
-
-export function getTypes(mon: Specie) {
-  return mon.types;
-}
-
-export function getAbilities(mon: Specie) {
-  return Object.values(mon.abilities);
-}
-
 // //comepletely wrong. Should be using Array.from(gen.dex.species)
 // getSpecies() {
 //   return Object.fromEntries(
-//     Object.entries(ruleset.gen.dex.data.Species).map(([key, specie]) => {
-//       let psname = specie.name.toLowerCase().replace(/[^a-z0-9]/g, "");
-//       if (specie.baseSpecies && specie.forme) {
+//     Object.entries(ruleset.gen.dex.data.Species).map(([key, DraftSpecie]) => {
+//       let psname = DraftSpecie.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+//       if (DraftSpecie.baseSpecies && DraftSpecie.forme) {
 //         psname =
-//           specie.baseSpecies.toLowerCase().replace(/[\s-.]+/g, "") +
+//           DraftSpecie.baseSpecies.toLowerCase().replace(/[\s-.]+/g, "") +
 //           "-" +
-//           specie.forme.toLowerCase().replace(/[\s-.%]+/g, "");
+//           DraftSpecie.forme.toLowerCase().replace(/[\s-.%]+/g, "");
 //       }
-//       let pdname = specie.name
+//       let pdname = DraftSpecie.name
 //         .toLowerCase()
 //         .replace(/[ ]/g, "-")
 //         .replace(/[^a-z0-9-]/g, "");
-//       if (specie.forme) {
+//       if (DraftSpecie.forme) {
 //         pdname = pdname
 //           .replace("paldea", "paldean")
 //           .replace("alola", "alolan")
@@ -171,9 +151,9 @@ export function getAbilities(mon: Specie) {
 //       return [
 //         key,
 //         {
-//           name: specie.name,
+//           name: DraftSpecie.name,
 //           ps: psname,
-//           serebii: specie.num.toString().padStart(3, "0"),
+//           serebii: DraftSpecie.num.toString().padStart(3, "0"),
 //           pd: pdname,
 //         },
 //       ];
@@ -187,21 +167,21 @@ export function getAbilities(mon: Specie) {
 //   }
 //   const nonstandardInfo = this.ruleset.natdex
 //     ? Object.fromEntries(
-//         Object.entries(ruleset.gen.dex.species).map(([key, specie]) => [
+//         Object.entries(ruleset.gen.dex.species).map(([key, DraftSpecie]) => [
 //           key,
-//           specie.isNonstandard,
+//           DraftSpecie.isNonstandard,
 //         ])
 //       )
 //     : {};
 //   return Object.entries(ruleset.gen.dex.data.Species)
-//     .filter(([key, specie]) => {
+//     .filter(([key, DraftSpecie]) => {
 //       const isNonstandard = nonstandardInfo[key] || null;
 //       return (
-//         specie.name.toLowerCase().startsWith(query.toLowerCase()) &&
+//         DraftSpecie.name.toLowerCase().startsWith(query.toLowerCase()) &&
 //         (!isNonstandard || (ruleset.natdex && isNonstandard == "Past"))
 //       );
 //     })
-//     .map(([key, specie]) => ({ pid: key, name: specie.name }));
+//     .map(([key, DraftSpecie]) => ({ pid: key, name: DraftSpecie.name }));
 // }
 
 // needsItem(pokemonID: ID) {

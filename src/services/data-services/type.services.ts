@@ -1,6 +1,6 @@
-import { Specie } from "@pkmn/data";
+import { DraftSpecie } from "@pkmn/data";
 
-export function typeWeak(mon: Specie) {
+export function typeWeak(mon: DraftSpecie) {
   const conversion = [1, 2, 0.5, 0];
   let adjustedDamage: { [key: string]: number } = {};
   mon.types.forEach((type) => {

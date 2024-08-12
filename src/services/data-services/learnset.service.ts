@@ -1,14 +1,14 @@
-import { ID, Move, Specie, toID } from "@pkmn/data";
+import { ID, Move, toID, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 import { getEffectivePower } from "./move.service";
-import { getTypes } from "./pokedex.service";
+import { DraftSpecie } from "../../classes/pokemon";
 
 export async function getLearnset(
-  mon: Specie,
+  mon: DraftSpecie,
   ruleset: Ruleset
-): Promise<{ [moveid: string]: string[] }> {
+): Promise<Move[]> {
   let restriction = undefined;
-  const moves: { [key in ID]?: any } = {};
+  const moves: Move[] = [];
   for await (const learnset of all(mon)) {
     for (const moveid in learnset.learnset) {
       const move = mon.dex.moves.get(moveid);
@@ -36,7 +36,7 @@ export async function getLearnset(
                 if (s.startsWith(prefix)) continue loop;
               unique.push(source);
             }
-            moves[move.id].push(...unique);
+            moves[move].push(...unique);
           } else {
             moves[move.id] = filtered;
           }
@@ -47,7 +47,7 @@ export async function getLearnset(
   return moves;
 }
 
-export async function getCoverage(mon: Specie, ruleset: Ruleset) {
+export async function getCoverage(mon: DraftSpecie, ruleset: Ruleset) {
   let learnset = await getLearnset(mon, ruleset);
   let coverage: {
     Physical: {
@@ -58,22 +58,22 @@ export async function getCoverage(mon: Specie, ruleset: Ruleset) {
     };
     teraBlast?: true;
   } = { Physical: {}, Special: {} };
-  // if (learnset.terablast && pokemon.capt?.tera) {
-  //   for (const type of pokemon.capt.tera) {
-  //     coverage.Physical[type] = {
-  //       id: "terablast" as ID,
-  //       ePower: -1,
-  //       type: type,
-  //       stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
-  //     };
-  //     coverage.Special[type] = {
-  //       id: "terablast" as ID,
-  //       ePower: -1,
-  //       type: type,
-  //       stab: getTypes(ruleset, pokemon.pid).includes(type as TypeName),
-  //     };
-  //   }
-  // }
+  if (learnset.terablast && mon.capt?.tera) {
+    for (const type of mon.capt.tera) {
+      coverage.Physical[type] = {
+        id: "terablast" as ID,
+        ePower: -1,
+        type: type,
+        stab: mon.types.includes(type),
+      };
+      coverage.Special[type] = {
+        id: "terablast" as ID,
+        ePower: -1,
+        type: type,
+        stab: mon.types.includes(type),
+      };
+    }
+  }
   for (const moveID in learnset) {
     let move = ruleset.gen.moves.get(moveID);
     if (!move) continue;
@@ -97,7 +97,11 @@ export async function getCoverage(mon: Specie, ruleset: Ruleset) {
   };
 }
 
-export function learns(mon: Specie, moveID: string, ruleset: Ruleset): boolean {
+export function learns(
+  mon: DraftSpecie,
+  moveID: string,
+  ruleset: Ruleset
+): boolean {
   let learns = false;
   getLearnset(mon, ruleset).then((learnset) => {
     learns = Object.keys(learnset).includes(moveID);
@@ -105,7 +109,7 @@ export function learns(mon: Specie, moveID: string, ruleset: Ruleset): boolean {
   return learns;
 }
 
-export async function* all(mon: Specie) {
+export async function* all(mon: DraftSpecie) {
   let id = mon.id;
   let learnset = await mon.dex.learnsets.get(id);
   if (!learnset) {

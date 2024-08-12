@@ -1,9 +1,9 @@
-import { ID, StatusName } from "@pkmn/data";
+import { StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
+import { DraftSpecie } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getAbilities, getTypes } from "../data-services/pokedex.service";
 
 export type Speedchart = {
   modifiers: string[];
@@ -33,12 +33,7 @@ type Configurations = {
   }[];
 };
 
-function getSpeedTiers(
-  ruleset: Ruleset,
-  p: PokemonData,
-  level: number,
-  teamIndex: string
-) {
+function getSpeedTiers(mon: DraftSpecie, level: number, teamIndex: string) {
   let fastConfigurations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
@@ -81,7 +76,7 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of getAbilities(mon)) {
+  for (let ability of Object.values(mon.abilities)) {
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -117,9 +112,9 @@ function getSpeedTiers(
     }
   }
   return [
-    ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
-    ...generateTiers(ruleset, p, level, teamIndex, baseConfiugrations),
-    ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
+    ...generateTiers(mon, level, teamIndex, fastConfigurations),
+    ...generateTiers(mon, level, teamIndex, baseConfiugrations),
+    ...generateTiers(mon, level, teamIndex, slowConfigurations),
   ];
 }
 
@@ -134,15 +129,12 @@ function getModifiers(tiers: Speedchart["tiers"]): string[] {
 }
 
 function generateTiers(
-  ruleset: Ruleset,
-  p: PokemonData,
+  mon: DraftSpecie,
   level: number,
   teamIndex: string,
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  let pid: ID = p.pid;
-  let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
     if (status.status == "par" && mon.types.includes("Electric")) continue;
     for (const sConfig of configurations.sides) {
@@ -152,18 +144,18 @@ function generateTiers(
         for (const pConfig of configurations.spreads) {
           for (const additional of configurations.additional) {
             for (const item of additional.noItem ||
-            dexmon.requiredItem ||
-            dexmon.requiredItems
+            mon.requiredItem ||
+            mon.requiredItems
               ? [{ addStages: [-1, 1, 2] }]
               : configurations.items) {
               for (const stage of [
                 ...configurations.stages,
                 ...(item.addStages || []),
               ]) {
-                if (pid === "aegislash") {
-                  pid = "aegislash-shield" as ID;
-                }
-                const pokemon = new Pokemon(ruleset.gen.num, pid, {
+                // if (mon.id === "aegislash") {
+                //   mon.id = "aegislash-shield" as ID;
+                // } might not be necessary anymore
+                const pokemon = new Pokemon(mon.dex.gen, mon.id, {
                   level,
                   evs: pConfig.evs,
                   ivs: pConfig.ivs,
