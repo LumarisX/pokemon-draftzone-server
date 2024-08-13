@@ -1,3 +1,4 @@
+import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getWeak } from "../data-services/pokedex.service";
@@ -12,7 +13,7 @@ export type Typechart = {
   };
 };
 
-export function typechart(ruleset: Ruleset, team: PokemonData[]): Typechart {
+export function typechart(ruleset: Ruleset, team: DraftSpecies[]): Typechart {
   let teraTypes: { [key: string]: {} } = {};
   let result: (
     | PokemonData & {
@@ -22,7 +23,7 @@ export function typechart(ruleset: Ruleset, team: PokemonData[]): Typechart {
   for (let p of team) {
     let pokemon: PokemonData & { weak: any } = {
       ...p,
-      weak: getWeak(ruleset, p.id),
+      weak: getWeak(ruleset, p),
     };
     result.push(pokemon);
     if (pokemon.capt && pokemon.capt.tera) {

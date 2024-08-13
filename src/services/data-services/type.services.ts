@@ -1,7 +1,10 @@
-import { Specie } from "@pkmn/data";
+import { Specie, TypeName } from "@pkmn/data";
 import { Ruleset } from "../../data/rulesets";
 
-export function typeWeak(ruleset: Ruleset, types: string[]) {
+export function typeWeak(
+  ruleset: Ruleset,
+  types: [TypeName] | [TypeName, TypeName]
+) {
   const conversion = [1, 2, 0.5, 0];
   let adjustedDamage: { [key: string]: number } = {};
   types.forEach((type) => {

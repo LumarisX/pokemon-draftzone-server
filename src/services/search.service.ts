@@ -4,7 +4,7 @@ import {
   newgetAbilities,
   newgetImmune,
   newgetResists,
-  newgetWeak,
+  getWeak,
 } from "./data-services/pokedex.service";
 
 type Token = { type: string; value: string };
@@ -223,7 +223,7 @@ async function evaluate(
             leftValue = mon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = newgetWeak(mon);
+            leftValue = getWeak(mon);
             break;
           case "resists":
             leftValue = newgetResists(mon);

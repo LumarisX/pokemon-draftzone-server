@@ -1,4 +1,5 @@
 import { toID } from "@pkmn/data";
+import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getLearnset } from "../data-services/learnset.service";
@@ -256,13 +257,13 @@ export type Movechart = {
   }[];
 }[];
 
-export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
+export async function movechart(ruleset: Ruleset, team: DraftSpecies[]) {
   let movechart: Movechart = chartMoves.map((cat) => ({
     categoryName: cat.categoryName,
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await getLearnset(pokemon.id, ruleset);
+    let learnset = await getLearnset(pokemon, ruleset);
     for (let cat of chartMoves) {
       for (const move of cat.moves) {
         const moveID = toID(move);

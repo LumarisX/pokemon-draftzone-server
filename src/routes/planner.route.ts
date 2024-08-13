@@ -1,16 +1,16 @@
-import { toID } from "@pkmn/data";
+import { ID } from "@pkmn/data";
 import express, { Request, Response } from "express";
+import { DraftSpecies } from "../classes/pokemon";
 import { Rulesets } from "../data/rulesets";
-import { PokemonData } from "../models/pokemon.schema";
+import { movechart } from "../services/matchup-services/movechart.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { typechart } from "../services/matchup-services/typechart.service";
-import { movechart } from "../services/matchup-services/movechart.service";
 
 export const plannerRouter = express.Router();
 
 plannerRouter.route("/").get(async (req: Request, res: Response) => {
   try {
-    let team: PokemonData[] = [];
+    let team: DraftSpecies[] = [];
     let ruleset = Rulesets["Gen9 NatDex"];
     if (
       req.query.ruleset &&
@@ -20,9 +20,14 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
       ruleset = Rulesets[req.query.ruleset];
     }
     if (req.query && req.query.team && typeof req.query.team == "string") {
-      for (let pid of req.query.team.split(",")) {
-        team.push({ id: toID(pid), name: pid });
-      }
+      team = req.query.team.split(",").map((pid: string) => {
+        let species: DraftSpecies | undefined = ruleset.gen.dex.species.getByID(
+          pid as ID
+        );
+        if (!species) throw new Error(`Invalid pid: ${pid}`);
+        species.pid = pid;
+        return species;
+      });
       res.json({
         typechart: typechart(ruleset, team),
         summary: summary(ruleset, team),

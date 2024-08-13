@@ -1,4 +1,5 @@
 import {
+  AbilityName,
   Generations,
   ID,
   Specie,
@@ -7,12 +8,12 @@ import {
   TypeName,
   toID,
 } from "@pkmn/data";
+import { Dex } from "@pkmn/dex";
+import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
-import { PokemonData } from "../../models/pokemon.schema";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { newtypeWeak, typeWeak } from "./type.services";
-import { Dex } from "@pkmn/dex";
 
 export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
   return ruleset.gen.dex.species.getByID(pokemonID).name;
@@ -22,10 +23,13 @@ export function getBaseStats(ruleset: Ruleset, pokemonID: ID): StatsTable {
   return ruleset.gen.dex.species.getByID(pokemonID).baseStats;
 }
 
-export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
-  let types = getTypes(ruleset, pid);
-  let weak = typeWeak(ruleset, types);
-  for (let ability of getAbilities(ruleset, pid)) {
+export function getWeak(
+  ruleset: Ruleset,
+  pokemon: DraftSpecies
+): { [key: string]: number } {
+  let weak = typeWeak(ruleset, pokemon.types);
+  for (let ability of Object.values(pokemon.abilities)) {
+    ability = ability as AbilityName;
     switch (ability) {
       case "Fluffy":
         weak.Fire *= 2;
@@ -108,7 +112,7 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
         weak.Water *= 0.5;
         break;
       case "Delta Stream":
-        if (types.includes("Flying")) {
+        if (pokemon.types.includes("Flying")) {
           weak.Ice *= 0.5;
           weak.Electric *= 0.5;
           weak.Rock *= 0.5;
@@ -129,7 +133,8 @@ export function getWeak(ruleset: Ruleset, pid: ID): { [key: string]: number } {
 export function newgetTypechart(mon: Specie): { [key: string]: number } {
   let types = mon.types;
   let weak = newtypeWeak(mon);
-  for (let ability of newgetAbilities(mon)) {
+  for (let ability of Object.values(mon.abilities)) {
+    ability = ability as AbilityName;
     switch (ability) {
       case "Fluffy":
         weak.Fire *= 2;
@@ -251,25 +256,9 @@ export function newgetImmune(mon: Specie) {
     .map((value: [string, number]) => value[0]);
 }
 
-export function getBaseForme(ruleset: Ruleset, pokemonID: ID) {
-  return ruleset.gen.dex.species.getByID(pokemonID).baseForme;
-}
-
-export function getTypes(ruleset: Ruleset, pokemonID: ID) {
-  return ruleset.gen.dex.species.getByID(pokemonID).types;
-}
-
-export function getAbilities(ruleset: Ruleset, pokemonID: ID) {
-  return Object.values(ruleset.gen.dex.species.getByID(pokemonID).abilities);
-}
-
-export function newgetAbilities(mon: Specie) {
-  return Object.values(mon.abilities);
-}
-
-export function learns(pokemonID: ID, moveID: string): boolean {
+export function learns(pokemon: DraftSpecies, moveID: string): boolean {
   let learns = false;
-  getLearnset(pokemonID, {
+  getLearnset(pokemon, {
     gen: new Generations(Dex).get(9),
     natdex: true,
   }).then((learnset) => {
@@ -279,9 +268,9 @@ export function learns(pokemonID: ID, moveID: string): boolean {
   return learns;
 }
 
-export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
-  let learnset = await getLearnset(pokemon.id, ruleset);
-  let monTypes = getTypes(ruleset, pokemon.id);
+export async function getCoverage(ruleset: Ruleset, pokemon: DraftSpecies) {
+  let learnset = await getLearnset(pokemon, ruleset);
+  let monTypes = pokemon.types;
   let coverage: {
     Physical: {
       [key: string]: {

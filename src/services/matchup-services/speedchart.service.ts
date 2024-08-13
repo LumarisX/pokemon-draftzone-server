@@ -1,9 +1,8 @@
-import { ID, StatusName } from "@pkmn/data";
+import { AbilityName, StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
+import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
-import { PokemonData } from "../../models/pokemon.schema";
-import { getAbilities, getTypes } from "../data-services/pokedex.service";
 
 export type Speedchart = {
   modifiers: string[];
@@ -35,7 +34,7 @@ type Configurations = {
 
 function getSpeedTiers(
   ruleset: Ruleset,
-  p: PokemonData,
+  p: DraftSpecies,
   level: number,
   teamIndex: string
 ) {
@@ -81,7 +80,8 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of getAbilities(ruleset, p.id)) {
+  for (let ability of Object.values(p.abilities)) {
+    ability = ability as AbilityName;
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -135,17 +135,14 @@ function getModifiers(tiers: Speedchart["tiers"]): string[] {
 
 function generateTiers(
   ruleset: Ruleset,
-  p: PokemonData,
+  mon: DraftSpecies,
   level: number,
   teamIndex: string,
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  let pid: ID = p.id;
-  let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
-    if (status.status == "par" && getTypes(ruleset, pid).includes("Electric"))
-      continue;
+    if (status.status == "par" && mon.types.includes("Electric")) continue;
     for (const sConfig of configurations.sides) {
       const side = new Side({ isTailwind: sConfig.tailwind });
       for (const fConfig of configurations.fields) {
@@ -153,18 +150,18 @@ function generateTiers(
         for (const pConfig of configurations.spreads) {
           for (const additional of configurations.additional) {
             for (const item of additional.noItem ||
-            dexmon.requiredItem ||
-            dexmon.requiredItems
+            mon.requiredItem ||
+            mon.requiredItems
               ? [{ addStages: [-1, 1, 2] }]
               : configurations.items) {
               for (const stage of [
                 ...configurations.stages,
                 ...(item.addStages || []),
               ]) {
-                if (pid === "aegislash") {
-                  pid = "aegislash-shield" as ID;
-                }
-                const pokemon = new Pokemon(ruleset.gen.num, pid, {
+                // if (mon.id === "aegislash") {
+                //   pid = "aegislash-shield" as ID;
+                // } Unecessary i think?
+                const pokemon = new Pokemon(ruleset.gen.num, mon.id, {
                   level,
                   evs: pConfig.evs,
                   ivs: pConfig.ivs,
@@ -191,7 +188,7 @@ function generateTiers(
                   modifiers.push(additional.modifier);
                 }
                 tiers.push({
-                  pokemon: p,
+                  pokemon: mon,
                   speed: Math.floor(
                     getFinalSpeed(ruleset.gen, pokemon, field, side) *
                       additional.mult
@@ -211,7 +208,7 @@ function generateTiers(
 
 export function speedchart(
   ruleset: Ruleset,
-  teams: PokemonData[][],
+  teams: DraftSpecies[][],
   level: number
 ): Speedchart {
   let tiers: Speedchart["tiers"] = [];
