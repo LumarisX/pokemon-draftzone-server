@@ -1,5 +1,5 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecie } from "../../classes/pokemon";
+import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getCategory, getMoveName } from "../data-services/move.service";
@@ -23,8 +23,8 @@ export type Coveragechart = (
 
 export async function coveragechart(
   ruleset: Ruleset,
-  team: DraftSpecie[],
-  oppteam: DraftSpecie[]
+  team: DraftSpecies[],
+  oppteam: DraftSpecies[]
 ): Promise<Coveragechart> {
   let result: Coveragechart = [];
   for (let mon of team) {

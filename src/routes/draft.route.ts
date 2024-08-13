@@ -12,8 +12,8 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
-import { DraftSpecie } from "../classes/pokemon";
-import { Species } from "@pkmn/data";
+import { DraftSpecies } from "../classes/pokemon";
+import { pid } from "process";
 
 export const draftRouter = express.Router();
 
@@ -385,13 +385,13 @@ draftRouter.param(
       }
       matchup.aTeam.teamName = draft.teamName;
       matchup.aTeam.team = draft.team.map((pokemon: any) => {
-        let specie: DraftSpecie | undefined = Array.from(
-          res.ruleset!.gen.species
-        ).find((s) => s.id === pokemon.pid);
-        if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-        specie.shiny = pokemon.shiny;
-        specie.capt = pokemon.capt;
-        return specie;
+        let species: DraftSpecies | undefined =
+          res.ruleset!.gen.dex.species.getByID(pokemon.pid);
+        if (!species) throw new Error(`Invalid pid: ${pokemon.pid}`);
+        species.shiny = pokemon.shiny;
+        species.capt = pokemon.capt;
+        species.pid = pokemon.pid;
+        return species;
       });
 
       res.matchup = matchup;

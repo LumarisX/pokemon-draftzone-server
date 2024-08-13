@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
-import { DraftSpecie } from "../classes/pokemon";
+import { DraftSpecies } from "../classes/pokemon";
 import { FormatId, Formats } from "../data/formats";
 import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
@@ -276,25 +276,25 @@ matchupRouter.param(
           owner: aTeam.owner,
           teamName: aTeam.teamName,
           team: aTeam.team.map((pokemon: any) => {
-            let specie: DraftSpecie | undefined = Array.from(
-              res.ruleset!.gen.species
-            ).find((s) => s.id === pokemon.pid);
-            if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-            specie.shiny = pokemon.shiny;
-            specie.capt = pokemon.capt;
-            return specie;
+            let species: DraftSpecies | undefined =
+              res.ruleset!.gen.dex.species.getByID(pokemon.pid);
+            if (!species) throw new Error(`Invalid pid: ${pokemon.pid}`);
+            species.shiny = pokemon.shiny;
+            species.capt = pokemon.capt;
+            species.pid = pokemon.pid;
+            return species;
           }),
           _id: aTeam._id,
         };
 
         res.matchup.bTeam.team = res.matchup.bTeam.team.map((pokemon: any) => {
-          let specie: DraftSpecie | undefined = Array.from(
-            res.ruleset!.gen.species
-          ).find((s) => s.id === pokemon.pid);
-          if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-          specie.shiny = pokemon.shiny;
-          specie.capt = pokemon.capt;
-          return specie;
+          let species: DraftSpecies | undefined =
+            res.ruleset!.gen.dex.species.getByID(pokemon.pid);
+          if (!species) throw new Error(`Invalid pid: ${pokemon.pid}`);
+          species.shiny = pokemon.shiny;
+          species.capt = pokemon.capt;
+          species.pid = pokemon.pid;
+          return species;
         });
       } else {
         return res

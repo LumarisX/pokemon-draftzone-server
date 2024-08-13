@@ -1,4 +1,5 @@
-import { Data, Dex, ID, Specie, Species, toID, TypeName } from "@pkmn/data";
+import { ID, toID, TypeName } from "@pkmn/data";
+import { Species } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
 import { getName } from "../services/data-services/pokedex.service";
 
@@ -14,15 +15,8 @@ export type PokemonFormData = {
   captCheck?: boolean;
 };
 
-export type DraftSpecie = Specie & {
-  shiny?: boolean;
-  capt?: {
-    tera?: TypeName[];
-    z?: boolean;
-  };
-};
-
 export type DraftSpecies = Species & {
+  pid?: string;
   shiny?: boolean;
   capt?: {
     tera?: TypeName[];
