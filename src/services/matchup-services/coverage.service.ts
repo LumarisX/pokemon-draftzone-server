@@ -1,9 +1,10 @@
-import { Generation, ID } from "@pkmn/data";
+import { ID } from "@pkmn/data";
+import { DraftSpecie } from "../../classes/pokemon";
+import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getCategory, getMoveName } from "../data-services/move.service";
 import { getBaseStats, getCoverage } from "../data-services/pokedex.service";
 import { typechart } from "./typechart.service";
-import { Ruleset } from "../../data/rulesets";
 
 export type Coveragechart = (
   | PokemonData & {
@@ -22,14 +23,14 @@ export type Coveragechart = (
 
 export async function coveragechart(
   ruleset: Ruleset,
-  team: PokemonData[],
-  oppteam: PokemonData[]
+  team: DraftSpecie[],
+  oppteam: DraftSpecie[]
 ): Promise<Coveragechart> {
   let result: Coveragechart = [];
-  for (let p of team) {
+  for (let mon of team) {
     let pokemon: PokemonData & { coverage: any } = {
-      ...p,
-      coverage: await getCoverage(ruleset, p),
+      ...mon,
+      coverage: await getCoverage(ruleset, mon),
     };
     for (let category in pokemon.coverage) {
       pokemon.coverage[category].sort(function (
@@ -78,7 +79,7 @@ export async function coveragechart(
 function bestCoverage(
   ruleset: Ruleset,
   pokemon: {
-    pid: ID;
+    id: ID;
     name: string;
     coverage?: {
       [key: string]: {
@@ -93,7 +94,7 @@ function bestCoverage(
   },
   oppTypechart: {
     team: {
-      pid: ID;
+      id: ID;
       name: string;
       weak?: {} | undefined;
       capt?: { tera?: string[] | undefined } | undefined;
@@ -134,7 +135,7 @@ function bestCoverage(
     }
     let coverageEffectiveness = teamCoverageEffectiveness(
       ruleset,
-      pokemon.pid,
+      pokemon.id,
       moves,
       oppTypechart
     );

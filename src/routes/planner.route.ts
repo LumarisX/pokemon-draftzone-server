@@ -21,7 +21,7 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
     }
     if (req.query && req.query.team && typeof req.query.team == "string") {
       for (let pid of req.query.team.split(",")) {
-        team.push({ pid: toID(pid), name: pid });
+        team.push({ id: toID(pid), name: pid });
       }
       res.json({
         typechart: typechart(ruleset, team),

@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
+import { DraftSpecie } from "../classes/pokemon";
 import { FormatId, Formats } from "../data/formats";
 import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
@@ -8,7 +9,6 @@ import {
   MatchupDocument,
   MatchupModel,
 } from "../models/matchup.model";
-import { getName } from "../services/data-services/pokedex.service";
 import {
   Coveragechart,
   coveragechart,
@@ -246,46 +246,65 @@ matchupRouter.param(
     try {
       if (mongoose.Types.ObjectId.isValid(matchup_id)) {
         res.rawMatchup = await MatchupModel.findById(matchup_id);
-        let matchup = res.rawMatchup?.toObject();
-        if (matchup === null) {
+        let matchup: MatchupData | undefined = res.rawMatchup?.toObject();
+        if (matchup === undefined) {
           res
             .status(400)
             .json({ message: "Matchup ID not found", code: "MR-P1-01" });
+          return next();
         }
         const aTeam = await DraftModel.findById(matchup.aTeam._id).lean();
         if (aTeam === null) {
           res
             .status(400)
             .json({ message: "Draft ID not found", code: "MR-P1-02" });
-          next();
-          return;
+          return next();
         }
-        matchup.leagueName = aTeam.leagueName;
-        matchup.format = aTeam.format;
-        matchup.rulesetId = aTeam.ruleset;
-        matchup.aTeam = {
+        res.matchup = {
+          ...matchup,
+          leagueName: aTeam.leagueName,
+          format: aTeam.format as FormatId,
+          rulesetId: aTeam.ruleset,
+        };
+        res.ruleset = Rulesets[res.matchup.rulesetId];
+        if (res.ruleset === undefined) {
+          return res
+            .status(400)
+            .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
+        }
+        res.matchup.aTeam = {
           owner: aTeam.owner,
           teamName: aTeam.teamName,
-          team: aTeam.team,
+          team: aTeam.team.map((pokemon: any) => {
+            let specie: DraftSpecie | undefined = Array.from(
+              res.ruleset!.gen.species
+            ).find((s) => s.id === pokemon.pid);
+            if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
+            specie.shiny = pokemon.shiny;
+            specie.capt = pokemon.capt;
+            return specie;
+          }),
           _id: aTeam._id,
         };
-        res.ruleset = Rulesets[matchup.rulesetId];
-        for (let pokemon of matchup.aTeam.team) {
-          pokemon.name = getName(res.ruleset, pokemon.pid);
-        }
-        for (let pokemon of matchup.bTeam.team) {
-          pokemon.name = getName(res.ruleset, pokemon.pid);
-        }
-        res.matchup = matchup;
+
+        res.matchup.bTeam.team = res.matchup.bTeam.team.map((pokemon: any) => {
+          let specie: DraftSpecie | undefined = Array.from(
+            res.ruleset!.gen.species
+          ).find((s) => s.id === pokemon.pid);
+          if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
+          specie.shiny = pokemon.shiny;
+          specie.capt = pokemon.capt;
+          return specie;
+        });
       } else {
         return res
           .status(400)
-          .json({ message: "Invalid ID format", code: "MR-P1-03" });
+          .json({ message: "Invalid ID format", code: "MR-P1-04" });
       }
     } catch (error) {
       return res
         .status(500)
-        .json({ message: (error as Error).message, code: "MR-P1-04" });
+        .json({ message: (error as Error).message, code: "MR-P1-05" });
     }
     next();
   }

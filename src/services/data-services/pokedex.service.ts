@@ -280,8 +280,8 @@ export function learns(pokemonID: ID, moveID: string): boolean {
 }
 
 export async function getCoverage(ruleset: Ruleset, pokemon: PokemonData) {
-  let learnset = await getLearnset(pokemon.pid, ruleset);
-  let monTypes = getTypes(ruleset, pokemon.pid);
+  let learnset = await getLearnset(pokemon.id, ruleset);
+  let monTypes = getTypes(ruleset, pokemon.id);
   let coverage: {
     Physical: {
       [key: string]: {

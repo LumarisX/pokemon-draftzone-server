@@ -22,7 +22,7 @@ export function typechart(ruleset: Ruleset, team: PokemonData[]): Typechart {
   for (let p of team) {
     let pokemon: PokemonData & { weak: any } = {
       ...p,
-      weak: getWeak(ruleset, p.pid),
+      weak: getWeak(ruleset, p.id),
     };
     result.push(pokemon);
     if (pokemon.capt && pokemon.capt.tera) {

@@ -9,7 +9,7 @@ export type Speedchart = {
   modifiers: string[];
   tiers: {
     pokemon: {
-      pid: string;
+      id: string;
     };
     team: string;
     speed: number;
@@ -81,7 +81,7 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of getAbilities(ruleset, p.pid)) {
+  for (let ability of getAbilities(ruleset, p.id)) {
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -141,7 +141,7 @@ function generateTiers(
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  let pid: ID = p.pid;
+  let pid: ID = p.id;
   let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
     if (status.status == "par" && getTypes(ruleset, pid).includes("Electric"))

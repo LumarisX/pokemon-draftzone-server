@@ -25,7 +25,7 @@ export class Archive {
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,
       owner: this.draft.owner,
-      team: this.draft.team.map((pokemon) => ({ pid: pokemon.pid })),
+      team: this.draft.team.map((pokemon) => ({ pid: pokemon.id })),
       matches: [],
     };
     const matchups = await getMatchups(this.draft._id);

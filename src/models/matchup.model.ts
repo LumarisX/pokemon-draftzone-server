@@ -1,5 +1,7 @@
 import mongoose, { Document } from "mongoose";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
+import { DraftSpecie } from "../classes/pokemon";
+import { Specie } from "@pkmn/data";
 
 const teamSchema = new mongoose.Schema(
   {
@@ -55,7 +57,7 @@ const matchSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const matchupSchema = new mongoose.Schema(
+export const matchupSchema = new mongoose.Schema(
   {
     aTeam: {
       type: teamSchema,
@@ -108,14 +110,15 @@ export type MatchData = {
 
 export interface MatchupData {
   aTeam: {
-    team: PokemonData[];
+    team: DraftSpecie[];
+    owner: string;
     name?: string;
     teamName?: string;
     paste?: string;
     _id?: mongoose.Schema.Types.ObjectId;
   };
   bTeam: {
-    team: PokemonData[];
+    team: DraftSpecie[];
     name?: string;
     teamName?: string;
     paste?: string;

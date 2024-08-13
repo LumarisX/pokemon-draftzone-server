@@ -1,4 +1,4 @@
-import { ID, toID } from "@pkmn/data";
+import { Data, Dex, ID, Specie, Species, toID, TypeName } from "@pkmn/data";
 import { Ruleset } from "../data/rulesets";
 import { getName } from "../services/data-services/pokedex.service";
 
@@ -14,12 +14,28 @@ export type PokemonFormData = {
   captCheck?: boolean;
 };
 
+export type DraftSpecie = Specie & {
+  shiny?: boolean;
+  capt?: {
+    tera?: TypeName[];
+    z?: boolean;
+  };
+};
+
+export type DraftSpecies = Species & {
+  shiny?: boolean;
+  capt?: {
+    tera?: TypeName[];
+    z?: boolean;
+  };
+};
+
 export type Pokemon = {
   pid: ID;
   shiny?: boolean;
   name: string;
   capt?: {
-    tera?: string[];
+    tera?: TypeName[];
     z?: boolean;
   };
 };
@@ -45,9 +61,9 @@ export class PokemonBuilder {
       this.data.capt = {
         z: pokemonData.capt?.z ? true : undefined,
         tera: pokemonData.capt?.teraCheck
-          ? Object.keys(pokemonData.capt?.tera || {}).filter(
+          ? (Object.keys(pokemonData.capt?.tera || {}).filter(
               (type) => pokemonData.capt!.tera![type]
-            )
+            ) as TypeName[])
           : undefined,
       };
     }

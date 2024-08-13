@@ -12,14 +12,14 @@ testRouter.route("/test").get(async (req, res) => {
       ruleset,
       [
         [
-          { pid: "gallade" as ID, name: "Gallade" },
-          { pid: "deoxys" as ID, name: "Deoxys" },
-          { pid: "mew" as ID, name: "Mew" },
+          { id: "gallade" as ID, name: "Gallade" },
+          { id: "deoxys" as ID, name: "Deoxys" },
+          { id: "mew" as ID, name: "Mew" },
         ],
         [
-          { pid: "pikachu" as ID, name: "Pikachu" },
-          { pid: "charizard" as ID, name: "Charizard" },
-          { pid: "heatran" as ID, name: "Heatran" },
+          { id: "pikachu" as ID, name: "Pikachu" },
+          { id: "charizard" as ID, name: "Charizard" },
+          { id: "heatran" as ID, name: "Heatran" },
         ],
       ],
       100

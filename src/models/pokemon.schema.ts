@@ -1,4 +1,4 @@
-import { ID } from "@pkmn/data";
+import { ID, TypeName } from "@pkmn/data";
 import mongoose from "mongoose";
 
 const captSchema = new mongoose.Schema(
@@ -29,10 +29,11 @@ export const pokemonSchema = new mongoose.Schema(
 );
 
 export interface PokemonData {
-  pid: ID;
+  id: ID;
   name: string;
   shiny?: boolean;
   capt?: {
-    tera: string[];
+    tera?: TypeName[];
+    z?: boolean;
   };
 }

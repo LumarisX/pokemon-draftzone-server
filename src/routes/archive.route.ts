@@ -84,7 +84,7 @@ archiveRouter.param(
       res.archive = res.rawArchive.toObject();
       res.ruleset = Rulesets[res.archive.ruleset];
       for (let pokemon of res.archive.team) {
-        pokemon.name = getName(res.ruleset, pokemon.pid);
+        pokemon.name = getName(res.ruleset, pokemon.id);
       }
     } catch (error) {
       console.log(error);

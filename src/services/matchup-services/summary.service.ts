@@ -48,23 +48,23 @@ export function summary(ruleset: Ruleset, team: PokemonData[]): Summary {
 function summaryData(
   ruleset: Ruleset,
   pokemon: {
-    pid: ID;
+    id: ID;
     name?: string;
     abilities?: string[];
     types?: TypeName[];
     baseStats?: { [key in StatID]: number };
   }
 ) {
-  pokemon.name = getName(ruleset, pokemon.pid);
-  pokemon.abilities = getAbilities(ruleset, pokemon.pid);
-  pokemon.types = getTypes(ruleset, pokemon.pid);
-  pokemon.baseStats = getBaseStats(ruleset, pokemon.pid);
+  pokemon.name = getName(ruleset, pokemon.id);
+  pokemon.abilities = getAbilities(ruleset, pokemon.id);
+  pokemon.types = getTypes(ruleset, pokemon.id);
+  pokemon.baseStats = getBaseStats(ruleset, pokemon.id);
   return pokemon;
 }
 
 function statistics(
   team: {
-    pid: ID;
+    id: ID;
     name?: string;
     abilities?: string[];
     types?: TypeName[];
