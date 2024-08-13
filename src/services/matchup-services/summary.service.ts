@@ -33,13 +33,6 @@ export type Summary = {
 };
 
 export function summary(ruleset: Ruleset, team: DraftSpecie[]): Summary {
-  for (let pokemon of team) {
-    summaryData(ruleset, pokemon);
-  }
-  return { team: team, stats: statistics(team) };
-}
-
-function statistics(team: DraftSpecie[]) {
   let stats: {
     mean: { [key in StatID]?: number };
     median: { [key in StatID]?: number };
@@ -72,6 +65,5 @@ function statistics(team: DraftSpecie[]) {
     stats.median[stat] = all[stat][Math.round(all[stat].length / 2)];
     stats.max[stat] = all[stat][0];
   });
-
-  return stats;
+  return { team: team, stats: stats };
 }
