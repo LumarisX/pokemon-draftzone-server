@@ -1,10 +1,9 @@
-import { Generation, ID, Specie } from "@pkmn/data";
-import { RulesetId, Rulesets } from "../data/rulesets";
+import { ID, Specie } from "@pkmn/data";
+import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
 import {
-  newgetAbilities,
-  newgetImmune,
-  newgetResists,
   getWeak,
+  getResists,
+  getImmune,
 } from "./data-services/pokedex.service";
 
 type Token = { type: string; value: string };
@@ -21,7 +20,7 @@ let cache: [ASTNode, (boolean | ID)[]][] = [];
 
 export async function searchPokemon(
   query: string,
-  ruleset: RulesetId = "Gen9 NatDex"
+  rulesetId: RulesetId = "Gen9 NatDex"
 ) {
   const tokens = tokenize(query);
   const ast = parse(tokens);
@@ -29,10 +28,10 @@ export async function searchPokemon(
   if (cachedData) {
     return cachedData[1];
   } else {
-    let gen = Rulesets[ruleset].gen;
+    let ruleset = Rulesets[rulesetId];
     let searchResults = await Promise.all(
-      Array.from(gen.species).map(async (pokemon) => {
-        return [pokemon.id, await evaluate(ast, pokemon, gen)];
+      Array.from(ruleset.gen.species).map(async (pokemon) => {
+        return [pokemon.id, await evaluate(ast, pokemon, ruleset)];
       })
     );
     let filteredResults = searchResults
@@ -170,21 +169,21 @@ function parse(tokens: Token[]): ASTNode {
 async function evaluate(
   node: ASTNode | undefined,
   mon: Specie,
-  gen: Generation
+  ruleset: Ruleset
 ): Promise<boolean> {
   if (node) {
     switch (node.type) {
       case "LogicalExpression":
         if (node.operator === "and") {
           return (
-            (await evaluate(node.left, mon, gen)) &&
-            (await evaluate(node.right!, mon, gen))
+            (await evaluate(node.left, mon, ruleset)) &&
+            (await evaluate(node.right!, mon, ruleset))
           );
         }
         if (node.operator === "or") {
           return (
-            (await evaluate(node.left, mon, gen)) ||
-            (await evaluate(node.right!, mon, gen))
+            (await evaluate(node.left, mon, ruleset)) ||
+            (await evaluate(node.right!, mon, ruleset))
           );
         }
         break;
@@ -223,19 +222,19 @@ async function evaluate(
             leftValue = mon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = getWeak(mon);
+            leftValue = getWeak(ruleset, mon);
             break;
           case "resists":
-            leftValue = newgetResists(mon);
+            leftValue = getResists(ruleset, mon);
             break;
           case "immunities":
-            leftValue = newgetImmune(mon);
+            leftValue = getImmune(ruleset, mon);
             break;
           case "coverage":
             leftValue = Object.keys(
-              (await gen.learnsets.learnable(mon.id)) || {}
+              (await ruleset.gen.learnsets.learnable(mon.id)) || {}
             )
-              .map((moveid) => gen.dex.moves.getByID(moveid as ID))
+              .map((moveid) => ruleset.gen.dex.moves.getByID(moveid as ID))
               .filter((move) => move.category != "Status")
               .reduce<string[]>(
                 (coverage, move) =>
@@ -246,7 +245,7 @@ async function evaluate(
               );
             break;
           case "learns":
-            leftValue = (await gen.learnsets.canLearn(
+            leftValue = (await ruleset.gen.learnsets.canLearn(
               mon.id,
               node.right?.value || ""
             ))
@@ -254,7 +253,7 @@ async function evaluate(
               : "";
             break;
           case "abilities":
-            leftValue = newgetAbilities(mon);
+            leftValue = Object.values(mon.abilities);
             break;
           case "tier":
             let tiers = [

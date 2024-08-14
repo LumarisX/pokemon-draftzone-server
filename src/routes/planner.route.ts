@@ -5,6 +5,7 @@ import { Rulesets } from "../data/rulesets";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { typechart } from "../services/matchup-services/typechart.service";
+import { spec } from "node:test/reporters";
 
 export const plannerRouter = express.Router();
 
@@ -21,12 +22,13 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
     }
     if (req.query && req.query.team && typeof req.query.team == "string") {
       team = req.query.team.split(",").map((pid: string) => {
-        let species: DraftSpecies | undefined = ruleset.gen.dex.species.getByID(
-          pid as ID
-        );
-        if (!species) throw new Error(`Invalid pid: ${pid}`);
-        species.pid = pid;
-        return species;
+        let specie = ruleset.gen.species.get(pid);
+        if (!specie) throw new Error(`${pid} is an unknown pid.`);
+        let draftSpecies: DraftSpecies = new DraftSpecies(specie, {
+          pid: pid as ID,
+          name: pid,
+        });
+        return draftSpecies;
       });
       res.json({
         typechart: typechart(ruleset, team),

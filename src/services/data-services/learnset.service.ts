@@ -1,5 +1,6 @@
 import { Generations, ID, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
+import { Species } from "@pkmn/dex-types";
 import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
@@ -47,7 +48,7 @@ export async function getLearnset(
   return moves;
 }
 
-async function* all(ruleset: Ruleset, species: DraftSpecies) {
+async function* all(ruleset: Ruleset, species: Species) {
   let id = species.id;
   let learnset = await ruleset.gen.learnsets.get(id);
   if (!learnset) {
