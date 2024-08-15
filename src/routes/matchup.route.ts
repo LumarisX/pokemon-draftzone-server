@@ -278,7 +278,11 @@ matchupRouter.param(
           team: aTeam.team.map((pokemon: any) => {
             let specie = res.ruleset!.gen.species.get(pokemon.pid);
             if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-            let draftSpecies: DraftSpecies = new DraftSpecies(specie, pokemon);
+            let draftSpecies: DraftSpecies = new DraftSpecies(
+              specie,
+              pokemon,
+              res.ruleset!
+            );
             return draftSpecies;
           }),
           _id: aTeam._id,
@@ -287,7 +291,11 @@ matchupRouter.param(
         res.matchup.bTeam.team = res.matchup.bTeam.team.map((pokemon: any) => {
           let specie = res.ruleset!.gen.species.get(pokemon.pid);
           if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(specie, pokemon);
+          let draftSpecies: DraftSpecies = new DraftSpecies(
+            specie,
+            pokemon,
+            res.ruleset!
+          );
           return draftSpecies;
         });
       } else {

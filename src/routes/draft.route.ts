@@ -4,6 +4,7 @@ import { SubRequest } from "../app";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
+import { DraftSpecies } from "../classes/pokemon";
 import { Ruleset, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
@@ -12,8 +13,6 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
-import { DraftSpecies } from "../classes/pokemon";
-import { pid } from "process";
 
 export const draftRouter = express.Router();
 
@@ -387,7 +386,11 @@ draftRouter.param(
       matchup.aTeam.team = draft.team.map((pokemon: any) => {
         let specie = res.ruleset!.gen.species.get(pokemon.pid);
         if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
-        let draftSpecies: DraftSpecies = new DraftSpecies(specie, pokemon);
+        let draftSpecies: DraftSpecies = new DraftSpecies(
+          specie,
+          pokemon,
+          res.ruleset!
+        );
         return draftSpecies;
       });
 

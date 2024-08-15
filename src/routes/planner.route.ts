@@ -5,10 +5,9 @@ import { Rulesets } from "../data/rulesets";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { summary } from "../services/matchup-services/summary.service";
 import { typechart } from "../services/matchup-services/typechart.service";
-import { spec } from "node:test/reporters";
 
 export const plannerRouter = express.Router();
-
+1;
 plannerRouter.route("/").get(async (req: Request, res: Response) => {
   try {
     let team: DraftSpecies[] = [];
@@ -24,10 +23,14 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
       team = req.query.team.split(",").map((pid: string) => {
         let specie = ruleset.gen.species.get(pid);
         if (!specie) throw new Error(`${pid} is an unknown pid.`);
-        let draftSpecies: DraftSpecies = new DraftSpecies(specie, {
-          pid: pid as ID,
-          name: pid,
-        });
+        let draftSpecies: DraftSpecies = new DraftSpecies(
+          specie,
+          {
+            pid: pid as ID,
+            name: pid,
+          },
+          ruleset
+        );
         return draftSpecies;
       });
       res.json({

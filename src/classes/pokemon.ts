@@ -104,17 +104,19 @@ export class DraftSpecies implements Specie, Pokemon {
   pid!: ID;
   shiny?: boolean | undefined;
   capt?: { tera?: TypeName[]; z?: boolean } | undefined;
+  ruleset: Ruleset;
   get formeNum(): number {
     throw new Error("Method not implemented.");
   }
   toString!: () => SpeciesName;
   toJSON!: () => { [key: string]: any };
 
-  constructor(species: Specie, data: Pokemon) {
+  constructor(species: Specie, data: Pokemon, ruleset: Ruleset) {
     Object.assign(this, data);
     Object.assign(this, species);
     this.toString = species.toString;
     this.toJSON = species.toJSON;
+    this.ruleset = ruleset;
   }
 }
 
