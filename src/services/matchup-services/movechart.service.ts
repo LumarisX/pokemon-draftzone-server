@@ -262,7 +262,7 @@ export async function movechart(ruleset: Ruleset, team: PokemonData[]) {
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await getLearnset(ruleset, pokemon.pid);
+    let learnset = await getLearnset(pokemon.pid, ruleset);
     for (let cat of chartMoves) {
       for (const move of cat.moves) {
         const moveID = toID(move);
