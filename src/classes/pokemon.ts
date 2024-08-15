@@ -11,19 +11,31 @@ import {
   ItemName,
   MoveName,
   Nonstandard,
-  Species,
   SpeciesAbility,
   SpeciesName,
   SpeciesTag,
   StatsTable,
   Tier,
 } from "@pkmn/dex-types";
-import { Species as Species1 } from "@pkmn/dex";
 import { Ruleset } from "../data/rulesets";
 import { getName } from "../services/data-services/pokedex.service";
+import { PokemonData } from "../models/pokemon.schema";
+
+export interface PokemonOptions {
+  shiny?: boolean;
+  capt?: {
+    tera?: TypeName[];
+    z?: boolean;
+  };
+}
+
+export interface Pokemon extends PokemonOptions {
+  id: ID;
+  name: string;
+}
 
 export type PokemonFormData = {
-  pid: ID;
+  id: ID;
   shiny?: boolean;
   name?: string;
   capt?: {
@@ -33,15 +45,6 @@ export type PokemonFormData = {
   };
   captCheck?: boolean;
 };
-
-// export type DraftSpecies = Species & {
-//   pid?: string;
-//   shiny?: boolean;
-//   capt?: {
-//     tera?: TypeName[];
-//     z?: boolean;
-//   };
-// };
 
 export class DraftSpecies implements Specie, Pokemon {
   id!: ID;
@@ -101,7 +104,6 @@ export class DraftSpecies implements Specie, Pokemon {
   condition?: Partial<Condition> | undefined;
   canHatch!: boolean;
   dex!: Dex;
-  pid!: ID;
   shiny?: boolean | undefined;
   capt?: { tera?: TypeName[]; z?: boolean } | undefined;
   ruleset: Ruleset;
@@ -111,23 +113,23 @@ export class DraftSpecies implements Specie, Pokemon {
   toString!: () => SpeciesName;
   toJSON!: () => { [key: string]: any };
 
-  constructor(species: Specie, data: Pokemon, ruleset: Ruleset) {
-    Object.assign(this, data);
+  constructor(species: Specie, data: PokemonOptions, ruleset: Ruleset) {
     Object.assign(this, species);
     this.toString = species.toString;
     this.toJSON = species.toJSON;
+    this.shiny = data.shiny;
+    this.capt = data.capt;
     this.ruleset = ruleset;
   }
-}
 
-export interface Pokemon {
-  pid: ID;
-  shiny?: boolean;
-  name: string;
-  capt?: {
-    tera?: TypeName[];
-    z?: boolean;
-  };
+  toPokemonData(): PokemonData {
+    return {
+      id: this.id,
+      name: this.name,
+      shiny: this.shiny,
+      capt: this.capt,
+    };
+  }
 }
 
 export class PokemonBuilder {
@@ -136,12 +138,12 @@ export class PokemonBuilder {
 
   constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
     this.data = {
-      pid: toID(pokemonData.pid),
-      name: getName(ruleset, pokemonData.pid),
+      id: toID(pokemonData.id),
+      name: getName(ruleset, pokemonData.id),
       shiny: pokemonData.shiny,
     };
 
-    // if (!inDex(pokemonData.pid)) {
+    // if (!inDex(pokemonData.id)) {
     //   this.error = `${this.data.name} not found in the pokedex`;
     //   return;
     // }

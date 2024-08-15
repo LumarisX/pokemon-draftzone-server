@@ -1,32 +1,17 @@
-import {
-  AbilityName,
-  ID,
-  Species,
-  SpeciesName,
-  StatsTable,
-  TypeName,
-} from "@pkmn/dex-types";
+import { SpeciesName, toID } from "@pkmn/data";
+import { AbilityName, ID, TypeName } from "@pkmn/dex-types";
 import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";
-import { Generations, toID } from "@pkmn/data";
-import { Dex } from "@pkmn/dex";
 
 export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
   return ruleset.gen.dex.species.getByID(pokemonID).name;
 }
 
-export function getBaseStats(ruleset: Ruleset, pokemonID: ID): StatsTable {
-  return ruleset.gen.dex.species.getByID(pokemonID).baseStats;
-}
-
-export function getTypeChart(
-  ruleset: Ruleset,
-  pokemon: Species
-): { [key: string]: number } {
-  let weak = typeWeak(ruleset, pokemon.types);
+export function getTypeChart(pokemon: DraftSpecies): { [key: string]: number } {
+  let weak = typeWeak(pokemon);
   for (let ability of Object.values(pokemon.abilities)) {
     ability = ability as AbilityName;
     switch (ability) {
@@ -129,41 +114,39 @@ export function getTypeChart(
   return weak;
 }
 
-export function getWeak(ruleset: Ruleset, mon: Species) {
-  let tc = getTypeChart(ruleset, mon);
+export function getWeak(mon: DraftSpecies) {
+  let tc = getTypeChart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] > 1)
     .map((value: [string, number]) => value[0]);
 }
 
-export function getResists(ruleset: Ruleset, mon: Species) {
-  let tc = getTypeChart(ruleset, mon);
+export function getResists(mon: DraftSpecies) {
+  let tc = getTypeChart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] < 1)
     .map((value: [string, number]) => value[0]);
 }
 
-export function getImmune(ruleset: Ruleset, mon: Species) {
-  let tc = getTypeChart(ruleset, mon);
+export function getImmune(mon: DraftSpecies) {
+  let tc = getTypeChart(mon);
   return Object.entries(tc)
     .filter((value: [string, number]) => value[1] === 0)
     .map((value: [string, number]) => value[0]);
 }
 
-export function learns(pokemon: DraftSpecies, moveID: string): boolean {
+export async function learns(
+  pokemon: DraftSpecies,
+  moveID: string
+): Promise<boolean> {
   let learns = false;
-  getLearnset(pokemon, {
-    gen: new Generations(Dex).get(9),
-    natdex: true,
-  }).then((learnset) => {
-    learns = Object.keys(learnset).includes(moveID);
-  });
-
+  let learnset = await getLearnset(pokemon);
+  learns = Object.keys(learnset).includes(moveID);
   return learns;
 }
 
-export async function getCoverage(ruleset: Ruleset, pokemon: DraftSpecies) {
-  let learnset = await getLearnset(pokemon, ruleset);
+export async function getCoverage(pokemon: DraftSpecies) {
+  let learnset = await getLearnset(pokemon);
   let monTypes = pokemon.types;
   let coverage: {
     Physical: {
@@ -202,10 +185,10 @@ export async function getCoverage(ruleset: Ruleset, pokemon: DraftSpecies) {
   }
   for (const move in learnset) {
     let moveID = toID(move);
-    const category = getCategory(ruleset, moveID);
-    let type = getType(ruleset, moveID, monTypes);
+    const category = getCategory(pokemon.ruleset, moveID);
+    let type = getType(pokemon.ruleset, moveID, monTypes);
     if (category !== "Status") {
-      const ePower = getEffectivePower(ruleset, moveID);
+      const ePower = getEffectivePower(pokemon.ruleset, moveID);
       if (
         !(type in coverage[category]) ||
         coverage[category][type].ePower < ePower
@@ -280,9 +263,5 @@ export function filterNames(ruleset: Ruleset, query: string) {
         (!isNonstandard || (ruleset.natdex && isNonstandard == "Past"))
       );
     })
-    .map(([key, specie]) => ({ pid: key, name: specie.name }));
-}
-
-export function needsItem(ruleset: Ruleset, pokemonID: ID) {
-  return ruleset.gen.dex.species.getByID(pokemonID).requiredItem;
+    .map(([key, specie]) => ({ id: key, name: specie.name }));
 }

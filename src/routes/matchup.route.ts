@@ -42,7 +42,7 @@ interface MatchupResponse extends Response {
 matchupRouter
   .route("/:matchup_id")
   .get(async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.ruleset) {
+    if (!res.matchup) {
       return;
     }
     try {
@@ -68,37 +68,26 @@ matchupRouter
         leagueName: res.matchup.leagueName,
         summary: [],
         speedchart: speedchart(
-          res.ruleset,
           [res.matchup.aTeam.team, res.matchup.bTeam.team],
           level
         ),
         coveragechart: [
-          await coveragechart(
-            res.ruleset,
-            res.matchup.aTeam.team,
-            res.matchup.bTeam.team
-          ),
-          await coveragechart(
-            res.ruleset,
-            res.matchup.bTeam.team,
-            res.matchup.aTeam.team
-          ),
+          await coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
+          await coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
         ],
         typechart: [
-          typechart(res.ruleset, res.matchup.aTeam.team),
-          typechart(res.ruleset, res.matchup.bTeam.team),
+          typechart(res.matchup.aTeam.team),
+          typechart(res.matchup.bTeam.team),
         ],
         movechart: [
-          await movechart(res.ruleset, res.matchup.aTeam.team),
-          await movechart(res.ruleset, res.matchup.bTeam.team),
+          await movechart(res.matchup.aTeam.team),
+          await movechart(res.matchup.bTeam.team),
         ],
       };
       let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.ruleset,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.ruleset,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -129,16 +118,14 @@ matchupRouter
 matchupRouter.get(
   "/:matchup_id/summary",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup || !res.ruleset) {
+    if (!res.matchup || !res.rawMatchup) {
       return;
     }
     try {
       let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.ruleset,
         res.matchup.aTeam.team
       );
       let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.ruleset,
         res.matchup.bTeam.team
       );
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
@@ -155,13 +142,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/typechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup || !res.ruleset) {
+    if (!res.matchup || !res.rawMatchup) {
       return;
     }
     try {
       res.json([
-        typechart(res.ruleset, res.matchup.aTeam.team),
-        typechart(res.ruleset, res.matchup.bTeam.team),
+        typechart(res.matchup.aTeam.team),
+        typechart(res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res
@@ -174,17 +161,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/speedchart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.ruleset) {
+    if (!res.matchup) {
       return;
     }
     try {
       let level = Formats[res.matchup.format].level;
       res.json(
-        speedchart(
-          res.ruleset,
-          [res.matchup.aTeam.team, res.matchup.bTeam.team],
-          level
-        )
+        speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
       );
     } catch (error) {
       res
@@ -197,21 +180,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/coveragechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.ruleset) {
+    if (!res.matchup) {
       return;
     }
     try {
       res.json([
-        coveragechart(
-          res.ruleset,
-          res.matchup.aTeam.team,
-          res.matchup.bTeam.team
-        ),
-        coveragechart(
-          res.ruleset,
-          res.matchup.bTeam.team,
-          res.matchup.aTeam.team
-        ),
+        coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
+        coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
       ]);
     } catch (error) {
       res
@@ -224,13 +199,13 @@ matchupRouter.get(
 matchupRouter.get(
   "/:matchup_id/movechart",
   async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.ruleset) {
+    if (!res.matchup) {
       return;
     }
     try {
       res.json([
-        movechart(res.ruleset, res.matchup.aTeam.team),
-        movechart(res.ruleset, res.matchup.bTeam.team),
+        movechart(res.matchup.aTeam.team),
+        movechart(res.matchup.bTeam.team),
       ]);
     } catch (error) {
       res
@@ -277,7 +252,7 @@ matchupRouter.param(
           teamName: aTeam.teamName,
           team: aTeam.team.map((pokemon: any) => {
             let specie = res.ruleset!.gen.species.get(pokemon.pid);
-            if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
+            if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
             let draftSpecies: DraftSpecies = new DraftSpecies(
               specie,
               pokemon,
@@ -290,7 +265,7 @@ matchupRouter.param(
 
         res.matchup.bTeam.team = res.matchup.bTeam.team.map((pokemon: any) => {
           let specie = res.ruleset!.gen.species.get(pokemon.pid);
-          if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
+          if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
             pokemon,

@@ -54,7 +54,7 @@ export class Matchup {
     };
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      if (pokemonData.pid !== "") {
+      if (pokemonData.id !== "") {
         const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
         if (pokemon.error) {
           errors.push(pokemon.error);
@@ -81,7 +81,7 @@ export class Score {
         winner: "a" | "b" | "";
         aTeam: {
           team: {
-            pokemon: { pid: string };
+            pokemon: { id: string };
             kills: number;
             fainted: number;
             indirect: number;
@@ -90,7 +90,7 @@ export class Score {
         };
         bTeam: {
           team: {
-            pokemon: { pid: string };
+            pokemon: { id: string };
             kills: number;
             fainted: number;
             indirect: number;
@@ -160,7 +160,7 @@ export class Score {
             pokemonStats.brought = stat.brought;
           }
           if (Object.keys(pokemonStats).length > 0) {
-            aTeamStats[stat.pokemon.pid] = pokemonStats;
+            aTeamStats[stat.pokemon.id] = pokemonStats;
           }
         }
       }
@@ -187,7 +187,7 @@ export class Score {
             pokemonStats.brought = stat.brought;
           }
           if (Object.keys(pokemonStats).length > 0) {
-            bTeamStats[stat.pokemon.pid] = pokemonStats;
+            bTeamStats[stat.pokemon.id] = pokemonStats;
           }
         }
       }

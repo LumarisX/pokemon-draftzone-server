@@ -59,7 +59,7 @@ export class Draft {
 
     const errors: string[] = [];
     for (const pokemonData of this.formData.team) {
-      if (pokemonData.pid != "") {
+      if (pokemonData.id != "") {
         const pokemon = new PokemonBuilder(ruleset, pokemonData);
         if (pokemon.error) {
           errors.push(pokemon.error);

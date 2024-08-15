@@ -1,9 +1,10 @@
 import { ID, Specie } from "@pkmn/data";
-import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
+import { DraftSpecies } from "../classes/pokemon";
+import { RulesetId, Rulesets } from "../data/rulesets";
 import {
-  getWeak,
-  getResists,
   getImmune,
+  getResists,
+  getWeak,
 } from "./data-services/pokedex.service";
 
 type Token = { type: string; value: string };
@@ -31,7 +32,10 @@ export async function searchPokemon(
     let ruleset = Rulesets[rulesetId];
     let searchResults = await Promise.all(
       Array.from(ruleset.gen.species).map(async (pokemon) => {
-        return [pokemon.id, await evaluate(ast, pokemon, ruleset)];
+        return [
+          pokemon.id,
+          await evaluate(ast, new DraftSpecies(pokemon, {}, ruleset)),
+        ];
       })
     );
     let filteredResults = searchResults
@@ -168,22 +172,21 @@ function parse(tokens: Token[]): ASTNode {
 
 async function evaluate(
   node: ASTNode | undefined,
-  mon: Specie,
-  ruleset: Ruleset
+  pokemon: DraftSpecies
 ): Promise<boolean> {
   if (node) {
     switch (node.type) {
       case "LogicalExpression":
         if (node.operator === "and") {
           return (
-            (await evaluate(node.left, mon, ruleset)) &&
-            (await evaluate(node.right!, mon, ruleset))
+            (await evaluate(node.left, pokemon)) &&
+            (await evaluate(node.right!, pokemon))
           );
         }
         if (node.operator === "or") {
           return (
-            (await evaluate(node.left, mon, ruleset)) ||
-            (await evaluate(node.right!, mon, ruleset))
+            (await evaluate(node.left, pokemon)) ||
+            (await evaluate(node.right!, pokemon))
           );
         }
         break;
@@ -192,49 +195,51 @@ async function evaluate(
         let rightValue: any;
         switch (node.left!.value) {
           case "name":
-            leftValue = mon.name;
+            leftValue = pokemon.name;
             break;
           case "bst":
             leftValue =
-              mon.baseStats.hp +
-              mon.baseStats.atk +
-              mon.baseStats.def +
-              mon.baseStats.spa +
-              mon.baseStats.spd +
-              mon.baseStats.spe;
+              pokemon.baseStats.hp +
+              pokemon.baseStats.atk +
+              pokemon.baseStats.def +
+              pokemon.baseStats.spa +
+              pokemon.baseStats.spd +
+              pokemon.baseStats.spe;
             break;
           case "hp":
-            leftValue = mon.baseStats.hp;
+            leftValue = pokemon.baseStats.hp;
             break;
           case "atk":
-            leftValue = mon.baseStats.atk;
+            leftValue = pokemon.baseStats.atk;
             break;
           case "def":
-            leftValue = mon.baseStats.def;
+            leftValue = pokemon.baseStats.def;
             break;
           case "spa":
-            leftValue = mon.baseStats.spa;
+            leftValue = pokemon.baseStats.spa;
             break;
           case "spd":
-            leftValue = mon.baseStats.spd;
+            leftValue = pokemon.baseStats.spd;
             break;
           case "spe":
-            leftValue = mon.baseStats.spe;
+            leftValue = pokemon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = getWeak(ruleset, mon);
+            leftValue = getWeak(pokemon);
             break;
           case "resists":
-            leftValue = getResists(ruleset, mon);
+            leftValue = getResists(pokemon);
             break;
           case "immunities":
-            leftValue = getImmune(ruleset, mon);
+            leftValue = getImmune(pokemon);
             break;
           case "coverage":
             leftValue = Object.keys(
-              (await ruleset.gen.learnsets.learnable(mon.id)) || {}
+              (await pokemon.ruleset.gen.learnsets.learnable(pokemon.id)) || {}
             )
-              .map((moveid) => ruleset.gen.dex.moves.getByID(moveid as ID))
+              .map((moveid) =>
+                pokemon.ruleset.gen.dex.moves.getByID(moveid as ID)
+              )
               .filter((move) => move.category != "Status")
               .reduce<string[]>(
                 (coverage, move) =>
@@ -245,15 +250,15 @@ async function evaluate(
               );
             break;
           case "learns":
-            leftValue = (await ruleset.gen.learnsets.canLearn(
-              mon.id,
+            leftValue = (await pokemon.ruleset.gen.learnsets.canLearn(
+              pokemon.id,
               node.right?.value || ""
             ))
               ? node.right?.value
               : "";
             break;
           case "abilities":
-            leftValue = Object.values(mon.abilities);
+            leftValue = Object.values(pokemon.abilities);
             break;
           case "tier":
             let tiers = [
@@ -272,17 +277,19 @@ async function evaluate(
               "AG",
             ];
             leftValue =
-              tiers.indexOf(mon.tier) > 0 ? tiers.indexOf(mon.tier) : mon.tier;
+              tiers.indexOf(pokemon.tier) > 0
+                ? tiers.indexOf(pokemon.tier)
+                : pokemon.tier;
             rightValue =
               tiers.indexOf(node.right?.value) > 0
                 ? tiers.indexOf(node.right?.value)
                 : node.right?.value;
             break;
           case "nfe":
-            leftValue = mon.nfe;
+            leftValue = pokemon.nfe;
             break;
           case "dexNum":
-            leftValue = mon.num;
+            leftValue = pokemon.num;
             rightValue = +node.right?.value;
             break;
           case "tags":
@@ -292,24 +299,24 @@ async function evaluate(
               "Mythical",
               "Restricted Legendary",
             ];
-            leftValue = mon.tags
+            leftValue = pokemon.tags
               .map((tag) => tags.indexOf(tag))
               .reduce((max, i) => (max = i > max ? i : max), -1);
             rightValue = tags.indexOf(node.right?.value);
             break;
           case "type":
           case "types":
-            leftValue = mon.types;
+            leftValue = pokemon.types;
             break;
           case "gen":
-            leftValue = mon.gen;
+            leftValue = pokemon.gen;
             rightValue = +node.right?.value;
             break;
           case "weight":
-            leftValue = mon.weightkg;
+            leftValue = pokemon.weightkg;
             break;
           case "egggroups":
-            leftValue = mon.eggGroups;
+            leftValue = pokemon.eggGroups;
             break;
           default:
             console.log(`Unknown value: ${node.left?.value}`);
@@ -367,7 +374,7 @@ async function evaluate(
         }
         break;
       case "Identifier":
-        return !!mon[node.value as keyof Specie];
+        return !!pokemon[node.value as keyof Specie];
       case "Literal":
         return node.value;
     }

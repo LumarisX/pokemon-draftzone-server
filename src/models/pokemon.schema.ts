@@ -12,7 +12,7 @@ const captSchema = new mongoose.Schema(
 
 export const pokemonSchema = new mongoose.Schema(
   {
-    pid: {
+    id: {
       type: String,
       required: true,
     },

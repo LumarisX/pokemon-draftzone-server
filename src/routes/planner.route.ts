@@ -1,4 +1,3 @@
-import { ID } from "@pkmn/data";
 import express, { Request, Response } from "express";
 import { DraftSpecies } from "../classes/pokemon";
 import { Rulesets } from "../data/rulesets";
@@ -20,23 +19,16 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
       ruleset = Rulesets[req.query.ruleset];
     }
     if (req.query && req.query.team && typeof req.query.team == "string") {
-      team = req.query.team.split(",").map((pid: string) => {
-        let specie = ruleset.gen.species.get(pid);
-        if (!specie) throw new Error(`${pid} is an unknown pid.`);
-        let draftSpecies: DraftSpecies = new DraftSpecies(
-          specie,
-          {
-            pid: pid as ID,
-            name: pid,
-          },
-          ruleset
-        );
+      team = req.query.team.split(",").map((id: string) => {
+        let specie = ruleset.gen.species.get(id);
+        if (!specie) throw new Error(`${id} is an unknown id.`);
+        let draftSpecies: DraftSpecies = new DraftSpecies(specie, {}, ruleset);
         return draftSpecies;
       });
       res.json({
-        typechart: typechart(ruleset, team),
-        summary: summary(ruleset, team),
-        movechart: await movechart(ruleset, team),
+        typechart: typechart(team),
+        summary: summary(team),
+        movechart: await movechart(team),
       });
     }
   } catch (error) {

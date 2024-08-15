@@ -257,13 +257,13 @@ export type Movechart = {
   }[];
 }[];
 
-export async function movechart(ruleset: Ruleset, team: DraftSpecies[]) {
+export async function movechart(team: DraftSpecies[]) {
   let movechart: Movechart = chartMoves.map((cat) => ({
     categoryName: cat.categoryName,
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await getLearnset(pokemon, ruleset);
+    let learnset = await getLearnset(pokemon);
     for (let cat of chartMoves) {
       for (const move of cat.moves) {
         const moveID = toID(move);
@@ -275,7 +275,7 @@ export async function movechart(ruleset: Ruleset, team: DraftSpecies[]) {
             category = { categoryName: cat.categoryName, moves: [] };
             movechart.push(category);
           }
-          let move = getMove(ruleset, moveID);
+          let move = getMove(pokemon.ruleset, moveID);
           let moveEntry = category.moves.find(
             (moveEntry) => moveEntry.name === move.name
           );
@@ -283,7 +283,7 @@ export async function movechart(ruleset: Ruleset, team: DraftSpecies[]) {
             moveEntry = { name: move.name, type: move.type, pokemon: [] };
             category.moves.push(moveEntry);
           }
-          moveEntry.pokemon.push(pokemon);
+          moveEntry.pokemon.push(pokemon.toPokemonData());
         }
       }
     }

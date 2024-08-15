@@ -1,8 +1,6 @@
-import { ID, StatID, TypeName } from "@pkmn/data";
+import { ID, StatID } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
-import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getBaseStats, getName } from "../data-services/pokedex.service";
 
 export type Summary = {
   team: PokemonData[];
@@ -34,8 +32,19 @@ export type Summary = {
   };
 };
 
-export function summary(ruleset: Ruleset, team: DraftSpecies[]): Summary {
-  return { team: team, stats: statistics(team) };
+export function summary(team: DraftSpecies[]): Summary {
+  return {
+    team: team.map((pokemon) => ({
+      id: pokemon.id as ID,
+      name: pokemon.name,
+      shiny: pokemon.shiny,
+      capt: pokemon.capt,
+      abilities: Object.values(pokemon.abilities),
+      baseStats: pokemon.baseStats,
+      types: pokemon.types,
+    })),
+    stats: statistics(team),
+  };
 }
 
 function statistics(team: DraftSpecies[]) {

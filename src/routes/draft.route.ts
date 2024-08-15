@@ -385,7 +385,7 @@ draftRouter.param(
       matchup.aTeam.teamName = draft.teamName;
       matchup.aTeam.team = draft.team.map((pokemon: any) => {
         let specie = res.ruleset!.gen.species.get(pokemon.pid);
-        if (!specie) throw new Error(`Invalid pid: ${pokemon.pid}`);
+        if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
         let draftSpecies: DraftSpecies = new DraftSpecies(
           specie,
           pokemon,

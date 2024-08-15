@@ -27,8 +27,8 @@ archiveRouter
       archives = archives.map((rawArchive) => {
         let archive = rawArchive.toObject();
         archive.team = archive.team.map((mon) => ({
-          pid: mon.pid,
-          name: getName(Rulesets[archive.ruleset], mon.pid),
+          id: mon.id,
+          name: getName(Rulesets[archive.ruleset], mon.id),
         }));
         return archive;
       });
