@@ -1,6 +1,5 @@
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getMoveName } from "../data-services/move.service";
 import { getCoverage } from "../data-services/pokedex.service";
 
 export type Coveragechart = (

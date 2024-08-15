@@ -18,8 +18,8 @@ import {
   Tier,
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
-import { getName } from "../services/data-services/pokedex.service";
 import { PokemonData } from "../models/pokemon.schema";
+import { getName } from "../services/data-services/pokedex.service";
 
 export interface PokemonOptions {
   shiny?: boolean;

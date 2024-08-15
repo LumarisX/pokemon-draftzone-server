@@ -1,6 +1,5 @@
 import { toID } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
-import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 import { getLearnset } from "../data-services/learnset.service";
 import { getMove } from "../data-services/move.service";

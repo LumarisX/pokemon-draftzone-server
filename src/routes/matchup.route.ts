@@ -5,6 +5,7 @@ import { FormatId, Formats } from "../data/formats";
 import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
 import {
+  MatchData,
   MatchupData,
   MatchupDocument,
   MatchupModel,
@@ -31,10 +32,31 @@ export const matchupRouter = express.Router();
 
 interface MatchupResponse extends Response {
   rawMatchup?: MatchupDocument | null;
-  matchup?: MatchupData & {
+  matchup?: {
     format: FormatId;
     rulesetId: RulesetId;
     leagueName: string;
+    aTeam: {
+      team: DraftSpecies[];
+      owner: string;
+      name?: string;
+      teamName?: string;
+      paste?: string;
+      _id?: mongoose.Schema.Types.ObjectId;
+    };
+    bTeam: {
+      team: DraftSpecies[];
+      name?: string;
+      teamName?: string;
+      paste?: string;
+      _id?: mongoose.Schema.Types.ObjectId;
+    };
+    gameTime?: string;
+    reminder?: number;
+    stage: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+    matches: MatchData[];
   };
   ruleset?: Ruleset;
 }
@@ -235,44 +257,46 @@ matchupRouter.param(
             .json({ message: "Draft ID not found", code: "MR-P1-02" });
           return next();
         }
+        res.ruleset = Rulesets[aTeam.ruleset];
         res.matchup = {
           ...matchup,
+          aTeam: {
+            owner: aTeam.owner,
+            teamName: aTeam.teamName,
+            team: aTeam.team.map((pokemon: any) => {
+              let specie = res.ruleset!.gen.species.get(pokemon.id);
+              if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+              let draftSpecies: DraftSpecies = new DraftSpecies(
+                specie,
+                pokemon,
+                res.ruleset!
+              );
+              return draftSpecies;
+            }),
+            _id: aTeam._id,
+          },
+          bTeam: {
+            ...matchup.bTeam,
+            team: matchup.bTeam.team.map((pokemon: any) => {
+              let specie = res.ruleset!.gen.species.get(pokemon.id);
+              if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+              let draftSpecies: DraftSpecies = new DraftSpecies(
+                specie,
+                pokemon,
+                res.ruleset!
+              );
+              return draftSpecies;
+            }),
+          },
           leagueName: aTeam.leagueName,
           format: aTeam.format as FormatId,
           rulesetId: aTeam.ruleset,
         };
-        res.ruleset = Rulesets[res.matchup.rulesetId];
         if (res.ruleset === undefined) {
           return res
             .status(400)
             .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
         }
-        res.matchup.aTeam = {
-          owner: aTeam.owner,
-          teamName: aTeam.teamName,
-          team: aTeam.team.map((pokemon: any) => {
-            let specie = res.ruleset!.gen.species.get(pokemon.pid);
-            if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
-            let draftSpecies: DraftSpecies = new DraftSpecies(
-              specie,
-              pokemon,
-              res.ruleset!
-            );
-            return draftSpecies;
-          }),
-          _id: aTeam._id,
-        };
-
-        res.matchup.bTeam.team = res.matchup.bTeam.team.map((pokemon: any) => {
-          let specie = res.ruleset!.gen.species.get(pokemon.pid);
-          if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(
-            specie,
-            pokemon,
-            res.ruleset!
-          );
-          return draftSpecies;
-        });
       } else {
         return res
           .status(400)

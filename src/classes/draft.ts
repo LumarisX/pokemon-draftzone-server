@@ -1,6 +1,6 @@
 import { ObjectId } from "mongoose";
 import { FormatId } from "../data/formats";
-import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
+import { RulesetId, Rulesets } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { Pokemon, PokemonBuilder, PokemonFormData } from "./pokemon";
 

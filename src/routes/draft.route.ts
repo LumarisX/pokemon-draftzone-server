@@ -13,6 +13,7 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
+import { match } from "assert";
 
 export const draftRouter = express.Router();
 
@@ -384,8 +385,8 @@ draftRouter.param(
       }
       matchup.aTeam.teamName = draft.teamName;
       matchup.aTeam.team = draft.team.map((pokemon: any) => {
-        let specie = res.ruleset!.gen.species.get(pokemon.pid);
-        if (!specie) throw new Error(`Invalid id: ${pokemon.pid}`);
+        let specie = res.ruleset!.gen.species.get(pokemon.id);
+        if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
         let draftSpecies: DraftSpecies = new DraftSpecies(
           specie,
           pokemon,
