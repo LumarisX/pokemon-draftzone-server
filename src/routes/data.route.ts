@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
-import { Ruleset, Rulesets } from "../data/rulesets";
+import { getRuleset, getRulesets, Ruleset } from "../data/rulesets";
 import { filterNames } from "../services/data-services/pokedex.service";
-import { getFormats, getRulesets } from "../services/ruleset.service";
+import { getFormats } from "../data/formats";
 
 export const dataRouter = express.Router();
 
@@ -30,10 +30,7 @@ dataRouter.route("/search").get(async (req: Request, res: DataResponse) => {
     let ruleset = req.query.ruleset;
     let query = req.query.query;
     if (typeof ruleset == "string" && typeof query == "string") {
-      if (!(ruleset in Rulesets)) {
-        ruleset = "Gen9 NatDex";
-      }
-      res.json(filterNames(Rulesets[ruleset], query));
+      res.json(filterNames(getRuleset(ruleset), query));
     } else {
       res.status(400).json({ error: "Ruleset type error", code: "DT-R3-01" });
     }

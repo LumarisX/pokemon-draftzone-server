@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import { DraftSpecies } from "../classes/pokemon";
-import { FormatId, Formats } from "../data/formats";
-import { Ruleset, RulesetId, Rulesets } from "../data/rulesets";
+import { FormatId, getFormat } from "../data/formats";
+import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
 import {
   MatchData,
@@ -68,7 +68,7 @@ matchupRouter
       return;
     }
     try {
-      let level = Formats[res.matchup.format].level;
+      let level = getFormat(res.matchup.format).level;
       let data: {
         format: FormatId;
         ruleset: RulesetId;
@@ -187,7 +187,7 @@ matchupRouter.get(
       return;
     }
     try {
-      let level = Formats[res.matchup.format].level;
+      let level = getFormat(res.matchup.format).level;
       res.json(
         speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
       );
@@ -257,7 +257,7 @@ matchupRouter.param(
             .json({ message: "Draft ID not found", code: "MR-P1-02" });
           return next();
         }
-        res.ruleset = Rulesets[aTeam.ruleset];
+        res.ruleset = getRuleset(aTeam.ruleset);
         res.matchup = {
           ...matchup,
           aTeam: {

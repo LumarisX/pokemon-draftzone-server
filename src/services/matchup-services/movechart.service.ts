@@ -1,7 +1,5 @@
-import { toID } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getMove } from "../data-services/move.service";
 
 const chartMoves: { categoryName: string; moves: string[] }[] = [
   {

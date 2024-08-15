@@ -1,5 +1,4 @@
 import mongoose, { Document } from "mongoose";
-import { DraftSpecies } from "../classes/pokemon";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
 
 const teamSchema = new mongoose.Schema(

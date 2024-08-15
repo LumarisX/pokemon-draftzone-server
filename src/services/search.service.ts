@@ -1,11 +1,6 @@
 import { ID, Specie } from "@pkmn/data";
 import { DraftSpecies } from "../classes/pokemon";
-import { RulesetId, Rulesets } from "../data/rulesets";
-import {
-  getImmune,
-  getResists,
-  getWeak,
-} from "./data-services/pokedex.service";
+import { getRuleset, RulesetId } from "../data/rulesets";
 
 type Token = { type: string; value: string };
 type ASTNode = {
@@ -29,7 +24,7 @@ export async function searchPokemon(
   if (cachedData) {
     return cachedData[1];
   } else {
-    let ruleset = Rulesets[rulesetId];
+    let ruleset = getRuleset(rulesetId);
     let searchResults = await Promise.all(
       Array.from(ruleset.gen.species).map(async (pokemon) => {
         return [
@@ -225,13 +220,13 @@ async function evaluate(
             leftValue = pokemon.baseStats.spe;
             break;
           case "weaks":
-            leftValue = getWeak(pokemon);
+            leftValue = pokemon.getWeak();
             break;
           case "resists":
-            leftValue = getResists(pokemon);
+            leftValue = pokemon.getResists();
             break;
           case "immunities":
-            leftValue = getImmune(pokemon);
+            leftValue = pokemon.getImmune();
             break;
           case "coverage":
             leftValue = Object.keys(

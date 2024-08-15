@@ -5,7 +5,7 @@ import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { DraftSpecies } from "../classes/pokemon";
-import { Ruleset, Rulesets } from "../data/rulesets";
+import { getRuleset, Ruleset } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
@@ -13,7 +13,6 @@ import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
-import { match } from "assert";
 
 export const draftRouter = express.Router();
 
@@ -343,7 +342,7 @@ draftRouter.param(
           .json({ message: "Team id not found", code: "DR-P1-02" });
       }
       res.draft = res.rawDraft.toObject();
-      res.ruleset = Rulesets[res.draft.ruleset];
+      res.ruleset = getRuleset(res.draft.ruleset);
       for (let pokemon of res.draft.team) {
         pokemon.name = getName(res.ruleset, pokemon.id);
       }

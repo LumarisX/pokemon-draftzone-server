@@ -1,4 +1,3 @@
-import { Draft } from "../../classes/draft";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
 
@@ -7,11 +6,11 @@ export type Coveragechart = (
       coverage: {
         [key: string]: {
           ePower: number;
-          id?: string | undefined;
-          name?: string | undefined;
+          id?: string;
+          name?: string;
           type: string;
-          stab: boolean;
-          recommended?: number[] | undefined;
+          stab?: true;
+          recommended?: true;
         }[];
       };
     }
@@ -28,21 +27,21 @@ export async function coveragechart(
       coverage: {
         [key: string]: {
           ePower: number;
-          id?: string | undefined;
-          name?: string | undefined;
+          id?: string;
+          name?: string;
           type: string;
-          stab: boolean;
-          recommended?: number[] | undefined;
+          stab?: true;
+          recommended?: true;
         }[];
       };
     } = {
       species: pokemon,
-      coverage: await pokemon.coverage(),
+      coverage: await pokemon.bestCoverage(),
     };
     for (let category in data.coverage) {
       data.coverage[category as keyof typeof data.coverage].sort(function (
-        x: { stab: boolean; ePower: number },
-        y: { stab: boolean; ePower: number }
+        x: { stab?: true; ePower: number },
+        y: { stab?: true; ePower: number }
       ) {
         if (x.stab != y.stab) {
           if (x.stab) return -1;
@@ -53,31 +52,6 @@ export async function coveragechart(
         return 0;
       });
     }
-    // bestCoverage(pokemon, typechart(oppteam));
-    // let coverage: {
-    //   [key: string]: {
-    //     name: string;
-    //     type: string;
-    //     stab: boolean;
-    //     ePower: number;
-    //     recommended?: true;
-    //   }[];
-    // } = {
-    //   physical: [],
-    //   special: [],
-    // };
-    // for (let category in data.coverage) {
-    //   for (let move of data.coverage[category as keyof typeof data.coverage]) {
-    //     coverage[category].push({
-    //       name: getMoveName(pokemon.ruleset, move.id || ""),
-    //       type: move.type,
-    //       stab: move.stab,
-    //       ePower: move.ePower,
-    //       recommended: move.recommended,
-    //     });
-    //   }
-    // }
-    // data.coverage = coverage;
     result.push({
       ...data.species.toPokemonData(),
       coverage: data.coverage,

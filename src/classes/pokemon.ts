@@ -7,10 +7,10 @@ import {
   EvoType,
   FormeName,
   GenderName,
-  Move,
   GenerationNum,
   ItemName,
   Learnset,
+  Move,
   MoveName,
   Nonstandard,
   Species,
@@ -22,11 +22,7 @@ import {
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
-import {
-  getCategory,
-  getEffectivePower,
-  getType,
-} from "../services/data-services/move.service";
+import { getEffectivePower } from "../services/data-services/move.service";
 import { getName } from "../services/data-services/pokedex.service";
 import { typeWeak } from "../services/data-services/type.services";
 
@@ -281,7 +277,7 @@ export class DraftSpecies implements Specie, Pokemon {
           ePower: number;
           id: ID;
           type: string;
-          stab: boolean;
+          stab?: true;
         };
       };
       Special: {
@@ -289,7 +285,7 @@ export class DraftSpecies implements Specie, Pokemon {
           ePower: number;
           id: ID;
           type: string;
-          stab: boolean;
+          stab?: true;
         };
       };
       teraBlast?: true;
@@ -306,13 +302,11 @@ export class DraftSpecies implements Specie, Pokemon {
           id: "terablast" as ID,
           ePower: -1,
           type: type,
-          stab: this.types.includes(type as TypeName),
         };
         coverage.Special[type] = {
           id: "terablast" as ID,
           ePower: -1,
           type: type,
-          stab: this.types.includes(type as TypeName),
         };
       }
     }
@@ -327,7 +321,7 @@ export class DraftSpecies implements Specie, Pokemon {
             id: move.id,
             ePower: ePower,
             type: move.type,
-            stab: this.types.includes(move.type),
+            stab: this.types.includes(move.type) || undefined,
           };
         }
       }
@@ -336,6 +330,19 @@ export class DraftSpecies implements Specie, Pokemon {
       physical: Object.values(coverage.Physical),
       special: Object.values(coverage.Special),
     };
+  }
+
+  async bestCoverage() {
+    let coverage = await this.coverage();
+    coverage.physical = coverage.physical.map((move) => ({
+      ...move,
+      recommended: move.stab,
+    }));
+    coverage.special = coverage.special.map((move) => ({
+      ...move,
+      recommended: move.stab,
+    }));
+    return coverage;
   }
 
   private $learnset: Move[] | undefined;
