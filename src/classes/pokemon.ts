@@ -27,6 +27,7 @@ import {
   getType,
 } from "../services/data-services/move.service";
 import { getName } from "../services/data-services/pokedex.service";
+import { typeWeak } from "../services/data-services/type.services";
 
 export interface PokemonOptions {
   shiny?: boolean;
@@ -139,30 +140,14 @@ export class DraftSpecies implements Specie, Pokemon {
   }
 
   //Type functions
-
-  typeWeak() {
-    const conversion = [1, 2, 0.5, 0];
-    let adjustedDamage: { [key: string]: number } = {};
-    this.types.forEach((type) => {
-      const damageTaken = this.ruleset.gen.dex.types.get(type).damageTaken;
-      Object.keys(damageTaken).forEach((key) => {
-        adjustedDamage[key] = adjustedDamage.hasOwnProperty(key)
-          ? adjustedDamage[key] * conversion[damageTaken[key]]
-          : conversion[damageTaken[key]];
-      });
-    });
-
-    return adjustedDamage;
-  }
-
   private $typechart:
     | {
         [key: string]: number;
       }
     | undefined;
-  getTypeChart(): { [key: string]: number } {
+  typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
-    let weak = this.typeWeak();
+    let weak = typeWeak(this);
     for (let ability of Object.values(this.abilities)) {
       ability = ability as AbilityName;
       switch (ability) {
@@ -267,21 +252,21 @@ export class DraftSpecies implements Specie, Pokemon {
   }
 
   getWeak() {
-    let tc = this.getTypeChart();
+    let tc = this.typechart();
     return Object.entries(tc)
       .filter((value: [string, number]) => value[1] > 1)
       .map((value: [string, number]) => value[0]);
   }
 
   getResists() {
-    let tc = this.getTypeChart();
+    let tc = this.typechart();
     return Object.entries(tc)
       .filter((value: [string, number]) => value[1] < 1)
       .map((value: [string, number]) => value[0]);
   }
 
   getImmune(mon: DraftSpecies) {
-    let tc = this.getTypeChart();
+    let tc = this.typechart();
     return Object.entries(tc)
       .filter((value: [string, number]) => value[1] === 0)
       .map((value: [string, number]) => value[0]);

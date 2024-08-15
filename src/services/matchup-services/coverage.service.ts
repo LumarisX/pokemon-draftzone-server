@@ -1,3 +1,4 @@
+import { Draft } from "../../classes/draft";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
 
@@ -86,33 +87,11 @@ export async function coveragechart(
 }
 
 // function bestCoverage(
-//   pokemon: {
-//     id: ID;
-//     name: string;
-//     coverage?: {
-//       [key: string]: {
-//         ePower: number;
-//         id: ID;
-//         name?: string;
-//         type: string;
-//         stab: boolean;
-//         recommended?: true;
-//       }[];
-//     };
-//   },
-//   oppTypechart: {
-//     team: {
-//       id: ID;
-//       name: string;
-//       weak?: {} | undefined;
-//       capt?: { tera?: string[] | undefined } | undefined;
-//     }[];
-//     teraTypes: { [key: string]: {} };
-//   }
+//   pokemon: DraftSpecies,
+//   oppTypechart: DraftSpecies[]
 // ) {
 //   const physicalCoverage = pokemon.coverage?.physical || [];
 //   const specialCoverage = pokemon.coverage?.special || [];
-
 //   let best: {
 //     moves: {
 //       ePower: number;

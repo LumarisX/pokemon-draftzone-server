@@ -14,7 +14,7 @@ export type Typechart = {
 export function typechart(team: DraftSpecies[]): Typechart {
   let teamTypes = team.map((pokemon) => ({
     ...pokemon.toPokemonData(),
-    weak: pokemon.getTypeChart(),
+    weak: pokemon.typechart(),
   }));
   // if (pokemon.capt && pokemon.capt.tera) {
   //   pokemon.capt.tera = pokemon.capt.tera.filter((type) => type != "Stellar");

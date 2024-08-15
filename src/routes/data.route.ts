@@ -1,9 +1,6 @@
 import express, { Request, Response } from "express";
 import { Ruleset, Rulesets } from "../data/rulesets";
-import {
-  filterNames,
-  getSpecies,
-} from "../services/data-services/pokedex.service";
+import { filterNames } from "../services/data-services/pokedex.service";
 import { getFormats, getRulesets } from "../services/ruleset.service";
 
 export const dataRouter = express.Router();
@@ -22,21 +19,6 @@ dataRouter.get("/formats", (req: Request, res: Response) => {
 dataRouter.get("/rulesets", (req: Request, res: Response) => {
   try {
     res.json(getRulesets());
-  } catch (error) {
-    console.error("Error in /rulesets/ route:", error);
-    res.status(500).json({ error: "Internal Server Error", code: "DT-R2-01" });
-  }
-});
-
-dataRouter.get("/nameList", (req: Request, res: DataResponse) => {
-  try {
-    let ruleset = req.query.ruleset;
-    if (typeof ruleset == "string") {
-      if (!(ruleset in Rulesets)) {
-        ruleset = "Gen9 NatDex";
-      }
-      res.json(getSpecies(Rulesets[ruleset]));
-    }
   } catch (error) {
     console.error("Error in /rulesets/ route:", error);
     res.status(500).json({ error: "Internal Server Error", code: "DT-R2-01" });
