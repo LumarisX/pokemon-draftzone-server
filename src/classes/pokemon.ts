@@ -7,6 +7,7 @@ import {
   EvoType,
   FormeName,
   GenderName,
+  Move,
   GenerationNum,
   ItemName,
   Learnset,
@@ -265,7 +266,7 @@ export class DraftSpecies implements Specie, Pokemon {
       .map((value: [string, number]) => value[0]);
   }
 
-  getImmune(mon: DraftSpecies) {
+  getImmune() {
     let tc = this.typechart();
     return Object.entries(tc)
       .filter((value: [string, number]) => value[1] === 0)
@@ -299,11 +300,7 @@ export class DraftSpecies implements Specie, Pokemon {
         physical: Object.values(coverage.Physical),
         special: Object.values(coverage.Special),
       };
-    if (
-      learnset.learnset &&
-      learnset.learnset["terablast"] &&
-      this.capt?.tera
-    ) {
+    if (learnset.some((move) => move.id === "terablast") && this.capt?.tera) {
       for (const type of this.capt.tera) {
         coverage.Physical[type] = {
           id: "terablast" as ID,
@@ -319,21 +316,18 @@ export class DraftSpecies implements Specie, Pokemon {
         };
       }
     }
-    for (const move in learnset.learnset) {
-      let moveID = toID(move);
-      const category = getCategory(this.ruleset, moveID);
-      let type = getType(this.ruleset, moveID, this.types);
-      if (category !== "Status") {
-        const ePower = getEffectivePower(this.ruleset, moveID);
+    for (const move of learnset) {
+      if (move.category !== "Status") {
+        const ePower = getEffectivePower(move);
         if (
-          !(type in coverage[category]) ||
-          coverage[category][type].ePower < ePower
+          !(move.type in coverage[move.category]) ||
+          coverage[move.category][move.type].ePower < ePower
         ) {
-          coverage[category][type] = {
-            id: moveID,
+          coverage[move.category][move.type] = {
+            id: move.id,
             ePower: ePower,
-            type: type,
-            stab: this.types.includes(type as TypeName),
+            type: move.type,
+            stab: this.types.includes(move.type),
           };
         }
       }
@@ -344,8 +338,8 @@ export class DraftSpecies implements Specie, Pokemon {
     };
   }
 
-  private $learnset: Learnset | undefined;
-  async learnset(): Promise<Learnset | undefined> {
+  private $learnset: Move[] | undefined;
+  async learnset(): Promise<Move[]> {
     if (this.$learnset) return this.$learnset;
     let id = this.id;
     let learnset = await this.ruleset.gen.learnsets.get(id);
@@ -389,8 +383,12 @@ export class DraftSpecies implements Specie, Pokemon {
       species = s;
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
-    this.$learnset = totalLearnset;
-    return totalLearnset;
+    if (!learnset?.learnset) return [];
+    let moves = Object.keys(learnset.learnset)
+      .map((move) => this.ruleset.gen.moves.get(move))
+      .filter((move) => move !== undefined);
+    this.$learnset = moves;
+    return moves;
   }
 
   async learns(moveID: ID): Promise<boolean> {

@@ -262,11 +262,10 @@ export async function movechart(team: DraftSpecies[]) {
   }));
   for (const pokemon of team) {
     let learnset = await pokemon.learnset();
-    if (!learnset || !learnset.learnset) continue;
     for (let cat of chartMoves) {
-      for (const move of cat.moves) {
-        const moveID = toID(move);
-        if (moveID in learnset.learnset) {
+      for (const moveID of cat.moves) {
+        let move = learnset.find((move) => move.id === moveID);
+        if (move) {
           let category = movechart.find(
             (entry) => entry.categoryName === cat.categoryName
           );
@@ -274,7 +273,6 @@ export async function movechart(team: DraftSpecies[]) {
             category = { categoryName: cat.categoryName, moves: [] };
             movechart.push(category);
           }
-          let move = getMove(pokemon.ruleset, moveID);
           let moveEntry = category.moves.find(
             (moveEntry) => moveEntry.name === move.name
           );
