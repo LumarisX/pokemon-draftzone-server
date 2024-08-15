@@ -121,13 +121,10 @@ function getSpeedTiers(
   ];
 }
 
-function getModifiers(tiers: Speedchart["tiers"]): string[] {
-  const uniqueModifiers: Set<string> = new Set();
-  for (const tier of tiers) {
-    for (const modifier of tier.modifiers) {
-      uniqueModifiers.add(modifier);
-    }
-  }
+function tierModifiers(tiers: Speedchart["tiers"]): string[] {
+  const uniqueModifiers: Set<string> = new Set(
+    tiers.flatMap((tier) => tier.modifiers)
+  );
   return Array.from(uniqueModifiers).sort();
 }
 
@@ -212,16 +209,13 @@ function generateTiers(
 }
 
 export function speedchart(teams: DraftSpecies[][], level: number): Speedchart {
-  let tiers: Speedchart["tiers"] = [];
-
-  for (const teamIndex in teams) {
-    for (const pokemon of teams[teamIndex]) {
-      tiers = tiers.concat(getSpeedTiers(pokemon, level, teamIndex));
-    }
-  }
-
-  tiers.sort((x, y) => y.speed - x.speed);
-
-  const modifiers = getModifiers(tiers);
+  let tiers = teams
+    .flatMap((team, teamIndex) =>
+      team.flatMap((pokemon) =>
+        getSpeedTiers(pokemon, level, teamIndex.toString())
+      )
+    )
+    .sort((x, y) => y.speed - x.speed);
+  const modifiers = tierModifiers(tiers);
   return { modifiers, tiers, level };
 }

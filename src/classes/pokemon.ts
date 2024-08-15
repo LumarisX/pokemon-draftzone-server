@@ -1,5 +1,4 @@
-import { ID, Specie, toID, Type, TypeName } from "@pkmn/data";
-import { Species } from "@pkmn/dex-types";
+import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
   Condition,
@@ -10,8 +9,10 @@ import {
   GenderName,
   GenerationNum,
   ItemName,
+  Learnset,
   MoveName,
   Nonstandard,
+  Species,
   SpeciesAbility,
   SpeciesName,
   SpeciesTag,
@@ -20,12 +21,12 @@ import {
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
-import { getName } from "../services/data-services/pokedex.service";
 import {
   getCategory,
   getEffectivePower,
   getType,
 } from "../services/data-services/move.service";
+import { getName } from "../services/data-services/pokedex.service";
 
 export interface PokemonOptions {
   shiny?: boolean;
@@ -154,7 +155,13 @@ export class DraftSpecies implements Specie, Pokemon {
     return adjustedDamage;
   }
 
+  private $typechart:
+    | {
+        [key: string]: number;
+      }
+    | undefined;
   getTypeChart(): { [key: string]: number } {
+    if (this.$typechart) return this.$typechart;
     let weak = this.typeWeak();
     for (let ability of Object.values(this.abilities)) {
       ability = ability as AbilityName;
@@ -255,15 +262,34 @@ export class DraftSpecies implements Specie, Pokemon {
           break;
       }
     }
+    this.$typechart = weak;
     return weak;
   }
 
-  //Moveset functions
+  getWeak() {
+    let tc = this.getTypeChart();
+    return Object.entries(tc)
+      .filter((value: [string, number]) => value[1] > 1)
+      .map((value: [string, number]) => value[0]);
+  }
 
+  getResists() {
+    let tc = this.getTypeChart();
+    return Object.entries(tc)
+      .filter((value: [string, number]) => value[1] < 1)
+      .map((value: [string, number]) => value[0]);
+  }
+
+  getImmune(mon: DraftSpecies) {
+    let tc = this.getTypeChart();
+    return Object.entries(tc)
+      .filter((value: [string, number]) => value[1] === 0)
+      .map((value: [string, number]) => value[0]);
+  }
+
+  //Moveset functions
   async coverage() {
-    let learnset = await this.learnset();
-    let monTypes = this.types;
-    let coverage: {
+    const coverage: {
       Physical: {
         [key: string]: {
           ePower: number;
@@ -282,26 +308,36 @@ export class DraftSpecies implements Specie, Pokemon {
       };
       teraBlast?: true;
     } = { Physical: {}, Special: {} };
-    if (learnset.terablast && this.capt?.tera) {
+    const learnset = await this.learnset();
+    if (!learnset)
+      return {
+        physical: Object.values(coverage.Physical),
+        special: Object.values(coverage.Special),
+      };
+    if (
+      learnset.learnset &&
+      learnset.learnset["terablast"] &&
+      this.capt?.tera
+    ) {
       for (const type of this.capt.tera) {
         coverage.Physical[type] = {
           id: "terablast" as ID,
           ePower: -1,
           type: type,
-          stab: monTypes.includes(type as TypeName),
+          stab: this.types.includes(type as TypeName),
         };
         coverage.Special[type] = {
           id: "terablast" as ID,
           ePower: -1,
           type: type,
-          stab: monTypes.includes(type as TypeName),
+          stab: this.types.includes(type as TypeName),
         };
       }
     }
-    for (const move in learnset) {
+    for (const move in learnset.learnset) {
       let moveID = toID(move);
       const category = getCategory(this.ruleset, moveID);
-      let type = getType(this.ruleset, moveID, monTypes);
+      let type = getType(this.ruleset, moveID, this.types);
       if (category !== "Status") {
         const ePower = getEffectivePower(this.ruleset, moveID);
         if (
@@ -312,11 +348,10 @@ export class DraftSpecies implements Specie, Pokemon {
             id: moveID,
             ePower: ePower,
             type: type,
-            stab: monTypes.includes(type as TypeName),
+            stab: this.types.includes(type as TypeName),
           };
         }
       }
-      ``;
     }
     return {
       physical: Object.values(coverage.Physical),
@@ -324,64 +359,33 @@ export class DraftSpecies implements Specie, Pokemon {
     };
   }
 
-  async learnset(): Promise<{ [moveid: string]: string[] }> {
-    let restriction = undefined;
-    const moves: { [key in ID]?: any } = {};
-    for await (const learnset of this.all(this)) {
-      for (const moveid in learnset.learnset) {
-        const move = this.ruleset.gen.dex.moves.get(moveid);
-        if (move) {
-          const sources = learnset.learnset[moveid];
-          if (
-            this.ruleset.gen.learnsets.isLegal(
-              move,
-              sources,
-              restriction || this.ruleset.gen
-            )
-          ) {
-            let filtered = null;
-            if (this.ruleset.natdex) {
-              filtered = sources.filter(
-                (s) => +s.charAt(0) <= this.ruleset.gen.num
-              );
-            } else {
-              filtered = sources.filter(
-                (s) => +s.charAt(0) == this.ruleset.gen.num
-              );
-            }
-            if (!filtered.length) continue;
-            if (moves[move.id]) {
-              const unique = [];
-              loop: for (const source of filtered) {
-                const prefix = source.slice(0, 2);
-                for (const s of moves[move.id])
-                  if (s.startsWith(prefix)) continue loop;
-                unique.push(source);
-              }
-              moves[move.id].push(...unique);
-            } else {
-              moves[move.id] = filtered;
-            }
-          }
-        }
-      }
-    }
-    return moves;
-  }
-
-  private async *all(species: Species) {
-    let id = species.id;
+  private $learnset: Learnset | undefined;
+  async learnset(): Promise<Learnset | undefined> {
+    if (this.$learnset) return this.$learnset;
+    let id = this.id;
     let learnset = await this.ruleset.gen.learnsets.get(id);
     if (!learnset) {
       id =
-        typeof species.battleOnly === "string" &&
-        species.battleOnly !== species.baseSpecies
-          ? toID(species.battleOnly)
-          : toID(species.baseSpecies);
+        typeof this.battleOnly === "string" &&
+        this.battleOnly !== this.baseSpecies
+          ? toID(this.battleOnly)
+          : toID(this.baseSpecies);
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
+    let species: Species = this;
+    let totalLearnset: Learnset | undefined;
     while (learnset) {
-      yield learnset;
+      if (totalLearnset && totalLearnset.learnset) {
+        for (let move in learnset.learnset) {
+          if (move in totalLearnset.learnset) {
+            totalLearnset.learnset[move].concat(learnset.learnset[move]);
+          } else {
+            totalLearnset.learnset[move] = learnset.learnset[move];
+          }
+        }
+      } else {
+        totalLearnset = learnset;
+      }
       if (
         id === "lycanrocdusk" ||
         (species.id === "rockruff" && id === "rockruff")
@@ -400,9 +404,18 @@ export class DraftSpecies implements Specie, Pokemon {
       species = s;
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
+    this.$learnset = totalLearnset;
+    return totalLearnset;
+  }
+
+  async learns(moveID: ID): Promise<boolean> {
+    let learns = false;
+    let learnset = await this.learnset();
+    if (!learnset) return false;
+    learns = Object.keys(learnset).includes(moveID);
+    return learns;
   }
 }
-
 export class PokemonBuilder {
   data: Pokemon;
   error: string | undefined;

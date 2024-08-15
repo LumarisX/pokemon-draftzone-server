@@ -2,7 +2,6 @@ import { SpeciesName, toID } from "@pkmn/data";
 import { AbilityName, ID, TypeName } from "@pkmn/dex-types";
 import { DraftSpecies } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
-import { getLearnset } from "./learnset.service";
 import { getCategory, getEffectivePower, getType } from "./move.service";
 import { typeWeak } from "./type.services";
 
@@ -112,101 +111,6 @@ export function getTypeChart(pokemon: DraftSpecies): { [key: string]: number } {
     }
   }
   return weak;
-}
-
-export function getWeak(mon: DraftSpecies) {
-  let tc = getTypeChart(mon);
-  return Object.entries(tc)
-    .filter((value: [string, number]) => value[1] > 1)
-    .map((value: [string, number]) => value[0]);
-}
-
-export function getResists(mon: DraftSpecies) {
-  let tc = getTypeChart(mon);
-  return Object.entries(tc)
-    .filter((value: [string, number]) => value[1] < 1)
-    .map((value: [string, number]) => value[0]);
-}
-
-export function getImmune(mon: DraftSpecies) {
-  let tc = getTypeChart(mon);
-  return Object.entries(tc)
-    .filter((value: [string, number]) => value[1] === 0)
-    .map((value: [string, number]) => value[0]);
-}
-
-export async function learns(
-  pokemon: DraftSpecies,
-  moveID: string
-): Promise<boolean> {
-  let learns = false;
-  let learnset = await getLearnset(pokemon);
-  learns = Object.keys(learnset).includes(moveID);
-  return learns;
-}
-
-export async function getCoverage(pokemon: DraftSpecies) {
-  let learnset = await getLearnset(pokemon);
-  let monTypes = pokemon.types;
-  let coverage: {
-    Physical: {
-      [key: string]: {
-        ePower: number;
-        id: ID;
-        type: string;
-        stab: boolean;
-      };
-    };
-    Special: {
-      [key: string]: {
-        ePower: number;
-        id: ID;
-        type: string;
-        stab: boolean;
-      };
-    };
-    teraBlast?: true;
-  } = { Physical: {}, Special: {} };
-  if (learnset.terablast && pokemon.capt?.tera) {
-    for (const type of pokemon.capt.tera) {
-      coverage.Physical[type] = {
-        id: "terablast" as ID,
-        ePower: -1,
-        type: type,
-        stab: monTypes.includes(type as TypeName),
-      };
-      coverage.Special[type] = {
-        id: "terablast" as ID,
-        ePower: -1,
-        type: type,
-        stab: monTypes.includes(type as TypeName),
-      };
-    }
-  }
-  for (const move in learnset) {
-    let moveID = toID(move);
-    const category = getCategory(pokemon.ruleset, moveID);
-    let type = getType(pokemon.ruleset, moveID, monTypes);
-    if (category !== "Status") {
-      const ePower = getEffectivePower(pokemon.ruleset, moveID);
-      if (
-        !(type in coverage[category]) ||
-        coverage[category][type].ePower < ePower
-      ) {
-        coverage[category][type] = {
-          id: moveID,
-          ePower: ePower,
-          type: type,
-          stab: monTypes.includes(type as TypeName),
-        };
-      }
-    }
-    ``;
-  }
-  return {
-    physical: Object.values(coverage.Physical),
-    special: Object.values(coverage.Special),
-  };
 }
 
 export function getSpecies(ruleset: Ruleset) {

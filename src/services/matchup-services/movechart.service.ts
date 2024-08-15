@@ -1,7 +1,6 @@
 import { toID } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getLearnset } from "../data-services/learnset.service";
 import { getMove } from "../data-services/move.service";
 
 const chartMoves: { categoryName: string; moves: string[] }[] = [
@@ -262,11 +261,12 @@ export async function movechart(team: DraftSpecies[]) {
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await getLearnset(pokemon);
+    let learnset = await pokemon.learnset();
+    if (!learnset || !learnset.learnset) continue;
     for (let cat of chartMoves) {
       for (const move of cat.moves) {
         const moveID = toID(move);
-        if (moveID in learnset) {
+        if (moveID in learnset.learnset) {
           let category = movechart.find(
             (entry) => entry.categoryName === cat.categoryName
           );
