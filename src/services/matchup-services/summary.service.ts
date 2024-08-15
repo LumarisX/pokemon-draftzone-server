@@ -1,33 +1,37 @@
-import { ID, StatID } from "@pkmn/data";
+import { AbilityName, StatID, StatsTable, TypeName } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
 
 export type Summary = {
-  team: PokemonData[];
+  team: (PokemonData & {
+    abilities: AbilityName[];
+    baseStats: StatsTable;
+    types: [TypeName] | [TypeName, TypeName];
+  })[];
   stats: {
     mean: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
     median: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
     max: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
   };
 };
@@ -35,10 +39,7 @@ export type Summary = {
 export function summary(team: DraftSpecies[]): Summary {
   return {
     team: team.map((pokemon) => ({
-      id: pokemon.id as ID,
-      name: pokemon.name,
-      shiny: pokemon.shiny,
-      capt: pokemon.capt,
+      ...pokemon.toPokemonData(),
       abilities: Object.values(pokemon.abilities),
       baseStats: pokemon.baseStats,
       types: pokemon.types,

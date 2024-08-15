@@ -1,6 +1,5 @@
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-import { getCoverage } from "../data-services/pokedex.service";
 
 export type Coveragechart = (
   | PokemonData & {
@@ -37,7 +36,7 @@ export async function coveragechart(
       };
     } = {
       species: pokemon,
-      coverage: await getCoverage(pokemon),
+      coverage: await pokemon.coverage(),
     };
     for (let category in data.coverage) {
       data.coverage[category as keyof typeof data.coverage].sort(function (
