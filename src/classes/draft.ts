@@ -2,7 +2,8 @@ import { ObjectId } from "mongoose";
 import { FormatId } from "../data/formats";
 import { getRuleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
-import { Pokemon, PokemonBuilder, PokemonFormData } from "./pokemon";
+import { PokemonData } from "../models/pokemon.schema";
+import { PokemonBuilder, PokemonFormData } from "./pokemon";
 
 interface DraftDoc {
   leagueName: string;
@@ -16,7 +17,7 @@ interface DraftDoc {
     diff: string;
   };
   owner: ObjectId;
-  team: Pokemon[];
+  team: PokemonData[];
 }
 
 export class Draft {

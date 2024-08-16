@@ -23,7 +23,6 @@ import {
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
-import { getName } from "../services/data-services/pokedex.service";
 import { typeWeak } from "../services/data-services/type.services";
 
 export interface PokemonOptions {
@@ -38,18 +37,6 @@ export interface Pokemon extends PokemonOptions {
   id: ID;
   name: string;
 }
-
-export type PokemonFormData = {
-  id: ID;
-  shiny?: boolean;
-  name?: string;
-  capt?: {
-    tera?: { [key: string]: boolean };
-    z?: boolean;
-    teraCheck: boolean;
-  };
-  captCheck?: boolean;
-};
 
 export class DraftSpecies implements Specie, Pokemon {
   id!: ID;
@@ -127,7 +114,7 @@ export class DraftSpecies implements Specie, Pokemon {
     this.ruleset = ruleset;
   }
 
-  toPokemonData(): PokemonData {
+  toPokemon(): Pokemon {
     return {
       id: this.id,
       name: this.name,
@@ -406,15 +393,26 @@ export class DraftSpecies implements Specie, Pokemon {
     return learns;
   }
 }
+
+export type PokemonFormData = {
+  id: ID;
+  shiny: boolean | null;
+  capt: {
+    tera?: { [key: string]: boolean };
+    z?: boolean;
+    teraCheck: boolean;
+  } | null;
+  captCheck: boolean | null;
+};
+
 export class PokemonBuilder {
-  data: Pokemon;
+  data: PokemonData;
   error: string | undefined;
 
   constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
     this.data = {
       id: toID(pokemonData.id),
-      name: getName(ruleset, pokemonData.id),
-      shiny: pokemonData.shiny,
+      shiny: pokemonData.shiny || undefined,
     };
 
     // if (!inDex(pokemonData.id)) {

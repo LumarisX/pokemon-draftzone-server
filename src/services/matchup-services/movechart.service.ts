@@ -278,7 +278,7 @@ export async function movechart(team: DraftSpecies[]) {
             moveEntry = { name: move.name, type: move.type, pokemon: [] };
             category.moves.push(moveEntry);
           }
-          moveEntry.pokemon.push(pokemon.toPokemonData());
+          moveEntry.pokemon.push(pokemon.toPokemon());
         }
       }
     }

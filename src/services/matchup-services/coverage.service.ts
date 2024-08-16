@@ -53,7 +53,7 @@ export async function coveragechart(
       });
     }
     result.push({
-      ...data.species.toPokemonData(),
+      ...data.species.toPokemon(),
       coverage: data.coverage,
     });
   }

@@ -2,6 +2,7 @@ import { ObjectId } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { Pokemon, PokemonBuilder, PokemonFormData } from "./pokemon";
+import { PokemonData } from "../models/pokemon.schema";
 
 type MatchupDoc = {
   aTeam: Side;
@@ -13,7 +14,7 @@ type MatchupDoc = {
 export type Side = {
   _id?: ObjectId;
   teamName: string;
-  team: Pokemon[];
+  team: PokemonData[];
   name?: string;
   paste?: string;
 };

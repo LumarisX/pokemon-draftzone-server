@@ -39,7 +39,7 @@ export type Summary = {
 export function summary(team: DraftSpecies[]): Summary {
   return {
     team: team.map((pokemon) => ({
-      ...pokemon.toPokemonData(),
+      ...pokemon.toPokemon(),
       abilities: Object.values(pokemon.abilities),
       baseStats: pokemon.baseStats,
       types: pokemon.types,

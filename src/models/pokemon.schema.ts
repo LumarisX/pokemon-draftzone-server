@@ -16,11 +16,9 @@ export const pokemonSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    name: {
-      type: String,
-      required: true,
+    shiny: {
+      type: Boolean,
     },
-    shiny: Boolean,
     capt: {
       type: captSchema,
     },
@@ -30,7 +28,6 @@ export const pokemonSchema = new mongoose.Schema(
 
 export interface PokemonData {
   id: ID;
-  name: string;
   shiny?: boolean;
   capt?: {
     tera?: TypeName[];

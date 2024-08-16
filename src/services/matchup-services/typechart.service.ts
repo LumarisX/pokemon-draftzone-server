@@ -13,7 +13,7 @@ export type Typechart = {
 
 export function typechart(team: DraftSpecies[]): Typechart {
   let teamTypes = team.map((pokemon) => ({
-    ...pokemon.toPokemonData(),
+    ...pokemon.toPokemon(),
     weak: pokemon.typechart(),
   }));
   // if (pokemon.capt && pokemon.capt.tera) {
