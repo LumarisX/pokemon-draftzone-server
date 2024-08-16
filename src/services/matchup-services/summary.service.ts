@@ -1,76 +1,54 @@
-import { ID, StatID, TypeName } from "@pkmn/data";
-import { Ruleset } from "../../data/rulesets";
+import { AbilityName, StatID, StatsTable, TypeName } from "@pkmn/data";
+import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-import {
-  getAbilities,
-  getBaseStats,
-  getName,
-  getTypes,
-} from "../data-services/pokedex.service";
 
 export type Summary = {
-  team: PokemonData[];
+  team: (PokemonData & {
+    abilities: AbilityName[];
+    baseStats: StatsTable;
+    types: [TypeName] | [TypeName, TypeName];
+  })[];
   stats: {
     mean: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
     median: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
     max: {
-      hp?: number | undefined;
-      atk?: number | undefined;
-      def?: number | undefined;
-      spa?: number | undefined;
-      spd?: number | undefined;
-      spe?: number | undefined;
+      hp?: number;
+      atk?: number;
+      def?: number;
+      spa?: number;
+      spd?: number;
+      spe?: number;
     };
   };
 };
 
-export function summary(ruleset: Ruleset, team: PokemonData[]): Summary {
-  for (let pokemon of team) {
-    summaryData(ruleset, pokemon);
-  }
-  return { team: team, stats: statistics(team) };
+export function summary(team: DraftSpecies[]): Summary {
+  return {
+    team: team.map((pokemon) => ({
+      ...pokemon.toPokemon(),
+      abilities: Object.values(pokemon.abilities),
+      baseStats: pokemon.baseStats,
+      types: pokemon.types,
+    })),
+    stats: statistics(team),
+  };
 }
 
-function summaryData(
-  ruleset: Ruleset,
-  pokemon: {
-    pid: ID;
-    name?: string;
-    abilities?: string[];
-    types?: TypeName[];
-    baseStats?: { [key in StatID]: number };
-  }
-) {
-  pokemon.name = getName(ruleset, pokemon.pid);
-  pokemon.abilities = getAbilities(ruleset, pokemon.pid);
-  pokemon.types = getTypes(ruleset, pokemon.pid);
-  pokemon.baseStats = getBaseStats(ruleset, pokemon.pid);
-  return pokemon;
-}
-
-function statistics(
-  team: {
-    pid: ID;
-    name?: string;
-    abilities?: string[];
-    types?: TypeName[];
-    baseStats?: { [key in StatID]: number };
-  }[]
-) {
+function statistics(team: DraftSpecies[]) {
   let stats: {
     mean: { [key in StatID]?: number };
     median: { [key in StatID]?: number };

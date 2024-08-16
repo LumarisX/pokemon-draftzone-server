@@ -9,7 +9,6 @@ import path from "path";
 import logger from "morgan";
 import { draftRouter } from "./routes/draft.route";
 import { matchupRouter } from "./routes/matchup.route";
-import { testRouter } from "./routes/test.route";
 import { dataRouter } from "./routes/data.route";
 import { plannerRouter } from "./routes/planner.route";
 import dotenv from "dotenv";
@@ -56,7 +55,6 @@ app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
 app.use("/archive", logger("common"), jwtCheck, getSub, archiveRouter);
 app.use("/matchup", logger("common"), matchupRouter);
 app.use("/data", logger("common"), dataRouter);
-app.use("/test", logger("common"), testRouter);
 app.use("/replay", logger("common"), replayRouter);
 app.use("/planner", logger("common"), plannerRouter);
 

@@ -32,8 +32,7 @@ export function getCategory(ruleset: Ruleset, moveID: ID): MoveCategory {
   return ruleset.gen.dex.moves.getByID(moveID).category;
 }
 
-export function getEffectivePower(ruleset: Ruleset, moveID: ID) {
-  const move = ruleset.gen.dex.moves.getByID(moveID);
+export function getEffectivePower(move: Move) {
   let value =
     move.accuracy === true
       ? move.basePower

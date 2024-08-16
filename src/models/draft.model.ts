@@ -54,4 +54,7 @@ export interface DraftDocument extends DraftData, Document<any, any> {}
 
 draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
-export const DraftModel = mongoose.model<DraftDocument>("drafts", draftSchema);
+export const DraftModel = mongoose.model<DraftDocument>(
+  "drafttest",
+  draftSchema
+);

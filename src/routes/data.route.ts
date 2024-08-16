@@ -1,10 +1,7 @@
 import express, { Request, Response } from "express";
-import { Ruleset, Rulesets } from "../data/rulesets";
-import {
-  filterNames,
-  getSpecies,
-} from "../services/data-services/pokedex.service";
-import { getFormats, getRulesets } from "../services/ruleset.service";
+import { getRuleset, getRulesets, Ruleset } from "../data/rulesets";
+import { filterNames } from "../services/data-services/pokedex.service";
+import { getFormats } from "../data/formats";
 
 export const dataRouter = express.Router();
 
@@ -28,30 +25,12 @@ dataRouter.get("/rulesets", (req: Request, res: Response) => {
   }
 });
 
-dataRouter.get("/nameList", (req: Request, res: DataResponse) => {
-  try {
-    let ruleset = req.query.ruleset;
-    if (typeof ruleset == "string") {
-      if (!(ruleset in Rulesets)) {
-        ruleset = "Gen9 NatDex";
-      }
-      res.json(getSpecies(Rulesets[ruleset]));
-    }
-  } catch (error) {
-    console.error("Error in /rulesets/ route:", error);
-    res.status(500).json({ error: "Internal Server Error", code: "DT-R2-01" });
-  }
-});
-
 dataRouter.route("/search").get(async (req: Request, res: DataResponse) => {
   try {
     let ruleset = req.query.ruleset;
     let query = req.query.query;
     if (typeof ruleset == "string" && typeof query == "string") {
-      if (!(ruleset in Rulesets)) {
-        ruleset = "Gen9 NatDex";
-      }
-      res.json(filterNames(Rulesets[ruleset], query));
+      res.json(filterNames(getRuleset(ruleset), query));
     } else {
       res.status(400).json({ error: "Ruleset type error", code: "DT-R3-01" });
     }

@@ -27,7 +27,7 @@ const statsSchema = new mongoose.Schema(
 
 const pokemonSchema = new mongoose.Schema(
   {
-    pid: {
+    id: {
       type: String,
       required: true,
     },
@@ -102,7 +102,7 @@ export interface ArchiveData {
   owner: string;
   format: FormatId;
   ruleset: RulesetId;
-  team: { pid: ID }[];
+  team: { id: ID }[];
   matches: {
     winner: "a" | "b" | undefined;
     teamName?: string;

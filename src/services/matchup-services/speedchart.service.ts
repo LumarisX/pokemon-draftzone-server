@@ -1,15 +1,13 @@
-import { ID, StatusName } from "@pkmn/data";
+import { AbilityName, StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
-import { Ruleset } from "../../data/rulesets";
-import { PokemonData } from "../../models/pokemon.schema";
-import { getAbilities, getTypes } from "../data-services/pokedex.service";
+import { DraftSpecies } from "../../classes/pokemon";
 
 export type Speedchart = {
   modifiers: string[];
   tiers: {
     pokemon: {
-      pid: string;
+      id: string;
     };
     team: string;
     speed: number;
@@ -34,8 +32,7 @@ type Configurations = {
 };
 
 function getSpeedTiers(
-  ruleset: Ruleset,
-  p: PokemonData,
+  pokemon: DraftSpecies,
   level: number,
   teamIndex: string
 ) {
@@ -81,7 +78,8 @@ function getSpeedTiers(
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of getAbilities(ruleset, p.pid)) {
+  for (let ability of Object.values(pokemon.abilities)) {
+    ability = ability as AbilityName;
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -117,35 +115,28 @@ function getSpeedTiers(
     }
   }
   return [
-    ...generateTiers(ruleset, p, level, teamIndex, fastConfigurations),
-    ...generateTiers(ruleset, p, level, teamIndex, baseConfiugrations),
-    ...generateTiers(ruleset, p, level, teamIndex, slowConfigurations),
+    ...generateTiers(pokemon, level, teamIndex, fastConfigurations),
+    ...generateTiers(pokemon, level, teamIndex, baseConfiugrations),
+    ...generateTiers(pokemon, level, teamIndex, slowConfigurations),
   ];
 }
 
-function getModifiers(tiers: Speedchart["tiers"]): string[] {
-  const uniqueModifiers: Set<string> = new Set();
-  for (const tier of tiers) {
-    for (const modifier of tier.modifiers) {
-      uniqueModifiers.add(modifier);
-    }
-  }
+function tierModifiers(tiers: Speedchart["tiers"]): string[] {
+  const uniqueModifiers: Set<string> = new Set(
+    tiers.flatMap((tier) => tier.modifiers)
+  );
   return Array.from(uniqueModifiers).sort();
 }
 
 function generateTiers(
-  ruleset: Ruleset,
-  p: PokemonData,
+  pokemon: DraftSpecies,
   level: number,
   teamIndex: string,
   configurations: Configurations
 ) {
   const tiers: Speedchart["tiers"] = [];
-  let pid: ID = p.pid;
-  let dexmon = ruleset.gen.dex.species.getByID(pid);
   for (const status of configurations.statuses) {
-    if (status.status == "par" && getTypes(ruleset, pid).includes("Electric"))
-      continue;
+    if (status.status == "par" && pokemon.types.includes("Electric")) continue;
     for (const sConfig of configurations.sides) {
       const side = new Side({ isTailwind: sConfig.tailwind });
       for (const fConfig of configurations.fields) {
@@ -153,26 +144,30 @@ function generateTiers(
         for (const pConfig of configurations.spreads) {
           for (const additional of configurations.additional) {
             for (const item of additional.noItem ||
-            dexmon.requiredItem ||
-            dexmon.requiredItems
+            pokemon.requiredItem ||
+            pokemon.requiredItems
               ? [{ addStages: [-1, 1, 2] }]
               : configurations.items) {
               for (const stage of [
                 ...configurations.stages,
                 ...(item.addStages || []),
               ]) {
-                if (pid === "aegislash") {
-                  pid = "aegislash-shield" as ID;
-                }
-                const pokemon = new Pokemon(ruleset.gen.num, pid, {
-                  level,
-                  evs: pConfig.evs,
-                  ivs: pConfig.ivs,
-                  nature: pConfig.nature,
-                  item: item.item,
-                  boosts: { spe: stage },
-                  status: status.status,
-                });
+                // if (mon.id === "aegislash") {
+                //   id = "aegislash-shield" as ID;
+                // } Unecessary i think?
+                const pokemonCalc = new Pokemon(
+                  pokemon.ruleset.gen.num,
+                  pokemon.id,
+                  {
+                    level,
+                    evs: pConfig.evs,
+                    ivs: pConfig.ivs,
+                    nature: pConfig.nature,
+                    item: item.item,
+                    boosts: { spe: stage },
+                    status: status.status,
+                  }
+                );
                 const modifiers = [
                   ...(pConfig.modifiers || []),
                   ...(sConfig.modifiers || []),
@@ -191,10 +186,14 @@ function generateTiers(
                   modifiers.push(additional.modifier);
                 }
                 tiers.push({
-                  pokemon: p,
+                  pokemon: { id: pokemon.id },
                   speed: Math.floor(
-                    getFinalSpeed(ruleset.gen, pokemon, field, side) *
-                      additional.mult
+                    getFinalSpeed(
+                      pokemon.ruleset.gen,
+                      pokemonCalc,
+                      field,
+                      side
+                    ) * additional.mult
                   ),
                   team: teamIndex,
                   modifiers,
@@ -209,21 +208,14 @@ function generateTiers(
   return tiers;
 }
 
-export function speedchart(
-  ruleset: Ruleset,
-  teams: PokemonData[][],
-  level: number
-): Speedchart {
-  let tiers: Speedchart["tiers"] = [];
-
-  for (const teamIndex in teams) {
-    for (const pokemon of teams[teamIndex]) {
-      tiers = tiers.concat(getSpeedTiers(ruleset, pokemon, level, teamIndex));
-    }
-  }
-
-  tiers.sort((x, y) => y.speed - x.speed);
-
-  const modifiers = getModifiers(tiers);
+export function speedchart(teams: DraftSpecies[][], level: number): Speedchart {
+  let tiers = teams
+    .flatMap((team, teamIndex) =>
+      team.flatMap((pokemon) =>
+        getSpeedTiers(pokemon, level, teamIndex.toString())
+      )
+    )
+    .sort((x, y) => y.speed - x.speed);
+  const modifiers = tierModifiers(tiers);
   return { modifiers, tiers, level };
 }

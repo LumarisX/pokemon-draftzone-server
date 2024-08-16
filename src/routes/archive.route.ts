@@ -1,7 +1,7 @@
 import express, { Response } from "express";
 import mongoose from "mongoose";
 import { SubRequest } from "../app";
-import { Ruleset, Rulesets } from "../data/rulesets";
+import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
 import { MatchupDocument } from "../models/matchup.model";
@@ -27,8 +27,8 @@ archiveRouter
       archives = archives.map((rawArchive) => {
         let archive = rawArchive.toObject();
         archive.team = archive.team.map((mon) => ({
-          pid: mon.pid,
-          name: getName(Rulesets[archive.ruleset], mon.pid),
+          id: mon.id,
+          name: getName(getRuleset(archive.ruleset), mon.id),
         }));
         return archive;
       });
@@ -82,10 +82,7 @@ archiveRouter.param(
           .json({ message: "Archive ID not found", code: "DR-P1-02" });
       }
       res.archive = res.rawArchive.toObject();
-      res.ruleset = Rulesets[res.archive.ruleset];
-      for (let pokemon of res.archive.team) {
-        pokemon.name = getName(res.ruleset, pokemon.pid);
-      }
+      res.ruleset = getRuleset(res.archive.ruleset);
     } catch (error) {
       console.log(error);
       return res

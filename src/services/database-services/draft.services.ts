@@ -49,7 +49,7 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
   let matchups = await getMatchups(draftId);
   let stats: {
     [key: string]: {
-      pokemon: { pid: ID; name: string };
+      pokemon: { id: ID; name: string };
       kills: number;
       brought: number;
       indirect: number;
@@ -60,10 +60,10 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
   } = {};
   for (const matchup of matchups) {
     let stat = Object.fromEntries(matchup.matches[0].aTeam.stats);
-    for (const pid in stat) {
-      if (!(pid in stats)) {
-        stats[pid] = {
-          pokemon: { pid: toID(pid), name: getName(ruleset, toID(pid)) },
+    for (const id in stat) {
+      if (!(id in stats)) {
+        stats[id] = {
+          pokemon: { id: toID(id), name: getName(ruleset, toID(id)) },
           kills: 0,
           brought: 0,
           indirect: 0,
@@ -72,21 +72,21 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
           kpg: 0,
         };
       }
-      const teamStats = stat[toID(pid)];
+      const teamStats = stat[toID(id)];
       if (teamStats) {
-        stats[pid].kills += teamStats.kills ?? 0;
-        stats[pid].brought += teamStats.brought ?? 0;
-        stats[pid].indirect += teamStats.indirect ?? 0;
-        stats[pid].deaths += teamStats.deaths ?? 0;
+        stats[id].kills += teamStats.kills ?? 0;
+        stats[id].brought += teamStats.brought ?? 0;
+        stats[id].indirect += teamStats.indirect ?? 0;
+        stats[id].deaths += teamStats.deaths ?? 0;
       }
     }
   }
 
-  for (let pid in stats) {
-    stats[pid].kdr = stats[pid].kills + stats[pid].indirect - stats[pid].deaths;
-    stats[pid].kpg =
-      stats[pid].brought > 0
-        ? (stats[pid].kills + stats[pid].indirect) / stats[pid].brought
+  for (let id in stats) {
+    stats[id].kdr = stats[id].kills + stats[id].indirect - stats[id].deaths;
+    stats[id].kpg =
+      stats[id].brought > 0
+        ? (stats[id].kills + stats[id].indirect) / stats[id].brought
         : 0;
   }
   return Object.values(stats);

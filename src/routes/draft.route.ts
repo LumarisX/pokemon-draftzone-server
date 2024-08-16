@@ -4,7 +4,8 @@ import { SubRequest } from "../app";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
-import { Ruleset, Rulesets } from "../data/rulesets";
+import { DraftSpecies } from "../classes/pokemon";
+import { getRuleset, Ruleset } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
@@ -341,10 +342,7 @@ draftRouter.param(
           .json({ message: "Team id not found", code: "DR-P1-02" });
       }
       res.draft = res.rawDraft.toObject();
-      res.ruleset = Rulesets[res.draft.ruleset];
-      for (let pokemon of res.draft.team) {
-        pokemon.name = getName(res.ruleset, pokemon.pid);
-      }
+      res.ruleset = getRuleset(res.draft.ruleset);
     } catch (error) {
       console.log(error);
       return res
@@ -382,7 +380,17 @@ draftRouter.param(
         return;
       }
       matchup.aTeam.teamName = draft.teamName;
-      matchup.aTeam.team = draft.team;
+      matchup.aTeam.team = draft.team.map((pokemon: any) => {
+        let specie = res.ruleset!.gen.species.get(pokemon.id);
+        if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+        let draftSpecies: DraftSpecies = new DraftSpecies(
+          specie,
+          pokemon,
+          res.ruleset!
+        );
+        return draftSpecies;
+      });
+
       res.matchup = matchup;
     } catch (error) {
       return res

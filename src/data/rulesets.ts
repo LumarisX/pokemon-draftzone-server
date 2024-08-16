@@ -8,13 +8,11 @@ export type Ruleset = {
   natdex: boolean;
 };
 
-type Rulesets = {
-  [key: string]: Ruleset;
-};
-
 const gens = new Generations(Dex);
 
-export const Rulesets: Rulesets = {
+const Rulesets: {
+  [key: string]: Ruleset;
+} = {
   "Gen9 NatDex": { gen: gens.get(9), natdex: true },
   "Paldea Dex": { gen: gens.get(9), natdex: false },
   "Gen8 NatDex": { gen: gens.get(8), natdex: true },
@@ -34,3 +32,12 @@ export const Rulesets: Rulesets = {
   "Kanto Dex": { gen: gens.get(1), natdex: false },
   // CAP: { gen: gens.get(9), natdex: true },
 };
+
+export function getRuleset(rulesetId: string) {
+  if (rulesetId in Rulesets) return Rulesets[rulesetId];
+  else return Rulesets["Gen9 NatDex"];
+}
+
+export function getRulesets() {
+  return Object.keys(Rulesets);
+}

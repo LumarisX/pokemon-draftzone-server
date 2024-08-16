@@ -55,7 +55,7 @@ const matchSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const matchupSchema = new mongoose.Schema(
+export const matchupSchema = new mongoose.Schema(
   {
     aTeam: {
       type: teamSchema,
@@ -109,6 +109,7 @@ export type MatchData = {
 export interface MatchupData {
   aTeam: {
     team: PokemonData[];
+    owner: string;
     name?: string;
     teamName?: string;
     paste?: string;
@@ -132,6 +133,6 @@ export interface MatchupData {
 export interface MatchupDocument extends Document<any, any>, MatchupData {}
 
 export const MatchupModel = mongoose.model<MatchupDocument>(
-  "matchups",
+  "matchuptest",
   matchupSchema
 );

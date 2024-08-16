@@ -25,7 +25,7 @@ export class Archive {
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,
       owner: this.draft.owner,
-      team: this.draft.team.map((pokemon) => ({ pid: pokemon.pid })),
+      team: this.draft.team.map((pokemon) => ({ id: pokemon.id })),
       matches: [],
     };
     const matchups = await getMatchups(this.draft._id);
@@ -80,17 +80,16 @@ export class Archive {
     } = {};
     matches.forEach((match) => {
       let stat = Object.fromEntries(match.aTeam.stats);
-      for (let pid in stat) {
-        if (pid in stats) {
-          stats[pid].brought =
-            (stats[pid].brought || 0) + (stat[pid].brought || 0);
-          stats[pid].deaths =
-            (stats[pid].deaths || 0) + (stat[pid].deaths || 0);
-          stats[pid].deaths = (stats[pid].kills || 0) + (stat[pid].kills || 0);
-          stats[pid].indirect =
-            (stats[pid].indirect || 0) + (stat[pid].indirect || 0);
+      for (let id in stat) {
+        if (id in stats) {
+          stats[id].brought =
+            (stats[id].brought || 0) + (stat[id].brought || 0);
+          stats[id].deaths = (stats[id].deaths || 0) + (stat[id].deaths || 0);
+          stats[id].deaths = (stats[id].kills || 0) + (stat[id].kills || 0);
+          stats[id].indirect =
+            (stats[id].indirect || 0) + (stat[id].indirect || 0);
         } else {
-          stats[pid] = stat[pid];
+          stats[id] = stat[id];
         }
       }
     });
