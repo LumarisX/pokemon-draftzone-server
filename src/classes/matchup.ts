@@ -1,8 +1,8 @@
 import { ObjectId } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
-import { Pokemon, PokemonBuilder, PokemonFormData } from "./pokemon";
 import { PokemonData } from "../models/pokemon.schema";
+import { PokemonBuilder, PokemonFormData } from "./pokemon";
 
 type MatchupDoc = {
   aTeam: Side;
