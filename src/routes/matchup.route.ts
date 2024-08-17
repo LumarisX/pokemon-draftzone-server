@@ -27,6 +27,7 @@ import {
   Typechart,
   typechart,
 } from "../services/matchup-services/typechart.service";
+import { Species } from "@pkmn/dex-types";
 
 export const matchupRouter = express.Router();
 
@@ -264,7 +265,7 @@ matchupRouter.param(
             owner: aTeam.owner,
             teamName: aTeam.teamName,
             team: aTeam.team.map((pokemon: any) => {
-              let specie = res.ruleset!.gen.species.get(pokemon.id);
+              let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
               if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
               let draftSpecies: DraftSpecies = new DraftSpecies(
                 specie,
@@ -278,7 +279,7 @@ matchupRouter.param(
           bTeam: {
             ...matchup.bTeam,
             team: matchup.bTeam.team.map((pokemon: any) => {
-              let specie = res.ruleset!.gen.species.get(pokemon.id);
+              let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
               if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
               let draftSpecies: DraftSpecies = new DraftSpecies(
                 specie,
@@ -303,9 +304,10 @@ matchupRouter.param(
           .json({ message: "Invalid ID format", code: "MR-P1-04" });
       }
     } catch (error) {
-      return res
+      res
         .status(500)
         .json({ message: (error as Error).message, code: "MR-P1-05" });
+      return console.log(error);
     }
     next();
   }

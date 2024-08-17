@@ -15,7 +15,7 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
     );
     if (req.query && req.query.team && typeof req.query.team == "string") {
       team = req.query.team.split(",").map((id: string) => {
-        let specie = ruleset.gen.species.get(id);
+        let specie = ruleset.gen.dex.species.get(id);
         if (!specie) throw new Error(`${id} is an unknown id.`);
         let draftSpecies: DraftSpecies = new DraftSpecies(specie, {}, ruleset);
         return draftSpecies;

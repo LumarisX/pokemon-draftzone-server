@@ -1,6 +1,7 @@
-import { ID, Specie, toID, TypeName } from "@pkmn/data";
+import { ID, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
+  As,
   Condition,
   Dex,
   EggGroup,
@@ -38,77 +39,69 @@ export interface Pokemon extends PokemonOptions {
   name: string;
 }
 
-export class DraftSpecies implements Specie, Pokemon {
-  id!: ID;
-  name!: SpeciesName;
-  fullname!: string;
-  exists!: boolean;
-  num!: number;
-  gen!: GenerationNum;
-  shortDesc!: string;
-  desc!: string;
-  isNonstandard!: Nonstandard | null;
-  duration?: number | undefined;
+export class DraftSpecies implements Species, Pokemon {
   effectType!: "Pokemon";
   kind!: "Species";
-  baseStats!: StatsTable;
   baseSpecies!: SpeciesName;
   baseForme!: "" | FormeName;
+  canHatch!: boolean;
   forme!: "" | FormeName;
   abilities!: SpeciesAbility<"" | AbilityName>;
   types!: [TypeName] | [TypeName, TypeName];
-  prevo?: "" | SpeciesName | undefined;
-  evos?: SpeciesName[] | undefined;
+  prevo?: "" | SpeciesName;
+  evos?: SpeciesName[];
   nfe!: boolean;
-  eggGroups!: EggGroup[];
-  weightkg!: number;
+  evoMove?: MoveName;
+  cosmeticFormes?: SpeciesName[];
+  otherFormes?: SpeciesName[];
+  formeOrder?: SpeciesName[];
+  genderRatio!: { M: number; F: number };
   weighthg!: number;
   tags!: SpeciesTag[];
   unreleasedHidden!: boolean | "Past";
   maleOnlyHidden!: boolean;
-  inheritsFrom!: ID;
+  changesFrom?: SpeciesName;
   tier!: Tier.Singles | Tier.Other;
-  doublesTier!: Tier.Doubles;
-  changesFrom?: SpeciesName | undefined;
-  cosmeticFormes?: SpeciesName[] | undefined;
-  otherFormes?: SpeciesName[] | undefined;
-  formeOrder?: SpeciesName[] | undefined;
-  formes?: SpeciesName[] | undefined;
-  genderRatio!: { M: number; F: number };
-  isMega?: boolean | undefined;
-  isPrimal?: boolean | undefined;
-  battleOnly?: SpeciesName | SpeciesName[] | undefined;
-  canGigantamax?: MoveName | undefined;
-  gmaxUnreleased?: boolean | undefined;
-  cannotDynamax?: boolean | undefined;
-  requiredAbility?: AbilityName | undefined;
-  requiredItem?: ItemName | undefined;
-  requiredItems?: ItemName[] | undefined;
-  requiredMove?: MoveName | undefined;
-  gender?: GenderName | undefined;
-  maxHP?: number | undefined;
-  evoMove?: MoveName | undefined;
-  evoItem?: string | undefined;
-  evoRegion?: "Alola" | "Galar" | undefined;
-  evoLevel?: number | undefined;
-  evoCondition?: string | undefined;
-  evoType?: EvoType | undefined;
-  condition?: Partial<Condition> | undefined;
-  canHatch!: boolean;
-  dex!: Dex;
-  shiny?: boolean | undefined;
-  capt?: { tera?: TypeName[]; z?: boolean } | undefined;
+  doublesTier!: "Illegal" | Tier.Doubles;
+  isMega?: boolean;
+  isPrimal?: boolean;
+  battleOnly?: SpeciesName | SpeciesName[];
+  isGigantamax?: MoveName;
+  requiredAbility?: AbilityName;
+  requiredItem?: ItemName;
+  requiredItems?: ItemName[];
+  requiredMove?: MoveName;
+  id!: ID;
+  name!: string & As<"SpeciesName">;
+  fullname!: string;
+  exists!: boolean;
+  num!: number;
+  gen!: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+  shortDesc!: string;
+  desc!: string;
+  isNonstandard!: Nonstandard | null;
+  duration?: number;
+  inherit?: boolean;
+  baseStats!: StatsTable;
+  eggGroups!: EggGroup[];
+  weightkg!: number;
+  condition?: Partial<Condition>;
+  evoLevel?: number;
+  evoCondition?: string;
+  evoItem?: string;
+  evoType?: EvoType;
+  gender?: GenderName;
+  maxHP?: number;
+  canGigantamax?: string;
+  gmaxUnreleased?: boolean;
+  cannotDynamax?: boolean;
+  forceTeraType?: string;
+  shiny?: boolean;
+  capt?: { tera?: TypeName[]; z?: boolean };
   ruleset: Ruleset;
-  get formeNum(): number {
-    throw new Error("Method not implemented.");
-  }
-  toString!: () => SpeciesName;
-  toJSON!: () => { [key: string]: any };
 
-  constructor(species: Specie, data: PokemonOptions, ruleset: Ruleset) {
+  constructor(species: Species, data: PokemonOptions, ruleset: Ruleset) {
     Object.assign(this, species);
-    this.toString = species.toString;
-    this.toJSON = species.toJSON;
     this.shiny = data.shiny;
     this.capt = data.capt;
     this.ruleset = ruleset;
