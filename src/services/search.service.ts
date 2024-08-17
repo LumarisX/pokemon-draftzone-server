@@ -1,4 +1,4 @@
-import { ID, Specie } from "@pkmn/data";
+import { ID } from "@pkmn/data";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset, RulesetId } from "../data/rulesets";
 
@@ -369,7 +369,7 @@ async function evaluate(
         }
         break;
       case "Identifier":
-        return !!pokemon[node.value as keyof Specie];
+        return !!pokemon[node.value as keyof DraftSpecies];
       case "Literal":
         return node.value;
     }

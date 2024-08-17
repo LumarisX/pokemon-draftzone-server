@@ -80,9 +80,7 @@ draftRouter
     }
   })
   .patch(async (req: SubRequest, res: DraftResponse) => {
-    if (!req.sub) {
-      return;
-    }
+    if (!req.sub) return;
     try {
       let team_id = req.params.team_id;
       const draft = await new Draft(req.body, req.sub).createDraft();

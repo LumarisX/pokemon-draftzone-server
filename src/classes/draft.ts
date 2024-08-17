@@ -69,7 +69,6 @@ export class Draft {
         }
       }
     }
-
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }

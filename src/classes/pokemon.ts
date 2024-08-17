@@ -407,16 +407,14 @@ export class PokemonBuilder {
       id: toID(pokemonData.id),
       shiny: pokemonData.shiny || undefined,
     };
-
     // if (!inDex(pokemonData.id)) {
     //   this.error = `${this.data.name} not found in the pokedex`;
     //   return;
     // }
-
     const { captCheck } = pokemonData;
     if (captCheck) {
       this.data.capt = {
-        z: pokemonData.capt?.z ? true : undefined,
+        z: pokemonData.capt!.z ? true : undefined,
         tera: pokemonData.capt?.teraCheck
           ? (Object.keys(pokemonData.capt?.tera || {}).filter(
               (type) => pokemonData.capt!.tera![type]
