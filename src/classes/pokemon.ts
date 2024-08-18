@@ -368,8 +368,8 @@ export class DraftSpecies implements Species, Pokemon {
       species = s;
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
-    if (!learnset?.learnset) return [];
-    let moves: Move[] = Object.keys(learnset.learnset)
+    if (!totalLearnset?.learnset) return [];
+    let moves: Move[] = Object.keys(totalLearnset.learnset)
       .map((move) => this.ruleset.gen.moves.get(move))
       .filter((move) => move !== undefined);
     this.$learnset = moves as Move[];

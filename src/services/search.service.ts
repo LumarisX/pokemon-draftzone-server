@@ -19,12 +19,12 @@ export async function searchPokemon(
   rulesetId: RulesetId = "Gen9 NatDex"
 ) {
   const tokens = tokenize(query);
+  if (tokens.length === 0) return [];
   const ast = parse(tokens);
   let cachedData = checkCache(ast);
   if (cachedData && false) {
     // return cachedData[1];
   } else {
-    console.log(tokens);
     let ruleset = getRuleset(rulesetId);
     let searchResults = await Promise.all(
       Array.from(ruleset.gen.species).map(async (pokemon) => {
