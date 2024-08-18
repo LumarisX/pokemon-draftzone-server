@@ -1,5 +1,5 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecies } from "../classes/pokemon";
+import { DraftSpecies, Pokemon } from "../classes/pokemon";
 import { getRuleset, RulesetId } from "../data/rulesets";
 
 type Token = { type: string; value: string };
@@ -9,10 +9,10 @@ type ASTNode = {
   right?: ASTNode;
   value?: any;
   operator?: string;
-  cache?: (boolean | ID)[];
+  cache?: (boolean | Pokemon)[];
 };
 
-let cache: [ASTNode, (boolean | ID)[]][] = [];
+let cache: [ASTNode, (boolean | Pokemon)[]][] = [];
 
 export async function searchPokemon(
   query: string,
@@ -21,14 +21,15 @@ export async function searchPokemon(
   const tokens = tokenize(query);
   const ast = parse(tokens);
   let cachedData = checkCache(ast);
-  if (cachedData) {
-    return cachedData[1];
+  if (cachedData && false) {
+    // return cachedData[1];
   } else {
+    console.log(tokens);
     let ruleset = getRuleset(rulesetId);
     let searchResults = await Promise.all(
       Array.from(ruleset.gen.species).map(async (pokemon) => {
         return [
-          pokemon.id,
+          { id: pokemon.id, name: pokemon.name },
           await evaluate(ast, new DraftSpecies(pokemon, {}, ruleset)),
         ];
       })
@@ -51,7 +52,7 @@ function checkCache(node: ASTNode) {
 
 function subNodes(
   subNode: ASTNode | undefined,
-  cachedData: [ASTNode, (boolean | ID)[]]
+  cachedData: [ASTNode, (boolean | Pokemon)[]]
 ): boolean {
   if (!subNode) return false;
   if (sameNodes(subNode, cachedData[0])) {
@@ -86,7 +87,7 @@ function sameNodes(
 
 function tokenize(input: string): Token[] {
   const regex =
-    /\s*(=>|!=|>=|<=|>|<|=|includes|!includes|\(|\)|and|or|'[^']*'|[A-Za-z_][A-Za-z0-9_]*|"[^"]*"|\d+|\S)\s*/g;
+    /\s*(=>|!=|>=|<=|>|<|=|∈|∉|&&|\|\||includes|!includes|\(|\)|and|or|'[^']*'|[A-Za-z_][A-Za-z0-9_]*|"[^"]*"|\d+|\S)\s*/g;
   const tokens: Token[] = [];
   let match;
   while ((match = regex.exec(input)) !== null) {
@@ -170,6 +171,21 @@ async function evaluate(
   pokemon: DraftSpecies
 ): Promise<boolean> {
   if (node) {
+    const tiers = [
+      "ZU",
+      "ZUBL",
+      "PU",
+      "PUBL",
+      "NU",
+      "NUBL",
+      "RU",
+      "RUBL",
+      "UU",
+      "UUBL",
+      "OU",
+      "UBER",
+      "AG",
+    ];
     switch (node.type) {
       case "LogicalExpression":
         if (node.operator === "and") {
@@ -256,25 +272,20 @@ async function evaluate(
             leftValue = Object.values(pokemon.abilities);
             break;
           case "tier":
-            let tiers = [
-              "ZU",
-              "ZUBL",
-              "PU",
-              "PUBL",
-              "NU",
-              "NUBL",
-              "RU",
-              "RUBL",
-              "UU",
-              "UUBL",
-              "OU",
-              "UBER",
-              "AG",
-            ];
             leftValue =
               tiers.indexOf(pokemon.tier) > 0
                 ? tiers.indexOf(pokemon.tier)
                 : pokemon.tier;
+            rightValue =
+              tiers.indexOf(node.right?.value) > 0
+                ? tiers.indexOf(node.right?.value)
+                : node.right?.value;
+            break;
+          case "doubles-tier":
+            leftValue =
+              tiers.indexOf(pokemon.doublesTier) > 0
+                ? tiers.indexOf(pokemon.doublesTier)
+                : pokemon.doublesTier;
             rightValue =
               tiers.indexOf(node.right?.value) > 0
                 ? tiers.indexOf(node.right?.value)
@@ -310,7 +321,7 @@ async function evaluate(
           case "weight":
             leftValue = pokemon.weightkg;
             break;
-          case "egggroups":
+          case "egg-groups":
             leftValue = pokemon.eggGroups;
             break;
           default:
@@ -335,9 +346,15 @@ async function evaluate(
         if (Array.isArray(leftValue)) {
           switch (node.operator) {
             case "includes":
-              return leftValue.includes(rightValue);
+            case "∈":
+              return leftValue.some(
+                (value) => value.toLowerCase() === rightValue.toLowerCase()
+              );
             case "!includes":
-              return !leftValue.includes(rightValue);
+            case "∉":
+              return !leftValue.some(
+                (value) => value.toLowerCase() === rightValue.toLowerCase()
+              );
             case "=":
               return leftValue == rightValue;
             case "!=":
@@ -361,6 +378,15 @@ async function evaluate(
               return leftValue >= rightValue;
             case "<=":
               return leftValue <= rightValue;
+            case "includes":
+            case "∈":
+              return leftValue.toLowerCase().includes(rightValue.toLowerCase());
+            case "!includes":
+            case "∉":
+              return !leftValue
+                .toLowerCase()
+                .includes(rightValue.toLowerCase());
+
             default:
               console.log(
                 `Parsing error: invalid string binary operator "${node.operator}"`
