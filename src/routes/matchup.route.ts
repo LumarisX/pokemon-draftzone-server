@@ -27,7 +27,7 @@ import {
   Typechart,
   typechart,
 } from "../services/matchup-services/typechart.service";
-import { Species } from "@pkmn/dex-types";
+import NodeCache from "node-cache";
 
 export const matchupRouter = express.Router();
 
@@ -62,11 +62,22 @@ interface MatchupResponse extends Response {
   ruleset?: Ruleset;
 }
 
+const $matchups = new NodeCache({
+  stdTTL: 900,
+  checkperiod: 300,
+  maxKeys: 50,
+});
+
 matchupRouter
   .route("/:matchup_id")
   .get(async (req: Request, res: MatchupResponse) => {
     if (!res.matchup) {
       return;
+    }
+
+    const cachedData = $matchups.get(req.params.matchup_id);
+    if (cachedData) {
+      return res.json(cachedData);
     }
     try {
       let level = getFormat(res.matchup.format).level;
@@ -116,6 +127,7 @@ matchupRouter
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       data.summary = [aTeamsummary, bTeamsummary];
+      $matchups.set(req.params.matchup_id, data);
       res.json(data);
     } catch (error) {
       console.log(error);
@@ -130,6 +142,7 @@ matchupRouter
     }
     try {
       await res.rawMatchup.deleteOne();
+      $matchups.del(req.params.matchup_id);
       res.json({ message: "Matchup deleted" });
     } catch (error) {
       res
