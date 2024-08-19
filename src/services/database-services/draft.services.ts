@@ -63,7 +63,7 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
     for (const id in stat) {
       if (!(id in stats)) {
         stats[id] = {
-          pokemon: { id: toID(id), name: getName(ruleset, toID(id)) },
+          pokemon: { id: toID(id), name: getName(id) },
           kills: 0,
           brought: 0,
           indirect: 0,

@@ -75,7 +75,7 @@ const NATDEX_EXISTS = (d: Data) => {
 };
 
 const gens = new Generations(Dex, DRAFT_EXISTS);
-const natdexGens = new Generations(Dex, NATDEX_EXISTS);
+export const natdexGens = new Generations(Dex, NATDEX_EXISTS);
 
 const Rulesets: {
   [key: string]: Ruleset;

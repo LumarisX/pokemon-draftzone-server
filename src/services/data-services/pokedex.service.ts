@@ -1,9 +1,8 @@
 import { SpeciesName } from "@pkmn/data";
-import { ID } from "@pkmn/dex-types";
-import { Ruleset } from "../../data/rulesets";
+import { natdexGens, Ruleset } from "../../data/rulesets";
 
-export function getName(ruleset: Ruleset, pokemonID: ID): SpeciesName {
-  return ruleset.gen.dex.species.getByID(pokemonID).name;
+export function getName(pokemonID: string): SpeciesName {
+  return natdexGens.dex.species.get(pokemonID).name;
 }
 
 export function filterNames(ruleset: Ruleset, query: string) {

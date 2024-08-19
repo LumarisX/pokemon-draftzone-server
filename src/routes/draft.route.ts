@@ -1,18 +1,18 @@
 import express, { Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import { SubRequest } from "../app";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
-import { DraftDocument, DraftModel } from "../models/draft.model";
+import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
-import { getName } from "../services/data-services/pokedex.service";
 import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
+import { getName } from "../services/data-services/pokedex.service";
 
 export const draftRouter = express.Router();
 
@@ -28,8 +28,20 @@ draftRouter
   .route("/teams")
   .get(async (req: SubRequest, res: DraftResponse) => {
     try {
+      let drafts = await DraftModel.find({ owner: req.sub }).sort({
+        createdAt: -1,
+      });
       res.json(
-        await DraftModel.find({ owner: req.sub }).sort({ createdAt: -1 })
+        drafts.map((rawDraft) => {
+          let draft = rawDraft.toObject();
+          return {
+            ...draft,
+            team: draft.team.map((pokemon) => ({
+              ...pokemon,
+              name: getName(pokemon.id),
+            })),
+          };
+        })
       );
     } catch (error) {
       res
@@ -136,7 +148,21 @@ draftRouter
       }).sort({
         createdAt: -1,
       });
-      res.json(matchups);
+      res.json(
+        matchups.map((rawMatchup) => {
+          let matchup = rawMatchup.toObject();
+          return {
+            ...matchup,
+            bTeam: {
+              ...matchup.bTeam,
+              team: matchup.bTeam.team.map((pokemon) => ({
+                ...pokemon,
+                name: getName(pokemon.id),
+              })),
+            },
+          };
+        })
+      );
     } catch (error) {
       res
         .status(500)
@@ -339,8 +365,16 @@ draftRouter.param(
           .status(400)
           .json({ message: "Team id not found", code: "DR-P1-02" });
       }
-      res.draft = res.rawDraft.toObject();
-      res.ruleset = getRuleset(res.draft.ruleset);
+      let draft: DraftData = res.rawDraft.toObject();
+      draft = {
+        ...draft,
+        team: draft.team.map((pokemon) => ({
+          ...pokemon,
+          name: getName(pokemon.id),
+        })),
+      };
+      res.draft = draft as DraftDocument;
+      res.ruleset = getRuleset(res.draft!.ruleset);
     } catch (error) {
       console.log(error);
       return res

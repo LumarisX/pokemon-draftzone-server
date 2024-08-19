@@ -28,7 +28,7 @@ archiveRouter
         let archive = rawArchive.toObject();
         archive.team = archive.team.map((mon) => ({
           id: mon.id,
-          name: getName(getRuleset(archive.ruleset), mon.id),
+          name: getName(mon.id),
         }));
         return archive;
       });
@@ -36,7 +36,7 @@ archiveRouter
     } catch (error) {
       res
         .status(500)
-        .json({ message: (error as Error).message, code: "DR-R1-01" });
+        .json({ message: (error as Error).message, code: "AR-R1-01" });
     }
   });
 
@@ -53,7 +53,7 @@ archiveRouter
       console.error("Error deleting draft:", error);
       res
         .status(500)
-        .json({ message: (error as Error).message, code: "DR-R2-04" });
+        .json({ message: (error as Error).message, code: "AR-R2-04" });
     }
   });
 
@@ -79,7 +79,7 @@ archiveRouter.param(
       if (res.rawArchive == null) {
         return res
           .status(400)
-          .json({ message: "Archive ID not found", code: "DR-P1-02" });
+          .json({ message: "Archive ID not found", code: "AR-P1-02" });
       }
       res.archive = res.rawArchive.toObject();
       res.ruleset = getRuleset(res.archive.ruleset);
