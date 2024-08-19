@@ -26,10 +26,11 @@ export class Replay {
     let turn: number = 0;
     let t0: number = 0;
     let tf: number = 0;
+    let preview: number = 6;
     let events: { player: number; turn: number; message: string }[] = [];
-    let gens = new Generations(Dex);
-    let gen = gens.dex;
-    let critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
+    const gens = new Generations(Dex);
+    const gen = gens.dex;
+    const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
     for (this.i = 0; this.i < this.replayData.length; this.i++) {
       let lineData = this.replayData[this.i];
       switch (lineData[0]) {
@@ -501,6 +502,9 @@ export class Replay {
         case "clearpoke":
           break;
         case "teampreview":
+          if (lineData[1]) {
+            preview = +lineData[1];
+          }
           break;
         case "-singlemove":
           break;
@@ -796,7 +800,7 @@ export class Replay {
       player.team.forEach((mon) => {
         playerStat.team.push({
           kills: mon.kills,
-          brought: mon.brought,
+          brought: mon.brought || preview >= playerStat.team.length,
           fainted: mon.fainted,
           moveset: mon.moveset.map((move) => move.name),
           damageDealt: mon.damageDealt,
@@ -1341,7 +1345,7 @@ type SubReplayData =
   | ["swap", POKEMON, POSITION]
   | ["switch" | "drag" | "replace", POKEMON, DETAILS, HPSTATUS]
   | ["t:", TIMESTAMP]
-  | ["teampreview"]
+  | ["teampreview", NUMBER?]
   | ["teamsize", PLAYER, NUMBER]
   | ["tie"]
   | ["tier", FORMATNAME]
