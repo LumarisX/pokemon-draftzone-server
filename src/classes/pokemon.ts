@@ -276,6 +276,7 @@ export class DraftSpecies implements Species, Pokemon {
       };
     if (learnset.some((move) => move.id === "terablast") && this.capt?.tera) {
       for (const type of this.capt.tera) {
+        if (type === "Stellar") continue;
         coverage.Physical[type] = {
           id: "terablast" as ID,
           ePower: -1,
@@ -371,8 +372,8 @@ export class DraftSpecies implements Species, Pokemon {
     if (!totalLearnset?.learnset) return [];
     let moves: Move[] = Object.keys(totalLearnset.learnset)
       .map((move) => this.ruleset.gen.moves.get(move))
-      .filter((move) => move !== undefined);
-    this.$learnset = moves as Move[];
+      .filter((move) => move !== undefined) as Move[];
+    this.$learnset = moves;
     return moves;
   }
 
