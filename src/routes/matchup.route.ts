@@ -62,7 +62,7 @@ interface MatchupResponse extends Response {
   ruleset?: Ruleset;
 }
 
-const $matchups = new NodeCache({
+export const $matchups = new NodeCache({
   stdTTL: 900,
   checkperiod: 300,
   maxKeys: 50,
@@ -75,7 +75,9 @@ matchupRouter
       return;
     }
 
-    const cachedData = $matchups.get(req.params.matchup_id);
+    const cachedData = $matchups.get(
+      `${req.params.team_id}-${req.params.matchup_id}`
+    );
     if (cachedData) {
       return res.json(cachedData);
     }
@@ -127,7 +129,7 @@ matchupRouter
       aTeamsummary.teamName = res.matchup.aTeam.teamName;
       bTeamsummary.teamName = res.matchup.bTeam.teamName;
       data.summary = [aTeamsummary, bTeamsummary];
-      $matchups.set(req.params.matchup_id, data);
+      $matchups.set(`${req.params.team_id}-${req.params.matchup_id}`, data);
       res.json(data);
     } catch (error) {
       console.log(error);
@@ -142,7 +144,7 @@ matchupRouter
     }
     try {
       await res.rawMatchup.deleteOne();
-      $matchups.del(req.params.matchup_id);
+      $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
       res.json({ message: "Matchup deleted" });
     } catch (error) {
       res

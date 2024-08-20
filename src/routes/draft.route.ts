@@ -1,5 +1,5 @@
 import express, { Response } from "express";
-import mongoose, { ObjectId } from "mongoose";
+import mongoose from "mongoose";
 import { SubRequest } from "../app";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
@@ -8,11 +8,12 @@ import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
+import { getName } from "../services/data-services/pokedex.service";
 import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
-import { getName } from "../services/data-services/pokedex.service";
+import { $matchups } from "./matchup.route";
 
 export const draftRouter = express.Router();
 
@@ -96,7 +97,6 @@ draftRouter
     try {
       let team_id = req.params.team_id;
       const draft = await new Draft(req.body, req.sub).createDraft();
-
       const updatedDraft = await DraftModel.findOneAndUpdate(
         { owner: req.sub, leagueId: team_id },
         {
@@ -108,7 +108,10 @@ draftRouter
         },
         { new: true, upsert: true }
       );
-
+      $matchups
+        .keys()
+        .filter((key) => key.startsWith(req.params.team_id))
+        .forEach((key) => $matchups.del(key));
       if (updatedDraft) {
         res.status(200).json({ message: "Draft Updated", draft: updatedDraft });
       } else {
@@ -245,6 +248,7 @@ draftRouter
         },
         { new: true, upsert: true }
       );
+      $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
       if (updatedMatchup) {
         res
           .status(200)
