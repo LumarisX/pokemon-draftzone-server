@@ -23,11 +23,10 @@ import {
   speedchart,
 } from "../services/matchup-services/speedchart.service";
 import { Summary, summary } from "../services/matchup-services/summary.service";
-import {
-  Typechart,
-  typechart,
-} from "../services/matchup-services/typechart.service";
+import { Typechart } from "../services/matchup-services/typechart.service";
 import NodeCache from "node-cache";
+import { Type } from "@pkmn/data";
+import { PokemonData } from "../models/pokemon.schema";
 
 export const matchupRouter = express.Router();
 
@@ -83,6 +82,8 @@ matchupRouter
     }
     try {
       let level = getFormat(res.matchup.format).level;
+      let aTypechart = new Typechart(res.matchup.aTeam.team);
+      let bTypechart = new Typechart(res.matchup.bTeam.team);
       let data: {
         format: FormatId;
         ruleset: RulesetId;
@@ -93,7 +94,16 @@ matchupRouter
         summary: (Summary & { teamName?: string })[];
         speedchart: Speedchart;
         coveragechart: Coveragechart[];
-        typechart: Typechart[];
+        typechart: {
+          team: (
+            | PokemonData & {
+                weak: { [key: string]: number };
+              }
+          )[];
+          teraTypes: {
+            [key: string]: {};
+          };
+        }[];
         movechart: Movechart[];
       } = {
         format: res.matchup.format,
@@ -111,10 +121,7 @@ matchupRouter
           await coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
           await coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
         ],
-        typechart: [
-          typechart(res.matchup.aTeam.team),
-          typechart(res.matchup.bTeam.team),
-        ],
+        typechart: [aTypechart.toJson(), bTypechart.toJson()],
         movechart: [
           await movechart(res.matchup.aTeam.team),
           await movechart(res.matchup.bTeam.team),
@@ -185,8 +192,8 @@ matchupRouter.get(
     }
     try {
       res.json([
-        typechart(res.matchup.aTeam.team),
-        typechart(res.matchup.bTeam.team),
+        new Typechart(res.matchup.aTeam.team).toJson(),
+        new Typechart(res.matchup.bTeam.team).toJson(),
       ]);
     } catch (error) {
       res

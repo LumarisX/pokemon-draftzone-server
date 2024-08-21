@@ -1,23 +1,31 @@
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
-export type Typechart = {
+
+export class Typechart {
   team: (
     | PokemonData & {
         weak: { [key: string]: number };
       }
   )[];
+
   teraTypes: {
     [key: string]: {};
   };
-};
 
-export function typechart(team: DraftSpecies[]): Typechart {
-  let teamTypes = team.map((pokemon) => ({
-    ...pokemon.toPokemon(),
-    weak: pokemon.typechart(),
-  }));
-  // if (pokemon.capt && pokemon.capt.tera) {
-  //   pokemon.capt.tera = pokemon.capt.tera.filter((type) => type != "Stellar");
-  // }
-  return { team: teamTypes, teraTypes: {} };
+  constructor(team: DraftSpecies[]) {
+    this.team = team.map((pokemon) => ({
+      ...pokemon.toPokemon(),
+      weak: pokemon.typechart(),
+    }));
+    this.teraTypes = {};
+    // if (pokemon.capt && pokemon.capt.tera) {
+    //   pokemon.capt.tera = pokemon.capt.tera.filter((type) => type != "Stellar");
+    // }
+  }
+
+  toJson() {
+    return { team: this.team, teraTypes: this.teraTypes };
+  }
+
+  nextBestType() {}
 }

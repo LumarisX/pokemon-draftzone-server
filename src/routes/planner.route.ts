@@ -2,8 +2,8 @@ import express, { Request, Response } from "express";
 import { DraftSpecies } from "../classes/pokemon";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { summary } from "../services/matchup-services/summary.service";
-import { typechart } from "../services/matchup-services/typechart.service";
 import { getRuleset } from "../data/rulesets";
+import { Typechart } from "../services/matchup-services/typechart.service";
 
 export const plannerRouter = express.Router();
 1;
@@ -20,8 +20,9 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
         let draftSpecies: DraftSpecies = new DraftSpecies(specie, {}, ruleset);
         return draftSpecies;
       });
+      let typechart = new Typechart(team);
       res.json({
-        typechart: typechart(team),
+        typechart: { team: typechart.team, teraTypes: typechart.teraTypes },
         summary: summary(team),
         movechart: await movechart(team),
       });
