@@ -20,26 +20,29 @@ export async function searchPokemon(
 ) {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
+  console.log(tokens);
   const ast = parse(tokens);
-  let cachedData = checkCache(ast);
-  if (cachedData && false) {
-    // return cachedData[1];
-  } else {
-    let ruleset = getRuleset(rulesetId);
-    let searchResults = await Promise.all(
-      Array.from(ruleset.gen.species).map(async (pokemon) => {
-        return [
-          { id: pokemon.id, name: pokemon.name },
-          await evaluate(ast, new DraftSpecies(pokemon, {}, ruleset)),
-        ];
-      })
-    );
-    let filteredResults = searchResults
-      .filter((result) => result[1])
-      .map((result) => result[0]);
-    cache.push([ast, filteredResults]);
-    return filteredResults;
-  }
+  // let cachedData = checkCache(ast);
+  // if (cachedData) {
+  //   return cachedData[1];
+  // } else {
+  console.log(ast);
+
+  let ruleset = getRuleset(rulesetId);
+  let searchResults = await Promise.all(
+    Array.from(ruleset.gen.species).map(async (pokemon) => {
+      return [
+        { id: pokemon.id, name: pokemon.name },
+        await evaluate(ast, new DraftSpecies(pokemon, {}, ruleset)),
+      ];
+    })
+  );
+  let filteredResults = searchResults
+    .filter((result) => result[1])
+    .map((result) => result[0]);
+  cache.push([ast, filteredResults]);
+  return filteredResults;
+  // }
 }
 
 function checkCache(node: ASTNode) {
@@ -117,7 +120,7 @@ function parse(tokens: Token[]): ASTNode {
       };
     }
 
-    if (["and", "or"].includes(token.type)) {
+    if (["and", "&&", "||", "or"].includes(token.type)) {
       throw new TypeError(`Unexpected token: ${token.type}`);
     }
 
@@ -148,7 +151,7 @@ function parse(tokens: Token[]): ASTNode {
 
     while (
       current < tokens.length &&
-      ["and", "or"].includes(tokens[current].type)
+      ["and", "&&", "||", "or"].includes(tokens[current].type)
     ) {
       let operator = tokens[current];
       current++;
@@ -188,13 +191,13 @@ async function evaluate(
     ];
     switch (node.type) {
       case "LogicalExpression":
-        if (node.operator === "and") {
+        if (node.operator === "and" || node.operator === "&&") {
           return (
             (await evaluate(node.left, pokemon)) &&
             (await evaluate(node.right!, pokemon))
           );
         }
-        if (node.operator === "or") {
+        if (node.operator === "or" || node.operator === "||") {
           return (
             (await evaluate(node.left, pokemon)) ||
             (await evaluate(node.right!, pokemon))
