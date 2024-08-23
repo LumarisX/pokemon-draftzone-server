@@ -20,14 +20,11 @@ export async function searchPokemon(
 ) {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
-  console.log(tokens);
   const ast = parse(tokens);
   // let cachedData = checkCache(ast);
   // if (cachedData) {
   //   return cachedData[1];
   // } else {
-  console.log(ast);
-
   let ruleset = getRuleset(rulesetId);
   let searchResults = await Promise.all(
     Array.from(ruleset.gen.species).map(async (pokemon) => {
@@ -186,7 +183,7 @@ async function evaluate(
       "UU",
       "UUBL",
       "OU",
-      "UBER",
+      "Uber",
       "AG",
     ];
     switch (node.type) {
