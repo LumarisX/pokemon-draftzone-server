@@ -426,7 +426,16 @@ draftRouter.param(
         );
         return draftSpecies;
       });
-
+      matchup.bTeam.team = matchup.bTeam.team.map((pokemon) => {
+        let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
+        if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+        let draftSpecies: DraftSpecies = new DraftSpecies(
+          specie,
+          pokemon,
+          res.ruleset!
+        );
+        return draftSpecies;
+      });
       res.matchup = matchup;
     } catch (error) {
       return res

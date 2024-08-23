@@ -1,39 +1,33 @@
 import { TypeName } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
-import { PokemonData } from "../../models/pokemon.schema";
 import { typeWeak } from "../data-services/type.services";
-import { Draft } from "../../classes/draft";
 
 export class Typechart {
-  team: (
-    | PokemonData & {
-        weak: { [key: string]: number };
-      }
-  )[];
-  rawTeam: DraftSpecies[];
+  team: DraftSpecies[];
   teraTypes: {
     [key: string]: {};
   };
 
   constructor(team: DraftSpecies[]) {
-    this.rawTeam = team;
-    this.team = team.map((pokemon) => ({
-      ...pokemon.toPokemon(),
-      weak: pokemon.typechart(),
-    }));
+    this.team = team;
     this.teraTypes = {};
     // if (pokemon.capt && pokemon.capt.tera) {
     //   pokemon.capt.tera = pokemon.capt.tera.filter((type) => type != "Stellar");
     // }
-    this.newBestMon();
   }
 
   toJson() {
-    return { team: this.team, teraTypes: this.teraTypes };
+    return {
+      team: this.team.map((pokemon) => ({
+        ...pokemon.toPokemon(),
+        weak: pokemon.typechart(),
+      })),
+      teraTypes: this.teraTypes,
+    };
   }
 
   nextBestType() {
-    let teamTypeChart = this.rawTeam
+    let teamTypeChart = this.team
       .map((pokemon) => pokemon.typechart())
       .reduce((totalTypes, pokemon) => {
         for (let type in pokemon) {
@@ -71,18 +65,11 @@ export class Typechart {
       (sum, e) => sum + Math.pow(2, e),
       0
     );
-    let typeList: [
-      TypeName,
-      TypeName,
-      number,
-      {
-        [x: string]: number;
-      }
-    ][] = [];
+    let typeList: [TypeName, TypeName, number][] = [];
     for (let i = 0; i < types.length; i++) {
       for (let j = i + 1; j < types.length; j++) {
         let newTC = { ...teamTypeChart };
-        let tw = typeWeak([types[i], types[j]], this.rawTeam[0].ruleset);
+        let tw = typeWeak([types[i], types[j]], this.team[0].ruleset);
         for (let type in tw) {
           let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;
           if (type in newTC) {
@@ -96,15 +83,14 @@ export class Typechart {
           types[i],
           types[j],
           Object.values(newTC).reduce((sum, e) => sum + e, 0) - base,
-          newTC,
         ]);
       }
     }
-    console.log(typeList.sort((x, y) => x[2] - y[2])[0]);
+    console.log(typeList.sort((x, y) => x[2] - y[2]).slice(0, 5));
   }
 
-  newBestMon() {
-    let teamTypeChart = this.rawTeam
+  nextBestMon() {
+    let teamTypeChart = this.team
       .map((pokemon) => pokemon.typechart())
       .reduce((totalTypes, pokemon) => {
         for (let type in pokemon) {
@@ -117,34 +103,14 @@ export class Typechart {
         }
         return totalTypes;
       }, {});
-    let types: TypeName[] = [
-      "Bug",
-      "Dark",
-      "Dragon",
-      "Electric",
-      "Fairy",
-      "Fighting",
-      "Fire",
-      "Flying",
-      "Ghost",
-      "Grass",
-      "Ground",
-      "Ice",
-      "Normal",
-      "Poison",
-      "Psychic",
-      "Rock",
-      "Steel",
-      "Water",
-    ];
     let base = Object.values(teamTypeChart).reduce(
       (sum, e) => sum + Math.pow(2, e),
       0
     );
     let typeList: [string, number][] = [];
-    for (let species of this.rawTeam[0].ruleset.gen.species) {
+    for (let species of this.team[0].ruleset.gen.species) {
       let newTC = { ...teamTypeChart };
-      let draftSpecies = new DraftSpecies(species, {}, this.rawTeam[0].ruleset);
+      let draftSpecies = new DraftSpecies(species, {}, this.team[0].ruleset);
       let tw = draftSpecies.typechart();
       for (let type in tw) {
         let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;
@@ -160,6 +126,6 @@ export class Typechart {
         Object.values(newTC).reduce((sum, e) => sum + e, 0) - base,
       ]);
     }
-    console.log(typeList.sort((x, y) => x[1] - y[1]));
+    console.log(typeList.sort((x, y) => x[1] - y[1]).slice(0, 5));
   }
 }

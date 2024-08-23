@@ -1,12 +1,12 @@
 import express, { Request, Response } from "express";
 import { DraftSpecies } from "../classes/pokemon";
-import { movechart } from "../services/matchup-services/movechart.service";
-import { summary } from "../services/matchup-services/summary.service";
 import { getRuleset } from "../data/rulesets";
+import { movechart } from "../services/matchup-services/movechart.service";
+import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 
 export const plannerRouter = express.Router();
-1;
+
 plannerRouter.route("/").get(async (req: Request, res: Response) => {
   try {
     let team: DraftSpecies[] = [];
@@ -21,9 +21,13 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
         return draftSpecies;
       });
       let typechart = new Typechart(team);
+      typechart.nextBestMon();
+      typechart.nextBestType();
+      let summary = new SummaryClass(team);
+      summary.statistics();
       res.json({
-        typechart: { team: typechart.team, teraTypes: typechart.teraTypes },
-        summary: summary(team),
+        typechart: typechart.toJson(),
+        summary: summary.toJson(),
         movechart: await movechart(team),
       });
     }

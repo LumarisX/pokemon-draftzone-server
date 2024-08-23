@@ -24,8 +24,9 @@ import {
   Speedchart,
   speedchart,
 } from "../services/matchup-services/speedchart.service";
-import { Summary, summary } from "../services/matchup-services/summary.service";
+import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
 
 export const matchupRouter = express.Router();
 
@@ -90,7 +91,40 @@ matchupRouter
         gameTime: string;
         stage: string;
         leagueName: string;
-        summary: (Summary & { teamName?: string })[];
+        summary: {
+          teamName?: string;
+          team: (PokemonData & {
+            abilities: AbilityName[];
+            baseStats: StatsTable;
+            types: [TypeName] | [TypeName, TypeName];
+          })[];
+          stats?: {
+            mean: {
+              hp?: number;
+              atk?: number;
+              def?: number;
+              spa?: number;
+              spd?: number;
+              spe?: number;
+            };
+            median: {
+              hp?: number;
+              atk?: number;
+              def?: number;
+              spa?: number;
+              spd?: number;
+              spe?: number;
+            };
+            max: {
+              hp?: number;
+              atk?: number;
+              def?: number;
+              spa?: number;
+              spd?: number;
+              spe?: number;
+            };
+          };
+        }[];
         speedchart: Speedchart;
         coveragechart: Coveragechart[];
         typechart: {
@@ -126,15 +160,17 @@ matchupRouter
           await movechart(res.matchup.bTeam.team),
         ],
       };
-      let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.matchup.aTeam.team
+      let aTeamsummary = new SummaryClass(
+        res.matchup.aTeam.team,
+        res.matchup.aTeam.teamName
       );
-      let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.matchup.bTeam.team
+      let bTeamsummary = new SummaryClass(
+        res.matchup.bTeam.team,
+        res.matchup.bTeam.teamName
       );
-      aTeamsummary.teamName = res.matchup.aTeam.teamName;
-      bTeamsummary.teamName = res.matchup.bTeam.teamName;
-      data.summary = [aTeamsummary, bTeamsummary];
+      aTeamsummary.statistics();
+      bTeamsummary.statistics();
+      data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
       $matchups.set(`${req.params.team_id}-${req.params.matchup_id}`, data);
       res.json(data);
     } catch (error) {
@@ -166,15 +202,17 @@ matchupRouter.get(
       return;
     }
     try {
-      let aTeamsummary: Summary & { teamName?: string } = summary(
-        res.matchup.aTeam.team
+      let aTeamsummary = new SummaryClass(
+        res.matchup.aTeam.team,
+        res.matchup.aTeam.teamName
       );
-      let bTeamsummary: Summary & { teamName?: string } = summary(
-        res.matchup.bTeam.team
+      let bTeamsummary = new SummaryClass(
+        res.matchup.bTeam.team,
+        res.matchup.bTeam.teamName
       );
-      aTeamsummary.teamName = res.matchup.aTeam.teamName;
-      bTeamsummary.teamName = res.matchup.bTeam.teamName;
-      res.json([aTeamsummary, bTeamsummary]);
+      aTeamsummary.statistics();
+      bTeamsummary.statistics();
+      res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
     } catch (error) {
       res
         .status(500)
