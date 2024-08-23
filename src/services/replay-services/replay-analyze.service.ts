@@ -840,7 +840,9 @@ export class Replay {
     });
 
     return {
-      gametype: gametype,
+      gametype: gametype
+        ? gametype.charAt(0).toUpperCase() + gametype.slice(1)
+        : "",
       genNum: genNum,
       turns: turn,
       gameTime: gameTime,

@@ -61,7 +61,6 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
   for (const matchup of matchups) {
     for (const game of matchup.matches) {
       let stat = Object.fromEntries(game.aTeam.stats);
-      console.log(stat);
       for (const id in stat) {
         if (!(id in stats)) {
           stats[id] = {
