@@ -149,6 +149,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "electroweb",
       "glaciate",
       "icywind",
+      "afteryou",
     ],
   },
   {
