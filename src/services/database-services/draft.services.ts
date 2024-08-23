@@ -59,25 +59,28 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
     };
   } = {};
   for (const matchup of matchups) {
-    let stat = Object.fromEntries(matchup.matches[0].aTeam.stats);
-    for (const id in stat) {
-      if (!(id in stats)) {
-        stats[id] = {
-          pokemon: { id: toID(id), name: getName(id) },
-          kills: 0,
-          brought: 0,
-          indirect: 0,
-          deaths: 0,
-          kdr: 0,
-          kpg: 0,
-        };
-      }
-      const teamStats = stat[toID(id)];
-      if (teamStats) {
-        stats[id].kills += teamStats.kills ?? 0;
-        stats[id].brought += teamStats.brought ?? 0;
-        stats[id].indirect += teamStats.indirect ?? 0;
-        stats[id].deaths += teamStats.deaths ?? 0;
+    for (const game of matchup.matches) {
+      let stat = Object.fromEntries(game.aTeam.stats);
+      console.log(stat);
+      for (const id in stat) {
+        if (!(id in stats)) {
+          stats[id] = {
+            pokemon: { id: toID(id), name: getName(id) },
+            kills: 0,
+            brought: 0,
+            indirect: 0,
+            deaths: 0,
+            kdr: 0,
+            kpg: 0,
+          };
+        }
+        const teamStats = stat[toID(id)];
+        if (teamStats) {
+          stats[id].kills += teamStats.kills ?? 0;
+          stats[id].brought += teamStats.brought ?? 0;
+          stats[id].indirect += teamStats.indirect ?? 0;
+          stats[id].deaths += teamStats.deaths ?? 0;
+        }
       }
     }
   }

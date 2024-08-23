@@ -225,7 +225,28 @@ draftRouter
   .route("/:team_id/:matchup_id")
   .get(async (req: SubRequest, res: DraftResponse) => {
     try {
-      res.json(res.matchup);
+      //poor way of doing this
+      res.json({
+        ...res.matchup,
+        aTeam: {
+          ...res.matchup!.aTeam,
+          team: res.matchup!.aTeam.team.map((pokemon: any) => ({
+            id: pokemon.id,
+            name: pokemon.name,
+            capt: pokemon.capt,
+            shiny: pokemon.shiny,
+          })),
+        },
+        bTeam: {
+          ...res.matchup!.bTeam,
+          team: res.matchup!.bTeam.team.map((pokemon: any) => ({
+            id: pokemon.id,
+            name: pokemon.name,
+            capt: pokemon.capt,
+            shiny: pokemon.shiny,
+          })),
+        },
+      });
     } catch (error) {
       res
         .status(500)
