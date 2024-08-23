@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
+import NodeCache from "node-cache";
 import { DraftSpecies } from "../classes/pokemon";
 import { FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
@@ -10,6 +11,7 @@ import {
   MatchupDocument,
   MatchupModel,
 } from "../models/matchup.model";
+import { PokemonData } from "../models/pokemon.schema";
 import {
   Coveragechart,
   coveragechart,
@@ -24,9 +26,6 @@ import {
 } from "../services/matchup-services/speedchart.service";
 import { Summary, summary } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
-import NodeCache from "node-cache";
-import { Type } from "@pkmn/data";
-import { PokemonData } from "../models/pokemon.schema";
 
 export const matchupRouter = express.Router();
 

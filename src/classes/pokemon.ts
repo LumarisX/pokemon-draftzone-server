@@ -122,7 +122,7 @@ export class DraftSpecies implements Species, Pokemon {
     | undefined;
   typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
-    let weak = typeWeak(this);
+    let weak = typeWeak(this.types, this.ruleset);
     for (let ability of Object.values(this.abilities)) {
       ability = ability as AbilityName;
       switch (ability) {

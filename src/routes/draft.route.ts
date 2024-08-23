@@ -110,8 +110,8 @@ draftRouter
       );
       $matchups
         .keys()
-        .filter((key) => key.startsWith(req.params.team_id))
-        .forEach((key) => $matchups.del(key));
+        .filter((key: string) => key.startsWith(req.params.team_id))
+        .forEach((key: any) => $matchups.del(key));
       if (updatedDraft) {
         res.status(200).json({ message: "Draft Updated", draft: updatedDraft });
       } else {

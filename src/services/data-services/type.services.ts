@@ -1,10 +1,14 @@
-import { DraftSpecies } from "../../classes/pokemon";
+import { TypeName } from "@pkmn/data";
+import { Ruleset } from "../../data/rulesets";
 
-export function typeWeak(pokemon: DraftSpecies) {
+export function typeWeak(
+  types: [TypeName] | [TypeName, TypeName],
+  ruleset: Ruleset
+) {
   const conversion = [1, 2, 0.5, 0];
   let adjustedDamage: { [key: string]: number } = {};
-  pokemon.types.forEach((type) => {
-    const damageTaken = pokemon.ruleset.gen.dex.types.get(type).damageTaken;
+  types.forEach((type) => {
+    const damageTaken = ruleset.gen.dex.types.get(type).damageTaken;
     Object.keys(damageTaken).forEach((key) => {
       adjustedDamage[key] = adjustedDamage.hasOwnProperty(key)
         ? adjustedDamage[key] * conversion[damageTaken[key]]
