@@ -5,6 +5,7 @@ const captSchema = new mongoose.Schema(
   {
     tera: {
       type: [String],
+      default: undefined,
     },
     z: {
       type: Boolean,
