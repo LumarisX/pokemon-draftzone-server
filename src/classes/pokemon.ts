@@ -1,4 +1,4 @@
-import { ID, toID, TypeName } from "@pkmn/data";
+import { ID, MoveSource, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
   As,
@@ -338,24 +338,25 @@ export class DraftSpecies implements Species, Pokemon {
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
     let species: Species = this;
-    let totalLearnset: Learnset | undefined;
+    let totalLearnset: { [moveid: string]: MoveSource[] } = {};
     while (learnset) {
-      if (totalLearnset && totalLearnset.learnset) {
-        for (let move in learnset.learnset) {
-          // will need to be updated for gen 10
-          if (
+      for (let move in learnset.learnset) {
+        // will need to be updated for gen 10
+        if (
+          (this.ruleset.natdex &&
             learnset.learnset[move].some(
               (learns) => +learns.charAt(0) <= this.ruleset.gen.num
-            )
-          )
-            if (move in totalLearnset.learnset) {
-              totalLearnset.learnset[move].concat(learnset.learnset[move]);
-            } else {
-              totalLearnset.learnset[move] = learnset.learnset[move];
-            }
-        }
-      } else {
-        totalLearnset = learnset;
+            )) ||
+          (!this.ruleset.natdex &&
+            learnset.learnset[move].some((learns) => {
+              return +learns.charAt(0) === this.ruleset.gen.num;
+            }))
+        )
+          if (move in totalLearnset) {
+            totalLearnset[move].concat(learnset.learnset[move]);
+          } else {
+            totalLearnset[move] = learnset.learnset[move];
+          }
       }
       if (
         id === "lycanrocdusk" ||
@@ -375,8 +376,9 @@ export class DraftSpecies implements Species, Pokemon {
       species = s;
       learnset = await this.ruleset.gen.learnsets.get(id);
     }
-    if (!totalLearnset?.learnset) return [];
-    let moves: Move[] = Object.keys(totalLearnset.learnset)
+
+    if (!totalLearnset) return [];
+    let moves: Move[] = Object.keys(totalLearnset)
       .map((move) => this.ruleset.gen.moves.get(move))
       .filter((move) => move !== undefined) as Move[];
     this.$learnset = moves;
