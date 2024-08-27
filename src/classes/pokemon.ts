@@ -342,11 +342,17 @@ export class DraftSpecies implements Species, Pokemon {
     while (learnset) {
       if (totalLearnset && totalLearnset.learnset) {
         for (let move in learnset.learnset) {
-          if (move in totalLearnset.learnset) {
-            totalLearnset.learnset[move].concat(learnset.learnset[move]);
-          } else {
-            totalLearnset.learnset[move] = learnset.learnset[move];
-          }
+          // will need to be updated for gen 10
+          if (
+            learnset.learnset[move].some(
+              (learns) => +learns.charAt(0) <= this.ruleset.gen.num
+            )
+          )
+            if (move in totalLearnset.learnset) {
+              totalLearnset.learnset[move].concat(learnset.learnset[move]);
+            } else {
+              totalLearnset.learnset[move] = learnset.learnset[move];
+            }
         }
       } else {
         totalLearnset = learnset;
