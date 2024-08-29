@@ -97,12 +97,16 @@ export class DraftSpecies implements Species, Pokemon {
   shiny?: boolean;
   capt?: { tera?: TypeName[]; z?: boolean };
   ruleset: Ruleset;
+  bst: number;
 
   constructor(species: Species, data: PokemonOptions, ruleset: Ruleset) {
     Object.assign(this, species);
     this.shiny = data.shiny;
     this.capt = data.capt;
     this.ruleset = ruleset;
+    this.bst = Object.values(species.baseStats).reduce(
+      (sum, stat) => stat + sum
+    );
   }
 
   toPokemon(): Pokemon {

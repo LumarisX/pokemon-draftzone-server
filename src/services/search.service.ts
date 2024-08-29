@@ -27,10 +27,25 @@ export async function searchPokemon(
   // } else {
   let ruleset = getRuleset(rulesetId);
   let searchResults = await Promise.all(
-    Array.from(ruleset.gen.species).map(async (pokemon) => {
+    Array.from(ruleset.gen.species).map(async (specie) => {
+      let pokemon = new DraftSpecies(specie, {}, ruleset);
       return [
-        { id: pokemon.id, name: pokemon.name },
-        await evaluate(ast, new DraftSpecies(pokemon, {}, ruleset)),
+        {
+          id: pokemon.id,
+          name: pokemon.name,
+          types: pokemon.types,
+          abilities: Object.values(pokemon.abilities),
+          baseStats: pokemon.baseStats,
+          weightkg: pokemon.weightkg,
+          tier: pokemon.tier,
+          doublesTier: pokemon.doublesTier,
+          eggGroups: pokemon.eggGroups,
+          nfe: pokemon.nfe,
+          num: pokemon.num,
+          tags: pokemon.tags,
+          bst: pokemon.bst,
+        },
+        await evaluate(ast, pokemon),
       ];
     })
   );
@@ -209,13 +224,7 @@ async function evaluate(
             leftValue = pokemon.name;
             break;
           case "bst":
-            leftValue =
-              pokemon.baseStats.hp +
-              pokemon.baseStats.atk +
-              pokemon.baseStats.def +
-              pokemon.baseStats.spa +
-              pokemon.baseStats.spd +
-              pokemon.baseStats.spe;
+            leftValue = pokemon.bst;
             break;
           case "hp":
             leftValue = pokemon.baseStats.hp;
