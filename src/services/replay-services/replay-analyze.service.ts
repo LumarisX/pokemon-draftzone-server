@@ -266,7 +266,34 @@ export class Replay {
                       }`;
                     }
                   } else {
-                    console.log("Direct faint but no status");
+                    let destinyBondMonList = this.field.sides
+                      .map((side) =>
+                        [side.a.pokemon, side.b.pokemon, side.c.pokemon].find(
+                          (pokemon) =>
+                            pokemon &&
+                            this.searchStatuses(pokemon, "move: Destiny Bond")
+                        )
+                      )
+                      .filter((pokemon) => pokemon);
+                    if (destinyBondMonList.length > 0) {
+                      let destinyBondMon = destinyBondMonList.find(
+                        (pokemon) =>
+                          pokemon?.fainted &&
+                          pokemon.lastDamage?.damager === faintMon
+                      );
+                      if (destinyBondMon) {
+                        destinyBondMon.kills[1]++;
+                        faintString += ` from Destiny Bond from ${
+                          destinyBondMon.player.username
+                        }'s ${
+                          destinyBondMon.formes[
+                            destinyBondMon.formes.length - 1
+                          ].detail.split(", ")[0]
+                        }`;
+                      }
+                    } else {
+                      console.log("Direct faint but no status");
+                    }
                   }
                 }
               } //Fainted from indirect damage
