@@ -21,12 +21,11 @@ plannerRouter.route("/").get(async (req: Request, res: Response) => {
         return draftSpecies;
       });
       let typechart = new Typechart(team);
-      typechart.nextBestMon();
-      typechart.nextBestType();
       let summary = new SummaryClass(team);
       summary.statistics();
       res.json({
         typechart: typechart.toJson(),
+        recommended: typechart.recommended(),
         summary: summary.toJson(),
         movechart: await movechart(team),
       });
