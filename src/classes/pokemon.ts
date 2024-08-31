@@ -390,11 +390,8 @@ export class DraftSpecies implements Species, Pokemon {
   }
 
   async learns(moveID: ID): Promise<boolean> {
-    let learns = false;
-    let learnset = await this.learnset();
-    if (!learnset) return false;
-    learns = Object.keys(learnset).includes(moveID);
-    return learns;
+    if (this.id === "smeargle") return true;
+    return (await this.learnset()).some((move) => move.id === moveID);
   }
 }
 

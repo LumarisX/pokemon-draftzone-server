@@ -1,7 +1,9 @@
+import { ID, Move } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
+import { natdexGens } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 
-const chartMoves: { categoryName: string; moves: string[] }[] = [
+const chartMoves: { categoryName: string; moves: Move[] }[] = [
   {
     categoryName: "Priority",
     moves: [
@@ -243,7 +245,10 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "gravity",
     ],
   },
-];
+].map((category) => ({
+  categoryName: category.categoryName,
+  moves: category.moves.map((move) => natdexGens.dex.moves.getByID(move as ID)),
+}));
 
 export type Movechart = {
   categoryName: string;
@@ -260,11 +265,9 @@ export async function movechart(team: DraftSpecies[]) {
     moves: [],
   }));
   for (const pokemon of team) {
-    let learnset = await pokemon.learnset();
     for (let cat of chartMoves) {
-      for (const moveID of cat.moves) {
-        let move = learnset.find((move) => move.id === moveID);
-        if (move) {
+      for (const move of cat.moves) {
+        if (await pokemon.learns(move.id)) {
           let category = movechart.find(
             (entry) => entry.categoryName === cat.categoryName
           );
