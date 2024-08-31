@@ -1,4 +1,4 @@
-import { ID, MoveSource, toID, TypeName } from "@pkmn/data";
+import { ID, Moves, MoveSource, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
   As,
@@ -389,8 +389,9 @@ export class DraftSpecies implements Species, Pokemon {
     return moves;
   }
 
-  async learns(moveID: ID): Promise<boolean> {
+  async learns(moveString: string): Promise<boolean> {
     if (this.id === "smeargle") return true;
+    let moveID = toID(moveString);
     return (await this.learnset()).some((move) => move.id === moveID);
   }
 }

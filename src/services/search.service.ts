@@ -270,10 +270,7 @@ async function evaluate(
               );
             break;
           case "learns":
-            leftValue = (await pokemon.ruleset.gen.learnsets.canLearn(
-              pokemon.id,
-              node.right?.value || ""
-            ))
+            leftValue = (await pokemon.learns(node.right?.value))
               ? node.right?.value
               : "";
             break;
