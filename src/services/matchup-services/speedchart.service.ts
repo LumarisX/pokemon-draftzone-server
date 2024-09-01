@@ -1,4 +1,4 @@
-import { AbilityName, StatusName } from "@pkmn/data";
+import { AbilityName, ID, StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
 import { DraftSpecies } from "../../classes/pokemon";
@@ -152,22 +152,19 @@ function generateTiers(
                 ...configurations.stages,
                 ...(item.addStages || []),
               ]) {
-                // if (mon.id === "aegislash") {
-                //   id = "aegislash-shield" as ID;
-                // } Unecessary i think?
-                const pokemonCalc = new Pokemon(
-                  pokemon.ruleset.gen.num,
-                  pokemon.id,
-                  {
-                    level,
-                    evs: pConfig.evs,
-                    ivs: pConfig.ivs,
-                    nature: pConfig.nature,
-                    item: item.item,
-                    boosts: { spe: stage },
-                    status: status.status,
-                  }
-                );
+                let id = pokemon.id;
+                if (id === "aegislash") {
+                  id = "aegislash-shield" as ID;
+                }
+                const pokemonCalc = new Pokemon(pokemon.ruleset.gen.num, id, {
+                  level,
+                  evs: pConfig.evs,
+                  ivs: pConfig.ivs,
+                  nature: pConfig.nature,
+                  item: item.item,
+                  boosts: { spe: stage },
+                  status: status.status,
+                });
                 const modifiers = [
                   ...(pConfig.modifiers || []),
                   ...(sConfig.modifiers || []),
