@@ -16,6 +16,7 @@ export type CoverageMove = {
   name: string;
   type: string;
   recommended?: boolean;
+  category: "Physical" | "Special";
   stab?: true;
 };
 
