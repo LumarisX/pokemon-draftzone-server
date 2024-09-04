@@ -56,7 +56,11 @@ dataRouter
         res.status(400).json({ error: "Query type error", code: "DT-R3-01" });
       }
     } catch (error) {
-      console.error("Error in /search route:", error);
+      console.error(
+        `Error in /search route:", ${(error as Error).message}\nSearch query: ${
+          req.query.query
+        }`
+      );
       res
         .status(500)
         .json({ error: "Internal Server Error", code: "DT-R3-02" });

@@ -116,7 +116,6 @@ function parse(tokens: Token[]): ASTNode {
 
   function walk(): ASTNode {
     let token = tokens[current];
-
     if (token.type === "(") {
       current++;
       let node = parseExpression();
