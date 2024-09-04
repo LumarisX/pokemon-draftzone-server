@@ -41,7 +41,7 @@ app.use(
   mongoSanitize({
     replaceWith: "_",
     onSanitize: ({ req, key }: { req: Request; key: string }) => {
-      console.warn(`This request[${key}] is sanitized`, req);
+      console.warn(`This request[${key}] is sanitized`, req.baseUrl);
     },
   })
 );
