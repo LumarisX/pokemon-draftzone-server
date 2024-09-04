@@ -52,5 +52,6 @@ export function getEffectivePower(move: Move) {
   if (move.id === "steelroller") {
     value = 1;
   }
+  if (move.selfdestruct !== undefined) value = 1;
   return value;
 }

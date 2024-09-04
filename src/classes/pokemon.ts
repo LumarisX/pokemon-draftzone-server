@@ -1,4 +1,4 @@
-import { ID, Moves, MoveSource, toID, TypeName } from "@pkmn/data";
+import { ID, MoveSource, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
   As,
@@ -8,7 +8,6 @@ import {
   FormeName,
   GenderName,
   ItemName,
-  Learnset,
   Move,
   MoveName,
   Nonstandard,
@@ -21,8 +20,12 @@ import {
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
-import { getEffectivePower } from "../services/data-services/move.service";
+import {
+  getCategory,
+  getEffectivePower,
+} from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
+import { CoverageMove } from "../services/matchup-services/coverage.service";
 
 export interface PokemonOptions {
   shiny?: boolean;
@@ -252,23 +255,14 @@ export class DraftSpecies implements Species, Pokemon {
   }
 
   //Moveset functions
+
   async coverage() {
     const coverage: {
       Physical: {
-        [key: string]: {
-          ePower: number;
-          id: ID;
-          type: string;
-          stab?: true;
-        };
+        [key: string]: CoverageMove;
       };
       Special: {
-        [key: string]: {
-          ePower: number;
-          id: ID;
-          type: string;
-          stab?: true;
-        };
+        [key: string]: CoverageMove;
       };
       teraBlast?: true;
     } = { Physical: {}, Special: {} };
@@ -284,11 +278,13 @@ export class DraftSpecies implements Species, Pokemon {
         coverage.Physical[type] = {
           id: "terablast" as ID,
           ePower: -1,
+          name: "Tera Blast",
           type: type,
         };
         coverage.Special[type] = {
           id: "terablast" as ID,
           ePower: -1,
+          name: "Tera Blast",
           type: type,
         };
       }
@@ -302,6 +298,7 @@ export class DraftSpecies implements Species, Pokemon {
         ) {
           coverage[move.category][move.type] = {
             id: move.id,
+            name: move.name,
             ePower: ePower,
             type: move.type,
             stab: this.types.includes(move.type) || undefined,
@@ -315,17 +312,91 @@ export class DraftSpecies implements Species, Pokemon {
     };
   }
 
-  async bestCoverage() {
+  async bestCoverage(oppTeam: DraftSpecies[]) {
     let coverage = await this.coverage();
-    coverage.physical = coverage.physical.map((move) => ({
-      ...move,
-      recommended: move.stab,
-    }));
-    coverage.special = coverage.special.map((move) => ({
-      ...move,
-      recommended: move.stab,
-    }));
+    let best: {
+      moves: CoverageMove[];
+      maxEffectiveness: number;
+    } = {
+      moves: [],
+      maxEffectiveness: 0,
+    };
+    let indices = [3, 2, 1, 0];
+    for (
+      let j = 0;
+      j < this.choose(coverage.physical.length + coverage.special.length, 4);
+      j++
+    ) {
+      let moves = [];
+      for (let index of indices) {
+        if (index < coverage.physical.length) {
+          moves.push(coverage.physical[index]);
+        } else {
+          moves.push(coverage.special[index - coverage.physical.length]);
+        }
+      }
+      let coverageEffectiveness = this.teamCoverageEffectiveness(
+        moves,
+        oppTeam
+      );
+      if (coverageEffectiveness > best.maxEffectiveness) {
+        best.maxEffectiveness = coverageEffectiveness;
+        best.moves = moves;
+      }
+      indices[0]++;
+      for (let k = 1; k < 4; k++) {
+        if (
+          indices[k - 1] >
+          coverage.physical.length + coverage.special.length - k
+        ) {
+          indices[k]++;
+          for (let l = k - 1; l >= 0; l--) {
+            indices[l] = indices[l + 1] + 1;
+          }
+        }
+      }
+    }
+    for (let move of best.moves) {
+      move.recommended = true;
+    }
     return coverage;
+  }
+
+  private teamCoverageEffectiveness(
+    moveArray: CoverageMove[],
+    oppTeam: DraftSpecies[]
+  ) {
+    let total = 0;
+    for (let oppPokemon of oppTeam) {
+      let maxValue = 0;
+      for (let move of moveArray) {
+        //change out for damage calc eventually
+        let stat = 1;
+        if (getCategory(this.ruleset, move.id) == "Physical") {
+          stat = this.baseStats.atk;
+        } else {
+          stat = this.baseStats.spa;
+        }
+        let value = move.ePower * oppPokemon.typechart()[move.type] * stat;
+        if (move.stab) {
+          value = value * 1.5;
+        }
+        if (maxValue < value) maxValue = value;
+      }
+      total += maxValue;
+    }
+    return total;
+  }
+
+  private choose(n: number, r: number) {
+    let total = 1;
+    for (let i = n; i > n - r; i--) {
+      total = total * i;
+    }
+    for (let i = 1; i <= r; i++) {
+      total = total / i;
+    }
+    return total;
   }
 
   private $learnset: Move[] | undefined;

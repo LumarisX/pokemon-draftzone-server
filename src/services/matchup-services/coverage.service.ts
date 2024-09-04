@@ -1,42 +1,38 @@
+import { ID } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { PokemonData } from "../../models/pokemon.schema";
 
 export type Coveragechart = (
   | PokemonData & {
       coverage: {
-        [key: string]: {
-          ePower: number;
-          id?: string;
-          name?: string;
-          type: string;
-          stab?: true;
-          recommended?: true;
-        }[];
+        [key: string]: CoverageMove[];
       };
     }
 )[];
 
+export type CoverageMove = {
+  ePower: number;
+  id: ID;
+  name: string;
+  type: string;
+  recommended?: boolean;
+  stab?: true;
+};
+
 export async function coveragechart(
   team: DraftSpecies[],
-  oppteam: DraftSpecies[]
+  oppTeam: DraftSpecies[]
 ): Promise<Coveragechart> {
   let result: Coveragechart = [];
   for (let pokemon of team) {
     let data: {
       species: DraftSpecies;
       coverage: {
-        [key: string]: {
-          ePower: number;
-          id?: string;
-          name?: string;
-          type: string;
-          stab?: true;
-          recommended?: true;
-        }[];
+        [key: string]: CoverageMove[];
       };
     } = {
       species: pokemon,
-      coverage: await pokemon.bestCoverage(),
+      coverage: await pokemon.bestCoverage(oppTeam),
     };
     for (let category in data.coverage) {
       data.coverage[category as keyof typeof data.coverage].sort(function (
@@ -59,109 +55,3 @@ export async function coveragechart(
   }
   return result;
 }
-
-// function bestCoverage(
-//   pokemon: DraftSpecies,
-//   oppTypechart: DraftSpecies[]
-// ) {
-//   const physicalCoverage = pokemon.coverage?.physical || [];
-//   const specialCoverage = pokemon.coverage?.special || [];
-//   let best: {
-//     moves: {
-//       ePower: number;
-//       id: ID;
-//       name?: string | undefined;
-//       type: string;
-//       stab: boolean;
-//       recommended?: true;
-//     }[];
-//     maxEffectiveness: number;
-//   } = {
-//     maxEffectiveness: 0,
-//     moves: [],
-//   };
-//   let indices = [3, 2, 1, 0];
-//   for (
-//     let j = 0;
-//     j < choose(physicalCoverage.length + specialCoverage.length, 4);
-//     j++
-//   ) {
-//     let moves = [];
-//     for (let index of indices) {
-//       if (index < physicalCoverage.length) {
-//         moves.push(physicalCoverage[index]);
-//       } else {
-//         moves.push(specialCoverage[index - physicalCoverage.length]);
-//       }
-//     }
-//     let coverageEffectiveness = teamCoverageEffectiveness(
-//       pokemon,
-//       moves,
-//       oppTypechart
-//     );
-//     if (coverageEffectiveness > best.maxEffectiveness) {
-//       best.maxEffectiveness = coverageEffectiveness;
-//       best.moves = moves;
-//     }
-//     indices[0]++;
-//     for (let k = 1; k < 4; k++) {
-//       if (
-//         indices[k - 1] >
-//         physicalCoverage.length + specialCoverage.length - k
-//       ) {
-//         indices[k]++;
-//         for (let l = k - 1; l >= 0; l--) {
-//           indices[l] = indices[l + 1] + 1;
-//         }
-//       }
-//     }
-//   }
-//   for (let move of best.moves) {
-//     move.recommended = true;
-//   }
-//   return best.moves;
-// }
-
-// function teamCoverageEffectiveness(
-//   pokemon: DraftSpecies,
-//   moveArray: {
-//     ePower: number;
-//     id: ID;
-//     name?: string | undefined;
-//     type: string;
-//     stab: boolean;
-//   }[],
-//   oppTypechart: { team: any }
-// ) {
-//   let total = 0;
-//   for (let oppPokemon of oppTypechart.team) {
-//     let maxValue = 0;
-//     for (let move of moveArray) {
-//       //change out for damage calc eventually
-//       let stat = 1;
-//       if (getCategory(pokemon.ruleset, move.id) == "Physical") {
-//         stat = pokemon.baseStats.atk;
-//       } else {
-//         stat = pokemon.baseStats.spa;
-//       }
-//       let value = move.ePower * oppPokemon.weak[move.type] * stat;
-//       if (move.stab) {
-//         value = value * 1.5;
-//       }
-//       if (maxValue < value) maxValue = value;
-//     }
-//     total += maxValue;
-//   }
-//   return total;
-// }
-
-// function choose(n: number, r: number) {
-//   let total = 1;
-//   for (let i = n; i > n - r; i--) {
-//     total = total * i;
-//   }
-//   for (let i = 1; i <= r; i++) {
-//     total = total / i;
-//   }
-//   return total;
-// }
