@@ -313,90 +313,43 @@ export class DraftSpecies implements Species, Pokemon {
   }
 
   async bestCoverage(oppTeam: DraftSpecies[]) {
-    let coverage = await this.coverage();
-    let best: {
-      moves: CoverageMove[];
-      maxEffectiveness: number;
-    } = {
+    const coverage = await this.coverage();
+    const allMoves = [...coverage.physical, ...coverage.special];
+    const best: { moves: CoverageMove[]; maxEffectiveness: number } = {
       moves: [],
       maxEffectiveness: 0,
     };
-    let indices = [3, 2, 1, 0];
-    for (
-      let j = 0;
-      j < this.choose(coverage.physical.length + coverage.special.length, 4);
-      j++
-    ) {
-      let moves = [];
-      for (let index of indices) {
-        if (index < coverage.physical.length) {
-          moves.push(coverage.physical[index]);
-        } else {
-          moves.push(coverage.special[index - coverage.physical.length]);
-        }
+    const moveCombinations: CoverageMove[][] = [];
+    const combination = (start: number, chosen: CoverageMove[]) => {
+      if (chosen.length === 4) {
+        moveCombinations.push([...chosen]);
+        return;
       }
-      let coverageEffectiveness = this.teamCoverageEffectiveness(
-        moves,
-        oppTeam
-      );
-      if (coverageEffectiveness > best.maxEffectiveness) {
-        best.maxEffectiveness = coverageEffectiveness;
+      for (let i = start; i < allMoves.length; i++) {
+        combination(i + 1, [...chosen, allMoves[i]]);
+      }
+    };
+    combination(0, []);
+    for (const moves of moveCombinations) {
+      const effectiveness = oppTeam.reduce((total, oppPokemon) => {
+        const maxValue = moves.reduce((max, move) => {
+          const stat =
+            getCategory(this.ruleset, move.id) === "Physical"
+              ? this.baseStats.atk
+              : this.baseStats.spa;
+          let value = move.ePower * oppPokemon.typechart()[move.type] * stat;
+          if (move.stab) value *= 1.5;
+          return Math.max(max, value);
+        }, 0);
+        return total + maxValue;
+      }, 0);
+      if (effectiveness > best.maxEffectiveness) {
+        best.maxEffectiveness = effectiveness;
         best.moves = moves;
       }
-      indices[0]++;
-      for (let k = 1; k < 4; k++) {
-        if (
-          indices[k - 1] >
-          coverage.physical.length + coverage.special.length - k
-        ) {
-          indices[k]++;
-          for (let l = k - 1; l >= 0; l--) {
-            indices[l] = indices[l + 1] + 1;
-          }
-        }
-      }
     }
-    for (let move of best.moves) {
-      move.recommended = true;
-    }
+    best.moves.forEach((move) => (move.recommended = true));
     return coverage;
-  }
-
-  private teamCoverageEffectiveness(
-    moveArray: CoverageMove[],
-    oppTeam: DraftSpecies[]
-  ) {
-    let total = 0;
-    for (let oppPokemon of oppTeam) {
-      let maxValue = 0;
-      for (let move of moveArray) {
-        //change out for damage calc eventually
-        let stat = 1;
-        if (getCategory(this.ruleset, move.id) == "Physical") {
-          stat = this.baseStats.atk;
-        } else {
-          stat = this.baseStats.spa;
-        }
-        let value = move.ePower * oppPokemon.typechart()[move.type] * stat;
-        if (move.stab) {
-          value = value * 1.5;
-        }
-        if (maxValue < value) maxValue = value;
-      }
-      total += maxValue;
-    }
-    return total;
-  }
-
-  private choose(n: number, r: number) {
-    let total = 1;
-    for (let i = n; i > n - r; i--) {
-      total = total * i;
-    }
-    for (let i = 1; i <= r; i++) {
-      total = total / i;
-    }
-    return total;
   }
 
   private $learnset: Move[] | undefined;
