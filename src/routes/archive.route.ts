@@ -82,7 +82,7 @@ archiveRouter.param(
           .json({ message: "Archive ID not found", code: "AR-P1-02" });
       }
       res.archive = res.rawArchive.toObject();
-      res.ruleset = getRuleset(res.archive.ruleset);
+      res.ruleset = getRuleset(res.archive!.ruleset);
     } catch (error) {
       console.log(error);
       return res
