@@ -8,6 +8,7 @@ import debug from "debug";
 import http from "http";
 import { AddressInfo } from "net";
 import { app } from "./app";
+import WebSocket from "ws";
 
 const debugLogger = debug("tpl-express-pro:server");
 
@@ -24,6 +25,24 @@ app.set("port", port);
  */
 
 const server: http.Server = http.createServer(app);
+
+const wss = new WebSocket.Server({ server });
+
+// Set up WebSocket connection
+wss.on("connection", (ws) => {
+  console.log("Client connected via WebSocket");
+
+  ws.on("message", (message) => {
+    console.log(`Received message => ${message}`);
+    ws.send(`Server received: ${message}`);
+  });
+
+  ws.on("close", () => {
+    console.log("WebSocket connection closed");
+  });
+
+  ws.send("Welcome to the WebSocket server");
+});
 
 /**
  * Listen on provided port, on all network interfaces.

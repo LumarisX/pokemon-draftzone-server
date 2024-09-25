@@ -5,11 +5,12 @@ import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
 import { MatchupDocument } from "../models/matchup.model";
+import { Routes } from ".";
 import { getName } from "../services/data-services/pokedex.service";
 
 export const archiveRouter = express.Router();
 
-type ArchiveResponse = Response & {
+export type ArchiveResponse = Response & {
   rawArchive?: DraftDocument | null;
   rawMatchup?: MatchupDocument | null;
   archive?: DraftDocument;
@@ -17,57 +18,68 @@ type ArchiveResponse = Response & {
   matchup?: MatchupDocument;
 };
 
-archiveRouter
-  .route("/teams")
-  .get(async (req: SubRequest, res: ArchiveResponse) => {
-    try {
-      let archives = await ArchiveModel.find({ owner: req.sub }).sort({
-        createdAt: -1,
-      });
-      archives = archives.map((rawArchive) => {
-        let archive = rawArchive.toObject();
-        archive.team = archive.team.map((mon) => ({
-          id: mon.id,
-          name: getName(mon.id),
-        }));
-        return archive;
-      });
-      res.json(archives);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "AR-R1-01" });
-    }
-  });
+const ArchiveRoutes: Routes = [
+  {
+    path: "/teams",
+    get: async (req: SubRequest, res: ArchiveResponse) => {
+      try {
+        let archives = await ArchiveModel.find({ owner: req.sub }).sort({
+          createdAt: -1,
+        });
+        archives = archives.map((rawArchive) => {
+          let archive = rawArchive.toObject();
+          archive.team = archive.team.map((mon) => ({
+            id: mon.id,
+            name: getName(mon.id),
+          }));
+          return archive;
+        });
+        res.json(archives);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "AR-R1-01" });
+      }
+    },
+  },
+  {
+    path: "/:team_id",
+    delete: async (req: SubRequest, res: ArchiveResponse) => {
+      if (!res.rawArchive) {
+        return;
+      }
+      try {
+        await res.rawArchive.deleteOne();
+        res.status(201).json({ message: "Draft deleted" });
+      } catch (error) {
+        console.error("Error deleting draft:", error);
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "AR-R2-04" });
+      }
+    },
+  },
+  {
+    path: "/:team_id/stats",
+    get: async (req: SubRequest, res: ArchiveResponse) => {
+      if (!res.archive || !res.ruleset) {
+        return;
+      }
+      try {
+      } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
+      }
+    },
+  },
+];
 
-archiveRouter
-  .route("/:team_id")
-  .delete(async (req: SubRequest, res: ArchiveResponse) => {
-    if (!res.rawArchive) {
-      return;
-    }
-    try {
-      await res.rawArchive.deleteOne();
-      res.status(201).json({ message: "Draft deleted" });
-    } catch (error) {
-      console.error("Error deleting draft:", error);
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "AR-R2-04" });
-    }
-  });
-
-archiveRouter
-  .route("/:team_id/stats")
-  .get(async (req: SubRequest, res: ArchiveResponse) => {
-    if (!res.archive || !res.ruleset) {
-      return;
-    }
-    try {
-    } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
-    }
-  });
+ArchiveRoutes.forEach((entry) => {
+  const route = archiveRouter.route(entry.path);
+  if (entry.get) route.get(entry.get);
+  if (entry.patch) route.patch(entry.patch);
+  if (entry.post) route.post(entry.post);
+  if (entry.delete) route.delete(entry.delete);
+});
 
 archiveRouter.param(
   "team_id",

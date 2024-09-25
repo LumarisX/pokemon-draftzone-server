@@ -27,6 +27,7 @@ import {
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
+import { Routes } from ".";
 
 export const matchupRouter = express.Router();
 
@@ -67,235 +68,241 @@ export const $matchups = new NodeCache({
   maxKeys: 50,
 });
 
-matchupRouter
-  .route("/:matchup_id")
-  .get(async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
-      return;
-    }
+const MatchupRoutes: Routes = [
+  {
+    path: "/:matchup_id",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup) {
+        return;
+      }
 
-    const cachedData = $matchups.get(
-      `${req.params.team_id}-${req.params.matchup_id}`
-    );
-    if (cachedData) {
-      return res.json(cachedData);
-    }
-    try {
-      let level = getFormat(res.matchup.format).level;
-      let aTypechart = new Typechart(res.matchup.aTeam.team);
-      let bTypechart = new Typechart(res.matchup.bTeam.team);
-      let data: {
-        format: FormatId;
-        ruleset: RulesetId;
-        level: number;
-        gameTime: string;
-        stage: string;
-        leagueName: string;
-        summary: {
-          teamName?: string;
-          team: (PokemonData & {
-            abilities: AbilityName[];
-            baseStats: StatsTable;
-            types: [TypeName] | [TypeName, TypeName];
-          })[];
-          stats?: {
-            mean: {
-              hp?: number;
-              atk?: number;
-              def?: number;
-              spa?: number;
-              spd?: number;
-              spe?: number;
+      const cachedData = $matchups.get(
+        `${req.params.team_id}-${req.params.matchup_id}`
+      );
+      if (cachedData) {
+        return res.json(cachedData);
+      }
+      try {
+        let level = getFormat(res.matchup.format).level;
+        let aTypechart = new Typechart(res.matchup.aTeam.team);
+        let bTypechart = new Typechart(res.matchup.bTeam.team);
+        let data: {
+          format: FormatId;
+          ruleset: RulesetId;
+          level: number;
+          gameTime: string;
+          stage: string;
+          leagueName: string;
+          summary: {
+            teamName?: string;
+            team: (PokemonData & {
+              abilities: AbilityName[];
+              baseStats: StatsTable;
+              types: [TypeName] | [TypeName, TypeName];
+            })[];
+            stats?: {
+              mean: {
+                hp?: number;
+                atk?: number;
+                def?: number;
+                spa?: number;
+                spd?: number;
+                spe?: number;
+              };
+              median: {
+                hp?: number;
+                atk?: number;
+                def?: number;
+                spa?: number;
+                spd?: number;
+                spe?: number;
+              };
+              max: {
+                hp?: number;
+                atk?: number;
+                def?: number;
+                spa?: number;
+                spd?: number;
+                spe?: number;
+              };
             };
-            median: {
-              hp?: number;
-              atk?: number;
-              def?: number;
-              spa?: number;
-              spd?: number;
-              spe?: number;
+          }[];
+          speedchart: Speedchart;
+          coveragechart: Coveragechart[];
+          typechart: {
+            team: (
+              | PokemonData & {
+                  weak: { [key: string]: number };
+                }
+            )[];
+            teraTypes: {
+              [key: string]: {};
             };
-            max: {
-              hp?: number;
-              atk?: number;
-              def?: number;
-              spa?: number;
-              spd?: number;
-              spe?: number;
-            };
-          };
-        }[];
-        speedchart: Speedchart;
-        coveragechart: Coveragechart[];
-        typechart: {
-          team: (
-            | PokemonData & {
-                weak: { [key: string]: number };
-              }
-          )[];
-          teraTypes: {
-            [key: string]: {};
-          };
-        }[];
-        movechart: Movechart[];
-      } = {
-        format: res.matchup.format,
-        ruleset: res.matchup.rulesetId,
-        level: level,
-        gameTime: res.matchup.gameTime || "",
-        stage: res.matchup.stage,
-        leagueName: res.matchup.leagueName,
-        summary: [],
-        speedchart: speedchart(
-          [res.matchup.aTeam.team, res.matchup.bTeam.team],
-          level
-        ),
-        coveragechart: [
-          await coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
-          await coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
-        ],
-        typechart: [aTypechart.toJson(), bTypechart.toJson()],
-        movechart: [
-          await movechart(res.matchup.aTeam.team),
-          await movechart(res.matchup.bTeam.team),
-        ],
-      };
-      let aTeamsummary = new SummaryClass(
-        res.matchup.aTeam.team,
-        res.matchup.aTeam.teamName
-      );
-      let bTeamsummary = new SummaryClass(
-        res.matchup.bTeam.team,
-        res.matchup.bTeam.teamName
-      );
-      aTeamsummary.statistics();
-      bTeamsummary.statistics();
-      data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
-      $matchups.set(`${req.params.team_id}-${req.params.matchup_id}`, data);
-      res.json(data);
-    } catch (error) {
-      console.log(error);
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R1-01" });
-    }
-  })
-  .delete(async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup) {
-      return;
-    }
-    try {
-      await res.rawMatchup.deleteOne();
-      $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
-      res.json({ message: "Matchup deleted" });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R1-02" });
-    }
-  });
+          }[];
+          movechart: Movechart[];
+        } = {
+          format: res.matchup.format,
+          ruleset: res.matchup.rulesetId,
+          level: level,
+          gameTime: res.matchup.gameTime || "",
+          stage: res.matchup.stage,
+          leagueName: res.matchup.leagueName,
+          summary: [],
+          speedchart: speedchart(
+            [res.matchup.aTeam.team, res.matchup.bTeam.team],
+            level
+          ),
+          coveragechart: [
+            await coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
+            await coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
+          ],
+          typechart: [aTypechart.toJson(), bTypechart.toJson()],
+          movechart: [
+            await movechart(res.matchup.aTeam.team),
+            await movechart(res.matchup.bTeam.team),
+          ],
+        };
+        let aTeamsummary = new SummaryClass(
+          res.matchup.aTeam.team,
+          res.matchup.aTeam.teamName
+        );
+        let bTeamsummary = new SummaryClass(
+          res.matchup.bTeam.team,
+          res.matchup.bTeam.teamName
+        );
+        aTeamsummary.statistics();
+        bTeamsummary.statistics();
+        data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
+        $matchups.set(`${req.params.team_id}-${req.params.matchup_id}`, data);
+        res.json(data);
+      } catch (error) {
+        console.log(error);
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R1-01" });
+      }
+    },
+    delete: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup || !res.rawMatchup) {
+        return;
+      }
+      try {
+        await res.rawMatchup.deleteOne();
+        $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
+        res.json({ message: "Matchup deleted" });
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R1-02" });
+      }
+    },
+  },
+  {
+    path: "/:matchup_id/summary",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup || !res.rawMatchup) {
+        return;
+      }
+      try {
+        let aTeamsummary = new SummaryClass(
+          res.matchup.aTeam.team,
+          res.matchup.aTeam.teamName
+        );
+        let bTeamsummary = new SummaryClass(
+          res.matchup.bTeam.team,
+          res.matchup.bTeam.teamName
+        );
+        aTeamsummary.statistics();
+        bTeamsummary.statistics();
+        res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R2-02" });
+      }
+    },
+  },
+  {
+    path: "/:matchup_id/typechart",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup || !res.rawMatchup) {
+        return;
+      }
+      try {
+        res.json([
+          new Typechart(res.matchup.aTeam.team).toJson(),
+          new Typechart(res.matchup.bTeam.team).toJson(),
+        ]);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R3-01" });
+      }
+    },
+  },
+  {
+    path: "/:matchup_id/speedchart",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup) {
+        return;
+      }
+      try {
+        let level = getFormat(res.matchup.format).level;
+        res.json(
+          speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
+        );
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R4-01" });
+      }
+    },
+  },
+  {
+    path: "/:matchup_id/coveragechart",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup) {
+        return;
+      }
+      try {
+        res.json([
+          coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
+          coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
+        ]);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R5-01" });
+      }
+    },
+  },
+  {
+    path: "/:matchup_id/movechart",
+    get: async (req: Request, res: MatchupResponse) => {
+      if (!res.matchup) {
+        return;
+      }
+      try {
+        res.json([
+          movechart(res.matchup.aTeam.team),
+          movechart(res.matchup.bTeam.team),
+        ]);
+      } catch (error) {
+        res
+          .status(500)
+          .json({ message: (error as Error).message, code: "MR-R6-01" });
+      }
+    },
+  },
+];
 
-matchupRouter.get(
-  "/:matchup_id/summary",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup) {
-      return;
-    }
-    try {
-      let aTeamsummary = new SummaryClass(
-        res.matchup.aTeam.team,
-        res.matchup.aTeam.teamName
-      );
-      let bTeamsummary = new SummaryClass(
-        res.matchup.bTeam.team,
-        res.matchup.bTeam.teamName
-      );
-      aTeamsummary.statistics();
-      bTeamsummary.statistics();
-      res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R2-02" });
-    }
-  }
-);
-
-matchupRouter.get(
-  "/:matchup_id/typechart",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup || !res.rawMatchup) {
-      return;
-    }
-    try {
-      res.json([
-        new Typechart(res.matchup.aTeam.team).toJson(),
-        new Typechart(res.matchup.bTeam.team).toJson(),
-      ]);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R3-01" });
-    }
-  }
-);
-
-matchupRouter.get(
-  "/:matchup_id/speedchart",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
-      return;
-    }
-    try {
-      let level = getFormat(res.matchup.format).level;
-      res.json(
-        speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
-      );
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R4-01" });
-    }
-  }
-);
-
-matchupRouter.get(
-  "/:matchup_id/coveragechart",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
-      return;
-    }
-    try {
-      res.json([
-        coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
-        coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
-      ]);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R5-01" });
-    }
-  }
-);
-
-matchupRouter.get(
-  "/:matchup_id/movechart",
-  async (req: Request, res: MatchupResponse) => {
-    if (!res.matchup) {
-      return;
-    }
-    try {
-      res.json([
-        movechart(res.matchup.aTeam.team),
-        movechart(res.matchup.bTeam.team),
-      ]);
-    } catch (error) {
-      res
-        .status(500)
-        .json({ message: (error as Error).message, code: "MR-R6-01" });
-    }
-  }
-);
+MatchupRoutes.forEach((entry) => {
+  const route = matchupRouter.route(entry.path);
+  if (entry.get) route.get(entry.get);
+  if (entry.patch) route.patch(entry.patch);
+  if (entry.post) route.post(entry.post);
+  if (entry.delete) route.delete(entry.delete);
+});
 
 matchupRouter.param(
   "matchup_id",

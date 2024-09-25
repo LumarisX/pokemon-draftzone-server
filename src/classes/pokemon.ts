@@ -20,10 +20,7 @@ import {
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
-import {
-  getCategory,
-  getEffectivePower,
-} from "../services/data-services/move.service";
+import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
 import { CoverageMove } from "../services/matchup-services/coverage.service";
 
