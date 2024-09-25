@@ -7,13 +7,13 @@ import createError from "http-errors";
 import mongoose, { ObjectId } from "mongoose";
 import path from "path";
 import logger from "morgan";
-import { draftRouter } from "./routes/draft.route";
-import { matchupRouter } from "./routes/matchup.route";
-import { dataRouter } from "./routes/data.route";
-import { plannerRouter } from "./routes/planner.route";
 import dotenv from "dotenv";
-import { replayRouter } from "./routes/replay.route";
-import { archiveRouter } from "./routes/archive.route";
+import { DraftRoutes } from "./routes/draft.route";
+import { ArchiveRoutes } from "./routes/archive.route";
+import { MatchupRoutes } from "./routes/matchup.route";
+import { DataRoutes } from "./routes/data.route";
+import { ReplayRoutes } from "./routes/replay.route";
+import { PlannerRoutes } from "./routes/planner.route";
 
 dotenv.config();
 
@@ -27,7 +27,7 @@ db.once("open", () => console.log("Connected to Database"));
 
 export const app = express();
 
-const jwtCheck = auth({
+export const jwtCheck = auth({
   audience: process.env.AUTH0_AUDIENCE,
   issuerBaseURL: process.env.AUTH0_ISSUER,
   tokenSigningAlg: "RS256",
@@ -51,12 +51,29 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(cors());
 
-app.use("/draft", logger("common"), jwtCheck, getSub, draftRouter);
-app.use("/archive", logger("common"), jwtCheck, getSub, archiveRouter);
-app.use("/matchup", logger("common"), matchupRouter);
-app.use("/data", logger("common"), dataRouter);
-app.use("/replay", logger("common"), replayRouter);
-app.use("/planner", logger("common"), plannerRouter);
+const ROUTES = [
+  DraftRoutes,
+  ArchiveRoutes,
+  MatchupRoutes,
+  DataRoutes,
+  ReplayRoutes,
+  PlannerRoutes,
+];
+
+ROUTES.forEach((route) => {
+  const router = express.Router();
+  for (let subpath in route.subpaths) {
+    const subroute = router.route(subpath);
+    if (route.subpaths[subpath].get) subroute.get(route.subpaths[subpath].get);
+    if (route.subpaths[subpath].post)
+      subroute.post(route.subpaths[subpath].post);
+    if (route.subpaths[subpath].delete)
+      subroute.delete(route.subpaths[subpath].delete);
+    if (route.subpaths[subpath].patch)
+      subroute.patch(route.subpaths[subpath].patch);
+  }
+  app.use(route.path, logger("common"), ...(route.middleware || []), router);
+});
 
 // app.use("/data", dataRouter);
 
@@ -75,7 +92,7 @@ export type SubRequest = Request & {
   sub?: ObjectId;
 };
 
-function getSub(req: SubRequest, res: Response, next: NextFunction) {
+export function getSub(req: SubRequest, res: Response, next: NextFunction) {
   try {
     if (req.headers && req.headers.authorization) {
       let jwt = req.headers.authorization.split(" ")[1];

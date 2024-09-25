@@ -1,9 +1,18 @@
-import { Request, Response } from "express";
+import { Handler, Request, RequestParamHandler, Response } from "express";
 
-export type Routes = {
+export type Route = {
   path: string;
-  get?: (req: Request, res: Response) => any;
-  delete?: (req: Request, res: Response) => any;
-  post?: (req: Request, res: Response) => any;
-  patch?: (req: Request, res: Response) => any;
-}[];
+  middleware?: Handler[];
+  subpaths: {
+    [subpath: string]: {
+      get?: (req: Request, res: Response) => any;
+      delete?: (req: Request, res: Response) => any;
+      post?: (req: Request, res: Response) => any;
+      patch?: (req: Request, res: Response) => any;
+      ws?: () => any;
+    };
+  };
+  params?: {
+    [value: string]: RequestParamHandler;
+  };
+};

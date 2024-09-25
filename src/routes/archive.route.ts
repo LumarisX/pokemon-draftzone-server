@@ -1,14 +1,12 @@
-import express, { Response } from "express";
+import { Response } from "express";
 import mongoose from "mongoose";
-import { SubRequest } from "../app";
+import { Route } from ".";
+import { getSub, jwtCheck, SubRequest } from "../app";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
 import { MatchupDocument } from "../models/matchup.model";
-import { Routes } from ".";
 import { getName } from "../services/data-services/pokedex.service";
-
-export const archiveRouter = express.Router();
 
 export type ArchiveResponse = Response & {
   rawArchive?: DraftDocument | null;
@@ -18,89 +16,80 @@ export type ArchiveResponse = Response & {
   matchup?: MatchupDocument;
 };
 
-const ArchiveRoutes: Routes = [
-  {
-    path: "/teams",
-    get: async (req: SubRequest, res: ArchiveResponse) => {
-      try {
-        let archives = await ArchiveModel.find({ owner: req.sub }).sort({
-          createdAt: -1,
-        });
-        archives = archives.map((rawArchive) => {
-          let archive = rawArchive.toObject();
-          archive.team = archive.team.map((mon) => ({
-            id: mon.id,
-            name: getName(mon.id),
-          }));
-          return archive;
-        });
-        res.json(archives);
-      } catch (error) {
-        res
-          .status(500)
-          .json({ message: (error as Error).message, code: "AR-R1-01" });
-      }
+export const ArchiveRoutes: Route = {
+  path: "/archive",
+  middleware: [jwtCheck, getSub],
+  subpaths: {
+    "/teams": {
+      get: async (req: SubRequest, res: ArchiveResponse) => {
+        try {
+          let archives = await ArchiveModel.find({ owner: req.sub }).sort({
+            createdAt: -1,
+          });
+          archives = archives.map((rawArchive) => {
+            let archive = rawArchive.toObject();
+            archive.team = archive.team.map((mon) => ({
+              id: mon.id,
+              name: getName(mon.id),
+            }));
+            return archive;
+          });
+          res.json(archives);
+        } catch (error) {
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "AR-R1-01" });
+        }
+      },
+    },
+    "/:team_id": {
+      delete: async (req: SubRequest, res: ArchiveResponse) => {
+        if (!res.rawArchive) {
+          return;
+        }
+        try {
+          await res.rawArchive.deleteOne();
+          res.status(201).json({ message: "Draft deleted" });
+        } catch (error) {
+          console.error("Error deleting draft:", error);
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "AR-R2-04" });
+        }
+      },
+    },
+    "/:team_id/stats": {
+      get: async (req: SubRequest, res: ArchiveResponse) => {
+        if (!res.archive || !res.ruleset) {
+          return;
+        }
+        try {
+        } catch (error) {
+          res.status(500).json({ message: (error as Error).message });
+        }
+      },
     },
   },
-  {
-    path: "/:team_id",
-    delete: async (req: SubRequest, res: ArchiveResponse) => {
-      if (!res.rawArchive) {
-        return;
-      }
+  params: {
+    team_id: async (req: SubRequest, res: ArchiveResponse, next, team_id) => {
       try {
-        await res.rawArchive.deleteOne();
-        res.status(201).json({ message: "Draft deleted" });
+        if (mongoose.Types.ObjectId.isValid(team_id)) {
+          res.rawArchive = await ArchiveModel.findById(team_id);
+        }
+        if (res.rawArchive == null) {
+          return res
+            .status(400)
+            .json({ message: "Archive ID not found", code: "AR-P1-02" });
+        }
+        res.archive = res.rawArchive.toObject();
+        res.ruleset = getRuleset(res.archive!.ruleset);
       } catch (error) {
-        console.error("Error deleting draft:", error);
-        res
-          .status(500)
-          .json({ message: (error as Error).message, code: "AR-R2-04" });
-      }
-    },
-  },
-  {
-    path: "/:team_id/stats",
-    get: async (req: SubRequest, res: ArchiveResponse) => {
-      if (!res.archive || !res.ruleset) {
-        return;
-      }
-      try {
-      } catch (error) {
-        res.status(500).json({ message: (error as Error).message });
-      }
-    },
-  },
-];
-
-ArchiveRoutes.forEach((entry) => {
-  const route = archiveRouter.route(entry.path);
-  if (entry.get) route.get(entry.get);
-  if (entry.patch) route.patch(entry.patch);
-  if (entry.post) route.post(entry.post);
-  if (entry.delete) route.delete(entry.delete);
-});
-
-archiveRouter.param(
-  "team_id",
-  async (req: SubRequest, res: ArchiveResponse, next, team_id) => {
-    try {
-      if (mongoose.Types.ObjectId.isValid(team_id)) {
-        res.rawArchive = await ArchiveModel.findById(team_id);
-      }
-      if (res.rawArchive == null) {
+        console.log(error);
         return res
-          .status(400)
-          .json({ message: "Archive ID not found", code: "AR-P1-02" });
+          .status(500)
+          .json({ message: (error as Error).message, code: "DR-P2-02" });
       }
-      res.archive = res.rawArchive.toObject();
-      res.ruleset = getRuleset(res.archive!.ruleset);
-    } catch (error) {
-      console.log(error);
-      return res
-        .status(500)
-        .json({ message: (error as Error).message, code: "DR-P2-02" });
-    }
-    next();
-  }
-);
+      next();
+    },
+  },
+};
