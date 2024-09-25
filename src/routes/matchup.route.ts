@@ -67,7 +67,6 @@ export const $matchups = new NodeCache({
 });
 
 export const MatchupRoutes: Route = {
-  path: "/matchup",
   subpaths: {
     "/:matchup_id": {
       get: async (req: Request, res: MatchupResponse) => {

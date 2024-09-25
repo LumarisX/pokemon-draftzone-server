@@ -1,47 +1,51 @@
 #!/usr/bin/env node
+import dotenv from "dotenv";
+
+dotenv.config();
 
 /**
  * Module dependencies.
  */
-
-import debug from "debug";
 import http from "http";
 import { AddressInfo } from "net";
-import { app } from "./app";
+import { app, ROUTES } from "./app";
 import WebSocket from "ws";
+import debug from "debug";
 
 const debugLogger = debug("tpl-express-pro:server");
-
 /**
  * Get port from environment and store in Express.
  */
-
 const port: string = normalizePort(process.env.PORT || "9960");
-console.log(`[server]: Server is running at http://localhost:${port}`);
+console.log(`[server]: Server is running on port ${port}`);
 app.set("port", port);
 
 /**
  * Create HTTP server.
  */
-
 const server: http.Server = http.createServer(app);
 
 const wss = new WebSocket.Server({ server });
 
-// Set up WebSocket connection
-wss.on("connection", (ws) => {
-  console.log("Client connected via WebSocket");
+wss.on("connection", (ws, req) => {
+  console.log(`${req.headers["user-agent"]} => ${req.url}`);
 
   ws.on("message", (message) => {
+    if (req.url) {
+      const [_, main, ...paths] = req.url.split("/");
+      const path = `/${main}`;
+      const subpath = `/${paths.join("/")}`;
+      console.log(ROUTES[path], subpath);
+      if (ROUTES[path] && ROUTES[path].subpaths[subpath].ws) {
+        ROUTES[path].subpaths[subpath].ws(ws, message.toString());
+      }
+    }
     console.log(`Received message => ${message}`);
-    ws.send(`Server received: ${message}`);
   });
 
   ws.on("close", () => {
     console.log("WebSocket connection closed");
   });
-
-  ws.send("Welcome to the WebSocket server");
 });
 
 /**
@@ -77,11 +81,9 @@ function onError(error: NodeJS.ErrnoException): void {
     case "EACCES":
       console.error(bind + " requires elevated privileges");
       process.exit(1);
-      break;
     case "EADDRINUSE":
       console.error(bind + " is already in use");
       process.exit(1);
-      break;
     default:
       throw error;
   }

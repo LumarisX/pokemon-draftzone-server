@@ -1,7 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { Route } from ".";
-import { getSub, jwtCheck, SubRequest } from "../app";
+import { getSub, jwtCheck, Route, SubRequest } from ".";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
@@ -25,7 +24,6 @@ type DraftResponse = Response & {
 };
 
 export const DraftRoutes: Route = {
-  path: "/draft",
   middleware: [jwtCheck, getSub],
   subpaths: {
     "/teams": {

@@ -1,7 +1,6 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { Route } from ".";
-import { getSub, jwtCheck, SubRequest } from "../app";
+import { getSub, jwtCheck, Route, SubRequest } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
@@ -17,7 +16,6 @@ export type ArchiveResponse = Response & {
 };
 
 export const ArchiveRoutes: Route = {
-  path: "/archive",
   middleware: [jwtCheck, getSub],
   subpaths: {
     "/teams": {

@@ -1,12 +1,11 @@
 import { Request, Response } from "express";
 import { Route } from ".";
-import { SubRequest } from "../app";
+import { SubRequest } from ".";
 import { Replay } from "../services/replay-services/replay-analyze.service";
 
 type ReplayResponse = Response & { url?: string };
 
 export const ReplayRoutes: Route = {
-  path: "/replay",
   subpaths: {
     "/analyze/:url": {
       get: async (req: Request, res: ReplayResponse) => {

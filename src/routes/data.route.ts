@@ -8,7 +8,6 @@ import { searchPokemon } from "../services/search.service";
 type DataResponse = Response & { ruleset?: Ruleset };
 
 export const DataRoutes: Route = {
-  path: "/data",
   subpaths: {
     "/formats": {
       get: (req: Request, res: Response) => {

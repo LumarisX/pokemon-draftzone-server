@@ -7,7 +7,6 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 
 export const PlannerRoutes: Route = {
-  path: "/planner",
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
@@ -46,7 +45,9 @@ export const PlannerRoutes: Route = {
           res.status(500).json({ message: (error as Error).message });
         }
       },
-      ws: () => {},
+      ws: (socket, message) => {
+        console.log(JSON.parse(message), "HELLOF WOLRD");
+      },
     },
   },
 };
