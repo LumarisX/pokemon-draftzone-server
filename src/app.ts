@@ -13,14 +13,15 @@ import { DraftRoutes } from "./routes/draft.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
+import { LeagueAdRoutes } from "./routes/league-ad.route";
 
-// mongoose.connect(
-//   `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
-// );
+mongoose.connect(
+  `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
+);
 
-// const db = mongoose.connection;
-// db.on("error", (error) => console.error(error));
-// db.once("open", () => console.log("Connected to Database"));
+const db = mongoose.connection;
+db.on("error", (error) => console.error(error));
+db.once("open", () => console.log("Connected to Database"));
 
 export const app = express();
 
@@ -49,6 +50,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/data": DataRoutes,
   "/replay": ReplayRoutes,
   "/planner": PlannerRoutes,
+  "/leagues": LeagueAdRoutes,
 };
 
 for (const path in ROUTES) {
