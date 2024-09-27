@@ -40,7 +40,6 @@ wss.on("connection", (ws, req) => {
         ROUTES[path].subpaths[subpath].ws(ws, message.toString());
       }
     }
-    console.log(`Received message => ${message}`);
   });
 
   ws.on("close", () => {

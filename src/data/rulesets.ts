@@ -100,8 +100,8 @@ const Rulesets: {
   // CAP: { gen: gens.get(9), natdex: true },
 };
 
-export function getRuleset(rulesetId: string) {
-  if (rulesetId in Rulesets) return Rulesets[rulesetId];
+export function getRuleset(rulesetId?: string) {
+  if (rulesetId && rulesetId in Rulesets) return Rulesets[rulesetId];
   else return Rulesets["Gen9 NatDex"];
 }
 

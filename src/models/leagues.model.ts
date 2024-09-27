@@ -69,6 +69,11 @@ const leagueAdSchema = new mongoose.Schema({
           type: String,
           trim: true,
         },
+        signupLink: {
+          type: String,
+          required: true,
+          trim: true,
+        },
       },
     ],
     // validate: {
@@ -77,11 +82,6 @@ const leagueAdSchema = new mongoose.Schema({
     //   },
     //   message: "There must be at least one division.",
     // },
-  },
-  signupLink: {
-    type: String,
-    required: true,
-    trim: true,
   },
   closesAt: {
     type: Date,
@@ -94,6 +94,9 @@ const leagueAdSchema = new mongoose.Schema({
   seasonEnd: {
     type: Date,
     required: true,
+  },
+  tags: {
+    type: [String],
   },
   createdAt: {
     type: Date,
