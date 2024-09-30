@@ -37,6 +37,7 @@ export const LeagueAdRoutes: Route = {
                   cashValue: 3,
                   platform: "Pokémon Showdown",
                   format: "VGC",
+                  ruleset: "Paldea Dex",
                   description:
                     "For experienced players with solid competitive records.",
                 },
@@ -50,6 +51,7 @@ export const LeagueAdRoutes: Route = {
                   cashValue: 3,
                   platform: "Pokémon Showdown",
                   format: "VGC",
+                  ruleset: "Paldea Dex",
                   description:
                     "For experienced players with solid competitive records.",
                 },
@@ -63,6 +65,7 @@ export const LeagueAdRoutes: Route = {
                   cashValue: 3,
                   platform: "Pokémon Showdown",
                   format: "VGC",
+                  ruleset: "Paldea Dex",
                   description:
                     "For experienced players with solid competitive records.",
                 },
@@ -76,6 +79,7 @@ export const LeagueAdRoutes: Route = {
                   cashValue: 3,
                   platform: "Pokémon Showdown",
                   format: "VGC",
+                  ruleset: "Paldea Dex",
                   description:
                     "For experienced players with solid competitive records.",
                 },
@@ -107,6 +111,7 @@ export const LeagueAdRoutes: Route = {
                   cashValue: 2,
                   platform: "Scarlet/Violet",
                   format: "Singles",
+                  ruleset: "Gen9 NatDex",
                   description:
                     "Competitive division for trainers who have what it takes to go all the way.",
                 },
@@ -136,8 +141,9 @@ export const LeagueAdRoutes: Route = {
                   _id: "66f6ebdb88ce5483edaaeac1",
                   divisionName: "Novice Division",
                   cashValue: 0,
-                  platform: "Scarlet/Violet",
+                  platform: "Pokemon Showdown",
                   format: "Other",
+                  ruleset: "Kalos Dex",
                   description:
                     "For trainers new to the competitive scene, focusing on casual battles and growth.",
                 },
