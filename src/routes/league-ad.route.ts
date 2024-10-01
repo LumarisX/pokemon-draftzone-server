@@ -1,9 +1,10 @@
 import type { Request, Response } from "express";
-import type { Route } from ".";
-import { LeagueAdModel } from "../models/leaguelist.model";
+import { getSub, type Route, type SubRequest } from ".";
 import { LeagueAd } from "../classes/leaguelist";
+import { LeagueAdModel } from "../models/leaguelist.model";
 
 export const LeagueAdRoutes: Route = {
+  middleware: [getSub],
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
@@ -13,7 +14,6 @@ export const LeagueAdRoutes: Route = {
               createdAt: -1,
             }
           );
-
           res.json(leagues.map((league) => new LeagueAd(league.toObject())));
           // res.json([
           //   {
@@ -162,7 +162,24 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R1-01" });
         }
       },
-      post: async (req: Request, res: Response) => {},
+      post: async (req: SubRequest, res: Response) => {
+        try {
+          const ad = LeagueAd.fromForm(req.body, req.sub!);
+          if (ad.isValid()) {
+            await (await ad.toDocument()).save();
+            res.status(201).json({ message: "LeagueAd successfully created." });
+          } else {
+            res
+              .status(400)
+              .json({ message: "Invalid LeagueAd data.", code: "LR-R1-01" });
+          }
+        } catch (error) {
+          console.error(error);
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "LR-R1-02" });
+        }
+      },
     },
     "/:leagueId": {
       get: async (req: Request, res: Response) => {

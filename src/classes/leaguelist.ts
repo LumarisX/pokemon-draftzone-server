@@ -1,3 +1,6 @@
+import { ObjectId } from "mongoose";
+import { LeagueAdModel } from "../models/leaguelist.model";
+
 export class LeagueAd {
   leagueName: string;
   owner: string;
@@ -8,10 +11,10 @@ export class LeagueAd {
     divisionName: string;
     ruleset: string;
     skillLevelRange: {
-      from: number;
-      to: number;
+      from: string;
+      to: string;
     };
-    prizeValue?: number;
+    prizeValue?: string;
     platform: "Pokémon Showdown" | "Scarlet/Violet";
     format: string;
     description?: string;
@@ -20,8 +23,8 @@ export class LeagueAd {
   closesAt: string;
   seasonStart?: string;
   seasonEnd?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 
   constructor(data: {
     leagueName: string;
@@ -33,10 +36,10 @@ export class LeagueAd {
       divisionName: string;
       ruleset: string;
       skillLevelRange: {
-        from: number;
-        to: number;
+        from: string;
+        to: string;
       };
-      prizeValue?: number;
+      prizeValue?: string;
       platform: "Pokémon Showdown" | "Scarlet/Violet";
       format: string;
       description?: string;
@@ -53,7 +56,7 @@ export class LeagueAd {
     this.description = data.description;
     this.recruitmentStatus = data.recruitmentStatus;
     this.hostLink = data.hostLink;
-    this.divisions = data.divisions.map((division: any) => ({
+    this.divisions = data.divisions.map((division) => ({
       divisionName: division.divisionName,
       ruleset: division.ruleset,
       skillLevelRange: {
@@ -73,16 +76,36 @@ export class LeagueAd {
     this.updatedAt = data.updatedAt;
   }
 
+  isValid(): boolean {
+    if (
+      !this.leagueName ||
+      !this.owner ||
+      !this.description ||
+      !this.recruitmentStatus ||
+      !this.signupLink ||
+      !this.closesAt
+    )
+      return false;
+    return true;
+  }
+
   toString(): string {
     return JSON.stringify(this);
   }
 
-  toDocument() {}
-
-  static fromDocument(document: any): LeagueAd {
-    const league = new LeagueAd(document);
-    return league;
+  async toDocument() {
+    return new LeagueAdModel(this);
   }
 
-  static fromForm() {}
+  static fromDocument(document: any): LeagueAd {
+    return new LeagueAd(document);
+  }
+
+  static fromForm(formData: any, owner: ObjectId) {
+    return new LeagueAd({
+      ...formData,
+      recruitmentStatus: "Open",
+      owner: owner,
+    });
+  }
 }

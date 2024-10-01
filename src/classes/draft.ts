@@ -32,7 +32,7 @@ export class Draft {
     private user_id: ObjectId
   ) {}
 
-  async createDraft(): Promise<DraftDocument> {
+  async toDocument(): Promise<DraftDocument> {
     const data = await this.prepareData();
     const draftModel = new DraftModel(data);
     return draftModel;

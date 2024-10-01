@@ -56,7 +56,7 @@ export const DraftRoutes: Route = {
         }
         try {
           const draft = new Draft(req.body, req.sub);
-          const draftDoc = await draft.createDraft();
+          const draftDoc = await draft.toDocument();
           const foundDrafts = await DraftModel.find({
             owner: req.sub,
             leagueId: draftDoc.leagueId,
@@ -95,7 +95,7 @@ export const DraftRoutes: Route = {
         if (!req.sub) return;
         try {
           let team_id = req.params.team_id;
-          const draft = await new Draft(req.body, req.sub).createDraft();
+          const draft = await new Draft(req.body, req.sub).toDocument();
           const updatedDraft = await DraftModel.findOneAndUpdate(
             { owner: req.sub, leagueId: team_id },
             {

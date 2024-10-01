@@ -64,14 +64,14 @@ const leagueAdSchema = new mongoose.Schema({
           type: String,
           trim: true,
         },
-        signupLink: {
-          type: String,
-          required: true,
-          trim: true,
-        },
       },
       { _id: false },
     ],
+  },
+  signupLink: {
+    type: String,
+    required: true,
+    trim: true,
   },
   status: {
     type: String,
