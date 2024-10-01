@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { getRulesets } from "../data/rulesets";
+import { getFormats } from "../data/formats";
 
 const leagueAdSchema = new mongoose.Schema({
   leagueName: {
@@ -22,12 +24,7 @@ const leagueAdSchema = new mongoose.Schema({
     default: "Open",
     required: true,
   },
-  hostPlatform: {
-    type: String,
-    enum: ["Discord", "Battlefy"],
-    required: true,
-  },
-  serverLink: {
+  hostLink: {
     type: String,
     trim: true,
   },
@@ -40,17 +37,10 @@ const leagueAdSchema = new mongoose.Schema({
           trim: true,
         },
         skillLevelRange: {
-          from: { type: Number, min: 0, max: 3 },
+          from: { type: Number, min: 0, max: 3, required: true },
           to: { type: Number, min: 0, max: 3 },
-          // validate: {
-          //   validator: function (to: number, from: number) {
-          //     return to >= from;
-          //   },
-          //   message:
-          //     'Skill level range "to" should be greater than or equal to "from".',
-          // },
         },
-        cashValue: {
+        prizeValue: {
           type: Number,
           min: 0,
           max: 3,
@@ -62,7 +52,12 @@ const leagueAdSchema = new mongoose.Schema({
         },
         format: {
           type: String,
-          enum: ["Singles", "VGC", "Other"],
+          enum: [...getFormats(), "Other"],
+          required: true,
+        },
+        ruleset: {
+          type: String,
+          enum: [...getRulesets(), "Other"],
           required: true,
         },
         description: {
@@ -76,12 +71,12 @@ const leagueAdSchema = new mongoose.Schema({
         },
       },
     ],
-    // validate: {
-    //   validator: function (v: any) {
-    //     return Array.isArray(v) && v.length > 0;
-    //   },
-    //   message: "There must be at least one division.",
-    // },
+  },
+  status: {
+    type: String,
+    enum: ["Accepted", "Denied", "Pending"],
+    default: "Pending",
+    required: true,
   },
   closesAt: {
     type: Date,
@@ -89,11 +84,9 @@ const leagueAdSchema = new mongoose.Schema({
   },
   seasonStart: {
     type: Date,
-    required: true,
   },
   seasonEnd: {
     type: Date,
-    required: true,
   },
   tags: {
     type: [String],
