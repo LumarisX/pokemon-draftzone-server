@@ -8,7 +8,7 @@ const leagueAdSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  organizer: {
+  owner: {
     type: String,
     required: true,
     trim: true,
@@ -70,6 +70,7 @@ const leagueAdSchema = new mongoose.Schema({
           trim: true,
         },
       },
+      { _id: false },
     ],
   },
   status: {
