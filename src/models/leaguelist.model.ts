@@ -1,6 +1,48 @@
-import mongoose from "mongoose";
-import { getRulesets } from "../data/rulesets";
+import mongoose, { InferSchemaType } from "mongoose";
 import { getFormats } from "../data/formats";
+import { getRulesets } from "../data/rulesets";
+
+const divisionSchema = new mongoose.Schema({
+  divisionName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  skillLevelRange: {
+    type: {
+      from: { type: Number, min: 0, max: 3, required: true },
+      to: { type: Number, min: 0, max: 3, required: true },
+    },
+    required: true,
+  },
+  prizeValue: {
+    type: Number,
+    min: 0,
+    max: 3,
+    required: true,
+  },
+  platform: {
+    type: String,
+    enum: ["Pokémon Showdown", "Scarlet/Violet"],
+    required: true,
+  },
+  format: {
+    type: String,
+    enum: [...getFormats(), "Other"],
+    required: true,
+  },
+  ruleset: {
+    type: String,
+    enum: [...getRulesets(), "Other"],
+    required: true,
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+});
+
+export type DivisionDocType = InferSchemaType<typeof divisionSchema>;
 
 const leagueAdSchema = new mongoose.Schema({
   leagueName: {
@@ -29,44 +71,7 @@ const leagueAdSchema = new mongoose.Schema({
     trim: true,
   },
   divisions: {
-    type: [
-      {
-        divisionName: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        skillLevelRange: {
-          from: { type: Number, min: 0, max: 3, required: true },
-          to: { type: Number, min: 0, max: 3 },
-        },
-        prizeValue: {
-          type: Number,
-          min: 0,
-          max: 3,
-        },
-        platform: {
-          type: String,
-          enum: ["Pokémon Showdown", "Scarlet/Violet"],
-          required: true,
-        },
-        format: {
-          type: String,
-          enum: [...getFormats(), "Other"],
-          required: true,
-        },
-        ruleset: {
-          type: String,
-          enum: [...getRulesets(), "Other"],
-          required: true,
-        },
-        description: {
-          type: String,
-          trim: true,
-        },
-      },
-      { _id: false },
-    ],
+    type: [divisionSchema, { _id: false }],
   },
   signupLink: {
     type: String,
@@ -101,5 +106,7 @@ const leagueAdSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+export type LeagueAdDoc = InferSchemaType<typeof leagueAdSchema>;
 
 export const LeagueAdModel = mongoose.model("leaguead", leagueAdSchema);

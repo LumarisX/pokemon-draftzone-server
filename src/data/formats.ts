@@ -3,14 +3,15 @@ const Formats: {
   [key: string]: {
     level: number;
     choose: number;
+    layout: "1" | "2" | "3";
   };
 } = {
-  Singles: { level: 100, choose: 6 },
-  "Singles 50": { level: 50, choose: 6 },
-  VGC: { level: 50, choose: 4 },
-  Doubles: { level: 100, choose: 6 },
-  LC: { level: 5, choose: 6 },
-  "LC VGC": { level: 5, choose: 4 },
+  Singles: { level: 100, choose: 6, layout: "1" },
+  "Singles 50": { level: 50, choose: 6, layout: "1" },
+  VGC: { level: 50, choose: 4, layout: "2" },
+  Doubles: { level: 100, choose: 6, layout: "2" },
+  LC: { level: 5, choose: 6, layout: "1" },
+  "LC VGC": { level: 5, choose: 4, layout: "2" },
 };
 
 export function getFormat(formatId: string) {
