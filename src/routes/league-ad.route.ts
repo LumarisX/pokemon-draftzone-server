@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { getSub, type Route, type SubRequest } from ".";
 import { LeagueAd } from "../classes/leaguelist";
-import { LeagueAdModel } from "../models/leaguelist.model";
+import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 
 export const LeagueAdRoutes: Route = {
   middleware: [getSub],
@@ -15,7 +15,9 @@ export const LeagueAdRoutes: Route = {
           //   }
           // );
           // res.json(
-          //   leagues.map((league) => LeagueAd.fromDocument(league.toObject()))
+          //   leagues.map((league) =>
+          //     LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
+          //   )
           // );
 
           const testData: LeagueAd[] = [
@@ -134,6 +136,7 @@ export const LeagueAdRoutes: Route = {
           ];
           res.json(testData);
         } catch (error) {
+          console.error(error);
           res
             .status(500)
             .json({ message: (error as Error).message, code: "LR-R1-01" });

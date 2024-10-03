@@ -1,10 +1,6 @@
 import { ObjectId } from "mongoose";
-import {
-  LeagueAdDoc,
-  DivisionDocType,
-  LeagueAdModel,
-} from "../models/leaguelist.model";
 import { getFormat } from "../data/formats";
+import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 
 export class LeagueAd {
   leagueName: string;
@@ -138,9 +134,7 @@ export class LeagueAd {
       description: document.description,
       recruitmentStatus: document.recruitmentStatus,
       hostLink: document.hostLink ? document.hostLink : undefined,
-      divisions: document.divisions.map((subDoc) => {
-        console.log(subDoc);
-        const division = subDoc as unknown as DivisionDocType;
+      divisions: document.divisions.map((division) => {
         const skillLevels = [];
         const from =
           division.skillLevelRange.from <= division.skillLevelRange.to
@@ -150,7 +144,7 @@ export class LeagueAd {
           division.skillLevelRange.from <= division.skillLevelRange.to
             ? division.skillLevelRange.to
             : division.skillLevelRange.from;
-        for (let i = from; i < to; i++) skillLevels.push(i);
+        for (let i = from; i <= to; i++) skillLevels.push(i);
         return {
           divisionName: division.divisionName,
           ruleset: division.ruleset,
