@@ -66,6 +66,10 @@ for (const path in ROUTES) {
     if (route.subpaths[subpath].patch)
       subroute.patch(route.subpaths[subpath].patch);
   }
+  if (route.params)
+    for (const param in route.params) {
+      router.param(param, route.params[param]);
+    }
   app.use(path, logger("common"), ...(route.middleware || []), router);
 }
 
