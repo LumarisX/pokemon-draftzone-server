@@ -9,11 +9,16 @@ export const LeagueAdRoutes: Route = {
     "/": {
       get: async (req: Request, res: Response) => {
         try {
-          const leagues = await LeagueAdModel.find({ status: "Approved" }).sort(
-            {
-              createdAt: -1,
-            }
-          );
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0); // Set to the start of the current UTC day
+
+          const leagues = await LeagueAdModel.find({
+            status: "Approved",
+            closesAt: { $gte: today }, // Only get ads closing today or later
+          }).sort({
+            createdAt: -1,
+          });
+
           res.json(
             leagues.map((league) =>
               LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
