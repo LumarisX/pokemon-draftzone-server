@@ -10,8 +10,8 @@ const divisionSchema = new mongoose.Schema({
   },
   skillLevelRange: {
     type: {
-      from: { type: Number, min: 0, max: 3, required: true },
-      to: { type: Number, min: 0, max: 3, required: true },
+      from: { type: String, required: true },
+      to: { type: String, required: true },
     },
     required: true,
   },
@@ -93,9 +93,6 @@ const leagueAdSchema = new mongoose.Schema({
   },
   seasonEnd: {
     type: Date,
-  },
-  tags: {
-    type: [String],
   },
   createdAt: {
     type: Date,

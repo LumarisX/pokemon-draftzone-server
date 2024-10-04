@@ -12,7 +12,7 @@ export class LeagueAd {
     divisionName: string;
     ruleset: string;
     skillLevels: number[];
-    prizeValue?: number;
+    prizeValue: number;
     platform: "Pokémon Showdown" | "Scarlet/Violet";
     format: string;
     description?: string;
@@ -27,14 +27,17 @@ export class LeagueAd {
 
   constructor(data: {
     leagueName: string;
-    owner: string;
+    owner: string | ObjectId;
     description: string;
-    recruitmentStatus: "Open" | "Closed" | "Full" | "Canceled";
+    recruitmentStatus?: "Open" | "Closed" | "Full" | "Canceled";
     hostLink?: string;
     divisions: {
       divisionName: string;
       ruleset: string;
-      skillLevels: number[];
+      skillLevelRange: {
+        from: string;
+        to: string;
+      };
       prizeValue?: string | number;
       platform: "Pokémon Showdown" | "Scarlet/Violet";
       format: string;
@@ -48,19 +51,31 @@ export class LeagueAd {
     updatedAt: Date;
   }) {
     this.leagueName = data.leagueName;
-    this.owner = data.owner;
+    this.owner = data.owner.toString();
     this.description = data.description;
-    this.recruitmentStatus = data.recruitmentStatus;
+    this.recruitmentStatus = data.recruitmentStatus ?? "Open";
     this.hostLink = data.hostLink;
-    this.divisions = data.divisions.map((division) => ({
-      divisionName: division.divisionName,
-      ruleset: division.ruleset,
-      skillLevels: division.skillLevels,
-      prizeValue: division.prizeValue ? +division.prizeValue : 0,
-      platform: division.platform,
-      format: division.format,
-      description: division.description,
-    }));
+    this.divisions = data.divisions.map((division) => {
+      const skillLevels = [];
+      const from =
+        +division.skillLevelRange.from <= +division.skillLevelRange.to
+          ? +division.skillLevelRange.from
+          : +division.skillLevelRange.to;
+      const to =
+        +division.skillLevelRange.from <= +division.skillLevelRange.to
+          ? +division.skillLevelRange.to
+          : +division.skillLevelRange.from;
+      for (let i = from; i <= to; i++) skillLevels.push(i);
+      return {
+        divisionName: division.divisionName,
+        ruleset: division.ruleset,
+        skillLevels: skillLevels,
+        prizeValue: division.prizeValue ? +division.prizeValue : 0,
+        platform: division.platform,
+        format: division.format,
+        description: division.description,
+      };
+    });
     this.signupLink = data.signupLink;
     this.closesAt = data.closesAt;
     this.seasonStart = data.seasonStart;
@@ -81,7 +96,6 @@ export class LeagueAd {
         skillMax === undefined
           ? Math.max(...division.skillLevels)
           : Math.max(skillMax, ...division.skillLevels);
-
       tags.prize =
         tags.prize ||
         (division.prizeValue !== undefined && division.prizeValue > 0);
@@ -106,15 +120,29 @@ export class LeagueAd {
   }
 
   isValid(): boolean {
+    // Check if all required fields are present and valid
     if (
-      !this.leagueName ||
-      !this.owner ||
-      !this.description ||
-      !this.recruitmentStatus ||
-      !this.signupLink ||
-      !this.closesAt
-    )
+      typeof this.leagueName !== "string" ||
+      typeof this.owner !== "string" ||
+      typeof this.description !== "string" ||
+      !["Open", "Closed", "Full", "Canceled"].includes(
+        this.recruitmentStatus
+      ) ||
+      typeof this.signupLink !== "string" ||
+      !this.closesAt ||
+      (this.hostLink && typeof this.leagueName !== "string") ||
+      this.divisions.some(
+        (division) =>
+          typeof division.divisionName !== "string" ||
+          typeof division.ruleset !== "string" ||
+          !Array.isArray(division.skillLevels) ||
+          division.skillLevels.some((level) => typeof level !== "number") ||
+          !["Pokémon Showdown", "Scarlet/Violet"].includes(division.platform) ||
+          typeof division.format !== "string"
+      )
+    ) {
       return false;
+    }
     return true;
   }
 
@@ -123,38 +151,52 @@ export class LeagueAd {
   }
 
   async toDocument() {
-    return new LeagueAdModel(this);
+    const doc: LeagueAdDoc = {
+      leagueName: this.leagueName,
+      owner: this.owner,
+      description: this.description,
+      recruitmentStatus: this.recruitmentStatus,
+      hostLink: this.hostLink,
+      divisions: this.divisions.map((division) => ({
+        divisionName: division.divisionName,
+        skillLevelRange: {
+          from: division.skillLevels[0].toString(),
+          to: division.skillLevels[division.skillLevels.length - 1].toString(),
+        },
+        prizeValue: division.prizeValue,
+        platform: division.platform,
+        format: division.format,
+        ruleset: division.ruleset,
+        description: division.description,
+      })),
+      signupLink: this.signupLink,
+      closesAt: this.closesAt,
+      seasonStart: this.seasonStart,
+      seasonEnd: this.seasonEnd,
+      status: "Pending",
+      createdAt: this.createdAt ?? new Date(),
+      updatedAt: this.updatedAt ?? new Date(),
+    };
+    console.log(doc.hostLink);
+    return new LeagueAdModel(doc);
   }
 
   static fromDocument(document: LeagueAdDoc): LeagueAd {
     return new LeagueAd({
       leagueName: document.leagueName,
-
       owner: document.owner,
       description: document.description,
       recruitmentStatus: document.recruitmentStatus,
       hostLink: document.hostLink ? document.hostLink : undefined,
-      divisions: document.divisions.map((division) => {
-        const skillLevels = [];
-        const from =
-          division.skillLevelRange.from <= division.skillLevelRange.to
-            ? division.skillLevelRange.from
-            : division.skillLevelRange.to;
-        const to =
-          division.skillLevelRange.from <= division.skillLevelRange.to
-            ? division.skillLevelRange.to
-            : division.skillLevelRange.from;
-        for (let i = from; i <= to; i++) skillLevels.push(i);
-        return {
-          divisionName: division.divisionName,
-          ruleset: division.ruleset,
-          skillLevels: skillLevels,
-          prizeValue: division.prizeValue ? division.prizeValue : undefined,
-          platform: division.platform,
-          format: division.format,
-          description: division.description ? division.description : undefined,
-        };
-      }),
+      divisions: document.divisions.map((division) => ({
+        divisionName: division.divisionName,
+        ruleset: division.ruleset,
+        skillLevelRange: division.skillLevelRange,
+        prizeValue: division.prizeValue ? division.prizeValue : undefined,
+        platform: division.platform,
+        format: division.format,
+        description: division.description ? division.description : undefined,
+      })),
       signupLink: document.signupLink,
       closesAt: document.closesAt,
       seasonStart: document.seasonStart ? document.seasonStart : undefined,
@@ -165,10 +207,33 @@ export class LeagueAd {
   }
 
   static fromForm(formData: any, owner: ObjectId) {
+    const cleanString = (str: string) =>
+      str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]]/g, "");
+
     return new LeagueAd({
-      ...formData,
-      recruitmentStatus: "Open",
+      leagueName: cleanString(formData.leagueName),
+      description: cleanString(formData.description),
+      hostLink: formData.hostLink,
       owner: owner,
+      divisions: formData.divisions.map((division: any) => {
+        return {
+          divisionName: cleanString(division.divisionName),
+          ruleset: cleanString(division.ruleset),
+          skillLevelRange: division.skillLevelRange,
+          prizeValue: division.prizeValue,
+          platform: division.platform,
+          format: cleanString(division.format),
+          description: division.description
+            ? cleanString(division.description)
+            : undefined,
+        };
+      }),
+      signupLink: cleanString(formData.signupLink),
+      closesAt: formData.closesAt,
+      seasonStart: formData.seasonStart,
+      seasonEnd: formData.seasonEnd,
+      createdAt: formData.createdAt,
+      updatedAt: formData.updatedAt,
     });
   }
 }
