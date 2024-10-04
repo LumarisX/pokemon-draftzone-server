@@ -373,7 +373,7 @@ export const DraftRoutes: Route = {
   params: {
     team_id: async (req: SubRequest, res: DraftResponse, next, team_id) => {
       try {
-        let user_id = await req.sub;
+        let user_id = req.sub;
         if (mongoose.Types.ObjectId.isValid(team_id)) {
           res.rawDraft = await DraftModel.findById(team_id);
         } else {

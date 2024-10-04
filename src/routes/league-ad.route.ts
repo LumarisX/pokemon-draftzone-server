@@ -1,20 +1,24 @@
 import type { Request, Response } from "express";
-import { getSub, type Route, type SubRequest } from ".";
+import { getSub, jwtCheck, type Route, type SubRequest } from ".";
 import { LeagueAd } from "../classes/leaguelist";
+import { Document } from "mongoose";
 import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 
+type AdResponse = Response & {
+  ad?: Document<unknown, {}, LeagueAdDoc>;
+};
+
 export const LeagueAdRoutes: Route = {
-  middleware: [getSub],
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
         try {
           const today = new Date();
-          today.setUTCHours(0, 0, 0, 0); // Set to the start of the current UTC day
+          today.setUTCHours(0, 0, 0, 0);
 
           const leagues = await LeagueAdModel.find({
             status: "Approved",
-            closesAt: { $gte: today }, // Only get ads closing today or later
+            closesAt: { $gte: today },
           }).sort({
             createdAt: -1,
           });
@@ -147,6 +151,24 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R1-01" });
         }
       },
+    },
+    "/manage": {
+      get: async (req: SubRequest, res: Response) => {
+        try {
+          const leagues = await LeagueAdModel.find({ owner: req.sub }).sort({
+            createdAt: -1,
+          });
+          res.json(
+            leagues.map((league) =>
+              LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
+            )
+          );
+        } catch (error) {
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "LR-R2-01" });
+        }
+      },
       post: async (req: SubRequest, res: Response) => {
         try {
           const ad = LeagueAd.fromForm(req.body, req.sub!);
@@ -156,39 +178,58 @@ export const LeagueAdRoutes: Route = {
           } else {
             res
               .status(400)
-              .json({ message: "Invalid LeagueAd data.", code: "LR-R1-01" });
+              .json({ message: "Invalid LeagueAd data.", code: "LR-R2-02" });
           }
         } catch (error) {
           console.error(error);
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "LR-R1-02" });
+            .json({ message: (error as Error).message, code: "LR-R2-03" });
         }
       },
+      middleware: [jwtCheck, getSub],
     },
-    "/:leagueId": {
-      get: async (req: Request, res: Response) => {
+    "/:ad_id": {
+      get: async (req: Request, res: Response) => {},
+      patch: async (req: Request, res: Response) => {},
+      delete: async (req: SubRequest, res: AdResponse) => {
         try {
-          const leagues = await LeagueAdModel.find().sort({
-            createdAt: -1,
-          });
-          res.json(
-            leagues.map((rawLeague) => {
-              let league = rawLeague.toObject();
-              return league;
-            })
-          );
+          await res.ad!.deleteOne();
+          res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
+          console.error(error);
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "LR-R2-01" });
+            .json({ message: (error as Error).message, code: "LR-R3-02" });
         }
       },
-      patch: async (req: Request, res: Response) => {},
-      delete: async (req: Request, res: Response) => {},
+      middleware: [jwtCheck, getSub],
     },
   },
   params: {
-    leagueId: () => {},
+    ad_id: async (req: SubRequest, res: AdResponse, next, ad_id) => {
+      try {
+        if (!ad_id) {
+          return res
+            .status(400)
+            .json({ message: "League ID is nullish", code: "LR-P1-01" });
+        }
+        const ad = await LeagueAdModel.findById(ad_id);
+        if (!ad) {
+          res
+            .status(400)
+            .json({ message: "League ID not found", code: "LR-P1-03" });
+          next();
+          return;
+        }
+
+        res.ad = ad;
+      } catch (error) {
+        return res
+          .status(500)
+          .json({ message: (error as Error).message, code: "DR-P1-04" });
+      }
+      next();
+    },
   },
 };

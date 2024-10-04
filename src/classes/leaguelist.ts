@@ -3,6 +3,7 @@ import { getFormat } from "../data/formats";
 import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 
 export class LeagueAd {
+  _id?: ObjectId;
   leagueName: string;
   owner: string;
   description: string;
@@ -17,6 +18,7 @@ export class LeagueAd {
     format: string;
     description?: string;
   }[];
+  status?: "Approved" | "Pending" | "Denied";
   signupLink: string;
   closesAt: Date;
   seasonStart?: Date;
@@ -26,6 +28,7 @@ export class LeagueAd {
   tags: string[];
 
   constructor(data: {
+    _id?: ObjectId;
     leagueName: string;
     owner: string | ObjectId;
     description: string;
@@ -43,6 +46,7 @@ export class LeagueAd {
       format: string;
       description?: string;
     }[];
+    status?: "Approved" | "Pending" | "Denied";
     signupLink: string;
     closesAt: Date;
     seasonStart?: Date;
@@ -50,6 +54,7 @@ export class LeagueAd {
     createdAt: Date;
     updatedAt: Date;
   }) {
+    this._id = data._id;
     this.leagueName = data.leagueName;
     this.owner = data.owner.toString();
     this.description = data.description;
@@ -76,6 +81,7 @@ export class LeagueAd {
         description: division.description,
       };
     });
+    this.status = data.status;
     this.signupLink = data.signupLink;
     this.closesAt = data.closesAt;
     this.seasonStart = data.seasonStart;
@@ -173,7 +179,7 @@ export class LeagueAd {
       closesAt: this.closesAt,
       seasonStart: this.seasonStart,
       seasonEnd: this.seasonEnd,
-      status: "Pending",
+      status: this.status ?? "Pending",
       createdAt: this.createdAt ?? new Date(),
       updatedAt: this.updatedAt ?? new Date(),
     };
@@ -183,6 +189,7 @@ export class LeagueAd {
 
   static fromDocument(document: LeagueAdDoc): LeagueAd {
     return new LeagueAd({
+      _id: document._id,
       leagueName: document.leagueName,
       owner: document.owner,
       description: document.description,
@@ -199,6 +206,7 @@ export class LeagueAd {
       })),
       signupLink: document.signupLink,
       closesAt: document.closesAt,
+      status: document.status,
       seasonStart: document.seasonStart ? document.seasonStart : undefined,
       seasonEnd: document.seasonEnd ? document.seasonEnd : undefined,
       createdAt: document.createdAt,
@@ -210,6 +218,7 @@ export class LeagueAd {
     const cleanString = (str: string) =>
       str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]]/g, "");
 
+    console.log(formData);
     return new LeagueAd({
       leagueName: cleanString(formData.leagueName),
       description: cleanString(formData.description),

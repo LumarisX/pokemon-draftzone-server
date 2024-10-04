@@ -53,18 +53,25 @@ export const ROUTES: { [path: string]: Route } = {
   "/leagues": LeagueAdRoutes,
 };
 
+const METHODS: ("get" | "post" | "delete" | "patch")[] = [
+  "get",
+  "post",
+  "delete",
+  "patch",
+];
+
 for (const path in ROUTES) {
   const route = ROUTES[path];
   const router = express.Router();
   for (const subpath in route.subpaths) {
     const subroute = router.route(subpath);
-    if (route.subpaths[subpath].get) subroute.get(route.subpaths[subpath].get);
-    if (route.subpaths[subpath].post)
-      subroute.post(route.subpaths[subpath].post);
-    if (route.subpaths[subpath].delete)
-      subroute.delete(route.subpaths[subpath].delete);
-    if (route.subpaths[subpath].patch)
-      subroute.patch(route.subpaths[subpath].patch);
+    for (const method of METHODS) {
+      if (route.subpaths[subpath][method])
+        subroute[method](
+          ...(route.subpaths[subpath].middleware ?? []),
+          route.subpaths[subpath][method]
+        );
+    }
   }
   if (route.params)
     for (const param in route.params) {

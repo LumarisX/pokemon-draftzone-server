@@ -1,4 +1,4 @@
-import mongoose, { InferSchemaType } from "mongoose";
+import mongoose, { InferSchemaType, ObjectId } from "mongoose";
 import { getFormats } from "../data/formats";
 import { getRulesets } from "../data/rulesets";
 
@@ -80,7 +80,7 @@ const leagueAdSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Accepted", "Denied", "Pending"],
+    enum: ["Approved", "Denied", "Pending"],
     default: "Pending",
     required: true,
   },
@@ -108,6 +108,7 @@ export type LeagueAdDoc = Omit<
   InferSchemaType<typeof leagueAdSchema>,
   "divisions"
 > & {
+  _id?: ObjectId;
   divisions: DivisionDocType[];
 };
 export const LeagueAdModel = mongoose.model("leaguead", leagueAdSchema);

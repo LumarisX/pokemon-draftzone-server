@@ -18,6 +18,7 @@ export type Route = {
       post?: (req: Request, res: Response) => any;
       patch?: (req: Request, res: Response) => any;
       ws?: (socket: WebSocket, message: string) => any;
+      middleware?: Handler[];
     };
   };
   params?: {
