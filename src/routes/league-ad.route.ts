@@ -3,6 +3,8 @@ import { getSub, jwtCheck, type Route, type SubRequest } from ".";
 import { LeagueAd } from "../classes/leaguelist";
 import { Document } from "mongoose";
 import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
+import { bot } from "..";
+import { TextChannel } from "discord.js";
 
 type AdResponse = Response & {
   ad?: Document<unknown, {}, LeagueAdDoc>;
@@ -22,128 +24,11 @@ export const LeagueAdRoutes: Route = {
           }).sort({
             createdAt: -1,
           });
-
           res.json(
             leagues.map((league) =>
               LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
             )
           );
-
-          // const testData: LeagueAd[] = [
-          //   new LeagueAd({
-          //     leagueName: "Pokémon Masters League",
-          //     owner: "Ash Ketchum",
-          //     description:
-          //       "The Pokémon Masters League is for experienced trainers looking to compete in a high-stakes environment. Weekly battles and cash prizes for top performers.",
-          //     recruitmentStatus: "Open",
-          //     hostLink: "https://discord.gg/pokemonmasters",
-          //     divisions: [
-          //       {
-          //         skillLevelRange: { from: "0", to: "1" },
-          //         divisionName: "Pokeball Division",
-          //         prizeValue: "3",
-          //         platform: "Pokémon Showdown",
-          //         format: "VGC",
-          //         ruleset: "Paldea Dex",
-          //         description:
-          //           "For experienced players with solid competitive records.",
-          //       },
-          //       {
-          //         skillLevelRange: { from: "1", to: "2" },
-          //         divisionName: "Ultra Division",
-          //         prizeValue: "3",
-          //         platform: "Pokémon Showdown",
-          //         format: "VGC",
-          //         ruleset: "Paldea Dex",
-          //         description:
-          //           "For experienced players with solid competitive records.",
-          //       },
-          //       {
-          //         skillLevelRange: { from: "3", to: "3" },
-          //         divisionName: "Master Division",
-          //         prizeValue: "3",
-          //         platform: "Pokémon Showdown",
-          //         format: "VGC",
-          //         ruleset: "Paldea Dex",
-          //         description:
-          //           "For experienced players with solid competitive records.",
-          //       },
-          //       {
-          //         skillLevelRange: { from: "0", to: "3" },
-          //         divisionName: "Wifi Division",
-          //         prizeValue: "3",
-          //         platform: "Scarlet/Violet",
-          //         format: "VGC",
-          //         ruleset: "Paldea Dex",
-          //         description:
-          //           "For experienced players with solid competitive records.",
-          //       },
-          //     ],
-          //     signupLink: "https://pokemonmasters.com/signup",
-          //     closesAt: new Date("2024-10-15T23:59:00.000Z"),
-          //     seasonStart: new Date("2024-11-01T00:00:00.000Z"),
-          //     seasonEnd: new Date("2025-02-01T00:00:00.000Z"),
-          //     createdAt: new Date("2024-09-25T12:00:00.000Z"),
-          //     updatedAt: new Date("2024-09-25T12:00:00.000Z"),
-          //   }),
-          //   new LeagueAd({
-          //     leagueName: "Battle Legends Circuit",
-          //     owner: "Gary Oak",
-          //     description:
-          //       "An intense competition for trainers looking to prove themselves as the next battle legends. Featuring multiple divisions and weekly tournaments.",
-          //     recruitmentStatus: "Open",
-          //     hostLink: "https://battlefly.com/...",
-          //     divisions: [
-          //       {
-          //         skillLevelRange: { from: "1", to: "3" },
-          //         divisionName: "Elite Four Division",
-          //         prizeValue: "2",
-          //         platform: "Scarlet/Violet",
-          //         format: "Singles",
-          //         ruleset: "Gen9 NatDex",
-          //         description:
-          //           "Competitive division for trainers who have what it takes to go all the way.",
-          //       },
-          //     ],
-          //     signupLink: "https://battlelegends.com/signup",
-          //     closesAt: new Date("2024-11-10T23:59:00.000Z"),
-          //     seasonStart: new Date("2024-11-20T00:00:00.000Z"),
-          //     seasonEnd: new Date("2025-03-20T00:00:00.000Z"),
-          //     createdAt: new Date("2024-09-20T10:30:00.000Z"),
-          //     updatedAt: new Date("2024-09-22T15:45:00.000Z"),
-          //   }),
-          //   new LeagueAd({
-          //     leagueName: "Legacy Battles Challenge",
-          //     owner: "Brock Harrison",
-          //     description:
-          //       "A beginner-friendly league designed for trainers to experience draft using triple battles!",
-          //     recruitmentStatus: "Open",
-          //     hostLink: "https://discord.gg/legacybattles",
-          //     divisions: [
-          //       {
-          //         skillLevelRange: { from: "0", to: "1" },
-          //         divisionName: "Kalos Division",
-          //         prizeValue: "0",
-          //         platform: "Pokémon Showdown",
-          //         format: "Other",
-          //         ruleset: "Kalos Dex",
-          //       },
-          //       {
-          //         skillLevelRange: { from: "0", to: "3" },
-          //         divisionName: "Paldea Division",
-          //         prizeValue: "0",
-          //         platform: "Pokémon Showdown",
-          //         format: "Other",
-          //         ruleset: "Paldea Dex",
-          //       },
-          //     ],
-          //     signupLink: "https://rookietrainers.com/signup",
-          //     closesAt: new Date("2024-12-01T23:59:00.000Z"),
-          //     createdAt: new Date("2024-09-18T09:00:00.000Z"),
-          //     updatedAt: new Date("2024-09-18T09:00:00.000Z"),
-          //   }),
-          // ];
-          // res.json(testData);
         } catch (error) {
           console.error(error);
           res
@@ -174,6 +59,26 @@ export const LeagueAdRoutes: Route = {
           const ad = LeagueAd.fromForm(req.body, req.sub!);
           if (ad.isValid()) {
             await (await ad.toDocument()).save();
+            //Send a message in the discord server that a new Ad was submitted
+            const guild = await bot.guilds.fetch("1183936734719922176");
+            if (!guild) {
+              console.error("Guild not found");
+              return;
+            }
+
+            // Fetch the channel from the guild
+            const channel = guild.channels.cache.get(
+              "1293333149471871108"
+            ) as TextChannel;
+            if (!channel || !channel.isTextBased()) {
+              console.error("Channel not found or not a text channel");
+              return;
+            }
+
+            // Send a message in the designated channel
+            channel.send(`A new league ad has been submitted:
+              ${ad.toString()}`);
+
             res.status(201).json({ message: "LeagueAd successfully created." });
           } else {
             res

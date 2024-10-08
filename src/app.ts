@@ -14,9 +14,10 @@ import { MatchupRoutes } from "./routes/matchup.route";
 import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
 import { LeagueAdRoutes } from "./routes/league-ad.route";
+import { config } from "./config";
 
 mongoose.connect(
-  `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
+  `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
 );
 
 const db = mongoose.connection;

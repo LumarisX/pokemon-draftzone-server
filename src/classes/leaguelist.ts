@@ -153,7 +153,7 @@ export class LeagueAd {
   }
 
   toString(): string {
-    return JSON.stringify(this);
+    return JSON.stringify(this, null, 2);
   }
 
   async toDocument() {

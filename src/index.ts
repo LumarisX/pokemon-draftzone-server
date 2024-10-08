@@ -1,22 +1,16 @@
-#!/usr/bin/env node
-import dotenv from "dotenv";
-
-dotenv.config();
-
-/**
- * Module dependencies.
- */
+import debug from "debug";
 import http from "http";
 import { AddressInfo } from "net";
-import { app, ROUTES } from "./app";
 import WebSocket from "ws";
-import debug from "debug";
+import { app, ROUTES } from "./app";
+import { startDiscordBot } from "./discord";
+import { config } from "./config";
 
 const debugLogger = debug("tpl-express-pro:server");
 /**
  * Get port from environment and store in Express.
  */
-const port: string = normalizePort(process.env.PORT || "9960");
+const port: string = normalizePort(config.PORT || "9960");
 console.log(`[server]: Server is running on port ${port}`);
 app.set("port", port);
 
@@ -98,3 +92,5 @@ function onListening(): void {
     typeof addr === "string" ? "pipe " + addr : "port " + addr?.port;
   debugLogger("Listening on " + bind);
 }
+
+export const bot = startDiscordBot();
