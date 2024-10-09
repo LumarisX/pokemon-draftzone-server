@@ -11,6 +11,9 @@
     "testOne": "ts-node src/tests/run.test.ts",
     "mongoAction": "ts-node src/tests/database/database.functions.ts"
   },
+  "engines": {
+    "node": "18.16.0"
+  },
   "dependencies": {
     "@pkmn/data": "^0.9.0",
     "@pkmn/dex": "^0.9.0",
