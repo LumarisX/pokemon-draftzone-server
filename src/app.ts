@@ -16,13 +16,18 @@ import { ReplayRoutes } from "./routes/replay.route";
 import { LeagueAdRoutes } from "./routes/league-ad.route";
 import { config } from "./config";
 
-mongoose.connect(
-  `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
-);
+mongoose
+  .connect(
+    `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
+  )
+  .then(() => {
+    console.log("Connected to Database");
+  })
+  .catch((error) =>
+    console.error(`Failed to connected to the database: ${error.message}`)
+  );
 
 const db = mongoose.connection;
-db.on("error", (error) => console.error(error));
-db.once("open", () => console.log("Connected to Database"));
 
 export const app = express();
 

@@ -12,7 +12,13 @@ export function startDiscordBot() {
 
   client.once("ready", () => console.log("Deoxys has been summoned!"));
 
-  client.login(config.DISCORD_TOKEN);
-
+  client
+    .login(config.DISCORD_TOKEN)
+    .then(() => {
+      console.log("Connected to Discord");
+    })
+    .catch((error) =>
+      console.error(`Failed to connect to Discord: ${error.message}`)
+    );
   return client;
 }

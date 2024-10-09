@@ -1,9 +1,9 @@
-import { ObjectId } from "mongoose";
+import type { Types } from "mongoose";
 import { getFormat } from "../data/formats";
 import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 
 export class LeagueAd {
-  _id?: ObjectId;
+  _id?: string;
   leagueName: string;
   owner: string;
   description: string;
@@ -28,9 +28,9 @@ export class LeagueAd {
   tags: string[];
 
   constructor(data: {
-    _id?: ObjectId;
+    _id?: Types.ObjectId | string;
     leagueName: string;
-    owner: string | ObjectId;
+    owner: string | Types.ObjectId;
     description: string;
     recruitmentStatus?: "Open" | "Closed" | "Full" | "Canceled";
     hostLink?: string;
@@ -54,7 +54,7 @@ export class LeagueAd {
     createdAt: Date;
     updatedAt: Date;
   }) {
-    this._id = data._id;
+    this._id = data._id?.toString();
     this.leagueName = data.leagueName;
     this.owner = data.owner.toString();
     this.description = data.description;
@@ -214,7 +214,7 @@ export class LeagueAd {
     });
   }
 
-  static fromForm(formData: any, owner: ObjectId) {
+  static fromForm(formData: any, owner: Types.ObjectId) {
     const cleanString = (str: string) =>
       str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]]/g, "");
 

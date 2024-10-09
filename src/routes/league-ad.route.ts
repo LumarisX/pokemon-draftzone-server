@@ -7,7 +7,8 @@ import { bot } from "..";
 import { TextChannel } from "discord.js";
 
 type AdResponse = Response & {
-  ad?: Document<unknown, {}, LeagueAdDoc>;
+  //change back from any
+  ad?: Document<unknown, {}, any>;
 };
 
 export const LeagueAdRoutes: Route = {

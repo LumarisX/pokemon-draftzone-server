@@ -6,7 +6,7 @@ import {
   Response,
 } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
-import { ObjectId } from "mongoose";
+import type { Types } from "mongoose";
 import WebSocket from "ws";
 import { config } from "../config";
 
@@ -28,7 +28,7 @@ export type Route = {
 };
 
 export type SubRequest = Request & {
-  sub?: ObjectId;
+  sub?: Types.ObjectId;
 };
 
 export function getSub(req: SubRequest, res: Response, next: NextFunction) {

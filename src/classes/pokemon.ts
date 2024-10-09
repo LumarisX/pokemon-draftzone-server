@@ -60,6 +60,7 @@ export class DraftSpecies implements Species, Pokemon {
   maleOnlyHidden!: boolean;
   changesFrom?: SpeciesName;
   tier!: Tier.Singles | Tier.Other;
+  natDexTier!: Tier.Singles | Tier.Other;
   doublesTier!: "Illegal" | Tier.Doubles;
   isMega?: boolean;
   isPrimal?: boolean;

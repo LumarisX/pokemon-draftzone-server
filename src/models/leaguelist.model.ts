@@ -108,7 +108,7 @@ export type LeagueAdDoc = Omit<
   InferSchemaType<typeof leagueAdSchema>,
   "divisions"
 > & {
-  _id?: ObjectId;
+  _id?: mongoose.Types.ObjectId;
   divisions: DivisionDocType[];
 };
 export const LeagueAdModel = mongoose.model("leaguead", leagueAdSchema);

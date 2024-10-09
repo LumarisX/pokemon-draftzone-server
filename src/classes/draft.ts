@@ -1,4 +1,4 @@
-import { ObjectId } from "mongoose";
+import type { Types } from "mongoose";
 import { FormatId } from "../data/formats";
 import { getRuleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
@@ -16,7 +16,7 @@ interface DraftDoc {
     loses: number;
     diff: string;
   };
-  owner: ObjectId;
+  owner: Types.ObjectId;
   team: PokemonData[];
 }
 
@@ -29,7 +29,7 @@ export class Draft {
       ruleset: string;
       team: PokemonFormData[];
     },
-    private user_id: ObjectId
+    private user_id: Types.ObjectId
   ) {}
 
   async toDocument(): Promise<DraftDocument> {
