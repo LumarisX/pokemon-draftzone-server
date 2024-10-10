@@ -9,6 +9,7 @@ import { auth } from "express-oauth2-jwt-bearer";
 import type { Types } from "mongoose";
 import WebSocket from "ws";
 import { config } from "../config";
+import { EventEmitter } from "stream";
 
 export type Route = {
   middleware?: Handler[];
@@ -18,12 +19,17 @@ export type Route = {
       delete?: (req: Request, res: Response) => any;
       post?: (req: Request, res: Response) => any;
       patch?: (req: Request, res: Response) => any;
-      ws?: (socket: WebSocket, message: string, data?: any) => any;
+      ws?: (
+        socket: WebSocket,
+        message: string,
+        emitter: EventEmitter,
+        data?: any
+      ) => any;
       middleware?: Handler[];
     };
   };
   ws?: {
-    onConnect?: () => any;
+    onConnect?: () => { emitter: EventEmitter; data?: any };
   };
   params?: {
     [value: string]: RequestParamHandler;

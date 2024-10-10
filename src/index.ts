@@ -3,8 +3,8 @@ import http from "http";
 import { AddressInfo } from "net";
 import WebSocket from "ws";
 import { app, ROUTES } from "./app";
-import { startDiscordBot } from "./discord";
 import { config } from "./config";
+import { startDiscordBot } from "./discord";
 
 const debugLogger = debug("tpl-express-pro:server");
 /**
@@ -29,14 +29,18 @@ wss.on("connection", (ws, req) => {
     const path = `/${main}`;
     const subpath = `/${paths.join("/")}`;
     if (ROUTES[path]) {
-      let data: object | undefined;
       if (ROUTES[path].ws?.onConnect) {
-        data = ROUTES[path].ws.onConnect();
-      }
-      if (ROUTES[path].subpaths[subpath]?.ws) {
-        ws.on("message", (message) => {
-          ROUTES[path].subpaths[subpath].ws!(ws, message.toString(), data);
-        });
+        let { emitter, data } = ROUTES[path].ws.onConnect();
+        if (ROUTES[path].subpaths[subpath]?.ws) {
+          ws.on("message", (message) => {
+            ROUTES[path].subpaths[subpath].ws!(
+              ws,
+              message.toString(),
+              emitter,
+              data
+            );
+          });
+        }
       }
     }
   }
