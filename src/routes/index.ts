@@ -18,9 +18,12 @@ export type Route = {
       delete?: (req: Request, res: Response) => any;
       post?: (req: Request, res: Response) => any;
       patch?: (req: Request, res: Response) => any;
-      ws?: (socket: WebSocket, message: string) => any;
+      ws?: (socket: WebSocket, message: string, data?: any) => any;
       middleware?: Handler[];
     };
+  };
+  ws?: {
+    onConnect?: () => any;
   };
   params?: {
     [value: string]: RequestParamHandler;

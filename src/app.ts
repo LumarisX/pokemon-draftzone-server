@@ -15,6 +15,7 @@ import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
 import { LeagueAdRoutes } from "./routes/league-ad.route";
 import { config } from "./config";
+import { TeambuilderRoutes } from "./routes/teambuilder.route";
 
 mongoose
   .connect(
@@ -23,11 +24,9 @@ mongoose
   .then(() => {
     console.log("Connected to Database");
   })
-  .catch((error) =>
-    console.error(`Failed to connected to the database: ${error.message}`)
-  );
-
-const db = mongoose.connection;
+  .catch((error) => {
+    console.error(`Failed to connect to the database: ${error.message}`);
+  });
 
 export const app = express();
 
@@ -57,6 +56,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/replay": ReplayRoutes,
   "/planner": PlannerRoutes,
   "/leagues": LeagueAdRoutes,
+  "/teambuilder": TeambuilderRoutes,
 };
 
 const METHODS: ("get" | "post" | "delete" | "patch")[] = [

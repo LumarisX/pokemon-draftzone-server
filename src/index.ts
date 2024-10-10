@@ -24,17 +24,22 @@ const wss = new WebSocket.Server({ server });
 wss.on("connection", (ws, req) => {
   console.log(`${req.headers["user-agent"]} => ${req.url}`);
 
-  ws.on("message", (message) => {
-    if (req.url) {
-      const [_, main, ...paths] = req.url.split("/");
-      const path = `/${main}`;
-      const subpath = `/${paths.join("/")}`;
-      console.log(ROUTES[path], subpath);
-      if (ROUTES[path] && ROUTES[path].subpaths[subpath].ws) {
-        ROUTES[path].subpaths[subpath].ws(ws, message.toString());
+  if (req.url) {
+    const [_, main, ...paths] = req.url.split("/");
+    const path = `/${main}`;
+    const subpath = `/${paths.join("/")}`;
+    if (ROUTES[path]) {
+      let data: object | undefined;
+      if (ROUTES[path].ws?.onConnect) {
+        data = ROUTES[path].ws.onConnect();
+      }
+      if (ROUTES[path].subpaths[subpath]?.ws) {
+        ws.on("message", (message) => {
+          ROUTES[path].subpaths[subpath].ws!(ws, message.toString(), data);
+        });
       }
     }
-  });
+  }
 
   ws.on("close", () => {
     console.log("WebSocket connection closed");
