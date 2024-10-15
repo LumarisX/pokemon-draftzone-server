@@ -7,6 +7,8 @@ import {
   sendError,
   sendResponse,
 } from "../services/websocket.service";
+import { Teambuilder } from "../classes/teambuilder";
+import { DraftSpecies } from "../classes/pokemon";
 
 export const TeambuilderRoutes: Route = {
   subpaths: {
@@ -34,22 +36,67 @@ export const TeambuilderRoutes: Route = {
     onConnect: () => {
       const rpcEmitter = new EventEmitter();
       // Add event listeners for various methods
-      rpcEmitter.on("add", (socket, request, array: any[]) => {
-        const { ruleset, format, id } = request.params;
-        const gen = getRuleset(ruleset as RulesetId).gen;
-        array.push(State.State.createPokemon(gen, id, { nature: "Serious" }));
-        const team = array.map((mon) => ({
-          name: mon.species.name,
-          evs: mon.evs,
-          ivs: mon.ivs,
-          ability: gen.abilities.get(mon.ability ?? "")?.name ?? "",
-          level: mon.level,
-          nature: mon.nature ?? "Serious",
-          item: gen.items.get(mon.item ?? "")?.name ?? "None",
-          teraType: mon.teraType,
-        }));
-        sendResponse(socket, { team }, request.id);
+      rpcEmitter.on("add", (socket, request, team: Teambuilder.Pokemon[]) => {
+        const { rulesetID, formatID, id } = request.params;
+        const ruleset = getRuleset(rulesetID as RulesetId);
+        team.push(
+          new Teambuilder.Pokemon(
+            new DraftSpecies(ruleset.gen.dex.species.get(id), {}, ruleset)
+          )
+        );
+        sendResponse(
+          socket,
+          {
+            team: team.map((mon) => ({
+              name: mon.specie.name,
+              evs: mon.evs,
+              ivs: mon.ivs,
+              ability: mon.ability.name,
+              level: mon.level,
+              nature: mon.nature.name,
+              item: mon.item?.name,
+              teraType: mon.teraType,
+              stats: mon.stats,
+            })),
+          },
+          request.id
+        );
       });
+
+      rpcEmitter.on(
+        "update",
+        (socket, request, team: Teambuilder.Pokemon[]) => {
+          const { index, data } = request.params;
+
+          if (team[index]) {
+            const mutableData = { ...data };
+            delete mutableData.stats;
+            console.log(mutableData);
+            team[index] = Object.assign(
+              team[index],
+              mutableData as Partial<Teambuilder.Pokemon>
+            );
+          }
+          sendResponse(
+            socket,
+            {
+              pokemon: {
+                name: team[index].specie.name,
+                evs: team[index].evs,
+                ivs: team[index].ivs,
+                ability: team[index].ability.name,
+                level: team[index].level,
+                nature: team[index].nature.name,
+                item: team[index].item?.name,
+                teraType: team[index].teraType,
+                stats: team[index].stats,
+              },
+              index: index,
+            },
+            request.id
+          );
+        }
+      );
 
       rpcEmitter.on("unknownMethod", (socket, request) => {
         sendError(socket, -32601, "Method not found", request.id);

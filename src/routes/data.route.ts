@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { Route } from ".";
 import { getFormats } from "../data/formats";
-import { getRuleset, getRulesets, Ruleset } from "../data/rulesets";
-import { filterNames } from "../services/data-services/pokedex.service";
+import { getRulesets, Ruleset } from "../data/rulesets";
 import { searchPokemon } from "../services/search.service";
 
 type DataResponse = Response & { ruleset?: Ruleset };
@@ -33,26 +32,26 @@ export const DataRoutes: Route = {
         }
       },
     },
-    "/search": {
-      get: async (req: Request, res: DataResponse) => {
-        try {
-          let ruleset = req.query.ruleset;
-          let query = req.query.query;
-          if (typeof ruleset == "string" && typeof query == "string") {
-            res.json(filterNames(getRuleset(ruleset), query));
-          } else {
-            res
-              .status(400)
-              .json({ error: "Ruleset type error", code: "DT-R3-01" });
-          }
-        } catch (error) {
-          console.error("Error in /search route:", error);
-          res
-            .status(500)
-            .json({ error: "Internal Server Error", code: "DT-R3-02" });
-        }
-      },
-    },
+    // "/search": {
+    //   get: async (req: Request, res: DataResponse) => {
+    //     try {
+    //       let ruleset = req.query.ruleset;
+    //       let query = req.query.query;
+    //       if (typeof ruleset == "string" && typeof query == "string") {
+    //         res.json(filterNames(getRuleset(ruleset), query));
+    //       } else {
+    //         res
+    //           .status(400)
+    //           .json({ error: "Ruleset type error", code: "DT-R3-01" });
+    //       }
+    //     } catch (error) {
+    //       console.error("Error in /search route:", error);
+    //       res
+    //         .status(500)
+    //         .json({ error: "Internal Server Error", code: "DT-R3-02" });
+    //     }
+    //   },
+    // },
     "/advancesearch": {
       get: async (req: Request, res: DataResponse) => {
         try {

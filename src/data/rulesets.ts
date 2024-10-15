@@ -100,7 +100,7 @@ const Rulesets: {
 
 export function getRuleset(rulesetId: string) {
   if (rulesetId && rulesetId in Rulesets) return Rulesets[rulesetId];
-  else throw new Error("Ruleset Id not found");
+  else throw new Error(`Ruleset Id not found: ${rulesetId}`);
 }
 
 export function getRulesets() {
