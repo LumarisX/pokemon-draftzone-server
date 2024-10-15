@@ -5,7 +5,7 @@ export type RulesetId = keyof typeof Rulesets & string;
 
 export type Ruleset = {
   gen: Generation;
-  natdex: boolean;
+  restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
 };
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
@@ -52,9 +52,13 @@ const DRAFT_EXISTS = (d: Data) => {
 const NATDEX_EXISTS = (d: Data) => {
   if (!d.exists) return false;
   if (d.kind === "Ability" && d.id === "noability") return false;
-  if ("isNonstandard" in d && d.isNonstandard && d.isNonstandard !== "Past")
-    return false;
-  if ("tier" in d && d.tier === "Unreleased") return false;
+  if (
+    "isNonstandard" in d &&
+    d.isNonstandard &&
+    d.kind === "Species" &&
+    d.isNonstandard !== "Past"
+  )
+    if ("tier" in d && d.tier === "Unreleased") return false;
   if (
     d.kind === "Species" &&
     (NATDEX_UNOBTAINABLE_SPECIES.includes(d.name) ||
@@ -80,29 +84,23 @@ export const natdexGens = new Generations(Dex, NATDEX_EXISTS);
 const Rulesets: {
   [key: string]: Ruleset;
 } = {
-  "Gen9 NatDex": { gen: natdexGens.get(9), natdex: true },
-  "Paldea Dex": { gen: gens.get(9), natdex: false },
-  "Gen8 NatDex": { gen: natdexGens.get(8), natdex: true },
-  "Galar Dex": { gen: gens.get(8), natdex: true },
-  // "Gen7 NatDex": { gen: natdexGens.get(7), natdex: true },
-  "Alola Dex": { gen: gens.get(7), natdex: true },
-  // "Gen6 NatDex": { gen: natdexGens.get(6), natdex: true },
-  "Kalos Dex": { gen: gens.get(6), natdex: true },
-  // "Gen5 NatDex": { gen: natdexGens.get(5), natdex: true },
-  "Unova Dex": { gen: gens.get(5), natdex: true },
-  // "Gen4 NatDex": { gen: natdexGens.get(4), natdex: true },
-  "Sinnoh Dex": { gen: gens.get(4), natdex: true },
-  // "Gen3 NatDex": { gen: natdexGens.get(3), natdex: true },
-  "Hoenn Dex": { gen: gens.get(3), natdex: true },
-  // "Gen2 NatDex": { gen: natdexGens.get(2), natdex: true },
-  "Johto Dex": { gen: gens.get(2), natdex: true },
-  "Kanto Dex": { gen: gens.get(1), natdex: true },
+  "Gen9 NatDex": { gen: natdexGens.get(9) },
+  "Paldea Dex": { gen: gens.get(9), restriction: "Paldea" },
+  "Gen8 NatDex": { gen: natdexGens.get(8) },
+  "Galar Dex": { gen: gens.get(8), restriction: "Galar" },
+  "Alola Dex": { gen: gens.get(7) },
+  "Kalos Dex": { gen: gens.get(6) },
+  "Unova Dex": { gen: gens.get(5) },
+  "Sinnoh Dex": { gen: gens.get(4) },
+  "Hoenn Dex": { gen: gens.get(3) },
+  "Johto Dex": { gen: gens.get(2) },
+  "Kanto Dex": { gen: gens.get(1) },
   // CAP: { gen: gens.get(9), natdex: true },
 };
 
-export function getRuleset(rulesetId?: string) {
+export function getRuleset(rulesetId: string) {
   if (rulesetId && rulesetId in Rulesets) return Rulesets[rulesetId];
-  else return Rulesets["Gen9 NatDex"];
+  else throw new Error("Ruleset Id not found");
 }
 
 export function getRulesets() {

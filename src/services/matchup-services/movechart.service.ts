@@ -292,7 +292,7 @@ export async function movechart(team: DraftSpecies[]) {
   for (const pokemon of team) {
     for (let cat of chartMoves) {
       for (const move of cat.moves) {
-        if (await pokemon.learns(move.id)) {
+        if (await pokemon.canLearn(move.id)) {
           let category = movechart.find(
             (entry) => entry.categoryName === cat.categoryName
           );

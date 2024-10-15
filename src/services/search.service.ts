@@ -269,7 +269,7 @@ async function evaluate(
               );
             break;
           case "learns":
-            leftValue = (await pokemon.learns(node.right?.value))
+            leftValue = (await pokemon.canLearn(node.right?.value))
               ? node.right?.value
               : "";
             break;

@@ -1,8 +1,9 @@
-import { ID, MoveSource, toID, TypeName } from "@pkmn/data";
+import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
   As,
   Condition,
+  Dex,
   EggGroup,
   EvoType,
   FormeName,
@@ -37,7 +38,7 @@ export interface Pokemon extends PokemonOptions {
   name: string;
 }
 
-export class DraftSpecies implements Species, Pokemon {
+export class DraftSpecies implements Specie, Pokemon {
   effectType!: "Pokemon";
   kind!: "Species";
   baseSpecies!: SpeciesName;
@@ -91,7 +92,7 @@ export class DraftSpecies implements Species, Pokemon {
   evoType?: EvoType;
   gender?: GenderName;
   maxHP?: number;
-  canGigantamax?: string;
+  canGigantamax?: MoveName;
   gmaxUnreleased?: boolean;
   cannotDynamax?: boolean;
   forceTeraType?: string;
@@ -99,15 +100,28 @@ export class DraftSpecies implements Species, Pokemon {
   capt?: { tera?: TypeName[]; z?: boolean };
   ruleset: Ruleset;
   bst: number;
+  inheritsFrom!: ID;
+  formes?: SpeciesName[] | undefined;
+  evoRegion?: "Alola" | "Galar" | undefined;
+  dex!: Dex;
+  toString: () => SpeciesName;
+  toJSON: () => { [key: string]: any };
 
   constructor(species: Species, data: PokemonOptions, ruleset: Ruleset) {
-    Object.assign(this, species);
+    const specie = new Specie(ruleset.gen.dex, ruleset.gen.exists, species);
+    Object.assign(this, specie);
+    this.toString = specie.toString;
+    this.toJSON = specie.toJSON;
     this.shiny = data.shiny;
     this.capt = data.capt;
     this.ruleset = ruleset;
-    this.bst = Object.values(species.baseStats).reduce(
+    this.bst = Object.values(specie.baseStats).reduce(
       (sum, stat) => stat + sum
     );
+  }
+
+  get formeNum(): number {
+    throw new Error("Method not implemented.");
   }
 
   toPokemon(): Pokemon {
@@ -362,65 +376,19 @@ export class DraftSpecies implements Species, Pokemon {
   private $learnset?: Move[];
   async learnset(): Promise<Move[]> {
     if (this.$learnset) return this.$learnset;
-    let id = this.id;
-    let learnset = await this.ruleset.gen.learnsets.get(id);
-    if (!learnset) {
-      id =
-        typeof this.battleOnly === "string" &&
-        this.battleOnly !== this.baseSpecies
-          ? toID(this.battleOnly)
-          : toID(this.baseSpecies);
-      learnset = await this.ruleset.gen.learnsets.get(id);
-    }
-    let species: Species = this;
-    let totalLearnset: { [moveid: string]: MoveSource[] } = {};
-    while (learnset) {
-      for (let move in learnset.learnset) {
-        // will need to be updated for gen 10
-        if (
-          (this.ruleset.natdex &&
-            learnset.learnset[move].some(
-              (learns) => +learns.charAt(0) <= this.ruleset.gen.num
-            )) ||
-          (!this.ruleset.natdex &&
-            learnset.learnset[move].some((learns) => {
-              return +learns.charAt(0) === this.ruleset.gen.num;
-            }))
-        )
-          if (move in totalLearnset) {
-            totalLearnset[move].concat(learnset.learnset[move]);
-          } else {
-            totalLearnset[move] = learnset.learnset[move];
-          }
-      }
-      if (
-        id === "lycanrocdusk" ||
-        (species.id === "rockruff" && id === "rockruff")
-      ) {
-        id = "rockruffdusk" as ID;
-      } else if (species.id === ("gastrodoneast" as ID)) {
-        id = "gastrodon" as ID;
-      } else if (species.id === ("pumpkaboosuper" as ID)) {
-        id = "pumpkaboo" as ID;
-      } else {
-        id = toID(species.battleOnly || species.changesFrom || species.prevo);
-      }
-      if (!id) break;
-      const s = this.ruleset.gen.dex.species.get(id);
-      if (!s) break;
-      species = s;
-      learnset = await this.ruleset.gen.learnsets.get(id);
-    }
-
-    if (!totalLearnset) return [];
-    let moves: Move[] = Object.keys(totalLearnset)
+    const learnset = await this.ruleset.gen.learnsets.learnable(
+      this.id,
+      this.ruleset.restriction
+    );
+    if (!learnset) return [];
+    const moves: Move[] = Object.keys(learnset)
       .map((move) => this.ruleset.gen.moves.get(move))
       .filter((move) => move !== undefined) as Move[];
     this.$learnset = moves;
     return moves;
   }
 
-  async learns(moveString: string): Promise<boolean> {
+  async canLearn(moveString: string): Promise<boolean> {
     if (this.id === "smeargle") return true;
     let moveID = toID(moveString);
     return (await this.learnset()).some((move) => move.id === moveID);
