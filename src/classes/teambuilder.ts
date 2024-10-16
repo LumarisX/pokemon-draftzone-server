@@ -2,6 +2,7 @@ import {
   Ability,
   ID,
   Item,
+  MoveName,
   Nature,
   NatureName,
   StatID,
@@ -18,6 +19,7 @@ export namespace Teambuilder {
     nature: Nature;
     ability: Ability;
     item?: Item;
+    moves: [ID | null, ID | null, ID | null, ID | null];
     teraType: TypeName;
     constructor(
       public specie: DraftSpecies,
@@ -60,7 +62,7 @@ export namespace Teambuilder {
         this.throwError(`Invalid Ability: ${abilityName}`);
       if (options?.item)
         this.item = this.specie.ruleset.gen.items.get(options.item);
-
+      this.moves = [null, null, null, null];
       this.teraType = options?.teraType ?? this.specie.types[0];
     }
 
@@ -103,6 +105,26 @@ export namespace Teambuilder {
       console.log(this.level, stats);
 
       return stats;
+    }
+
+    async toBuilder() {
+      return {
+        name: this.specie.name,
+        evs: this.evs,
+        ivs: this.ivs,
+        ability: this.ability.name,
+        abilities: Object.values(this.specie.abilities),
+        level: this.level,
+        moves: this.moves,
+        nature: this.nature.name,
+        item: this.item?.name,
+        teraType: this.teraType,
+        stats: this.stats,
+        learnset: (await this.specie.learnset()).map((move) => ({
+          id: move.id,
+          name: move.name,
+        })),
+      };
     }
   }
 }

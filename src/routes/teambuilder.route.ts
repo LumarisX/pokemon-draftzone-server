@@ -35,37 +35,35 @@ export const TeambuilderRoutes: Route = {
   ws: {
     onConnect: () => {
       const rpcEmitter = new EventEmitter();
-      // Add event listeners for various methods
-      rpcEmitter.on("add", (socket, request, team: Teambuilder.Pokemon[]) => {
-        const { rulesetID, formatID, id } = request.params;
-        const ruleset = getRuleset(rulesetID as RulesetId);
-        team.push(
-          new Teambuilder.Pokemon(
-            new DraftSpecies(ruleset.gen.dex.species.get(id), {}, ruleset)
-          )
-        );
-        sendResponse(
-          socket,
-          {
-            team: team.map((mon) => ({
-              name: mon.specie.name,
-              evs: mon.evs,
-              ivs: mon.ivs,
-              ability: mon.ability.name,
-              level: mon.level,
-              nature: mon.nature.name,
-              item: mon.item?.name,
-              teraType: mon.teraType,
-              stats: mon.stats,
-            })),
-          },
-          request.id
-        );
-      });
+
+      rpcEmitter.on(
+        "add",
+        async (socket, request, team: Teambuilder.Pokemon[]) => {
+          const { rulesetID, formatID, id } = request.params;
+          const ruleset = getRuleset(rulesetID as RulesetId);
+          team.push(
+            new Teambuilder.Pokemon(
+              new DraftSpecies(ruleset.gen.dex.species.get(id), {}, ruleset)
+            )
+          );
+
+          const teamData = await Promise.all(
+            team.map((mon) => mon.toBuilder())
+          );
+
+          sendResponse(
+            socket,
+            {
+              team: teamData,
+            },
+            request.id
+          );
+        }
+      );
 
       rpcEmitter.on(
         "update",
-        (socket, request, team: Teambuilder.Pokemon[]) => {
+        async (socket, request, team: Teambuilder.Pokemon[]) => {
           const { index, data } = request.params;
 
           if (team[index]) {
@@ -77,20 +75,13 @@ export const TeambuilderRoutes: Route = {
               mutableData as Partial<Teambuilder.Pokemon>
             );
           }
+
+          const pokemonData = await team[index].toBuilder();
+
           sendResponse(
             socket,
             {
-              pokemon: {
-                name: team[index].specie.name,
-                evs: team[index].evs,
-                ivs: team[index].ivs,
-                ability: team[index].ability.name,
-                level: team[index].level,
-                nature: team[index].nature.name,
-                item: team[index].item?.name,
-                teraType: team[index].teraType,
-                stats: team[index].stats,
-              },
+              pokemon: pokemonData,
               index: index,
             },
             request.id
