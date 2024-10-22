@@ -113,7 +113,10 @@ export namespace Teambuilder {
         evs: this.evs,
         ivs: this.ivs,
         ability: this.ability.name,
-        abilities: Object.values(this.specie.abilities),
+        abilities: Object.values(this.specie.abilities).map((abilityName) => ({
+          name: abilityName,
+          value: this.specie.ruleset.gen.abilities.get(abilityName)?.id,
+        })),
         level: this.level,
         moves: this.moves,
         nature: this.nature.name,
@@ -122,6 +125,7 @@ export namespace Teambuilder {
         stats: this.stats,
         learnset: (await this.specie.learnset()).map((move) => ({
           id: move.id,
+          type: move.type,
           name: move.name,
         })),
       };
