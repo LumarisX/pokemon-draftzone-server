@@ -64,16 +64,14 @@ export const TeambuilderRoutes: Route = {
       rpcEmitter.on(
         "update",
         async (socket, request, team: Teambuilder.Pokemon[]) => {
-          const { index, data } = request.params;
-
+          const {
+            index,
+            data,
+          }: { index: number; data: Partial<Teambuilder.Pokemon> } =
+            request.params;
           if (team[index]) {
-            const mutableData = { ...data };
-            delete mutableData.stats;
-            console.log(mutableData);
-            team[index] = Object.assign(
-              team[index],
-              mutableData as Partial<Teambuilder.Pokemon>
-            );
+            console.log(data);
+            team[index] = Object.assign(team[index], data);
           }
 
           const pokemonData = await team[index].toBuilder();

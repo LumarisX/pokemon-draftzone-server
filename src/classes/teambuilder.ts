@@ -103,7 +103,6 @@ export namespace Teambuilder {
         );
       });
       console.log(this.level, stats);
-
       return stats;
     }
 
@@ -115,7 +114,7 @@ export namespace Teambuilder {
         ability: this.ability.name,
         abilities: Object.values(this.specie.abilities).map((abilityName) => ({
           name: abilityName,
-          value: this.specie.ruleset.gen.abilities.get(abilityName)?.id,
+          id: this.specie.ruleset.gen.abilities.get(abilityName)?.id,
         })),
         level: this.level,
         moves: this.moves,
