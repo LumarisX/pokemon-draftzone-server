@@ -108,6 +108,7 @@ export namespace Teambuilder {
 
     async toBuilder() {
       return {
+        id: this.specie.id,
         name: this.specie.name,
         evs: this.evs,
         ivs: this.ivs,
