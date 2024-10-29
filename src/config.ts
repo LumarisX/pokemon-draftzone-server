@@ -15,12 +15,10 @@ const requiredEnvVars: string[] = [
 
 type Config = { [key in (typeof requiredEnvVars)[number]]: string };
 
-const config: Config = Object.fromEntries(
+export const config: Config = Object.fromEntries(
   requiredEnvVars.map((key) => {
     const value = process.env[key];
     if (!value) throw new Error(`Missing environment variable: ${key}`);
     return [key, value];
   })
 ) as Config;
-
-export { config };

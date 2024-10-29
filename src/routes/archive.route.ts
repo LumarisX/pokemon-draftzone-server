@@ -26,14 +26,21 @@ export const ArchiveRoutes: Route = {
           });
           archives = archives.map((rawArchive) => {
             let archive = rawArchive.toObject();
-            archive.team = archive.team.map((mon) => ({
-              id: mon.id,
-              name: getName(mon.id),
-            }));
+            archive.team = archive.team
+              .filter((mon) => {
+                if (mon.id) return true;
+                //throw an error that mons are missing
+                return false;
+              })
+              .map((mon) => ({
+                id: mon.id,
+                name: getName(mon.id),
+              }));
             return archive;
           });
           res.json(archives);
         } catch (error) {
+          console.error(error);
           res
             .status(500)
             .json({ message: (error as Error).message, code: "AR-R1-01" });
@@ -63,6 +70,7 @@ export const ArchiveRoutes: Route = {
         }
         try {
         } catch (error) {
+          console.error(error);
           res.status(500).json({ message: (error as Error).message });
         }
       },
@@ -82,7 +90,7 @@ export const ArchiveRoutes: Route = {
         res.archive = res.rawArchive.toObject();
         res.ruleset = getRuleset(res.archive!.ruleset);
       } catch (error) {
-        console.log(error);
+        console.error(error);
         return res
           .status(500)
           .json({ message: (error as Error).message, code: "DR-P2-02" });
