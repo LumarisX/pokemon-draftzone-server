@@ -109,7 +109,7 @@ export const DraftRoutes: Route = {
           );
           $matchups
             .keys()
-            .filter((key: string) => key.startsWith(req.params.team_id))
+            .filter((key: string) => key.startsWith(draft._id))
             .forEach((key: any) => $matchups.del(key));
           if (updatedDraft) {
             res
@@ -269,7 +269,7 @@ export const DraftRoutes: Route = {
             },
             { new: true, upsert: true }
           );
-          $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
+          $matchups.del(`${res.draft._id}-${req.params.matchup_id}`);
           if (updatedMatchup) {
             res
               .status(200)

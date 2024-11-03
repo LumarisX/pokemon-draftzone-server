@@ -75,7 +75,7 @@ export const MatchupRoutes: Route = {
         }
 
         const cachedData = $matchups.get(
-          `${req.params.team_id}-${req.params.matchup_id}`
+          `${res.matchup.aTeam._id}-${req.params.matchup_id}`
         );
         if (cachedData) {
           return res.json(cachedData);
@@ -177,7 +177,10 @@ export const MatchupRoutes: Route = {
           aTeamsummary.statistics();
           bTeamsummary.statistics();
           data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
-          $matchups.set(`${req.params.team_id}-${req.params.matchup_id}`, data);
+          $matchups.set(
+            `${res.matchup.aTeam._id}-${req.params.matchup_id}`,
+            data
+          );
           res.json(data);
         } catch (error) {
           console.log(error);
@@ -192,7 +195,7 @@ export const MatchupRoutes: Route = {
         }
         try {
           await res.rawMatchup.deleteOne();
-          $matchups.del(`${req.params.team_id}-${req.params.matchup_id}`);
+          $matchups.del(`${res.matchup.aTeam._id}-${req.params.matchup_id}`);
           res.json({ message: "Matchup deleted" });
         } catch (error) {
           res
