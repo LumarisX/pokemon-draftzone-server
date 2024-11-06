@@ -39,25 +39,25 @@ export const TeambuilderRoutes: Route = {
       rpcEmitter.on(
         "add",
         async (socket, request, team: Teambuilder.Pokemon[]) => {
-          const { rulesetID, formatID, id } = request.params;
+          const { rulesetID, formatID, id, index } = request.params;
           const ruleset = getRuleset(rulesetID as RulesetId);
-          team.push(
-            new Teambuilder.Pokemon(
-              new DraftSpecies(ruleset.gen.dex.species.get(id), {}, ruleset)
-            )
+          const newPokemon = new Teambuilder.Pokemon(
+            new DraftSpecies(ruleset.gen.dex.species.get(id), {}, ruleset)
           );
+          let changedData: Record<number, object>;
+          if (index && team[index]) {
+            team[index] = newPokemon;
+            changedData = {
+              [index]: await newPokemon.toBuilder(),
+            };
+          } else {
+            team.push(newPokemon);
+            changedData = {
+              [team.length - 1]: await newPokemon.toBuilder(),
+            };
+          }
 
-          const teamData = await Promise.all(
-            team.map((mon) => mon.toBuilder())
-          );
-
-          sendResponse(
-            socket,
-            {
-              team: teamData,
-            },
-            request.id
-          );
+          sendResponse(socket, changedData, request.id);
         }
       );
 
