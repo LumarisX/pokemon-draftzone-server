@@ -3,6 +3,8 @@ import { Dex } from "@pkmn/dex";
 
 export type RulesetId = keyof typeof Rulesets & string;
 
+export const DEFAULT: RulesetId = "Gen9 NatDex";
+
 export type Ruleset = {
   gen: Generation;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
@@ -50,6 +52,12 @@ const DRAFT_EXISTS = (d: Data) => {
 };
 
 const NATDEX_EXISTS = (d: Data) => {
+  if (!BASE_EXISTS(d)) return false;
+  if ("num" in d && d.num <= 0) return false;
+  return true;
+};
+
+const BASE_EXISTS = (d: Data) => {
   if (!d.exists) return false;
   if (d.kind === "Ability" && d.id === "noability") return false;
   if (

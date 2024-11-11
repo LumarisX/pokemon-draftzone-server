@@ -9,7 +9,8 @@
     "install-dep": "npm i --no-bin-links",
     "test": "nodemon src/tests/run.test.ts",
     "testOne": "ts-node src/tests/run.test.ts",
-    "mongoAction": "ts-node src/tests/database/database.functions.ts"
+    "mongoAction": "ts-node src/tests/database/database.functions.ts",
+    "run-report": "ts-node reports/index.ts"
   },
   "engines": {
     "node": "18.16.0"
