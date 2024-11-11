@@ -217,105 +217,108 @@ export class Replay {
               faintMon.formes[faintMon.formes.length - 1].detail.split(", ")[0]
             } fainted`;
             if (faintMon.lastDamage) {
-              //Fainted from direct damage
-              if (faintMon.lastDamage.type === "direct") {
-                if (this.lastMove) {
-                  if (this.lastMove.data === faintMon.lastDamage.parent.main) {
-                    let faintAttacker = this.getMonByString(
-                      this.lastMove.data[1]
-                    );
-                    faintString += ` from ${this.lastMove.data[2]}`;
-                    if (faintAttacker) {
-                      let faintOwnKill = this.checkOwnKill(
-                        faintAttacker,
-                        faintMon
+              let destinyBondMonList = this.field.sides
+                .map((side) =>
+                  [side.a.pokemon, side.b.pokemon, side.c.pokemon].find(
+                    (pokemon) =>
+                      pokemon &&
+                      this.searchStatuses(pokemon, "move: Destiny Bond")
+                  )
+                )
+                .filter((pokemon) => pokemon);
+              if (
+                destinyBondMonList.filter((mon) => mon !== faintMon).length > 0
+              ) {
+                let destinyBondMon = destinyBondMonList.find(
+                  (pokemon) =>
+                    pokemon?.fainted && pokemon.lastDamage?.damager === faintMon
+                );
+                if (destinyBondMon) {
+                  destinyBondMon.kills[1]++;
+                  faintString += ` from Destiny Bond from ${
+                    destinyBondMon.player.username
+                  }'s ${
+                    destinyBondMon.formes[
+                      destinyBondMon.formes.length - 1
+                    ].detail.split(", ")[0]
+                  }`;
+                }
+              } else {
+                //Fainted from direct damage
+                if (faintMon.lastDamage.type === "direct") {
+                  if (this.lastMove) {
+                    if (
+                      this.lastMove.data === faintMon.lastDamage.parent.main
+                    ) {
+                      let faintAttacker = this.getMonByString(
+                        this.lastMove.data[1]
                       );
-                      if (faintOwnKill != "self") {
+                      faintString += ` from ${this.lastMove.data[2]}`;
+                      if (faintAttacker) {
+                        let faintOwnKill = this.checkOwnKill(
+                          faintAttacker,
+                          faintMon
+                        );
+                        if (faintOwnKill != "self") {
+                          faintString += ` by ${
+                            this.playerData[
+                              +this.lastMove.data[1].charAt(1) - 1
+                            ].username
+                          }'s ${
+                            faintAttacker.formes[
+                              faintAttacker.formes.length - 1
+                            ].detail.split(", ")[0]
+                          }`;
+                          if (faintOwnKill != "ff") {
+                            faintAttacker.kills[0]++;
+                          }
+                        }
+                      } else {
                         faintString += ` by ${
-                          this.playerData[+this.lastMove.data[1].charAt(1) - 1]
-                            .username
+                          this.lastMove.data[1].split(": ")[1]
+                        }`;
+                      }
+                    }
+                    //Damaged from an indirect direct move
+                    else if (faintMon.lastDamage.status) {
+                      faintString += ` from ${faintMon.lastDamage.status.status.replace(
+                        "move: ",
+                        ""
+                      )}`;
+                      if (faintMon.lastDamage.status.setter) {
+                        faintMon.lastDamage.status.setter.kills[0]++;
+                        faintString += ` by ${
+                          faintMon.lastDamage.status.setter.player.username
                         }'s ${
-                          faintAttacker.formes[
-                            faintAttacker.formes.length - 1
+                          faintMon.lastDamage.status.setter.formes[
+                            faintMon.lastDamage.status.setter.formes.length - 1
                           ].detail.split(", ")[0]
                         }`;
-                        if (faintOwnKill != "ff") {
-                          faintAttacker.kills[0]++;
-                        }
                       }
                     } else {
-                      faintString += ` by ${
-                        this.lastMove.data[1].split(": ")[1]
-                      }`;
                     }
                   }
-                  //Damaged from not a direct move
-                  else if (faintMon.lastDamage.status) {
-                    faintString += ` from ${faintMon.lastDamage.status.status.replace(
-                      "move: ",
-                      ""
-                    )}`;
-                    if (faintMon.lastDamage.status.setter) {
-                      faintMon.lastDamage.status.setter.kills[0]++;
-                      faintString += ` by ${
-                        faintMon.lastDamage.status.setter.player.username
+                } //Fainted from indirect damage
+                else if (faintMon.lastDamage.type === "indirect") {
+                  if (faintMon.lastDamage.damager) {
+                    let faintFromOwnKill = this.checkOwnKill(
+                      faintMon.lastDamage.damager,
+                      faintMon
+                    );
+                    if (faintFromOwnKill != "self") {
+                      faintString += ` indirectly by ${
+                        faintMon.lastDamage.damager.player.username
                       }'s ${
-                        faintMon.lastDamage.status.setter.formes[
-                          faintMon.lastDamage.status.setter.formes.length - 1
+                        faintMon.lastDamage.damager.formes[
+                          faintMon.lastDamage.damager.formes.length - 1
                         ].detail.split(", ")[0]
                       }`;
-                    }
-                  } else {
-                    let destinyBondMonList = this.field.sides
-                      .map((side) =>
-                        [side.a.pokemon, side.b.pokemon, side.c.pokemon].find(
-                          (pokemon) =>
-                            pokemon &&
-                            this.searchStatuses(pokemon, "move: Destiny Bond")
-                        )
-                      )
-                      .filter((pokemon) => pokemon);
-                    if (destinyBondMonList.length > 0) {
-                      let destinyBondMon = destinyBondMonList.find(
-                        (pokemon) =>
-                          pokemon?.fainted &&
-                          pokemon.lastDamage?.damager === faintMon
-                      );
-                      if (destinyBondMon) {
-                        destinyBondMon.kills[1]++;
-                        faintString += ` from Destiny Bond from ${
-                          destinyBondMon.player.username
-                        }'s ${
-                          destinyBondMon.formes[
-                            destinyBondMon.formes.length - 1
-                          ].detail.split(", ")[0]
-                        }`;
-                      }
                     } else {
-                      console.log("Direct faint but no status");
+                      faintString += ` itself`;
                     }
-                  }
-                }
-              } //Fainted from indirect damage
-              else if (faintMon.lastDamage.type === "indirect") {
-                if (faintMon.lastDamage.damager) {
-                  let faintFromOwnKill = this.checkOwnKill(
-                    faintMon.lastDamage.damager,
-                    faintMon
-                  );
-                  if (faintFromOwnKill != "self") {
-                    faintString += ` indirectly by ${
-                      faintMon.lastDamage.damager.player.username
-                    }'s ${
-                      faintMon.lastDamage.damager.formes[
-                        faintMon.lastDamage.damager.formes.length - 1
-                      ].detail.split(", ")[0]
-                    }`;
-                  } else {
-                    faintString += ` itself`;
-                  }
-                  if (faintFromOwnKill === "opp") {
-                    faintMon.lastDamage.damager.kills[1]++;
+                    if (faintFromOwnKill === "opp") {
+                      faintMon.lastDamage.damager.kills[1]++;
+                    }
                   }
                 }
               }
@@ -538,6 +541,14 @@ export class Replay {
           }
           break;
         case "-singlemove":
+          let singleMoveMon = this.getMonByString(lineData[1]);
+          if (singleMoveMon) {
+            singleMoveMon.statuses.push({
+              status: `move: ${lineData[2]}`,
+              setter: singleMoveMon,
+              name: lineData[2],
+            });
+          }
           break;
         case "-singleturn":
           break;
