@@ -64,7 +64,12 @@ const NATDEX_EXISTS = (d: Data) => {
     (NATDEX_UNOBTAINABLE_SPECIES.includes(d.name) ||
       COSMETIC_SPECIES.includes(d.name) ||
       (d.battleOnly &&
-        !(d.forme == "Mega" || d.forme == "Mega-X" || d.forme == "Mega-Y")) ||
+        !(
+          d.forme == "Mega" ||
+          d.forme == "Mega-X" ||
+          d.forme == "Mega-Y" ||
+          d.forme == "Crowned"
+        )) ||
       d.forme === "Totem" ||
       d.forme === "Alola-Totem")
   )

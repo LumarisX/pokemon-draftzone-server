@@ -380,7 +380,7 @@ export class DraftSpecies implements Specie, Pokemon {
       this.id,
       this.ruleset.restriction
     );
-    if (!learnset) return [];
+    if (!learnset) return (this.$learnset = []);
     const moves: Move[] = Object.keys(learnset)
       .map((move) => this.ruleset.gen.moves.get(move))
       .filter((move) => move !== undefined) as Move[];
