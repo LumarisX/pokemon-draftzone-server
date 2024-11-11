@@ -40,9 +40,9 @@ export class Typechart {
         }
         return totalTypes;
       }, {});
-    let types: TypeName[] = Array.from(this.team[0].ruleset.gen.types).map(
-      (type) => type.toString()
-    );
+    let types: TypeName[] = Array.from(this.team[0].ruleset.gen.types)
+      .map((type) => type.toString())
+      .filter((x) => x != "Stellar");
     let base = Object.values(teamTypeChart).reduce(
       (sum, e) => sum + Math.pow(2, e),
       0
