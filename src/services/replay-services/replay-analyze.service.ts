@@ -1,4 +1,4 @@
-import { Generation, Generations, Move } from "@pkmn/data";
+import { Generation, Generations, Move, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class Replay {
@@ -349,6 +349,9 @@ export class Replay {
                   killString.attacker = destinyBondMon;
                 }
               } else {
+                if (this.turn === 19) {
+                  console.log(faintMon.lastDamage);
+                }
                 //Fainted from direct damage
                 if (faintMon.lastDamage.type === "direct") {
                   if (this.lastMove) {
@@ -1113,7 +1116,7 @@ export class Replay {
       }
     }
     //Indirect Damage
-    if (from) {
+    if (from && from !== toID(lastDamage.parent.main[2])) {
       if (of) {
         let ofMon = this.getMonByString(of);
         if (ofMon) {
