@@ -1,4 +1,4 @@
-import { Generation, Generations, Move, toID } from "@pkmn/data";
+import { Generations, Move, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class Replay {
@@ -1012,7 +1012,7 @@ export class Replay {
 
   private searchStatuses(pokemon: Pokemon, status: string): Status | undefined {
     if (status === "Recoil") {
-      return { status: status, setter: pokemon };
+      return { status: status, setter: pokemon, name: "Recoil" };
     }
     if (pokemon.status.status === status) {
       return pokemon.status;
@@ -1126,6 +1126,7 @@ export class Replay {
       } else if (from.startsWith("ability: ")) {
       } else {
         let damageIndirect = this.searchStatuses(target, from);
+        console.log(damageIndirect);
         if (damageIndirect) {
           lastDamage.status = damageIndirect;
           lastDamage.from = damageIndirect.name;
