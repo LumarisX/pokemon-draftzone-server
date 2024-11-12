@@ -349,9 +349,6 @@ export class Replay {
                   killString.attacker = destinyBondMon;
                 }
               } else {
-                if (this.turn === 19) {
-                  console.log(faintMon.lastDamage);
-                }
                 //Fainted from direct damage
                 if (faintMon.lastDamage.type === "direct") {
                   if (this.lastMove) {
@@ -397,7 +394,7 @@ export class Replay {
                       faintMon
                     );
                     killString.attacker = faintMon.lastDamage.damager;
-                    killString.reason = faintMon.lastDamage.status?.name;
+                    killString.reason = faintMon.lastDamage.from;
                     if (faintFromOwnKill === "opp") {
                       faintMon.lastDamage.damager.kills[1]++;
                     }
@@ -1124,11 +1121,14 @@ export class Replay {
           lastDamage.damager = ofMon;
         }
       } else if (from.startsWith("item: ")) {
+        lastDamage.from = from.replace("item: ", "");
+        lastDamage.damager = target;
       } else if (from.startsWith("ability: ")) {
       } else {
         let damageIndirect = this.searchStatuses(target, from);
         if (damageIndirect) {
           lastDamage.status = damageIndirect;
+          lastDamage.from = damageIndirect.name;
           if (damageIndirect.setter) {
             if (target != damageIndirect.setter) {
               damageIndirect.setter.damageDealt[1] += hppDiff;
@@ -1137,7 +1137,6 @@ export class Replay {
           }
         }
       }
-
       target.damageTaken[1] += hppDiff;
     } //Direct Damage
     else {
@@ -1291,6 +1290,7 @@ type LastDamage = {
   damager?: Pokemon;
   type: "indirect" | "direct";
   status?: Status;
+  from?: string;
 };
 
 type Pokemon = {
