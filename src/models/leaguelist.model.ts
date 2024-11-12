@@ -18,7 +18,7 @@ const divisionSchema = new mongoose.Schema({
   prizeValue: {
     type: Number,
     min: 0,
-    max: 3,
+    max: 4,
     required: true,
   },
   platform: {

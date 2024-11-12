@@ -1126,7 +1126,6 @@ export class Replay {
       } else if (from.startsWith("ability: ")) {
       } else {
         let damageIndirect = this.searchStatuses(target, from);
-        console.log(damageIndirect);
         if (damageIndirect) {
           lastDamage.status = damageIndirect;
           lastDamage.from = damageIndirect.name;
