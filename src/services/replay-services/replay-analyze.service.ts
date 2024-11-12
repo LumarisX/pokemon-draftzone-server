@@ -394,6 +394,7 @@ export class Replay {
                       faintMon
                     );
                     killString.attacker = faintMon.lastDamage.damager;
+                    killString.reason = faintMon.lastDamage.status?.name;
                     if (faintFromOwnKill === "opp") {
                       faintMon.lastDamage.damager.kills[1]++;
                     }
@@ -525,7 +526,9 @@ export class Replay {
                 statusStart.setter = this.field.sides[
                   +(lineData[1] as POKEMON).charAt(1) - 1
                 ].statuses.find(
-                  (status) => status.status === "move: Toxic Spikes"
+                  (status) =>
+                    status.status === "move: Toxic Spikes" ||
+                    status.status === "Toxic Spikes"
                 )?.setter;
               } else if (statusParent.main[0] === "move") {
                 let statusOnProtect = statusParent.sub.find(
