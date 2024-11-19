@@ -216,7 +216,7 @@ export class LeagueAd {
 
   static fromForm(formData: any, owner: Types.ObjectId) {
     const cleanString = (str: string) =>
-      str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]]/g, "");
+      str.replace(/[^a-zA-Z0-9\:s.,!?()\-_+'/\\\[\]]/g, "");
 
     console.log(formData);
     return new LeagueAd({
