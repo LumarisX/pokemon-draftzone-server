@@ -57,8 +57,11 @@ const NATDEX_EXISTS = (d: Data) => {
     d.isNonstandard &&
     d.kind === "Species" &&
     d.isNonstandard !== "Past"
-  )
+  ) {
     if ("tier" in d && d.tier === "Unreleased") return false;
+    if (d.isNonstandard === "CAP") return false;
+    if (d.isNonstandard === "Custom") return false;
+  }
   if (
     d.kind === "Species" &&
     (NATDEX_UNOBTAINABLE_SPECIES.includes(d.name) ||
