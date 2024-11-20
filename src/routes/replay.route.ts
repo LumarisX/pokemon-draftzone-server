@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { Route } from ".";
 import { SubRequest } from ".";
-import { Replay } from "../services/replay-services/replay-analyze.service";
+import {
+  formatUrl,
+  Replay,
+  validateUrl,
+} from "../services/replay-services/replay-analyze.service";
 
 type ReplayResponse = Response & { url?: string };
 
@@ -10,27 +14,35 @@ export const ReplayRoutes: Route = {
     "/analyze/:url": {
       get: async (req: Request, res: ReplayResponse) => {
         try {
-          const replayData = await fetch(`https://${res.url}.log`);
+          if (!res.url || !validateUrl(res.url))
+            return res
+              .status(400)
+              .json({ message: "Invalid URL Format", code: "RA-R1-01" });
+          const replayData = await fetch(`${formatUrl(res.url)}.log`);
           let replay = new Replay(await replayData.text());
           res.json(replay.analyze());
         } catch (error) {
           console.error("Error in /formats/ route:", error);
           res
             .status(500)
-            .json({ error: "Internal Server Error", code: "RA-R1-01" });
+            .json({ error: "Internal Server Error", code: "RA-R1-02" });
         }
       },
     },
     "/log/:url": {
       get: async (req: Request, res: ReplayResponse) => {
         try {
-          const replayData = await fetch(`https://${res.url}.log`);
+          if (!res.url || !validateUrl(res.url))
+            return res
+              .status(400)
+              .json({ message: "Invalid URL Format", code: "RA-R2-01" });
+          const replayData = await fetch(`https://${formatUrl(res.url)}.log`);
           res.send(await replayData.text());
         } catch (error) {
           console.error("Error in /formats/ route:", error);
           res
             .status(500)
-            .json({ error: "Internal Server Error", code: "RA-R1-01" });
+            .json({ error: "Internal Server Error", code: "RA-R2-02" });
         }
       },
     },
