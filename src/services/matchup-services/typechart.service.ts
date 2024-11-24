@@ -21,6 +21,7 @@ export class Typechart {
       team: this.team.map((pokemon) => ({
         ...pokemon.toPokemon(),
         weak: pokemon.typechart(),
+        types: pokemon.types,
       })),
       teraTypes: this.teraTypes,
     };

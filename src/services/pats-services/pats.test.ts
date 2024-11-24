@@ -1,10 +1,9 @@
-import { Natures } from "@pkmn/data";
-import { Nature } from "@pkmn/dex";
+import { AbilityName, ItemName, MoveName } from "@pkmn/data";
 import { calculate, Field, Move, NATURES, Pokemon, Result } from "@smogon/calc";
 import { NatureName } from "@smogon/calc/dist/data/interface";
 import fs from "fs";
 
-const PATH = "./src/tests/pats.json";
+const PATH = "./src/services/pats-services/pats.json";
 
 type PikalyticData = {
   name: string;
@@ -82,6 +81,143 @@ export async function getMonData(name: string) {
     ).text()
   );
   return rawMon;
+}
+
+export function testSet(
+  myPokemon: Pokemon,
+  otherPokemon: string,
+  field?: Field
+) {
+  const data: PikalyticData[] = JSON.parse(fs.readFileSync(PATH, "utf-8"));
+
+  console.log(
+    `### ${myPokemon.name} (${Object.entries(myPokemon.evs)
+      .filter((ev) => ev[1] > 0)
+      .map((ev) => `${ev[0].toUpperCase()}:${ev[1]}`)
+      .join("/")}) vs ${otherPokemon}\n`
+  );
+
+  let otherData = data.find((mon) => mon.name === otherPokemon);
+  if (!otherData) return;
+  let offensive: {
+    [key: MoveName]: {
+      value: number;
+      totalPercent: number;
+      basePercent: number;
+    };
+  } = {};
+  let defensive: {
+    [key: MoveName]: {
+      value: number;
+      totalPercent: number;
+      basePercent: number;
+    };
+  } = {};
+
+  let oPokemon = new Pokemon(9, otherPokemon, { level: 50 });
+  otherData.abilities.forEach((ability) => {
+    if (ability.ability === "Other") return;
+    oPokemon.ability = ability.ability as AbilityName;
+    otherData.items.forEach((item) => {
+      if (item.item === "Other") return;
+      oPokemon.item = item.item as ItemName;
+      otherData.spreads.forEach((spread) => {
+        let evs = spread.ev.split("/");
+        oPokemon.evs = {
+          hp: +evs[0],
+          atk: +evs[1],
+          def: +evs[2],
+          spa: +evs[3],
+          spd: +evs[4],
+          spe: +evs[5],
+        };
+        oPokemon.nature = spread.nature as NatureName;
+        //Defensive
+        otherData.moves.forEach((moveData) => {
+          if (moveData.move === "Other") return;
+          let move = new Move(9, moveData.move);
+          if (!defensive[move.name])
+            defensive[move.name] = {
+              value: 0,
+              totalPercent: 0,
+              basePercent: +moveData.percent / 100,
+            };
+          if (move && move.category === "Status") return;
+          let result = calculate(9, oPokemon, myPokemon, move, field);
+          // console.log(result.fullDesc());
+          let adjustedPercent =
+            ((((((+ability.percent / 100) * +item.percent) / 100) *
+              +moveData.percent) /
+              100) *
+              +spread.percent) /
+            100;
+          let koValue =
+            1 + result.kochance().n - +(result.kochance().chance ?? 1);
+          defensive[move.name].value += koValue * adjustedPercent;
+          defensive[move.name].totalPercent += adjustedPercent;
+        });
+
+        //Offensive
+        myPokemon.moves.forEach((moveName) => {
+          let move = new Move(9, moveName);
+          if (!offensive[move.name])
+            offensive[move.name] = {
+              value: 0,
+              totalPercent: 0,
+              basePercent: 1,
+            };
+          if (move && move.category === "Status") return;
+          let result = calculate(9, myPokemon, oPokemon, move, field);
+          // console.log(result.fullDesc());
+          let adjustedPercent =
+            ((((+ability.percent / 100) * +item.percent) / 100) *
+              +spread.percent) /
+            100;
+          offensive[move.name].value +=
+            (1 + result.kochance().n - +(result.kochance().chance ?? 1)) *
+            adjustedPercent;
+          offensive[move.name].totalPercent += adjustedPercent;
+        });
+      });
+    });
+  });
+  console.log(`**${otherPokemon} into ${myPokemon.name}**`);
+  Object.entries(defensive).forEach((move) => {
+    const adjustedValue = move[1].value / move[1].totalPercent;
+    const n = Number.isNaN(adjustedValue) ? NaN : Math.floor(adjustedValue);
+    const chance = (1 - (adjustedValue - n)) * 100;
+    const fixedChange = chance.toFixed(1);
+    console.log(
+      `${move[0]}: ${
+        Number.isNaN(n)
+          ? `Will never KO`
+          : fixedChange === "0.0"
+          ? `Guarunteed to ${n + 1}HKO`
+          : fixedChange === "100.0"
+          ? `Guarunteed to ${n}HKO`
+          : `${chance.toFixed(1)}% chance to ${n + 1}HKO`
+      }`
+    );
+  });
+  console.log(`\n**${myPokemon.name} into ${otherPokemon}**`);
+  Object.entries(offensive).forEach((move) => {
+    const adjustedValue = move[1].value / move[1].totalPercent;
+    const n = Number.isNaN(adjustedValue) ? NaN : Math.floor(adjustedValue);
+    const chance = (1 - (adjustedValue - n)) * 100;
+    const hko = n === 1 ? "O" : n.toFixed(0);
+    const fixedChange = chance.toFixed(1);
+    console.log(
+      `${move[0]}: ${
+        Number.isNaN(n)
+          ? `Will never KO`
+          : fixedChange === "0.0"
+          ? `Guarunteed to ${n + 1}HKO`
+          : fixedChange === "100.0"
+          ? `Guarunteed to ${n}HKO`
+          : `${chance.toFixed(1)}% chance to ${n + 1}HKO`
+      }`
+    );
+  });
 }
 
 export function getSpreads() {
@@ -276,4 +412,50 @@ export function getCalcs() {
       console.log(mon.name, monTotal);
     });
   console.log("Total", totalPoints);
+}
+
+export function speedTiers() {
+  const data: PikalyticData[] = JSON.parse(fs.readFileSync(PATH, "utf-8"));
+
+  const tiers: { name: string; spe: number; text: string }[] = [];
+
+  data
+    .filter((monData) => +monData.ranking <= 100)
+    .forEach((monData) => {
+      let mon = new Pokemon(9, monData.name, { level: 50 });
+      tiers.push({ name: mon.name, spe: mon.stats.spe, text: "Base SPE" });
+      mon = new Pokemon(9, mon.name, { level: 50, evs: { spe: 252 } });
+      // tiers.push({ name: mon.name, spe: mon.stats.spe, text: "Max SPE" });
+      mon = new Pokemon(9, mon.name, {
+        level: 50,
+        evs: { spe: 252 },
+        nature: "Jolly",
+      });
+      tiers.push({
+        name: mon.name,
+        spe: Math.floor(mon.stats.spe),
+        text: "Max SPE +",
+      });
+      tiers.push({
+        name: mon.name,
+        spe: Math.floor(mon.stats.spe / 2) + 1,
+        text: "Max SPE+ UnTailwinded",
+      });
+      mon = new Pokemon(9, mon.name, {
+        level: 50,
+        ivs: { spe: 0 },
+        nature: "Sassy",
+      });
+      tiers.push({
+        name: mon.name,
+        spe: Math.floor(mon.stats.spe),
+        text: "Min SPE -",
+      });
+    });
+
+  tiers
+    .sort((x, y) => x.spe - y.spe)
+    .forEach((e) => {
+      console.log(e.name, e.spe, e.text);
+    });
 }
