@@ -284,33 +284,59 @@ export type Movechart = {
   }[];
 }[];
 
-export async function movechart(team: DraftSpecies[]) {
-  let movechart: Movechart = chartMoves.map((cat) => ({
-    categoryName: cat.categoryName,
-    moves: [],
-  }));
-  for (const pokemon of team) {
-    for (let cat of chartMoves) {
-      for (const move of cat.moves) {
-        if (await pokemon.canLearn(move.id)) {
-          let category = movechart.find(
-            (entry) => entry.categoryName === cat.categoryName
-          );
-          if (!category) {
-            category = { categoryName: cat.categoryName, moves: [] };
-            movechart.push(category);
-          }
-          let moveEntry = category.moves.find(
-            (moveEntry) => moveEntry.name === move.name
-          );
-          if (!moveEntry) {
-            moveEntry = { name: move.name, type: move.type, pokemon: [] };
-            category.moves.push(moveEntry);
-          }
-          moveEntry.pokemon.push(pokemon.toPokemon());
-        }
-      }
-    }
-  }
+// Old Version - Slower but single threaded
+// export async function movechart(team: DraftSpecies[]) {
+//   let movechart: Movechart = chartMoves.map((cat) => ({
+//     categoryName: cat.categoryName,
+//     moves: [],
+//   }));
+//   for (const pokemon of team) {
+//     for (let cat of chartMoves) {
+//       for (const move of cat.moves) {
+//         if (await pokemon.canLearn(move.id)) {
+//           let category = movechart.find(
+//             (entry) => entry.categoryName === cat.categoryName
+//           );
+//           if (!category) {
+//             category = { categoryName: cat.categoryName, moves: [] };
+//             movechart.push(category);
+//           }
+//           let moveEntry = category.moves.find(
+//             (moveEntry) => moveEntry.name === move.name
+//           );
+//           if (!moveEntry) {
+//             moveEntry = { name: move.name, type: move.type, pokemon: [] };
+//             category.moves.push(moveEntry);
+//           }
+//           moveEntry.pokemon.push(pokemon.toPokemon());
+//         }
+//       }
+//     }
+//   }
+//   return movechart;
+// }
+
+export async function movechart(team: DraftSpecies[]): Promise<Movechart> {
+  const movechart = await Promise.all(
+    chartMoves.map(async (category) => ({
+      categoryName: category.categoryName,
+      moves: await Promise.all(
+        category.moves.map(async (move) => ({
+          name: move.name,
+          type: move.type,
+          pokemon: (
+            await Promise.all(
+              team.map(async (pokemon) => ({
+                pokemon,
+                canLearn: await pokemon.canLearn(move.id),
+              }))
+            )
+          )
+            .filter((result) => result.canLearn)
+            .map((result) => result.pokemon.toPokemon()),
+        }))
+      ),
+    }))
+  );
   return movechart;
 }
