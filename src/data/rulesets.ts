@@ -4,6 +4,7 @@ import { Dex } from "@pkmn/dex";
 export type RulesetId = keyof typeof Rulesets & string;
 
 export type Ruleset = {
+  name: string;
   gen: Generation;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
 };
@@ -92,17 +93,21 @@ export const natdexGens = new Generations(Dex, NATDEX_EXISTS);
 const Rulesets: {
   [key: string]: Ruleset;
 } = {
-  "Gen9 NatDex": { gen: natdexGens.get(9) },
-  "Paldea Dex": { gen: gens.get(9), restriction: "Paldea" },
-  "Gen8 NatDex": { gen: natdexGens.get(8) },
-  "Galar Dex": { gen: gens.get(8), restriction: "Galar" },
-  "Alola Dex": { gen: gens.get(7) },
-  "Kalos Dex": { gen: gens.get(6) },
-  "Unova Dex": { gen: gens.get(5) },
-  "Sinnoh Dex": { gen: gens.get(4) },
-  "Hoenn Dex": { gen: gens.get(3) },
-  "Johto Dex": { gen: gens.get(2) },
-  "Kanto Dex": { gen: gens.get(1) },
+  "Gen9 NatDex": { name: "Gen9 NatDex", gen: natdexGens.get(9) },
+  "Paldea Dex": {
+    name: "Gen9 NatDex",
+    gen: gens.get(9),
+    restriction: "Paldea",
+  },
+  "Gen8 NatDex": { name: "Gen8 NatDex", gen: natdexGens.get(8) },
+  "Galar Dex": { name: "Galar Dex", gen: gens.get(8), restriction: "Galar" },
+  "Alola Dex": { name: "Alola Dex", gen: gens.get(7) },
+  "Kalos Dex": { name: "Kalos Dex", gen: gens.get(6) },
+  "Unova Dex": { name: "Unova Dex", gen: gens.get(5) },
+  "Sinnoh Dex": { name: "Sinnoh Dex", gen: gens.get(4) },
+  "Hoenn Dex": { name: "Hoenn Dex", gen: gens.get(3) },
+  "Johto Dex": { name: "Johto Dex", gen: gens.get(2) },
+  "Kanto Dex": { name: "Kanto Dex", gen: gens.get(1) },
   // CAP: { gen: gens.get(9), natdex: true },
 };
 

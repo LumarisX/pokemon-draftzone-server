@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import NodeCache from "node-cache";
 import { Route } from ".";
 import { DraftSpecies } from "../classes/pokemon";
-import { FormatId, getFormat } from "../data/formats";
+import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
 import {
@@ -29,35 +29,32 @@ import {
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 
+type Matchup = {
+  formatId: FormatId;
+  rulesetId: RulesetId;
+  leagueName: string;
+  aTeam: TeamData;
+  bTeam: TeamData;
+  gameTime?: string;
+  reminder?: number;
+  stage: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  matches: MatchData[];
+};
+
 type MatchupResponse = Response & {
   rawMatchup?: MatchupDocument | null;
-  matchup?: {
-    format: FormatId;
-    rulesetId: RulesetId;
-    leagueName: string;
-    aTeam: {
-      team: DraftSpecies[];
-      owner: string;
-      name?: string;
-      teamName?: string;
-      paste?: string;
-      _id?: mongoose.Schema.Types.ObjectId;
-    };
-    bTeam: {
-      team: DraftSpecies[];
-      name?: string;
-      teamName?: string;
-      paste?: string;
-      _id?: mongoose.Schema.Types.ObjectId;
-    };
-    gameTime?: string;
-    reminder?: number;
-    stage: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-    matches: MatchData[];
-  };
+  matchup?: Matchup & { aTeam: { owner: string } };
   ruleset?: Ruleset;
+};
+
+type TeamData = {
+  team: DraftSpecies[];
+  name?: string;
+  teamName?: string;
+  paste?: string;
+  _id?: mongoose.Schema.Types.ObjectId;
 };
 
 export const $matchups = new NodeCache({
@@ -81,102 +78,14 @@ export const MatchupRoutes: Route = {
           return res.json(cachedData);
         }
         try {
-          let level = getFormat(res.matchup.format).level;
-          let aTypechart = new Typechart(res.matchup.aTeam.team);
-          let bTypechart = new Typechart(res.matchup.bTeam.team);
-          let data: {
-            format: FormatId;
-            ruleset: RulesetId;
-            level: number;
-            gameTime: string;
-            stage: string;
-            leagueName: string;
-            summary: {
-              teamName?: string;
-              team: (PokemonData & {
-                abilities: AbilityName[];
-                baseStats: StatsTable;
-                types: [TypeName] | [TypeName, TypeName];
-              })[];
-              stats?: {
-                mean: {
-                  hp?: number;
-                  atk?: number;
-                  def?: number;
-                  spa?: number;
-                  spd?: number;
-                  spe?: number;
-                };
-                median: {
-                  hp?: number;
-                  atk?: number;
-                  def?: number;
-                  spa?: number;
-                  spd?: number;
-                  spe?: number;
-                };
-                max: {
-                  hp?: number;
-                  atk?: number;
-                  def?: number;
-                  spa?: number;
-                  spd?: number;
-                  spe?: number;
-                };
-              };
-            }[];
-            speedchart: Speedchart;
-            coveragechart: Coveragechart[];
-            typechart: {
-              team: (
-                | PokemonData & {
-                    weak: { [key: string]: number };
-                  }
-              )[];
-              teraTypes: {
-                [key: string]: {};
-              };
-            }[];
-            movechart: Movechart[];
-          } = {
-            format: res.matchup.format,
-            ruleset: res.matchup.rulesetId,
-            level: level,
-            gameTime: res.matchup.gameTime || "",
+          let format = getFormat(res.matchup.formatId);
+          let data = await makeMatchup(res.matchup.aTeam, res.matchup.bTeam, {
+            ruleset: res.ruleset!,
+            format: format,
+            gameTime: res.matchup.gameTime,
             stage: res.matchup.stage,
             leagueName: res.matchup.leagueName,
-            summary: [],
-            speedchart: speedchart(
-              [res.matchup.aTeam.team, res.matchup.bTeam.team],
-              level
-            ),
-            coveragechart: [
-              await coveragechart(
-                res.matchup.aTeam.team,
-                res.matchup.bTeam.team
-              ),
-              await coveragechart(
-                res.matchup.bTeam.team,
-                res.matchup.aTeam.team
-              ),
-            ],
-            typechart: [aTypechart.toJson(), bTypechart.toJson()],
-            movechart: [
-              await movechart(res.matchup.aTeam.team),
-              await movechart(res.matchup.bTeam.team),
-            ],
-          };
-          let aTeamsummary = new SummaryClass(
-            res.matchup.aTeam.team,
-            res.matchup.aTeam.teamName
-          );
-          let bTeamsummary = new SummaryClass(
-            res.matchup.bTeam.team,
-            res.matchup.bTeam.teamName
-          );
-          aTeamsummary.statistics();
-          bTeamsummary.statistics();
-          data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
+          });
           $matchups.set(
             `${res.matchup.aTeam._id}-${req.params.matchup_id}`,
             data
@@ -251,7 +160,7 @@ export const MatchupRoutes: Route = {
           return;
         }
         try {
-          let level = getFormat(res.matchup.format).level;
+          let level = getFormat(res.matchup.formatId).level;
           res.json(
             speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
           );
@@ -294,6 +203,52 @@ export const MatchupRoutes: Route = {
             .status(500)
             .json({ message: (error as Error).message, code: "MR-R6-01" });
         }
+      },
+    },
+    "/quick": {
+      get: async (req: Request, res: MatchupResponse) => {
+        let ruleset = getRuleset(
+          typeof req.query.ruleset === "string" ? req.query.ruleset : ""
+        );
+        let format = getFormat(
+          typeof req.query.format === "string" ? req.query.format : ""
+        );
+        if (
+          !(
+            typeof req.query.aTeam === "string" &&
+            typeof req.query.bTeam === "string"
+          )
+        )
+          throw new Error("Invalid parameters");
+        let aTeam = req.query.aTeam.split(",").map((id: string) => {
+          let specie = ruleset.gen.dex.species.get(id);
+          if (!specie) throw new Error(`${id} is an unknown id.`);
+          let draftSpecies: DraftSpecies = new DraftSpecies(
+            specie,
+            {},
+            ruleset
+          );
+          return draftSpecies;
+        });
+        let bTeam = req.query.bTeam.split(",").map((id: string) => {
+          let specie = ruleset.gen.dex.species.get(id);
+          if (!specie) throw new Error(`${id} is an unknown id.`);
+          let draftSpecies: DraftSpecies = new DraftSpecies(
+            specie,
+            {},
+            ruleset
+          );
+          return draftSpecies;
+        });
+
+        let data = await makeMatchup(
+          { team: aTeam, teamName: "Team 1" },
+          { team: bTeam, teamName: "Team 2" },
+          {
+            ruleset,
+            format,
+          }
+        );
       },
     },
   },
@@ -353,7 +308,7 @@ export const MatchupRoutes: Route = {
               }),
             },
             leagueName: aTeam.leagueName,
-            format: aTeam.format as FormatId,
+            formatId: aTeam.format as FormatId,
             rulesetId: aTeam.ruleset,
           };
           if (res.ruleset === undefined) {
@@ -376,3 +331,98 @@ export const MatchupRoutes: Route = {
     },
   },
 };
+
+async function makeMatchup(
+  aTeam: TeamData,
+  bTeam: TeamData,
+  details: {
+    ruleset: Ruleset;
+    format: Format;
+    gameTime?: string;
+    stage?: string;
+    leagueName?: string;
+  }
+) {
+  let aTypechart = new Typechart(aTeam.team);
+  let bTypechart = new Typechart(bTeam.team);
+  let data: {
+    details: {
+      level: number;
+      format: FormatId;
+      ruleset: RulesetId;
+      gameTime?: string;
+      stage?: string;
+      leagueName?: string;
+    };
+    summary: {
+      teamName?: string;
+      team: (PokemonData & {
+        abilities: AbilityName[];
+        baseStats: StatsTable;
+        types: [TypeName] | [TypeName, TypeName];
+      })[];
+      stats?: {
+        mean: {
+          hp?: number;
+          atk?: number;
+          def?: number;
+          spa?: number;
+          spd?: number;
+          spe?: number;
+        };
+        median: {
+          hp?: number;
+          atk?: number;
+          def?: number;
+          spa?: number;
+          spd?: number;
+          spe?: number;
+        };
+        max: {
+          hp?: number;
+          atk?: number;
+          def?: number;
+          spa?: number;
+          spd?: number;
+          spe?: number;
+        };
+      };
+    }[];
+    speedchart: Speedchart;
+    coveragechart: Coveragechart[];
+    typechart: {
+      team: (
+        | PokemonData & {
+            weak: { [key: string]: number };
+          }
+      )[];
+      teraTypes: {
+        [key: string]: {};
+      };
+    }[];
+    movechart: Movechart[];
+  } = {
+    details: {
+      level: details.format.level,
+      format: details.format.name,
+      ruleset: details.ruleset.name,
+      gameTime: details.gameTime,
+      leagueName: details.leagueName,
+      stage: details.stage,
+    },
+    summary: [],
+    speedchart: speedchart([aTeam.team, bTeam.team], details.format.level),
+    coveragechart: [
+      await coveragechart(aTeam.team, bTeam.team),
+      await coveragechart(bTeam.team, aTeam.team),
+    ],
+    typechart: [aTypechart.toJson(), bTypechart.toJson()],
+    movechart: [await movechart(aTeam.team), await movechart(bTeam.team)],
+  };
+  let aTeamsummary = new SummaryClass(aTeam.team, aTeam.teamName);
+  let bTeamsummary = new SummaryClass(bTeam.team, bTeam.teamName);
+  aTeamsummary.statistics();
+  bTeamsummary.statistics();
+  data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
+  return data;
+}
