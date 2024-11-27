@@ -206,41 +206,30 @@ export const MatchupRoutes: Route = {
       },
     },
     "/quick": {
-      get: async (req: Request, res: MatchupResponse) => {
-        let ruleset = getRuleset(
-          typeof req.query.ruleset === "string" ? req.query.ruleset : ""
-        );
-        let format = getFormat(
-          typeof req.query.format === "string" ? req.query.format : ""
-        );
-        if (
-          !(
-            typeof req.query.aTeam === "string" &&
-            typeof req.query.bTeam === "string"
-          )
-        )
-          throw new Error("Invalid parameters");
-        let aTeam = req.query.aTeam.split(",").map((id: string) => {
-          let specie = ruleset.gen.dex.species.get(id);
-          if (!specie) throw new Error(`${id} is an unknown id.`);
+      post: async (req: Request, res: Response) => {
+        console.log(JSON.stringify(req.body, null, 2));
+        let ruleset = getRuleset(req.body.ruleset);
+        let format = getFormat(req.body.format);
+        let aTeam = req.body.team1.map((pokemon: PokemonData) => {
+          let specie = ruleset.gen.dex.species.get(pokemon.id);
+          if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
-            {},
+            pokemon,
             ruleset
           );
           return draftSpecies;
         });
-        let bTeam = req.query.bTeam.split(",").map((id: string) => {
-          let specie = ruleset.gen.dex.species.get(id);
-          if (!specie) throw new Error(`${id} is an unknown id.`);
+        let bTeam = req.body.team2.map((pokemon: PokemonData) => {
+          let specie = ruleset.gen.dex.species.get(pokemon.id);
+          if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
-            {},
+            pokemon,
             ruleset
           );
           return draftSpecies;
         });
-
         let data = await makeMatchup(
           { team: aTeam, teamName: "Team 1" },
           { team: bTeam, teamName: "Team 2" },
@@ -249,6 +238,7 @@ export const MatchupRoutes: Route = {
             format,
           }
         );
+        res.json(data);
       },
     },
   },
