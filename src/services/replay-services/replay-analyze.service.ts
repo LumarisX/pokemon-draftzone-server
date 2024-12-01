@@ -1528,7 +1528,7 @@ type SubReplayData =
 
 export function validateUrl(url: string): boolean {
   const pattern =
-    /^(https:\/\/)?replay\.pokemonshowdown\.com\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=]+72$/;
+    /^(https:\/\/)?replay\.pokemonshowdown\.com\/[a-zA-Z0-9\-._~:/?#[\]\\@!$&'()*+,;=]+$/;
   return pattern.test(url);
 }
 
