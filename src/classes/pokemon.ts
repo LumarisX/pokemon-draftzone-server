@@ -294,6 +294,7 @@ export class DraftSpecies implements Specie, Pokemon {
         coverage.Physical[type] = {
           id: "terablast" as ID,
           ePower: -1,
+          cPower: -1,
           name: "Tera Blast",
           category: "Physical",
           type: type,
@@ -301,6 +302,7 @@ export class DraftSpecies implements Specie, Pokemon {
         coverage.Special[type] = {
           id: "terablast" as ID,
           ePower: -1,
+          cPower: -1,
           name: "Tera Blast",
           category: "Special",
           type: type,
@@ -318,6 +320,12 @@ export class DraftSpecies implements Specie, Pokemon {
             id: move.id,
             name: move.name,
             ePower: ePower,
+            cPower:
+              ePower *
+              (this.types.includes(move.type) ? 1.5 : 1) *
+              (move.category === "Special"
+                ? this.baseStats.spa
+                : this.baseStats.atk),
             type: move.type,
             stab: this.types.includes(move.type) || undefined,
             category: move.category,

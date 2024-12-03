@@ -12,6 +12,7 @@ export type Coveragechart = (
 
 export type CoverageMove = {
   ePower: number;
+  cPower: number;
   id: ID;
   name: string;
   type: string;
@@ -55,4 +56,42 @@ export async function coveragechart(
     });
   }
   return result;
+}
+
+export async function plannerCoverage(team: DraftSpecies[]) {
+  let teamCoverage = await Promise.all(
+    team.map(async (pokemon) => ({
+      id: pokemon.id,
+      coverage: await pokemon.coverage(),
+    }))
+  );
+  return {
+    team: teamCoverage,
+    max: {
+      physical: teamCoverage.reduce((acc, pokemon) => {
+        pokemon.coverage.physical.forEach((move) => {
+          if (acc[move.type]) {
+            if (acc[move.type].cPower < move.cPower) {
+              acc[move.type] = move;
+            }
+          } else {
+            acc[move.type] = move;
+          }
+        });
+        return acc;
+      }, {} as { [key: string]: CoverageMove }),
+      special: teamCoverage.reduce((acc, pokemon) => {
+        pokemon.coverage.special.forEach((move) => {
+          if (acc[move.type]) {
+            if (acc[move.type].cPower < move.cPower) {
+              acc[move.type] = move;
+            }
+          } else {
+            acc[move.type] = move;
+          }
+        });
+        return acc;
+      }, {} as { [key: string]: CoverageMove }),
+    },
+  };
 }

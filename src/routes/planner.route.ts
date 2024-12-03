@@ -5,6 +5,7 @@ import { getRuleset } from "../data/rulesets";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { plannerCoverage } from "../services/matchup-services/coverage.service";
 
 export const PlannerRoutes: Route = {
   subpaths: {
@@ -38,6 +39,7 @@ export const PlannerRoutes: Route = {
               recommended: typechart.recommended(),
               summary: summary.toJson(),
               movechart: await movechart(team),
+              coverage: await plannerCoverage(team),
             });
           }
         } catch (error) {
