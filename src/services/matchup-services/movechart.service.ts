@@ -1,9 +1,8 @@
-import { ID, Move } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
-import { natdexGens } from "../../data/rulesets";
+import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 
-const chartMoves: { categoryName: string; moves: Move[] }[] = [
+const chartMoves: { categoryName: string; moves: string[] }[] = [
   {
     categoryName: "Priority",
     moves: [
@@ -270,10 +269,7 @@ const chartMoves: { categoryName: string; moves: Move[] }[] = [
       "wrap",
     ],
   },
-].map((category) => ({
-  categoryName: category.categoryName,
-  moves: category.moves.map((move) => natdexGens.dex.moves.getByID(move as ID)),
-}));
+];
 
 export type Movechart = {
   categoryName: string;
@@ -316,25 +312,33 @@ export type Movechart = {
 //   return movechart;
 // }
 
-export async function movechart(team: DraftSpecies[]): Promise<Movechart> {
+export async function movechart(
+  team: DraftSpecies[],
+  ruleset: Ruleset
+): Promise<Movechart> {
+  console.log(ruleset.name);
   const movechart = await Promise.all(
     chartMoves.map(async (category) => ({
       categoryName: category.categoryName,
       moves: await Promise.all(
-        category.moves.map(async (move) => ({
-          name: move.name,
-          type: move.type,
-          pokemon: (
-            await Promise.all(
-              team.map(async (pokemon) => ({
-                pokemon,
-                canLearn: await pokemon.canLearn(move.id),
-              }))
+        category.moves
+          .map((moveId) => ruleset.gen.moves.get(moveId))
+          .filter((move) => move !== undefined)
+          .filter((move) => move.exists)
+          .map(async (move) => ({
+            name: move.name,
+            type: move.type,
+            pokemon: (
+              await Promise.all(
+                team.map(async (pokemon) => ({
+                  pokemon,
+                  canLearn: await pokemon.canLearn(move.id),
+                }))
+              )
             )
-          )
-            .filter((result) => result.canLearn)
-            .map((result) => result.pokemon.toPokemon()),
-        }))
+              .filter((result) => result.canLearn)
+              .map((result) => result.pokemon.toPokemon()),
+          }))
       ),
     }))
   );

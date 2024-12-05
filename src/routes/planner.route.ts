@@ -38,7 +38,7 @@ export const PlannerRoutes: Route = {
               typechart: typechart.toJson(),
               recommended: typechart.recommended(),
               summary: summary.toJson(),
-              movechart: await movechart(team),
+              movechart: await movechart(team, ruleset),
               coverage: await plannerCoverage(team),
             });
           }

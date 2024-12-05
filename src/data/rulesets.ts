@@ -53,15 +53,13 @@ const DRAFT_EXISTS = (d: Data) => {
 const NATDEX_EXISTS = (d: Data) => {
   if (!d.exists) return false;
   if (d.kind === "Ability" && d.id === "noability") return false;
-  if (
-    "isNonstandard" in d &&
-    d.isNonstandard &&
-    d.kind === "Species" &&
-    d.isNonstandard !== "Past"
-  ) {
+  if ("isNonstandard" in d && d.isNonstandard && d.isNonstandard !== "Past") {
     if ("tier" in d && d.tier === "Unreleased") return false;
     if (d.isNonstandard === "CAP") return false;
     if (d.isNonstandard === "Custom") return false;
+  }
+  if (d.kind === "Move" && d.isNonstandard && d.isNonstandard !== "Past") {
+    return false;
   }
   if (
     d.kind === "Species" &&

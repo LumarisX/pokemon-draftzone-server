@@ -9,7 +9,7 @@ export class SummaryClass {
     this.teamName = teamName;
   }
 
-  stats?: {
+  $stats?: {
     mean: {
       hp?: number;
       atk?: number;
@@ -17,6 +17,7 @@ export class SummaryClass {
       spa?: number;
       spd?: number;
       spe?: number;
+      bst?: number;
     };
     median: {
       hp?: number;
@@ -25,6 +26,7 @@ export class SummaryClass {
       spa?: number;
       spd?: number;
       spe?: number;
+      bst?: number;
     };
     max: {
       hp?: number;
@@ -33,35 +35,38 @@ export class SummaryClass {
       spa?: number;
       spd?: number;
       spe?: number;
+      bst?: number;
     };
   };
 
   statistics() {
-    if (this.stats) return this.stats;
+    if (this.$stats) return this.$stats;
     let stats: {
-      mean: { [key in StatID]?: number };
-      median: { [key in StatID]?: number };
-      max: { [key in StatID]?: number };
+      mean: { [key in StatID | "bst"]?: number };
+      median: { [key in StatID | "bst"]?: number };
+      max: { [key in StatID | "bst"]?: number };
     } = {
       mean: {},
       median: {},
       max: {},
     };
-    let all: { [key in StatID]: number[] } = {
+    let all: { [key in StatID | "bst"]: number[] } = {
       hp: [],
       atk: [],
       def: [],
       spa: [],
       spd: [],
       spe: [],
+      bst: [],
     };
     this.team.forEach((pokemon) => {
-      Object.keys(all).forEach((statKey: string) => {
+      Object.keys(pokemon.baseStats).forEach((statKey: string) => {
         const stat = statKey as StatID;
         if (pokemon.baseStats && pokemon.baseStats[stat]) {
           all[stat].push(pokemon.baseStats[stat]);
         }
       });
+      all.bst.push(pokemon.bst);
     });
     Object.keys(all).forEach((statKey: string) => {
       const stat = statKey as StatID;
@@ -72,7 +77,7 @@ export class SummaryClass {
       stats.median[stat] = all[stat][Math.round(all[stat].length / 2)];
       stats.max[stat] = all[stat][0];
     });
-    this.stats = stats;
+    this.$stats = stats;
     return stats;
   }
 
@@ -83,9 +88,10 @@ export class SummaryClass {
         ...pokemon.toPokemon(),
         abilities: Object.values(pokemon.abilities),
         baseStats: pokemon.baseStats,
+        bst: pokemon.bst,
         types: pokemon.types,
       })),
-      stats: this.stats,
+      stats: this.$stats,
     };
   }
 }

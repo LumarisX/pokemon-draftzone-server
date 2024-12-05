@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { Route } from ".";
 import { getFormats } from "../data/formats";
-import { getRulesets, Ruleset } from "../data/rulesets";
+import { getRuleset, getRulesets, Ruleset } from "../data/rulesets";
 import { searchPokemon } from "../services/search.service";
+import { getRandom } from "../services/data-services/pokedex.service";
 
 type DataResponse = Response & { ruleset?: Ruleset };
 
@@ -67,6 +68,35 @@ export const DataRoutes: Route = {
               .status(400)
               .json({ error: "Query type error", code: "DT-R3-01" });
           }
+        } catch (error) {
+          console.error(
+            `Error in /search route:", ${
+              (error as Error).message
+            }\nSearch query: ${req.query.query}`
+          );
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "DT-R3-02" });
+        }
+      },
+    },
+    "/random": {
+      get: async (req: Request, res: DataResponse) => {
+        try {
+          let rulesetId = req.query.ruleset;
+          if (
+            typeof req.query.count == "string" ||
+            typeof req.query.count == "number"
+          ) {
+            const count = +req.query.count;
+            if (typeof rulesetId === "string") {
+              const ruleset = getRuleset(rulesetId);
+              return res.json(getRandom(ruleset.gen));
+            }
+          }
+          return res
+            .status(400)
+            .json({ error: "Query type error", code: "DT-R3-01" });
         } catch (error) {
           console.error(
             `Error in /search route:", ${

@@ -195,8 +195,14 @@ export const MatchupRoutes: Route = {
         }
         try {
           res.json([
-            movechart(res.matchup.aTeam.team),
-            movechart(res.matchup.bTeam.team),
+            await movechart(
+              res.matchup.aTeam.team,
+              res.matchup.aTeam.team[0].ruleset
+            ),
+            movechart(
+              res.matchup.bTeam.team,
+              res.matchup.bTeam.team[0].ruleset
+            ),
           ]);
         } catch (error) {
           res
@@ -407,7 +413,10 @@ async function makeMatchup(
       await coveragechart(bTeam.team, aTeam.team),
     ],
     typechart: [aTypechart.toJson(), bTypechart.toJson()],
-    movechart: [await movechart(aTeam.team), await movechart(bTeam.team)],
+    movechart: [
+      await movechart(aTeam.team, aTeam.team[0].ruleset),
+      await movechart(bTeam.team, bTeam.team[0].ruleset),
+    ],
   };
   let aTeamsummary = new SummaryClass(aTeam.team, aTeam.teamName);
   let bTeamsummary = new SummaryClass(bTeam.team, bTeam.teamName);
