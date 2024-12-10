@@ -1,6 +1,5 @@
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
-  Ability,
   AbilityName,
   As,
   Condition,
@@ -25,7 +24,6 @@ import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
 import { CoverageMove } from "../services/matchup-services/coverage.service";
-import { spec } from "node:test/reporters";
 
 export interface PokemonOptions {
   shiny?: boolean;

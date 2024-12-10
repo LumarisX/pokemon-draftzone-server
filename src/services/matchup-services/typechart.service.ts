@@ -73,6 +73,10 @@ export class Typechart {
     let pokemonList: [{ id: string; name: string }, number][] = [];
     for (let species of this.team[0].ruleset.gen.species) {
       if (species.nfe) continue;
+      if (
+        this.team.some((pokemon) => species.baseSpecies === pokemon.baseSpecies)
+      )
+        continue;
       let newTC = { ...teamTypeChart };
       let draftSpecies = new DraftSpecies(species, {}, this.team[0].ruleset);
       let tw = draftSpecies.typechart();
