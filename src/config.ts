@@ -8,17 +8,26 @@ const requiredEnvVars: string[] = [
   "AUTH0_AUDIENCE",
   "AUTH0_ISSUER",
   "PORT",
+];
+
+const optionalEnvVars: string[] = [
   "DISCORD_TOKEN",
-  "APPLICATION_ID",
   "OPENAI_API_KEY",
+  "DISCORD_DISABLED",
 ];
 
 type Config = { [key in (typeof requiredEnvVars)[number]]: string };
 
-export const config: Config = Object.fromEntries(
-  requiredEnvVars.map((key) => {
+export const config: Config = Object.fromEntries([
+  ...requiredEnvVars.map((key) => {
     const value = process.env[key];
     if (!value) throw new Error(`Missing environment variable: ${key}`);
     return [key, value];
-  })
-) as Config;
+  }),
+  ...optionalEnvVars
+    .map((key) => {
+      const value = process.env[key];
+      return value ? [key, value] : null;
+    })
+    .filter((entry): entry is [string, string] => entry !== null),
+]) as Config;

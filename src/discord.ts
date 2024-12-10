@@ -16,11 +16,27 @@ const client = new Client({
   ],
 });
 
+type Forme = "Normal" | "Attack" | "Defense" | "Speed";
+const FORMES = {
+  Normal: 0,
+  Attack: 1,
+  Defense: 2,
+  Speed: 3,
+};
+
+let forme: Forme = "Defense";
+
 const openai = new OpenAi({
   apiKey: config.OPENAI_API_KEY,
 });
 
 export function startDiscordBot() {
+  if (
+    !config.DISCORD_TOKEN ||
+    !config.OPENAI_API_KEY ||
+    config.DISCORD_DISABLED
+  )
+    return;
   client.once("ready", () => console.log("Deoxys has been summoned!"));
 
   client.on("messageCreate", async (message) => {
@@ -86,7 +102,9 @@ async function gptRespond(message: Message) {
     let replyString = completion.choices[0].message.content;
     console.log("DeoxysGPT | DeoxysBot |", replyString);
 
-    let emotionUrl: string = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386/0001/Normal.png`;
+    let emotionUrl: string = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
+      FORMES[forme] > 1 ? "/000" + FORMES[forme] : ""
+    }/Normal.png`;
     if (replyString) {
       let replySplit = replyString.split(": ");
       let emotion: string | undefined;
@@ -117,7 +135,9 @@ async function gptRespond(message: Message) {
       }
       replyString = replySplit.splice(1).join(": ");
       if (emotion) {
-        emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386/0001/${emotion}.png`;
+        emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
+          FORMES[forme] > 1 ? "/000" + FORMES[forme] : ""
+        }/${emotion}.png`;
       }
     } else replyString = `Hello ${message.author}!`;
 

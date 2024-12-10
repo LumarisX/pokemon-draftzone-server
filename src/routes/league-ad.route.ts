@@ -61,24 +61,26 @@ export const LeagueAdRoutes: Route = {
           if (ad.isValid()) {
             await (await ad.toDocument()).save();
             //Send a message in the discord server that a new Ad was submitted
-            const guild = await bot.guilds.fetch("1183936734719922176");
-            if (!guild) {
-              console.error("Guild not found");
-              return;
-            }
+            if (bot) {
+              const guild = await bot.guilds.fetch("1183936734719922176");
+              if (!guild) {
+                console.error("Guild not found");
+                return;
+              }
 
-            // Fetch the channel from the guild
-            const channel = guild.channels.cache.get(
-              "1293333149471871108"
-            ) as TextChannel;
-            if (!channel || !channel.isTextBased()) {
-              console.error("Channel not found or not a text channel");
-              return;
-            }
+              // Fetch the channel from the guild
+              const channel = guild.channels.cache.get(
+                "1293333149471871108"
+              ) as TextChannel;
+              if (!channel || !channel.isTextBased()) {
+                console.error("Channel not found or not a text channel");
+                return;
+              }
 
-            // Send a message in the designated channel
-            channel.send(`A new league ad has been submitted:
+              // Send a message in the designated channel
+              channel.send(`A new league ad has been submitted:
               ${ad.toString()}`);
+            }
 
             res.status(201).json({ message: "LeagueAd successfully created." });
           } else {
