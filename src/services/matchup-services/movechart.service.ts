@@ -86,14 +86,18 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "healorder",
       "healpulse",
       "junglehealing",
+      "leechseed",
       "lifedew",
       "lunarblessing",
       "lunardance",
       "milkdrink",
       "moonlight",
       "morningsun",
+      "painsplit",
+      "pollenpuff",
       "purify",
       "recover",
+      "refresh",
       "rest",
       "roost",
       "shoreup",
@@ -122,6 +126,8 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "explosion",
       "selfdestruct",
       "mistyexplosion",
+      "finalgambit",
+      "memento",
     ],
   },
   {
@@ -130,11 +136,14 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "spikes",
       "stealthrock",
       "stickyweb",
+      "toxicspikes",
       "defog",
       "rapidspin",
       "mortalspin",
       "tidyup",
-      "toxicspikes",
+      "ceaselessedge",
+      "stoneaxe",
+      "courtchange",
     ],
   },
   {
@@ -203,6 +212,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
     moves: [
       "taunt",
       "encore",
+      "disable",
       "magiccoat",
       "knockoff",
       "trick",
@@ -220,6 +230,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "copycat",
       "mefirst",
       "snatch",
+      "destinybond",
     ],
   },
   {
@@ -259,6 +270,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "spiritshackle",
       "thousandwaves",
       "bind",
+      "clamp",
       "firespin",
       "infestation",
       "magmastorm",
@@ -267,6 +279,17 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "thundercage",
       "whirlpool",
       "wrap",
+    ],
+  },
+  {
+    categoryName: "Type Changing",
+    moves: [
+      "terablast",
+      "hiddenpower",
+      "naturalgift",
+      "multiattack",
+      "revelationdance",
+      "technoblast",
     ],
   },
 ];
@@ -316,7 +339,6 @@ export async function movechart(
   team: DraftSpecies[],
   ruleset: Ruleset
 ): Promise<Movechart> {
-  console.log(ruleset.name);
   const movechart = await Promise.all(
     chartMoves.map(async (category) => ({
       categoryName: category.categoryName,
