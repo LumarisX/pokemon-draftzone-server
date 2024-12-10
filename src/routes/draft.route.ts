@@ -107,11 +107,11 @@ export const DraftRoutes: Route = {
             },
             { new: true, upsert: true }
           );
-          $matchups
-            .keys()
-            .filter((key: string) => key.startsWith(draft._id))
-            .forEach((key: any) => $matchups.del(key));
           if (updatedDraft) {
+            $matchups
+              .keys()
+              .filter((key: string) => key.startsWith(updatedDraft._id))
+              .forEach((key: any) => $matchups.del(key));
             res
               .status(200)
               .json({ message: "Draft Updated", draft: updatedDraft });
