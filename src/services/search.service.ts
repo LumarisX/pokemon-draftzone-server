@@ -296,8 +296,23 @@ async function evaluate(
                 ? tiers.indexOf(node.right?.value)
                 : node.right?.value;
             break;
-          case "nfe":
-            leftValue = pokemon.nfe;
+          case "evolved":
+            if (node.right?.value === "Fully Evolved") {
+              rightValue = 1;
+              leftValue = pokemon.evos ? 0 : 1;
+            } else if (node.right?.value === "Unevolved") {
+              rightValue = -1;
+
+              leftValue =
+                pokemon.isMega ||
+                pokemon.forme === "Gmax" ||
+                (pokemon.prevo && pokemon.prevo !== "")
+                  ? 0
+                  : -1;
+            } else {
+              rightValue = 0;
+              leftValue = 0;
+            }
             break;
           case "dexNum":
             leftValue = pokemon.num;
