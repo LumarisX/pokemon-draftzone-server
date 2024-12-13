@@ -89,13 +89,18 @@ export const DataRoutes: Route = {
             typeof req.query.count == "number"
           ) {
             const count = +req.query.count;
-            if (typeof rulesetId === "string" && count > 0 && count < 20) {
+            if (typeof rulesetId === "string" && count > 0 && count <= 20) {
               const randomMons = [];
               const ruleset = getRuleset(rulesetId);
               for (let i = 0; i < count; i++) {
                 randomMons.push(getRandom(ruleset.gen));
               }
-              return res.json(randomMons);
+              return res.json(
+                randomMons.map((pokemon) => ({
+                  id: pokemon.id,
+                  name: pokemon.name,
+                }))
+              );
             }
           }
           return res
