@@ -213,7 +213,6 @@ export const MatchupRoutes: Route = {
     },
     "/quick": {
       post: async (req: Request, res: Response) => {
-        console.log(JSON.stringify(req.body, null, 2));
         let ruleset = getRuleset(req.body.ruleset);
         let format = getFormat(req.body.format);
         let aTeam = req.body.team1.map((pokemon: PokemonData) => {

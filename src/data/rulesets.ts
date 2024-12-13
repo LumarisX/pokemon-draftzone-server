@@ -93,7 +93,7 @@ const Rulesets: {
 } = {
   "Gen9 NatDex": { name: "Gen9 NatDex", gen: natdexGens.get(9) },
   "Paldea Dex": {
-    name: "Gen9 NatDex",
+    name: "Paldea Dex",
     gen: gens.get(9),
     restriction: "Paldea",
   },
@@ -110,6 +110,7 @@ const Rulesets: {
 };
 
 export function getRuleset(rulesetId: string) {
+  console.log(rulesetId, rulesetId in Rulesets);
   if (rulesetId && rulesetId in Rulesets) return Rulesets[rulesetId];
   else throw new Error(`Ruleset Id not found: ${rulesetId}`);
 }
