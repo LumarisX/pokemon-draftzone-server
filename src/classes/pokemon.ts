@@ -142,6 +142,33 @@ export class DraftSpecies implements Specie, Pokemon {
     };
   }
 
+  async toTeambuilder() {
+    return {
+      ...this.toPokemon(),
+      abilities: Object.values(this.abilities).filter(
+        (ability) => ability !== ""
+      ) as AbilityName[],
+      types: this.types,
+      baseStats: this.baseStats,
+      learnset: (await this.learnset())
+        .map((move) => ({
+          id: move.id,
+          name: move.name,
+          type: move.type,
+          category: move.category,
+          effectivePower: getEffectivePower(move),
+          basePower: move.basePower,
+          accuracy: move.accuracy,
+        }))
+        .sort((x, y) => y.effectivePower - x.effectivePower),
+      requiredItem: this.requiredItem,
+      requiredAbility: this.requiredAbility,
+      requiredItems: this.requiredItems,
+      requiredMove: this.requiredMove,
+      forceTeraType: this.forceTeraType,
+    };
+  }
+
   //Type functions
   private $typechart:
     | {
