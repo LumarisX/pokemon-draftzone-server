@@ -56,6 +56,23 @@ type PikalyticData = {
   ss?: boolean;
 };
 
+// testSet(
+//   new Pokemon(9, "Primarina", {
+//     item: "Sitrus Berry",
+//     ability: "Liquid Voice",
+//     level: 50,
+//     moves: ["Moonblast", "Hyper Voice", "Icy Wind", "Protect"],
+//     evs: {
+//       hp: 252,
+//       spa: 252,
+//       spe: 4,
+//     },
+//     nature: "Modest",
+//   }),
+//   "Archaludon",
+//   new Field({ weather: "Sun", gameType: "Doubles" })
+// );
+
 export async function getPats() {
   const rawData: { name: string; rank: string; percent: string }[] = JSON.parse(
     await (
