@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { Route } from ".";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
+import fs from "fs";
+import { PikalyticData } from "../services/pats-services/pats.test";
+import { toID } from "@pkmn/data";
 
 export const TeambuilderRoutes: Route = {
   subpaths: {
@@ -26,6 +29,47 @@ export const TeambuilderRoutes: Route = {
           res
             .status(500)
             .json({ error: "Internal Server Error", code: "TR-R1-01" });
+        }
+      },
+    },
+    "/pats-list": {
+      get: async (req: Request, res: Response) => {
+        try {
+          const data: PikalyticData[] = JSON.parse(
+            fs.readFileSync("./src/services/pats-services/pats.json", "utf-8")
+          );
+          return res.json(
+            data.map((pokemon) => ({
+              name: pokemon.name,
+              id: toID(pokemon.name),
+            }))
+          );
+        } catch (error) {
+          console.error("Error in /formats/ route:", error);
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "TR-R2-01" });
+        }
+      },
+    },
+    "/pats-matchup": {
+      get: async (req: Request, res: Response) => {
+        try {
+          let { set, opp } = req.query;
+          if (typeof set === "string" && typeof opp === "string") {
+            console.log(set);
+            let pokemon = atob(set);
+            console.log(pokemon);
+            return res.json({ message: "Success" });
+          }
+          return res
+            .status(400)
+            .json({ error: "Internal Server Error", code: "TR-R3-02" });
+        } catch (error) {
+          console.error("Error in /formats/ route:", error);
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "TR-R3-01" });
         }
       },
     },

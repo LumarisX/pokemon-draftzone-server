@@ -5,7 +5,7 @@ import fs from "fs";
 
 const PATH = "./src/services/pats-services/pats.json";
 
-type PikalyticData = {
+export type PikalyticData = {
   name: string;
   types: string[];
   stats: {
@@ -55,23 +55,6 @@ type PikalyticData = {
   l: string;
   ss?: boolean;
 };
-
-// testSet(
-//   new Pokemon(9, "Primarina", {
-//     item: "Sitrus Berry",
-//     ability: "Liquid Voice",
-//     level: 50,
-//     moves: ["Moonblast", "Hyper Voice", "Icy Wind", "Protect"],
-//     evs: {
-//       hp: 252,
-//       spa: 252,
-//       spe: 4,
-//     },
-//     nature: "Modest",
-//   }),
-//   "Archaludon",
-//   new Field({ weather: "Sun", gameType: "Doubles" })
-// );
 
 export async function getPats() {
   const rawData: { name: string; rank: string; percent: string }[] = JSON.parse(
@@ -161,15 +144,14 @@ export function testSet(
             };
           if (move && move.category === "Status") return;
           let result = calculate(9, oPokemon, myPokemon, move, field);
-          // console.log(result.fullDesc());
           let adjustedPercent =
-            ((((((+ability.percent / 100) * +item.percent) / 100) *
-              +moveData.percent) /
-              100) *
-              +spread.percent) /
-            100;
+            (+ability.percent / 100) *
+            (+item.percent / 100) *
+            (+moveData.percent / 100) *
+            (+spread.percent / 100);
           let koValue =
-            1 + result.kochance().n - +(result.kochance().chance ?? 1);
+            result.kochance().n - 1 + (result.kochance().chance ?? 0);
+
           defensive[move.name].value += koValue * adjustedPercent;
           defensive[move.name].totalPercent += adjustedPercent;
         });
@@ -202,11 +184,11 @@ export function testSet(
   Object.entries(defensive).forEach((move) => {
     const adjustedValue = move[1].value / move[1].totalPercent;
     const n = Number.isNaN(adjustedValue) ? NaN : Math.floor(adjustedValue);
-    const chance = (1 - (adjustedValue - n)) * 100;
+    const chance = (adjustedValue - n) * 100;
     const fixedChange = chance.toFixed(1);
     console.log(
       `${move[0]}: ${
-        Number.isNaN(n)
+        Number.isNaN(n) || n < 0
           ? `Will never KO`
           : fixedChange === "0.0"
           ? `Guarunteed to ${n + 1}HKO`

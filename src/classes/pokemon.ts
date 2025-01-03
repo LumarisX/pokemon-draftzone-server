@@ -8,6 +8,7 @@ import {
   EvoType,
   FormeName,
   GenderName,
+  Item,
   ItemName,
   Move,
   MoveName,
@@ -143,13 +144,45 @@ export class DraftSpecies implements Specie, Pokemon {
   }
 
   async toTeambuilder() {
+    const items = (
+      ((this.requiredItem ? [this.requiredItem] : this.requiredItems)
+        ?.map((itemName) => this.ruleset.gen.items.get(itemName))
+        .filter((item) => item !== undefined && item.exists) as
+        | Item[]
+        | undefined) ?? Array.from(this.ruleset.gen.items)
+    )
+      .filter((item) => {
+        if (item.itemUser && !item.itemUser.includes(this.name)) return false;
+        return true;
+      })
+      .map((item) => {
+        const tags: string[] = [];
+        if (item.isBerry) tags.push("Berry");
+        if (item.isGem) tags.push("Gem");
+        if (item.isChoice) tags.push("Choice");
+        if (item.isPokeball) tags.push("Ball");
+        if (item.zMove) tags.push("Z");
+        if (item.megaStone) tags.push("Mega");
+        if (item.onPlate) tags.push("Plate");
+        if (item.onDrive) tags.push("Drive");
+        if (item.onMemory) tags.push("Memory");
+        return {
+          name: item.name,
+          id: item.id,
+          pngId: `https://play.pokemonshowdown.com/sprites/itemicons/${item.name
+            .replace(" ", "-")
+            .toLowerCase()}.png`,
+          desc: item.desc,
+          tags,
+        };
+      });
+
     return {
-      ...this.toPokemon(),
       abilities: Object.values(this.abilities).filter(
         (ability) => ability !== ""
       ) as AbilityName[],
-      types: this.types,
-      baseStats: this.baseStats,
+
+      items,
       learnset: (await this.learnset())
         .map((move) => ({
           id: move.id,
@@ -161,11 +194,11 @@ export class DraftSpecies implements Specie, Pokemon {
           accuracy: move.accuracy,
         }))
         .sort((x, y) => y.effectivePower - x.effectivePower),
-      requiredItem: this.requiredItem,
-      requiredAbility: this.requiredAbility,
-      requiredItems: this.requiredItems,
-      requiredMove: this.requiredMove,
-      forceTeraType: this.forceTeraType,
+      data: {
+        ...this.toPokemon(),
+        types: this.types,
+        baseStats: this.baseStats,
+      },
     };
   }
 
