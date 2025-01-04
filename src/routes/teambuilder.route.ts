@@ -3,8 +3,9 @@ import { Route } from ".";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import fs from "fs";
-import { PikalyticData } from "../services/pats-services/pats.test";
 import { toID } from "@pkmn/data";
+import { Pokemon } from "@smogon/calc";
+import { PikalyticData, testSet } from "../services/pats-services/test-set";
 
 export const TeambuilderRoutes: Route = {
   subpaths: {
@@ -42,6 +43,7 @@ export const TeambuilderRoutes: Route = {
             data.map((pokemon) => ({
               name: pokemon.name,
               id: toID(pokemon.name),
+              percent: pokemon.percent,
             }))
           );
         } catch (error) {
@@ -58,8 +60,9 @@ export const TeambuilderRoutes: Route = {
           let { set, opp } = req.query;
           if (typeof set === "string" && typeof opp === "string") {
             console.log(set);
-            let pokemon = atob(set);
-            console.log(pokemon);
+            let pokemonData = JSON.parse(atob(set));
+            let pokemon = new Pokemon(9, pokemonData.name, pokemonData);
+            testSet(pokemon, opp);
             return res.json({ message: "Success" });
           }
           return res
