@@ -59,11 +59,9 @@ export const TeambuilderRoutes: Route = {
         try {
           let { set, opp } = req.query;
           if (typeof set === "string" && typeof opp === "string") {
-            console.log(set);
             let pokemonData = JSON.parse(atob(set));
             let pokemon = new Pokemon(9, pokemonData.name, pokemonData);
-            testSet(pokemon, opp);
-            return res.json({ message: "Success" });
+            return res.json(testSet(pokemon, opp));
           }
           return res
             .status(400)

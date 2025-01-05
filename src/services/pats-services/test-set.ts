@@ -74,6 +74,10 @@ export function testSet(
   if (!otherData) return;
   const offensive: {
     [key: MoveName]: {
+      move: {
+        name: string;
+        type: string;
+      };
       cumulative: {
         koValue: number;
         totalPercent: number;
@@ -91,6 +95,10 @@ export function testSet(
   } = {};
   const defensive: {
     [key: MoveName]: {
+      move: {
+        name: string;
+        type: string;
+      };
       cumulative: {
         koValue: number;
         totalPercent: number;
@@ -134,6 +142,10 @@ export function testSet(
           const koValue = getKoValue(oPokemon, myPokemon, move, field);
           if (!defensive[move.name])
             defensive[move.name] = {
+              move: {
+                name: move.name,
+                type: move.type,
+              },
               cumulative: {
                 koValue: 0,
                 totalPercent: 0,
@@ -190,6 +202,10 @@ export function testSet(
           const koValue = getKoValue(myPokemon, oPokemon, move, field);
           if (!offensive[move.name])
             offensive[move.name] = {
+              move: {
+                name: move.name,
+                type: move.type,
+              },
               cumulative: {
                 koValue: 0,
                 totalPercent: 0,
@@ -232,50 +248,63 @@ export function testSet(
       });
     });
   });
-  console.log(
-    JSON.stringify(
-      [
-        {
-          pokemon: myPokemon.name,
-          calc: Object.entries(defensive).map((move) => {
-            const adjustedValue =
-              move[1].cumulative.koValue / move[1].cumulative.totalPercent;
-            const n = Number.isNaN(adjustedValue)
-              ? NaN
-              : Math.floor(adjustedValue);
-            const chance = ((n - adjustedValue) * 100).toFixed(1);
-            return {
-              name: move[0],
-              chance,
-              n,
-              min: move[1].min,
-              max: move[1].max,
-            };
-          }),
-        },
-        {
-          pokemon: otherPokemon,
-          calc: Object.entries(offensive).map((move) => {
-            const adjustedValue =
-              move[1].cumulative.koValue / move[1].cumulative.totalPercent;
-            const n = Number.isNaN(adjustedValue)
-              ? NaN
-              : Math.floor(adjustedValue);
-            const chance = ((1 - adjustedValue + n) * 100).toFixed(2);
-            return {
-              name: move[0],
-              chance,
-              n,
-              min: move[1].min,
-              max: move[1].max,
-            };
-          }),
-        },
-      ],
-      null,
-      2
-    )
-  );
+  return {
+    link: `https://www.pikalytics.com/pokedex/gen9vgc2024regg/${otherPokemon.toLowerCase()}`,
+    results: [
+      {
+        attacker: myPokemon.name,
+        defender: otherPokemon,
+        calcs: Object.values(offensive).map((calc) => {
+          const adjustedValue =
+            calc.cumulative.koValue / calc.cumulative.totalPercent;
+          const [n, chance] = fromKoValue(adjustedValue);
+          const [minN, minChance] = fromKoValue(calc.min?.koValue);
+          const [maxN, maxChance] = fromKoValue(calc.max?.koValue);
+          return {
+            move: calc.move,
+            chance,
+            n,
+            min: {
+              n: minN,
+              chance: minChance,
+              set: calc.min?.set,
+            },
+            max: {
+              n: maxN,
+              chance: maxChance,
+              set: calc.max?.set,
+            },
+          };
+        }),
+      },
+      {
+        attacker: otherPokemon,
+        defender: myPokemon.name,
+        calcs: Object.values(defensive).map((calc) => {
+          const adjustedValue =
+            calc.cumulative.koValue / calc.cumulative.totalPercent;
+          const [n, chance] = fromKoValue(adjustedValue);
+          const [minN, minChance] = fromKoValue(calc.min?.koValue);
+          const [maxN, maxChance] = fromKoValue(calc.max?.koValue);
+          return {
+            move: calc.move,
+            chance,
+            n,
+            min: {
+              n: minN,
+              chance: minChance,
+              set: calc.min?.set,
+            },
+            max: {
+              n: maxN,
+              chance: maxChance,
+              set: calc.max?.set,
+            },
+          };
+        }),
+      },
+    ],
+  };
 }
 
 function getKoValue(
@@ -287,13 +316,15 @@ function getKoValue(
   if (move && move.category === "Status") return 0;
   const result = calculate(9, attacker, defender, move, field);
   const koChance = result.kochance();
-  if (koChance.n === 0) return 10;
-  const koValue = koChance.n + 1 - (koChance.chance ?? 0);
-  if (move.name === "Icy Wind" && koChance.n === 0)
-    console.log(
-      `${move.name}: ${result.fullDesc()} - ${koValue} ${koChance.n} ${
-        koChance.chance ?? "null"
-      }`
-    );
+  const koValue = koChance.n ? koChance.n + 1 - (koChance.chance ?? 0) : 0;
   return koValue;
+}
+
+function fromKoValue(
+  koValue: number | undefined
+): [number | undefined, string | undefined] {
+  if (koValue === undefined) return [undefined, undefined];
+  const n = Number.isNaN(koValue) ? NaN : Math.floor(koValue);
+  const chance = ((1 - (koValue - n)) * 100).toFixed(1);
+  return [n, chance];
 }

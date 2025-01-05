@@ -10,11 +10,10 @@ export async function getPats() {
   const rawData: { name: string; rank: string; percent: string }[] = JSON.parse(
     await (
       await fetch(
-        "https://www.pikalytics.com/api/l/2024-10/gen9vgc2024regh-1760"
+        "https://www.pikalytics.com/api/l/2024-11/gen9vgc2024regg-1760"
       )
     ).text()
   );
-
   const monData = await Promise.all(
     rawData.filter((e) => +e.rank <= 100).map((e) => getMonData(e.name))
   );
@@ -26,7 +25,7 @@ export async function getMonData(name: string) {
   const rawMon = JSON.parse(
     await (
       await fetch(
-        `https://www.pikalytics.com/api/p/2024-10/gen9vgc2024regh-1760/${name}`
+        `https://www.pikalytics.com/api/p/2024-11/gen9vgc2024regg-1760/${name}`
       )
     ).text()
   );
@@ -34,7 +33,7 @@ export async function getMonData(name: string) {
 }
 
 export function getSpreads() {
-  let pokemon = new Pokemon(9, "Primarina", {
+  let pokemon = new Pokemon(9, "Primarinfa", {
     ability: "Liquid Voice",
     level: 50,
   });

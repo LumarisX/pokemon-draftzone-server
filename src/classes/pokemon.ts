@@ -152,6 +152,7 @@ export class DraftSpecies implements Specie, Pokemon {
         | undefined) ?? Array.from(this.ruleset.gen.items)
     )
       .filter((item) => {
+        if (this.requiredItem && item.name === this.requiredItem) return true;
         if (item.itemUser && !item.itemUser.includes(this.name)) return false;
         return true;
       })
