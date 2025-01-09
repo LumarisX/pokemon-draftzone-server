@@ -33,26 +33,6 @@ export const DataRoutes: Route = {
         }
       },
     },
-    // "/search": {
-    //   get: async (req: Request, res: DataResponse) => {
-    //     try {
-    //       let ruleset = req.query.ruleset;
-    //       let query = req.query.query;
-    //       if (typeof ruleset == "string" && typeof query == "string") {
-    //         res.json(filterNames(getRuleset(ruleset), query));
-    //       } else {
-    //         res
-    //           .status(400)
-    //           .json({ error: "Ruleset type error", code: "DT-R3-01" });
-    //       }
-    //     } catch (error) {
-    //       console.error("Error in /search route:", error);
-    //       res
-    //         .status(500)
-    //         .json({ error: "Internal Server Error", code: "DT-R3-02" });
-    //     }
-    //   },
-    // },
     "/advancesearch": {
       get: async (req: Request, res: DataResponse) => {
         try {
@@ -68,6 +48,35 @@ export const DataRoutes: Route = {
               .status(400)
               .json({ error: "Query type error", code: "DT-R3-01" });
           }
+        } catch (error) {
+          console.error(
+            `Error in /search route:", ${
+              (error as Error).message
+            }\nSearch query: ${req.query.query}`
+          );
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "DT-R3-02" });
+        }
+      },
+    },
+    "/listpokemon": {
+      get: async (req: Request, res: DataResponse) => {
+        try {
+          let rulesetId = req.query.ruleset;
+          if (typeof rulesetId === "string") {
+            const ruleset = getRuleset(rulesetId);
+            return res.json(
+              Array.from(ruleset.gen.species).map((specie) => ({
+                name: specie.name,
+                id: specie.id,
+              }))
+            );
+          }
+
+          return res
+            .status(400)
+            .json({ error: "Query type error", code: "DT-R3-01" });
         } catch (error) {
           console.error(
             `Error in /search route:", ${

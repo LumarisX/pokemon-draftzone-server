@@ -7,9 +7,12 @@
     "start": "ts-node src/index.ts",
     "monitor": "nodemon src/index.ts",
     "install-dep": "npm i --no-bin-links",
-    "test": "nodemon src/tests/run.test.ts",
-    "testOne": "ts-node src/tests/run.test.ts",
-    "mongoAction": "ts-node src/tests/database/database.functions.ts"
+    "testScript": "nodemon src/tests/runtest.ts",
+    "testOne": "ts-node src/tests/runtest.ts",
+    "mongoAction": "ts-node src/tests/database/database.functions.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:ci": "test --runInBand"
   },
   "engines": {
     "node": "18.16.0"
@@ -38,13 +41,18 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/preset-env": "^7.26.0",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",
     "@types/debug": "^4.1.12",
     "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.5.4",
     "@types/ws": "^8.5.12",
+    "jest": "^29.7.0",
+    "jest-extended": "^4.0.2",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   },

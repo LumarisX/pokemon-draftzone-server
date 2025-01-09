@@ -1,7 +1,8 @@
 node_modules/
-src/tests/
+src/rnd/
 src/routes/test.rest
 package-lock.json
 output.json
 .env
 dist/
+coverage/

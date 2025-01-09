@@ -1,36 +1,23 @@
-import { ID, Move, MoveCategory, MoveName, TypeName } from "@pkmn/data";
-import { Ruleset } from "../../data/rulesets";
+import { Move } from "@pkmn/data";
 
-export function getType(
-  ruleset: Ruleset,
-  moveID: ID,
-  pokemonTypes?: [TypeName] | [TypeName, TypeName]
-): TypeName {
-  if (pokemonTypes) {
-    if (
-      moveID === "judgment" ||
-      moveID === "multiattack" ||
-      moveID === "revelationdance"
-    ) {
-      return pokemonTypes[0];
-    } else if (moveID === "ragingbull" || moveID === "ivycudgel") {
-      return pokemonTypes[1] ? pokemonTypes[1] : pokemonTypes[0];
-    }
-  }
-  return ruleset.gen.dex.moves.getByID(moveID).type;
-}
-
-export function getMove(ruleset: Ruleset, moveID: ID): Move {
-  return ruleset.gen.dex.moves.getByID(moveID);
-}
-
-export function getMoveName(ruleset: Ruleset, moveID: ID): MoveName {
-  return ruleset.gen.dex.moves.getByID(moveID).name;
-}
-
-export function getCategory(ruleset: Ruleset, moveID: ID): MoveCategory {
-  return ruleset.gen.dex.moves.getByID(moveID).category;
-}
+// export function getType(
+//   ruleset: Ruleset,
+//   moveID: ID,
+//   pokemonTypes?: [TypeName] | [TypeName, TypeName]
+// ): TypeName {
+//   if (pokemonTypes) {
+//     if (
+//       moveID === "judgment" ||
+//       moveID === "multiattack" ||
+//       moveID === "revelationdance"
+//     ) {
+//       return pokemonTypes[0];
+//     } else if (moveID === "ragingbull" || moveID === "ivycudgel") {
+//       return pokemonTypes[1] ? pokemonTypes[1] : pokemonTypes[0];
+//     }
+//   }
+//   return ruleset.gen.dex.moves.getByID(moveID).type;
+// }
 
 export function getEffectivePower(move: Move) {
   let value =

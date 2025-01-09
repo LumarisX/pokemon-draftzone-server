@@ -121,7 +121,10 @@ export interface ArchiveData {
   }[];
 }
 
-export interface ArchiveDocument extends ArchiveData, Document<any, any> {}
+export interface ArchiveDocument extends ArchiveData, Document {
+  updatedAt: Date;
+  createdAt: Date;
+}
 
 export const ArchiveModel = mongoose.model<ArchiveDocument>(
   "archives",
