@@ -1,21 +1,23 @@
 import mongoose from "mongoose";
 
 const supporterSchema = new mongoose.Schema({
-  username: { type: String, required: true },
+  name: { type: String, required: true },
   startDate: { type: Date, required: true, default: Date.now() },
-  tier: { type: String, required: true },
+  tier: { type: String },
   enabled: { type: Boolean, required: true },
   extraMonths: { type: Number, default: 0 },
+  amount: { type: Number },
   endDate: { type: Date },
   email: { type: String },
 });
 
-interface Supporter {
-  username: string;
+export interface Supporter {
+  name: string;
   startDate: Date;
-  tier: string;
+  tier?: string;
   enabled: boolean;
   extraMonths?: number;
+  amount?: number;
   endDate?: Date;
   email?: string;
 }
