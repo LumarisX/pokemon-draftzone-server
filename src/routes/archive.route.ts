@@ -21,10 +21,10 @@ export const ArchiveRoutes: Route = {
     "/teams": {
       get: async (req: SubRequest, res: ArchiveResponse) => {
         try {
-          let archives = await ArchiveModel.find({ owner: req.sub }).sort({
+          let rawArchives = await ArchiveModel.find({ owner: req.sub }).sort({
             createdAt: -1,
           });
-          archives = archives.map((rawArchive) => {
+          let archives = rawArchives.map((rawArchive) => {
             let archive = rawArchive.toObject();
             archive.team = archive.team
               .filter((mon) => {

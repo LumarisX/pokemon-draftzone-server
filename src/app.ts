@@ -6,15 +6,16 @@ import createError from "http-errors";
 import mongoose from "mongoose";
 import logger from "morgan";
 import path from "path";
+import { config } from "./config";
 import { Route } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
 import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
+import { LeagueAdRoutes } from "./routes/league-ad.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
-import { LeagueAdRoutes } from "./routes/league-ad.route";
-import { config } from "./config";
+import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
 
 mongoose
@@ -57,6 +58,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/planner": PlannerRoutes,
   "/leagues": LeagueAdRoutes,
   "/teambuilder": TeambuilderRoutes,
+  "/supporters": SupporterRoutes,
 };
 
 const METHODS: ("get" | "post" | "delete" | "patch")[] = [
