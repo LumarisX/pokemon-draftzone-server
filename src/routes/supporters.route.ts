@@ -21,7 +21,6 @@ export const SupporterRoutes: Route = {
                 data.top.all.push(sTop);
                 const thirty = new Date(today);
                 thirty.setDate(thirty.getDate() - 30);
-                console.log(start, thirty);
                 if (start > thirty) {
                   data.top.thirty.push(sTop);
                 }
