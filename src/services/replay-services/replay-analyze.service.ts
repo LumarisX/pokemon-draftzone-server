@@ -21,7 +21,18 @@ export class Replay {
 
   killStrings: KillString[] = [];
 
-  analyze() {
+  analyze(): {
+    gametype: string;
+    genNum: number;
+    turns: number;
+    gameTime: number;
+    stats: ReplayStats[];
+    events: {
+      player: number;
+      turn: number;
+      message: string;
+    }[];
+  } {
     let gametype: undefined | GAMETYPE = undefined;
     this.playerData = [];
     this.field = {
@@ -33,7 +44,6 @@ export class Replay {
     let t0: number = 0;
     let tf: number = 0;
     let preview: number = 6;
-    const gens = new Generations(Dex);
     const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
     for (this.i = 0; this.i < this.replayData.length; this.i++) {
       let lineData = this.replayData[this.i];
@@ -1229,7 +1239,7 @@ export class Replay {
   }
 }
 
-type ReplayStats = {
+export type ReplayStats = {
   username: string | undefined;
   win: boolean;
   total: {
