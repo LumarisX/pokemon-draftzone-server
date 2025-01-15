@@ -1,4 +1,9 @@
-import { ReplayAnalysis, ReplayStats } from "./replay-analyze.service";
+import {
+  formatUrl,
+  ReplayAnalysis,
+  ReplayStats,
+  validateUrl,
+} from "./replay-analyze.service";
 
 const replays: {
   url: string;
@@ -602,7 +607,7 @@ describe("Replay Analyzer", () => {
         const response = await fetch(replay.url);
         const text = await response.text();
         replayData = new ReplayAnalysis(text);
-        analysis = replayData.analyze();
+        analysis = replayData.toJson();
       });
 
       test("correct number of turns", () => {
@@ -777,5 +782,38 @@ describe("Replay Analyzer", () => {
         }
       });
     });
+  });
+});
+
+describe("Validate URL", () => {
+  test("valid https URL", () => {
+    expect(
+      validateUrl("https://replay.pokemonshowdown.com/gen9customgame-123456")
+    ).toBe(true);
+  });
+  test("valid short URL", () => {
+    expect(
+      validateUrl("replay.pokemonshowdown.com/gen9customgame-123456")
+    ).toBe(true);
+  });
+  test("room URL", () => {
+    expect(
+      validateUrl(
+        "https://play.pokemonshowdown.com/battle-gen9randombattle-123456"
+      )
+    ).toBe(false);
+  });
+});
+
+describe("Format URL", () => {
+  test("valid short URL", () => {
+    expect(formatUrl("replay.pokemonshowdown.com/gen9customgame-123456")).toBe(
+      "https://replay.pokemonshowdown.com/gen9customgame-123456"
+    );
+  });
+  test("valid https URL", () => {
+    expect(
+      formatUrl("https://replay.pokemonshowdown.com/gen9customgame-123456")
+    ).toBe("https://replay.pokemonshowdown.com/gen9customgame-123456");
   });
 });

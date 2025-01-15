@@ -20,7 +20,7 @@ export const ReplayRoutes: Route = {
               .json({ message: "Invalid URL Format", code: "RA-R1-01" });
           const replayData = await fetch(`${formatUrl(res.url)}.log`);
           let replay = new ReplayAnalysis(await replayData.text());
-          res.json(replay.analyze());
+          res.json(replay.toJson());
         } catch (error) {
           console.error("Error in /formats/ route:", error);
           res
