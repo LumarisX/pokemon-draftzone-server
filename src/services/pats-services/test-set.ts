@@ -17,7 +17,7 @@ export type PikalyticData = {
     spe: number;
   };
   abilities: {
-    ability: string;
+    ability?: string;
     percent: string;
   }[];
   raw_count: string;
@@ -71,7 +71,7 @@ export function testSet(
 ) {
   const data: PikalyticData[] = JSON.parse(fs.readFileSync(PATH, "utf-8"));
   const otherData = data.find((mon) => mon.name === otherPokemon);
-  if (!otherData) return;
+  if (!otherData) throw new Error(otherPokemon + " not found in the dataset");
   const offensive: {
     [key: MoveName]: {
       move: {
@@ -114,8 +114,15 @@ export function testSet(
       };
     };
   } = {};
-
-  otherData.abilities.forEach((ability) => {
+  let abilities = otherData.abilities;
+  if (abilities.length === 0)
+    abilities = [
+      {
+        ability: undefined,
+        percent: "100",
+      },
+    ];
+  abilities.forEach((ability) => {
     if (ability.ability === "Other") return;
     otherData.items.forEach((item) => {
       if (item.item === "Other") return;

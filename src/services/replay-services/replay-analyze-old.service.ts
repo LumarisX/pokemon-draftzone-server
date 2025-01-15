@@ -3,12 +3,15 @@ import { Dex } from "@pkmn/dex";
 
 const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
 
-export class ReplayAnalysis {
+export class ReplayAnalysisOld {
+  replayLines: Line[] = [];
   field!: Field;
   playerData!: Player[];
+  i: number = 0;
   lastMove: { data: MoveData; move: Move } | undefined;
   tempMons: { [key: string]: Pokemon } = {};
   gens!: Generations;
+  turn: number = 0;
   events: { player: number; turn: number; message: string }[] = [];
   killStrings: KillString[] = [];
   gametype: undefined | GAMETYPE = undefined;
@@ -17,20 +20,17 @@ export class ReplayAnalysis {
   preview: number = 6;
   t0: number;
   tf: number;
-  matchData: {
-    pre: Line[];
-    turns?: Turn[];
-  } = {
-    pre: [],
-  };
 
   constructor(log: string) {
-    const replayLines = log.split("\n|").reduce((lines, log) => {
-      const line = new Line(log);
-      if (line.isChild()) lines[lines.length - 1].addChildLine(line);
-      else lines.push(line);
-      return lines;
-    }, [] as Line[]);
+    const logLines = log.split("\n|");
+    this.replayLines = logLines.map((log) => new Line(log));
+    // this.replayLines = logLines.reduce((lines, log) => {
+    //   const line = new Line(log);
+    //   if (line.identifier.startsWith("-"))
+    //     lines[lines.length - 1].addChildLine(line);
+    //   else lines.push(line);
+    //   return lines;
+    // }, [] as Line[]);
     this.gens = new Generations(Dex);
     this.playerData = [];
     this.field = {
@@ -40,66 +40,46 @@ export class ReplayAnalysis {
     };
     this.t0 = 0;
     this.tf = 0;
-    replayLines.forEach((line) => {
-      switch (line.data[0]) {
-        case "start":
-          this.matchData.turns = [];
-          this.matchData.turns.push(new Turn(0));
-          return;
-        case "turn":
-          this.matchData.turns?.push(new Turn(+line.data[1]));
-          return;
-      }
-      if (this.matchData.turns)
-        this.matchData.turns[this.matchData.turns.length - 1].addLine(line);
-      else this.matchData.pre.push(line);
-    });
-    this.matchData.pre.forEach((line) => {
+    this.replayLines.forEach((line, index) => {
+      this.i = index;
       this.executeLine(line);
-    });
-    this.matchData.turns?.forEach((turn) => {
-      this.updateChart(turn.number);
-      turn.lines.forEach((line) => {
-        this.executeLine(line);
-      });
     });
     this.gameTime = this.tf - this.t0;
   }
 
   private executeLine(line: Line) {
-    switch (line.data[0]) {
+    switch (line.lineData[0]) {
       case "":
         break;
       case "-damage":
-        let damageTarget = this.getMonByString(line.data[1]);
+        let damageTarget = this.getMonByString(line.lineData[1]);
         if (damageTarget) {
           this.damage(
             damageTarget,
-            this.getHPP(line.data[2]),
-            line.data.slice(3),
-            line
+            this.getHPP(line.lineData[2]),
+            line.lineData.slice(3)
           );
         }
         break;
       case "t:":
         if (this.t0) {
-          this.tf = +line.data[1];
+          this.tf = +line.lineData[1];
         } else {
-          this.t0 = +line.data[1];
+          this.t0 = +line.lineData[1];
         }
         break;
       case "move":
-        let moveAttacker = this.getMonByString(line.data[1]);
+        let moveAttacker = this.getMonByString(line.lineData[1]);
         if (moveAttacker) {
           let move = [...moveAttacker.moveset].find(
-            (move) => move.name === line.data[2]
+            (move) => move.name === line.lineData[2]
           );
           if (!move) {
-            move = this.gens.dex.moves.get(line.data[2]);
+            move = this.gens.dex.moves.get(line.lineData[2]);
             moveAttacker.moveset.add(move);
           }
           if (move.exists === true) {
-            this.lastMove = { data: line.data, move: move };
+            this.lastMove = { data: line.lineData, move: move };
             if (move.target && move.target !== "self") {
               moveAttacker.player.luck.moves.expected +=
                 move.accuracy === true ? 1 : move.accuracy / 100;
@@ -122,38 +102,42 @@ export class ReplayAnalysis {
           }
         }
         break;
+      case "turn":
+        this.updateChart(this.turn);
+        this.turn = +line.lineData[1];
+        break;
       case "win":
-        this.upkeep(line.turn);
-        this.updateChart(line.turn?.number ?? 0);
+        this.upkeep();
+        this.updateChart(this.turn);
         let winPlayer = this.playerData.findIndex(
-          (player) => player.username == line.data[1]
+          (player) => player.username == line.lineData[1]
         );
         if (winPlayer >= 0) {
           this.playerData[winPlayer].win = true;
           this.events.push({
-            turn: line.turn?.number ?? 0,
+            turn: this.turn,
             player: winPlayer + 1,
-            message: `${line.data[1]} wins.`,
+            message: `${line.lineData[1]} wins.`,
           });
         }
         break;
       case "upkeep":
-        this.upkeep(line.turn);
+        this.upkeep();
         break;
       case "-anim":
         break;
       case "replace":
-        let replaceMon = this.getMonByString(line.data[1]);
+        let replaceMon = this.getMonByString(line.lineData[1]);
         if (!replaceMon) break;
-        let illusionPlayer = +line.data[1].charAt(1) - 1;
+        let illusionPlayer = +line.lineData[1].charAt(1) - 1;
         let illusionMon = this.playerData[illusionPlayer].team.find(
           (pokemon) => {
             if (!pokemon.brought) {
               return new RegExp(
                 String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`
-              ).test(line.data[2] as string);
+              ).test(line.lineData[2] as string);
             } else {
-              let detailSet = new Set(line.data[2]!.split(", "));
+              let detailSet = new Set(line.lineData[2]!.split(", "));
               return pokemon.formes.some((forme) =>
                 forme.detail.split(", ").every((e) => detailSet.has(e))
               );
@@ -161,16 +145,17 @@ export class ReplayAnalysis {
           }
         );
 
-        let tempReplaceMon = this.tempMons[line.data[1].substring(0, 3)];
+        let tempReplaceMon = this.tempMons[line.lineData[1].substring(0, 3)];
         if (!illusionMon) {
           illusionMon = {
             formes: [
               {
-                detail: line.data[2],
-                id: this.gens.dex.species.get(line.data[2].split(",")[0])?.id,
+                detail: line.lineData[2],
+                id: this.gens.dex.species.get(line.lineData[2].split(",")[0])
+                  ?.id,
               },
             ],
-            nickname: line.data[1].split(" ")[1],
+            nickname: line.lineData[1].split(" ")[1],
             hpp: 100,
             moveset: new Set(),
             hpRestored: 0,
@@ -224,22 +209,22 @@ export class ReplayAnalysis {
         });
 
         this.field.sides[illusionPlayer][
-          line.data[1].charAt(2) as PPosition
+          line.lineData[1].charAt(2) as PPosition
         ].pokemon = illusionMon;
 
         replaceMon = tempReplaceMon;
         break;
       case "switch":
-        this.playerData[+line.data[1].charAt(1) - 1].stats.switches++;
+        this.playerData[+line.lineData[1].charAt(1) - 1].stats.switches++;
       case "drag":
-        let switchPlayer = +line.data[1].charAt(1) - 1;
+        let switchPlayer = +line.lineData[1].charAt(1) - 1;
         let switchedMon = this.playerData[switchPlayer].team.find((pokemon) => {
           if (!pokemon.brought) {
             return new RegExp(
               String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`
-            ).test(line.data[2] as string);
+            ).test(line.lineData[2] as string);
           } else {
-            let detailSet = new Set(line.data[2]!.split(", "));
+            let detailSet = new Set(line.lineData[2]!.split(", "));
             return pokemon.formes.some((forme) =>
               forme.detail.split(", ").every((e) => detailSet.has(e))
             );
@@ -249,20 +234,21 @@ export class ReplayAnalysis {
           if (!switchedMon.brought) {
             switchedMon.brought = true;
             switchedMon.formes[0] = {
-              detail: line.data[2],
-              id: this.gens.dex.species.get(line.data[2].split(",")[0])?.id,
+              detail: line.lineData[2],
+              id: this.gens.dex.species.get(line.lineData[2].split(",")[0])?.id,
             };
-            switchedMon.nickname = line.data[1].split(" ")[1];
+            switchedMon.nickname = line.lineData[1].split(" ")[1];
           }
         } else {
           this.playerData[switchPlayer].team.push({
             formes: [
               {
-                detail: line.data[2],
-                id: this.gens.dex.species.get(line.data[2].split(",")[0])?.id,
+                detail: line.lineData[2],
+                id: this.gens.dex.species.get(line.lineData[2].split(",")[0])
+                  ?.id,
               },
             ],
-            nickname: line.data[1].split(" ")[1],
+            nickname: line.lineData[1].split(" ")[1],
             hpp: 100,
             moveset: new Set(),
             hpRestored: 0,
@@ -283,13 +269,15 @@ export class ReplayAnalysis {
         }
 
         const switchInMon = this.playerData[switchPlayer].team.find((pokemon) =>
-          pokemon.formes.some((forme) => line.data[2]!.startsWith(forme.detail))
+          pokemon.formes.some((forme) =>
+            line.lineData[2]!.startsWith(forme.detail)
+          )
         );
         this.field.sides[switchPlayer][
-          line.data[1].charAt(2) as PPosition
+          line.lineData[1].charAt(2) as PPosition
         ].pokemon = switchInMon;
         if (switchInMon)
-          this.tempMons[line.data[1].substring(0, 3)] =
+          this.tempMons[line.lineData[1].substring(0, 3)] =
             structuredClone(switchInMon);
         break;
       case "c:":
@@ -304,11 +292,11 @@ export class ReplayAnalysis {
       case "-resisted":
         break;
       case "poke":
-        this.playerData[this.getPlayer(line.data[1])].team.push({
+        this.playerData[this.getPlayer(line.lineData[1])].team.push({
           formes: [
             {
-              detail: line.data[2],
-              id: this.gens.dex.species.get(line.data[2].split(",")[0])?.id,
+              detail: line.lineData[2],
+              id: this.gens.dex.species.get(line.lineData[2].split(",")[0])?.id,
             },
           ],
           nickname: "",
@@ -322,7 +310,7 @@ export class ReplayAnalysis {
             damageTaken: [],
             damageDealt: [],
           },
-          player: this.playerData[this.getPlayer(line.data[1])],
+          player: this.playerData[this.getPlayer(line.lineData[1])],
           status: { status: "healthy" },
           statuses: [],
           kills: [0, 0],
@@ -332,16 +320,16 @@ export class ReplayAnalysis {
         break;
 
       case "-heal":
-        let healPosition = this.getMonByString(line.data[1]);
+        let healPosition = this.getMonByString(line.lineData[1]);
         if (healPosition) {
-          let newHp = this.getHPP(line.data[2]);
-          this.heal(healPosition, newHp, line.data[3]);
+          let newHp = this.getHPP(line.lineData[2]);
+          this.heal(healPosition, newHp, line.lineData[3]);
         }
         break;
       case "rule":
         break;
       case "faint":
-        let faintMon = this.getMonByString(line.data[1]);
+        let faintMon = this.getMonByString(line.lineData[1]);
         if (faintMon) {
           faintMon.fainted = true;
           let killString: KillString = {
@@ -374,9 +362,7 @@ export class ReplayAnalysis {
               //Fainted from direct damage
               if (faintMon.lastDamage.type === "direct") {
                 if (this.lastMove) {
-                  if (
-                    this.lastMove.data === faintMon.lastDamage.line.parent?.data
-                  ) {
+                  if (this.lastMove.data === faintMon.lastDamage.parent.main) {
                     let faintAttacker = this.getMonByString(
                       this.lastMove.data[1]
                     );
@@ -391,7 +377,7 @@ export class ReplayAnalysis {
                         faintAttacker.kills[0]++;
                       }
                     } else {
-                      console.log("ks error", line.data);
+                      console.log("ks error", line.lineData);
                       // killString.attacker =
                       //   this.lastMove.data[1].split(": ")[1];
                     }
@@ -448,8 +434,10 @@ export class ReplayAnalysis {
         break;
       case "player":
         if (
-          line.data[2] &&
-          !this.playerData.find((player) => player.username === line.data[2])
+          line.lineData[2] &&
+          !this.playerData.find(
+            (player) => player.username === line.lineData[2]
+          )
         ) {
           let side = {
             a: { pokemon: undefined, statuses: [] },
@@ -465,7 +453,7 @@ export class ReplayAnalysis {
             },
             side: side,
             stats: { switches: 0 },
-            username: line.data[2],
+            username: line.lineData[2],
             teamSize: 0,
             turnChart: [],
             team: [],
@@ -475,39 +463,40 @@ export class ReplayAnalysis {
         }
         break;
       case "teamsize":
-        this.playerData[this.getPlayer(line.data[1])].teamSize = +line.data[2];
+        this.playerData[this.getPlayer(line.lineData[1])].teamSize =
+          +line.lineData[2];
         break;
       case "-formechange":
       case "detailschange":
-        let detailMon = this.getMonByString(line.data[1]);
+        let detailMon = this.getMonByString(line.lineData[1]);
         if (detailMon) {
           detailMon.formes.push({
-            detail: line.data[2],
-            id: this.gens.dex.species.get(line.data[2].split(",")[0])?.id,
+            detail: line.lineData[2],
+            id: this.gens.dex.species.get(line.lineData[2].split(",")[0])?.id,
           });
         }
         break;
       case "-activate":
-        let activateMon = this.getMonByString(line.data[1]);
+        let activateMon = this.getMonByString(line.lineData[1]);
         if (activateMon) {
           let activateSetter = undefined;
-          if (line.data[3] && line.data[3].startsWith("[of] ")) {
+          if (line.lineData[3] && line.lineData[3].startsWith("[of] ")) {
             activateSetter = this.getMonByString(
-              this.ofP2P(line.data[3] as OFPOKEMON)
+              this.ofP2P(line.lineData[3] as OFPOKEMON)
             );
           }
           activateMon.statuses.push({
-            status: line.data[2],
+            status: line.lineData[2],
             setter: activateSetter,
-            name: line.data[2].split(": ").at(-1),
+            name: line.lineData[2].split(": ").at(-1),
           });
         }
         break;
       case "-status":
-        let statusPosition = this.getMonByString(line.data[1]);
+        let statusPosition = this.getMonByString(line.lineData[1]);
         if (statusPosition) {
-          let statusStart: Status = { status: line.data[2] };
-          switch (line.data[2]) {
+          let statusStart: Status = { status: line.lineData[2] };
+          switch (line.lineData[2]) {
             case "tox":
               statusStart = { status: "psn", name: "Toxic" };
               break;
@@ -524,45 +513,45 @@ export class ReplayAnalysis {
               statusStart = { status: "frz", name: "Freeze" };
               break;
           }
-          if (line.data[3]) {
-            if (line.data[3].startsWith("[from] item: ")) {
+          if (line.lineData[3]) {
+            if (line.lineData[3].startsWith("[from] item: ")) {
               statusStart.setter = statusPosition;
             } else if (
               this.lastMove &&
-              this.lastMove.data[3] === line.data[1]
+              this.lastMove.data[3] === line.lineData[1]
             ) {
               statusStart.setter = this.getMonByString(this.lastMove.data[1]);
-            } else if (line.data[4] && line.data[4].startsWith("[of] ")) {
+            } else if (
+              line.lineData[4] &&
+              line.lineData[4].startsWith("[of] ")
+            ) {
               statusStart.setter = this.getMonByString(
-                this.ofP2P(line.data[4] as OFPOKEMON)
+                this.ofP2P(line.lineData[4] as OFPOKEMON)
               );
             }
-          } else if (line.parent) {
+          } else {
+            let statusParent = this.getParent(this.i);
             if (
-              (line.parent.data[0] === "switch" ||
-                line.parent.data[0] === "drag" ||
-                line.parent.data[0] === "replace") &&
+              (statusParent.main[0] === "switch" ||
+                statusParent.main[0] === "drag" ||
+                statusParent.main[0] === "replace") &&
               statusStart.status === "psn"
             ) {
               statusStart.setter = this.field.sides[
-                +(line.data[1] as POKEMON).charAt(1) - 1
+                +(line.lineData[1] as POKEMON).charAt(1) - 1
               ].statuses.find(
                 (status) =>
                   status.status === "move: Toxic Spikes" ||
                   status.status === "Toxic Spikes"
               )?.setter;
-            } else if (line.parent.data[0] === "move") {
-              let statusOnProtect = line.parent.children.find(
-                (child) =>
-                  child.data[0] === "-activate" &&
-                  child.data[2] === "move: Protect"
+            } else if (statusParent.main[0] === "move") {
+              let statusOnProtect = statusParent.sub.find(
+                (sub) => sub[0] === "-activate" && sub[2] === "move: Protect"
               );
-              if (statusOnProtect && statusOnProtect.data[0] === "-activate") {
-                statusStart.setter = this.getMonByString(
-                  statusOnProtect.data[1]
-                );
+              if (statusOnProtect && statusOnProtect[0] === "-activate") {
+                statusStart.setter = this.getMonByString(statusOnProtect[1]);
               } else {
-                statusStart.setter = this.getMonByString(line.parent.data[1]);
+                statusStart.setter = this.getMonByString(statusParent.main[1]);
               }
             }
           }
@@ -571,11 +560,14 @@ export class ReplayAnalysis {
         }
         break;
       case "-weather":
-        if (line.data[1] !== this.field.weather.status) {
-          let weatherStatus: Status = { status: line.data[1] };
-          if (line.data.length > 3 && line.data[3].startsWith("[of] ")) {
+        if (line.lineData[1] !== this.field.weather.status) {
+          let weatherStatus: Status = { status: line.lineData[1] };
+          if (
+            line.lineData.length > 3 &&
+            line.lineData[3].startsWith("[of] ")
+          ) {
             let weatherPosition = this.getMonByString(
-              this.ofP2P(line.data[3] as OFPOKEMON)
+              this.ofP2P(line.lineData[3] as OFPOKEMON)
             );
             weatherStatus.setter = weatherPosition;
           } else {
@@ -588,25 +580,26 @@ export class ReplayAnalysis {
         }
         break;
       case "-crit":
-        if (line.parent?.data[0] === "move") {
-          let critAttacker = this.getMonByString(line.parent.data[1]);
+        let critMain = this.getParent(this.i).main;
+        if (critMain[0] === "move") {
+          let critAttacker = this.getMonByString(critMain[1]);
           if (critAttacker) {
             critAttacker.player.luck.crits.hits++;
           }
         }
         break;
       case "-miss":
-        let missAttacker = this.getMonByString(line.data[1]);
+        let missAttacker = this.getMonByString(line.lineData[1]);
         if (missAttacker) {
-          if (line.data[1]) {
+          if (line.lineData[1]) {
             missAttacker.player.luck.moves.hits--;
           }
         }
         break;
       case "cant":
-        let cantMon = this.getMonByString(line.data[1]);
+        let cantMon = this.getMonByString(line.lineData[1]);
         if (cantMon) {
-          if (line.data[2] === "par") {
+          if (line.lineData[2] === "par") {
             cantMon.player.luck.status.full++;
             cantMon.player.luck.status.total++;
             cantMon.player.luck.status.expected += 0.25;
@@ -624,31 +617,33 @@ export class ReplayAnalysis {
       case "-enditem":
         break;
       case "gametype":
-        this.gametype = line.data[1];
+        this.gametype = line.lineData[1];
         break;
       case "gen":
-        this.genNum = +line.data[1];
+        this.genNum = +line.lineData[1];
         break;
       case "tier":
         break;
       case "clearpoke":
         break;
       case "teampreview":
-        if (line.data[1]) {
-          this.preview = +line.data[1];
+        if (line.lineData[1]) {
+          this.preview = +line.lineData[1];
         }
         break;
       case "-singlemove":
-        let singleMoveMon = this.getMonByString(line.data[1]);
+        let singleMoveMon = this.getMonByString(line.lineData[1]);
         if (singleMoveMon) {
           singleMoveMon.statuses.push({
-            status: `move: ${line.data[2]}`,
+            status: `move: ${line.lineData[2]}`,
             setter: singleMoveMon,
-            name: line.data[2],
+            name: line.lineData[2],
           });
         }
         break;
       case "-singleturn":
+        break;
+      case "start":
         break;
       case "-transform":
         break;
@@ -677,7 +672,7 @@ export class ReplayAnalysis {
       case "-copyboost":
         break;
       case "-curestatus":
-        let curePosition = this.getMonByString(line.data[1]);
+        let curePosition = this.getMonByString(line.lineData[1]);
         if (curePosition) {
           curePosition.status = { status: "healthy" };
         }
@@ -695,7 +690,7 @@ export class ReplayAnalysis {
             let hitMove = this.gens.dex.moves.get(this.lastMove.data[2]);
             if (hitMove.exists === true) {
               if (hitMove.target && hitMove.target !== "self") {
-                let hitCount = +line.data[2];
+                let hitCount = +line.lineData[2];
                 for (let h = 1; h < hitCount; h++) {
                   hitAttacker.player.luck.moves.expected +=
                     hitMove.accuracy === true ? 1 : hitMove.accuracy / 100;
@@ -730,14 +725,14 @@ export class ReplayAnalysis {
       case "-setboost":
         break;
       case "-sethp":
-        let hpTarget = this.getMonByString(line.data[1]);
+        let hpTarget = this.getMonByString(line.lineData[1]);
         if (hpTarget) {
-          let newHpp = this.getHPP(line.data[2]);
+          let newHpp = this.getHPP(line.lineData[2]);
           let hpDiff = hpTarget.hpp - newHpp;
           if (hpDiff > 0) {
-            this.damage(hpTarget, newHpp, line.data.slice(3), line);
+            this.damage(hpTarget, newHpp, line.lineData.slice(3));
           } else if (hpDiff < 0) {
-            this.heal(hpTarget, newHpp, line.data[3]);
+            this.heal(hpTarget, newHpp, line.lineData[3]);
           }
         }
         break;
@@ -754,22 +749,22 @@ export class ReplayAnalysis {
       case "request":
         break;
       case "swap":
-        let swapSide = this.field.sides[+line.data[1].charAt(1) - 1];
+        let swapSide = this.field.sides[+line.lineData[1].charAt(1) - 1];
         [
-          swapSide[line.data[1].charAt(2) as PPosition],
-          swapSide[["a", "b", "c"][+line.data[2]] as PPosition],
+          swapSide[line.lineData[1].charAt(2) as PPosition],
+          swapSide[["a", "b", "c"][+line.lineData[2]] as PPosition],
         ] = [
-          swapSide[["a", "b", "c"][+line.data[2]] as PPosition],
-          swapSide[line.data[1].charAt(2) as PPosition],
+          swapSide[["a", "b", "c"][+line.lineData[2]] as PPosition],
+          swapSide[line.lineData[1].charAt(2) as PPosition],
         ];
         break;
       case "-mega":
         break;
       case "-terastallize":
-        let teraMon = this.getMonByString(line.data[1]);
+        let teraMon = this.getMonByString(line.lineData[1]);
         if (teraMon) {
           teraMon.formes.map((forme) => ({
-            detail: `${forme.detail}, tera:${line.data[2]}`,
+            detail: `${forme.detail}, tera:${line.lineData[2]}`,
             base: forme.id,
           }));
         }
@@ -782,18 +777,18 @@ export class ReplayAnalysis {
       case "-message":
         this.events.push({
           player: 0,
-          turn: line.turn?.number ?? 0,
-          message: `${line.data[1]}`,
+          turn: this.turn,
+          message: `${line.lineData[1]}`,
         });
         break;
       case "-end":
-        let endMon = this.getMonByString(line.data[1]);
+        let endMon = this.getMonByString(line.lineData[1]);
         if (endMon) {
           let endStatus = endMon.statuses.find(
             (status) =>
-              status.status === line.data[2] ||
+              status.status === line.lineData[2] ||
               status.status.startsWith(
-                line.data[2].toLowerCase().replace(" ", "")
+                line.lineData[2].toLowerCase().replace(" ", "")
               )
           );
           if (endStatus) {
@@ -802,11 +797,12 @@ export class ReplayAnalysis {
         }
         break;
       case "-sidestart":
-        if (line.parent?.data[0] == "move") {
-          let sideMon = this.getMonByString(line.parent.data[1]);
+        let sideParent = this.getParent(this.i);
+        if (sideParent.main[0] == "move") {
+          let sideMon = this.getMonByString(sideParent.main[1]);
           if (sideMon) {
-            let sideStartStatus = line.data[2].split(": ");
-            this.field.sides[+line.data[1].charAt(1) - 1].statuses.push({
+            let sideStartStatus = line.lineData[2].split(": ");
+            this.field.sides[+line.lineData[1].charAt(1) - 1].statuses.push({
               status:
                 sideStartStatus.length === 2
                   ? sideStartStatus[1]
@@ -817,27 +813,28 @@ export class ReplayAnalysis {
         }
         break;
       case "-sideend":
-        this.field.sides[+line.data[1].charAt(1) - 1].statuses.splice(
-          this.field.sides[+line.data[1].charAt(1) - 1].statuses.findIndex(
-            (s) => s.status === line.data[2]
+        this.field.sides[+line.lineData[1].charAt(1) - 1].statuses.splice(
+          this.field.sides[+line.lineData[1].charAt(1) - 1].statuses.findIndex(
+            (s) => s.status === line.lineData[2]
           ),
           1
         );
 
         break;
       case "-start":
-        let startMon = this.getMonByString(line.data[1]);
+        let startMon = this.getMonByString(line.lineData[1]);
         if (startMon) {
-          if (line.parent) {
+          let startParent = this.getParent(this.i);
+          if (startParent) {
             let startMonTarget = undefined;
-            if (line.parent.data[0] === "move") {
-              startMonTarget = this.getMonByString(line.parent.data[3]);
+            if (startParent.main[0] === "move") {
+              startMonTarget = this.getMonByString(startParent.main[3]);
             } else {
               startMonTarget = startMon;
             }
             if (startMonTarget) {
               startMonTarget.statuses.push({
-                status: line.data[2],
+                status: line.lineData[2],
                 setter: startMon,
               });
             }
@@ -846,10 +843,10 @@ export class ReplayAnalysis {
 
         break;
       case "-fieldstart":
-        let fieldStartStatus: Status = { status: line.data[1] };
-        if (line.data[3] && line.data[3].startsWith("[of] ")) {
+        let fieldStartStatus: Status = { status: line.lineData[1] };
+        if (line.lineData[3] && line.lineData[3].startsWith("[of] ")) {
           let fieldStartSetter = this.getMonByString(
-            this.ofP2P(line.data[3] as OFPOKEMON)
+            this.ofP2P(line.lineData[3] as OFPOKEMON)
           );
           if (fieldStartSetter) {
             fieldStartStatus.setter = fieldStartSetter;
@@ -860,7 +857,7 @@ export class ReplayAnalysis {
       case "-fieldend":
         this.field.statuses.splice(
           this.field.statuses.findIndex(
-            (status) => status.status === line.data[1]
+            (status) => status.status === line.lineData[1]
           ),
           1
         );
@@ -870,11 +867,8 @@ export class ReplayAnalysis {
       case "rated":
         break;
       default:
-        console.log(line.data);
+        console.log(line.lineData);
     }
-    line.children.forEach((child) => {
-      this.executeLine(child);
-    });
   }
 
   toJson() {
@@ -967,7 +961,7 @@ export class ReplayAnalysis {
         ? this.gametype.charAt(0).toUpperCase() + this.gametype.slice(1)
         : "",
       genNum: this.genNum,
-      turns: (this.matchData.turns?.length ?? 0) - 1,
+      turns: this.turn,
       gameTime: this.gameTime,
       stats: stats,
       events: this.events,
@@ -994,10 +988,29 @@ export class ReplayAnalysis {
     }
   }
 
-  private updateChart(turnNumber: number) {
+  private getParent(index: number): ParentData {
+    let data = {
+      main: this.replayLines[index].lineData,
+      sub: [] as ReplayData[],
+    };
+    for (let i = index; i > 0; i--) {
+      if (
+        this.replayLines[i].lineData[0].charAt(0) !== "-" &&
+        this.replayLines[i].lineData[0] !== "debug"
+      ) {
+        data.main = this.replayLines[i].lineData;
+        i = 0;
+      } else {
+        data.sub.push(this.replayLines[i].lineData);
+      }
+    }
+    return data;
+  }
+
+  private updateChart(turn: number) {
     this.playerData.forEach((player) =>
       player.turnChart.push({
-        turn: turnNumber,
+        turn: turn,
         damage: player.team.reduce(
           (sum, pokemon) => (sum += 100 - pokemon.hpp),
           0
@@ -1017,7 +1030,7 @@ export class ReplayAnalysis {
     if (pokemon.status.status === status) {
       return pokemon.status;
     }
-    if (pokemon.lastDamage && pokemon.lastDamage.line.data[1]) {
+    if (pokemon.lastDamage && pokemon.lastDamage.data[1]) {
       let monStatus = pokemon.statuses.find((s) => s.status === status);
       if (monStatus) return monStatus;
     }
@@ -1031,9 +1044,9 @@ export class ReplayAnalysis {
     if (this.field.weather.status === status) {
       return this.field.weather;
     }
-    if (pokemon.lastDamage && pokemon.lastDamage.line.data[1]) {
+    if (pokemon.lastDamage && pokemon.lastDamage.data[1]) {
       let sideStatus = this.field.sides[
-        +pokemon.lastDamage.line.data[1].charAt(1) - 1
+        +pokemon.lastDamage.data[1].charAt(1) - 1
       ].statuses.find((s) => s.status.split(": ")[1] === status);
       if (sideStatus) return sideStatus;
     }
@@ -1094,14 +1107,14 @@ export class ReplayAnalysis {
   private damage(
     target: Pokemon,
     newHpp: number,
-    actions: MARJORACTION[] | undefined,
-    line: Line
+    actions: MARJORACTION[] | undefined
   ) {
     let hppDiff = target.hpp - newHpp;
     target.hpp = newHpp;
     let lastDamage: LastDamage = {
-      line: line,
+      data: this.replayLines[this.i].lineData as DamageData,
       type: "indirect",
+      parent: this.getParent(this.i),
     };
     let from: EFFECT | undefined = undefined;
     let of: POKEMON | undefined = undefined;
@@ -1113,7 +1126,7 @@ export class ReplayAnalysis {
       }
     }
     //Indirect Damage
-    if (from && from !== toID(lastDamage.line.parent?.data[2])) {
+    if (from && from !== toID(lastDamage.parent.main[2])) {
       if (of) {
         let ofMon = this.getMonByString(of);
         if (ofMon) {
@@ -1141,10 +1154,7 @@ export class ReplayAnalysis {
     } //Direct Damage
     else {
       lastDamage.type = "direct";
-      if (
-        this.lastMove &&
-        lastDamage.line.parent?.data === this.lastMove.data
-      ) {
+      if (this.lastMove && lastDamage.parent.main === this.lastMove.data) {
         target.damageTaken[0] += hppDiff;
         let moveDamageAttacker = this.getMonByString(this.lastMove.data[1]);
         if (moveDamageAttacker && moveDamageAttacker != target) {
@@ -1163,14 +1173,12 @@ export class ReplayAnalysis {
         }
       } else {
         target.damageTaken[1] += hppDiff;
-        let endSub = lastDamage.line.parent?.children.find(
-          (child) => child.data[0] === "-end"
-        );
+        let endSub = lastDamage.parent.sub.find((sub) => sub[0] === "-end");
         if (endSub) {
-          let endMon = this.getMonByString(endSub.data[1] as POKEMON);
+          let endMon = this.getMonByString(endSub[1] as POKEMON);
           if (endMon) {
             let endStatus = endMon.statuses.find(
-              (status) => status.status === endSub.data[2]
+              (status) => status.status === endSub![2]
             );
             if (endStatus) {
               lastDamage.status = endStatus;
@@ -1221,13 +1229,12 @@ export class ReplayAnalysis {
     return s;
   }
 
-  private upkeep(turn: Turn | undefined) {
-    if (!turn) return;
+  private upkeep() {
     this.cleanStatuses();
     this.killStrings.forEach((ks) =>
       this.events.push({
         player: this.field.sides.indexOf(ks.target.player.side) + 1,
-        turn: turn.number,
+        turn: this.turn,
         message: `${this.makeKillString(ks)}.`,
       })
     );
@@ -1355,7 +1362,8 @@ export type ReplayStats = {
 type ParentData = { main: ReplayData; sub: ReplayData[] };
 
 type LastDamage = {
-  line: Line;
+  data: ReplayData;
+  parent: ParentData;
   damager?: Pokemon;
   type: "indirect" | "direct";
   status?: Status;
@@ -1612,39 +1620,20 @@ export function formatUrl(url: string): string {
 
 class Line {
   parent?: Line;
-  turn?: Turn;
-  data: ReplayData;
+  lineData: ReplayData;
   get identifier(): ReplayData[0] {
-    return this.data[0];
+    return this.lineData[0];
   }
   get parameters(): Exclude<ReplayData, []>[1][] {
-    return this.data.slice(1);
+    return this.lineData.slice(1);
   }
   children: Line[] = [];
   constructor(lineString: string) {
-    this.data = lineString.split("|").map((e) => e.trim()) as ReplayData;
+    this.lineData = lineString.split("|").map((e) => e.trim()) as ReplayData;
   }
 
   addChildLine(subLine: Line) {
     this.children.push(subLine);
     subLine.parent = this;
-  }
-
-  isChild(): boolean {
-    return this.identifier.startsWith("-") || this.identifier === "debug";
-  }
-}
-
-class Turn {
-  number;
-  lines: Line[];
-  constructor(turnNumber: number, lines: Line[] = []) {
-    this.number = turnNumber;
-    this.lines = lines;
-  }
-
-  addLine(line: Line) {
-    this.lines.push(line);
-    line.turn = this;
   }
 }
