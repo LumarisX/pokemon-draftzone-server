@@ -1,8 +1,20 @@
 import { calculate, Field, Move, Pokemon } from "@smogon/calc";
 import { testSet } from "../services/pats-services/test-set";
+import { ReplayAnalysis } from "../services/replay-services/replay-analyze.service";
 
 // const results: { [key: string]: number }[] = [];
 
+async function testReplay() {
+  const response = await fetch(
+    "https://replay.pokemonshowdown.com/gen9doublescustomgame-2227018912.log"
+  );
+  const text = await response.text();
+  const replayData = new ReplayAnalysis(text);
+  const analysis = replayData.analyze();
+  //   console.log(analysis);
+}
+
+testReplay();
 // const TRIALS = 10000000;
 // let avg = 0;
 

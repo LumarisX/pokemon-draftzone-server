@@ -3,7 +3,7 @@ import { Route } from ".";
 import { SubRequest } from ".";
 import {
   formatUrl,
-  Replay,
+  ReplayAnalysis,
   validateUrl,
 } from "../services/replay-services/replay-analyze.service";
 
@@ -19,7 +19,7 @@ export const ReplayRoutes: Route = {
               .status(400)
               .json({ message: "Invalid URL Format", code: "RA-R1-01" });
           const replayData = await fetch(`${formatUrl(res.url)}.log`);
-          let replay = new Replay(await replayData.text());
+          let replay = new ReplayAnalysis(await replayData.text());
           res.json(replay.analyze());
         } catch (error) {
           console.error("Error in /formats/ route:", error);

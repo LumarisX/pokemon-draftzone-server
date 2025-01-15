@@ -1,7 +1,7 @@
 import { Generations, Move, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
-export class Replay {
+export class ReplayAnalysis {
   replayData: ReplayData[] = [];
   field!: Field;
   playerData!: Player[];
@@ -12,8 +12,8 @@ export class Replay {
   turn: number = 0;
   events: { player: number; turn: number; message: string }[] = [];
 
-  constructor(data: string) {
-    this.replayData = data
+  constructor(log: string) {
+    this.replayData = log
       .split("\n|")
       .map((line) => line.trim().split("|")) as ReplayData[];
     this.gens = new Generations(Dex);

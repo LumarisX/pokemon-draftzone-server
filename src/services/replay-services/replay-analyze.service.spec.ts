@@ -1,8 +1,4 @@
-// const replayData = await fetch(`${formatUrl(res.url)}.log`);
-//           let replay = new Replay(await replayData.text());
-//           res.json(replay.analyze());
-
-import { Replay, ReplayStats } from "./replay-analyze.service";
+import { ReplayAnalysis, ReplayStats } from "./replay-analyze.service";
 
 const replays: {
   url: string;
@@ -32,8 +28,7 @@ const replays: {
         damageTaken: [number, number];
         hpRestored: number;
         formes: {
-          detail: string;
-          id?: string;
+          id: string;
         }[];
       }[];
     }[];
@@ -54,14 +49,184 @@ const replays: {
           win: false,
           stats: { switches: 4 },
           total: { kills: 3, deaths: 4, damageDealt: 428, damageTaken: 419 },
-          team: [],
+          team: [
+            {
+              kills: [0, 0],
+              brought: false,
+              fainted: false,
+              moveset: [],
+              damageDealt: [0, 0],
+              damageTaken: [0, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "chienpao",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [186, 0],
+              damageTaken: [100, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "groudon",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [45, 0],
+              damageTaken: [82, 36],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "tapufini",
+                },
+              ],
+            },
+            {
+              kills: [2, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [142, 0],
+              damageTaken: [100, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "sceptile",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: false,
+              fainted: false,
+              moveset: [],
+              damageDealt: [0, 0],
+              damageTaken: [0, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "volcarona",
+                },
+              ],
+            },
+            {
+              kills: [1, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [54, 0],
+              damageTaken: [100, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "zoroarkhisui",
+                },
+              ],
+            },
+          ],
         },
         {
           username: "notagreatrainer",
           win: true,
           stats: { switches: 7 },
           total: { kills: 4, deaths: 2, damageDealt: 319, damageTaken: 374 },
-          team: [],
+          team: [
+            {
+              kills: [1, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [0, 0],
+              damageTaken: [119, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "zygarde",
+                },
+              ],
+            },
+            {
+              kills: [1, 0],
+              brought: true,
+              fainted: false,
+              moveset: [],
+              damageDealt: [158, 0],
+              damageTaken: [62, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "chiyu",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: true,
+              fainted: true,
+              moveset: [],
+              damageDealt: [29.5, 0],
+              damageTaken: [100, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "mienshao",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: false,
+              fainted: false,
+              moveset: [],
+              damageDealt: [0, 0],
+              damageTaken: [0, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "comfey",
+                },
+              ],
+            },
+            {
+              kills: [0, 0],
+              brought: false,
+              fainted: false,
+              moveset: [],
+              damageDealt: [0, 0],
+              damageTaken: [0, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "eelektross",
+                },
+              ],
+            },
+            {
+              kills: [1, 1],
+              brought: true,
+              fainted: false,
+              moveset: [],
+              damageDealt: [147, 36],
+              damageTaken: [94, 0],
+              hpRestored: 0,
+              formes: [
+                {
+                  id: "mukalola",
+                },
+              ],
+            },
+          ],
         },
       ],
     },
@@ -70,7 +235,7 @@ const replays: {
 
 describe("Replay Analyzer", () => {
   describe("Replay Analyzer Service", () => {
-    it("should analyze replay data correctly", () => {
+    test("should analyze replay data correctly", () => {
       expect(true).toBe(true);
     });
   });
@@ -94,77 +259,149 @@ describe("Replay Analyzer", () => {
       beforeAll(async () => {
         const response = await fetch(replay.url);
         const text = await response.text();
-        replayData = new Replay(text);
+        replayData = new ReplayAnalysis(text);
         analysis = replayData.analyze();
       });
 
-      it("correct number of turns", async () => {
-        expect(await analysis.turns).toEqual(replay.expected.turns);
+      test("correct number of turns", () => {
+        expect(analysis.turns).toEqual(replay.expected.turns);
       });
 
-      it("correct generation number", async () => {
-        expect(await analysis.genNum).toEqual(replay.expected.genNum);
+      test("correct generation number", () => {
+        expect(analysis.genNum).toEqual(replay.expected.genNum);
       });
 
-      it("correct game type", async () => {
-        expect(await analysis.gametype).toEqual(replay.expected.gametype);
+      test("correct game type", () => {
+        expect(analysis.gametype).toEqual(replay.expected.gametype);
       });
 
-      it("correct game time", async () => {
-        expect(await analysis.gameTime).toEqual(replay.expected.gameTime);
+      test("correct game time", () => {
+        expect(analysis.gameTime).toEqual(replay.expected.gameTime);
       });
 
       describe("Events", () => {
-        it("count", async () => {
-          expect(await analysis.events.length).toEqual(replay.expected.events);
+        test("count", () => {
+          expect(analysis.events.length).toEqual(replay.expected.events);
         });
       });
 
       describe("Stats", () => {
         for (let i = 0; i < 2; i++) {
-          describe(`Team ${i + 1}`, () => {
-            it("username", async () => {
-              expect(await analysis.stats[i].username).toEqual(
+          describe(`Player ${i + 1}`, () => {
+            test("username", () => {
+              expect(analysis.stats[i].username).toEqual(
                 replay.expected.stats[i].username
               );
             });
-            it("win", async () => {
-              expect(await analysis.stats[i].win).toEqual(
+            test("win", () => {
+              expect(analysis.stats[i].win).toEqual(
                 replay.expected.stats[i].win
               );
             });
             describe("Total", () => {
-              it("kills", async () => {
-                expect(await analysis.stats[i].total.kills).toEqual(
+              test("kills", () => {
+                expect(analysis.stats[i].total.kills).toEqual(
                   replay.expected.stats[i].total.kills
                 );
               });
-              it("deaths", async () => {
-                expect(await analysis.stats[i].total.deaths).toEqual(
+              test("deaths", () => {
+                expect(analysis.stats[i].total.deaths).toEqual(
                   replay.expected.stats[i].total.deaths
                 );
               });
-              it("damage dealt", async () => {
-                expect(await analysis.stats[i].total.damageDealt).toBeCloseTo(
+              test("damage dealt", () => {
+                expect(analysis.stats[i].total.damageDealt).toBeCloseTo(
                   replay.expected.stats[i].total.damageDealt,
                   0
                 );
               });
-              it("damage taken", async () => {
-                expect(await analysis.stats[i].total.damageTaken).toBeCloseTo(
+              test("damage taken", () => {
+                expect(analysis.stats[i].total.damageTaken).toBeCloseTo(
                   replay.expected.stats[i].total.damageTaken,
                   0
                 );
               });
             });
-          });
 
-          //   describe(await analysis.stats[i].team)("Team members", (pokemon) => {
-          //     it("has team members", async () => {
-          //       expect(pokemon.damageDealt[0]).toBeGreaterThanOrEqual(0);
-          //       expect(pokemon.damageDealt[1]).toBeGreaterThanOrEqual(0);
-          //     });
-          //   });
+            describe("Team", () => {
+              test("size", () => {
+                expect(analysis.stats[i].team.length).toEqual(
+                  replay.expected.stats[i].team.length
+                );
+              });
+
+              replay.expected.stats[i].team.forEach((pokemon, index) => {
+                describe(`Pokemon ${index + 1}`, () => {
+                  test("name matches", () => {
+                    expect(
+                      analysis.stats[i].team[index].formes[0]
+                    ).toBeDefined();
+                    expect(analysis.stats[i].team[index].formes[0].id).toBe(
+                      pokemon.formes[0].id
+                    );
+                  });
+                  test("brought", () => {
+                    expect(analysis.stats[i].team[index].brought).toBe(
+                      replay.expected.stats[i].team[index].brought
+                    );
+                  });
+                  test("fainted", () => {
+                    expect(analysis.stats[i].team[index].fainted).toBe(
+                      replay.expected.stats[i].team[index].fainted
+                    );
+                  });
+                  describe("Kills", () => {
+                    test("direct", () => {
+                      expect(analysis.stats[i].team[index].kills[0]).toEqual(
+                        replay.expected.stats[i].team[index].kills[0]
+                      );
+                    });
+                    test("indirect", () => {
+                      expect(analysis.stats[i].team[index].kills[1]).toEqual(
+                        replay.expected.stats[i].team[index].kills[1]
+                      );
+                    });
+                  });
+                  describe("Damage Taken", () => {
+                    test("direct", () => {
+                      expect(
+                        analysis.stats[i].team[index].damageTaken[0]
+                      ).toBeCloseTo(
+                        replay.expected.stats[i].team[index].damageTaken[0],
+                        0
+                      );
+                    });
+                    test("indirect", () => {
+                      expect(
+                        analysis.stats[i].team[index].damageTaken[1]
+                      ).toBeCloseTo(
+                        replay.expected.stats[i].team[index].damageTaken[1],
+                        0
+                      );
+                    });
+                  });
+                  describe("Damage Dealt", () => {
+                    test("direct", () => {
+                      expect(
+                        analysis.stats[i].team[index].damageDealt[0]
+                      ).toBeCloseTo(
+                        replay.expected.stats[i].team[index].damageDealt[0],
+                        0
+                      );
+                    });
+                    test("indirect", () => {
+                      expect(
+                        analysis.stats[i].team[index].damageDealt[1]
+                      ).toBeCloseTo(
+                        replay.expected.stats[i].team[index].damageDealt[1],
+                        0
+                      );
+                    });
+                  });
+                });
+              });
+            });
+          });
         }
       });
     });
