@@ -5,13 +5,17 @@ import { ReplayAnalysis } from "../services/replay-services/replay-analyze.servi
 // const results: { [key: string]: number }[] = [];
 
 async function testReplay() {
-  const response = await fetch(
-    "https://replay.pokemonshowdown.com/gen9doublescustomgame-2227018912.log"
-  );
+  const url = "https://replay.pokemonshowdown.com/gen9natdexdraft-2159897898";
+  const response = await fetch(url + ".log");
   const text = await response.text();
   const replayData = new ReplayAnalysis(text);
-  const analysis = replayData.analyze();
-  //   console.log(analysis);
+  const analysis = replayData.getTest();
+  console.log(
+    JSON.stringify({
+      url: url + ".log",
+      expected: analysis,
+    })
+  );
 }
 
 testReplay();

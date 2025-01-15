@@ -1,4 +1,4 @@
-import { Generations, Move, toID } from "@pkmn/data";
+import { Generations, Move, Stats, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
 export class ReplayAnalysis {
@@ -1236,6 +1236,70 @@ export class ReplayAnalysis {
       })
     );
     this.killStrings = [];
+  }
+
+  getTest(): {
+    gametype: string;
+    genNum: number;
+    turns: number;
+    gameTime: number;
+    stats: {
+      username: string | undefined;
+      win: boolean;
+      total: {
+        kills: number;
+        deaths: number;
+        damageDealt: number;
+        damageTaken: number;
+      };
+      stats: {
+        switches: number;
+      };
+      team: {
+        kills: [number, number];
+        brought: boolean;
+        fainted: boolean;
+        damageDealt: [number, number];
+        damageTaken: [number, number];
+        hpRestored: number;
+        formes: {
+          id: string;
+        }[];
+      }[];
+    }[];
+    events: number;
+  } {
+    const analysis = this.analyze();
+    return {
+      gametype: analysis.gametype,
+      genNum: analysis.genNum,
+      turns: analysis.turns,
+      gameTime: analysis.gameTime,
+      stats: analysis.stats.map((stat) => ({
+        username: stat.username,
+        win: stat.win,
+        total: stat.total,
+        stats: stat.stats,
+        team: stat.team.map((pokemon) => ({
+          kills: pokemon.kills,
+          brought: pokemon.brought,
+          fainted: pokemon.fainted,
+          damageDealt: [
+            Math.round(pokemon.damageDealt[0] * 10) / 10,
+            Math.round(pokemon.damageDealt[1] * 10) / 10,
+          ],
+          damageTaken: [
+            Math.round(pokemon.damageTaken[0] * 10) / 10,
+            Math.round(pokemon.damageTaken[1] * 10) / 10,
+          ],
+          hpRestored: Math.round(pokemon.hpRestored * 10) / 10,
+          formes: pokemon.formes.map((forme) => ({
+            id: forme.id ?? "",
+          })),
+        })),
+      })),
+      events: analysis.events.length,
+    };
   }
 }
 
