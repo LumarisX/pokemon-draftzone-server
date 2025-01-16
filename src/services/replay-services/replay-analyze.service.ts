@@ -417,20 +417,7 @@ export namespace Replay {
               c: { pokemon: undefined, statuses: [] },
               statuses: [],
             };
-            this.playerData.push({
-              luck: {
-                moves: { total: 0, hits: 0, expected: 0 },
-                crits: { total: 0, hits: 0, expected: 0 },
-                status: { total: 0, full: 0, expected: 0 },
-              },
-              side: side,
-              stats: { switches: 0 },
-              username: line.data[2],
-              teamSize: 0,
-              turnChart: [],
-              team: [],
-              win: false,
-            });
+            this.playerData.push(new Player(side, line.data[2]));
             this.field.sides.push(side);
           }
           break;
@@ -1364,7 +1351,7 @@ export namespace Replay {
     weather: Status;
   };
 
-  type Player = {
+  type PlayerOld = {
     username: undefined | string;
     teamSize: undefined | number;
     team: Pokemon[];
@@ -1643,6 +1630,44 @@ export namespace Replay {
       this.hpp = 100;
       this.player = player;
       this.brought = options.brought ?? false;
+    }
+  }
+
+  class Player {
+    username: PLAYER;
+    teamSize: number = 0;
+    team: Pokemon[] = [];
+    side: Side;
+    turnChart: { turn: number; damage: number; remaining: number }[] = [];
+    win: boolean = false;
+    stats: {
+      switches: number;
+    } = { switches: 0 };
+    luck: {
+      moves: {
+        total: number;
+        hits: number;
+        expected: number;
+      };
+      crits: {
+        total: number;
+        hits: number;
+        expected: number;
+      };
+      status: {
+        total: number;
+        full: number;
+        expected: number;
+      };
+    } = {
+      moves: { total: 0, hits: 0, expected: 0 },
+      crits: { total: 0, hits: 0, expected: 0 },
+      status: { total: 0, full: 0, expected: 0 },
+    };
+
+    constructor(side: Side, username: PLAYER) {
+      this.side = side;
+      this.username = username;
     }
   }
 }
