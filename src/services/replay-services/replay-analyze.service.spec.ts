@@ -1,9 +1,4 @@
-import {
-  formatUrl,
-  ReplayAnalysis,
-  ReplayStats,
-  validateUrl,
-} from "./replay-analyze.service";
+import { formatUrl, Replay, validateUrl } from "./replay-analyze.service";
 
 const replays: {
   url: string;
@@ -595,7 +590,7 @@ describe("Replay Analyzer", () => {
         genNum: number;
         turns: number;
         gameTime: number;
-        stats: ReplayStats[];
+        stats: Replay.Stats[];
         events: {
           player: number;
           turn: number;
@@ -606,7 +601,7 @@ describe("Replay Analyzer", () => {
       beforeAll(async () => {
         const response = await fetch(replay.url);
         const text = await response.text();
-        replayData = new ReplayAnalysis(text);
+        replayData = new Replay.Analysis(text);
         analysis = replayData.toJson();
       });
 

@@ -292,6 +292,7 @@ export class ReplayAnalysisOld {
       case "-resisted":
         break;
       case "poke":
+        const pokePlayer = this.playerData[this.getPlayer(line.lineData[1])];
         this.playerData[this.getPlayer(line.lineData[1])].team.push({
           formes: [
             {
