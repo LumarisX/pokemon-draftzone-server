@@ -32,11 +32,7 @@ export namespace Replay {
         return lines;
       }, [] as Line[]);
       this.playerData = [];
-      this.field = {
-        sides: [],
-        statuses: [],
-        weather: { status: "none" },
-      };
+      this.field = new Field();
       this.t0 = 0;
       this.tf = 0;
       replayLines.forEach((line) => {
@@ -411,12 +407,7 @@ export namespace Replay {
             line.data[2] &&
             !this.playerData.find((player) => player.username === line.data[2])
           ) {
-            let side = {
-              a: { pokemon: undefined, statuses: [] },
-              b: { pokemon: undefined, statuses: [] },
-              c: { pokemon: undefined, statuses: [] },
-              statuses: [],
-            };
+            const side = new Side();
             this.playerData.push(new Player(side, line.data[2]));
             this.field.sides.push(side);
           }
@@ -1322,62 +1313,11 @@ export namespace Replay {
     from?: string;
   };
 
-  type Side = {
-    a: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    };
-    b: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    };
-    c: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    };
-    statuses: Status[];
-  };
-
   type Status = {
     status: string;
     setter?: Pokemon;
     name?: string;
     ended?: true;
-  };
-
-  type Field = {
-    sides: Side[];
-    statuses: Status[];
-    weather: Status;
-  };
-
-  type PlayerOld = {
-    username: undefined | string;
-    teamSize: undefined | number;
-    team: Pokemon[];
-    side: Side;
-    turnChart: { turn: number; damage: number; remaining: number }[];
-    win: boolean;
-    stats: {
-      switches: number;
-    };
-    luck: {
-      moves: {
-        total: number;
-        hits: number;
-        expected: number;
-      };
-      crits: {
-        total: number;
-        hits: number;
-        expected: number;
-      };
-      status: {
-        total: number;
-        full: number;
-        expected: number;
-      };
-    };
   };
 
   type KillString = {
@@ -1669,6 +1609,28 @@ export namespace Replay {
       this.side = side;
       this.username = username;
     }
+  }
+
+  class Side {
+    a: {
+      pokemon: undefined | Pokemon;
+      statuses: Status[];
+    } = { pokemon: undefined, statuses: [] };
+    b: {
+      pokemon: undefined | Pokemon;
+      statuses: Status[];
+    } = { pokemon: undefined, statuses: [] };
+    c: {
+      pokemon: undefined | Pokemon;
+      statuses: Status[];
+    } = { pokemon: undefined, statuses: [] };
+    statuses: Status[] = [];
+  }
+
+  class Field {
+    sides: Side[] = [];
+    statuses: Status[] = [];
+    weather: Status = { status: "none" };
   }
 }
 
