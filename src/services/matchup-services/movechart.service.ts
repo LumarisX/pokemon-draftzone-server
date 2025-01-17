@@ -39,7 +39,6 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "calmmind",
       "charge",
       "clangoroussoul",
-      "coaching",
       "coil",
       "cosmicpower",
       "cottonguard",
