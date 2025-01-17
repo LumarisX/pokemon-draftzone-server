@@ -52,6 +52,7 @@ const chartMoves: { categoryName: string; moves: string[] }[] = [
       "extremeevoboost",
       "filletaway",
       "flatter",
+      "focusenergy",
       "geomancy",
       "growth",
       "harden",
