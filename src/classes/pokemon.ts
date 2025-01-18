@@ -382,22 +382,32 @@ export class DraftSpecies implements Specie, Pokemon {
     for (const move of learnset) {
       if (move.category !== "Status") {
         const ePower = getEffectivePower(move);
+        let type = move.type;
+        if (move.id === "ivycudgel") {
+          if (this.requiredItem === "Wellspring Mask") {
+            type = "Water";
+          } else if (this.requiredItem === "Cornerstone Mask") {
+            type = "Rock";
+          } else if (this.requiredItem === "Hearthflame Mask") {
+            type = "Fire";
+          }
+        }
         if (
-          !(move.type in coverage[move.category]) ||
-          coverage[move.category][move.type].ePower < ePower
+          !(type in coverage[move.category]) ||
+          coverage[move.category][type].ePower < ePower
         ) {
-          coverage[move.category][move.type] = {
+          coverage[move.category][type] = {
             id: move.id,
             name: move.name,
             ePower: ePower,
             cPower:
               ePower *
-              (this.types.includes(move.type) ? 1.5 : 1) *
+              (this.types.includes(type) ? 1.5 : 1) *
               (move.category === "Special"
                 ? this.baseStats.spa
                 : this.baseStats.atk),
-            type: move.type,
-            stab: this.types.includes(move.type) || undefined,
+            type: type,
+            stab: this.types.includes(type) || undefined,
             category: move.category,
           };
         }
