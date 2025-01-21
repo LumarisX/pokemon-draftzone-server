@@ -58,20 +58,25 @@ const NATDEX_EXISTS = (d: Data) => {
     if (d.isNonstandard === "CAP") return false;
     if (d.isNonstandard === "Custom") return false;
   }
-  if (d.kind === "Move" && d.isNonstandard && d.isNonstandard !== "Past") {
+  if (
+    d.kind === "Move" &&
+    d.isNonstandard &&
+    d.isNonstandard !== "Past" &&
+    d.isNonstandard !== "Unobtainable"
+  ) {
     return false;
   }
   if (
     d.kind === "Species" &&
     (NATDEX_UNOBTAINABLE_SPECIES.includes(d.name) ||
       COSMETIC_SPECIES.includes(d.name) ||
-      (d.battleOnly &&
-        !(
-          d.forme == "Mega" ||
-          d.forme == "Mega-X" ||
-          d.forme == "Mega-Y" ||
-          d.forme == "Crowned"
-        )) ||
+      // (d.battleOnly &&
+      //   !(
+      //     d.forme == "Mega" ||
+      //     d.forme == "Mega-X" ||
+      //     d.forme == "Mega-Y" ||
+      //     d.forme == "Crowned"
+      //   )) ||
       d.forme === "Totem" ||
       d.forme === "Alola-Totem")
   )

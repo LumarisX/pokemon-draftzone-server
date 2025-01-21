@@ -461,19 +461,21 @@ export class DraftSpecies implements Specie, Pokemon {
     return coverage;
   }
 
-  private $learnset?: Move[];
+  private $learnset?: Promise<Move[]>;
   async learnset(): Promise<Move[]> {
     if (this.$learnset) return this.$learnset;
-    const learnset = await this.ruleset.gen.learnsets.learnable(
-      this.id,
-      this.ruleset.restriction
-    );
-    if (!learnset) return (this.$learnset = []);
-    const moves: Move[] = Object.keys(learnset)
-      .map((move) => this.ruleset.gen.moves.get(move))
-      .filter((move) => move !== undefined) as Move[];
-    this.$learnset = moves;
-    return moves;
+    this.$learnset = (async () => {
+      const learnset = await this.ruleset.gen.learnsets.learnable(
+        this.id,
+        this.ruleset.restriction
+      );
+      if (!learnset) return [];
+      const moves: Move[] = Object.keys(learnset)
+        .map((move) => this.ruleset.gen.moves.get(move))
+        .filter((move) => move !== undefined) as Move[];
+      return moves;
+    })();
+    return this.$learnset;
   }
 
   async canLearn(moveString: string): Promise<boolean> {
