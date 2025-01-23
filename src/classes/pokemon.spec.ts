@@ -5,7 +5,7 @@ describe("Draft Pokemon", () => {
   describe("Gen9 NatDex", () => {
     const ruleset = getRuleset("Gen9 NatDex");
     describe("Rayquaza", () => {
-      const species = ruleset.gen.species.get("Rayquaza");
+      const species = ruleset.species.get("Rayquaza");
       it("should but not null", () => {
         expect(species).toBeTruthy();
       });

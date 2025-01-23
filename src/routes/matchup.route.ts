@@ -216,7 +216,7 @@ export const MatchupRoutes: Route = {
         let ruleset = getRuleset(req.body.ruleset);
         let format = getFormat(req.body.format);
         let aTeam = req.body.team1.map((pokemon: PokemonData) => {
-          let specie = ruleset.gen.dex.species.get(pokemon.id);
+          let specie = ruleset.dex.species.get(pokemon.id);
           if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
@@ -226,7 +226,7 @@ export const MatchupRoutes: Route = {
           return draftSpecies;
         });
         let bTeam = req.body.team2.map((pokemon: PokemonData) => {
-          let specie = ruleset.gen.dex.species.get(pokemon.id);
+          let specie = ruleset.dex.species.get(pokemon.id);
           if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
@@ -278,7 +278,7 @@ export const MatchupRoutes: Route = {
               owner: aTeam.owner,
               teamName: aTeam.teamName,
               team: aTeam.team.map((pokemon: any) => {
-                let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
+                let specie = res.ruleset!.dex.species.get(pokemon.id);
                 if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
                 let draftSpecies: DraftSpecies = new DraftSpecies(
                   specie,
@@ -292,7 +292,7 @@ export const MatchupRoutes: Route = {
             bTeam: {
               ...matchup.bTeam,
               team: matchup.bTeam.team.map((pokemon: any) => {
-                let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
+                let specie = res.ruleset!.dex.species.get(pokemon.id);
                 if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
                 let draftSpecies: DraftSpecies = new DraftSpecies(
                   specie,

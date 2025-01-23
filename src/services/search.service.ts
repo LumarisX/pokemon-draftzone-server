@@ -1,6 +1,6 @@
 import { ID } from "@pkmn/data";
 import { DraftSpecies, Pokemon } from "../classes/pokemon";
-import { getRuleset, RulesetId } from "../data/rulesets";
+import { getRuleset } from "../data/rulesets";
 
 type Token = { type: string; value: string };
 type ASTNode = {
@@ -16,7 +16,7 @@ let cache: [ASTNode, (boolean | Pokemon)[]][] = [];
 
 export async function searchPokemon(
   query: string,
-  rulesetId: RulesetId = "Gen9 NatDex"
+  rulesetId: string = "Gen9 NatDex"
 ) {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
@@ -27,7 +27,7 @@ export async function searchPokemon(
   // } else {
   let ruleset = getRuleset(rulesetId);
   let searchResults = await Promise.all(
-    Array.from(ruleset.gen.species).map(async (specie) => {
+    Array.from(ruleset.species).map(async (specie) => {
       let pokemon = new DraftSpecies(specie, {}, ruleset);
       return [
         {
@@ -254,11 +254,9 @@ async function evaluate(
             break;
           case "coverage":
             leftValue = Object.keys(
-              (await pokemon.ruleset.gen.learnsets.learnable(pokemon.id)) || {}
+              (await pokemon.ruleset.learnsets.learnable(pokemon.id)) || {}
             )
-              .map((moveid) =>
-                pokemon.ruleset.gen.dex.moves.getByID(moveid as ID)
-              )
+              .map((moveid) => pokemon.ruleset.dex.moves.getByID(moveid as ID))
               .filter((move) => move.category != "Status")
               .reduce<string[]>(
                 (coverage, move) =>

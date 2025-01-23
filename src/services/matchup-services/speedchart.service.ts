@@ -156,7 +156,7 @@ function generateTiers(
                 if (id === "aegislash") {
                   id = "aegislash-shield" as ID;
                 }
-                const pokemonCalc = new Pokemon(pokemon.ruleset.gen.num, id, {
+                const pokemonCalc = new Pokemon(pokemon.ruleset.num, id, {
                   level,
                   evs: pConfig.evs,
                   ivs: pConfig.ivs,
@@ -185,12 +185,8 @@ function generateTiers(
                 tiers.push({
                   pokemon: { id: pokemon.id },
                   speed: Math.floor(
-                    getFinalSpeed(
-                      pokemon.ruleset.gen,
-                      pokemonCalc,
-                      field,
-                      side
-                    ) * additional.mult
+                    getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
+                      additional.mult
                   ),
                   team: teamIndex,
                   modifiers,

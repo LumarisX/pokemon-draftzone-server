@@ -67,7 +67,7 @@ export const DataRoutes: Route = {
           if (typeof rulesetId === "string") {
             const ruleset = getRuleset(rulesetId);
             return res.json(
-              Array.from(ruleset.gen.species).map((specie) => ({
+              Array.from(ruleset.species).map((specie) => ({
                 name: specie.name,
                 id: specie.id,
               }))
@@ -102,7 +102,7 @@ export const DataRoutes: Route = {
               const randomMons = [];
               const ruleset = getRuleset(rulesetId);
               for (let i = 0; i < count; i++) {
-                randomMons.push(getRandom(ruleset.gen));
+                randomMons.push(getRandom(ruleset));
               }
               return res.json(
                 randomMons.map((pokemon) => ({

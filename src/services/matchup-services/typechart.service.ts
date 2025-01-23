@@ -57,7 +57,7 @@ export class Typechart {
         }
         return totalTypes;
       }, {});
-    const types: TypeName[] = Array.from(this.team[0].ruleset.gen.types)
+    const types: TypeName[] = Array.from(this.team[0].ruleset.types)
       .map((type) => type.toString())
       .filter((x) => x != "Stellar");
     const usedTypes: Set<TypeName> = this.team.reduce((set, mon) => {
@@ -91,7 +91,7 @@ export class Typechart {
       }
     }
     let pokemonList: [DraftSpecies, number][] = [];
-    for (let species of this.team[0].ruleset.gen.species) {
+    for (let species of this.team[0].ruleset.species) {
       if (
         species.nfe || //only fully evolved
         this.team.some((pokemon) => species.baseSpecies === pokemon.baseSpecies)

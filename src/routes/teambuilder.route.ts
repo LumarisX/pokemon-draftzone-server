@@ -16,7 +16,7 @@ export const TeambuilderRoutes: Route = {
           let id = req.query.id;
           if (typeof rulesetId === "string" && typeof id === "string") {
             const ruleset = getRuleset(rulesetId);
-            const specie = ruleset.gen.species.get(id);
+            const specie = ruleset.species.get(id);
             if (specie) {
               const draftSpecies = new DraftSpecies(specie, {}, ruleset);
               return res.json(await draftSpecies.toTeambuilder());

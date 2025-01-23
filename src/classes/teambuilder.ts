@@ -55,14 +55,14 @@ export namespace Teambuilder {
       this.level = options?.level ?? 100;
       const natureName = options?.nature ?? "Serious";
       this.nature =
-        this.specie.ruleset.gen.natures.get(natureName) ??
+        this.specie.ruleset.natures.get(natureName) ??
         this.throwError(`Invalid Nature: ${natureName}`);
       const abilityName = options?.ability ?? this.specie.abilities[0];
       this.ability =
-        this.specie.ruleset.gen.abilities.get(abilityName) ??
+        this.specie.ruleset.abilities.get(abilityName) ??
         this.throwError(`Invalid Ability: ${abilityName}`);
       if (options?.item)
-        this.item = this.specie.ruleset.gen.items.get(options.item);
+        this.item = this.specie.ruleset.items.get(options.item);
       this.moves = [null, null, null, null];
       this.teraType = options?.teraType ?? this.specie.types[0];
     }
@@ -94,7 +94,7 @@ export namespace Teambuilder {
         spe: 0,
       };
       (Object.keys(stats) as StatID[]).forEach((stat) => {
-        stats[stat] = this.specie.ruleset.gen.stats.calc(
+        stats[stat] = this.specie.ruleset.stats.calc(
           stat,
           this.specie.baseStats[stat],
           this.ivs[stat],
@@ -115,7 +115,7 @@ export namespace Teambuilder {
         ability: this.ability.name,
         abilities: Object.values(this.specie.abilities).map((abilityName) => ({
           name: abilityName,
-          id: this.specie.ruleset.gen.abilities.get(abilityName)?.id,
+          id: this.specie.ruleset.abilities.get(abilityName)?.id,
         })),
         level: this.level,
         moves: this.moves,

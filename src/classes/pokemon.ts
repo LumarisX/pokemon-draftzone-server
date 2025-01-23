@@ -109,7 +109,7 @@ export class DraftSpecies implements Specie, Pokemon {
   toJSON: () => { [key: string]: any };
 
   constructor(species: Species, data: PokemonOptions, ruleset: Ruleset) {
-    const specie = new Specie(ruleset.gen.dex, ruleset.gen.exists, species);
+    const specie = new Specie(ruleset.dex, ruleset.exists, species);
     Object.assign(this, specie);
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
@@ -146,10 +146,10 @@ export class DraftSpecies implements Specie, Pokemon {
   async toTeambuilder() {
     const items = (
       ((this.requiredItem ? [this.requiredItem] : this.requiredItems)
-        ?.map((itemName) => this.ruleset.gen.items.get(itemName))
+        ?.map((itemName) => this.ruleset.items.get(itemName))
         .filter((item) => item !== undefined && item.exists) as
         | Item[]
-        | undefined) ?? Array.from(this.ruleset.gen.items)
+        | undefined) ?? Array.from(this.ruleset.items)
     )
       .filter((item) => {
         if (this.requiredItem && item.name === this.requiredItem) return true;
@@ -465,13 +465,13 @@ export class DraftSpecies implements Specie, Pokemon {
   async learnset(): Promise<Move[]> {
     if (this.$learnset) return this.$learnset;
     this.$learnset = (async () => {
-      const learnset = await this.ruleset.gen.learnsets.learnable(
+      const learnset = await this.ruleset.learnsets.learnable(
         this.id,
         this.ruleset.restriction
       );
       if (!learnset) return [];
       const moves: Move[] = Object.keys(learnset)
-        .map((move) => this.ruleset.gen.moves.get(move))
+        .map((move) => this.ruleset.moves.get(move))
         .filter((move) => move !== undefined) as Move[];
       return moves;
     })();

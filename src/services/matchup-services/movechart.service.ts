@@ -294,7 +294,7 @@ export async function movechart(
   };
 
   for (const moveID in moveList) {
-    const move = ruleset.gen.moves.get(moveID);
+    const move = ruleset.moves.get(moveID);
     if (!move || !move.exists) continue;
     const data = {
       name: move.name,

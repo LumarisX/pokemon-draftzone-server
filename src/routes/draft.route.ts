@@ -437,7 +437,7 @@ export const DraftRoutes: Route = {
         }
         matchup.aTeam.teamName = draft.teamName;
         matchup.aTeam.team = draft.team.map((pokemon: any) => {
-          let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
+          let specie = res.ruleset!.dex.species.get(pokemon.id);
           if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,
@@ -447,7 +447,7 @@ export const DraftRoutes: Route = {
           return draftSpecies;
         });
         matchup.bTeam.team = matchup.bTeam.team.map((pokemon) => {
-          let specie = res.ruleset!.gen.dex.species.get(pokemon.id);
+          let specie = res.ruleset!.dex.species.get(pokemon.id);
           if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
           let draftSpecies: DraftSpecies = new DraftSpecies(
             specie,

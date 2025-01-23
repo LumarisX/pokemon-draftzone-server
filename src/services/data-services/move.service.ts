@@ -16,7 +16,7 @@ import { Move } from "@pkmn/data";
 //       return pokemonTypes[1] ? pokemonTypes[1] : pokemonTypes[0];
 //     }
 //   }
-//   return ruleset.gen.dex.moves.getByID(moveID).type;
+//   return ruleset.dex.moves.getByID(moveID).type;
 // }
 
 export function getEffectivePower(move: Move) {
