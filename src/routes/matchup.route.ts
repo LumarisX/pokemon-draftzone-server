@@ -304,7 +304,7 @@ export const MatchupRoutes: Route = {
             },
             leagueName: aTeam.leagueName,
             formatId: aTeam.format as FormatId,
-            rulesetId: aTeam.ruleset,
+            rulesetId: aTeam.ruleset as RulesetId,
           };
           if (res.ruleset === undefined) {
             return res
@@ -400,7 +400,7 @@ async function makeMatchup(
     details: {
       level: details.format.level,
       format: details.format.name,
-      ruleset: details.ruleset.name,
+      ruleset: details.ruleset.name as RulesetId,
       gameTime: details.gameTime,
       leagueName: details.leagueName,
       stage: details.stage,

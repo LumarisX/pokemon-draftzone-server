@@ -1,6 +1,7 @@
-import { TypeName } from "@pkmn/data";
+import { Type, TypeName } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { typeWeak } from "../data-services/type.services";
+import { spec } from "node:test/reporters";
 
 export class Typechart {
   team: DraftSpecies[];
@@ -27,8 +28,23 @@ export class Typechart {
     };
   }
 
-  recommended() {
-    let teamTypeChart = this.team
+  recommended(): {
+    all: {
+      pokemon: {
+        id: string;
+        name: string;
+      }[];
+      types: ([TypeName] | [TypeName, TypeName])[];
+    };
+    unique: {
+      pokemon: {
+        id: string;
+        name: string;
+      }[];
+      types: ([TypeName] | [TypeName, TypeName])[];
+    };
+  } {
+    const teamTypeChart = this.team
       .map((pokemon) => pokemon.typechart())
       .reduce((totalTypes, pokemon) => {
         for (let type in pokemon) {
@@ -41,10 +57,14 @@ export class Typechart {
         }
         return totalTypes;
       }, {});
-    let types: TypeName[] = Array.from(this.team[0].ruleset.gen.types)
+    const types: TypeName[] = Array.from(this.team[0].ruleset.gen.types)
       .map((type) => type.toString())
       .filter((x) => x != "Stellar");
-    let base = Object.values(teamTypeChart).reduce(
+    const usedTypes: Set<TypeName> = this.team.reduce((set, mon) => {
+      mon.types.forEach((type) => set.add(type));
+      return set;
+    }, new Set<TypeName>());
+    const base = Object.values(teamTypeChart).reduce(
       (sum, e) => sum + Math.pow(2, e),
       0
     );
@@ -70,16 +90,16 @@ export class Typechart {
         ]);
       }
     }
-    let pokemonList: [{ id: string; name: string }, number][] = [];
+    let pokemonList: [DraftSpecies, number][] = [];
     for (let species of this.team[0].ruleset.gen.species) {
-      if (species.nfe) continue;
       if (
+        species.nfe || //only fully evolved
         this.team.some((pokemon) => species.baseSpecies === pokemon.baseSpecies)
       )
         continue;
-      let newTC = { ...teamTypeChart };
-      let draftSpecies = new DraftSpecies(species, {}, this.team[0].ruleset);
-      let tw = draftSpecies.typechart();
+      const newTC = { ...teamTypeChart };
+      const draftSpecies = new DraftSpecies(species, {}, this.team[0].ruleset);
+      const tw = draftSpecies.typechart();
       for (let type in tw) {
         let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;
         if (type in newTC) {
@@ -90,19 +110,37 @@ export class Typechart {
         newTC[type] = Math.pow(2, newTC[type]);
       }
       pokemonList.push([
-        { id: draftSpecies.id, name: draftSpecies.name },
+        draftSpecies,
         Object.values(newTC).reduce((sum, e) => sum + e, 0) - base,
       ]);
     }
-    return {
-      pokemon: pokemonList
-        .sort((x, y) => x[1] - y[1])
-        .slice(0, 10)
-        .map((e) => e[0]),
-      types: typeList
-        .sort((x, y) => x[1] - y[1])
-        .slice(0, 10)
-        .map((e) => e[0]),
+    pokemonList = pokemonList.sort((x, y) => x[1] - y[1]);
+    typeList = typeList.sort((x, y) => x[1] - y[1]);
+    const recommended = {
+      all: {
+        pokemon: pokemonList.slice(0, 10).map((e) => ({
+          id: e[0].id,
+          name: e[0].name,
+        })),
+        types: typeList.slice(0, 10).map((e) => e[0]),
+      },
+      unique: {
+        pokemon: pokemonList
+          .filter(([pokemon]) =>
+            pokemon.types.some((type) => !usedTypes.has(type))
+          )
+          .slice(0, 10)
+          .map(([pokemon]) => ({
+            id: pokemon.id,
+            name: pokemon.name,
+          })),
+        types: typeList
+          .filter(([types]) => types.some((type) => !usedTypes.has(type)))
+          .slice(0, 10)
+          .map((e) => e[0]),
+      },
     };
+    console.log(recommended.all, recommended.unique);
+    return recommended;
   }
 }

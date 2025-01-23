@@ -1,13 +1,30 @@
 import { Data, Generation, Generations } from "@pkmn/data";
-import { Dex } from "@pkmn/dex";
-
-export type RulesetId = keyof typeof Rulesets & string;
+import { Dex, ModdedDex } from "@pkmn/dex";
 
 export type Ruleset = {
   name: string;
   gen: Generation;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
 };
+
+export type RulesetId = keyof typeof Rulesets;
+
+class RulesetNew extends Generation {
+  name: string;
+  restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+  gen: Generation;
+  constructor(
+    dex: ModdedDex,
+    exists: (d: Data) => boolean,
+    name: string,
+    options?: { restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea" }
+  ) {
+    super(dex, exists);
+    this.gen = this; //remove this eventually
+    this.name = name;
+    this.restriction = options?.restriction;
+  }
+}
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Eevee-Starter",
@@ -90,33 +107,36 @@ const NATDEX_EXISTS = (d: Data) => {
   );
 };
 
-const gens = new Generations(Dex, DRAFT_EXISTS);
 export const natdexGens = new Generations(Dex, NATDEX_EXISTS);
 
-const Rulesets: {
-  [key: string]: Ruleset;
-} = {
-  "Gen9 NatDex": { name: "Gen9 NatDex", gen: natdexGens.get(9) },
+const Rulesets = {
+  "Gen9 NatDex": { dex: Dex.forGen(9), existFn: NATDEX_EXISTS },
   "Paldea Dex": {
-    name: "Paldea Dex",
-    gen: gens.get(9),
+    dex: Dex.forGen(9),
+    existFn: DRAFT_EXISTS,
     restriction: "Paldea",
   },
-  "Gen8 NatDex": { name: "Gen8 NatDex", gen: natdexGens.get(8) },
-  "Galar Dex": { name: "Galar Dex", gen: gens.get(8), restriction: "Galar" },
-  "Alola Dex": { name: "Alola Dex", gen: gens.get(7) },
-  "Kalos Dex": { name: "Kalos Dex", gen: gens.get(6) },
-  "Unova Dex": { name: "Unova Dex", gen: gens.get(5) },
-  "Sinnoh Dex": { name: "Sinnoh Dex", gen: gens.get(4) },
-  "Hoenn Dex": { name: "Hoenn Dex", gen: gens.get(3) },
-  "Johto Dex": { name: "Johto Dex", gen: gens.get(2) },
-  "Kanto Dex": { name: "Kanto Dex", gen: gens.get(1) },
+  "Gen8 NatDex": { dex: Dex.forGen(8), existFn: NATDEX_EXISTS },
+  "Galar Dex": {
+    dex: Dex.forGen(8),
+    existFn: DRAFT_EXISTS,
+    restriction: "Galar",
+  },
+  "Alola Dex": { dex: Dex.forGen(7), existFn: DRAFT_EXISTS },
+  "Kalos Dex": { dex: Dex.forGen(6), existFn: DRAFT_EXISTS },
+  "Unova Dex": { dex: Dex.forGen(5), existFn: DRAFT_EXISTS },
+  "Sinnoh Dex": { dex: Dex.forGen(4), existFn: DRAFT_EXISTS },
+  "Hoenn Dex": { dex: Dex.forGen(3), existFn: DRAFT_EXISTS },
+  "Johto Dex": { dex: Dex.forGen(2), existFn: DRAFT_EXISTS },
+  "Kanto Dex": { dex: Dex.forGen(1), existFn: DRAFT_EXISTS },
   // CAP: { gen: gens.get(9), natdex: true },
-};
+} as const;
 
-export function getRuleset(rulesetId: string) {
-  if (rulesetId && rulesetId in Rulesets) return Rulesets[rulesetId];
-  else throw new Error(`Ruleset Id not found: ${rulesetId}`);
+export function getRuleset(rulesetId: string): RulesetNew {
+  if (rulesetId && rulesetId in Rulesets) {
+    const { dex, existFn } = Rulesets[rulesetId as RulesetId];
+    return new RulesetNew(dex, existFn, rulesetId);
+  } else throw new Error(`Ruleset Id not found: ${rulesetId}`);
 }
 
 export function getRulesets() {
