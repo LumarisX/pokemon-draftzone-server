@@ -140,7 +140,6 @@ export class Typechart {
           .map((e) => e[0]),
       },
     };
-    console.log(recommended.all, recommended.unique);
     return recommended;
   }
 }
