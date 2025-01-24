@@ -2,7 +2,7 @@ import { Generation, SpeciesName, TypeName } from "@pkmn/data";
 import { getRuleset } from "../../data/rulesets";
 
 export function getName(pokemonID: string): SpeciesName | "" {
-  return getRuleset("Gen9 Natdex").species.get(pokemonID)?.name ?? "";
+  return getRuleset("Gen9 NatDex").species.get(pokemonID)?.name ?? "";
 }
 
 export function getRandom(

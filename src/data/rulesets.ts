@@ -83,7 +83,7 @@ const NATDEX_EXISTS = (d: Data) => {
 };
 
 const Rulesets = {
-  "Gen9 Natdex": {
+  "Gen9 NatDex": {
     dex: Dex.forGen(9),
     existFn: NATDEX_EXISTS,
     restriction: undefined,
@@ -93,7 +93,7 @@ const Rulesets = {
     existFn: DRAFT_EXISTS,
     restriction: "Paldea",
   },
-  "Gen8 Natdex": {
+  "Gen8 NatDex": {
     dex: Dex.forGen(8),
     existFn: NATDEX_EXISTS,
     restriction: undefined,
