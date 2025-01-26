@@ -1,4 +1,4 @@
-import { Data, Generation, Generations } from "@pkmn/data";
+import { Data, Generation } from "@pkmn/data";
 import { Dex, ModdedDex } from "@pkmn/dex";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [

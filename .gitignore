@@ -6,3 +6,4 @@ output.json
 .env
 dist/
 coverage/
+src/tests/

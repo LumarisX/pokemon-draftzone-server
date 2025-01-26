@@ -2,7 +2,6 @@ import {
   Ability,
   ID,
   Item,
-  MoveName,
   Nature,
   NatureName,
   StatID,
@@ -10,7 +9,6 @@ import {
   TypeName,
 } from "@pkmn/data";
 import { DraftSpecies } from "./pokemon";
-import { getEffectivePower } from "../services/data-services/move.service";
 
 export namespace Teambuilder {
   export class Pokemon {

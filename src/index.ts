@@ -1,8 +1,7 @@
 import debug from "debug";
 import http from "http";
 import { AddressInfo } from "net";
-import WebSocket from "ws";
-import { app, ROUTES } from "./app";
+import { app } from "./app";
 import { config } from "./config";
 import { startDiscordBot } from "./discord";
 
@@ -19,36 +18,36 @@ app.set("port", port);
  */
 const server: http.Server = http.createServer(app);
 
-const wss = new WebSocket.Server({ server });
+// const wss = new WebSocket.Server({ server });
 
-wss.on("connection", (ws, req) => {
-  console.log(`${req.headers["user-agent"]} => ${req.url}`);
+// wss.on("connection", (ws, req) => {
+//   console.log(`${req.headers["user-agent"]} => ${req.url}`);
 
-  if (req.url) {
-    const [_, main, ...paths] = req.url.split("/");
-    const path = `/${main}`;
-    const subpath = `/${paths.join("/")}`;
-    if (ROUTES[path]) {
-      if (ROUTES[path].ws?.onConnect) {
-        let { emitter, data } = ROUTES[path].ws.onConnect();
-        if (ROUTES[path].subpaths[subpath]?.ws) {
-          ws.on("message", (message) => {
-            ROUTES[path].subpaths[subpath].ws!(
-              ws,
-              message.toString(),
-              emitter,
-              data
-            );
-          });
-        }
-      }
-    }
-  }
+//   if (req.url) {
+//     const [_, main, ...paths] = req.url.split("/");
+//     const path = `/${main}`;
+//     const subpath = `/${paths.join("/")}`;
+//     if (ROUTES[path]) {
+//       if (ROUTES[path].ws?.onConnect) {
+//         let { emitter, data } = ROUTES[path].ws.onConnect();
+//         if (ROUTES[path].subpaths[subpath]?.ws) {
+//           ws.on("message", (message) => {
+//             ROUTES[path].subpaths[subpath].ws!(
+//               ws,
+//               message.toString(),
+//               emitter,
+//               data
+//             );
+//           });
+//         }
+//       }
+//     }
+//   }
 
-  ws.on("close", () => {
-    console.log("WebSocket connection closed");
-  });
-});
+//   ws.on("close", () => {
+//     console.log("WebSocket connection closed");
+//   });
+// });
 
 /**
  * Listen on provided port, on all network interfaces.

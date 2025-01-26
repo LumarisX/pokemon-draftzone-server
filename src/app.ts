@@ -17,6 +17,7 @@ import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
+import { BattleZoneRoutes } from "./routes/battlezone.route";
 
 mongoose
   .connect(
@@ -59,14 +60,10 @@ export const ROUTES: { [path: string]: Route } = {
   "/leagues": LeagueAdRoutes,
   "/teambuilder": TeambuilderRoutes,
   "/supporters": SupporterRoutes,
+  "/battlezone": BattleZoneRoutes,
 };
 
-const METHODS: ("get" | "post" | "delete" | "patch")[] = [
-  "get",
-  "post",
-  "delete",
-  "patch",
-];
+const METHODS = ["get", "post", "delete", "patch"] as const;
 
 for (const path in ROUTES) {
   const route = ROUTES[path];
@@ -95,6 +92,10 @@ app.use(function (req: Request, res: Response, next: NextFunction) {
 app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
-  res.status(err.status || 500);
-  res.render("error");
+  res.status(err.status || 500).json({
+    error: {
+      message: err.message,
+      status: err.status || 500,
+    },
+  });
 });
