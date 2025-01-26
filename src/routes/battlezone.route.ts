@@ -5,6 +5,23 @@ import { PDBLModel } from "../models/pdbl.model";
 
 export const BattleZoneRoutes: Route = {
   subpaths: {
+    "/pdbl": {
+      get: async (req: Request, res: Response) => {
+        res.json({
+          format: "Singles",
+          ruleset: "Gen9 NatDex",
+          draft: [
+            new Date("2025-02-18T12:00:00"),
+            new Date("2025-02-22T12:00:00"),
+          ],
+          season: [
+            new Date("2025-02-23T12:00:00"),
+            new Date("2025-04-20T12:00:00"),
+          ],
+          prize: 60,
+        });
+      },
+    },
     "/pdbl/signup": {
       post: async (req: Request, res: Response) => {
         try {
