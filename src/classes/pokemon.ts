@@ -25,6 +25,7 @@ import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
 import { CoverageMove } from "../services/matchup-services/coverage.service";
+import { getBst } from "./specieUtil";
 
 export interface PokemonOptions {
   shiny?: boolean;
@@ -125,9 +126,7 @@ export class DraftSpecies implements Specie, Pokemon {
     } else {
       this.abilities = specie.abilities;
     }
-    this.bst = Object.values(specie.baseStats).reduce(
-      (sum, stat) => stat + sum
-    );
+    this.bst = getBst(specie);
   }
 
   get formeNum(): number {

@@ -138,6 +138,11 @@ const Rulesets = {
     existFn: DRAFT_EXISTS,
     restriction: undefined,
   },
+  // "Insurgance Dex": {
+  //   dex: Dex.mod("insurgance" as ID, insurganceMod as ModData),
+  //   existFn: DRAFT_EXISTS,
+  //   restriction: undefined,
+  // },
   // CAP: { gen: gens.get(9), natdex: true },
 } as const;
 

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { type Route } from ".";
 import { BattleZone } from "../classes/battlezone";
 import { PDBLModel } from "../models/pdbl.model";
+import { getTiers } from "../data/tiers";
 
 export const BattleZoneRoutes: Route = {
   subpaths: {
@@ -22,6 +23,19 @@ export const BattleZoneRoutes: Route = {
         });
       },
     },
+    "/pdbl/tiers": {
+      get: async (req: Request, res: Response) => {
+        try {
+          res.json(getTiers());
+        } catch (error) {
+          console.error(error);
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "BR-R2-01" });
+        }
+      },
+    },
+
     "/pdbl/signup": {
       post: async (req: Request, res: Response) => {
         try {
