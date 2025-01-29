@@ -1,38 +1,35 @@
-import { Specie, StatsTable } from "@pkmn/data";
+import { Specie } from "@pkmn/data";
 import { getBst } from "../classes/specieUtil";
 import { getRuleset } from "./rulesets";
+import { group } from "console";
 
 export const details: {
-  tiers: string[];
+  teraGroups: { tiers: string[]; label?: string }[];
+  banned: {
+    moves: string[];
+    abilities: string[];
+  };
   pokemon: ({
     name: string;
-    bAbilities?: string[];
-    bMoves?: string[];
+    banned?: {
+      moves?: string[];
+      abilities?: string[];
+      tera?: true;
+    };
     drafted?: true;
   } & ({ tier: number } | { ref: string }))[];
 } = {
-  tiers: [
-    "Ban",
-    "20",
-    "19",
-    "18",
-    "17",
-    "16",
-    "15",
-    "14",
-    "13",
-    "12",
-    "11",
-    "10",
-    "9",
-    "8",
-    "7",
-    "6",
-    "5",
-    "4",
-    "3",
-    "2",
-    "1",
+  banned: {
+    moves: ["Last Respects", "Shed Tail", "Revival Blessing"],
+    abilities: ["Moody", "Sand Veil", "Snow Cloak", "Arena Trap", "Shadow Tag"],
+  },
+  teraGroups: [
+    { tiers: ["Ban"] },
+    { tiers: ["20", "19", "18", "17"], label: "Tera Banned" },
+    { tiers: ["16", "15", "14", "13"], label: "1 Tera Type" },
+    { tiers: ["12", "11", "10", "9"], label: "2 Tera Types" },
+    { tiers: ["8", "7", "6", "5"], label: "3 Tera Types" },
+    { tiers: ["4", "3", "2", "1"], label: "4 Tera Types" },
   ],
   pokemon: [
     { name: "bulbasaur", tier: 20 },
@@ -351,8 +348,8 @@ export const details: {
     { name: "celebi", tier: 12 },
     { name: "treecko", tier: 20 },
     { name: "grovyle", tier: 20 },
-    { name: "sceptile", tier: 17 },
-    { name: "sceptilemega", tier: 12 },
+    { name: "sceptile", tier: 17, banned: { moves: ["Shed Tail"] } },
+    { name: "sceptilemega", tier: 12, banned: { moves: ["Shed Tail"] } },
     { name: "torchic", tier: 20 },
     { name: "combusken", tier: 20 },
     { name: "blaziken", tier: 6 },
@@ -395,7 +392,13 @@ export const details: {
     { name: "slaking", tier: 19 },
     { name: "nincada", tier: 20 },
     { name: "ninjask", tier: 20 },
-    { name: "shedinja", tier: 19 },
+    {
+      name: "shedinja",
+      tier: 19,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "whismur", tier: 20 },
     { name: "loudred", tier: 20 },
     { name: "exploud", tier: 16 },
@@ -804,7 +807,13 @@ export const details: {
     { name: "zweilous", tier: 18 },
     { name: "hydreigon", tier: 7 },
     { name: "larvesta", tier: 20 },
-    { name: "volcarona", tier: 5 },
+    {
+      name: "volcarona",
+      tier: 5,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "cobalion", tier: 11 },
     { name: "terrakion", tier: 9 },
     { name: "virizion", tier: 16 },
@@ -994,7 +1003,13 @@ export const details: {
     { name: "hakamoo", tier: 18 },
     { name: "kommoo", tier: 8 },
     { name: "tapukoko", tier: 2 },
-    { name: "tapulele", tier: 5 },
+    {
+      name: "tapulele",
+      tier: 5,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "tapubulu", tier: 11 },
     { name: "tapufini", tier: 5 },
     { name: "cosmog", tier: 20 },
@@ -1008,7 +1023,13 @@ export const details: {
     { name: "celesteela", tier: 7 },
     { name: "kartana", tier: 4 },
     { name: "guzzlord", tier: 18 },
-    { name: "necrozma", tier: 5 },
+    {
+      name: "necrozma",
+      tier: 5,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "necrozmadusk", tier: 0 },
     { name: "necrozmadawn", tier: 0 },
     { name: "necrozmaultra", tier: 0 },
@@ -1020,7 +1041,13 @@ export const details: {
     { name: "blacephalon", tier: 7 },
     { name: "zeraora", tier: 5 },
     { name: "meltan", tier: 20 },
-    { name: "melmetal", tier: 5 },
+    {
+      name: "melmetal",
+      tier: 5,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "grookey", tier: 20 },
     { name: "thwackey", tier: 18 },
     { name: "rillaboom", tier: 7 },
@@ -1109,7 +1136,13 @@ export const details: {
     { name: "urshifu", tier: 2 },
     { name: "urshifurapidstrike", tier: 5 },
     { name: "zarude", tier: 9 },
-    { name: "regieleki", tier: 10 },
+    {
+      name: "regieleki",
+      tier: 10,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "regidrago", tier: 12 },
     { name: "glastrier", tier: 16 },
     { name: "spectrier", tier: 0 },
@@ -1120,8 +1153,8 @@ export const details: {
     { name: "kleavor", tier: 10 },
     { name: "ursaluna", tier: 7 },
     { name: "ursalunabloodmoon", tier: 6 },
-    { name: "basculegion", tier: 8 },
-    { name: "basculegionf", tier: 8 },
+    { name: "basculegion", tier: 8, banned: { moves: ["Last Respects"] } },
+    { name: "basculegionf", tier: 8, banned: { moves: ["Last Respects"] } },
     { name: "sneasler", tier: 3 },
     { name: "overqwil", tier: 9 },
     { name: "enamorus", tier: 6 },
@@ -1144,7 +1177,7 @@ export const details: {
     { name: "lokix", tier: 9 },
     { name: "pawmi", tier: 20 },
     { name: "pawmo", tier: 20 },
-    { name: "pawmot", tier: 11 },
+    { name: "pawmot", tier: 11, banned: { moves: ["Revival Blessing"] } },
     { name: "tandemaus", tier: 20 },
     { name: "maushold", tier: 14 },
     { name: "fidough", tier: 20 },
@@ -1175,7 +1208,7 @@ export const details: {
     { name: "capsakid", tier: 20 },
     { name: "scovillain", tier: 16 },
     { name: "rellor", tier: 20 },
-    { name: "rabsca", tier: 19 },
+    { name: "rabsca", tier: 19, banned: { moves: ["Revival Blessing"] } },
     { name: "flittle", tier: 20 },
     { name: "espathra", tier: 0 },
     { name: "tinkatink", tier: 20 },
@@ -1188,12 +1221,12 @@ export const details: {
     { name: "palafin", tier: 0 },
     { name: "varoom", tier: 20 },
     { name: "revavroom", tier: 11 },
-    { name: "cyclizar", tier: 13 },
-    { name: "orthworm", tier: 15 },
+    { name: "cyclizar", tier: 13, banned: { moves: ["Shed Tail"] } },
+    { name: "orthworm", tier: 15, banned: { moves: ["Shed Tail"] } },
     { name: "glimmet", tier: 18 },
     { name: "glimmora", tier: 8 },
     { name: "greavard", tier: 20 },
-    { name: "houndstone", tier: 17 },
+    { name: "houndstone", tier: 17, banned: { moves: ["Last Respects"] } },
     { name: "flamigo", tier: 14 },
     { name: "cetoddle", tier: 20 },
     { name: "cetitan", tier: 14 },
@@ -1204,8 +1237,17 @@ export const details: {
     { name: "clodsire", tier: 11 },
     { name: "farigiraf", tier: 16 },
     { name: "dudunsparce", tier: 13 },
-    { name: "kingambit", tier: 6 },
-    { name: "greattusk", tier: 1 },
+    {
+      name: "kingambit",
+      tier: 6,
+      banned: {
+        tera: true,
+      },
+    },
+    {
+      name: "greattusk",
+      tier: 1,
+    },
     { name: "screamtail", tier: 8 },
     { name: "brutebonnet", tier: 14 },
     { name: "fluttermane", tier: 0 },
@@ -1219,7 +1261,13 @@ export const details: {
     { name: "ironthorns", tier: 15 },
     { name: "frigibax", tier: 20 },
     { name: "arctibax", tier: 20 },
-    { name: "baxcalibur", tier: 6 },
+    {
+      name: "baxcalibur",
+      tier: 6,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "gimmighoul", tier: 20 },
     { name: "gholdengo", tier: 4 },
     { name: "wochien", tier: 14 },
@@ -1238,7 +1286,13 @@ export const details: {
     { name: "okidogi", tier: 9 },
     { name: "munkidori", tier: 12 },
     { name: "fezandipiti", tier: 11 },
-    { name: "ogerpon", tier: 8 },
+    {
+      name: "ogerpon",
+      tier: 8,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "ogerponwellspring", tier: 4 },
     { name: "ogerponhearthflame", tier: 4 },
     { name: "ogerponcornerstone", tier: 6 },
@@ -1248,13 +1302,29 @@ export const details: {
     { name: "ragingbolt", tier: 7 },
     { name: "ironboulder", tier: 7 },
     { name: "ironcrown", tier: 8 },
-    { name: "terapagosterastal", tier: 8 },
+    {
+      name: "terapagosterastal",
+      tier: 8,
+      banned: {
+        tera: true,
+      },
+    },
     { name: "pecharunt", tier: 9 },
   ],
 };
 
 export function getTiers() {
-  const tiers = details.tiers.map((tierName) => new Tier.Group(tierName));
+  const tiers: TierList.Tier[] = [];
+
+  const teraGroups = details.teraGroups.map((groupDetails) => {
+    const teraGroup = new TierList.TierGroup(groupDetails.label);
+    groupDetails.tiers.forEach((tierName) => {
+      const tier = new TierList.Tier(tierName);
+      tiers.push(tier);
+      teraGroup.tiers.push(tier);
+    });
+    return teraGroup;
+  });
 
   details.pokemon.forEach((pokemon) => {
     if ("tier" in pokemon) {
@@ -1262,24 +1332,51 @@ export function getTiers() {
         throw new Error(
           `${pokemon.name} has tier ${pokemon.tier} outside length ${tiers.length}.`
         );
-      tiers[pokemon.tier].addPokemon(pokemon.name, pokemon.drafted);
+      tiers[pokemon.tier].addPokemon(
+        pokemon.name,
+        pokemon.drafted,
+        pokemon.banned
+      );
     } else {
     }
   });
 
-  return tiers.map((tier) => tier.toJSON());
+  return teraGroups.map((group) => group.toJSON());
 }
 
-namespace Tier {
-  export class Group {
+namespace TierList {
+  export class TierGroup {
+    label?: string;
+    tiers: Tier[] = [];
+    constructor(label?: string) {
+      this.label = label;
+    }
+
+    toJSON() {
+      return {
+        label: this.label,
+        tiers: this.tiers.map((tier) => tier.toJSON()),
+      };
+    }
+  }
+
+  export class Tier {
     name: string;
     pokemons: Pokemon[] = [];
     constructor(name: string) {
       this.name = name;
     }
 
-    addPokemon(name: string, drafted?: boolean) {
-      this.pokemons.push(new Pokemon(name, this, drafted));
+    addPokemon(
+      name: string,
+      drafted?: boolean,
+      banned?: {
+        moves?: string[];
+        abilities?: string[];
+        tera?: true;
+      }
+    ) {
+      this.pokemons.push(new Pokemon(name, this, drafted, banned));
     }
 
     toJSON() {
@@ -1293,19 +1390,36 @@ namespace Tier {
   }
 
   class SubPokemon {
-    group: Group;
+    group: Tier;
     specie: Specie;
     bst: number;
     banned?: {
-      moves: string[];
-      abilities: string[];
+      moves?: string[];
+      abilities?: string[];
+      tera?: true;
     };
-    constructor(name: string, group: Group) {
+    constructor(
+      name: string,
+      group: Tier,
+      banned?: {
+        moves?: string[];
+        abilities?: string[];
+        tera?: true;
+      }
+    ) {
       const specie = getRuleset("Gen9 NatDex").species.get(name);
       if (!specie) throw new Error(`${name} does not exist`);
       this.specie = specie;
       this.bst = getBst(this.specie);
+      this.banned = banned;
       this.group = group;
+      Object.values(this.specie.abilities).forEach((name) => {
+        if (details.banned.abilities.includes(name)) {
+          if (!this.banned) this.banned = {};
+          if (!this.banned.abilities) this.banned.abilities = [];
+          this.banned.abilities.push(name);
+        }
+      });
     }
 
     toJSON() {
@@ -1323,8 +1437,17 @@ namespace Tier {
   export class Pokemon extends SubPokemon {
     subPokemon?: SubPokemon[];
     drafted;
-    constructor(name: string, group: Group, drafted: boolean = false) {
-      super(name, group);
+    constructor(
+      name: string,
+      group: Tier,
+      drafted: boolean = false,
+      banned?: {
+        moves?: string[];
+        abilities?: string[];
+        tera?: true;
+      }
+    ) {
+      super(name, group, banned);
       this.drafted = drafted;
     }
 
