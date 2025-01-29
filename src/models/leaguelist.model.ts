@@ -1,6 +1,4 @@
-import mongoose, { InferSchemaType, ObjectId } from "mongoose";
-import { getFormats } from "../data/formats";
-import { getRulesets } from "../data/rulesets";
+import mongoose, { InferSchemaType } from "mongoose";
 
 const divisionSchema = new mongoose.Schema({
   divisionName: {
@@ -28,12 +26,10 @@ const divisionSchema = new mongoose.Schema({
   },
   format: {
     type: String,
-    enum: [...getFormats(), "Other"],
     required: true,
   },
   ruleset: {
     type: String,
-    enum: [...getRulesets(), "Other"],
     required: true,
   },
   description: {
