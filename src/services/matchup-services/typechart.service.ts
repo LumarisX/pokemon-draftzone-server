@@ -1,7 +1,6 @@
-import { Type, TypeName } from "@pkmn/data";
+import { TypeName } from "@pkmn/data";
 import { DraftSpecies } from "../../classes/pokemon";
 import { typeWeak } from "../data-services/type.services";
-import { spec } from "node:test/reporters";
 
 export class Typechart {
   team: DraftSpecies[];
@@ -21,7 +20,7 @@ export class Typechart {
     return {
       team: this.team.map((pokemon) => ({
         ...pokemon.toPokemon(),
-        weak: pokemon.typechart(),
+        weak: [pokemon.typechart(), typeWeak(pokemon.types, pokemon.ruleset)],
         types: pokemon.types,
       })),
       teraTypes: this.teraTypes,

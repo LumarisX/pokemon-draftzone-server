@@ -388,7 +388,7 @@ async function makeMatchup(
     typechart: {
       team: (
         | PokemonData & {
-            weak: { [key: string]: number };
+            weak: { [key: string]: number }[];
           }
       )[];
       teraTypes: {
