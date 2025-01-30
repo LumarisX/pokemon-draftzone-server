@@ -1,37 +1,134 @@
 import { Specie } from "@pkmn/data";
 import { getBst } from "../classes/specieUtil";
 import { getRuleset } from "./rulesets";
-import { group } from "console";
 
-export const details: {
-  teraGroups: { tiers: string[]; label?: string }[];
-  banned: {
-    moves: string[];
-    abilities: string[];
-  };
-  pokemon: ({
+const teraGroups: { tiers: string[]; label?: string }[] = [
+  { tiers: ["Ban"], label: "" },
+  { tiers: ["20", "19", "18", "17"], label: "Tera Banned" },
+  { tiers: ["16", "15", "14", "13"], label: "1 Tera Type" },
+  { tiers: ["12", "11", "10", "9"], label: "2 Tera Types" },
+  { tiers: ["8", "7", "6", "5"], label: "3 Tera Types" },
+  { tiers: ["4", "3", "2", "1"], label: "4 Tera Types" },
+];
+
+const banned: {
+  moves: string[];
+  abilities: string[];
+} = {
+  moves: ["Last Respects", "Shed Tail", "Revival Blessing"],
+  abilities: [
+    "Moody",
+    "Sand Veil",
+    "Snow Cloak",
+    "Arena Trap",
+    "Shadow Tag",
+    "Power Construct",
+  ],
+};
+
+namespace TierList {
+  export class TierGroup {
+    label?: string;
+    tiers: Tier[] = [];
+    constructor(label?: string) {
+      this.label = label;
+    }
+
+    toJSON() {
+      return {
+        label: this.label,
+        tiers: this.tiers.map((tier) => tier.toJSON()),
+      };
+    }
+  }
+
+  export class Tier {
     name: string;
+    pokemons: Pokemon[] = [];
+    constructor(name: string) {
+      this.name = name;
+    }
+
+    addPokemon(pokemon: TierList.Pokemon) {
+      this.pokemons.push(pokemon);
+    }
+
+    toJSON() {
+      return {
+        name: this.name,
+        pokemon: this.pokemons
+          .sort((x, y) => y.bst - x.bst)
+          .map((pokemon) => pokemon.toJSON()),
+      };
+    }
+  }
+
+  class SubPokemon {
+    specie: Specie;
+    bst: number;
     banned?: {
       moves?: string[];
       abilities?: string[];
       tera?: true;
     };
-    drafted?: true;
-  } & ({ tier: number } | { ref: string }))[];
-} = {
-  banned: {
-    moves: ["Last Respects", "Shed Tail", "Revival Blessing"],
-    abilities: ["Moody", "Sand Veil", "Snow Cloak", "Arena Trap", "Shadow Tag"],
-  },
-  teraGroups: [
-    { tiers: ["Ban"] },
-    { tiers: ["20", "19", "18", "17"], label: "Tera Banned" },
-    { tiers: ["16", "15", "14", "13"], label: "1 Tera Type" },
-    { tiers: ["12", "11", "10", "9"], label: "2 Tera Types" },
-    { tiers: ["8", "7", "6", "5"], label: "3 Tera Types" },
-    { tiers: ["4", "3", "2", "1"], label: "4 Tera Types" },
-  ],
-  pokemon: [
+    constructor(
+      specie: Specie,
+      banned?: {
+        moves?: string[];
+        abilities?: string[];
+        tera?: true;
+      }
+    ) {
+      this.specie = specie;
+      this.bst = getBst(this.specie);
+      this.banned = banned;
+    }
+
+    toJSON() {
+      return {
+        id: this.specie.id,
+        name: this.specie.name,
+        stats: this.specie.baseStats,
+        types: this.specie.types,
+        bst: this.bst,
+        banned: this.banned,
+      };
+    }
+  }
+
+  export class Pokemon extends SubPokemon {
+    subPokemon?: SubPokemon[];
+    drafted;
+    constructor(
+      specie: Specie,
+      drafted: boolean = false,
+      banned?: {
+        moves?: string[];
+        abilities?: string[];
+        tera?: true;
+      }
+    ) {
+      super(specie, banned);
+      this.drafted = drafted;
+    }
+
+    toJSON() {
+      return {
+        ...super.toJSON(),
+        drafted: this.drafted,
+        subPokemon: this.subPokemon?.map((pokemon) => pokemon.toJSON()),
+      };
+    }
+
+    addSubPokemon(pokemon: SubPokemon) {
+      if (!this.subPokemon) this.subPokemon = [];
+      this.subPokemon.push(pokemon);
+    }
+  }
+}
+
+const pokemon: { obj: TierList.Pokemon; tier: number }[] = (
+  [
     { name: "bulbasaur", tier: 20 },
     { name: "ivysaur", tier: 20 },
     { name: "venusaur", tier: 10 },
@@ -1310,13 +1407,43 @@ export const details: {
       },
     },
     { name: "pecharunt", tier: 9 },
-  ],
-};
+  ] as ({
+    name: string;
+    banned?: {
+      moves?: string[];
+      abilities?: string[];
+      tera?: true;
+    };
+    drafted?: true;
+  } & ({ tier: number } | { ref: string }))[]
+).map((pokemon) => {
+  const specie = getRuleset("Gen9 NatDex").species.get(pokemon.name);
+  if (!specie) throw new Error(`${pokemon.name} does not exist`);
+
+  Object.values(specie.abilities).forEach((abilityName) => {
+    if (banned.abilities.includes(abilityName)) {
+      if (!pokemon.banned) pokemon.banned = {};
+      if (!pokemon.banned.abilities) pokemon.banned.abilities = [];
+      pokemon.banned.abilities.push(abilityName);
+    }
+  });
+
+  if ("tier" in pokemon) {
+    return {
+      obj: new TierList.Pokemon(specie, pokemon.drafted, pokemon.banned),
+      tier: pokemon.tier,
+    };
+  }
+  return {
+    obj: new TierList.Pokemon(specie, pokemon.drafted, pokemon.banned),
+    tier: 0,
+  };
+});
 
 export function getTiers() {
   const tiers: TierList.Tier[] = [];
 
-  const teraGroups = details.teraGroups.map((groupDetails) => {
+  const tg = teraGroups.map((groupDetails) => {
     const teraGroup = new TierList.TierGroup(groupDetails.label);
     groupDetails.tiers.forEach((tierName) => {
       const tier = new TierList.Tier(tierName);
@@ -1326,142 +1453,13 @@ export function getTiers() {
     return teraGroup;
   });
 
-  details.pokemon.forEach((pokemon) => {
-    if ("tier" in pokemon) {
-      if (pokemon.tier >= tiers.length)
-        throw new Error(
-          `${pokemon.name} has tier ${pokemon.tier} outside length ${tiers.length}.`
-        );
-      tiers[pokemon.tier].addPokemon(
-        pokemon.name,
-        pokemon.drafted,
-        pokemon.banned
+  pokemon.forEach((pokemon) => {
+    if (pokemon.tier >= tiers.length)
+      throw new Error(
+        `${pokemon.obj.specie.name} has tier ${pokemon.tier} outside length ${tiers.length}.`
       );
-    } else {
-    }
+    tiers[pokemon.tier].addPokemon(pokemon.obj);
   });
 
-  return teraGroups.map((group) => group.toJSON());
-}
-
-namespace TierList {
-  export class TierGroup {
-    label?: string;
-    tiers: Tier[] = [];
-    constructor(label?: string) {
-      this.label = label;
-    }
-
-    toJSON() {
-      return {
-        label: this.label,
-        tiers: this.tiers.map((tier) => tier.toJSON()),
-      };
-    }
-  }
-
-  export class Tier {
-    name: string;
-    pokemons: Pokemon[] = [];
-    constructor(name: string) {
-      this.name = name;
-    }
-
-    addPokemon(
-      name: string,
-      drafted?: boolean,
-      banned?: {
-        moves?: string[];
-        abilities?: string[];
-        tera?: true;
-      }
-    ) {
-      this.pokemons.push(new Pokemon(name, this, drafted, banned));
-    }
-
-    toJSON() {
-      return {
-        name: this.name,
-        pokemon: this.pokemons
-          .sort((x, y) => y.bst - x.bst)
-          .map((pokemon) => pokemon.toJSON()),
-      };
-    }
-  }
-
-  class SubPokemon {
-    group: Tier;
-    specie: Specie;
-    bst: number;
-    banned?: {
-      moves?: string[];
-      abilities?: string[];
-      tera?: true;
-    };
-    constructor(
-      name: string,
-      group: Tier,
-      banned?: {
-        moves?: string[];
-        abilities?: string[];
-        tera?: true;
-      }
-    ) {
-      const specie = getRuleset("Gen9 NatDex").species.get(name);
-      if (!specie) throw new Error(`${name} does not exist`);
-      this.specie = specie;
-      this.bst = getBst(this.specie);
-      this.banned = banned;
-      this.group = group;
-      Object.values(this.specie.abilities).forEach((name) => {
-        if (details.banned.abilities.includes(name)) {
-          if (!this.banned) this.banned = {};
-          if (!this.banned.abilities) this.banned.abilities = [];
-          this.banned.abilities.push(name);
-        }
-      });
-    }
-
-    toJSON() {
-      return {
-        id: this.specie.id,
-        name: this.specie.name,
-        stats: this.specie.baseStats,
-        types: this.specie.types,
-        bst: this.bst,
-        banned: this.banned,
-      };
-    }
-  }
-
-  export class Pokemon extends SubPokemon {
-    subPokemon?: SubPokemon[];
-    drafted;
-    constructor(
-      name: string,
-      group: Tier,
-      drafted: boolean = false,
-      banned?: {
-        moves?: string[];
-        abilities?: string[];
-        tera?: true;
-      }
-    ) {
-      super(name, group, banned);
-      this.drafted = drafted;
-    }
-
-    toJSON() {
-      return {
-        ...super.toJSON(),
-        drafted: this.drafted,
-        subPokemon: this.subPokemon?.map((pokemon) => pokemon.toJSON()),
-      };
-    }
-
-    addSubPokemon(pokemon: SubPokemon) {
-      if (!this.subPokemon) this.subPokemon = [];
-      this.subPokemon.push(pokemon);
-    }
-  }
+  return tg.map((group) => group.toJSON());
 }
