@@ -1,4 +1,4 @@
-import { Generation, SpeciesName, TypeName } from "@pkmn/data";
+import { Generation, Specie, SpeciesName, TypeName } from "@pkmn/data";
 import { getRuleset } from "../../data/rulesets";
 
 export function getName(pokemonID: string): SpeciesName | "" {
@@ -6,6 +6,7 @@ export function getName(pokemonID: string): SpeciesName | "" {
 }
 
 export function getRandom(
+  count: number,
   gen: Generation,
   options: {
     types?: TypeName[];
@@ -19,14 +20,39 @@ export function getRandom(
 ) {
   const species = Array.from(gen.species).filter((pokemon) => {
     if (
+      !pokemon.exists ||
       (options.nfe && pokemon.nfe) ||
-      (options.mega && pokemon.forme === "Mega") ||
+      pokemon.forme ||
       (options.types &&
         options.types.some((type) => pokemon.types.includes(type)))
     )
       return false;
     return true;
   });
-  const randInt = Math.round(Math.random() * species.length);
-  return species[randInt];
+  const selected: typeof species = [];
+  const usedIndices = new Set<number>();
+
+  while (selected.length < Math.min(count, species.length)) {
+    const randIndex = Math.floor(Math.random() * species.length);
+    if (!usedIndices.has(randIndex)) {
+      usedIndices.add(randIndex);
+      const specie = species[randIndex];
+      if (specie.formes) {
+        const formeSpecies: Specie[] = specie.formes
+          .map((name) => gen.species.get(name))
+          .filter(
+            (forme) =>
+              forme !== undefined &&
+              forme.exists &&
+              !forme.battleOnly &&
+              !specie.cosmeticFormes?.includes(forme.name)
+          )
+          .sort(() => Math.random() - 0.5) as Specie[];
+        selected.push(formeSpecies[0]);
+      } else {
+        selected.push(specie);
+      }
+    }
+  }
+  return selected;
 }
