@@ -168,7 +168,8 @@ export type RulesetId =
   | "Sinnoh Dex"
   | "Hoenn Dex"
   | "Johto Dex"
-  | "Kanto Dex";
+  | "Kanto Dex"
+  | "Sword/Shield";
 
 export class Ruleset extends Generation {
   name: string;
@@ -224,6 +225,12 @@ export const Rulesets: {
         return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id, {
           restriction: "Galar",
         });
+      },
+    },
+    "Sword/Shield": {
+      id: "Sword/Shield",
+      get ruleset() {
+        return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id);
       },
     },
   },
