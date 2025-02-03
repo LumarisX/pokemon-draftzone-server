@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import { Route } from ".";
-import { getFormats } from "../data/formats";
-import { getRuleset, getRulesets, Ruleset } from "../data/rulesets";
+import { _getFormats, getFormats } from "../data/formats";
+import {
+  getRuleset,
+  getRulesets,
+  getRulesetsGrouped,
+  Ruleset,
+} from "../data/rulesets";
 import { searchPokemon } from "../services/search.service";
 import { getRandom } from "../services/data-services/pokedex.service";
 
@@ -21,10 +26,34 @@ export const DataRoutes: Route = {
         }
       },
     },
+    "/formatsgrouped": {
+      get: (req: Request, res: Response) => {
+        try {
+          res.json(_getFormats());
+        } catch (error) {
+          console.error("Error in /formats/ route:", error);
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "DT-R1-01" });
+        }
+      },
+    },
     "/rulesets": {
       get: (req: Request, res: Response) => {
         try {
           res.json(getRulesets());
+        } catch (error) {
+          console.error("Error in /rulesets/ route:", error);
+          res
+            .status(500)
+            .json({ error: "Internal Server Error", code: "DT-R2-01" });
+        }
+      },
+    },
+    "/rulesetsgrouped": {
+      get: (req: Request, res: Response) => {
+        try {
+          res.json(getRulesetsGrouped());
         } catch (error) {
           console.error("Error in /rulesets/ route:", error);
           res

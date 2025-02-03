@@ -89,74 +89,6 @@ const NATDEX_EXISTS = (d: Data) => {
   );
 };
 
-// const Rulesets = {
-//   "Gen9 NatDex": {
-//     dex: Dex.forGen(9),
-//     existFn: (d: Data) => {
-//       if (!NATDEX_EXISTS(d)) return false;
-//       if (d.kind === "Species" && d.forme === "Gmax") return false;
-//       return true;
-//     },
-//     restriction: undefined,
-//   },
-//   "Paldea Dex": {
-//     dex: Dex.forGen(9),
-//     existFn: DRAFT_EXISTS,
-//     restriction: "Paldea",
-//   },
-//   "Gen8 NatDex": {
-//     dex: Dex.forGen(8),
-//     existFn: NATDEX_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Galar Dex": {
-//     dex: Dex.forGen(8),
-//     existFn: DRAFT_EXISTS,
-//     restriction: "Galar",
-//   },
-//   "Alola Dex": {
-//     dex: Dex.forGen(7),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Kalos Dex": {
-//     dex: Dex.forGen(6),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Unova Dex": {
-//     dex: Dex.forGen(5),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Sinnoh Dex": {
-//     dex: Dex.forGen(4),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Hoenn Dex": {
-//     dex: Dex.forGen(3),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Johto Dex": {
-//     dex: Dex.forGen(2),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   "Kanto Dex": {
-//     dex: Dex.forGen(1),
-//     existFn: DRAFT_EXISTS,
-//     restriction: undefined,
-//   },
-//   // "Insurgance Dex": {
-//   //   dex: Dex.mod("insurgance" as ID, insurganceMod as ModData),
-//   //   existFn: DRAFT_EXISTS,
-//   //   restriction: undefined,
-//   // },
-//   // CAP: { gen: gens.get(9), natdex: true },
-// } as const;
-
 export type RulesetId =
   | "Gen9 NatDex"
   | "Paldea Dex"
@@ -168,7 +100,8 @@ export type RulesetId =
   | "Sinnoh Dex"
   | "Hoenn Dex"
   | "Johto Dex"
-  | "Kanto Dex";
+  | "Kanto Dex"
+  | "Sword/Shield";
 
 export class Ruleset extends Generation {
   name: string;
@@ -188,6 +121,7 @@ export class Ruleset extends Generation {
 export const Rulesets: {
   [key: string]: {
     [key: string]: {
+      desc?: string;
       id: RulesetId;
       ruleset: Ruleset;
     };
@@ -196,6 +130,7 @@ export const Rulesets: {
   "Gen 9": {
     "National Dex": {
       id: "Gen9 NatDex",
+      desc: "Only available Generation 9 and before",
       ruleset: new Ruleset(
         Dex.forGen(9),
         (d: Data) =>
@@ -205,6 +140,7 @@ export const Rulesets: {
     },
     "Paldea Dex": {
       id: "Paldea Dex",
+      desc: "Only available in the Paldea Dex",
       ruleset: new Ruleset(Dex.forGen(9), DRAFT_EXISTS, "Paldea Dex", {
         restriction: "Paldea",
       }),
@@ -214,12 +150,21 @@ export const Rulesets: {
   "Gen 8": {
     "National Dex": {
       id: "Gen8 NatDex",
+      desc: "All available Generation 8 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(8), NATDEX_EXISTS, this.id);
       },
     },
+    "Sword/Shield": {
+      id: "Sword/Shield",
+      desc: "All available to be transfered to Sword/Shield",
+      get ruleset() {
+        return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id);
+      },
+    },
     "Galar Dex": {
       id: "Galar Dex",
+      desc: "Only available in the Galar Dex",
       get ruleset() {
         return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id, {
           restriction: "Galar",
@@ -228,50 +173,58 @@ export const Rulesets: {
     },
   },
   "Older Gens": {
-    "Alola Dex": {
+    "Generation 7": {
       id: "Alola Dex",
+      desc: "All available Generation 7 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(7), DRAFT_EXISTS, this.id);
       },
     },
-    "Kalos Dex": {
+    "Generation 6": {
       id: "Kalos Dex",
+      desc: "All available Generation 6 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(6), DRAFT_EXISTS, this.id);
       },
     },
-    "Unova Dex": {
+    "Generation 5": {
       id: "Unova Dex",
+      desc: "All available Generation 5 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(5), DRAFT_EXISTS, this.id);
       },
     },
-    "Sinnoh Dex": {
+    "Generation 4": {
       id: "Sinnoh Dex",
+      desc: "All available Generation 4 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(4), DRAFT_EXISTS, this.id);
       },
     },
-    "Hoenn Dex": {
+    "Generation 3": {
       id: "Hoenn Dex",
+      desc: "All available Generation 3 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(3), DRAFT_EXISTS, this.id);
       },
     },
-    "Johto Dex": {
+    "Generation 2": {
       id: "Johto Dex",
+      desc: "All available Generation 2 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(2), DRAFT_EXISTS, this.id);
       },
     },
-    "Kanto Dex": {
+    "Generation 1": {
       id: "Kanto Dex",
+      desc: "All available Generation 1",
       get ruleset() {
         return new Ruleset(Dex.forGen(1), DRAFT_EXISTS, this.id);
       },
     },
   },
-  // "Rom Hacks": {},
+  "Other Metas": {},
+  "Rom Hacks": {},
 };
 
 export function getRuleset(rulesetId: string): Ruleset {
@@ -288,4 +241,18 @@ export function getRulesets() {
   return Object.values(Rulesets).flatMap((rulesetgroup) =>
     Object.values(rulesetgroup).map((ruleset) => ruleset.id)
   );
+}
+
+export function getRulesetsGrouped(): [
+  string,
+  { name: string; id: string }[]
+][] {
+  return Object.entries(Rulesets).map(([groupName, rulesetgroup]) => [
+    groupName,
+    Object.entries(rulesetgroup).flatMap(([rulesetName, rulesetData]) => ({
+      name: rulesetName,
+      id: rulesetData.id,
+      desc: rulesetData.desc,
+    })),
+  ]);
 }
