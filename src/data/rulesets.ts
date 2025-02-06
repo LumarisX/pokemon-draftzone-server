@@ -171,12 +171,6 @@ export const Rulesets: {
         });
       },
     },
-    "Sword/Shield": {
-      id: "Sword/Shield",
-      get ruleset() {
-        return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id);
-      },
-    },
   },
   "Older Gens": {
     "Generation 7": {

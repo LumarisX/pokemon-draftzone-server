@@ -2,11 +2,14 @@ import {
   Client,
   EmbedBuilder,
   GatewayIntentBits,
+  Interaction,
   type Message,
 } from "discord.js";
-import { config } from "./config";
+import { config } from "../config";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import OpenAi from "openai";
+import { deployGuildCommands } from "./deploy-commands";
+import { routes } from "./commands";
 
 const client = new Client({
   intents: [
@@ -34,10 +37,55 @@ export function startDiscordBot() {
   if (
     !config.DISCORD_TOKEN ||
     !config.OPENAI_API_KEY ||
-    config.DISCORD_DISABLED
+    (config.DISCORD_DISABLED && config.DISCORD_DISABLED === "true")
   )
     return;
   client.once("ready", () => console.log("Deoxys has been summoned!"));
+
+  deployGuildCommands({ guildId: `1183936734719922176` });
+
+  client.on("interactionCreate", async (interaction: Interaction) => {
+    if (!interaction.isCommand() && !interaction.isAutocomplete()) return;
+    const commandData = routes
+      .filter((route) => route.enabled)
+      .flatMap((routes) => routes.commands)
+      .filter((commandData) => commandData.enabled)
+      .find(
+        (commandData) =>
+          commandData.command.data.name.toLowerCase() ===
+          interaction.commandName.toLowerCase()
+      );
+    if (commandData) {
+      if (interaction.isAutocomplete() && commandData.command.autocomplete) {
+        commandData.command.autocomplete(interaction);
+      } else if (interaction.isChatInputCommand()) {
+        try {
+          console.log(
+            interaction.user.displayName,
+            "|",
+            interaction.commandName,
+            interaction.options.data
+              .map((option) => `${option.name}:${option.value}`)
+              .join(" ")
+          );
+
+          await commandData.command.execute(interaction);
+        } catch (error) {
+          if (error instanceof Error) {
+            console.log(error);
+            return interaction.reply({
+              content: error.message,
+              ephemeral: true,
+            });
+          }
+          return interaction.reply({
+            content: "There was an error.",
+            ephemeral: true,
+          });
+        }
+      }
+    }
+  });
 
   client.on("messageCreate", async (message) => {
     if (message.author.bot || message.mentions.everyone) return;

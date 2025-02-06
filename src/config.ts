@@ -13,6 +13,7 @@ const requiredEnvVars: string[] = [
 const optionalEnvVars: string[] = [
   "DISCORD_TOKEN",
   "OPENAI_API_KEY",
+  "APPLICATION_ID",
   "DISCORD_DISABLED",
 ];
 

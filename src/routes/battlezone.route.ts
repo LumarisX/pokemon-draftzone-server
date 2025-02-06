@@ -1,8 +1,10 @@
+import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
 import { type Route } from ".";
+import { bot } from "..";
 import { BattleZone } from "../classes/battlezone";
+import { getTiers } from "../data/pdbl";
 import { PDBLModel } from "../models/pdbl.model";
-import { getTiers } from "../data/tiers";
 
 export const BattleZoneRoutes: Route = {
   subpaths: {
@@ -46,6 +48,29 @@ export const BattleZoneRoutes: Route = {
               .status(409)
               .json({ message: "User is already signed up" });
           signup.toDocument().save();
+          if (bot) {
+            const guild = await bot.guilds.fetch("1183936734719922176");
+            if (!guild) {
+              console.error("Guild not found");
+              return;
+            }
+
+            // Fetch the channel from the guild
+            const channel = guild.channels.cache.get(
+              "1303896194187132978"
+            ) as TextChannel;
+            if (!channel || !channel.isTextBased()) {
+              console.error("Channel not found or not a text channel");
+              return;
+            }
+
+            const count = (await PDBLModel.find()).length;
+
+            // Send a message in the designated channel
+            channel.send(
+              `${signup.name} signed up for the league. Total signed up: ${count}.`
+            );
+          }
           return res
             .status(201)
             .json({ message: "Sign up successfully created." });

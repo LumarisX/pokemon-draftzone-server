@@ -3,7 +3,7 @@ import http from "http";
 import { AddressInfo } from "net";
 import { app } from "./app";
 import { config } from "./config";
-import { startDiscordBot } from "./discord";
+import { startDiscordBot } from "./discord/discord";
 
 const debugLogger = debug("tpl-express-pro:server");
 /**
