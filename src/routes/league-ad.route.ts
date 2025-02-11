@@ -5,26 +5,46 @@ import { Document } from "mongoose";
 import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
 import { bot } from "..";
 import { TextChannel } from "discord.js";
+import NodeCache from "node-cache";
 
 type AdResponse = Response & {
   //change back from any
   ad?: Document<unknown, {}, any>;
 };
 
+//Refresh every 50 minutes
+const cache = new NodeCache({ stdTTL: 3000 });
+
+async function getApprovedLeagues(): Promise<
+  (Document<unknown, any, any> & { createdAt: Date })[]
+> {
+  const cacheKey = "approvedLeagues";
+  const cachedLeagues =
+    cache.get<(Document<unknown, any, any> & { createdAt: Date })[]>(cacheKey);
+
+  if (cachedLeagues) {
+    return cachedLeagues;
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const leagues = await LeagueAdModel.find({
+    status: "Approved",
+    closesAt: { $gte: today },
+  }).sort({
+    createdAt: -1,
+  });
+
+  cache.set(cacheKey, leagues);
+  return leagues;
+}
+
 export const LeagueAdRoutes: Route = {
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
         try {
-          const today = new Date();
-          today.setUTCHours(0, 0, 0, 0);
-
-          const leagues = await LeagueAdModel.find({
-            status: "Approved",
-            closesAt: { $gte: today },
-          }).sort({
-            createdAt: -1,
-          });
+          const leagues = await getApprovedLeagues();
           res.json(
             leagues.map((league) =>
               LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
@@ -35,6 +55,27 @@ export const LeagueAdRoutes: Route = {
           res
             .status(500)
             .json({ message: (error as Error).message, code: "LR-R1-01" });
+        }
+      },
+    },
+    "/count/:time": {
+      get: async (req: Request, res: Response) => {
+        try {
+          const timeString = res.get("time");
+          if (!timeString)
+            return res
+              .status(500)
+              .json({ message: "Time variable not set", code: "LR-R4-02" });
+          const time = new Date(+timeString);
+          const count = (await getApprovedLeagues()).filter(
+            (league) => league.createdAt > time
+          ).length;
+          res.send(count.toString());
+        } catch (error) {
+          console.error(error);
+          res
+            .status(500)
+            .json({ message: (error as Error).message, code: "LR-R4-01" });
         }
       },
     },
@@ -59,7 +100,8 @@ export const LeagueAdRoutes: Route = {
         try {
           const ad = LeagueAd.fromForm(req.body, req.sub!);
           if (ad.isValid()) {
-            await (await ad.toDocument()).save();
+            const doc = await ad.toDocument();
+            await doc.save();
             //Send a message in the discord server that a new Ad was submitted
             if (bot) {
               const guild = await bot.guilds.fetch("1183936734719922176");
@@ -81,7 +123,6 @@ export const LeagueAdRoutes: Route = {
               channel.send(`A new league ad has been submitted:
               ${ad.toString()}`);
             }
-
             res.status(201).json({ message: "LeagueAd successfully created." });
           } else {
             res
@@ -135,7 +176,22 @@ export const LeagueAdRoutes: Route = {
       } catch (error) {
         return res
           .status(500)
-          .json({ message: (error as Error).message, code: "DR-P1-04" });
+          .json({ message: (error as Error).message, code: "LR-P1-04" });
+      }
+      next();
+    },
+    time: async (req: SubRequest, res: AdResponse, next, time) => {
+      try {
+        if (!time) {
+          return res
+            .status(400)
+            .json({ message: "Time is nullish", code: "LR-P2-01" });
+        }
+        res.set("time", time);
+      } catch (error) {
+        return res
+          .status(500)
+          .json({ message: (error as Error).message, code: "LR-P1-04" });
       }
       next();
     },

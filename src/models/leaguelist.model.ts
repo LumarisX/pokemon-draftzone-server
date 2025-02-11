@@ -107,4 +107,5 @@ export type LeagueAdDoc = Omit<
   _id?: mongoose.Types.ObjectId;
   divisions: DivisionDocType[];
 };
+
 export const LeagueAdModel = mongoose.model("leaguead", leagueAdSchema);
