@@ -1,5 +1,6 @@
-import { Data, Generation } from "@pkmn/data";
-import { Dex, ModdedDex } from "@pkmn/dex";
+import { Data, Generation, ID } from "@pkmn/data";
+import { Dex, ModData, ModdedDex } from "@pkmn/dex";
+import * as RRDex from "../mods/radicalred";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Eevee-Starter",
@@ -101,7 +102,8 @@ export type RulesetId =
   | "Hoenn Dex"
   | "Johto Dex"
   | "Kanto Dex"
-  | "Sword/Shield";
+  | "Sword/Shield"
+  | "radicalred";
 
 export class Ruleset extends Generation {
   name: string;
@@ -224,7 +226,15 @@ export const Rulesets: {
     },
   },
   "Other Metas": {},
-  "Rom Hacks": {},
+  "Rom Hacks": {
+    "Radical Red": {
+      id: "radicalred",
+      get ruleset() {
+        let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
+        return new Ruleset(mod, DRAFT_EXISTS, this.id);
+      },
+    },
+  },
 };
 
 export function getRuleset(rulesetId: string): Ruleset {

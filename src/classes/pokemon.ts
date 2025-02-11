@@ -308,6 +308,18 @@ export class DraftSpecies implements Specie, Pokemon {
             }
           }
           break;
+        case "Mountaineer": {
+          weak.Rock = 0;
+          break;
+        }
+        case "Primal Armor": {
+          for (let type in weak) {
+            if (weak[type] > 1) {
+              weak[type] = weak[type] / 2;
+            }
+          }
+          break;
+        }
       }
     }
     this.$typechart = weak;

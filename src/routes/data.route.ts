@@ -7,8 +7,8 @@ import {
   getRulesetsGrouped,
   Ruleset,
 } from "../data/rulesets";
-import { searchPokemon } from "../services/search.service";
 import { getRandom } from "../services/data-services/pokedex.service";
+import { searchPokemon } from "../services/search.service";
 
 type DataResponse = Response & { ruleset?: Ruleset };
 
@@ -91,31 +91,33 @@ export const DataRoutes: Route = {
     },
     "/listpokemon": {
       get: async (req: Request, res: DataResponse) => {
-        try {
-          let rulesetId = req.query.ruleset;
-          if (typeof rulesetId === "string") {
-            const ruleset = getRuleset(rulesetId);
-            return res.json(
-              Array.from(ruleset.species).map((specie) => ({
+        // try {
+        const rulesetId = req.query.ruleset;
+        if (typeof rulesetId === "string") {
+          const ruleset = getRuleset(rulesetId);
+          return res.json(
+            Array.from(ruleset.species)
+              .sort((a, b) => a.num - b.num)
+              .map((specie) => ({
                 name: specie.name,
                 id: specie.id,
               }))
-            );
-          }
-
-          return res
-            .status(400)
-            .json({ error: "Query type error", code: "DT-R3-01" });
-        } catch (error) {
-          console.error(
-            `Error in /search route:", ${
-              (error as Error).message
-            }\nSearch query: ${req.query.query}`
           );
-          res
-            .status(500)
-            .json({ error: "Internal Server Error", code: "DT-R3-02" });
         }
+
+        return res
+          .status(400)
+          .json({ error: "Query type error", code: "DT-R3-01" });
+        // } catch (error) {
+        //   console.error(
+        //     `Error in /listpokemon route:", ${
+        //       (error as Error).message
+        //     }\nSearch query: ${req.query.query}`
+        //   );
+        //   res
+        //     .status(500)
+        //     .json({ error: "Internal Server Error", code: "DT-R3-02" });
+        // }
       },
     },
     "/random": {
@@ -143,9 +145,9 @@ export const DataRoutes: Route = {
             .json({ error: "Query type error", code: "DT-R3-01" });
         } catch (error) {
           console.error(
-            `Error in /search route:", ${
+            `Error in /random route:", ${
               (error as Error).message
-            }\nSearch query: ${req.query.query}`
+            }\nRandom query: ${req.query.query}`
           );
           res
             .status(500)
