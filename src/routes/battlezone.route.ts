@@ -64,11 +64,11 @@ export const BattleZoneRoutes: Route = {
               return;
             }
 
-            const count = (await PDBLModel.find()).length;
-
             // Send a message in the designated channel
             channel.send(
-              `${signup.name} signed up for the league. Total signed up: ${count}.`
+              `${signup.name} signed up for the league. Total signed up: ${
+                existing.length + 1
+              }.`
             );
           }
           return res
