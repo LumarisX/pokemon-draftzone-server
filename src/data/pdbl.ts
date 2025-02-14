@@ -191,7 +191,10 @@ export function getDetails(details?: DraftDetails) {
     if (!specie) throw new Error(`${pokemon.name} does not exist`);
 
     Object.values(specie.abilities).forEach((abilityName) => {
-      if (details.banned.abilities.includes(abilityName)) {
+      if (
+        details.banned.abilities.includes(abilityName) &&
+        !pokemon.banned?.abilities?.includes(abilityName)
+      ) {
         if (!pokemon.banned) pokemon.banned = {};
         if (!pokemon.banned.abilities) pokemon.banned.abilities = [];
         pokemon.banned.abilities.push(abilityName);
