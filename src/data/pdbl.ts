@@ -249,8 +249,9 @@ export function setDrafted(
       );
     foundMon.drafted.push(division);
   } else {
-    foundMon.drafted.filter((d) => d !== division);
+    foundMon.drafted = foundMon.drafted.filter((d) => d !== division);
   }
   details.tiers = list.flatMap((mon) => mon.toDetails());
   writeDetails(details);
+  return foundMon.specie.name;
 }

@@ -37,9 +37,9 @@ export const DraftModPickCommand: Command = {
     const set = interaction.options.getBoolean("drafted") ?? true;
     const pokemon = interaction.options.getString("pokemon", true);
     try {
-      setDrafted(pokemon, divisionString, set);
+      const setName = setDrafted(pokemon, divisionString, set);
       interaction.reply({
-        content: `Division: ${divisionString}, Pokemon: ${pokemon}, Drafted: ${set}`,
+        content: `Division: ${divisionString}, Pokemon: ${setName}, Drafted: ${set}`,
       });
     } catch (error) {
       if (error instanceof Error) {
