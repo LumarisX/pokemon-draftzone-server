@@ -230,7 +230,11 @@ function writeDetails(details: DraftDetails) {
   fs.writeFileSync(path, JSON.stringify(details, null, 2));
 }
 
-export function setDrafted(pokemonId: string, division: string | null) {
+export function setDrafted(
+  pokemonId: string,
+  division: string | null,
+  setDrafted: boolean
+) {
   const details = getDetailsFromJson();
   if (!division) throw new Error(`${division} is null.`);
   if (!details.divisions.includes(division))
@@ -238,9 +242,15 @@ export function setDrafted(pokemonId: string, division: string | null) {
   const list = getDetails(details).pokemons;
   const foundMon = list.find((mon) => mon.specie.id === pokemonId);
   if (!foundMon) throw new Error(`${pokemonId} not found.`);
-  if (foundMon.drafted.includes(division))
-    throw new Error(`${foundMon.specie.name} already drafted in ${division}.`);
-  foundMon.drafted.push(division);
+  if (setDrafted) {
+    if (foundMon.drafted.includes(division))
+      throw new Error(
+        `${foundMon.specie.name} already drafted in ${division}.`
+      );
+    foundMon.drafted.push(division);
+  } else {
+    foundMon.drafted.filter((d) => d !== division);
+  }
   details.tiers = list.flatMap((mon) => mon.toDetails());
   writeDetails(details);
 }

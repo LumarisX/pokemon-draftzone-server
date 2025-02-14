@@ -26,16 +26,20 @@ export const DraftModPickCommand: Command = {
         .setDescription("Pokemon")
         .setRequired(true)
         .setAutocomplete(true)
+    )
+    .addBooleanOption((option) =>
+      option.setName("drafted").setDescription("Mark as drafted?")
     ),
   execute: async (interaction) => {
     if (!guildCheck(interaction.guildId))
       throw new Error("Server does not have a registered draft.");
     let divisionString = interaction.options.getString("division");
+    const set = interaction.options.getBoolean("drafted") ?? true;
     const pokemon = interaction.options.getString("pokemon", true);
     try {
-      setDrafted(pokemon, divisionString);
+      setDrafted(pokemon, divisionString, set);
       interaction.reply({
-        content: `Division: ${divisionString}, Pokemon: ${pokemon}`,
+        content: `Division: ${divisionString}, Pokemon: ${pokemon}, Drafted: ${set}`,
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -53,12 +57,8 @@ export const DraftModPickCommand: Command = {
   },
   autocomplete: async (interaction) => {
     const focusedValue = interaction.options.getFocused().toLowerCase();
-    let divisionString = interaction.options.getString("division");
     const choices = getDetails()
-      .pokemons.filter(
-        (mon) => !divisionString || !mon.drafted.includes(divisionString)
-      )
-      .sort((a, b) => a.specie.name.localeCompare(b.specie.name))
+      .pokemons.sort((a, b) => a.specie.name.localeCompare(b.specie.name))
       .map((mon) => ({
         name: mon.specie.name,
         value: mon.specie.id,

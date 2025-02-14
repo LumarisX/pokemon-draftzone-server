@@ -225,16 +225,16 @@ export const Rulesets: {
       },
     },
   },
-  "Other Metas": {},
-  "Rom Hacks": {
-    "Radical Red": {
-      id: "radicalred",
-      get ruleset() {
-        let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
-        return new Ruleset(mod, DRAFT_EXISTS, this.id);
-      },
-    },
-  },
+  // "Other Metas": {},
+  // "Rom Hacks": {
+  //   "Radical Red": {
+  //     id: "radicalred",
+  //     get ruleset() {
+  //       let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
+  //       return new Ruleset(mod, DRAFT_EXISTS, this.id);
+  //     },
+  //   },
+  // },
 };
 
 export function getRuleset(rulesetId: string): Ruleset {
