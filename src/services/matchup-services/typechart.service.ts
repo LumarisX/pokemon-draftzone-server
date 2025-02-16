@@ -93,6 +93,7 @@ export class Typechart {
     for (let species of this.team[0].ruleset.species) {
       if (
         species.nfe || //only fully evolved
+        species.id === "shedinja" ||
         this.team.some((pokemon) => species.baseSpecies === pokemon.baseSpecies)
       )
         continue;

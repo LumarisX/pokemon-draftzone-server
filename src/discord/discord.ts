@@ -27,7 +27,7 @@ const FORMES = {
   Speed: 3,
 };
 
-let forme: Forme = "Defense";
+const forme: Forme = "Attack";
 
 const openai = new OpenAi({
   apiKey: config.OPENAI_API_KEY,

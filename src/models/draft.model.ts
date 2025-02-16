@@ -1,7 +1,7 @@
-import mongoose, { Document } from "mongoose";
+import { Document, model, Schema } from "mongoose";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
 
-const draftSchema = new mongoose.Schema(
+const draftSchema = new Schema(
   {
     leagueName: {
       type: String,
@@ -54,4 +54,4 @@ export interface DraftDocument extends DraftData, Document<any, any> {}
 
 draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
-export const DraftModel = mongoose.model<DraftDocument>("draft", draftSchema);
+export const DraftModel = model<DraftDocument>("draft", draftSchema);

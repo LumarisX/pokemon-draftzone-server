@@ -65,7 +65,9 @@ export const DraftModPickCommand: Command = {
       }));
 
     const filtered = choices
-      .filter((mon) => mon.name.toLowerCase().startsWith(focusedValue))
+      .filter((mon) =>
+        mon.name.toLowerCase().replace(/\s-/g, "").includes(focusedValue)
+      )
       .slice(0, 25);
     await interaction.respond(filtered);
   },

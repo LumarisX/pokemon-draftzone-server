@@ -110,7 +110,9 @@ export const DraftRoutes: Route = {
           if (updatedDraft) {
             $matchups
               .keys()
-              .filter((key: string) => key.startsWith(updatedDraft._id))
+              .filter((key: string) =>
+                key.startsWith(updatedDraft._id.toString())
+              )
               .forEach((key: any) => $matchups.del(key));
             res
               .status(200)

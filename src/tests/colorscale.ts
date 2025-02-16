@@ -82,14 +82,17 @@ export function rgbToHexString(rgb: RGB): string {
   return `#${red}${green}${blue}`.toUpperCase();
 }
 
-export function generateColorScale(hexNumber: number, count: number): RGB[] {
-  let hsl = rgbToHsl(numberToRgb(hexNumber));
-  const scale = [];
-  for (let i = 0; i < count; i++) {
-    hsl[2] = (100 / (count - 1)) * i;
-    scale.push(hslToRgb(hsl));
-  }
-  return scale;
+export function generateColorScale(
+  hexNumber: number,
+  values: [number, number][],
+  saturation: number = 100
+) {
+  const hsl = rgbToHsl(numberToRgb(hexNumber));
+  hsl[1] = saturation;
+  values.forEach(([key, value]) => {
+    hsl[2] = value;
+    console.log(`${key}: ${rgbToHexString(hslToRgb(hsl))},`);
+  });
 }
 
 export function generateDarkColorScale(
