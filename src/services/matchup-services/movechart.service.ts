@@ -299,6 +299,7 @@ export async function movechart(
     const data = {
       name: move.name,
       type: move.type,
+      desc: move.shortDesc,
       pokemon: (
         await Promise.all(
           team.map(async (pokemon) => ({
