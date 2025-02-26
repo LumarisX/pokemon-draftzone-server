@@ -63,6 +63,7 @@ export async function plannerCoverage(team: DraftSpecies[]) {
     team.map(async (pokemon) => ({
       id: pokemon.id,
       coverage: await pokemon.coverage(),
+      fullcoverage: await pokemon.fullcoverage(),
     }))
   );
   return {

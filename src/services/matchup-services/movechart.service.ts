@@ -59,7 +59,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   defensecurl: ["Setup"],
   doubleteam: ["Setup"],
   dragondance: ["Setup"],
-  extremeevoboost: ["Setup"],
+  extremeevoboost: ["Z-Setup"],
   filletaway: ["Setup"],
   flatter: ["Setup"],
   focusenergy: ["Setup"],
@@ -255,7 +255,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   holdhands: ["Z-Setup"],
   sketch: ["Z-Setup"],
   trickortreat: ["Z-Setup"],
-  clangingscales: ["Z-Setup"],
+  clangoroussoulblaze: ["Z-Setup"],
 };
 
 export type Movechart = {
