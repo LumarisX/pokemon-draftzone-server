@@ -256,7 +256,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   sketch: ["Z-Setup"],
   trickortreat: ["Z-Setup"],
   clangoroussoulblaze: ["Z-Setup"],
-  quash: ["Hazard Control"],
+  quash: ["Speed Control"],
 };
 
 export type Movechart = {
