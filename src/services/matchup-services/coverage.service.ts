@@ -21,6 +21,10 @@ export type CoverageMove = {
   stab?: true;
 };
 
+export type FullCoverageMove = CoverageMove & {
+  value: number;
+};
+
 export async function coveragechart(
   team: DraftSpecies[],
   oppTeam: DraftSpecies[]

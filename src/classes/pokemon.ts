@@ -24,7 +24,10 @@ import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
-import { CoverageMove } from "../services/matchup-services/coverage.service";
+import {
+  CoverageMove,
+  FullCoverageMove,
+} from "../services/matchup-services/coverage.service";
 import { getBst } from "./specieUtil";
 
 export interface PokemonOptions {
@@ -451,21 +454,23 @@ export class DraftSpecies implements Specie, Pokemon {
   //Moveset functions
   private $fullcoverage?: {
     physical: {
-      [key: string]: CoverageMove[];
+      [key: string]: FullCoverageMove[];
     };
     special: {
-      [key: string]: CoverageMove[];
+      [key: string]: FullCoverageMove[];
     };
   };
   async fullcoverage(): Promise<{
     physical: {
-      [key: string]: CoverageMove[];
+      [key: string]: FullCoverageMove[];
     };
     special: {
-      [key: string]: CoverageMove[];
+      [key: string]: FullCoverageMove[];
     };
   }> {
     if (this.$fullcoverage) return this.$fullcoverage;
+    const learnset = await this.learnset();
+    if (!learnset) return { physical: {}, special: {} };
     const coverage: {
       physical: {
         [key: string]: CoverageMove[];
@@ -475,8 +480,6 @@ export class DraftSpecies implements Specie, Pokemon {
       };
       teraBlast?: true;
     } = { physical: {}, special: {} };
-    const learnset = await this.learnset();
-    if (!learnset) return coverage;
     const addMove = (
       list: { [key: string]: CoverageMove[] },
       move: CoverageMove,
@@ -553,13 +556,23 @@ export class DraftSpecies implements Specie, Pokemon {
       physical: Object.fromEntries(
         Object.entries(coverage.physical).map(([type, moves]) => [
           type,
-          moves.sort((a, b) => b.ePower - a.ePower).slice(0, 8),
+          moves
+            .sort((a, b) => b.ePower - a.ePower)
+            .map((move) => ({
+              ...move,
+              value: 1 / moves.length,
+            })),
         ])
       ),
       special: Object.fromEntries(
         Object.entries(coverage.special).map(([type, moves]) => [
           type,
-          moves.sort((a, b) => b.ePower - a.ePower).slice(0, 8),
+          moves
+            .sort((a, b) => b.ePower - a.ePower)
+            .map((move) => ({
+              ...move,
+              value: 1 / moves.length,
+            })),
         ])
       ),
     };
