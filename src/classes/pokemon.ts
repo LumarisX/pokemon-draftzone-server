@@ -473,16 +473,16 @@ export class DraftSpecies implements Specie, Pokemon {
     if (!learnset) return { physical: {}, special: {} };
     const coverage: {
       physical: {
-        [key: string]: CoverageMove[];
+        [key: string]: Move[];
       };
       special: {
-        [key: string]: CoverageMove[];
+        [key: string]: Move[];
       };
       teraBlast?: true;
     } = { physical: {}, special: {} };
     const addMove = (
-      list: { [key: string]: CoverageMove[] },
-      move: CoverageMove,
+      list: { [key: string]: Move[] },
+      move: Move,
       type: TypeName
     ) => {
       if (!(type in list)) list[type] = [];
@@ -504,63 +504,38 @@ export class DraftSpecies implements Specie, Pokemon {
       }
       const category =
         move.category === "Physical" ? coverage.physical : coverage.special;
-
       if (move.id === "terablast" && this.capt?.tera) {
         this.capt.tera.forEach((teratype) => {
           addMove(
             coverage.physical,
-            {
-              id: "terablast" as ID,
-              ePower: 0,
-              cPower: 0,
-              name: "Tera Blast",
-              category: "Physical",
-              type: type,
-            },
+            { ...move, type: teratype, category: "Physical" },
             teratype
           );
           addMove(
             coverage.special,
-            {
-              id: "terablast" as ID,
-              ePower: 0,
-              cPower: 0,
-              name: "Tera Blast",
-              category: "Special",
-              type: type,
-            },
+            { ...move, type: teratype, category: "Special" },
             teratype
           );
         });
       }
-      addMove(
-        category,
-        {
-          id: move.id,
-          name: move.name,
-          ePower: ePower,
-          cPower:
-            ePower *
-            (this.types.includes(type) ? 1.5 : 1) *
-            (move.category === "Special"
-              ? this.baseStats.spa
-              : this.baseStats.atk),
-          type: type,
-          stab: this.types.includes(type) || undefined,
-          category: move.category,
-        },
-        type
-      );
+      addMove(category, move, type);
     });
     const finalCoverage = {
       physical: Object.fromEntries(
         Object.entries(coverage.physical).map(([type, moves]) => [
           type,
           moves
-            .sort((a, b) => b.ePower - a.ePower)
+            .sort((a, b) => b.basePower - a.basePower)
             .map((move) => ({
-              ...move,
               value: 1 / moves.length,
+              id: move.id,
+              name: move.name,
+              accuracy: move.accuracy === true ? "-" : move.accuracy.toFixed(0),
+              basePower: move.basePower ? move.basePower.toFixed(0) : "-",
+              desc: move.shortDesc,
+              type: type,
+              pp: (move.pp * 8) / 5,
+              category: move.category,
             })),
         ])
       ),
@@ -568,10 +543,17 @@ export class DraftSpecies implements Specie, Pokemon {
         Object.entries(coverage.special).map(([type, moves]) => [
           type,
           moves
-            .sort((a, b) => b.ePower - a.ePower)
+            .sort((a, b) => b.basePower - a.basePower)
             .map((move) => ({
-              ...move,
               value: 1 / moves.length,
+              id: move.id,
+              name: move.name,
+              accuracy: move.accuracy === true ? "-" : move.accuracy.toFixed(0),
+              basePower: move.basePower ? move.basePower.toFixed(0) : "-",
+              desc: move.shortDesc,
+              type: type,
+              pp: (move.pp * 8) / 5,
+              category: move.category,
             })),
         ])
       ),
