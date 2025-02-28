@@ -1,6 +1,7 @@
 import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
 import * as RRDex from "../mods/radicalred";
+import * as InsDex from "../mods/insurgance";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Eevee-Starter",
@@ -103,7 +104,8 @@ export type RulesetId =
   | "Johto Dex"
   | "Kanto Dex"
   | "Sword/Shield"
-  | "radicalred";
+  | "radicalred"
+  | "insurgance";
 
 export class Ruleset extends Generation {
   name: string;
@@ -226,15 +228,24 @@ export const Rulesets: {
     },
   },
   // "Other Metas": {},
-  // "Rom Hacks": {
-  //   "Radical Red": {
-  //     id: "radicalred",
-  //     get ruleset() {
-  //       let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
-  //       return new Ruleset(mod, DRAFT_EXISTS, this.id);
-  //     },
-  //   },
-  // },
+  "Rom Hacks": {
+    "Radical Red": {
+      id: "radicalred",
+      desc: "All pokemon from the Radical Red rom hack",
+      get ruleset() {
+        let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
+        return new Ruleset(mod, DRAFT_EXISTS, this.id);
+      },
+    },
+    Insurgance: {
+      id: "insurgance",
+      desc: "All pokemon from the Insurgance rom hack",
+      get ruleset() {
+        let mod = new ModdedDex("insurgance" as ID, InsDex as ModData);
+        return new Ruleset(mod, DRAFT_EXISTS, this.id);
+      },
+    },
+  },
 };
 
 export function getRuleset(rulesetId: string): Ruleset {
@@ -248,8 +259,8 @@ export function getRuleset(rulesetId: string): Ruleset {
 }
 
 export function getRulesets() {
-  return Object.values(Rulesets).flatMap((rulesetgroup) =>
-    Object.values(rulesetgroup).map((ruleset) => ruleset.id)
+  return [Rulesets["Gen 9"], Rulesets["Gen 8"], Rulesets["Older Gens"]].flatMap(
+    (rulesetgroup) => Object.values(rulesetgroup).map((ruleset) => ruleset.id)
   );
 }
 
