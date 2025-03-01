@@ -5,7 +5,6 @@ import * as InsDex from "../mods/insurgance";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Eevee-Starter",
-  "Floette-Eternal",
   "Pichu-Spiky-eared",
   "Pikachu-Belle",
   "Pikachu-Cosplay",
