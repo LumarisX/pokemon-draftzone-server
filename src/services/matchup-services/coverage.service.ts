@@ -71,40 +71,43 @@ export async function coveragechart(
 }
 
 export async function plannerCoverage(team: DraftSpecies[]) {
-  let teamCoverage = await Promise.all(
+  const teamCoverage = await Promise.all(
     team.map(async (pokemon) => ({
       id: pokemon.id,
       coverage: await pokemon.coverage(),
       fullcoverage: await pokemon.fullcoverage(),
     }))
   );
+
+  const physicalCoverage: Record<string, number> = {};
+  const specialCoverage: Record<string, number> = {};
+
+  teamCoverage.forEach((team) => {
+    for (const type in team.fullcoverage.physical) {
+      physicalCoverage[type] = (physicalCoverage[type] || 0) + 1;
+    }
+
+    for (const type in team.fullcoverage.special) {
+      specialCoverage[type] = (specialCoverage[type] || 0) + 1;
+    }
+  });
+
+  const physicalArray = Object.entries(physicalCoverage).map(
+    ([type, value]) => ({
+      type,
+      category: "physical",
+      value,
+    })
+  );
+
+  const specialArray = Object.entries(specialCoverage).map(([type, value]) => ({
+    type,
+    category: "special",
+    value,
+  }));
+
   return {
     team: teamCoverage,
-    max: {
-      physical: teamCoverage.reduce((acc, pokemon) => {
-        pokemon.coverage.physical.forEach((move) => {
-          if (acc[move.type]) {
-            if (acc[move.type].cPower < move.cPower) {
-              acc[move.type] = move;
-            }
-          } else {
-            acc[move.type] = move;
-          }
-        });
-        return acc;
-      }, {} as { [key: string]: CoverageMove }),
-      special: teamCoverage.reduce((acc, pokemon) => {
-        pokemon.coverage.special.forEach((move) => {
-          if (acc[move.type]) {
-            if (acc[move.type].cPower < move.cPower) {
-              acc[move.type] = move;
-            }
-          } else {
-            acc[move.type] = move;
-          }
-        });
-        return acc;
-      }, {} as { [key: string]: CoverageMove }),
-    },
+    max: [...physicalArray, ...specialArray],
   };
 }

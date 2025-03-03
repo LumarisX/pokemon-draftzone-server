@@ -90,36 +90,6 @@ function NATDEX_EXISTS(d: Data) {
   );
 }
 
-function ROM_EXISTS(d: Data) {
-  if (!d.exists) return false;
-  if (d.kind === "Ability" && d.id === "noability") return false;
-  if ("isNonstandard" in d && d.isNonstandard && d.isNonstandard !== "Past") {
-    if ("tier" in d && d.tier === "Unreleased") return false;
-    if (d.isNonstandard === "CAP") return false;
-    if (d.isNonstandard === "Custom") return false;
-  }
-  if (
-    d.kind === "Move" &&
-    d.isNonstandard &&
-    d.isNonstandard !== "Past" &&
-    d.isNonstandard !== "Unobtainable"
-  ) {
-    return false;
-  }
-  if (
-    d.kind === "Species" &&
-    (d.forme === "Totem" || d.forme === "Alola-Totem")
-  )
-    return false;
-  return !(
-    d.kind === "Item" &&
-    ["Past", "Unobtainable"].includes(d.isNonstandard!) &&
-    !d.zMove &&
-    !d.itemUser &&
-    !d.forcedForme
-  );
-}
-
 export type RulesetId =
   | "Gen9 NatDex"
   | "Paldea Dex"
@@ -263,7 +233,43 @@ export const Rulesets: {
       desc: "All pokemon from the Radical Red rom hack",
       get ruleset() {
         let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
-        return new Ruleset(mod, ROM_EXISTS, this.id);
+        return new Ruleset(
+          mod,
+          (d: Data) => {
+            if (!d.exists) return false;
+            if (d.kind === "Ability" && d.id === "noability") return false;
+            if (
+              "isNonstandard" in d &&
+              d.isNonstandard &&
+              d.isNonstandard !== "Past"
+            ) {
+              if ("tier" in d && d.tier === "Unreleased") return false;
+              if (d.isNonstandard === "CAP") return false;
+              if (d.isNonstandard === "Custom") return false;
+            }
+            if (
+              d.kind === "Move" &&
+              d.isNonstandard &&
+              d.isNonstandard !== "Past" &&
+              d.isNonstandard !== "Unobtainable"
+            ) {
+              return false;
+            }
+            if (
+              d.kind === "Species" &&
+              (d.forme === "Totem" || d.forme === "Alola-Totem")
+            )
+              return false;
+            return !(
+              d.kind === "Item" &&
+              ["Past", "Unobtainable"].includes(d.isNonstandard!) &&
+              !d.zMove &&
+              !d.itemUser &&
+              !d.forcedForme
+            );
+          },
+          this.id
+        );
       },
     },
     Insurgance: {
@@ -271,7 +277,32 @@ export const Rulesets: {
       desc: "All pokemon from the Insurgance rom hack",
       get ruleset() {
         let mod = new ModdedDex("insurgance" as ID, InsDex as ModData);
-        return new Ruleset(mod, ROM_EXISTS, this.id);
+        return new Ruleset(
+          mod,
+          (d: Data) => {
+            if (!d.exists) return false;
+            if (d.kind === "Ability" && d.id === "noability") return false;
+            if ("isNonstandard" in d && d.isNonstandard) {
+              return false;
+            }
+            if (
+              d.kind === "Move" &&
+              d.isNonstandard &&
+              d.isNonstandard !== "Past" &&
+              d.isNonstandard !== "Unobtainable"
+            ) {
+              return false;
+            }
+            return !(
+              d.kind === "Item" &&
+              ["Past", "Unobtainable"].includes(d.isNonstandard!) &&
+              !d.zMove &&
+              !d.itemUser &&
+              !d.forcedForme
+            );
+          },
+          this.id
+        );
       },
     },
   },
