@@ -3,6 +3,7 @@ import {
   AbilityName,
   As,
   Condition,
+  DeepPartial,
   Dex,
   EggGroup,
   EvoType,
@@ -30,22 +31,25 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { getBst } from "./specieUtil";
 
-export interface PokemonOptions {
-  shiny?: boolean;
-  extra?: {
-    abilities?: string[];
-    moves?: string[];
+export type PokemonOptions = DeepPartial<{
+  shiny: boolean;
+  nickname: string;
+  draftFormes: ID[];
+  modifiers: {
+    abilities: string[];
+    moves: string[];
   };
-  capt?: {
-    tera?: TypeName[];
-    z?: boolean;
+  capt: {
+    tera: TypeName[];
+    z: TypeName[];
+    dmax: boolean;
   };
-}
+}>;
 
-export interface Pokemon extends PokemonOptions {
+export type Pokemon = PokemonOptions & {
   id: ID;
   name: string;
-}
+};
 
 export class DraftSpecies implements Specie, Pokemon {
   effectType!: "Pokemon";
@@ -106,14 +110,17 @@ export class DraftSpecies implements Specie, Pokemon {
   cannotDynamax?: boolean;
   forceTeraType?: string;
   shiny?: boolean;
-  capt?: { tera?: TypeName[]; z?: boolean };
+  capt?: Partial<{ tera: TypeName[]; z: TypeName[]; dmax: boolean }>;
   ruleset: Ruleset;
   bst: number;
   inheritsFrom!: ID;
-  formes?: SpeciesName[] | undefined;
-  evoRegion?: "Alola" | "Galar" | undefined;
+  formes?: SpeciesName[];
+  evoRegion?: "Alola" | "Galar";
   dex!: Dex;
-  extra: { abilities?: string[]; moves?: string[] } = {};
+  nickname?: string;
+  modifiers?: { abilities?: string[]; moves?: string[] };
+  draftFormes?: ID[];
+
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
 
@@ -124,8 +131,8 @@ export class DraftSpecies implements Specie, Pokemon {
     this.toJSON = specie.toJSON;
     this.shiny = data.shiny;
     this.capt = data.capt;
-    this.extra.abilities = data.extra?.abilities;
-    this.extra.moves = data.extra?.moves;
+    this.nickname = data.nickname;
+    this.modifiers = data.modifiers;
     this.ruleset = ruleset;
     if (specie.unreleasedHidden) {
       this.abilities = {
@@ -147,7 +154,10 @@ export class DraftSpecies implements Specie, Pokemon {
     return {
       id: this.id,
       name: this.name,
+      nickname: this.nickname,
       shiny: this.shiny,
+      draftFormes: this.draftFormes,
+      modifiers: this.modifiers,
       capt: this.capt,
     };
   }
@@ -628,16 +638,18 @@ export class DraftSpecies implements Specie, Pokemon {
 
 export type PokemonFormData = {
   id: ID;
-  shiny: boolean | null;
-  nickname: string | null;
-  abilities: string[] | null;
-  moves: string[] | null;
-  capt: {
-    tera?: { [key: string]: boolean };
-    z?: boolean;
-    teraCheck: boolean;
-  } | null;
-  captCheck: boolean | null;
+  shiny?: boolean;
+  nickname?: string;
+  draftFormes?: Pokemon[];
+  modifiers?: {
+    abilities?: string[];
+    moves?: string[];
+  };
+  capt?: {
+    tera?: TypeName[];
+    z?: TypeName[];
+    dmax?: boolean;
+  };
 };
 
 export class PokemonBuilder {
@@ -645,24 +657,43 @@ export class PokemonBuilder {
   error: string | undefined;
 
   constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
-    this.data = {
-      id: toID(pokemonData.id),
-      shiny: pokemonData.shiny || undefined,
+    const modifiers = {
+      abilities: pokemonData.modifiers?.abilities?.length
+        ? pokemonData.modifiers.abilities
+        : undefined,
+      moves: pokemonData.modifiers?.moves?.length
+        ? pokemonData.modifiers.moves
+        : undefined,
     };
+
+    const capt = {
+      tera: pokemonData.capt?.tera?.length
+        ? pokemonData.capt.tera.length >= 19
+          ? pokemonData.capt.tera
+          : []
+        : undefined,
+      z: pokemonData.capt?.z?.length
+        ? pokemonData.capt.z.length >= 19
+          ? pokemonData.capt.tera
+          : []
+        : undefined,
+      dmax: pokemonData.capt?.dmax || undefined,
+    };
+
+    this.data = {
+      id: pokemonData.id,
+      shiny: pokemonData.shiny || undefined,
+      nickname: pokemonData.nickname || undefined,
+      draftFormes: pokemonData.draftFormes?.map((forme) => forme.id),
+      modifiers: Object.values(modifiers).some((v) => v)
+        ? modifiers
+        : undefined,
+      capt: Object.values(capt).some((v) => v) ? capt : undefined,
+    };
+
     // if (!inDex(pokemonData.id)) {
     //   this.error = `${this.data.name} not found in the pokedex`;
     //   return;
     // }
-    const { captCheck } = pokemonData;
-    if (captCheck) {
-      this.data.capt = {
-        z: pokemonData.capt!.z ? true : undefined,
-        tera: pokemonData.capt?.teraCheck
-          ? (Object.keys(pokemonData.capt?.tera || {}).filter(
-              (type) => pokemonData.capt!.tera![type]
-            ) as TypeName[])
-          : undefined,
-      };
-    }
   }
 }

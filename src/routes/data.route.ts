@@ -1,4 +1,5 @@
-import { Locals, Request, Response } from "express";
+import { Specie } from "@pkmn/data";
+import { Request, Response } from "express";
 import { Route } from ".";
 import { _getFormats, getFormats } from "../data/formats";
 import {
@@ -9,14 +10,8 @@ import {
 } from "../data/rulesets";
 import { getRandom } from "../services/data-services/pokedex.service";
 import { searchPokemon } from "../services/search.service";
-import { Specie } from "@pkmn/data";
 
 type DataResponse = Response & { ruleset?: Ruleset };
-
-interface CustomLocals extends Record<string, any> {
-  pokemonData: Specie;
-  ruleset: Ruleset;
-}
 
 export const DataRoutes: Route = {
   subpaths: {
@@ -170,17 +165,20 @@ export const DataRoutes: Route = {
               .status(400)
               .json({ error: "Pokemon not found error", code: "DT-R4-01" });
           }
-          const formes = (pokemonData.otherFormes ?? [])
+          let formeNames = [] as string[];
+          if (pokemonData.formes) formeNames = pokemonData.formes;
+          if (pokemonData.changesFrom) {
+            const basePokemon = ruleset.species.get(pokemonData.changesFrom);
+            if (!basePokemon || !basePokemon.formes) return;
+            formeNames = basePokemon.formes;
+          }
+          const formes = formeNames
             .map((formeName) => {
               const specie = ruleset.species.get(formeName);
               return specie ? { id: specie.id, name: specie.name } : null;
             })
-            .filter((forme) => forme !== null);
-          return res.json({
-            id: pokemonData.id,
-            name: pokemonData.name,
-            formes: formes,
-          });
+            .filter((forme) => forme !== null && forme.id !== pokemonData.id);
+          return res.json(formes);
         } catch (error) {
           console.error(`Error in forme route:", ${(error as Error).message}`);
           res
@@ -196,7 +194,6 @@ export const DataRoutes: Route = {
       next();
     },
     pid: async (req: Request, res: Response, next) => {
-      console.log(req.params.pid);
       res.locals.pokemonData = (res.locals.ruleset as Ruleset).species.get(
         req.params.pid
       );

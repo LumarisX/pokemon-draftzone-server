@@ -1,8 +1,7 @@
 import { Response } from "express";
 import mongoose from "mongoose";
-import { getSub, jwtCheck, Route, SubRequest } from ".";
+import { getSub, jwtCheck, Route, sendError, SubRequest } from ".";
 import { Archive } from "../classes/archive";
-import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
@@ -14,6 +13,7 @@ import {
   getStats,
 } from "../services/database-services/draft.services";
 import { $matchups } from "./matchup.route";
+import { Draft2 } from "../classes/draft";
 
 type DraftResponse = Response & {
   rawDraft?: DraftDocument | null;
@@ -22,6 +22,8 @@ type DraftResponse = Response & {
   ruleset?: Ruleset;
   matchup?: MatchupDocument;
 };
+
+const routeCode = "DR";
 
 export const DraftRoutes: Route = {
   middleware: [jwtCheck, getSub],
@@ -45,9 +47,7 @@ export const DraftRoutes: Route = {
             })
           );
         } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R1-01" });
+          return sendError(res, error as Error, `${routeCode}-R1-01`);
         }
       },
       post: async (req: SubRequest, res: DraftResponse) => {
@@ -55,25 +55,20 @@ export const DraftRoutes: Route = {
           return;
         }
         try {
-          const draft = new Draft(req.body, req.sub);
-          const draftDoc = await draft.toDocument();
+          const draft = Draft2.fromForm(req.body, req.sub);
+          const draftDoc = draft.toDocument();
           const foundDrafts = await DraftModel.find({
             owner: req.sub,
             leagueId: draftDoc.leagueId,
           });
-          if (foundDrafts.length > 0) {
-            res
+          if (foundDrafts.length > 0)
+            return res
               .status(400)
               .json({ message: "Draft ID already exists", code: "DR-R1-02" });
-          } else {
-            await draftDoc.save();
-            res.status(201).json({ message: "Draft Added" });
-          }
+          await draftDoc.save();
+          return res.status(201).json({ message: "Draft Added" });
         } catch (error) {
-          console.log(error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R1-03" });
+          return sendError(res, error as Error, `${routeCode}-R1-03`);
         }
       },
     },
@@ -94,39 +89,34 @@ export const DraftRoutes: Route = {
       patch: async (req: SubRequest, res: DraftResponse) => {
         if (!req.sub) return;
         try {
-          let team_id = req.params.team_id;
-          const draft = await new Draft(req.body, req.sub).toDocument();
-          const updatedDraft = await DraftModel.findOneAndUpdate(
-            { owner: req.sub, leagueId: team_id },
-            {
-              teamName: draft.teamName,
-              leagueName: draft.leagueName,
-              team: draft.team,
-              format: draft.format,
-              ruleset: draft.ruleset,
-            },
-            { new: true, upsert: true }
-          );
-          if (updatedDraft) {
-            $matchups
-              .keys()
-              .filter((key: string) =>
-                key.startsWith(updatedDraft._id.toString())
-              )
-              .forEach((key: any) => $matchups.del(key));
-            res
-              .status(200)
-              .json({ message: "Draft Updated", draft: updatedDraft });
-          } else {
-            res
-              .status(404)
-              .json({ message: "Draft not found", code: "DR-R2-02" });
-          }
+          const team_id = req.params.team_id;
+          const draft = Draft2.fromForm(req.body, req.sub).toDocument();
+          console.log(req.body, draft);
+          // const updatedDraft = await DraftModel.findOneAndUpdate(
+          //   { owner: req.sub, leagueId: team_id },
+          //   draft,
+          //   { new: true, upsert: true }
+          // );
+          // if (updatedDraft) {
+          //   $matchups
+          //     .keys()
+          //     .filter((key: string) =>
+          //       key.startsWith(updatedDraft._id.toString())
+          //     )
+          //     .forEach((key: any) => $matchups.del(key));
+          //   return res
+          //     .status(200)
+          //     .json({ message: "Draft Updated", draft: updatedDraft });
+          // }
+          return res
+            .status(404)
+            .json({ message: "Draft not found", code: "DR-R2-02" });
         } catch (error) {
           console.error("Error updating draft:", error);
           res
             .status(500)
             .json({ message: "Internal Server Error", code: "DR-R2-03" });
+          return sendError(res, error as Error, `${routeCode}-R2-03`);
         }
       },
       delete: async (req: SubRequest, res: DraftResponse) => {
@@ -390,15 +380,8 @@ export const DraftRoutes: Route = {
             .status(400)
             .json({ message: "Team id not found", code: "DR-P1-02" });
         }
-        let draft: DraftData = res.rawDraft.toObject();
-        draft = {
-          ...draft,
-          team: draft.team.map((pokemon) => ({
-            ...pokemon,
-            name: getName(pokemon.id),
-          })),
-        };
-        res.draft = draft as DraftDocument;
+        let draft = res.rawDraft.toObject();
+        res.draft = new Draft2(draft).toDocument();
         res.ruleset = getRuleset(res.draft!.ruleset);
       } catch (error) {
         console.log(error);
@@ -438,7 +421,7 @@ export const DraftRoutes: Route = {
           return;
         }
         matchup.aTeam.teamName = draft.teamName;
-        matchup.aTeam.team = draft.team.map((pokemon: any) => {
+        matchup.aTeam.team = draft.team.map((pokemon) => {
           let specie = res.ruleset!.dex.species.get(pokemon.id);
           if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
           let draftSpecies: DraftSpecies = new DraftSpecies(

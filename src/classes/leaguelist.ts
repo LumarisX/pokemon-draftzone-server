@@ -1,6 +1,10 @@
 import type { Types } from "mongoose";
 import { getFormat } from "../data/formats";
-import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
+import {
+  LeagueAdData,
+  LeagueAdDocument,
+  LeagueAdModel,
+} from "../models/leaguelist.model";
 
 export class LeagueAd {
   _id?: string;
@@ -28,9 +32,9 @@ export class LeagueAd {
   tags: string[];
 
   constructor(data: {
-    _id?: Types.ObjectId | string;
+    _id?: Types.ObjectId;
     leagueName: string;
-    owner: string | Types.ObjectId;
+    owner: string;
     description: string;
     recruitmentStatus?: "Open" | "Closed" | "Full" | "Canceled";
     hostLink?: string;
@@ -56,7 +60,7 @@ export class LeagueAd {
   }) {
     this._id = data._id?.toString();
     this.leagueName = data.leagueName;
-    this.owner = data.owner.toString();
+    this.owner = data.owner;
     this.description = data.description;
     this.recruitmentStatus = data.recruitmentStatus ?? "Open";
     this.hostLink = data.hostLink;
@@ -157,7 +161,7 @@ export class LeagueAd {
   }
 
   async toDocument() {
-    const doc: LeagueAdDoc = {
+    const doc: LeagueAdData = {
       leagueName: this.leagueName,
       owner: this.owner,
       description: this.description,
@@ -187,7 +191,7 @@ export class LeagueAd {
     return new LeagueAdModel(doc);
   }
 
-  static fromDocument(document: LeagueAdDoc): LeagueAd {
+  static fromDocument(document: LeagueAdDocument): LeagueAd {
     return new LeagueAd({
       _id: document._id,
       leagueName: document.leagueName,
@@ -214,7 +218,7 @@ export class LeagueAd {
     });
   }
 
-  static fromForm(formData: any, owner: Types.ObjectId) {
+  static fromForm(formData: any, owner: string) {
     const cleanString = (str: string) =>
       str.replace(/[^a-zA-Z0-9\:s.,!?()\-_+'/\\\[\] ]/g, "");
     console.log(formData);

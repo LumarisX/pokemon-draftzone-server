@@ -1,78 +1,85 @@
-import type { Types } from "mongoose";
 import { FormatId } from "../data/formats";
-import { getRuleset, RulesetId } from "../data/rulesets";
-import { DraftDocument, DraftModel } from "../models/draft.model";
+import { RulesetId, getRuleset } from "../data/rulesets";
+import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
 import { PokemonData } from "../models/pokemon.schema";
 import { PokemonBuilder, PokemonFormData } from "./pokemon";
 
-interface DraftDoc {
+export class Draft2 {
   leagueName: string;
   teamName: string;
   leagueId: string;
   format: FormatId;
   ruleset: RulesetId;
-  score: {
-    wins: number;
-    loses: number;
-    diff: string;
-  };
-  owner: Types.ObjectId;
+  score: { wins: number; loses: number; diff: string };
+  owner: string;
   team: PokemonData[];
-}
-
-export class Draft {
-  constructor(
-    private formData: {
-      leagueName: string;
-      format: string;
-      teamName: string;
-      ruleset: string;
-      team: PokemonFormData[];
-    },
-    private user_id: Types.ObjectId
-  ) {}
-
-  async toDocument(): Promise<DraftDocument> {
-    const data = await this.prepareData();
-    const draftModel = new DraftModel(data);
-    return draftModel;
+  doc?: string | undefined;
+  constructor(data: {
+    leagueName: string;
+    teamName: string;
+    leagueId: string;
+    format: FormatId;
+    ruleset: RulesetId;
+    score: { wins: number; loses: number; diff: string };
+    owner: string;
+    team: PokemonData[];
+    doc?: string | undefined;
+  }) {
+    this.leagueName = data.leagueName;
+    this.teamName = data.teamName;
+    (this.leagueId = data.leagueId), (this.format = data.format);
+    this.ruleset = data.ruleset;
+    this.score = data.score;
+    this.owner = data.owner;
+    this.team = data.team;
   }
 
-  private async prepareData(): Promise<DraftDoc> {
-    const ruleset = getRuleset(this.formData.ruleset);
-    const data: DraftDoc = {
-      leagueName: this.formData.leagueName.trim(),
-      teamName: this.formData.teamName.trim(),
-      leagueId: this.formData.leagueName
-        .toLowerCase()
-        .trim()
-        .replace(/\W/gi, ""),
-      format: this.formData.format.trim() as FormatId,
-      ruleset: this.formData.ruleset.trim() as RulesetId,
+  static fromForm(
+    formData: {
+      leagueName: string;
+      teamName: string;
+      format: string;
+      ruleset: string;
+      doc?: string;
+      team: PokemonFormData[];
+    },
+    user_id: string
+  ): Draft2 {
+    const ruleset = getRuleset(formData.ruleset);
+    const errors: string[] = [];
+    const data = {
+      leagueName: formData.leagueName.trim(),
+      teamName: formData.teamName.trim(),
+      leagueId: formData.leagueName.toLowerCase().trim().replace(/\W/gi, ""),
+      format: formData.format.trim() as FormatId,
+      ruleset: formData.ruleset.trim() as RulesetId,
       score: {
         wins: 0,
         loses: 0,
         diff: "",
       },
-      owner: this.user_id,
-      team: [],
+      owner: user_id,
+      team: formData.team
+        .filter((pokemonData) => pokemonData.id)
+        .map((pokemonData) => {
+          const pokemon = new PokemonBuilder(ruleset, pokemonData);
+          if (pokemon.error) {
+            errors.push(pokemon.error);
+          }
+          return pokemon.data;
+        }),
+      doc: formData.doc?.trim(),
     };
 
-    const errors: string[] = [];
-    for (const pokemonData of this.formData.team) {
-      if (pokemonData.id != "") {
-        const pokemon = new PokemonBuilder(ruleset, pokemonData);
-        if (pokemon.error) {
-          errors.push(pokemon.error);
-        } else {
-          data.team.push(pokemon.data);
-        }
-      }
-    }
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }
 
-    return data;
+    return new Draft2(data);
+  }
+
+  toDocument(): DraftDocument {
+    const data: DraftData = this;
+    return new DraftModel(data);
   }
 }

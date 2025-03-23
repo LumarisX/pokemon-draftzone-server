@@ -1,9 +1,10 @@
 import { ID, toID } from "@pkmn/data";
+import { Types } from "mongoose";
 import { Ruleset } from "../../data/rulesets";
 import { MatchupModel } from "../../models/matchup.model";
 import { getName } from "../data-services/pokedex.service";
 
-export async function getScore(teamId: string) {
+export async function getScore(teamId: Types.ObjectId) {
   let matchups = await getMatchups(teamId);
   let score = { wins: 0, loses: 0, diff: "+0" };
   let numDiff = 0;
@@ -45,7 +46,7 @@ export async function getScore(teamId: string) {
   return score;
 }
 
-export async function getStats(ruleset: Ruleset, draftId: string) {
+export async function getStats(ruleset: Ruleset, draftId: Types.ObjectId) {
   let matchups = await getMatchups(draftId);
   let stats: {
     [key: string]: {
@@ -94,7 +95,7 @@ export async function getStats(ruleset: Ruleset, draftId: string) {
   return Object.values(stats);
 }
 
-export async function getMatchups(draftId: string) {
+export async function getMatchups(draftId: Types.ObjectId) {
   return await MatchupModel.find({ "aTeam._id": draftId })
     .sort({ createdAt: -1 })
     .lean();

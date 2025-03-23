@@ -1,4 +1,6 @@
-import { Document, model, Schema } from "mongoose";
+import { Document, model, Schema, Types } from "mongoose";
+import { FormatId } from "../data/formats";
+import { RulesetId } from "../data/rulesets";
 import { PokemonData, pokemonSchema } from "./pokemon.schema";
 
 const draftSchema = new Schema(
@@ -7,17 +9,12 @@ const draftSchema = new Schema(
       type: String,
       required: true,
     },
-    leagueId: {
-      type: String,
-      required: true,
-    },
     teamName: {
       type: String,
     },
-    owner: {
+    leagueId: {
       type: String,
       required: true,
-      ref: "users",
     },
     format: {
       type: String,
@@ -27,9 +24,23 @@ const draftSchema = new Schema(
       type: String,
       required: true,
     },
+    owner: {
+      type: String,
+      required: true,
+      ref: "users",
+    },
+    doc: {
+      type: String,
+      default: undefined,
+    },
     team: {
       type: [pokemonSchema],
       required: true,
+    },
+    score: {
+      wins: { type: Number, required: true, default: 0 },
+      loses: { type: Number, required: true, default: 0 },
+      diff: { type: String, required: true, default: "0" },
     },
   },
   { timestamps: true }
@@ -37,20 +48,21 @@ const draftSchema = new Schema(
 
 export interface DraftData {
   leagueName: string;
-  leagueId: string;
   teamName: string;
-  score?: {
+  leagueId: string;
+  format: FormatId;
+  ruleset: RulesetId;
+  doc?: string;
+  score: {
     wins: number;
     loses: number;
     diff: string;
   };
   owner: string;
-  format: string;
-  ruleset: string;
   team: PokemonData[];
 }
 
-export interface DraftDocument extends DraftData, Document<any, any> {}
+export interface DraftDocument extends DraftData, Document<Types.ObjectId> {}
 
 draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 

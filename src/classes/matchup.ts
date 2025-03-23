@@ -1,4 +1,4 @@
-import { ObjectId } from "mongoose";
+import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { PokemonData } from "../models/pokemon.schema";
@@ -12,7 +12,7 @@ type MatchupDoc = {
 };
 
 export type Side = {
-  _id?: ObjectId;
+  _id?: Types.ObjectId;
   teamName: string;
   team: PokemonData[];
   name?: string;
@@ -27,7 +27,7 @@ export class Matchup {
       stage: string;
       team: PokemonFormData[];
     },
-    private aTeamId: ObjectId
+    private aTeamId: Types.ObjectId
   ) {}
 
   async createMatchup(): Promise<MatchupDocument> {

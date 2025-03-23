@@ -1,26 +1,17 @@
-import type { Request, Response } from "express";
-import { getSub, jwtCheck, type Route, type SubRequest } from ".";
-import { LeagueAd } from "../classes/leaguelist";
-import { Document } from "mongoose";
-import { LeagueAdDoc, LeagueAdModel } from "../models/leaguelist.model";
-import { bot } from "..";
 import { TextChannel } from "discord.js";
+import type { Request, Response } from "express";
 import NodeCache from "node-cache";
-
-type AdResponse = Response & {
-  //change back from any
-  ad?: Document<unknown, {}, any>;
-};
+import { getSub, jwtCheck, type Route, type SubRequest } from ".";
+import { bot } from "..";
+import { LeagueAd } from "../classes/leaguelist";
+import { LeagueAdDocument, LeagueAdModel } from "../models/leaguelist.model";
 
 //Refresh every 50 minutes
 const cache = new NodeCache({ stdTTL: 3000 });
 
-async function getApprovedLeagues(): Promise<
-  (Document<unknown, any, any> & { createdAt: Date })[]
-> {
+async function getApprovedLeagues(): Promise<LeagueAdDocument[]> {
   const cacheKey = "approvedLeagues";
-  const cachedLeagues =
-    cache.get<(Document<unknown, any, any> & { createdAt: Date })[]>(cacheKey);
+  const cachedLeagues: LeagueAdDocument[] | undefined = cache.get(cacheKey);
 
   if (cachedLeagues) {
     return cachedLeagues;
@@ -28,12 +19,14 @@ async function getApprovedLeagues(): Promise<
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  const leagues = await LeagueAdModel.find({
+  const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
     status: "Approved",
     closesAt: { $gte: today },
-  }).sort({
-    createdAt: -1,
-  });
+  })
+    .sort({
+      createdAt: -1,
+    })
+    .lean();
 
   cache.set(cacheKey, leagues);
   return leagues;
@@ -45,11 +38,7 @@ export const LeagueAdRoutes: Route = {
       get: async (req: Request, res: Response) => {
         try {
           const leagues = await getApprovedLeagues();
-          res.json(
-            leagues.map((league) =>
-              LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
-            )
-          );
+          res.json(leagues.map((league) => LeagueAd.fromDocument(league)));
         } catch (error) {
           console.error(error);
           res
@@ -82,14 +71,12 @@ export const LeagueAdRoutes: Route = {
     "/manage": {
       get: async (req: SubRequest, res: Response) => {
         try {
-          const leagues = await LeagueAdModel.find({ owner: req.sub }).sort({
+          const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
+            owner: req.sub,
+          }).sort({
             createdAt: -1,
           });
-          res.json(
-            leagues.map((league) =>
-              LeagueAd.fromDocument(league.toObject() as LeagueAdDoc)
-            )
-          );
+          res.json(leagues.map((league) => LeagueAd.fromDocument(league)));
         } catch (error) {
           res
             .status(500)
@@ -141,9 +128,9 @@ export const LeagueAdRoutes: Route = {
     "/:ad_id": {
       get: async (req: Request, res: Response) => {},
       patch: async (req: Request, res: Response) => {},
-      delete: async (req: SubRequest, res: AdResponse) => {
+      delete: async (req: SubRequest, res: Response) => {
         try {
-          await res.ad!.deleteOne();
+          await res.locals.ad!.deleteOne();
           res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
           console.error(error);
@@ -156,7 +143,7 @@ export const LeagueAdRoutes: Route = {
     },
   },
   params: {
-    ad_id: async (req: SubRequest, res: AdResponse, next, ad_id) => {
+    ad_id: async (req: SubRequest, res: Response, next, ad_id) => {
       try {
         if (!ad_id) {
           return res
@@ -172,7 +159,7 @@ export const LeagueAdRoutes: Route = {
           return;
         }
 
-        res.ad = ad;
+        res.locals.ad = ad;
       } catch (error) {
         return res
           .status(500)
@@ -180,7 +167,7 @@ export const LeagueAdRoutes: Route = {
       }
       next();
     },
-    time: async (req: SubRequest, res: AdResponse, next, time) => {
+    time: async (req: SubRequest, res: Response, next, time) => {
       try {
         if (!time) {
           return res

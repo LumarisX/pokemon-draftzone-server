@@ -1,6 +1,6 @@
 import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
 import { Request, Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import NodeCache from "node-cache";
 import { Route } from ".";
 import { DraftSpecies } from "../classes/pokemon";
@@ -54,7 +54,7 @@ type TeamData = {
   name?: string;
   teamName?: string;
   paste?: string;
-  _id?: mongoose.Schema.Types.ObjectId;
+  _id?: Types.ObjectId;
 };
 
 export const $matchups = new NodeCache({

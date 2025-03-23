@@ -6,10 +6,9 @@ import {
   Response,
 } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
-import type { Types } from "mongoose";
+import { EventEmitter } from "stream";
 import WebSocket from "ws";
 import { config } from "../config";
-import { EventEmitter } from "stream";
 
 export type Route = {
   middleware?: Handler[];
@@ -37,7 +36,7 @@ export type Route = {
 };
 
 export type SubRequest = Request & {
-  sub?: Types.ObjectId;
+  sub?: string;
 };
 
 export function getSub(req: SubRequest, res: Response, next: NextFunction) {
@@ -57,3 +56,8 @@ export const jwtCheck = auth({
   issuerBaseURL: config.AUTH0_ISSUER,
   tokenSigningAlg: "RS256",
 });
+
+export function sendError(res: Response, error: Error, code: string) {
+  console.error(error);
+  return res.status(500).json({ message: error.message, code });
+}
