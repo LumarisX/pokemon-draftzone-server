@@ -19,7 +19,7 @@ export class Typechart {
   toJson() {
     return {
       team: this.team.map((pokemon) => ({
-        ...pokemon.toPokemon(),
+        ...pokemon.toClient(),
         weak: [pokemon.typechart(), typeWeak(pokemon.types, pokemon.ruleset)],
         types: pokemon.types,
       })),

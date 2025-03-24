@@ -1,9 +1,8 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecies } from "../../classes/pokemon";
-import { PokemonData } from "../../models/pokemon.schema";
+import { DraftSpecies, PokemonFormData } from "../../classes/pokemon";
 
 export type Coveragechart = (
-  | PokemonData & {
+  | PokemonFormData & {
       coverage: {
         [key: string]: CoverageMove[];
       };
@@ -63,7 +62,7 @@ export async function coveragechart(
       });
     }
     result.push({
-      ...data.species.toPokemon(),
+      ...data.species.toClient(),
       coverage: data.coverage,
     });
   }

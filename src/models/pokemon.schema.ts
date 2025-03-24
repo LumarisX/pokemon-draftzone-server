@@ -55,6 +55,7 @@ export const pokemonSchema = new mongoose.Schema(
     },
     draftFormes: {
       type: [String],
+      default: undefined,
     },
   },
   { _id: false }

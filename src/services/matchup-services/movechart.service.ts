@@ -1,5 +1,5 @@
 import { TypeName } from "@pkmn/data";
-import { DraftSpecies, Pokemon } from "../../classes/pokemon";
+import { DraftSpecies, Pokemon, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 
@@ -264,7 +264,7 @@ export type Movechart = {
   moves: {
     name: string;
     type: string;
-    pokemon: PokemonData[];
+    pokemon: PokemonFormData[];
   }[];
 }[];
 
@@ -276,7 +276,7 @@ export async function movechart(
     [key in MoveCategory]: {
       name: string;
       type: TypeName;
-      pokemon: Pokemon[];
+      pokemon: PokemonFormData[];
     }[];
   } = {
     Priority: [],
@@ -310,7 +310,7 @@ export async function movechart(
         )
       )
         .filter((result) => result.canLearn)
-        .map((result) => result.pokemon.toPokemon()),
+        .map((result) => result.pokemon.toClient()),
     };
     for (const category of moveList[moveID]) {
       mc[category].push(data);

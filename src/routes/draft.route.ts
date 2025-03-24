@@ -1,7 +1,8 @@
 import { Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { getSub, jwtCheck, Route, sendError, SubRequest } from ".";
 import { Archive } from "../classes/archive";
+import { Draft2 } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { DraftSpecies } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
@@ -13,12 +14,14 @@ import {
   getStats,
 } from "../services/database-services/draft.services";
 import { $matchups } from "./matchup.route";
-import { Draft2 } from "../classes/draft";
 
 type DraftResponse = Response & {
   rawDraft?: DraftDocument | null;
   rawMatchup?: MatchupDocument | null;
-  draft?: DraftDocument;
+  draft?: DraftData & {
+    _id: Types.ObjectId;
+  };
+  draft2?: Draft2;
   ruleset?: Ruleset;
   matchup?: MatchupDocument;
 };
@@ -31,20 +34,12 @@ export const DraftRoutes: Route = {
     "/teams": {
       get: async (req: SubRequest, res: DraftResponse) => {
         try {
-          let drafts = await DraftModel.find({ owner: req.sub }).sort({
+          const drafts = await DraftModel.find({ owner: req.sub }).sort({
             createdAt: -1,
           });
+
           res.json(
-            drafts.map((rawDraft) => {
-              let draft = rawDraft.toObject();
-              return {
-                ...draft,
-                team: draft.team.map((pokemon) => ({
-                  ...pokemon,
-                  name: getName(pokemon.id),
-                })),
-              };
-            })
+            drafts.map((draft) => Draft2.fromDocument(draft).toClient())
           );
         } catch (error) {
           return sendError(res, error as Error, `${routeCode}-R1-01`);
@@ -56,7 +51,7 @@ export const DraftRoutes: Route = {
         }
         try {
           const draft = Draft2.fromForm(req.body, req.sub);
-          const draftDoc = draft.toDocument();
+          const draftDoc = new DraftModel(draft.toData());
           const foundDrafts = await DraftModel.find({
             owner: req.sub,
             leagueId: draftDoc.leagueId,
@@ -79,7 +74,7 @@ export const DraftRoutes: Route = {
         }
         try {
           res.draft.score = await getScore(res.draft._id);
-          res.json(res.draft);
+          res.json(res.draft2!.toClient());
         } catch (error) {
           res
             .status(500)
@@ -90,24 +85,23 @@ export const DraftRoutes: Route = {
         if (!req.sub) return;
         try {
           const team_id = req.params.team_id;
-          const draft = Draft2.fromForm(req.body, req.sub).toDocument();
-          console.log(req.body, draft);
-          // const updatedDraft = await DraftModel.findOneAndUpdate(
-          //   { owner: req.sub, leagueId: team_id },
-          //   draft,
-          //   { new: true, upsert: true }
-          // );
-          // if (updatedDraft) {
-          //   $matchups
-          //     .keys()
-          //     .filter((key: string) =>
-          //       key.startsWith(updatedDraft._id.toString())
-          //     )
-          //     .forEach((key: any) => $matchups.del(key));
-          //   return res
-          //     .status(200)
-          //     .json({ message: "Draft Updated", draft: updatedDraft });
-          // }
+          const draft = Draft2.fromForm(req.body, req.sub).toData();
+          const updatedDraft = await DraftModel.findOneAndUpdate(
+            { owner: req.sub, leagueId: team_id },
+            draft,
+            { new: true, upsert: true }
+          );
+          if (updatedDraft) {
+            $matchups
+              .keys()
+              .filter((key: string) =>
+                key.startsWith(updatedDraft._id.toString())
+              )
+              .forEach((key: any) => $matchups.del(key));
+            return res
+              .status(200)
+              .json({ message: "Draft Updated", draft: updatedDraft });
+          }
           return res
             .status(404)
             .json({ message: "Draft not found", code: "DR-R2-02" });
@@ -366,22 +360,25 @@ export const DraftRoutes: Route = {
     team_id: async (req: SubRequest, res: DraftResponse, next, team_id) => {
       try {
         let user_id = req.sub;
-        if (mongoose.Types.ObjectId.isValid(team_id)) {
-          res.rawDraft = await DraftModel.findById(team_id);
-        } else {
-          let drafts = await DraftModel.find({
-            owner: user_id,
-            leagueId: team_id,
-          });
-          res.rawDraft = drafts[0];
-        }
-        if (res.rawDraft == null) {
+        const rawDraft: DraftDocument | null = mongoose.Types.ObjectId.isValid(
+          team_id
+        )
+          ? await DraftModel.findById(team_id)
+          : (
+              await DraftModel.find({
+                owner: user_id,
+                leagueId: team_id,
+              })
+            )[0];
+
+        if (!rawDraft)
           return res
             .status(400)
             .json({ message: "Team id not found", code: "DR-P1-02" });
-        }
-        let draft = res.rawDraft.toObject();
-        res.draft = new Draft2(draft).toDocument();
+        res.rawDraft = rawDraft;
+        const draft = res.rawDraft.toObject<DraftData>();
+        res.draft = draft;
+        res.draft2 = Draft2.fromDocument(draft);
         res.ruleset = getRuleset(res.draft!.ruleset);
       } catch (error) {
         console.log(error);

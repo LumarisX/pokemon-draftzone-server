@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
 import NodeCache from "node-cache";
 import { Route } from ".";
-import { DraftSpecies } from "../classes/pokemon";
+import { DraftSpecies, PokemonFormData } from "../classes/pokemon";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
@@ -351,7 +351,7 @@ async function makeMatchup(
     };
     summary: {
       teamName?: string;
-      team: (PokemonData & {
+      team: (PokemonFormData & {
         abilities: AbilityName[];
         baseStats: StatsTable;
         types: [TypeName] | [TypeName, TypeName];
@@ -387,7 +387,7 @@ async function makeMatchup(
     coveragechart: Coveragechart[];
     typechart: {
       team: (
-        | PokemonData & {
+        | PokemonFormData & {
             weak: { [key: string]: number }[];
           }
       )[];

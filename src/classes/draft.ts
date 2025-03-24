@@ -1,8 +1,7 @@
 import { FormatId } from "../data/formats";
 import { RulesetId, getRuleset } from "../data/rulesets";
-import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
-import { PokemonData } from "../models/pokemon.schema";
-import { PokemonBuilder, PokemonFormData } from "./pokemon";
+import { DraftData } from "../models/draft.model";
+import { DraftSpecies, PokemonBuilder, PokemonFormData } from "./pokemon";
 
 export class Draft2 {
   leagueName: string;
@@ -12,7 +11,7 @@ export class Draft2 {
   ruleset: RulesetId;
   score: { wins: number; loses: number; diff: string };
   owner: string;
-  team: PokemonData[];
+  team: DraftSpecies[];
   doc?: string | undefined;
   constructor(data: {
     leagueName: string;
@@ -22,7 +21,7 @@ export class Draft2 {
     ruleset: RulesetId;
     score: { wins: number; loses: number; diff: string };
     owner: string;
-    team: PokemonData[];
+    team: DraftSpecies[];
     doc?: string | undefined;
   }) {
     this.leagueName = data.leagueName;
@@ -32,6 +31,7 @@ export class Draft2 {
     this.score = data.score;
     this.owner = data.owner;
     this.team = data.team;
+    this.doc = data.doc;
   }
 
   static fromForm(
@@ -66,7 +66,7 @@ export class Draft2 {
           if (pokemon.error) {
             errors.push(pokemon.error);
           }
-          return pokemon.data;
+          return new DraftSpecies(pokemon.data, ruleset);
         }),
       doc: formData.doc?.trim(),
     };
@@ -78,8 +78,60 @@ export class Draft2 {
     return new Draft2(data);
   }
 
-  toDocument(): DraftDocument {
-    const data: DraftData = this;
-    return new DraftModel(data);
+  toData(): DraftData {
+    return {
+      leagueName: this.leagueName,
+      leagueId: this.leagueId,
+      teamName: this.teamName,
+      format: this.format,
+      ruleset: this.ruleset,
+      score: this.score,
+      owner: this.owner,
+      doc: this.doc,
+      team: this.team.map((pokemon) => pokemon.toData()),
+    };
+  }
+
+  toClient() {
+    return {
+      leagueName: this.leagueName,
+      leagueId: this.leagueId,
+      teamName: this.teamName,
+      format: this.format,
+      ruleset: this.ruleset,
+      score: this.score,
+      doc: this.doc,
+      team: this.team.map((pokemon) => pokemon.toClient()),
+    };
+  }
+
+  static fromDocument(data: DraftData): Draft2 {
+    const ruleset = getRuleset(data.ruleset);
+    const types = Array.from(ruleset.types).map((type) => type.name);
+    return new Draft2({
+      leagueName: data.leagueName,
+      leagueId: data.leagueId,
+      teamName: data.teamName,
+      format: data.format,
+      ruleset: data.ruleset,
+      score: data.score,
+      owner: data.owner,
+      doc: data.doc,
+      team: data.team.map((pokemon) => {
+        if (pokemon.capt) {
+          pokemon.capt.tera = pokemon.capt?.tera
+            ? pokemon.capt.tera.length
+              ? pokemon.capt.tera
+              : types
+            : undefined;
+          pokemon.capt.z = pokemon.capt?.z
+            ? pokemon.capt.z.length
+              ? pokemon.capt.z
+              : types.filter((type) => type !== "Stellar")
+            : undefined;
+        }
+        return new DraftSpecies(pokemon, ruleset);
+      }),
+    });
   }
 }

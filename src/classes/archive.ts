@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { FormatId } from "../data/formats";
 import { RulesetId } from "../data/rulesets";
 import {
@@ -5,12 +6,16 @@ import {
   ArchiveDocument,
   ArchiveModel,
 } from "../models/archive.model";
-import { DraftDocument } from "../models/draft.model";
+import { DraftData } from "../models/draft.model";
 import { MatchData, StatData } from "../models/matchup.model";
 import { getMatchups } from "../services/database-services/draft.services";
 
 export class Archive {
-  constructor(private draft: DraftDocument) {}
+  constructor(
+    private draft: DraftData & {
+      _id: Types.ObjectId;
+    }
+  ) {}
 
   async createArchive(): Promise<ArchiveDocument> {
     const data = await this.prepareData();

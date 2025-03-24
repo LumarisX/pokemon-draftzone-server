@@ -3,7 +3,6 @@ import {
   AbilityName,
   As,
   Condition,
-  DeepPartial,
   Dex,
   EggGroup,
   EvoType,
@@ -31,20 +30,20 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { getBst } from "./specieUtil";
 
-export type PokemonOptions = DeepPartial<{
-  shiny: boolean;
-  nickname: string;
-  draftFormes: ID[];
-  modifiers: {
-    abilities: string[];
-    moves: string[];
+export type PokemonOptions = {
+  shiny?: boolean;
+  nickname?: string;
+  draftFormes?: ID[];
+  modifiers?: {
+    abilities?: string[];
+    moves?: string[];
   };
-  capt: {
-    tera: TypeName[];
-    z: TypeName[];
-    dmax: boolean;
+  capt?: {
+    tera?: TypeName[];
+    z?: TypeName[];
+    dmax?: boolean;
   };
-}>;
+};
 
 export type Pokemon = PokemonOptions & {
   id: ID;
@@ -123,16 +122,39 @@ export class DraftSpecies implements Specie, Pokemon {
 
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
-
-  constructor(species: Species, data: PokemonOptions, ruleset: Ruleset) {
+  constructor(pokemon: { id: string } & PokemonOptions, ruleset: Ruleset);
+  constructor(species: Species, data: PokemonOptions, ruleset: Ruleset);
+  constructor(
+    arg1: ({ id: string } & PokemonOptions) | Species,
+    arg2: Ruleset | PokemonOptions,
+    arg3?: Ruleset
+  ) {
+    let species: Species;
+    let data: PokemonOptions;
+    let ruleset: Ruleset;
+    if ("exists" in arg1) {
+      species = arg1;
+      data = arg2 as PokemonOptions;
+      ruleset = arg3!;
+    } else {
+      const pokemon = arg1;
+      ruleset = arg2 as Ruleset;
+      species = ruleset.species.get(pokemon.id)!;
+      data = pokemon;
+    }
     const specie = new Specie(ruleset.dex, ruleset.exists, species);
     Object.assign(this, specie);
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
     this.shiny = data.shiny;
+    this._formeNum = specie.formeNum;
     this.capt = data.capt;
     this.nickname = data.nickname;
     this.modifiers = data.modifiers;
+    this.draftFormes = data.draftFormes
+      ?.map((forme) => ruleset.species.get(forme))
+      .filter((specie) => specie?.exists)
+      .map((specie) => specie!.id);
     this.ruleset = ruleset;
     if (specie.unreleasedHidden) {
       this.abilities = {
@@ -145,20 +167,46 @@ export class DraftSpecies implements Specie, Pokemon {
     }
     this.bst = getBst(specie);
   }
-
+  _formeNum: number;
   get formeNum(): number {
-    throw new Error("Method not implemented.");
+    return this._formeNum;
   }
 
-  toPokemon(): Pokemon {
+  toClient(): PokemonFormData {
     return {
       id: this.id,
       name: this.name,
       nickname: this.nickname,
       shiny: this.shiny,
-      draftFormes: this.draftFormes,
+      draftFormes: this.draftFormes?.map((pokemon) => {
+        const specie = this.ruleset.species.get(pokemon)!;
+        return { id: specie.id, name: specie.name };
+      }),
       modifiers: this.modifiers,
       capt: this.capt,
+    };
+  }
+
+  toData(): PokemonData {
+    return {
+      id: this.id,
+      nickname: this.nickname,
+      shiny: this.shiny,
+      draftFormes: this.draftFormes,
+      modifiers: this.modifiers,
+      capt: {
+        tera: this.capt?.tera
+          ? this.capt.tera.length >= 19
+            ? []
+            : this.capt.tera
+          : undefined,
+        z: this.capt?.z
+          ? this.capt.z.length >= 18
+            ? []
+            : this.capt.z
+          : undefined,
+        dmax: this.capt?.dmax,
+      },
     };
   }
 
@@ -215,7 +263,7 @@ export class DraftSpecies implements Specie, Pokemon {
         }))
         .sort((x, y) => y.effectivePower - x.effectivePower),
       data: {
-        ...this.toPokemon(),
+        ...this.toClient(),
         types: this.types,
         baseStats: this.baseStats,
       },
@@ -638,6 +686,7 @@ export class DraftSpecies implements Specie, Pokemon {
 
 export type PokemonFormData = {
   id: ID;
+  name: string;
   shiny?: boolean;
   nickname?: string;
   draftFormes?: Pokemon[];
@@ -673,8 +722,8 @@ export class PokemonBuilder {
           : []
         : undefined,
       z: pokemonData.capt?.z?.length
-        ? pokemonData.capt.z.length >= 19
-          ? pokemonData.capt.tera
+        ? pokemonData.capt.z.length >= 18
+          ? pokemonData.capt.z
           : []
         : undefined,
       dmax: pokemonData.capt?.dmax || undefined,
