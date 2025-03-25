@@ -1,5 +1,5 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecies, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 
 export type Coveragechart = (
   | PokemonFormData & {
@@ -33,13 +33,13 @@ export type FullCoverageMove = {
 };
 
 export async function coveragechart(
-  team: DraftSpecies[],
-  oppTeam: DraftSpecies[]
+  team: DraftSpecie[],
+  oppTeam: DraftSpecie[]
 ): Promise<Coveragechart> {
   let result: Coveragechart = [];
   for (let pokemon of team) {
     let data: {
-      species: DraftSpecies;
+      species: DraftSpecie;
       coverage: {
         [key: string]: CoverageMove[];
       };
@@ -69,7 +69,7 @@ export async function coveragechart(
   return result;
 }
 
-export async function plannerCoverage(team: DraftSpecies[]) {
+export async function plannerCoverage(team: DraftSpecie[]) {
   const teamCoverage = await Promise.all(
     team.map(async (pokemon) => ({
       id: pokemon.id,

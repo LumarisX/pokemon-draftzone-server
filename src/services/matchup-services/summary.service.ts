@@ -1,10 +1,10 @@
 import { StatID } from "@pkmn/data";
-import { DraftSpecies } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
 
 export class SummaryClass {
-  team: DraftSpecies[];
+  team: DraftSpecie[];
   teamName?: string;
-  constructor(team: DraftSpecies[], teamName?: string) {
+  constructor(team: DraftSpecie[], teamName?: string) {
     this.team = team;
     this.teamName = teamName;
   }

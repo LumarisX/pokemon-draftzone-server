@@ -1,14 +1,14 @@
 import { TypeName } from "@pkmn/data";
-import { DraftSpecies } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
 import { typeWeak } from "../data-services/type.services";
 
 export class Typechart {
-  team: DraftSpecies[];
+  team: DraftSpecie[];
   teraTypes: {
     [key: string]: {};
   };
 
-  constructor(team: DraftSpecies[]) {
+  constructor(team: DraftSpecie[]) {
     this.team = team;
     this.teraTypes = {};
     // if (pokemon.capt && pokemon.capt.tera) {
@@ -89,7 +89,7 @@ export class Typechart {
         ]);
       }
     }
-    let pokemonList: [DraftSpecies, number][] = [];
+    let pokemonList: [DraftSpecie, number][] = [];
     for (let species of this.team[0].ruleset.species) {
       if (
         species.nfe || //only fully evolved
@@ -98,7 +98,7 @@ export class Typechart {
       )
         continue;
       const newTC = { ...teamTypeChart };
-      const draftSpecies = new DraftSpecies(species, {}, this.team[0].ruleset);
+      const draftSpecies = new DraftSpecie(species, this.team[0].ruleset);
       const tw = draftSpecies.typechart();
       for (let type in tw) {
         let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;

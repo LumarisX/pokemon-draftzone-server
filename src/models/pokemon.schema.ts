@@ -1,5 +1,6 @@
 import { ID, TypeName } from "@pkmn/data";
 import mongoose from "mongoose";
+import { Pokemon } from "../classes/pokemon";
 
 const captSchema = new mongoose.Schema(
   {
@@ -33,7 +34,7 @@ const modifiersSchema = new mongoose.Schema(
   { _id: false }
 );
 
-export const pokemonSchema = new mongoose.Schema(
+export const pokemonSchema = new mongoose.Schema<PokemonData>(
   {
     id: {
       type: String,
@@ -61,18 +62,4 @@ export const pokemonSchema = new mongoose.Schema(
   { _id: false }
 );
 
-export interface PokemonData {
-  id: ID;
-  shiny?: boolean;
-  nickname?: string;
-  draftFormes?: ID[];
-  modifiers?: {
-    moves?: string[];
-    abilities?: string[];
-  };
-  capt?: {
-    tera?: TypeName[];
-    z?: TypeName[];
-    dmax?: boolean;
-  };
-}
+export type PokemonData = Omit<Pokemon, "name">;

@@ -1,5 +1,5 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecies, Pokemon } from "../classes/pokemon";
+import { DraftSpecie, Pokemon } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 
 type Token = { type: string; value: string };
@@ -28,7 +28,7 @@ export async function searchPokemon(
   let ruleset = getRuleset(rulesetId);
   let searchResults = await Promise.all(
     Array.from(ruleset.species).map(async (specie) => {
-      let pokemon = new DraftSpecies(specie, {}, ruleset);
+      let pokemon = new DraftSpecie(specie, ruleset);
       return [
         {
           id: pokemon.id,
@@ -182,7 +182,7 @@ function parse(tokens: Token[]): ASTNode {
 
 async function evaluate(
   node: ASTNode | undefined,
-  pokemon: DraftSpecies
+  pokemon: DraftSpecie
 ): Promise<boolean> {
   if (node) {
     const tiers = [
@@ -413,7 +413,7 @@ async function evaluate(
         }
         break;
       case "Identifier":
-        return !!pokemon[node.value as keyof DraftSpecies];
+        return !!pokemon[node.value as keyof DraftSpecie];
       case "Literal":
         return node.value;
     }

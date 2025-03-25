@@ -1,7 +1,7 @@
 import { AbilityName, ID, StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
-import { DraftSpecies } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
 
 export type Speedchart = {
   modifiers: string[];
@@ -31,11 +31,7 @@ type Configurations = {
   }[];
 };
 
-function getSpeedTiers(
-  pokemon: DraftSpecies,
-  level: number,
-  teamIndex: string
-) {
+function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
   let fastConfigurations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
@@ -129,7 +125,7 @@ function tierModifiers(tiers: Speedchart["tiers"]): string[] {
 }
 
 function generateTiers(
-  pokemon: DraftSpecies,
+  pokemon: DraftSpecie,
   level: number,
   teamIndex: string,
   configurations: Configurations
@@ -201,7 +197,7 @@ function generateTiers(
   return tiers;
 }
 
-export function speedchart(teams: DraftSpecies[][], level: number): Speedchart {
+export function speedchart(teams: DraftSpecie[][], level: number): Speedchart {
   let tiers = teams
     .flatMap((team, teamIndex) =>
       team.flatMap((pokemon) =>

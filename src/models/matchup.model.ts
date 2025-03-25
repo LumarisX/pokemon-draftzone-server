@@ -4,6 +4,7 @@ import { PokemonData, pokemonSchema } from "./pokemon.schema";
 const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
   {
     _id: { type: Schema.Types.ObjectId, required: true },
+    paste: { type: String },
   },
   { _id: false }
 );
@@ -13,17 +14,10 @@ const matchupTeamFullSchema = new Schema<MatchupTeamFull>(
     teamName: { type: String, required: true },
     coach: { type: String, required: true },
     team: { type: [pokemonSchema], required: true },
+    paste: { type: String },
   },
   { _id: false }
 );
-
-const matchupTeamSchema = new Schema<MatchupTeam>(
-  { type: { type: String, required: true, enum: ["reference", "full"] } },
-  { _id: false, discriminatorKey: "type" }
-);
-
-matchupTeamSchema.discriminator("reference", matchupTeamReferenceSchema);
-matchupTeamSchema.discriminator("full", matchupTeamFullSchema);
 
 const matchTeamSchema = new Schema<TeamStatData>(
   {
@@ -45,31 +39,30 @@ const matchSchema = new Schema<MatchData>(
 
 export const matchupSchema = new Schema<MatchupData>(
   {
-    aTeam: { type: matchupTeamSchema, required: true },
-    bTeam: { type: matchupTeamSchema, required: true },
+    aTeam: { type: matchupTeamReferenceSchema, required: true },
+    bTeam: { type: matchupTeamFullSchema, required: true },
     gameTime: { type: String },
     reminder: { type: Number },
     stage: { type: String, required: true },
+    notes: { type: String, default: undefined },
     matches: { type: [matchSchema], required: true },
   },
   { timestamps: true }
 );
 
-export type MatchupTeamBase = { type: "reference" | "full" };
+export type MatchupTeamBase = {
+  paste?: string;
+};
 
 export type MatchupTeamReference = MatchupTeamBase & {
-  type: "reference";
   _id: Types.ObjectId;
 };
 
 export type MatchupTeamFull = MatchupTeamBase & {
-  type: "full";
   teamName: string;
-  coach: string;
+  coach?: string;
   team: PokemonData[];
 };
-
-export type MatchupTeam = MatchupTeamReference | MatchupTeamFull;
 
 export type MatchStatData = [
   string,
@@ -94,16 +87,15 @@ export type MatchData = {
 };
 
 export type MatchupData = {
-  aTeam: MatchupTeam;
-  bTeam: MatchupTeam;
+  aTeam: MatchupTeamReference;
+  bTeam: MatchupTeamFull;
   gameTime?: string;
   reminder?: number;
   stage: string;
+  notes?: string;
   matches: MatchData[];
 };
 
-export interface MatchupDocument
-  extends Document<Types.ObjectId>,
-    MatchupData {}
+export type MatchupDocument = Document<Types.ObjectId> & MatchupData;
 
 export const MatchupModel = model<MatchupData>("matchup", matchupSchema);

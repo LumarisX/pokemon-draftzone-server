@@ -1,5 +1,5 @@
 import { getRuleset } from "../data/rulesets";
-import { DraftSpecies } from "./pokemon";
+import { DraftSpecie } from "./pokemon";
 
 describe("Draft Pokemon", () => {
   describe("Gen9 NatDex", () => {
@@ -10,7 +10,7 @@ describe("Draft Pokemon", () => {
         expect(species).toBeTruthy();
       });
       if (!species) return;
-      const draftSpecies = new DraftSpecies(species, {}, ruleset);
+      const draftSpecies = new DraftSpecie(species, {}, ruleset);
 
       it("should know V-Create", async () => {
         expect(

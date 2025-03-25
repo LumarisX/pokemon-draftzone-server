@@ -1,5 +1,5 @@
 import { TypeName } from "@pkmn/data";
-import { DraftSpecies, Pokemon, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie, Pokemon, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { PokemonData } from "../../models/pokemon.schema";
 
@@ -269,7 +269,7 @@ export type Movechart = {
 }[];
 
 export async function movechart(
-  team: DraftSpecies[],
+  team: DraftSpecie[],
   ruleset: Ruleset
 ): Promise<Movechart> {
   const mc: {

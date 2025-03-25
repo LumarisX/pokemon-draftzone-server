@@ -1,8 +1,8 @@
-import { match } from "assert";
+import { pokeRound } from "@smogon/calc/dist/mechanics/util";
+import { Ruleset } from "../data/rulesets";
 import { MatchData, MatchupData } from "../models/matchup.model";
 import { MatchupTeam } from "./matchup";
-import { DraftSpecies, PokemonBuilder, PokemonFormData } from "./pokemon";
-import { getRuleset, Ruleset } from "../data/rulesets";
+import { DraftSpecie, PokemonBuilder, PokemonFormData } from "./pokemon";
 
 type OpponentClientData = {
   matches: MatchData[];
@@ -17,7 +17,7 @@ export class Opponent {
     public ruleset: Ruleset,
     public stage: string,
     public matches: MatchData[],
-    public team: DraftSpecies[],
+    public team: DraftSpecie[],
     public teamName: string,
     public coach?: string
   ) {}
@@ -30,6 +30,16 @@ export class Opponent {
       coach: this.coach,
       team: this.team.map((pokemon) => pokemon.toClient()),
     };
+  }
+
+  toMatchup(): MatchupTeam {
+    return new MatchupTeam(
+      this.ruleset,
+      this.teamName,
+      this.team,
+      undefined,
+      this.coach
+    );
   }
 
   static fromMatchup(matchup: MatchupData, team: MatchupTeam): Opponent {
@@ -56,7 +66,7 @@ export class Opponent {
           if (pokemon.error) {
             errors.push(pokemon.error);
           }
-          return new DraftSpecies(pokemon.data, ruleset);
+          return new DraftSpecie(pokemon.data, ruleset);
         }),
       data.teamName,
       data.coach
@@ -65,5 +75,16 @@ export class Opponent {
       throw new Error(errors.join(", "));
     }
     return opponent;
+  }
+
+  toData() {
+    return {
+      bTeam: {
+        teamName: this.teamName,
+        coach: this.coach ?? undefined,
+        team: this.team.map((pokemon) => pokemon.toData()),
+      },
+      stage: this.stage,
+    };
   }
 }

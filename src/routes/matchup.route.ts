@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
 import NodeCache from "node-cache";
 import { Route } from ".";
-import { DraftSpecies, PokemonFormData } from "../classes/pokemon";
+import { DraftSpecie, PokemonFormData } from "../classes/pokemon";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftModel } from "../models/draft.model";
@@ -50,7 +50,7 @@ type MatchupResponse = Response & {
 };
 
 type TeamData = {
-  team: DraftSpecies[];
+  team: DraftSpecie[];
   name?: string;
   teamName?: string;
   paste?: string;
@@ -215,26 +215,12 @@ export const MatchupRoutes: Route = {
       post: async (req: Request, res: Response) => {
         let ruleset = getRuleset(req.body.ruleset);
         let format = getFormat(req.body.format);
-        let aTeam = req.body.team1.map((pokemon: PokemonData) => {
-          let specie = ruleset.dex.species.get(pokemon.id);
-          if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(
-            specie,
-            pokemon,
-            ruleset
-          );
-          return draftSpecies;
-        });
-        let bTeam = req.body.team2.map((pokemon: PokemonData) => {
-          let specie = ruleset.dex.species.get(pokemon.id);
-          if (!specie) throw new Error(`${pokemon.id} is an unknown id.`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(
-            specie,
-            pokemon,
-            ruleset
-          );
-          return draftSpecies;
-        });
+        let aTeam = req.body.team1.map(
+          (pokemon: PokemonData) => new DraftSpecie(pokemon, ruleset)
+        );
+        let bTeam = req.body.team2.map(
+          (pokemon: PokemonData) => new DraftSpecie(pokemon, ruleset)
+        );
         let data = await makeMatchup(
           { team: aTeam, teamName: "Team 1" },
           { team: bTeam, teamName: "Team 2" },
@@ -400,7 +386,7 @@ async function makeMatchup(
     details: {
       level: details.format.level,
       format: details.format.name,
-      ruleset: details.ruleset.name as RulesetId,
+      ruleset: details.ruleset.name,
       gameTime: details.gameTime,
       leagueName: details.leagueName,
       stage: details.stage,

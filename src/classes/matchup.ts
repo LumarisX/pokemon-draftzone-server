@@ -1,74 +1,100 @@
 import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
-import { MatchupDocument, MatchupModel } from "../models/matchup.model";
+import { DraftDocument, DraftModel } from "../models/draft.model";
+import { MatchData, MatchupData } from "../models/matchup.model";
 import { PokemonData } from "../models/pokemon.schema";
-import { DraftSpecies, PokemonBuilder, PokemonFormData } from "./pokemon";
-
-type MatchupDoc = {
-  aTeam: Side;
-  bTeam: Side;
-  stage: string;
-  replay?: string;
-};
-
-export type Side = {
-  _id?: Types.ObjectId;
-  teamName: string;
-  team: PokemonData[];
-  name?: string;
-  paste?: string;
-};
+import { Draft2 } from "./draft";
+import { DraftSpecie } from "./pokemon";
+import { PZError } from "..";
+import { Opponent } from "./opponent";
 
 export class Matchup {
   constructor(
-    private ruleset: Ruleset,
-    private formData: {
-      teamName: string;
-      stage: string;
-      team: PokemonFormData[];
+    public draft: {
+      data: Draft2;
+      _id: Types.ObjectId;
+      paste?: string;
     },
-    private aTeamId: Types.ObjectId
+    public opponent: {
+      teamName: string;
+      team: DraftSpecie[];
+      coach?: string;
+      paste?: string;
+    },
+    public stage: string,
+    public matches: MatchData[],
+    public notes?: string,
+    public gameTime?: string,
+    public reminder?: number
   ) {}
 
-  async createMatchup(): Promise<MatchupDocument> {
-    const data = await this.prepareData();
-    const model = new MatchupModel(data);
-    return model;
+  static async fromDocument(
+    data: MatchupData,
+    draft?: Draft2
+  ): Promise<Matchup> {
+    if (!draft) {
+      const draftDoc: DraftDocument | null = await DraftModel.findById(
+        data.aTeam._id
+      );
+      if (!draftDoc) throw new PZError(400, "Draft ID not found.");
+      draft = Draft2.fromDocument(draftDoc);
+    }
+    return new Matchup(
+      {
+        data: draft,
+        _id: data.aTeam._id,
+        paste: data.aTeam.paste,
+      },
+      {
+        teamName: data.bTeam.teamName,
+        coach: data.bTeam.coach,
+        team: data.bTeam.team.map(
+          (pokemon) => new DraftSpecie(pokemon, draft.ruleset)
+        ),
+        paste: data.bTeam.paste,
+      },
+      data.stage,
+      data.matches,
+      data.notes,
+      data.gameTime,
+      data.reminder
+    );
   }
 
-  private async prepareData(): Promise<MatchupDoc> {
-    const data: MatchupDoc = {
+  // updateOpponent(opponent: Opponent): Matchup {
+  //   return new Matchup(
+  //     this.draft,
+  //     {
+  //       teamName: opponent.teamName,
+  //       team: opponent.team,
+  //       coach: opponent.coach,
+  //     },
+  //     opponent.stage,
+  //     this.matches,
+  //     this.notes,
+  //     this.gameTime,
+  //     this.reminder
+  //   );
+  // }
+
+  toData(): MatchupData {
+    return {
       aTeam: {
-        _id: this.aTeamId,
-        teamName: "",
-        team: [],
-        name: undefined,
-        paste: undefined,
+        _id: this.draft._id,
+        paste: this.draft.paste,
       },
       bTeam: {
-        teamName: this.formData.teamName.trim(),
-        team: [],
-        name: undefined,
-        paste: undefined,
+        teamName: this.opponent.teamName,
+        coach: this.opponent.coach ?? undefined,
+        paste: this.opponent.paste,
+        team: this.opponent.team.map((pokemon) => pokemon.toData()),
       },
-      stage: this.formData.stage.trim(),
+      stage: this.stage,
+      matches: this.matches,
+      notes: this.notes,
+      gameTime: this.gameTime,
+      reminder: this.reminder,
     };
-    const errors: string[] = [];
-    for (const pokemonData of this.formData.team) {
-      if (pokemonData.id !== "") {
-        const pokemon = new PokemonBuilder(this.ruleset, pokemonData);
-        if (pokemon.error) {
-          errors.push(pokemon.error);
-        } else {
-          data.bTeam.team.push(pokemon.data);
-        }
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new Error(errors.join(", "));
-    }
-    return data;
   }
 }
 
@@ -230,7 +256,7 @@ export class MatchupTeam {
   constructor(
     public ruleset: Ruleset,
     public teamName: string,
-    public team: DraftSpecies[],
+    public team: DraftSpecie[],
     public _id?: Types.ObjectId,
     public coach?: string
   ) {}
@@ -247,7 +273,7 @@ export class MatchupTeam {
     return new MatchupTeam(
       ruleset,
       data.teamName,
-      data.team.map((pokemon) => new DraftSpecies(pokemon, ruleset)),
+      data.team.map((pokemon) => new DraftSpecie(pokemon, ruleset)),
       data._id,
       data.coach
     );

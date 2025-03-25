@@ -8,7 +8,7 @@ import {
   StatsTable,
   TypeName,
 } from "@pkmn/data";
-import { DraftSpecies } from "./pokemon";
+import { DraftSpecie } from "./pokemon";
 
 export namespace Teambuilder {
   export class Pokemon {
@@ -21,7 +21,7 @@ export namespace Teambuilder {
     moves: [ID | null, ID | null, ID | null, ID | null];
     teraType: TypeName;
     constructor(
-      public specie: DraftSpecies,
+      public specie: DraftSpecie,
       options?: {
         evs?: Partial<StatsTable>;
         ivs?: Partial<StatsTable>;

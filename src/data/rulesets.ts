@@ -137,7 +137,7 @@ export type RulesetId =
   | "insurgance";
 
 export class Ruleset extends Generation {
-  name: string;
+  name: RulesetId;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
   constructor(
     dex: ModdedDex,

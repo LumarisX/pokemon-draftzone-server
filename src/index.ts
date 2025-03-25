@@ -102,3 +102,9 @@ function onListening(): void {
 }
 
 export const bot = startDiscordBot();
+
+export class PZError extends Error {
+  constructor(public status: number, message?: string) {
+    super(message);
+  }
+}

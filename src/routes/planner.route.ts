@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Route } from ".";
-import { DraftSpecies } from "../classes/pokemon";
+import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
@@ -12,7 +12,7 @@ export const PlannerRoutes: Route = {
     "/": {
       get: async (req: Request, res: Response) => {
         try {
-          let team: DraftSpecies[] = [];
+          let team: DraftSpecie[] = [];
           let ruleset = getRuleset(
             typeof req.query.ruleset === "string" ? req.query.ruleset : ""
           );
@@ -24,11 +24,7 @@ export const PlannerRoutes: Route = {
             team = req.query.team.split(",").map((id: string) => {
               let specie = ruleset.dex.species.get(id);
               if (!specie) throw new Error(`${id} is an unknown id.`);
-              let draftSpecies: DraftSpecies = new DraftSpecies(
-                specie,
-                {},
-                ruleset
-              );
+              let draftSpecies: DraftSpecie = new DraftSpecie(specie, ruleset);
               return draftSpecies;
             });
             let typechart = new Typechart(team);

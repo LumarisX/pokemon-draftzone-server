@@ -13,7 +13,6 @@ import {
   Move,
   MoveName,
   Nonstandard,
-  Species,
   SpeciesAbility,
   SpeciesName,
   SpeciesTag,
@@ -29,6 +28,7 @@ import {
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
 import { getBst } from "./specieUtil";
+import { PZError } from "..";
 
 export type PokemonOptions = {
   shiny?: boolean;
@@ -50,7 +50,7 @@ export type Pokemon = PokemonOptions & {
   name: string;
 };
 
-export class DraftSpecies implements Specie, Pokemon {
+export class DraftSpecie implements Specie, Pokemon {
   effectType!: "Pokemon";
   kind!: "Species";
   baseSpecies!: SpeciesName;
@@ -122,40 +122,32 @@ export class DraftSpecies implements Specie, Pokemon {
 
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
-  constructor(pokemon: { id: string } & PokemonOptions, ruleset: Ruleset);
-  constructor(species: Species, data: PokemonOptions, ruleset: Ruleset);
   constructor(
-    arg1: ({ id: string } & PokemonOptions) | Species,
-    arg2: Ruleset | PokemonOptions,
-    arg3?: Ruleset
+    pokemonData: PokemonData | (Specie & PokemonOptions),
+    ruleset: Ruleset
   ) {
-    let species: Species;
-    let data: PokemonOptions;
-    let ruleset: Ruleset;
-    if ("exists" in arg1) {
-      species = arg1;
-      data = arg2 as PokemonOptions;
-      ruleset = arg3!;
-    } else {
-      const pokemon = arg1;
-      ruleset = arg2 as Ruleset;
-      species = ruleset.species.get(pokemon.id)!;
-      data = pokemon;
-    }
-    const specie = new Specie(ruleset.dex, ruleset.exists, species);
+    const specie =
+      pokemonData instanceof Specie
+        ? pokemonData
+        : ruleset.species.get(pokemonData.id);
+
+    if (!specie)
+      throw new PZError(400, `${pokemonData.id} is not a valid specie.`);
+
     Object.assign(this, specie);
-    this.toString = specie.toString;
-    this.toJSON = specie.toJSON;
-    this.shiny = data.shiny;
-    this._formeNum = specie.formeNum;
-    this.capt = data.capt;
-    this.nickname = data.nickname;
-    this.modifiers = data.modifiers;
-    this.draftFormes = data.draftFormes
+    this.capt = pokemonData.capt;
+    this.nickname = pokemonData.nickname;
+    this.modifiers = pokemonData.modifiers;
+    this.draftFormes = pokemonData.draftFormes
       ?.map((forme) => ruleset.species.get(forme))
       .filter((specie) => specie?.exists)
       .map((specie) => specie!.id);
     this.ruleset = ruleset;
+    this.toString = specie.toString;
+    this.toJSON = specie.toJSON;
+    this.shiny = pokemonData.shiny;
+    this._formeNum = specie.formeNum;
+
     if (specie.unreleasedHidden) {
       this.abilities = {
         0: specie.abilities[0],
@@ -620,7 +612,7 @@ export class DraftSpecies implements Specie, Pokemon {
     return finalCoverage;
   }
 
-  async bestCoverage(oppTeam: DraftSpecies[]) {
+  async bestCoverage(oppTeam: DraftSpecie[]) {
     const coverage = await this.coverage();
     const allMoves = [...coverage.physical, ...coverage.special];
     const best: { moves: CoverageMove[]; maxEffectiveness: number } = {

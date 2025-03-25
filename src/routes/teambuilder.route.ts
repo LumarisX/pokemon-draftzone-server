@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Route } from ".";
-import { DraftSpecies } from "../classes/pokemon";
+import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import fs from "fs";
 import { toID } from "@pkmn/data";
@@ -18,7 +18,7 @@ export const TeambuilderRoutes: Route = {
             const ruleset = getRuleset(rulesetId);
             const specie = ruleset.species.get(id);
             if (specie) {
-              const draftSpecies = new DraftSpecies(specie, {}, ruleset);
+              const draftSpecies = new DraftSpecie(specie, ruleset);
               return res.json(await draftSpecies.toTeambuilder());
             }
           }
