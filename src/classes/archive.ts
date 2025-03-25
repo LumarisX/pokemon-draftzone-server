@@ -7,7 +7,7 @@ import {
   ArchiveModel,
 } from "../models/archive.model";
 import { DraftData } from "../models/draft.model";
-import { MatchData, StatData } from "../models/matchup.model";
+import { MatchData, MatchStatData } from "../models/matchup.model";
 import { getMatchups } from "../services/database-services/draft.services";
 
 export class Archive {
@@ -36,8 +36,9 @@ export class Archive {
     const matchups = await getMatchups(this.draft._id);
     data.matches = matchups.map((matchup) => {
       let [winner, score] = this.matchupScore(matchup.matches);
+
       return {
-        teamName: matchup.bTeam.teamName,
+        teamName: "teamName" in matchup.bTeam ? matchup.bTeam.teamName : "", //temp
         stage: matchup.stage,
         score: score,
         winner: winner,
@@ -74,7 +75,7 @@ export class Archive {
     return [winner, score];
   }
 
-  private matchupStats(matches: MatchData[]): StatData[] {
+  private matchupStats(matches: MatchData[]): MatchStatData[] {
     let stats: {
       [key: string]: {
         indirect?: number;

@@ -255,67 +255,67 @@ export const MatchupRoutes: Route = {
       matchup_id
     ) => {
       try {
-        if (mongoose.Types.ObjectId.isValid(matchup_id)) {
-          res.rawMatchup = await MatchupModel.findById(matchup_id);
-          let matchup: MatchupData | undefined = res.rawMatchup?.toObject();
-          if (matchup === undefined) {
-            res
-              .status(400)
-              .json({ message: "Matchup ID not found", code: "MR-P1-01" });
-            return next();
-          }
-          const aTeam = await DraftModel.findById(matchup.aTeam._id).lean();
-          if (aTeam === null) {
-            res
-              .status(400)
-              .json({ message: "Draft ID not found", code: "MR-P1-02" });
-            return next();
-          }
-          res.ruleset = getRuleset(aTeam.ruleset);
-          res.matchup = {
-            ...matchup,
-            aTeam: {
-              owner: aTeam.owner,
-              teamName: aTeam.teamName,
-              team: aTeam.team.map((pokemon: any) => {
-                let specie = res.ruleset!.dex.species.get(pokemon.id);
-                if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-                let draftSpecies: DraftSpecies = new DraftSpecies(
-                  specie,
-                  pokemon,
-                  res.ruleset!
-                );
-                return draftSpecies;
-              }),
-              _id: aTeam._id,
-            },
-            bTeam: {
-              ...matchup.bTeam,
-              team: matchup.bTeam.team.map((pokemon: any) => {
-                let specie = res.ruleset!.dex.species.get(pokemon.id);
-                if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-                let draftSpecies: DraftSpecies = new DraftSpecies(
-                  specie,
-                  pokemon,
-                  res.ruleset!
-                );
-                return draftSpecies;
-              }),
-            },
-            leagueName: aTeam.leagueName,
-            formatId: aTeam.format as FormatId,
-            rulesetId: aTeam.ruleset as RulesetId,
-          };
-          if (res.ruleset === undefined) {
-            return res
-              .status(400)
-              .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
-          }
-        } else {
-          return res
-            .status(400)
-            .json({ message: "Invalid ID format", code: "MR-P1-04" });
-        }
+        // if (mongoose.Types.ObjectId.isValid(matchup_id)) {
+        //   res.rawMatchup = await MatchupModel.findById(matchup_id);
+        //   let matchup: MatchupData | undefined = res.rawMatchup?.toObject();
+        //   if (matchup === undefined) {
+        //     res
+        //       .status(400)
+        //       .json({ message: "Matchup ID not found", code: "MR-P1-01" });
+        //     return next();
+        //   }
+        //   const aTeam = await DraftModel.findById(matchup.aTeam._id).lean();
+        //   if (aTeam === null) {
+        //     res
+        //       .status(400)
+        //       .json({ message: "Draft ID not found", code: "MR-P1-02" });
+        //     return next();
+        //   }
+        //   res.ruleset = getRuleset(aTeam.ruleset);
+        //   res.matchup = {
+        //     ...matchup,
+        //     aTeam: {
+        //       owner: aTeam.owner,
+        //       teamName: aTeam.teamName,
+        //       team: aTeam.team.map((pokemon: any) => {
+        //         let specie = res.ruleset!.dex.species.get(pokemon.id);
+        //         if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+        //         let draftSpecies: DraftSpecies = new DraftSpecies(
+        //           specie,
+        //           pokemon,
+        //           res.ruleset!
+        //         );
+        //         return draftSpecies;
+        //       }),
+        //       _id: aTeam._id,
+        //     },
+        //     bTeam: {
+        //       ...matchup.bTeam,
+        //       team: matchup.bTeam.team.map((pokemon: any) => {
+        //         let specie = res.ruleset!.dex.species.get(pokemon.id);
+        //         if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
+        //         let draftSpecies: DraftSpecies = new DraftSpecies(
+        //           specie,
+        //           pokemon,
+        //           res.ruleset!
+        //         );
+        //         return draftSpecies;
+        //       }),
+        //     },
+        //     leagueName: aTeam.leagueName,
+        //     formatId: aTeam.format as FormatId,
+        //     rulesetId: aTeam.ruleset as RulesetId,
+        //   };
+        //   if (res.ruleset === undefined) {
+        //     return res
+        //       .status(400)
+        //       .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
+        //   }
+        // } else {
+        //   return res
+        //     .status(400)
+        //     .json({ message: "Invalid ID format", code: "MR-P1-04" });
+        // }
       } catch (error) {
         res
           .status(500)

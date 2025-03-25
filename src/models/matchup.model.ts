@@ -1,90 +1,77 @@
-import mongoose, { Document, Types } from "mongoose";
-import { DraftSpecies } from "../classes/pokemon";
-import { pokemonSchema } from "./pokemon.schema";
+import { Document, model, Schema, Types } from "mongoose";
+import { PokemonData, pokemonSchema } from "./pokemon.schema";
 
-const teamSchema = new mongoose.Schema(
+const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
   {
-    team: {
-      type: [pokemonSchema],
-    },
-    name: {
-      type: String,
-    },
-    teamName: {
-      type: String,
-    },
-    paste: {
-      type: String,
-    },
-    _id: {
-      type: mongoose.Schema.Types.ObjectId,
-    },
+    _id: { type: Schema.Types.ObjectId, required: true },
   },
   { _id: false }
 );
 
-const matchTeamSchema = new mongoose.Schema(
+const matchupTeamFullSchema = new Schema<MatchupTeamFull>(
   {
-    stats: {
-      type: [],
-    },
-    score: {
-      type: Number,
-      default: 0,
-    },
+    teamName: { type: String, required: true },
+    coach: { type: String, required: true },
+    team: { type: [pokemonSchema], required: true },
   },
   { _id: false }
 );
 
-const matchSchema = new mongoose.Schema(
+const matchupTeamSchema = new Schema<MatchupTeam>(
+  { type: { type: String, required: true, enum: ["reference", "full"] } },
+  { _id: false, discriminatorKey: "type" }
+);
+
+matchupTeamSchema.discriminator("reference", matchupTeamReferenceSchema);
+matchupTeamSchema.discriminator("full", matchupTeamFullSchema);
+
+const matchTeamSchema = new Schema<TeamStatData>(
   {
-    aTeam: {
-      type: matchTeamSchema,
-      required: true,
-    },
-    bTeam: {
-      type: matchTeamSchema,
-      required: true,
-    },
-    replay: {
-      type: String,
-    },
-    winner: {
-      type: String,
-    },
+    stats: { type: [], required: true },
+    score: { type: Number, default: 0 },
   },
   { _id: false }
 );
 
-export const matchupSchema = new mongoose.Schema(
+const matchSchema = new Schema<MatchData>(
   {
-    aTeam: {
-      type: teamSchema,
-      required: true,
-    },
-    bTeam: {
-      type: teamSchema,
-      required: true,
-    },
-    gameTime: {
-      type: String,
-    },
-    reminder: {
-      type: Number,
-    },
-    stage: {
-      type: String,
-      required: true,
-    },
-    matches: {
-      type: [matchSchema],
-      required: true,
-    },
+    aTeam: { type: matchTeamSchema, required: true },
+    bTeam: { type: matchTeamSchema, required: true },
+    replay: { type: String },
+    winner: { type: String },
+  },
+  { _id: false }
+);
+
+export const matchupSchema = new Schema<MatchupData>(
+  {
+    aTeam: { type: matchupTeamSchema, required: true },
+    bTeam: { type: matchupTeamSchema, required: true },
+    gameTime: { type: String },
+    reminder: { type: Number },
+    stage: { type: String, required: true },
+    matches: { type: [matchSchema], required: true },
   },
   { timestamps: true }
 );
 
-export type StatData = [
+export type MatchupTeamBase = { type: "reference" | "full" };
+
+export type MatchupTeamReference = MatchupTeamBase & {
+  type: "reference";
+  _id: Types.ObjectId;
+};
+
+export type MatchupTeamFull = MatchupTeamBase & {
+  type: "full";
+  teamName: string;
+  coach: string;
+  team: PokemonData[];
+};
+
+export type MatchupTeam = MatchupTeamReference | MatchupTeamFull;
+
+export type MatchStatData = [
   string,
   {
     indirect?: number;
@@ -94,46 +81,29 @@ export type StatData = [
   }
 ];
 
+export type TeamStatData = {
+  stats: MatchStatData[];
+  score: number;
+};
+
 export type MatchData = {
-  aTeam: {
-    stats: StatData[];
-    score: number;
-  };
-  bTeam: {
-    stats: StatData[];
-    score: number;
-  };
+  aTeam: TeamStatData;
+  bTeam: TeamStatData;
   replay?: string;
   winner?: "a" | "b";
 };
 
-export interface MatchupData {
-  aTeam: {
-    team: DraftSpecies[];
-    owner: string;
-    name?: string;
-    teamName?: string;
-    paste?: string;
-    _id?: Types.ObjectId;
-  };
-  bTeam: {
-    team: DraftSpecies[];
-    name?: string;
-    teamName?: string;
-    paste?: string;
-    _id?: Types.ObjectId;
-  };
+export type MatchupData = {
+  aTeam: MatchupTeam;
+  bTeam: MatchupTeam;
   gameTime?: string;
   reminder?: number;
   stage: string;
-  createdAt?: Date;
-  updatedAt?: Date;
   matches: MatchData[];
-}
+};
 
-export interface MatchupDocument extends Document<any, any>, MatchupData {}
+export interface MatchupDocument
+  extends Document<Types.ObjectId>,
+    MatchupData {}
 
-export const MatchupModel = mongoose.model<MatchupDocument>(
-  "matchup",
-  matchupSchema
-);
+export const MatchupModel = model<MatchupData>("matchup", matchupSchema);

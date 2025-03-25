@@ -2,7 +2,7 @@ import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 import { PokemonData } from "../models/pokemon.schema";
-import { PokemonBuilder, PokemonFormData } from "./pokemon";
+import { DraftSpecies, PokemonBuilder, PokemonFormData } from "./pokemon";
 
 type MatchupDoc = {
   aTeam: Side;
@@ -222,6 +222,42 @@ export class GameTime {
       emailTime: this.timeData.email
         ? Math.floor(this.timeData.emailTime * 60)
         : -1,
+    };
+  }
+}
+
+export class MatchupTeam {
+  constructor(
+    public ruleset: Ruleset,
+    public teamName: string,
+    public team: DraftSpecies[],
+    public _id?: Types.ObjectId,
+    public coach?: string
+  ) {}
+
+  static fromData(
+    data: {
+      teamName: string;
+      team: PokemonData[];
+      _id?: Types.ObjectId;
+      coach?: string;
+    },
+    ruleset: Ruleset
+  ): MatchupTeam {
+    return new MatchupTeam(
+      ruleset,
+      data.teamName,
+      data.team.map((pokemon) => new DraftSpecies(pokemon, ruleset)),
+      data._id,
+      data.coach
+    );
+  }
+
+  toClient() {
+    return {
+      teamName: this.teamName,
+      coach: this.coach,
+      team: this.team.map((pokemon) => pokemon.toClient()),
     };
   }
 }

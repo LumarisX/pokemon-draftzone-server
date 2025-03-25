@@ -3,27 +3,36 @@ import mongoose, { Types } from "mongoose";
 import { getSub, jwtCheck, Route, sendError, SubRequest } from ".";
 import { Archive } from "../classes/archive";
 import { Draft2 } from "../classes/draft";
-import { GameTime, Matchup, Score } from "../classes/matchup";
-import { DraftSpecies } from "../classes/pokemon";
+import { GameTime, Matchup, MatchupTeam, Score } from "../classes/matchup";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
-import { MatchupDocument, MatchupModel } from "../models/matchup.model";
+import {
+  MatchupData,
+  MatchupDocument,
+  MatchupModel,
+} from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
   getScore,
   getStats,
 } from "../services/database-services/draft.services";
 import { $matchups } from "./matchup.route";
+import { Opponent } from "../classes/opponent";
+
+type MatchupResponse = DraftResponse & {
+  matchup?: MatchupData;
+  aTeam?: MatchupTeam;
+  bTeam?: MatchupTeam;
+  rawMatchup?: MatchupDocument;
+};
 
 type DraftResponse = Response & {
   rawDraft?: DraftDocument | null;
-  rawMatchup?: MatchupDocument | null;
   draft?: DraftData & {
     _id: Types.ObjectId;
   };
   draft2?: Draft2;
   ruleset?: Ruleset;
-  matchup?: MatchupDocument;
 };
 
 const routeCode = "DR";
@@ -32,7 +41,8 @@ export const DraftRoutes: Route = {
   middleware: [jwtCheck, getSub],
   subpaths: {
     "/teams": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R1",
+      get: async function (req: SubRequest, res: DraftResponse) {
         try {
           const drafts = await DraftModel.find({ owner: req.sub }).sort({
             createdAt: -1,
@@ -42,10 +52,15 @@ export const DraftRoutes: Route = {
             drafts.map((draft) => Draft2.fromDocument(draft).toClient())
           );
         } catch (error) {
-          return sendError(res, error as Error, `${routeCode}-R1-01`);
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-01`
+          );
         }
       },
-      post: async (req: SubRequest, res: DraftResponse) => {
+      post: async function (req: SubRequest, res: DraftResponse) {
         if (!req.sub) {
           return;
         }
@@ -63,12 +78,18 @@ export const DraftRoutes: Route = {
           await draftDoc.save();
           return res.status(201).json({ message: "Draft Added" });
         } catch (error) {
-          return sendError(res, error as Error, `${routeCode}-R1-03`);
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-03`
+          );
         }
       },
     },
     "/:team_id": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R2",
+      get: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draft) {
           return;
         }
@@ -76,12 +97,15 @@ export const DraftRoutes: Route = {
           res.draft.score = await getScore(res.draft._id);
           res.json(res.draft2!.toClient());
         } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R2-01" });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-03`
+          );
         }
       },
-      patch: async (req: SubRequest, res: DraftResponse) => {
+      patch: async function (req: SubRequest, res: DraftResponse) {
         if (!req.sub) return;
         try {
           const team_id = req.params.team_id;
@@ -106,14 +130,15 @@ export const DraftRoutes: Route = {
             .status(404)
             .json({ message: "Draft not found", code: "DR-R2-02" });
         } catch (error) {
-          console.error("Error updating draft:", error);
-          res
-            .status(500)
-            .json({ message: "Internal Server Error", code: "DR-R2-03" });
-          return sendError(res, error as Error, `${routeCode}-R2-03`);
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-03`
+          );
         }
       },
-      delete: async (req: SubRequest, res: DraftResponse) => {
+      delete: async function (req: SubRequest, res: DraftResponse) {
         if (!res.rawDraft) {
           return;
         }
@@ -121,32 +146,38 @@ export const DraftRoutes: Route = {
           await res.rawDraft.deleteOne();
           res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
-          console.error("Error deleting draft:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R2-04" });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-04`
+          );
         }
       },
     },
     "/:team_id/matchups": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R3",
+      get: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draft) {
           return;
         }
         try {
-          let matchups = await MatchupModel.find({
+          let matchups: MatchupDocument[] = await MatchupModel.find({
             "aTeam._id": res.draft._id,
           }).sort({
             createdAt: -1,
           });
           res.json(
             matchups.map((rawMatchup) => {
-              let matchup = rawMatchup.toObject();
+              const matchup = rawMatchup.toObject<MatchupData>();
               return {
                 ...matchup,
                 bTeam: {
                   ...matchup.bTeam,
-                  team: matchup.bTeam.team.map((pokemon) => ({
+                  team: (matchup.bTeam.type === "full"
+                    ? matchup.bTeam.team
+                    : []
+                  ).map((pokemon) => ({
                     ...pokemon,
                     name: getName(pokemon.id),
                   })),
@@ -155,12 +186,15 @@ export const DraftRoutes: Route = {
             })
           );
         } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R3-01" });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-01`
+          );
         }
       },
-      post: async (req: SubRequest, res: DraftResponse) => {
+      post: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draft) {
           return;
         }
@@ -169,15 +203,18 @@ export const DraftRoutes: Route = {
           (await matchup.createMatchup()).save();
           res.status(201).json({ message: "Matchup Added" });
         } catch (error) {
-          console.error("Error saving matchup:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R3-02" });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-02`
+          );
         }
       },
     },
     "/:team_id/stats": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R4",
+      get: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draft || !res.ruleset) {
           return;
         }
@@ -185,11 +222,18 @@ export const DraftRoutes: Route = {
           res.json(await getStats(res.ruleset, res.draft._id));
         } catch (error) {
           res.status(500).json({ message: (error as Error).message });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-01`
+          );
         }
       },
     },
     "/:team_id/archive": {
-      delete: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R5",
+      delete: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draft || !res.rawDraft) {
           return;
         }
@@ -208,30 +252,11 @@ export const DraftRoutes: Route = {
       },
     },
     "/:team_id/:matchup_id": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R6",
+      get: async function (req: SubRequest, res: MatchupResponse) {
         try {
-          //poor way of doing this
-          res.json({
-            ...res.matchup,
-            aTeam: {
-              ...res.matchup!.aTeam,
-              team: res.matchup!.aTeam.team.map((pokemon: any) => ({
-                id: pokemon.id,
-                name: pokemon.name,
-                capt: pokemon.capt,
-                shiny: pokemon.shiny,
-              })),
-            },
-            bTeam: {
-              ...res.matchup!.bTeam,
-              team: res.matchup!.bTeam.team.map((pokemon: any) => ({
-                id: pokemon.id,
-                name: pokemon.name,
-                capt: pokemon.capt,
-                shiny: pokemon.shiny,
-              })),
-            },
-          });
+          const opponent = Opponent.fromMatchup(res.matchup!, res.bTeam!);
+          res.json(opponent.toClient());
         } catch (error) {
           res
             .status(500)
@@ -239,42 +264,46 @@ export const DraftRoutes: Route = {
         }
       },
 
-      patch: async (req: SubRequest, res: DraftResponse) => {
-        if (!res.draft) {
-          return;
-        }
+      patch: async function (req: SubRequest, res: DraftResponse) {
+        if (!res.draft) return;
         try {
-          const matchup = new Matchup(res.ruleset!, req.body, res.draft._id);
-          const matchupDoc = await matchup.createMatchup();
-          const updatedMatchup = await MatchupModel.findByIdAndUpdate(
-            req.params.matchup_id,
-            {
-              "bTeam.teamName": matchupDoc.bTeam.teamName,
-              stage: matchupDoc.stage,
-              "bTeam.team": matchupDoc.bTeam.team,
-            },
-            { new: true, upsert: true }
-          );
-          $matchups.del(`${res.draft._id}-${req.params.matchup_id}`);
-          if (updatedMatchup) {
-            res
-              .status(200)
-              .json({ message: "Matchup Updated", draft: updatedMatchup });
-          } else {
-            res
-              .status(404)
-              .json({ message: "Matchup not found", code: "DR-R5-02" });
-          }
+          const opponent = Opponent.fromForm(req.body, res.ruleset!);
+          console.log(opponent);
+          res.status(200).json({ message: "Matchup reply" });
+          // const matchup = new Matchup(res.ruleset!, req.body, res.draft._id);
+          // const matchupDoc = await matchup.createMatchup();
+          // const updatedMatchup = await MatchupModel.findByIdAndUpdate(
+          //   req.params.matchup_id,
+          //   {
+          //     "bTeam.teamName": matchupDoc.bTeam.teamName,
+          //     stage: matchupDoc.stage,
+          //     "bTeam.team": matchupDoc.bTeam.team,
+          //   },
+          //   { new: true, upsert: true }
+          // );
+          // $matchups.del(`${res.draft._id}-${req.params.matchup_id}`);
+          // if (updatedMatchup) {
+          //   res
+          //     .status(200)
+          //     .json({ message: "Matchup Updated", draft: updatedMatchup });
+          // } else {
+          //   res
+          //     .status(404)
+          //     .json({ message: "Matchup not found", code: "DR-R5-02" });
+          // }
         } catch (error) {
-          console.error("Error updating matchup:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R5-03" });
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-${this.pathId}-03`
+          );
         }
       },
     },
     "/:team_id/:matchup_id/score": {
-      patch: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R7",
+      patch: async function (req: SubRequest, res: DraftResponse) {
         try {
           const score = new Score(req.body);
           const processedScore = await score.processScore();
@@ -305,7 +334,8 @@ export const DraftRoutes: Route = {
       },
     },
     "/:team_id/:matchup_id/schedule": {
-      get: async (req: SubRequest, res: DraftResponse) => {
+      pathId: "R8",
+      get: async function (req: SubRequest, res: MatchupResponse) {
         if (!res.draft) {
           return;
         }
@@ -326,7 +356,7 @@ export const DraftRoutes: Route = {
             .json({ message: (error as Error).message, code: "DR-R6-02" });
         }
       },
-      patch: async (req: SubRequest, res: DraftResponse) => {
+      patch: async function (req: SubRequest, res: DraftResponse) {
         try {
           const time = new GameTime(req.body);
           const processedTime = await time.processTime();
@@ -357,7 +387,12 @@ export const DraftRoutes: Route = {
     },
   },
   params: {
-    team_id: async (req: SubRequest, res: DraftResponse, next, team_id) => {
+    team_id: async function (
+      req: SubRequest,
+      res: DraftResponse,
+      next,
+      team_id
+    ) {
       try {
         let user_id = req.sub;
         const rawDraft: DraftDocument | null = mongoose.Types.ObjectId.isValid(
@@ -381,16 +416,13 @@ export const DraftRoutes: Route = {
         res.draft2 = Draft2.fromDocument(draft);
         res.ruleset = getRuleset(res.draft!.ruleset);
       } catch (error) {
-        console.log(error);
-        return res
-          .status(500)
-          .json({ message: (error as Error).message, code: "DR-P2-02" });
+        return sendError(res, 500, error as Error, `DR-P2-02`);
       }
       next();
     },
     matchup_id: async (
       req: SubRequest,
-      res: DraftResponse,
+      res: MatchupResponse,
       next,
       matchup_id
     ) => {
@@ -400,49 +432,72 @@ export const DraftRoutes: Route = {
             .status(400)
             .json({ message: "Team id not found", code: "DR-P1-01" });
         }
-        const rawMatchup = await MatchupModel.findById(matchup_id);
-        const matchup = rawMatchup?.toObject();
-        if (!matchup) {
-          res
+        const rawMatchup: MatchupDocument | null = await MatchupModel.findById(
+          matchup_id
+        );
+        if (!rawMatchup) {
+          return res
             .status(400)
             .json({ message: "Matchup ID not found", code: "DR-P1-02" });
-          next();
-          return;
         }
-        const draft = await DraftModel.findById(matchup.aTeam._id);
-        if (draft === null) {
-          res
-            .status(400)
-            .json({ message: "Matchup ID not found", code: "DR-P1-03" });
-          next();
-          return;
-        }
-        matchup.aTeam.teamName = draft.teamName;
-        matchup.aTeam.team = draft.team.map((pokemon) => {
-          let specie = res.ruleset!.dex.species.get(pokemon.id);
-          if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(
-            specie,
-            pokemon,
-            res.ruleset!
-          );
-          return draftSpecies;
-        });
-        matchup.bTeam.team = matchup.bTeam.team.map((pokemon) => {
-          let specie = res.ruleset!.dex.species.get(pokemon.id);
-          if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-          let draftSpecies: DraftSpecies = new DraftSpecies(
-            specie,
-            pokemon,
-            res.ruleset!
-          );
-          return draftSpecies;
-        });
+        const matchup = rawMatchup.toObject<MatchupData>();
         res.matchup = matchup;
+
+        if ("_id" in matchup.aTeam) {
+          const draft: DraftDocument | null = await DraftModel.findById(
+            matchup.aTeam._id
+          );
+          if (!draft) {
+            return res
+              .status(400)
+              .json({ message: "Matchup ID not found", code: "DR-P1-03" });
+          }
+          res.aTeam = MatchupTeam.fromData(
+            {
+              teamName: draft.teamName,
+              team: draft.team,
+            },
+            res.ruleset!
+          );
+        } else {
+          res.aTeam = MatchupTeam.fromData(
+            {
+              teamName: matchup.aTeam.teamName,
+              team: matchup.aTeam.team,
+              coach: matchup.aTeam.coach,
+            },
+            res.ruleset!
+          );
+        }
+        if ("_id" in matchup.bTeam) {
+          const draft: DraftDocument | null = await DraftModel.findById(
+            matchup.bTeam._id
+          );
+          if (!draft) {
+            return res
+              .status(400)
+              .json({ message: "Matchup ID not found", code: "DR-P1-03" });
+          }
+          res.bTeam = MatchupTeam.fromData(
+            {
+              teamName: draft.teamName,
+              team: draft.team,
+              _id: matchup.bTeam._id,
+            },
+            res.ruleset!
+          );
+        } else {
+          res.bTeam = MatchupTeam.fromData(
+            {
+              teamName: matchup.bTeam.teamName,
+              team: matchup.bTeam.team,
+              coach: matchup.bTeam.coach,
+            },
+            res.ruleset!
+          );
+        }
       } catch (error) {
-        return res
-          .status(500)
-          .json({ message: (error as Error).message, code: "DR-P1-04" });
+        return sendError(res, 500, error as Error, `DR-P1-04`);
       }
       next();
     },

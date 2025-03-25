@@ -14,6 +14,7 @@ export type Route = {
   middleware?: Handler[];
   subpaths: {
     [subpath: string]: {
+      pathId?: string; //eventually make this required for error tracking
       get?: (req: Request, res: Response) => any;
       delete?: (req: Request, res: Response) => any;
       post?: (req: Request, res: Response) => any;
@@ -57,7 +58,12 @@ export const jwtCheck = auth({
   tokenSigningAlg: "RS256",
 });
 
-export function sendError(res: Response, error: Error, code: string) {
+export function sendError(
+  res: Response,
+  status: number,
+  error: Error,
+  code: string
+) {
   console.error(error);
-  return res.status(500).json({ message: error.message, code });
+  return res.status(status).json({ message: error.message, code });
 }
