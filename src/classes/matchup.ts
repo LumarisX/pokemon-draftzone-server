@@ -1,12 +1,11 @@
 import { Types } from "mongoose";
+import { PZError } from "..";
 import { Ruleset } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchData, MatchupData } from "../models/matchup.model";
 import { PokemonData } from "../models/pokemon.schema";
 import { Draft2 } from "./draft";
 import { DraftSpecie } from "./pokemon";
-import { PZError } from "..";
-import { Opponent } from "./opponent";
 
 export class Matchup {
   constructor(
@@ -28,10 +27,7 @@ export class Matchup {
     public reminder?: number
   ) {}
 
-  static async fromDocument(
-    data: MatchupData,
-    draft?: Draft2
-  ): Promise<Matchup> {
+  static async fromData(data: MatchupData, draft?: Draft2): Promise<Matchup> {
     if (!draft) {
       const draftDoc: DraftDocument | null = await DraftModel.findById(
         data.aTeam._id
@@ -95,6 +91,10 @@ export class Matchup {
       gameTime: this.gameTime,
       reminder: this.reminder,
     };
+  }
+
+  toClient() {
+    return {};
   }
 }
 

@@ -251,7 +251,7 @@ export const DraftRoutes: Route = {
       pathId: "R6",
       get: async function (req: SubRequest, res: MatchupResponse) {
         try {
-          const opponent = Opponent.fromMatchup(res.matchup!, res.bTeam!);
+          const opponent = Opponent.fromMatchup(res.matchupObj!, res.bTeam!);
           res.json(opponent.toClient());
         } catch (error) {
           res
@@ -264,6 +264,7 @@ export const DraftRoutes: Route = {
         if (!res.draft) return;
         try {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
+          console.log(req.body.team, opponent.toData().bTeam.team);
           const updatedMatchup = await MatchupModel.findByIdAndUpdate(
             req.params.matchup_id,
             opponent.toData(),
@@ -429,8 +430,7 @@ export const DraftRoutes: Route = {
         }
         const matchup = rawMatchup.toObject<MatchupData>();
         res.matchup = matchup;
-        const matchupObj = Matchup.fromDocument(matchup, res.draft2!);
-        res.matchupObj = await matchupObj;
+        res.matchupObj = await Matchup.fromData(matchup, res.draft2!);
         res.aTeam = MatchupTeam.fromData(
           {
             teamName: res.draft2!.teamName,

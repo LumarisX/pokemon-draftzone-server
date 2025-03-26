@@ -1,11 +1,8 @@
-import { pokeRound } from "@smogon/calc/dist/mechanics/util";
 import { Ruleset } from "../data/rulesets";
-import { MatchData, MatchupData } from "../models/matchup.model";
-import { MatchupTeam } from "./matchup";
-import { DraftSpecie, PokemonBuilder, PokemonFormData } from "./pokemon";
+import { Matchup, MatchupTeam } from "./matchup";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 type OpponentClientData = {
-  matches: MatchData[];
   stage: string;
   teamName: string;
   coach: string | undefined;
@@ -16,7 +13,6 @@ export class Opponent {
   constructor(
     public ruleset: Ruleset,
     public stage: string,
-    public matches: MatchData[],
     public team: DraftSpecie[],
     public teamName: string,
     public coach?: string
@@ -24,7 +20,6 @@ export class Opponent {
 
   toClient(): OpponentClientData {
     return {
-      matches: this.matches,
       stage: this.stage,
       teamName: this.teamName,
       coach: this.coach,
@@ -42,11 +37,10 @@ export class Opponent {
     );
   }
 
-  static fromMatchup(matchup: MatchupData, team: MatchupTeam): Opponent {
+  static fromMatchup(matchup: Matchup, team: MatchupTeam): Opponent {
     return new Opponent(
       team.ruleset,
       matchup.stage,
-      matchup.matches,
       team.team,
       team.teamName,
       team.coach
@@ -58,16 +52,9 @@ export class Opponent {
     const opponent = new Opponent(
       ruleset,
       data.stage,
-      data.matches,
       data.team
         .filter((pokemonData) => pokemonData.id)
-        .map((pokemonData) => {
-          const pokemon = new PokemonBuilder(ruleset, pokemonData);
-          if (pokemon.error) {
-            errors.push(pokemon.error);
-          }
-          return new DraftSpecie(pokemon.data, ruleset);
-        }),
+        .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
       data.teamName,
       data.coach
     );

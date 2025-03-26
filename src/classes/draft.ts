@@ -1,7 +1,7 @@
 import { FormatId } from "../data/formats";
 import { Ruleset, RulesetId, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft.model";
-import { DraftSpecie, PokemonBuilder, PokemonFormData } from "./pokemon";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 export class Draft2 {
   constructor(
@@ -43,13 +43,7 @@ export class Draft2 {
       user_id,
       formData.team
         .filter((pokemonData) => pokemonData.id)
-        .map(
-          (pokemonData) =>
-            new DraftSpecie(
-              new PokemonBuilder(ruleset, pokemonData).data,
-              ruleset
-            )
-        ),
+        .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
       formData.doc?.trim()
     );
   }

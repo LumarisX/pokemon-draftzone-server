@@ -123,7 +123,7 @@ export class DraftSpecie implements Specie, Pokemon {
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
   constructor(
-    pokemonData: PokemonData | (Specie & PokemonOptions),
+    pokemonData: (PokemonData | PokemonFormData) | (Specie & PokemonOptions),
     ruleset: Ruleset
   ) {
     const specie =
@@ -133,16 +133,28 @@ export class DraftSpecie implements Specie, Pokemon {
 
     if (!specie)
       throw new PZError(400, `${pokemonData.id} is not a valid specie.`);
-
     Object.assign(this, specie);
-    this.capt = pokemonData.capt;
-    this.nickname = pokemonData.nickname;
-    this.modifiers = pokemonData.modifiers;
-    this.draftFormes = pokemonData.draftFormes
-      ?.map((forme) => ruleset.species.get(forme))
-      .filter((specie) => specie?.exists)
-      .map((specie) => specie!.id);
     this.ruleset = ruleset;
+    const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
+    const ZTYPES = TYPES.filter((name) => name !== "Stellar");
+    (this.capt = {
+      tera: pokemonData.capt?.tera
+        ? pokemonData.capt.tera.length >= TYPES.length
+          ? []
+          : pokemonData.capt.tera
+        : undefined,
+      z: pokemonData.capt?.z
+        ? pokemonData.capt.z.length >= ZTYPES.length
+          ? []
+          : pokemonData.capt.z
+        : undefined,
+      dmax: pokemonData.capt?.dmax,
+    }),
+      (this.nickname = pokemonData.nickname);
+    this.modifiers = pokemonData.modifiers;
+    this.draftFormes = pokemonData.draftFormes?.map((specie) =>
+      typeof specie === "string" ? specie : specie.id
+    );
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
     this.shiny = pokemonData.shiny;
@@ -165,6 +177,9 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   toClient(): PokemonFormData {
+    const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
+    const ZTYPES = TYPES.filter((name) => name !== "Stellar");
+    console.log(this.name, this.capt?.tera);
     return {
       id: this.id,
       name: this.name,
@@ -175,7 +190,19 @@ export class DraftSpecie implements Specie, Pokemon {
         return { id: specie.id, name: specie.name };
       }),
       modifiers: this.modifiers,
-      capt: this.capt,
+      capt: {
+        tera: this.capt?.tera
+          ? this.capt.tera.length
+            ? this.capt.tera
+            : [...TYPES]
+          : undefined,
+        z: this.capt?.z
+          ? this.capt.z.length
+            ? this.capt.z
+            : [...ZTYPES]
+          : undefined,
+        dmax: this.capt?.dmax,
+      },
     };
   }
 
@@ -186,19 +213,7 @@ export class DraftSpecie implements Specie, Pokemon {
       shiny: this.shiny,
       draftFormes: this.draftFormes,
       modifiers: this.modifiers,
-      capt: {
-        tera: this.capt?.tera
-          ? this.capt.tera.length >= 19
-            ? []
-            : this.capt.tera
-          : undefined,
-        z: this.capt?.z
-          ? this.capt.z.length >= 18
-            ? []
-            : this.capt.z
-          : undefined,
-        dmax: this.capt?.dmax,
-      },
+      capt: this.capt,
     };
   }
 
@@ -692,49 +707,3 @@ export type PokemonFormData = {
     dmax?: boolean;
   };
 };
-
-export class PokemonBuilder {
-  data: PokemonData;
-  error: string | undefined;
-
-  constructor(ruleset: Ruleset, pokemonData: PokemonFormData) {
-    const modifiers = {
-      abilities: pokemonData.modifiers?.abilities?.length
-        ? pokemonData.modifiers.abilities
-        : undefined,
-      moves: pokemonData.modifiers?.moves?.length
-        ? pokemonData.modifiers.moves
-        : undefined,
-    };
-
-    const capt = {
-      tera: pokemonData.capt?.tera?.length
-        ? pokemonData.capt.tera.length >= 19
-          ? pokemonData.capt.tera
-          : []
-        : undefined,
-      z: pokemonData.capt?.z?.length
-        ? pokemonData.capt.z.length >= 18
-          ? pokemonData.capt.z
-          : []
-        : undefined,
-      dmax: pokemonData.capt?.dmax || undefined,
-    };
-
-    this.data = {
-      id: pokemonData.id,
-      shiny: pokemonData.shiny || undefined,
-      nickname: pokemonData.nickname || undefined,
-      draftFormes: pokemonData.draftFormes?.map((forme) => forme.id),
-      modifiers: Object.values(modifiers).some((v) => v)
-        ? modifiers
-        : undefined,
-      capt: Object.values(capt).some((v) => v) ? capt : undefined,
-    };
-
-    // if (!inDex(pokemonData.id)) {
-    //   this.error = `${this.data.name} not found in the pokedex`;
-    //   return;
-    // }
-  }
-}
