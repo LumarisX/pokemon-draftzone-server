@@ -109,6 +109,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   shoreup: ["Cleric"],
   slackoff: ["Cleric"],
   softboiled: ["Cleric"],
+  speedswap: ["Speed Control"],
   strengthsap: ["Cleric"],
   swallow: ["Cleric"],
   synthesis: ["Cleric"],
