@@ -1,15 +1,15 @@
-import { FormatId } from "../data/formats";
-import { Ruleset, RulesetId, getRuleset } from "../data/rulesets";
+import { Format, FormatId, getFormat } from "../data/formats";
+import { Ruleset, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft.model";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 export class Draft2 {
   constructor(
     public ruleset: Ruleset,
+    public format: Format,
     public leagueName: string,
     public teamName: string,
     public leagueId: string,
-    public format: FormatId,
     public score: { wins: number; loses: number; diff: string },
     public owner: string,
     public team: DraftSpecie[],
@@ -26,15 +26,17 @@ export class Draft2 {
       team: PokemonFormData[];
     },
     user_id: string,
-    ruleset?: Ruleset
+    ruleset?: Ruleset,
+    format?: Format
   ): Draft2 {
     if (!ruleset) ruleset = getRuleset(formData.ruleset);
+    if (!format) format = getFormat(formData.format);
     return new Draft2(
       ruleset,
+      format,
       formData.leagueName.trim(),
       formData.teamName.trim(),
       formData.leagueName.toLowerCase().trim().replace(/\W/gi, ""),
-      formData.format.trim() as FormatId,
       {
         wins: 0,
         loses: 0,
@@ -53,7 +55,7 @@ export class Draft2 {
       leagueName: this.leagueName,
       leagueId: this.leagueId,
       teamName: this.teamName,
-      format: this.format,
+      format: this.format.name,
       ruleset: this.ruleset.name,
       score: this.score,
       owner: this.owner,
@@ -75,15 +77,20 @@ export class Draft2 {
     };
   }
 
-  static fromDocument(data: DraftData, ruleset?: Ruleset): Draft2 {
+  static fromDocument(
+    data: DraftData,
+    ruleset?: Ruleset,
+    format?: Format
+  ): Draft2 {
     if (!ruleset) ruleset = getRuleset(data.ruleset);
+    if (!format) format = getFormat(data.format);
     const types = Array.from(ruleset.types).map((type) => type.name);
     return new Draft2(
       ruleset,
+      format,
       data.leagueName,
       data.teamName,
       data.leagueId,
-      data.format,
       data.score,
       data.owner,
       data.team.map((pokemon) => {

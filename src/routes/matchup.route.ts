@@ -28,8 +28,9 @@ import {
 } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { Matchup } from "../classes/matchup";
 
-type Matchup = {
+type MatchupOld = {
   formatId: FormatId;
   rulesetId: RulesetId;
   leagueName: string;
@@ -45,7 +46,8 @@ type Matchup = {
 
 type MatchupResponse = Response & {
   rawMatchup?: MatchupDocument | null;
-  matchup?: Matchup & { aTeam: { owner: string } };
+  matchupOld?: MatchupOld & { aTeam: { owner: string } };
+  matchup?: Matchup;
   ruleset?: Ruleset;
 };
 
@@ -67,27 +69,26 @@ export const MatchupRoutes: Route = {
   subpaths: {
     "/:matchup_id": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup) {
-          return;
-        }
-
+        const matchupOld = res.matchupOld!;
+        const matchup = res.matchup!;
         const cachedData = $matchups.get(
-          `${res.matchup.aTeam._id}-${req.params.matchup_id}`
+          `${matchupOld.aTeam._id}-${req.params.matchup_id}`
         );
         if (cachedData) {
           return res.json(cachedData);
         }
         try {
-          let format = getFormat(res.matchup.formatId);
-          let data = await makeMatchup(res.matchup.aTeam, res.matchup.bTeam, {
-            ruleset: res.ruleset!,
-            format: format,
-            gameTime: res.matchup.gameTime,
-            stage: res.matchup.stage,
-            leagueName: res.matchup.leagueName,
-          });
+          const data = await matchup.toClient();
+          // let format = getFormat(matchupOld.formatId);
+          // let data = await makeMatchup(matchupOld.aTeam, matchupOld.bTeam, {
+          //   ruleset: res.ruleset!,
+          //   format: format,
+          //   gameTime: matchupOld.gameTime,
+          //   stage: matchupOld.stage,
+          //   leagueName: matchupOld.leagueName,
+          // });
           $matchups.set(
-            `${res.matchup.aTeam._id}-${req.params.matchup_id}`,
+            `${matchupOld.aTeam._id}-${req.params.matchup_id}`,
             data
           );
           res.json(data);
@@ -99,12 +100,12 @@ export const MatchupRoutes: Route = {
         }
       },
       delete: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup || !res.rawMatchup) {
+        if (!res.matchupOld || !res.rawMatchup) {
           return;
         }
         try {
           await res.rawMatchup.deleteOne();
-          $matchups.del(`${res.matchup.aTeam._id}-${req.params.matchup_id}`);
+          $matchups.del(`${res.matchupOld.aTeam._id}-${req.params.matchup_id}`);
           res.json({ message: "Matchup deleted" });
         } catch (error) {
           res
@@ -115,17 +116,17 @@ export const MatchupRoutes: Route = {
     },
     "/:matchup_id/summary": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup || !res.rawMatchup) {
+        if (!res.matchupOld || !res.rawMatchup) {
           return;
         }
         try {
           let aTeamsummary = new SummaryClass(
-            res.matchup.aTeam.team,
-            res.matchup.aTeam.teamName
+            res.matchupOld.aTeam.team,
+            res.matchupOld.aTeam.teamName
           );
           let bTeamsummary = new SummaryClass(
-            res.matchup.bTeam.team,
-            res.matchup.bTeam.teamName
+            res.matchupOld.bTeam.team,
+            res.matchupOld.bTeam.teamName
           );
           aTeamsummary.statistics();
           bTeamsummary.statistics();
@@ -139,13 +140,13 @@ export const MatchupRoutes: Route = {
     },
     "/:matchup_id/typechart": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup || !res.rawMatchup) {
+        if (!res.matchupOld || !res.rawMatchup) {
           return;
         }
         try {
           res.json([
-            new Typechart(res.matchup.aTeam.team).toJson(),
-            new Typechart(res.matchup.bTeam.team).toJson(),
+            new Typechart(res.matchupOld.aTeam.team).toJson(),
+            new Typechart(res.matchupOld.bTeam.team).toJson(),
           ]);
         } catch (error) {
           res
@@ -156,13 +157,16 @@ export const MatchupRoutes: Route = {
     },
     "/:matchup_id/speedchart": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup) {
+        if (!res.matchupOld) {
           return;
         }
         try {
-          let level = getFormat(res.matchup.formatId).level;
+          let level = getFormat(res.matchupOld.formatId).level;
           res.json(
-            speedchart([res.matchup.aTeam.team, res.matchup.bTeam.team], level)
+            speedchart(
+              [res.matchupOld.aTeam.team, res.matchupOld.bTeam.team],
+              level
+            )
           );
         } catch (error) {
           res
@@ -173,13 +177,13 @@ export const MatchupRoutes: Route = {
     },
     "/:matchup_id/coveragechart": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup) {
+        if (!res.matchupOld) {
           return;
         }
         try {
           res.json([
-            coveragechart(res.matchup.aTeam.team, res.matchup.bTeam.team),
-            coveragechart(res.matchup.bTeam.team, res.matchup.aTeam.team),
+            coveragechart(res.matchupOld.aTeam.team, res.matchupOld.bTeam.team),
+            coveragechart(res.matchupOld.bTeam.team, res.matchupOld.aTeam.team),
           ]);
         } catch (error) {
           res
@@ -190,18 +194,18 @@ export const MatchupRoutes: Route = {
     },
     "/:matchup_id/movechart": {
       get: async (req: Request, res: MatchupResponse) => {
-        if (!res.matchup) {
+        if (!res.matchupOld) {
           return;
         }
         try {
           res.json([
             await movechart(
-              res.matchup.aTeam.team,
-              res.matchup.aTeam.team[0].ruleset
+              res.matchupOld.aTeam.team,
+              res.matchupOld.aTeam.team[0].ruleset
             ),
             movechart(
-              res.matchup.bTeam.team,
-              res.matchup.bTeam.team[0].ruleset
+              res.matchupOld.bTeam.team,
+              res.matchupOld.bTeam.team[0].ruleset
             ),
           ]);
         } catch (error) {
@@ -241,67 +245,53 @@ export const MatchupRoutes: Route = {
       matchup_id
     ) => {
       try {
-        // if (mongoose.Types.ObjectId.isValid(matchup_id)) {
-        //   res.rawMatchup = await MatchupModel.findById(matchup_id);
-        //   let matchup: MatchupData | undefined = res.rawMatchup?.toObject();
-        //   if (matchup === undefined) {
-        //     res
-        //       .status(400)
-        //       .json({ message: "Matchup ID not found", code: "MR-P1-01" });
-        //     return next();
-        //   }
-        //   const aTeam = await DraftModel.findById(matchup.aTeam._id).lean();
-        //   if (aTeam === null) {
-        //     res
-        //       .status(400)
-        //       .json({ message: "Draft ID not found", code: "MR-P1-02" });
-        //     return next();
-        //   }
-        //   res.ruleset = getRuleset(aTeam.ruleset);
-        //   res.matchup = {
-        //     ...matchup,
-        //     aTeam: {
-        //       owner: aTeam.owner,
-        //       teamName: aTeam.teamName,
-        //       team: aTeam.team.map((pokemon: any) => {
-        //         let specie = res.ruleset!.dex.species.get(pokemon.id);
-        //         if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-        //         let draftSpecies: DraftSpecies = new DraftSpecies(
-        //           specie,
-        //           pokemon,
-        //           res.ruleset!
-        //         );
-        //         return draftSpecies;
-        //       }),
-        //       _id: aTeam._id,
-        //     },
-        //     bTeam: {
-        //       ...matchup.bTeam,
-        //       team: matchup.bTeam.team.map((pokemon: any) => {
-        //         let specie = res.ruleset!.dex.species.get(pokemon.id);
-        //         if (!specie) throw new Error(`Invalid id: ${pokemon.id}`);
-        //         let draftSpecies: DraftSpecies = new DraftSpecies(
-        //           specie,
-        //           pokemon,
-        //           res.ruleset!
-        //         );
-        //         return draftSpecies;
-        //       }),
-        //     },
-        //     leagueName: aTeam.leagueName,
-        //     formatId: aTeam.format as FormatId,
-        //     rulesetId: aTeam.ruleset as RulesetId,
-        //   };
-        //   if (res.ruleset === undefined) {
-        //     return res
-        //       .status(400)
-        //       .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
-        //   }
-        // } else {
-        //   return res
-        //     .status(400)
-        //     .json({ message: "Invalid ID format", code: "MR-P1-04" });
-        // }
+        if (mongoose.Types.ObjectId.isValid(matchup_id)) {
+          res.rawMatchup = await MatchupModel.findById(matchup_id);
+          if (!res.rawMatchup) {
+            return res
+              .status(400)
+              .json({ message: "Matchup ID not found", code: "MR-P1-01" });
+          }
+          const matchupData = res.rawMatchup.toObject<MatchupData>();
+          res.matchup = await Matchup.fromData(matchupData);
+          const aTeam = await DraftModel.findById(matchupData.aTeam._id).lean();
+          if (!aTeam) {
+            res
+              .status(400)
+              .json({ message: "Draft ID not found", code: "MR-P1-02" });
+            return next();
+          }
+          res.ruleset = getRuleset(aTeam.ruleset);
+          res.matchupOld = {
+            ...matchupData,
+            aTeam: {
+              owner: aTeam.owner,
+              teamName: aTeam.teamName,
+              team: aTeam.team.map(
+                (pokemon) => new DraftSpecie(pokemon, res.ruleset!)
+              ),
+              _id: aTeam._id,
+            },
+            bTeam: {
+              ...matchupData.bTeam,
+              team: matchupData.bTeam.team.map(
+                (pokemon) => new DraftSpecie(pokemon, res.ruleset!)
+              ),
+            },
+            leagueName: aTeam.leagueName,
+            formatId: aTeam.format as FormatId,
+            rulesetId: aTeam.ruleset as RulesetId,
+          };
+          if (res.ruleset === undefined) {
+            return res
+              .status(400)
+              .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
+          }
+        } else {
+          return res
+            .status(400)
+            .json({ message: "Invalid ID format", code: "MR-P1-04" });
+        }
       } catch (error) {
         res
           .status(500)
