@@ -22,6 +22,7 @@ import {
   speedchart,
 } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
+import { Opponent } from "./opponent";
 
 export class Matchup {
   constructor(
@@ -56,7 +57,7 @@ export class Matchup {
         data.aTeam._id
       );
       if (!draftDoc) throw new PZError(400, "Draft ID not found.");
-      draft = Draft2.fromDocument(draftDoc);
+      draft = Draft2.fromData(draftDoc);
     }
     return new Matchup(
       {
@@ -211,6 +212,27 @@ export class Matchup {
     bTeamsummary.statistics();
     data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
     return data;
+  }
+
+  static fromForm(draft: Draft2, opponent: Opponent) {
+    return new Matchup(
+      {
+        team: draft.team,
+        teamName: draft.teamName,
+        _id: draft._id!,
+        // coach:
+      },
+      {
+        team: opponent.team,
+        teamName: opponent.teamName,
+      },
+      draft.ruleset,
+      draft.format,
+      draft.leagueName,
+      draft.leagueId,
+      opponent.stage,
+      []
+    );
   }
 }
 

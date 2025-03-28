@@ -12,7 +12,7 @@ const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
 const matchupTeamFullSchema = new Schema<MatchupTeamFull>(
   {
     teamName: { type: String, required: true },
-    coach: { type: String, required: true },
+    coach: { type: String },
     team: { type: [pokemonSchema], required: true },
     paste: { type: String },
   },

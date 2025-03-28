@@ -179,7 +179,6 @@ export class DraftSpecie implements Specie, Pokemon {
   toClient(): PokemonFormData {
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
-    console.log(this.name, this.capt?.tera);
     return {
       id: this.id,
       name: this.name,

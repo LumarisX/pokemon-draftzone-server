@@ -1,4 +1,5 @@
-import { Format, FormatId, getFormat } from "../data/formats";
+import { Types } from "mongoose";
+import { Format, getFormat } from "../data/formats";
 import { Ruleset, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft.model";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
@@ -13,7 +14,8 @@ export class Draft2 {
     public score: { wins: number; loses: number; diff: string },
     public owner: string,
     public team: DraftSpecie[],
-    public doc?: string | undefined
+    public doc?: string | undefined,
+    public _id?: Types.ObjectId
   ) {}
 
   static fromForm(
@@ -77,8 +79,8 @@ export class Draft2 {
     };
   }
 
-  static fromDocument(
-    data: DraftData,
+  static fromData(
+    data: DraftData & { _id: Types.ObjectId },
     ruleset?: Ruleset,
     format?: Format
   ): Draft2 {
@@ -108,7 +110,8 @@ export class Draft2 {
         }
         return new DraftSpecie(pokemon, ruleset);
       }),
-      data.doc
+      data.doc,
+      data._id
     );
   }
 }
