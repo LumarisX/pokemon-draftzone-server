@@ -29,7 +29,6 @@ export const PlannerRoutes: Route = {
             });
             let typechart = new Typechart(team);
             let summary = new SummaryClass(team);
-            summary.statistics();
             res.json({
               typechart: typechart.toJson(),
               recommended: typechart.recommended(),

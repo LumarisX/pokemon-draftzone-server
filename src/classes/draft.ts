@@ -3,8 +3,9 @@ import { Format, getFormat } from "../data/formats";
 import { Ruleset, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft.model";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { MatchupDocument, MatchupModel } from "../models/matchup.model";
 
-export class Draft2 {
+export class Draft {
   constructor(
     public ruleset: Ruleset,
     public format: Format,
@@ -30,10 +31,10 @@ export class Draft2 {
     user_id: string,
     ruleset?: Ruleset,
     format?: Format
-  ): Draft2 {
+  ): Draft {
     if (!ruleset) ruleset = getRuleset(formData.ruleset);
     if (!format) format = getFormat(formData.format);
-    return new Draft2(
+    return new Draft(
       ruleset,
       format,
       formData.leagueName.trim(),
@@ -83,11 +84,11 @@ export class Draft2 {
     data: DraftData & { _id: Types.ObjectId },
     ruleset?: Ruleset,
     format?: Format
-  ): Draft2 {
+  ): Draft {
     if (!ruleset) ruleset = getRuleset(data.ruleset);
     if (!format) format = getFormat(data.format);
     const types = Array.from(ruleset.types).map((type) => type.name);
-    return new Draft2(
+    return new Draft(
       ruleset,
       format,
       data.leagueName,
@@ -113,5 +114,52 @@ export class Draft2 {
       data.doc,
       data._id
     );
+  }
+
+  async getMatchups(): Promise<MatchupDocument[]> {
+    if (!this._id) return Promise.resolve([]);
+    return MatchupModel.find({ "aTeam._id": this._id }).sort({ createdAt: -1 });
+  }
+
+  async getScore() {
+    const matchups = await this.getMatchups();
+    const score = { wins: 0, loses: 0, diff: "+0" };
+    let numDiff = 0;
+    const gameDiff = matchups.some((matchup) => matchup.matches.length > 1);
+    if (gameDiff) {
+      matchups.forEach((matchup) => {
+        let matchupWins = 0;
+        let matchupLoses = 0;
+        matchup.matches.forEach((match) => {
+          if (match.winner === "a") {
+            matchupWins++;
+          } else if (match.winner === "b") {
+            matchupLoses++;
+          }
+        });
+        if (matchupWins > matchupLoses) {
+          score.wins++;
+        } else if (matchupLoses > matchupWins) {
+          score.loses++;
+        }
+        numDiff += matchupWins - matchupLoses;
+      });
+    } else {
+      for (let matchup of matchups) {
+        if (matchup.matches[0]) {
+          if (matchup.matches[0].aTeam.score > matchup.matches[0].bTeam.score) {
+            score.wins++;
+          } else if (
+            matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
+          ) {
+            score.loses++;
+          }
+          numDiff +=
+            matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;
+        }
+      }
+    }
+    score.diff = (numDiff < 0 ? "" : "+") + numDiff;
+    return score;
   }
 }

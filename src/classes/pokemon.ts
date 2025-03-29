@@ -179,6 +179,19 @@ export class DraftSpecie implements Specie, Pokemon {
   toClient(): PokemonFormData {
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
+    const capt = {
+      tera: this.capt?.tera
+        ? this.capt.tera.length
+          ? this.capt.tera
+          : [...TYPES]
+        : undefined,
+      z: this.capt?.z
+        ? this.capt.z.length
+          ? this.capt.z
+          : [...ZTYPES]
+        : undefined,
+      dmax: this.capt?.dmax,
+    };
     return {
       id: this.id,
       name: this.name,
@@ -189,19 +202,7 @@ export class DraftSpecie implements Specie, Pokemon {
         return { id: specie.id, name: specie.name };
       }),
       modifiers: this.modifiers,
-      capt: {
-        tera: this.capt?.tera
-          ? this.capt.tera.length
-            ? this.capt.tera
-            : [...TYPES]
-          : undefined,
-        z: this.capt?.z
-          ? this.capt.z.length
-            ? this.capt.z
-            : [...ZTYPES]
-          : undefined,
-        dmax: this.capt?.dmax,
-      },
+      capt: Object.values(capt).length ? capt : undefined,
     };
   }
 
@@ -277,16 +278,13 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   //Type functions
-  private $typechart:
-    | {
-        [key: string]: number;
-      }
-    | undefined;
+  private $typechart?: {
+    [key: string]: number;
+  };
   typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
-    let weak = typeWeak(this.types, this.ruleset);
-    for (let ability of Object.values(this.abilities)) {
-      ability = ability as AbilityName;
+    const weak = typeWeak(this.types, this.ruleset);
+    this.getAbilities().forEach((ability) => {
       switch (ability) {
         case "Fluffy":
           weak.Fire *= 2;
@@ -404,7 +402,7 @@ export class DraftSpecie implements Specie, Pokemon {
           }
           break;
       }
-    }
+    });
     this.$typechart = weak;
     return weak;
   }
@@ -428,6 +426,11 @@ export class DraftSpecie implements Specie, Pokemon {
     return Object.entries(tc)
       .filter((value: [string, number]) => value[1] === 0)
       .map((value: [string, number]) => value[0]);
+  }
+
+  getAbilities(): string[] {
+    if (this.modifiers?.abilities?.length) return this.modifiers.abilities;
+    return Object.values(this.abilities);
   }
 
   //Moveset functions

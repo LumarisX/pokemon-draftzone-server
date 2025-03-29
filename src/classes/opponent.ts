@@ -1,5 +1,5 @@
+import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
-import { Matchup, MatchupTeam } from "./matchup";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 type OpponentClientData = {
@@ -7,6 +7,7 @@ type OpponentClientData = {
   teamName: string;
   coach: string | undefined;
   team: PokemonFormData[];
+  _id?: Types.ObjectId;
 };
 
 export class Opponent {
@@ -15,7 +16,8 @@ export class Opponent {
     public stage: string,
     public team: DraftSpecie[],
     public teamName: string,
-    public coach?: string
+    public coach?: string,
+    public _id?: Types.ObjectId
   ) {}
 
   toClient(): OpponentClientData {
@@ -24,27 +26,8 @@ export class Opponent {
       teamName: this.teamName,
       coach: this.coach,
       team: this.team.map((pokemon) => pokemon.toClient()),
+      _id: this._id,
     };
-  }
-
-  toMatchup(): MatchupTeam {
-    return new MatchupTeam(
-      this.ruleset,
-      this.teamName,
-      this.team,
-      undefined,
-      this.coach
-    );
-  }
-
-  static fromMatchup(matchup: Matchup, team: MatchupTeam): Opponent {
-    return new Opponent(
-      team.ruleset,
-      matchup.stage,
-      team.team,
-      team.teamName,
-      team.coach
-    );
   }
 
   static fromForm(data: OpponentClientData, ruleset: Ruleset): Opponent {

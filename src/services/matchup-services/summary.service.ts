@@ -9,38 +9,7 @@ export class SummaryClass {
     this.teamName = teamName;
   }
 
-  $stats?: {
-    mean: {
-      hp?: number;
-      atk?: number;
-      def?: number;
-      spa?: number;
-      spd?: number;
-      spe?: number;
-      bst?: number;
-    };
-    median: {
-      hp?: number;
-      atk?: number;
-      def?: number;
-      spa?: number;
-      spd?: number;
-      spe?: number;
-      bst?: number;
-    };
-    max: {
-      hp?: number;
-      atk?: number;
-      def?: number;
-      spa?: number;
-      spd?: number;
-      spe?: number;
-      bst?: number;
-    };
-  };
-
-  statistics() {
-    if (this.$stats) return this.$stats;
+  private teamStatistics() {
     let stats: {
       mean: { [key in StatID | "bst"]?: number };
       median: { [key in StatID | "bst"]?: number };
@@ -77,7 +46,6 @@ export class SummaryClass {
       stats.median[stat] = all[stat][Math.round(all[stat].length / 2)];
       stats.max[stat] = all[stat][0];
     });
-    this.$stats = stats;
     return stats;
   }
 
@@ -92,7 +60,7 @@ export class SummaryClass {
         index: index,
         types: pokemon.types,
       })),
-      stats: this.$stats,
+      stats: this.teamStatistics(),
     };
   }
 }

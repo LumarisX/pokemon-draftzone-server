@@ -1,14 +1,10 @@
+import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { PZError } from "..";
+import { Format, FormatId } from "../data/formats";
 import { Ruleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchData, MatchupData } from "../models/matchup.model";
-import { PokemonData } from "../models/pokemon.schema";
-import { Draft2 } from "./draft";
-import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { Typechart } from "../services/matchup-services/typechart.service";
-import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
-import { Format, FormatId } from "../data/formats";
 import {
   Coveragechart,
   coveragechart,
@@ -22,23 +18,23 @@ import {
   speedchart,
 } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
+import { Typechart } from "../services/matchup-services/typechart.service";
+import { Draft } from "./draft";
 import { Opponent } from "./opponent";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
+
+export type MatchupTeam = {
+  teamName: string;
+  team: DraftSpecie[];
+  coach?: string;
+  paste?: string;
+  _id?: Types.ObjectId;
+};
 
 export class Matchup {
   constructor(
-    public aTeam: {
-      teamName: string;
-      team: DraftSpecie[];
-      coach?: string;
-      paste?: string;
-      _id: Types.ObjectId;
-    },
-    public bTeam: {
-      teamName: string;
-      team: DraftSpecie[];
-      coach?: string;
-      paste?: string;
-    },
+    public aTeam: MatchupTeam,
+    public bTeam: MatchupTeam,
     public ruleset: Ruleset,
     public format: Format,
     public leagueName: string,
@@ -51,14 +47,18 @@ export class Matchup {
     public reminder?: number
   ) {}
 
-  static async fromData(data: MatchupData, draft?: Draft2): Promise<Matchup> {
+  static async fromData(
+    data: MatchupData & { _id: Types.ObjectId },
+    draft?: Draft
+  ): Promise<Matchup> {
     if (!draft) {
       const draftDoc: DraftDocument | null = await DraftModel.findById(
         data.aTeam._id
       );
       if (!draftDoc) throw new PZError(400, "Draft ID not found.");
-      draft = Draft2.fromData(draftDoc);
+      draft = Draft.fromData(draftDoc);
     }
+    console.log(data._id);
     return new Matchup(
       {
         teamName: draft.teamName,
@@ -73,6 +73,7 @@ export class Matchup {
         team: data.bTeam.team.map(
           (pokemon) => new DraftSpecie(pokemon, draft.ruleset)
         ),
+        _id: data._id,
         paste: data.bTeam.paste,
       },
       draft.ruleset,
@@ -87,26 +88,10 @@ export class Matchup {
     );
   }
 
-  // updateOpponent(opponent: Opponent): Matchup {
-  //   return new Matchup(
-  //     this.draft,
-  //     {
-  //       teamName: opponent.teamName,
-  //       team: opponent.team,
-  //       coach: opponent.coach,
-  //     },
-  //     opponent.stage,
-  //     this.matches,
-  //     this.notes,
-  //     this.gameTime,
-  //     this.reminder
-  //   );
-  // }
-
   toData(): MatchupData {
     return {
       aTeam: {
-        _id: this.aTeam._id,
+        _id: this.aTeam._id!,
         paste: this.aTeam.paste,
       },
       bTeam: {
@@ -123,10 +108,29 @@ export class Matchup {
     };
   }
 
-  async toClient() {
-    let aTypechart = new Typechart(this.aTeam.team);
-    let bTypechart = new Typechart(this.bTeam.team);
-    let data: {
+  toClient() {
+    return {
+      _id: this.bTeam._id,
+      leagueName: this.leagueName,
+      aTeam: {
+        team: this.aTeam.team.map((pokemon) => pokemon.toClient()),
+        teamName: this.aTeam.teamName,
+        paste: this.aTeam.paste,
+        coach: this.aTeam.coach,
+      },
+      bTeam: {
+        team: this.bTeam.team.map((pokemon) => pokemon.toClient()),
+        teamName: this.bTeam.teamName,
+        paste: this.bTeam.paste,
+        coach: this.bTeam.coach,
+      },
+      stage: this.stage,
+      matches: this.matches,
+    };
+  }
+
+  async toBreakdown() {
+    const data: {
       details: {
         level: number;
         format: FormatId;
@@ -191,7 +195,10 @@ export class Matchup {
         leagueName: this.leagueName,
         stage: this.stage,
       },
-      summary: [],
+      summary: [
+        new SummaryClass(this.aTeam.team, this.aTeam.teamName).toJson(),
+        new SummaryClass(this.bTeam.team, this.bTeam.teamName).toJson(),
+      ],
       speedchart: speedchart(
         [this.aTeam.team, this.bTeam.team],
         this.format.level
@@ -200,21 +207,19 @@ export class Matchup {
         await coveragechart(this.aTeam.team, this.bTeam.team),
         await coveragechart(this.bTeam.team, this.aTeam.team),
       ],
-      typechart: [aTypechart.toJson(), bTypechart.toJson()],
+      typechart: [
+        new Typechart(this.aTeam.team).toJson(),
+        new Typechart(this.bTeam.team).toJson(),
+      ],
       movechart: [
         await movechart(this.aTeam.team, this.aTeam.team[0].ruleset),
         await movechart(this.bTeam.team, this.bTeam.team[0].ruleset),
       ],
     };
-    let aTeamsummary = new SummaryClass(this.aTeam.team, this.aTeam.teamName);
-    let bTeamsummary = new SummaryClass(this.bTeam.team, this.bTeam.teamName);
-    aTeamsummary.statistics();
-    bTeamsummary.statistics();
-    data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
     return data;
   }
 
-  static fromForm(draft: Draft2, opponent: Opponent) {
+  static fromForm(draft: Draft, opponent: Opponent) {
     return new Matchup(
       {
         team: draft.team,
@@ -232,6 +237,17 @@ export class Matchup {
       draft.leagueId,
       opponent.stage,
       []
+    );
+  }
+
+  toOpponent(): Opponent {
+    return new Opponent(
+      this.ruleset,
+      this.stage,
+      this.bTeam.team,
+      this.bTeam.teamName,
+      this.bTeam.coach,
+      this.bTeam._id
     );
   }
 }
@@ -386,42 +402,6 @@ export class GameTime {
       emailTime: this.timeData.email
         ? Math.floor(this.timeData.emailTime * 60)
         : -1,
-    };
-  }
-}
-
-export class MatchupTeam {
-  constructor(
-    public ruleset: Ruleset,
-    public teamName: string,
-    public team: DraftSpecie[],
-    public _id?: Types.ObjectId,
-    public coach?: string
-  ) {}
-
-  static fromData(
-    data: {
-      teamName: string;
-      team: PokemonData[];
-      _id?: Types.ObjectId;
-      coach?: string;
-    },
-    ruleset: Ruleset
-  ): MatchupTeam {
-    return new MatchupTeam(
-      ruleset,
-      data.teamName,
-      data.team.map((pokemon) => new DraftSpecie(pokemon, ruleset)),
-      data._id,
-      data.coach
-    );
-  }
-
-  toClient() {
-    return {
-      teamName: this.teamName,
-      coach: this.coach,
-      team: this.team.map((pokemon) => pokemon.toClient()),
     };
   }
 }

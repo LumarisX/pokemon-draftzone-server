@@ -78,7 +78,7 @@ export const MatchupRoutes: Route = {
           return res.json(cachedData);
         }
         try {
-          const data = await matchup.toClient();
+          const data = await matchup.toBreakdown();
           // let format = getFormat(matchupOld.formatId);
           // let data = await makeMatchup(matchupOld.aTeam, matchupOld.bTeam, {
           //   ruleset: res.ruleset!,
@@ -128,8 +128,6 @@ export const MatchupRoutes: Route = {
             res.matchupOld.bTeam.team,
             res.matchupOld.bTeam.teamName
           );
-          aTeamsummary.statistics();
-          bTeamsummary.statistics();
           res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
         } catch (error) {
           res
@@ -395,8 +393,6 @@ async function makeMatchup(
   };
   let aTeamsummary = new SummaryClass(aTeam.team, aTeam.teamName);
   let bTeamsummary = new SummaryClass(bTeam.team, bTeam.teamName);
-  aTeamsummary.statistics();
-  bTeamsummary.statistics();
   data.summary = [aTeamsummary.toJson(), bTeamsummary.toJson()];
   return data;
 }

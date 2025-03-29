@@ -10,7 +10,7 @@ describe("Draft Pokemon", () => {
         expect(species).toBeTruthy();
       });
       if (!species) return;
-      const draftSpecies = new DraftSpecie(species, {}, ruleset);
+      const draftSpecies = new DraftSpecie(species, ruleset);
 
       it("should know V-Create", async () => {
         expect(

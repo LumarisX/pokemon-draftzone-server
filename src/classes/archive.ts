@@ -10,7 +10,7 @@ import { DraftData } from "../models/draft.model";
 import { MatchData, MatchStatData } from "../models/matchup.model";
 import { getMatchups } from "../services/database-services/draft.services";
 
-export class Archive {
+export class ArchiveOld {
   constructor(
     private draft: DraftData & {
       _id: Types.ObjectId;
