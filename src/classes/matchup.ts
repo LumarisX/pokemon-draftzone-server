@@ -57,7 +57,6 @@ export class Matchup {
       if (!draftDoc) throw new PZError(400, "Draft ID not found.");
       draft = Draft.fromData(draftDoc);
     }
-    console.log(data._id);
     return new Matchup(
       {
         teamName: draft.teamName,
