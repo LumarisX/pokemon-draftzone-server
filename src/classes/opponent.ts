@@ -1,14 +1,7 @@
 import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-
-type OpponentClientData = {
-  stage: string;
-  teamName: string;
-  coach: string | undefined;
-  team: PokemonFormData[];
-  _id?: Types.ObjectId;
-};
+import { MatchData } from "../models/matchup.model";
 
 export class Opponent {
   constructor(
@@ -16,21 +9,33 @@ export class Opponent {
     public stage: string,
     public team: DraftSpecie[],
     public teamName: string,
+    public matches: MatchData[],
     public coach?: string,
     public _id?: Types.ObjectId
   ) {}
 
-  toClient(): OpponentClientData {
+  toClient() {
     return {
       stage: this.stage,
       teamName: this.teamName,
       coach: this.coach,
       team: this.team.map((pokemon) => pokemon.toClient()),
+      score: getMatchesScore(this.matches),
       _id: this._id,
     };
   }
 
-  static fromForm(data: OpponentClientData, ruleset: Ruleset): Opponent {
+  static fromForm(
+    data: {
+      stage: string;
+      teamName: string;
+      coach: string | undefined;
+      team: PokemonFormData[];
+      matches: MatchData[];
+      _id?: Types.ObjectId;
+    },
+    ruleset: Ruleset
+  ): Opponent {
     const errors: string[] = [];
     const opponent = new Opponent(
       ruleset,
@@ -39,6 +44,7 @@ export class Opponent {
         .filter((pokemonData) => pokemonData.id)
         .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
       data.teamName,
+      data.matches,
       data.coach
     );
     if (errors.length > 0) {
@@ -57,4 +63,26 @@ export class Opponent {
       stage: this.stage,
     };
   }
+}
+
+export function getMatchesScore(matches: MatchData[]): [number, number] | null {
+  if (!matches.length) return null;
+  if (matches.length === 1)
+    return [
+      matches[0].aTeam.stats.filter(
+        (pokemon) => pokemon[1].brought && !pokemon[1].deaths
+      ).length,
+      matches[0].bTeam.stats.filter(
+        (pokemon) => pokemon[1].brought && !pokemon[1].deaths
+      ).length,
+    ];
+
+  return matches.reduce(
+    (score: [number, number], match) => {
+      if (match.winner === "a") score[0]++;
+      else score[1]++;
+      return score;
+    },
+    [0, 0]
+  );
 }

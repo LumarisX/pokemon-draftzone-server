@@ -78,15 +78,7 @@ export const MatchupRoutes: Route = {
           return res.json(cachedData);
         }
         try {
-          const data = await matchup.toBreakdown();
-          // let format = getFormat(matchupOld.formatId);
-          // let data = await makeMatchup(matchupOld.aTeam, matchupOld.bTeam, {
-          //   ruleset: res.ruleset!,
-          //   format: format,
-          //   gameTime: matchupOld.gameTime,
-          //   stage: matchupOld.stage,
-          //   leagueName: matchupOld.leagueName,
-          // });
+          const data = await matchup.analyze();
           $matchups.set(
             `${matchupOld.aTeam._id}-${req.params.matchup_id}`,
             data

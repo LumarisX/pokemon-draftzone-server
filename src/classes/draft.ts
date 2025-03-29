@@ -67,14 +67,14 @@ export class Draft {
     };
   }
 
-  toClient() {
+  async toClient() {
     return {
       leagueName: this.leagueName,
       leagueId: this.leagueId,
       teamName: this.teamName,
-      format: this.format,
+      format: this.format.name,
       ruleset: this.ruleset.name,
-      score: this.score,
+      score: await this.getScore(), //move away from computing each time
       doc: this.doc,
       team: this.team.map((pokemon) => pokemon.toClient()),
     };
@@ -116,6 +116,7 @@ export class Draft {
     );
   }
 
+  //Add caching
   async getMatchups(): Promise<MatchupDocument[]> {
     if (!this._id) return Promise.resolve([]);
     return MatchupModel.find({ "aTeam._id": this._id }).sort({ createdAt: -1 });

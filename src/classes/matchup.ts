@@ -39,7 +39,6 @@ export class Matchup {
     public format: Format,
     public leagueName: string,
     public leagueId: string,
-
     public stage: string,
     public matches: MatchData[],
     public notes?: string,
@@ -126,10 +125,11 @@ export class Matchup {
       },
       stage: this.stage,
       matches: this.matches,
+      score: [1, 3],
     };
   }
 
-  async toBreakdown() {
+  async analyze() {
     const data: {
       details: {
         level: number;
@@ -246,6 +246,7 @@ export class Matchup {
       this.stage,
       this.bTeam.team,
       this.bTeam.teamName,
+      this.matches,
       this.bTeam.coach,
       this.bTeam._id
     );

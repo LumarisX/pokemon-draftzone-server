@@ -45,7 +45,13 @@ export const DraftRoutes: Route = {
             createdAt: -1,
           });
 
-          res.json(drafts.map((draft) => Draft.fromData(draft).toClient()));
+          res.json(
+            await Promise.all(
+              drafts.map(
+                async (draft) => await Draft.fromData(draft).toClient()
+              )
+            )
+          );
         } catch (error) {
           return sendError(
             res,
@@ -90,7 +96,7 @@ export const DraftRoutes: Route = {
         }
         try {
           res.draftOld.score = await getScore(res.draftOld._id);
-          res.json(res.draft!.toClient());
+          res.json(await res.draft!.toClient());
         } catch (error) {
           return sendError(
             res,
@@ -281,6 +287,7 @@ export const DraftRoutes: Route = {
       pathId: "R8",
       patch: async function (req: SubRequest, res: DraftResponse) {
         try {
+          console.log(req.body);
           const score = new Score(req.body);
           const processedScore = await score.processScore();
           const updatedMatchup = await MatchupModel.findByIdAndUpdate(
@@ -288,7 +295,7 @@ export const DraftRoutes: Route = {
             {
               matches: processedScore.matches,
               "aTeam.paste": processedScore.aTeamPaste,
-              "bteam.paste": processedScore.bTeamPaste,
+              "bTeam.paste": processedScore.bTeamPaste,
             },
             { new: true, upsert: true }
           );
