@@ -14,7 +14,6 @@ export type Route = {
   middleware?: Handler[];
   subpaths: {
     [subpath: string]: {
-      pathId?: string; //eventually make this required for error tracking
       get?: (req: Request, res: Response) => any;
       delete?: (req: Request, res: Response) => any;
       post?: (req: Request, res: Response) => any;

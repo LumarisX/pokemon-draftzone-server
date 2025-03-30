@@ -1,4 +1,4 @@
-import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
+import { AbilityName, Specie, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { PZError } from "..";
 import { Format, FormatId } from "../data/formats";
@@ -68,9 +68,18 @@ export class Matchup {
       {
         teamName: data.bTeam.teamName,
         coach: data.bTeam.coach,
-        team: data.bTeam.team.map(
-          (pokemon) => new DraftSpecie(pokemon, draft.ruleset)
-        ),
+        team: data.bTeam.team.map((pokemon) => {
+          const specie = draft.ruleset.species.get(pokemon.id);
+          if (specie) return new DraftSpecie(specie, draft.ruleset);
+          return new DraftSpecie(
+            new Specie(
+              draft.ruleset.dex,
+              draft.ruleset.exists,
+              draft.ruleset.dex.species.get(pokemon.id)
+            ),
+            draft.ruleset
+          );
+        }),
         _id: data._id,
         paste: data.bTeam.paste,
       },

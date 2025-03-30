@@ -160,11 +160,6 @@ export const DataRoutes: Route = {
         const ruleset: Ruleset = res.locals.ruleset;
         const pokemonData: Specie = res.locals.pokemonData;
         try {
-          if (!pokemonData) {
-            return res
-              .status(400)
-              .json({ error: "Pokemon not found error", code: "DT-R4-01" });
-          }
           let formeNames = [] as string[];
           if (pokemonData.formes) formeNames = pokemonData.formes;
           if (pokemonData.changesFrom) {

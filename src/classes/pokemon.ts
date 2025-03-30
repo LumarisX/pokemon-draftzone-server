@@ -126,13 +126,20 @@ export class DraftSpecie implements Specie, Pokemon {
     pokemonData: (PokemonData | PokemonFormData) | (Specie & PokemonOptions),
     ruleset: Ruleset
   ) {
-    const specie =
+    let specie =
       pokemonData instanceof Specie
         ? pokemonData
         : ruleset.species.get(pokemonData.id);
-
+    //Might get rid of eventually
     if (!specie)
-      throw new PZError(400, `${pokemonData.id} is not a valid specie.`);
+      specie = new DraftSpecie(
+        new Specie(
+          ruleset.dex,
+          ruleset.exists,
+          ruleset.dex.species.get(pokemonData.id)
+        ),
+        ruleset
+      );
     Object.assign(this, specie);
     this.ruleset = ruleset;
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);

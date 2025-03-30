@@ -38,7 +38,6 @@ export const DraftRoutes: Route = {
   middleware: [jwtCheck, getSub],
   subpaths: {
     "/teams": {
-      pathId: "R1",
       get: async function (req: SubRequest, res: DraftResponse) {
         try {
           const drafts = await DraftModel.find({ owner: req.sub }).sort({
@@ -53,12 +52,7 @@ export const DraftRoutes: Route = {
             )
           );
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-01`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R1-01`);
         }
       },
       post: async function (req: SubRequest, res: DraftResponse) {
@@ -79,17 +73,11 @@ export const DraftRoutes: Route = {
           await draftDoc.save();
           return res.status(201).json({ message: "Draft Added" });
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-03`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R1-03`);
         }
       },
     },
     "/:team_id": {
-      pathId: "R2",
       get: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draftOld) {
           return;
@@ -98,12 +86,7 @@ export const DraftRoutes: Route = {
           res.draftOld.score = await getScore(res.draftOld._id);
           res.json(await res.draft!.toClient());
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-03`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R2-03`);
         }
       },
       patch: async function (req: SubRequest, res: DraftResponse) {
@@ -130,12 +113,7 @@ export const DraftRoutes: Route = {
             .status(404)
             .json({ message: "Draft not found", code: "DR-R2-02" });
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-03`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R2-03`);
         }
       },
       delete: async function (req: SubRequest, res: DraftResponse) {
@@ -146,17 +124,11 @@ export const DraftRoutes: Route = {
           await res.rawDraft.deleteOne();
           res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-04`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R2-04`);
         }
       },
     },
     "/:team_id/matchups": {
-      pathId: "R3",
       get: async function (req: SubRequest, res: DraftResponse) {
         try {
           const matchups: MatchupDocument[] = await res.draft!.getMatchups();
@@ -170,12 +142,8 @@ export const DraftRoutes: Route = {
             )
           );
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-01`
-          );
+          console.log(this);
+          return sendError(res, 500, error as Error, `${routeCode}-R3-01`);
         }
       },
       post: async function (req: SubRequest, res: DraftResponse) {
@@ -191,7 +159,6 @@ export const DraftRoutes: Route = {
       },
     },
     "/:team_id/stats": {
-      pathId: "R4",
       get: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draftOld || !res.ruleset) {
           return;
@@ -200,17 +167,11 @@ export const DraftRoutes: Route = {
           res.json(await getStats(res.ruleset, res.draftOld._id));
         } catch (error) {
           res.status(500).json({ message: (error as Error).message });
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-01`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R4-01`);
         }
       },
     },
     "/:team_id/archive": {
-      pathId: "R5",
       delete: async function (req: SubRequest, res: DraftResponse) {
         if (!res.draftOld || !res.rawDraft) {
           return;
@@ -225,24 +186,22 @@ export const DraftRoutes: Route = {
           console.error("Error handling archive:", error);
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "DR-R4-01" });
+            .json({ message: (error as Error).message, code: "DR-R5-01" });
         }
       },
     },
     "/:team_id/:matchup_id": {
-      pathId: "R6",
       get: async function (req: SubRequest, res: MatchupResponse) {
         try {
           res.json(res.matchup!.toClient());
         } catch (error) {
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "DR-R5-01" });
+            .json({ message: (error as Error).message, code: "DR-R6-01" });
         }
       },
     },
     "/:team_id/:matchup_id/opponent": {
-      pathId: "R7",
       get: async function (req: SubRequest, res: MatchupResponse) {
         try {
           const opponent = res.matchup!.toOpponent();
@@ -250,7 +209,7 @@ export const DraftRoutes: Route = {
         } catch (error) {
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "DR-R5-01" });
+            .json({ message: (error as Error).message, code: "DR-R7-01" });
         }
       },
 
@@ -271,20 +230,14 @@ export const DraftRoutes: Route = {
           } else {
             res
               .status(404)
-              .json({ message: "Matchup not found", code: "DR-R5-02" });
+              .json({ message: "Matchup not found", code: "DR-R7-02" });
           }
         } catch (error) {
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-${this.pathId}-03`
-          );
+          return sendError(res, 500, error as Error, `${routeCode}-R7-03`);
         }
       },
     },
     "/:team_id/:matchup_id/score": {
-      pathId: "R8",
       patch: async function (req: SubRequest, res: DraftResponse) {
         try {
           console.log(req.body);
@@ -306,18 +259,17 @@ export const DraftRoutes: Route = {
           } else {
             res
               .status(404)
-              .json({ message: "Matchup not found", code: "DR-R6-01" });
+              .json({ message: "Matchup not found", code: "DR-R8-01" });
           }
         } catch (error) {
           console.error("Error updating matchup:", error);
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "DR-R6-02" });
+            .json({ message: (error as Error).message, code: "DR-R8-02" });
         }
       },
     },
     "/:team_id/:matchup_id/schedule": {
-      pathId: "R9",
       get: async function (req: SubRequest, res: MatchupResponse) {
         if (!res.draftOld) {
           return;
@@ -336,7 +288,7 @@ export const DraftRoutes: Route = {
         } catch (error) {
           res
             .status(500)
-            .json({ message: (error as Error).message, code: "DR-R6-02" });
+            .json({ message: (error as Error).message, code: "DR-R9-02" });
         }
       },
       patch: async function (req: SubRequest, res: DraftResponse) {
