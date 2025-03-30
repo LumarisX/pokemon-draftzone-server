@@ -43,7 +43,7 @@ export class Draft {
       {
         wins: 0,
         loses: 0,
-        diff: "",
+        diff: "0",
       },
       user_id,
       formData.team
