@@ -69,20 +69,16 @@ export const MatchupRoutes: Route = {
   subpaths: {
     "/:matchup_id": {
       get: async (req: Request, res: MatchupResponse) => {
-        const matchupOld = res.matchupOld!;
         const matchup = res.matchup!;
         const cachedData = $matchups.get(
-          `${matchupOld.aTeam._id}-${req.params.matchup_id}`
+          `${matchup.aTeam._id}-${req.params.matchup_id}`
         );
         if (cachedData) {
           return res.json(cachedData);
         }
         try {
           const data = await matchup.analyze();
-          $matchups.set(
-            `${matchupOld.aTeam._id}-${req.params.matchup_id}`,
-            data
-          );
+          $matchups.set(`${matchup.aTeam._id}-${req.params.matchup_id}`, data);
           res.json(data);
         } catch (error) {
           console.log(error);
