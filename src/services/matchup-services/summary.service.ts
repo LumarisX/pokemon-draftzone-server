@@ -2,12 +2,11 @@ import { StatID } from "@pkmn/data";
 import { DraftSpecie } from "../../classes/pokemon";
 
 export class SummaryClass {
-  team: DraftSpecie[];
-  teamName?: string;
-  constructor(team: DraftSpecie[], teamName?: string) {
-    this.team = team;
-    this.teamName = teamName;
-  }
+  constructor(
+    private team: DraftSpecie[],
+    private teamName?: string,
+    private coach?: string
+  ) {}
 
   private teamStatistics() {
     let stats: {
@@ -46,12 +45,14 @@ export class SummaryClass {
       stats.median[stat] = all[stat][Math.round(all[stat].length / 2)];
       stats.max[stat] = all[stat][0];
     });
+
     return stats;
   }
 
   toJson() {
     return {
       teamName: this.teamName,
+      coach: this.coach,
       team: this.team.map((pokemon, index) => ({
         ...pokemon.toClient(),
         abilities: Object.values(pokemon.abilities),

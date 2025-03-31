@@ -158,7 +158,10 @@ export class DraftSpecie implements Specie, Pokemon {
       dmax: pokemonData.capt?.dmax,
     }),
       (this.nickname = pokemonData.nickname);
-    this.modifiers = pokemonData.modifiers;
+    this.modifiers = {
+      moves: pokemonData.modifiers?.moves,
+      abilities: pokemonData.modifiers?.abilities,
+    };
     this.draftFormes = pokemonData.draftFormes?.map((specie) =>
       typeof specie === "string" ? specie : specie.id
     );

@@ -1,4 +1,4 @@
-import { AbilityName, Specie, StatsTable, TypeName } from "@pkmn/data";
+import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { PZError } from "..";
 import { Format, FormatId } from "../data/formats";
@@ -140,10 +140,12 @@ export class Matchup {
       };
       summary: {
         teamName?: string;
+        coach?: string;
         team: (PokemonFormData & {
           abilities: AbilityName[];
           baseStats: StatsTable;
           types: [TypeName] | [TypeName, TypeName];
+          index: number;
         })[];
         stats?: {
           mean: {
@@ -195,8 +197,16 @@ export class Matchup {
         stage: this.stage,
       },
       summary: [
-        new SummaryClass(this.aTeam.team, this.aTeam.teamName).toJson(),
-        new SummaryClass(this.bTeam.team, this.bTeam.teamName).toJson(),
+        new SummaryClass(
+          this.aTeam.team,
+          this.aTeam.teamName,
+          this.aTeam.coach
+        ).toJson(),
+        new SummaryClass(
+          this.bTeam.team,
+          this.bTeam.teamName,
+          this.bTeam.coach
+        ).toJson(),
       ],
       speedchart: speedchart(
         [this.aTeam.team, this.bTeam.team],

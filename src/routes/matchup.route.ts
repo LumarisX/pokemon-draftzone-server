@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
 import NodeCache from "node-cache";
 import { Route } from ".";
+import { Matchup } from "../classes/matchup";
 import { DraftSpecie, PokemonFormData } from "../classes/pokemon";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
@@ -28,7 +29,6 @@ import {
 } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
-import { Matchup } from "../classes/matchup";
 
 type MatchupOld = {
   formatId: FormatId;
@@ -69,15 +69,14 @@ export const MatchupRoutes: Route = {
   subpaths: {
     "/:matchup_id": {
       get: async (req: Request, res: MatchupResponse) => {
-        const matchup = res.matchup!;
-        const cachedData = $matchups.get(
-          `${matchup.aTeam._id}-${req.params.matchup_id}`
-        );
-        if (cachedData) {
-          return res.json(cachedData);
-        }
         try {
+          const matchup = res.matchup!;
+          const cachedData = $matchups.get(
+            `${matchup.aTeam._id}-${req.params.matchup_id}`
+          );
+          if (cachedData) return res.json(cachedData);
           const data = await matchup.analyze();
+          console.log(Object.getPrototypeOf(data.summary[0].team[0].capt));
           $matchups.set(`${matchup.aTeam._id}-${req.params.matchup_id}`, data);
           res.json(data);
         } catch (error) {
