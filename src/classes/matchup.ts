@@ -142,7 +142,7 @@ export class Matchup {
         teamName?: string;
         coach?: string;
         team: (PokemonFormData & {
-          abilities: AbilityName[];
+          abilities: string[];
           baseStats: StatsTable;
           types: [TypeName] | [TypeName, TypeName];
           index: number;

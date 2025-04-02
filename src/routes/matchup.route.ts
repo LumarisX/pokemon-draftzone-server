@@ -1,4 +1,4 @@
-import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
+import { StatsTable, TypeName } from "@pkmn/data";
 import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
 import NodeCache from "node-cache";
@@ -76,7 +76,6 @@ export const MatchupRoutes: Route = {
           );
           if (cachedData) return res.json(cachedData);
           const data = await matchup.analyze();
-          console.log(Object.getPrototypeOf(data.summary[0].team[0].capt));
           $matchups.set(`${matchup.aTeam._id}-${req.params.matchup_id}`, data);
           res.json(data);
         } catch (error) {
@@ -313,7 +312,7 @@ async function makeMatchup(
     summary: {
       teamName?: string;
       team: (PokemonFormData & {
-        abilities: AbilityName[];
+        abilities: string[];
         baseStats: StatsTable;
         types: [TypeName] | [TypeName, TypeName];
       })[];

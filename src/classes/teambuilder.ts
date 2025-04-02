@@ -111,7 +111,7 @@ export namespace Teambuilder {
         evs: this.evs,
         ivs: this.ivs,
         ability: this.ability.name,
-        abilities: Object.values(this.specie.abilities).map((abilityName) => ({
+        abilities: this.specie.getAbilities().map((abilityName) => ({
           name: abilityName,
           id: this.specie.ruleset.abilities.get(abilityName)?.id,
         })),

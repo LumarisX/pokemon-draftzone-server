@@ -263,7 +263,7 @@ export class DraftSpecie implements Specie, Pokemon {
       });
 
     return {
-      abilities: Object.values(this.abilities).filter(
+      abilities: this.getAbilities().filter(
         (ability) => ability !== ""
       ) as AbilityName[],
 

@@ -1,19 +1,20 @@
-import { AbilityName, ID, StatusName } from "@pkmn/data";
+import { ID, StatusName } from "@pkmn/data";
 import { Field, Pokemon, Side } from "@smogon/calc";
 import { getFinalSpeed } from "@smogon/calc/dist/mechanics/util";
-import { DraftSpecie } from "../../classes/pokemon";
+import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 
 export type Speedchart = {
-  modifiers: string[];
-  tiers: {
-    pokemon: {
-      id: string;
-    };
-    team: string;
-    speed: number;
-    modifiers: string[];
-  }[];
+  teams: (PokemonFormData & {
+    spe: number;
+    tiers: Tier[];
+  })[][];
   level: number;
+  modifiers: string[];
+};
+
+type Tier = {
+  modifiers: string[];
+  speed: number;
 };
 
 type Configurations = {
@@ -31,8 +32,8 @@ type Configurations = {
   }[];
 };
 
-function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
-  let fastConfigurations: Configurations = {
+function getSpeedTiers(pokemon: DraftSpecie, level: number) {
+  const fastConfigurations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
@@ -48,7 +49,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
     sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
   };
 
-  let baseConfiugrations: Configurations = {
+  const baseConfiugrations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
@@ -58,7 +59,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
     sides: [{ modifiers: [] }],
   };
 
-  let slowConfigurations: Configurations = {
+  const slowConfigurations: Configurations = {
     stages: [-1, 0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }],
@@ -74,8 +75,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of Object.values(pokemon.abilities)) {
-    ability = ability as AbilityName;
+  for (let ability of pokemon.getAbilities()) {
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -111,15 +111,17 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number, teamIndex: string) {
     }
   }
   return [
-    ...generateTiers(pokemon, level, teamIndex, fastConfigurations),
-    ...generateTiers(pokemon, level, teamIndex, baseConfiugrations),
-    ...generateTiers(pokemon, level, teamIndex, slowConfigurations),
+    ...generateTiers(pokemon, level, fastConfigurations),
+    ...generateTiers(pokemon, level, baseConfiugrations),
+    ...generateTiers(pokemon, level, slowConfigurations),
   ];
 }
 
-function tierModifiers(tiers: Speedchart["tiers"]): string[] {
+function tierModifiers(teams: Speedchart["teams"]): string[] {
   const uniqueModifiers: Set<string> = new Set(
-    tiers.flatMap((tier) => tier.modifiers)
+    teams.flatMap((team) =>
+      team.flatMap((pokemon) => pokemon.tiers.flatMap((tier) => tier.modifiers))
+    )
   );
   return Array.from(uniqueModifiers).sort();
 }
@@ -127,10 +129,9 @@ function tierModifiers(tiers: Speedchart["tiers"]): string[] {
 function generateTiers(
   pokemon: DraftSpecie,
   level: number,
-  teamIndex: string,
   configurations: Configurations
 ) {
-  const tiers: Speedchart["tiers"] = [];
+  const tiers: Tier[] = [];
   for (const status of configurations.statuses) {
     if (status.status == "par" && pokemon.types.includes("Electric")) continue;
     for (const sConfig of configurations.sides) {
@@ -179,12 +180,10 @@ function generateTiers(
                   modifiers.push(additional.modifier);
                 }
                 tiers.push({
-                  pokemon: { id: pokemon.id },
                   speed: Math.floor(
                     getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
                       additional.mult
                   ),
-                  team: teamIndex,
                   modifiers,
                 });
               }
@@ -197,14 +196,21 @@ function generateTiers(
   return tiers;
 }
 
-export function speedchart(teams: DraftSpecie[][], level: number): Speedchart {
-  let tiers = teams
-    .flatMap((team, teamIndex) =>
-      team.flatMap((pokemon) =>
-        getSpeedTiers(pokemon, level, teamIndex.toString())
-      )
-    )
-    .sort((x, y) => y.speed - x.speed);
-  const modifiers = tierModifiers(tiers);
-  return { modifiers, tiers, level };
+export function speedchart(
+  teamsRaw: DraftSpecie[][],
+  level: number
+): Speedchart {
+  const teams = teamsRaw.map((team) =>
+    team.map((pokemon) => ({
+      ...pokemon.toClient(),
+      spe: pokemon.baseStats.spe,
+      tiers: getSpeedTiers(pokemon, level),
+    }))
+  );
+  const modifiers = tierModifiers(teams);
+  return {
+    teams,
+    level,
+    modifiers,
+  };
 }

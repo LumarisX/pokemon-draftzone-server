@@ -55,7 +55,7 @@ export class SummaryClass {
       coach: this.coach,
       team: this.team.map((pokemon, index) => ({
         ...pokemon.toClient(),
-        abilities: Object.values(pokemon.abilities),
+        abilities: pokemon.getAbilities(),
         baseStats: pokemon.baseStats,
         bst: pokemon.bst,
         index: index,
