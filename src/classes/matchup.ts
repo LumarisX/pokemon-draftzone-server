@@ -1,8 +1,8 @@
 import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { PZError } from "..";
-import { Format, FormatId } from "../data/formats";
-import { Ruleset, RulesetId } from "../data/rulesets";
+import { Format, FormatId, getFormat } from "../data/formats";
+import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftDocument, DraftModel } from "../models/draft.model";
 import { MatchData, MatchupData } from "../models/matchup.model";
 import {
@@ -83,6 +83,42 @@ export class Matchup {
       data.notes,
       data.gameTime,
       data.reminder
+    );
+  }
+
+  static async fromQuickData(data: {
+    format: string;
+    ruleset: string;
+    side1: {
+      team: PokemonFormData[];
+      teamName: string;
+    };
+    side2: {
+      team: PokemonFormData[];
+      teamName: string;
+    };
+  }): Promise<Matchup> {
+    const ruleset = getRuleset(data.ruleset);
+    const format = getFormat(data.format);
+    return new Matchup(
+      {
+        teamName: data.side1.teamName || "Team 1",
+        team: data.side1.team.map(
+          (pokemon) => new DraftSpecie(pokemon, ruleset)
+        ),
+      },
+      {
+        teamName: data.side2.teamName || "Team 2",
+        team: data.side2.team.map(
+          (pokemon) => new DraftSpecie(pokemon, ruleset)
+        ),
+      },
+      ruleset,
+      format,
+      "",
+      "",
+      "",
+      []
     );
   }
 
@@ -252,10 +288,12 @@ export class Matchup {
   toOpponent(): Opponent {
     return new Opponent(
       this.ruleset,
-      this.stage,
       this.bTeam.team,
       this.bTeam.teamName,
+
       this.matches,
+      this.stage,
+
       this.bTeam.coach,
       this.bTeam._id
     );

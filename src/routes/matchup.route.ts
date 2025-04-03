@@ -14,7 +14,6 @@ import {
   MatchupDocument,
   MatchupModel,
 } from "../models/matchup.model";
-import { PokemonData } from "../models/pokemon.schema";
 import {
   Coveragechart,
   coveragechart,
@@ -201,22 +200,8 @@ export const MatchupRoutes: Route = {
     },
     "/quick": {
       post: async (req: Request, res: Response) => {
-        let ruleset = getRuleset(req.body.ruleset);
-        let format = getFormat(req.body.format);
-        let aTeam = req.body.team1.map(
-          (pokemon: PokemonData) => new DraftSpecie(pokemon, ruleset)
-        );
-        let bTeam = req.body.team2.map(
-          (pokemon: PokemonData) => new DraftSpecie(pokemon, ruleset)
-        );
-        let data = await makeMatchup(
-          { team: aTeam, teamName: "Team 1" },
-          { team: bTeam, teamName: "Team 2" },
-          {
-            ruleset,
-            format,
-          }
-        );
+        const matchup = await Matchup.fromQuickData(req.body);
+        let data = await matchup.analyze();
         res.json(data);
       },
     },

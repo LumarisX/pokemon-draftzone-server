@@ -6,10 +6,10 @@ import { MatchData } from "../models/matchup.model";
 export class Opponent {
   constructor(
     public ruleset: Ruleset,
-    public stage: string,
     public team: DraftSpecie[],
     public teamName: string,
     public matches: MatchData[],
+    public stage: string,
     public coach?: string,
     public _id?: Types.ObjectId
   ) {}
@@ -39,12 +39,12 @@ export class Opponent {
     const errors: string[] = [];
     const opponent = new Opponent(
       ruleset,
-      data.stage,
       data.team
         .filter((pokemonData) => pokemonData.id)
         .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
       data.teamName,
       data.matches,
+      data.stage,
       data.coach
     );
     if (errors.length > 0) {
@@ -65,8 +65,10 @@ export class Opponent {
   }
 }
 
-export function getMatchesScore(matches: MatchData[]): [number, number] | null {
-  if (!matches.length) return null;
+export function getMatchesScore(
+  matches?: MatchData[]
+): [number, number] | null {
+  if (!matches?.length) return null;
   if (matches.length === 1)
     return [
       matches[0].aTeam.stats.filter(

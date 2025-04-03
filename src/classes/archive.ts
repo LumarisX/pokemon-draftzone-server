@@ -35,15 +35,15 @@ export class ArchiveOld {
     };
     const matchups = await getMatchups(this.draft._id);
     data.matches = matchups.map((matchup) => {
-      let [winner, score] = this.matchupScore(matchup.matches);
+      let [winner, score] = this.matchupScore(matchup.matches!);
 
       return {
         teamName: "teamName" in matchup.bTeam ? matchup.bTeam.teamName : "", //temp
         stage: matchup.stage,
         score: score,
         winner: winner,
-        replays: matchup.matches.map((match) => match.replay),
-        stats: this.matchupStats(matchup.matches),
+        replays: matchup.matches!.map((match) => match.replay),
+        stats: this.matchupStats(matchup.matches!),
       };
     });
 

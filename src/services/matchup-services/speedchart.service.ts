@@ -43,7 +43,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
     ],
     spreads: [
       { evs: { spe: 252 }, modifiers: ["252"] },
-      { evs: { spe: 252 }, nature: "Timid", modifiers: ["252", "Positive"] },
+      { evs: { spe: 252 }, nature: "Timid", modifiers: ["252+"] },
     ],
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
@@ -69,7 +69,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
         evs: { spe: 0 },
         ivs: { spe: 0 },
         nature: "Brave",
-        modifiers: ["0", "Negative"],
+        modifiers: ["0-", "0ivs"],
       },
     ],
     fields: [{ modifiers: [] }],
@@ -168,7 +168,11 @@ function generateTiers(
                   ...(fConfig.modifiers || []),
                 ];
                 if (stage !== 0) {
-                  modifiers.push("Stage " + stage);
+                  if (stage >= 0) {
+                    modifiers.push("+" + stage);
+                  } else {
+                    modifiers.push("" + stage);
+                  }
                 }
                 if (status.modifier) {
                   modifiers.push(status.modifier);
