@@ -69,7 +69,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
         evs: { spe: 0 },
         ivs: { spe: 0 },
         nature: "Brave",
-        modifiers: ["0-", "0ivs"],
+        modifiers: ["0- 0ivs"],
       },
     ],
     fields: [{ modifiers: [] }],
