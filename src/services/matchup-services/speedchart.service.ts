@@ -75,7 +75,7 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
     fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  for (let ability of pokemon.getAbilities()) {
+  pokemon.getAbilities().forEach((ability) => {
     switch (ability) {
       case "Unburden":
         fastConfigurations.additional.push({
@@ -108,8 +108,14 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
       case "Steam Engine":
         fastConfigurations.stages.push(6);
         break;
+      case "Bull Rush":
+        fastConfigurations.additional.push({
+          modifier: ability,
+          mult: 1.5,
+        });
+        break;
     }
-  }
+  });
   return [
     ...generateTiers(pokemon, level, fastConfigurations),
     ...generateTiers(pokemon, level, baseConfiugrations),
@@ -123,7 +129,7 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
       team.flatMap((pokemon) => pokemon.tiers.flatMap((tier) => tier.modifiers))
     )
   );
-  return Array.from(uniqueModifiers).sort();
+  return Array.from(uniqueModifiers);
 }
 
 function generateTiers(
@@ -174,15 +180,9 @@ function generateTiers(
                     modifiers.push("" + stage);
                   }
                 }
-                if (status.modifier) {
-                  modifiers.push(status.modifier);
-                }
-                if (item.item) {
-                  modifiers.push(item.item);
-                }
-                if (additional.modifier) {
-                  modifiers.push(additional.modifier);
-                }
+                if (status.modifier) modifiers.push(status.modifier);
+                if (item.item) modifiers.push(item.item);
+                if (additional.modifier) modifiers.push(additional.modifier);
                 tiers.push({
                   speed: Math.floor(
                     getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
