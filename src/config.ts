@@ -2,22 +2,26 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredEnvVars: string[] = [
+const requiredEnvVars = [
   "MONGODB_USER",
   "MONGODB_PASS",
   "AUTH0_AUDIENCE",
   "AUTH0_ISSUER",
+  "AUTH0_API_CLIENT_ID",
+  "AUTH0_API_CLIENT_SECRET",
   "PORT",
-];
+] as const;
 
-const optionalEnvVars: string[] = [
+const optionalEnvVars = [
   "DISCORD_TOKEN",
   "OPENAI_API_KEY",
   "APPLICATION_ID",
   "DISCORD_DISABLED",
-];
+] as const;
 
-type Config = { [key in (typeof requiredEnvVars)[number]]: string };
+type Config = { [key in (typeof requiredEnvVars)[number]]: string } & Partial<{
+  [key in (typeof optionalEnvVars)[number]]: string;
+}>;
 
 export const config: Config = Object.fromEntries([
   ...requiredEnvVars.map((key) => {

@@ -23,6 +23,8 @@
     "@pkmn/mods": "^0.9.27",
     "@pkmn/sim": "^0.9.27",
     "@smogon/calc": "^0.10.0",
+    "auth0": "^4.21.0",
+    "axios": "^1.8.4",
     "cookie-parser": "1.4.4",
     "cors": "^2.8.5",
     "debug": "^4.3.7",

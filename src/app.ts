@@ -18,6 +18,7 @@ import { ReplayRoutes } from "./routes/replay.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
+import { UserRoutes } from "./routes/user.route";
 
 mongoose
   .connect(
@@ -61,6 +62,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/teambuilder": TeambuilderRoutes,
   "/supporters": SupporterRoutes,
   "/battlezone": BattleZoneRoutes,
+  "/user": UserRoutes,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;
