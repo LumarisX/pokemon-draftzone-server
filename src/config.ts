@@ -7,6 +7,7 @@ const requiredEnvVars = [
   "MONGODB_PASS",
   "AUTH0_AUDIENCE",
   "AUTH0_ISSUER",
+  "AUTH0_API_DOMAIN",
   "AUTH0_API_CLIENT_ID",
   "AUTH0_API_CLIENT_SECRET",
   "PORT",
