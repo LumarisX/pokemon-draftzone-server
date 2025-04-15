@@ -1,7 +1,7 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
 import NodeCache from "node-cache";
-import { getSub, jwtCheck, type Route, type SubRequest } from ".";
+import { jwtCheck, type Route } from ".";
 import { bot } from "..";
 import { LeagueAd } from "../classes/leaguelist";
 import { LeagueAdDocument, LeagueAdModel } from "../models/leaguelist.model";
@@ -69,10 +69,10 @@ export const LeagueAdRoutes: Route = {
       },
     },
     "/manage": {
-      get: async (req: SubRequest, res: Response) => {
+      get: async (req: Request, res: Response) => {
         try {
           const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
-            owner: req.sub,
+            owner: req.auth!.payload.sub!,
           }).sort({
             createdAt: -1,
           });
@@ -83,9 +83,9 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R2-01" });
         }
       },
-      post: async (req: SubRequest, res: Response) => {
+      post: async (req: Request, res: Response) => {
         try {
-          const ad = LeagueAd.fromForm(req.body, req.sub!);
+          const ad = LeagueAd.fromForm(req.body, req.auth!.payload.sub!!);
           if (ad.isValid()) {
             const doc = await ad.toDocument();
             await doc.save();
@@ -123,12 +123,12 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R2-03" });
         }
       },
-      middleware: [jwtCheck, getSub],
+      middleware: [jwtCheck],
     },
     "/:ad_id": {
       get: async (req: Request, res: Response) => {},
       patch: async (req: Request, res: Response) => {},
-      delete: async (req: SubRequest, res: Response) => {
+      delete: async (req: Request, res: Response) => {
         try {
           await res.locals.ad!.deleteOne();
           res.status(201).json({ message: "Draft deleted" });
@@ -139,11 +139,11 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R3-02" });
         }
       },
-      middleware: [jwtCheck, getSub],
+      middleware: [jwtCheck],
     },
   },
   params: {
-    ad_id: async (req: SubRequest, res: Response, next, ad_id) => {
+    ad_id: async (req: Request, res: Response, next, ad_id) => {
       try {
         if (!ad_id) {
           return res
@@ -167,7 +167,7 @@ export const LeagueAdRoutes: Route = {
       }
       next();
     },
-    time: async (req: SubRequest, res: Response, next, time) => {
+    time: async (req: Request, res: Response, next, time) => {
       try {
         if (!time) {
           return res

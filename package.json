@@ -39,6 +39,7 @@
     "node-cache": "^5.1.2",
     "openai": "^4.67.3",
     "pug": "^3.0.2",
+    "web-push": "^3.6.7",
     "ws": "^8.18.0"
   },
   "main": "app.js",
@@ -53,6 +54,7 @@
     "@types/jest": "^29.5.14",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.5.4",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.5.12",
     "jest": "^29.7.0",
     "jest-extended": "^4.0.2",

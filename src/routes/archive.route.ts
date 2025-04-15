@@ -1,6 +1,6 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import mongoose from "mongoose";
-import { getSub, jwtCheck, Route, SubRequest } from ".";
+import { jwtCheck, Route } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
@@ -16,12 +16,14 @@ export type ArchiveResponse = Response & {
 };
 
 export const ArchiveRoutes: Route = {
-  middleware: [jwtCheck, getSub],
+  middleware: [jwtCheck],
   subpaths: {
     "/teams": {
-      get: async (req: SubRequest, res: ArchiveResponse) => {
+      get: async (req: Request, res: ArchiveResponse) => {
         try {
-          let rawArchives = await ArchiveModel.find({ owner: req.sub }).sort({
+          let rawArchives = await ArchiveModel.find({
+            owner: req.auth!.payload.sub!,
+          }).sort({
             createdAt: -1,
           });
           let archives = rawArchives.map((rawArchive) => {
@@ -48,7 +50,7 @@ export const ArchiveRoutes: Route = {
       },
     },
     "/:team_id": {
-      delete: async (req: SubRequest, res: ArchiveResponse) => {
+      delete: async (req: Request, res: ArchiveResponse) => {
         if (!res.rawArchive) {
           return;
         }
@@ -64,7 +66,7 @@ export const ArchiveRoutes: Route = {
       },
     },
     "/:team_id/stats": {
-      get: async (req: SubRequest, res: ArchiveResponse) => {
+      get: async (req: Request, res: ArchiveResponse) => {
         if (!res.archive || !res.ruleset) {
           return;
         }
@@ -77,7 +79,7 @@ export const ArchiveRoutes: Route = {
     },
   },
   params: {
-    team_id: async (req: SubRequest, res: ArchiveResponse, next, team_id) => {
+    team_id: async (req: Request, res: ArchiveResponse, next, team_id) => {
       try {
         if (mongoose.Types.ObjectId.isValid(team_id)) {
           res.rawArchive = await ArchiveModel.findById(team_id);
