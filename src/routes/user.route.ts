@@ -6,21 +6,8 @@ export const UserRoutes: Route = {
   middleware: [jwtCheck],
   subpaths: {
     "/settings": {
-      get: async (req: Request, res: Response) => {
-        try {
-          return res.json({});
-          const management = await getManagementToken();
-          const user = (
-            await management.users.get({ id: req.auth!.payload.sub!! })
-          ).data;
-          return res.json(user.user_metadata.settings);
-        } catch (error) {
-          sendError(res, 500, error as Error, "UR-R2-01");
-        }
-      },
       patch: async (req: Request, res: Response) => {
         try {
-          return res.status(201);
           if (typeof req.body !== "object")
             sendError(
               res,

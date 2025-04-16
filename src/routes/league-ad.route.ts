@@ -1,36 +1,10 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
-import NodeCache from "node-cache";
 import { jwtCheck, type Route } from ".";
 import { bot } from "..";
 import { LeagueAd } from "../classes/leaguelist";
 import { LeagueAdDocument, LeagueAdModel } from "../models/leaguelist.model";
-
-//Refresh every 50 minutes
-const cache = new NodeCache({ stdTTL: 3000 });
-
-async function getApprovedLeagues(): Promise<LeagueAdDocument[]> {
-  const cacheKey = "approvedLeagues";
-  const cachedLeagues: LeagueAdDocument[] | undefined = cache.get(cacheKey);
-
-  if (cachedLeagues) {
-    return cachedLeagues;
-  }
-
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
-    status: "Approved",
-    closesAt: { $gte: today },
-  })
-    .sort({
-      createdAt: -1,
-    })
-    .lean();
-
-  cache.set(cacheKey, leagues);
-  return leagues;
-}
+import { getApprovedLeagues } from "../services/league-ad/league-ad-service";
 
 export const LeagueAdRoutes: Route = {
   subpaths: {
@@ -44,27 +18,6 @@ export const LeagueAdRoutes: Route = {
           res
             .status(500)
             .json({ message: (error as Error).message, code: "LR-R1-01" });
-        }
-      },
-    },
-    "/count/:time": {
-      get: async (req: Request, res: Response) => {
-        try {
-          const timeString = res.get("time");
-          if (!timeString)
-            return res
-              .status(500)
-              .json({ message: "Time variable not set", code: "LR-R4-02" });
-          const time = new Date(+timeString);
-          const count = (await getApprovedLeagues()).filter(
-            (league) => league.createdAt > time
-          ).length;
-          res.send(count.toString());
-        } catch (error) {
-          console.error(error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "LR-R4-01" });
         }
       },
     },
