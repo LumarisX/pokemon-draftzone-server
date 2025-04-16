@@ -20,6 +20,7 @@ import { TeambuilderRoutes } from "./routes/teambuilder.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
 import { UserRoutes } from "./routes/user.route";
 import { PushSubscriptionRoutes } from "./routes/subscription.route";
+import { NewsRoutes } from "./routes/news.route";
 
 mongoose
   .connect(
@@ -65,6 +66,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/battlezone": BattleZoneRoutes,
   "/user": UserRoutes,
   "/push": PushSubscriptionRoutes,
+  "/news": NewsRoutes,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;

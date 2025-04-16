@@ -1,6 +1,6 @@
 import { Schema, model, Document, Types } from "mongoose";
 
-const newsSchemaFlexible = new Schema(
+const newsSchema = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String },
@@ -12,37 +12,21 @@ const newsSchemaFlexible = new Schema(
           enum: ["para", "bullet", "image", "heading", "list", "code"],
           required: true,
         },
-        // Common optional fields for most section types
         subTitle: String,
         description: String,
         pictures: [{ type: String }],
-
-        // Fields specific to 'para' type (though common fields might suffice)
-        // paraDescription: String, // Could use 'description'
-
-        // Fields specific to 'bullet' type
         bulletTitle: String,
         bulletDesc: String,
-
-        // Fields specific to 'list' type
         listTitle: String,
         items: [{ type: String }],
         ordered: { type: Boolean, default: false },
-
-        // Fields specific to 'heading' type
         level: { type: Number, min: 1, max: 6 },
-        headingText: String, // Could use 'description'
-
-        // Fields specific to 'image' type
+        headingText: String,
         altText: String,
         caption: String,
-        imageUrl: String, // Could use 'pictures' with a single element
-
-        // Fields specific to 'code' type
+        imageUrl: String,
         language: String,
         codeString: String,
-
-        // Add more type-specific fields as needed
       },
     ],
   },
@@ -77,7 +61,4 @@ export type News = {
 
 export type NewsDocument = News & Document;
 
-export const NewsModel = model<NewsDocument>(
-  "news_flexible",
-  newsSchemaFlexible
-);
+export const NewsModel = model<NewsDocument>("news", newsSchema);
