@@ -1,33 +1,53 @@
 import { Schema, model, Document, Types } from "mongoose";
 
+const buttonSchema = new Schema(
+  {
+    text: { type: String, required: true },
+    disabled: { type: Boolean, default: false },
+    link: { type: String, required: true },
+    newWindow: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const imageSchema = new Schema(
+  {
+    title: String,
+    imageUrl: { type: String, required: true },
+    size: { type: String, enum: ["small", "medium", "large"] },
+  },
+  { _id: false }
+);
+
 const newsSchema = new Schema(
   {
     title: { type: String, required: true },
-    description: { type: String },
-    pictures: [{ type: String }],
     sections: [
-      {
-        type: {
-          type: String,
-          enum: ["para", "bullet", "image", "heading", "list", "code"],
-          required: true,
+      new Schema(
+        {
+          type: {
+            type: String,
+            enum: ["para", "buttons", "images", "heading", "list"],
+            required: true,
+          },
+
+          // --- Fields specific to 'para' ---
+          description: String,
+
+          // --- Fields specific to 'list' ---
+          listTitle: String,
+          items: [String],
+          ordered: { type: Boolean, default: false },
+
+          // --- Fields specific to 'heading' ---
+          headingText: String,
+          level: { type: Number, min: 1, max: 6 },
+          buttons: [buttonSchema],
+
+          images: [imageSchema],
         },
-        subTitle: String,
-        description: String,
-        pictures: [{ type: String }],
-        bulletTitle: String,
-        bulletDesc: String,
-        listTitle: String,
-        items: [{ type: String }],
-        ordered: { type: Boolean, default: false },
-        level: { type: Number, min: 1, max: 6 },
-        headingText: String,
-        altText: String,
-        caption: String,
-        imageUrl: String,
-        language: String,
-        codeString: String,
-      },
+        { _id: false }
+      ),
     ],
   },
   {
@@ -38,22 +58,39 @@ const newsSchema = new Schema(
 export type Section =
   | {
       type: "para";
-      subTitle?: string;
-      description?: string;
-      pictures?: string[];
+      description: string;
     }
-  | { type: "bullet"; bulletTitle: string; bulletDesc: string }
-  | { type: "list"; listTitle?: string; items: string[]; ordered?: boolean }
-  | { type: "heading"; level: number; headingText: string }
-  | { type: "image"; altText?: string; caption?: string; imageUrl: string }
-  | { type: "code"; language?: string; codeString: string }
-  | Record<string, any>;
+  | {
+      type: "list";
+      listTitle?: string;
+      items: string[];
+      ordered?: boolean;
+    }
+  | {
+      type: "heading";
+      headingText: string;
+    }
+  | {
+      type: "buttons";
+      buttons: {
+        text: string;
+        disabled?: boolean;
+        link: string;
+        newWindow?: boolean;
+      }[];
+    }
+  | {
+      type: "images";
+      images: {
+        title?: string;
+        imageUrl: string;
+        size?: "small" | "medium" | "large";
+      }[];
+    };
 
 export type News = {
   _id: Types.ObjectId;
   title: string;
-  description?: string;
-  pictures?: string[];
   sections: Section[];
   createdAt: Date;
   updatedAt: Date;
