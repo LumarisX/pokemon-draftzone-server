@@ -33,6 +33,7 @@
     "express": "^4.17.2",
     "express-mongo-sanitize": "^2.2.0",
     "express-oauth2-jwt-bearer": "^1.6.0",
+    "helmet": "^8.1.0",
     "http-errors": "^2.0.0",
     "mongoose": "^8.5.3",
     "morgan": "1.9.1",
@@ -40,6 +41,8 @@
     "openai": "^4.67.3",
     "pug": "^3.0.2",
     "web-push": "^3.6.7",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.18.0"
   },
   "main": "app.js",

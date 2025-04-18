@@ -11,6 +11,7 @@ const requiredEnvVars = [
   "AUTH0_API_CLIENT_ID",
   "AUTH0_API_CLIENT_SECRET",
   "PORT",
+  "NODE_ENV",
 ] as const;
 
 const optionalEnvVars = [

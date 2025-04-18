@@ -1,10 +1,10 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
 import { jwtCheck, type Route } from ".";
-import { bot } from "..";
 import { LeagueAd } from "../classes/leaguelist";
 import { LeagueAdDocument, LeagueAdModel } from "../models/leaguelist.model";
 import { getApprovedLeagues } from "../services/league-ad/league-ad-service";
+import { client } from "../discord";
 
 export const LeagueAdRoutes: Route = {
   subpaths: {
@@ -43,8 +43,8 @@ export const LeagueAdRoutes: Route = {
             const doc = await ad.toDocument();
             await doc.save();
             //Send a message in the discord server that a new Ad was submitted
-            if (bot) {
-              const guild = await bot.guilds.fetch("1183936734719922176");
+            if (client) {
+              const guild = await client.guilds.fetch("1183936734719922176");
               if (!guild) {
                 console.error("Guild not found");
                 return;

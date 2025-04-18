@@ -2,36 +2,84 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import mongoSanitize from "express-mongo-sanitize";
+import fs from "fs";
+import helmet from "helmet";
 import createError from "http-errors";
 import mongoose from "mongoose";
-import logger from "morgan";
+import morgan from "morgan";
 import path from "path";
+import winston from "winston";
+import "winston-daily-rotate-file";
 import { config } from "./config";
 import { Route } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
+import { BattleZoneRoutes } from "./routes/battlezone.route";
 import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
 import { LeagueAdRoutes } from "./routes/league-ad.route";
 import { MatchupRoutes } from "./routes/matchup.route";
+import { NewsRoutes } from "./routes/news.route";
 import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
+import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
-import { BattleZoneRoutes } from "./routes/battlezone.route";
 import { UserRoutes } from "./routes/user.route";
-import { PushSubscriptionRoutes } from "./routes/subscription.route";
-import { NewsRoutes } from "./routes/news.route";
 
-mongoose
-  .connect(
-    `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`
-  )
-  .then(() => {
-    console.log("Connected to Database");
-  })
-  .catch((error) => {
-    console.error(`Failed to connect to the database: ${error.message}`);
-  });
+const logDir = path.join(__dirname, "../logs");
+if (!fs.existsSync(logDir)) {
+  try {
+    fs.mkdirSync(logDir);
+    console.log(`Log directory created: ${logDir}`);
+  } catch (err) {
+    console.error(`Could not create log directory: ${logDir}`, err);
+  }
+}
+
+export const logger = winston.createLogger({
+  level: config.NODE_ENV === "development" ? "debug" : "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.splat(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.DailyRotateFile({
+      level: "error",
+      filename: path.join(logDir, "error-%DATE%.log"),
+      datePattern: "YYYY-MM-DD",
+      zippedArchive: true,
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
+
+    new winston.transports.DailyRotateFile({
+      filename: path.join(logDir, "combined-%DATE%.log"),
+      datePattern: "YYYY-MM-DD",
+      zippedArchive: true,
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
+  ],
+});
+
+if (config.NODE_ENV !== "production") {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        winston.format.printf(
+          (info) =>
+            `${info.timestamp} ${info.level}: ${info.message} ${
+              info.stack || ""
+            }`
+        )
+      ),
+    })
+  );
+}
 
 export const app = express();
 
@@ -39,11 +87,17 @@ app.set("views", path.join(__dirname, "../views"));
 app.set("view engine", "pug");
 app.set("trust proxy", true);
 
+app.use(helmet());
+
 app.use(
   mongoSanitize({
     replaceWith: "_",
     onSanitize: ({ req, key }: { req: Request; key: string }) => {
-      console.warn(`This request[${key}] is sanitized`, req.baseUrl);
+      logger.warn(`Request field sanitized`, {
+        key,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
     },
   })
 );
@@ -51,8 +105,29 @@ app.use(
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.json());
-app.use(cors());
 
+const allowedOrigins = [
+  "https://dqptrox2bn9qw.cloudfront.net",
+  "https://pokemondraftzone.com",
+  "http://localhost:4200",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg =
+          "The CORS policy for this site does not allow access from the specified Origin.";
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
+
+app.use(morgan(config.NODE_ENV === "development" ? "dev" : "common"));
 export const ROUTES: { [path: string]: Route } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
@@ -88,20 +163,29 @@ for (const path in ROUTES) {
     for (const param in route.params) {
       router.param(param, route.params[param]);
     }
-  app.use(path, logger("common"), ...(route.middleware || []), router);
+  app.use(path, ...(route.middleware || []), router);
 }
 
-app.use(function (req: Request, res: Response, next: NextFunction) {
+app.use((req: Request, res: Response, next: NextFunction) => {
   next(createError(404));
 });
 
-app.use(function (err: any, req: Request, res: Response, next: NextFunction) {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-  res.status(err.status || 500).json({
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  const status = err.status || 500;
+  const message = err.message || "Internal Server Error";
+
+  logger.error(`Error processing request`, {
+    status,
+    message,
+    method: req.method,
+    path: req.originalUrl,
+    ip: req.ip,
+    error: err,
+  });
+  res.status(status).json({
     error: {
-      message: err.message,
-      status: err.status || 500,
+      message: message,
+      stack: config.NODE_ENV === "development" ? err.stack : undefined,
     },
   });
 });
