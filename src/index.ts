@@ -1,110 +1,133 @@
 import debug from "debug";
 import http from "http";
-import { AddressInfo } from "net";
-import { app } from "./app";
+import mongoose from "mongoose";
+import { app, logger } from "./app";
 import { config } from "./config";
-import { startDiscordBot } from "./discord/discord";
+import { startDiscordBot } from "./discord";
+import { connectDB } from "./database";
+import { Client } from "discord.js";
 
 const debugLogger = debug("tpl-express-pro:server");
-/**
- * Get port from environment and store in Express.
- */
-const port: string = normalizePort(config.PORT || "9960");
-console.log(`[server]: Server is running on port ${port}`);
-app.set("port", port);
 
-/**
- * Create HTTP server.
- */
-const server: http.Server = http.createServer(app);
-
-// const wss = new WebSocket.Server({ server });
-
-// wss.on("connection", (ws, req) => {
-//   console.log(`${req.headers["user-agent"]} => ${req.url}`);
-
-//   if (req.url) {
-//     const [_, main, ...paths] = req.url.split("/");
-//     const path = `/${main}`;
-//     const subpath = `/${paths.join("/")}`;
-//     if (ROUTES[path]) {
-//       if (ROUTES[path].ws?.onConnect) {
-//         let { emitter, data } = ROUTES[path].ws.onConnect();
-//         if (ROUTES[path].subpaths[subpath]?.ws) {
-//           ws.on("message", (message) => {
-//             ROUTES[path].subpaths[subpath].ws!(
-//               ws,
-//               message.toString(),
-//               emitter,
-//               data
-//             );
-//           });
-//         }
-//       }
-//     }
-//   }
-
-//   ws.on("close", () => {
-//     console.log("WebSocket connection closed");
-//   });
-// });
-
-/**
- * Listen on provided port, on all network interfaces.
- */
-
-server.listen(port);
-server.on("error", onError);
-server.on("listening", onListening);
-
-/**
- * Normalize a port into a number, string, or false.
- */
-
-function normalizePort(val: string | number): string {
-  return val.toString();
+function normalizePort(
+  val: string | number | undefined
+): number | string | boolean {
+  if (!val) {
+    return false;
+  }
+  const port = parseInt(val.toString(), 10);
+  if (isNaN(port)) {
+    return val.toString();
+  }
+  if (port >= 0) {
+    return port;
+  }
+  return false;
 }
 
-/**
- * Event listener for HTTP server "error" event.
- */
-
-function onError(error: NodeJS.ErrnoException): void {
+function onError(
+  error: NodeJS.ErrnoException,
+  port: number | string | boolean
+): void {
   if (error.syscall !== "listen") {
     throw error;
   }
 
-  const bind: string =
-    typeof port === "string" ? "Pipe " + port : "Port " + port;
+  const bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
 
-  // handle specific listen errors with friendly messages
   switch (error.code) {
     case "EACCES":
-      console.error(bind + " requires elevated privileges");
+      logger.error(`${bind} requires elevated privileges`);
       process.exit(1);
+      break;
     case "EADDRINUSE":
-      console.error(bind + " is already in use");
+      logger.error(`${bind} is already in use`);
       process.exit(1);
+      break;
     default:
       throw error;
   }
 }
 
-/**
- * Event listener for HTTP server "listening" event.
- */
-
-function onListening(): void {
-  const addr: string | AddressInfo | null = server.address();
-  const bind: string =
-    typeof addr === "string" ? "pipe " + addr : "port " + addr?.port;
+function onListening(server: http.Server): void {
+  const addr = server.address();
+  if (!addr) {
+    logger.error("Server address is null after listening started.");
+    return;
+  }
+  const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
   debugLogger("Listening on " + bind);
+  logger.info(`Server listening on ${bind}`);
 }
 
-export const bot = startDiscordBot();
+function setupGracefulShutdown(server: http.Server) {
+  const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
 
+  signals.forEach((signal) => {
+    process.on(signal, async () => {
+      logger.info(`Received ${signal}. Shutting down gracefully...`);
+      server.close(async (err) => {
+        if (err) {
+          logger.error("Error closing HTTP server:", err);
+          process.exit(1);
+        } else {
+          logger.info("HTTP server closed.");
+        }
+        try {
+          await mongoose.connection.close();
+          logger.info("MongoDB connection closed.");
+        } catch (dbErr) {
+          logger.error("Error closing MongoDB connection:", dbErr);
+        }
+        process.exit(0);
+      });
+      setTimeout(() => {
+        logger.warn("Graceful shutdown timed out. Forcing exit.");
+        process.exit(1);
+      }, 10000);
+    });
+  });
+}
+
+(async () => {
+  process.on("unhandledRejection", (reason, promise) => {
+    logger.error("Unhandled Rejection at:", { promise, reason });
+  });
+  process.on("uncaughtException", (error) => {
+    logger.error("Uncaught Exception:", error);
+    logger.info("Attempting graceful shutdown due to uncaught exception...");
+    process.exit(1);
+  });
+
+  try {
+    await connectDB(logger);
+    logger.info("connectDB() promise resolved.");
+
+    const port = normalizePort(config.PORT || "9960");
+    if (port === false) {
+      throw new Error(`Invalid port specified: ${config.PORT || "9960"}`);
+    }
+    app.set("port", port);
+
+    const server = http.createServer(app);
+
+    server.on("error", (error: NodeJS.ErrnoException) => onError(error, port));
+    server.on("listening", () => onListening(server));
+
+    server.listen(port);
+
+    await startDiscordBot(logger);
+
+    setupGracefulShutdown(server);
+  } catch (error) {
+    const log = typeof logger !== "undefined" ? logger.error : console.error;
+    log("Failed to start server:", error);
+    process.exit(1);
+  }
+})();
 export class PZError extends Error {
   constructor(public status: number, message?: string) {
     super(message);
+    Object.setPrototypeOf(this, PZError.prototype);
   }
 }

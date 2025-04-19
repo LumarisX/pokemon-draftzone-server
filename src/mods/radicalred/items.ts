@@ -15,18 +15,6 @@ export const Items: ModdedItemDataTable = {
     fling: {
       basePower: 60,
     },
-    onSwitchIn(pokemon) {
-      if (pokemon.isActive && pokemon.baseSpecies.name === "Dialga") {
-        this.queue.insertChoice({ choice: "runPrimal", pokemon: pokemon });
-      }
-    },
-    onPrimal(pokemon) {
-      pokemon.formeChange("Dialga-Primal", this.effect, true);
-    },
-    onTakeItem(item, source) {
-      if (source.baseSpecies.baseSpecies === "Dialga") return false;
-      return true;
-    },
     itemUser: ["Dialga"],
     num: 135,
     gen: 4,
@@ -1216,18 +1204,6 @@ export const Items: ModdedItemDataTable = {
   eternamaxorb: {
     name: "Eternamax Orb",
     spritenum: 515,
-    onSwitchIn(pokemon) {
-      if (pokemon.isActive && pokemon.baseSpecies.name === "Eternatus") {
-        this.queue.insertChoice({ choice: "runPrimal", pokemon: pokemon });
-      }
-    },
-    onPrimal(pokemon) {
-      pokemon.formeChange("Eternatus-Eternamax", this.effect, true);
-    },
-    onTakeItem(item, source) {
-      if (source.baseSpecies.baseSpecies === "Eternatus") return false;
-      return true;
-    },
     itemUser: ["Eternatus"],
     gen: 8,
     desc: "If held by an Eternatus, this item triggers its Primal Reversion in battle.",

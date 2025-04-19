@@ -1,10 +1,10 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
 import { type Route } from ".";
-import { bot } from "..";
 import { BattleZone } from "../classes/battlezone";
 import { getTiers } from "../data/pdbl";
 import { PDBLModel } from "../models/pdbl.model";
+import { client } from "../discord";
 
 export const BattleZoneRoutes: Route = {
   subpaths: {
@@ -48,8 +48,8 @@ export const BattleZoneRoutes: Route = {
               .status(409)
               .json({ message: "User is already signed up" });
           signup.toDocument().save();
-          if (bot) {
-            const guild = await bot.guilds.fetch("1183936734719922176");
+          if (client) {
+            const guild = await client.guilds.fetch("1183936734719922176");
             if (!guild) {
               console.error("Guild not found");
               return;

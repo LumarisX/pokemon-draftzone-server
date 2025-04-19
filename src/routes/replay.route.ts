@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { Route } from ".";
-import { SubRequest } from ".";
 import {
   formatUrl,
   Replay,
@@ -48,7 +47,7 @@ export const ReplayRoutes: Route = {
     },
   },
   params: {
-    url: async (req: SubRequest, res: ReplayResponse, next, url) => {
+    url: async (req: Request, res: ReplayResponse, next, url) => {
       try {
         if (url == null) {
           return res

@@ -1,4 +1,4 @@
-import { AbilityName, StatsTable, TypeName } from "@pkmn/data";
+import { StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { PZError } from "..";
 import { Format, FormatId, getFormat } from "../data/formats";

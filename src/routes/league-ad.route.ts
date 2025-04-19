@@ -1,36 +1,10 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
-import NodeCache from "node-cache";
-import { getSub, jwtCheck, type Route, type SubRequest } from ".";
-import { bot } from "..";
+import { jwtCheck, type Route } from ".";
 import { LeagueAd } from "../classes/leaguelist";
 import { LeagueAdDocument, LeagueAdModel } from "../models/leaguelist.model";
-
-//Refresh every 50 minutes
-const cache = new NodeCache({ stdTTL: 3000 });
-
-async function getApprovedLeagues(): Promise<LeagueAdDocument[]> {
-  const cacheKey = "approvedLeagues";
-  const cachedLeagues: LeagueAdDocument[] | undefined = cache.get(cacheKey);
-
-  if (cachedLeagues) {
-    return cachedLeagues;
-  }
-
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
-    status: "Approved",
-    closesAt: { $gte: today },
-  })
-    .sort({
-      createdAt: -1,
-    })
-    .lean();
-
-  cache.set(cacheKey, leagues);
-  return leagues;
-}
+import { getApprovedLeagues } from "../services/league-ad/league-ad-service";
+import { client } from "../discord";
 
 export const LeagueAdRoutes: Route = {
   subpaths: {
@@ -47,32 +21,11 @@ export const LeagueAdRoutes: Route = {
         }
       },
     },
-    "/count/:time": {
+    "/manage": {
       get: async (req: Request, res: Response) => {
         try {
-          const timeString = res.get("time");
-          if (!timeString)
-            return res
-              .status(500)
-              .json({ message: "Time variable not set", code: "LR-R4-02" });
-          const time = new Date(+timeString);
-          const count = (await getApprovedLeagues()).filter(
-            (league) => league.createdAt > time
-          ).length;
-          res.send(count.toString());
-        } catch (error) {
-          console.error(error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "LR-R4-01" });
-        }
-      },
-    },
-    "/manage": {
-      get: async (req: SubRequest, res: Response) => {
-        try {
           const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
-            owner: req.sub,
+            owner: req.auth!.payload.sub!,
           }).sort({
             createdAt: -1,
           });
@@ -83,15 +36,15 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R2-01" });
         }
       },
-      post: async (req: SubRequest, res: Response) => {
+      post: async (req: Request, res: Response) => {
         try {
-          const ad = LeagueAd.fromForm(req.body, req.sub!);
+          const ad = LeagueAd.fromForm(req.body, req.auth!.payload.sub!!);
           if (ad.isValid()) {
             const doc = await ad.toDocument();
             await doc.save();
             //Send a message in the discord server that a new Ad was submitted
-            if (bot) {
-              const guild = await bot.guilds.fetch("1183936734719922176");
+            if (client) {
+              const guild = await client.guilds.fetch("1183936734719922176");
               if (!guild) {
                 console.error("Guild not found");
                 return;
@@ -123,12 +76,12 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R2-03" });
         }
       },
-      middleware: [jwtCheck, getSub],
+      middleware: [jwtCheck],
     },
     "/:ad_id": {
       get: async (req: Request, res: Response) => {},
       patch: async (req: Request, res: Response) => {},
-      delete: async (req: SubRequest, res: Response) => {
+      delete: async (req: Request, res: Response) => {
         try {
           await res.locals.ad!.deleteOne();
           res.status(201).json({ message: "Draft deleted" });
@@ -139,11 +92,11 @@ export const LeagueAdRoutes: Route = {
             .json({ message: (error as Error).message, code: "LR-R3-02" });
         }
       },
-      middleware: [jwtCheck, getSub],
+      middleware: [jwtCheck],
     },
   },
   params: {
-    ad_id: async (req: SubRequest, res: Response, next, ad_id) => {
+    ad_id: async (req: Request, res: Response, next, ad_id) => {
       try {
         if (!ad_id) {
           return res
@@ -167,7 +120,7 @@ export const LeagueAdRoutes: Route = {
       }
       next();
     },
-    time: async (req: SubRequest, res: Response, next, time) => {
+    time: async (req: Request, res: Response, next, time) => {
       try {
         if (!time) {
           return res
