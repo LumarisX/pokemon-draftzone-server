@@ -1,13 +1,11 @@
-import { Response } from "express";
-import { getSub, jwtCheck, Route, sendError, SubRequest } from ".";
-import { getManagementToken } from "../services/auth0-services/auth0-service";
 import {
-  S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { fromIni } from "@aws-sdk/credential-provider-ini";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { jwtCheck, Route } from ".";
 
 const s3 = new S3Client({
   region: "us-east-2",
@@ -15,9 +13,9 @@ const s3 = new S3Client({
 });
 
 export const UploadRoute: Route = {
-  middleware: [jwtCheck, getSub],
+  middleware: [jwtCheck],
   subpaths: {
-    "/upload-url": {
+    "/team-upload": {
       get: async (req, res) => {
         const { filename, contentType } = req.query;
 
@@ -29,7 +27,38 @@ export const UploadRoute: Route = {
           return res.status(400).json({ error: "Invalid file metadata" });
         }
 
-        const key = `user-uploads/${Date.now()}-${filename}`;
+        const key = `team-uploads/${Date.now()}-${filename}`;
+
+        const command = new PutObjectCommand({
+          Bucket: "pokemondraftzone-public",
+          Key: key,
+          ContentType: contentType,
+          ACL: "public-read",
+        });
+
+        try {
+          const url = await getSignedUrl(s3, command, {
+            expiresIn: 120,
+          });
+          res.json({ url, key });
+        } catch (error) {
+          res.status(500).json({ error: "Error generating pre-signed URL" });
+        }
+      },
+    },
+    "/league-upload": {
+      get: async (req, res) => {
+        const { filename, contentType } = req.query;
+
+        if (
+          !filename ||
+          typeof contentType !== "string" ||
+          !contentType.startsWith("image/")
+        ) {
+          return res.status(400).json({ error: "Invalid file metadata" });
+        }
+
+        const key = `league-uploads/${Date.now()}-${filename}`;
 
         const command = new PutObjectCommand({
           Bucket: "pokemondraftzone-public",
