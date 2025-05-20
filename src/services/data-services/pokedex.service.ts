@@ -54,7 +54,6 @@ export function getRandom(
 
   const selectedPokemon: typeof eligibleSpecies = [];
   const bannedIds = new Set<string>(options.banned);
-  console.log(bannedIds);
   const availableSpecies = [...eligibleSpecies];
 
   while (

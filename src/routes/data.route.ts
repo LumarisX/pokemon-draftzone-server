@@ -195,7 +195,12 @@ export const DataRoutes: Route = {
                     ? req.query.tier
                     : undefined,
               });
-              return res.json(randomMons);
+              return res.json(
+                randomMons.map((pokemon) => ({
+                  ...pokemon,
+                  level: format.level,
+                }))
+              );
             }
           }
           return res
