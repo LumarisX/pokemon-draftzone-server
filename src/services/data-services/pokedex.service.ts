@@ -42,7 +42,7 @@ export function getRandom(
         if (
           options.tier &&
           !(
-            pokemon.tier === options.tier ||
+            pokemon[tierLabel] === options.tier ||
             pokemon[tierLabel] === `(${options.tier})`
           )
         )
