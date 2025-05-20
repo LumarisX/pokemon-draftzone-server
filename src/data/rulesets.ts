@@ -32,7 +32,6 @@ const COSMETIC_SPECIES = [
   "Pikachu-Alola",
   "Pikachu-Partner",
   "Pikachu-World",
-  "Basculin-Blue-Striped",
   "Vivillon-Pokeball",
   "Vivillon-Fancy",
   "Cramorant-Gorging",
