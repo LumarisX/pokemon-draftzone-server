@@ -1,7 +1,7 @@
 import { Specie } from "@pkmn/data";
 import { Request, Response } from "express";
 import { Route } from ".";
-import { _getFormats, getFormats } from "../data/formats";
+import { _getFormats, getFormat, getFormats } from "../data/formats";
 import {
   getRuleset,
   getRulesets,
@@ -170,18 +170,35 @@ export const DataRoutes: Route = {
       get: async (req: Request, res: DataResponse) => {
         try {
           let rulesetId = req.query.ruleset;
+          let formatId = req.query.format;
           if (
             typeof req.query.count == "string" ||
             typeof req.query.count == "number"
           ) {
             const count = +req.query.count;
-            if (typeof rulesetId === "string" && count > 0 && count <= 20) {
+            if (
+              typeof rulesetId === "string" &&
+              typeof formatId === "string" &&
+              count > 0 &&
+              count <= 20
+            ) {
               const ruleset = getRuleset(rulesetId);
-              const randomMons = getRandom(count, ruleset);
+              const format = getFormat(formatId);
+              const randomMons = getRandom(count, ruleset, format, {
+                banned: Array.isArray(req.query.banned)
+                  ? (req.query.banned as string[])
+                  : typeof req.query.banned === "string"
+                  ? [req.query.banned]
+                  : undefined,
+                tier:
+                  typeof req.query.tier === "string"
+                    ? req.query.tier
+                    : undefined,
+              });
               return res.json(
                 randomMons.map((pokemon) => ({
-                  id: pokemon.id,
-                  name: pokemon.name,
+                  ...pokemon,
+                  level: format.level,
                 }))
               );
             }

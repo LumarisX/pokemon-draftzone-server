@@ -32,7 +32,6 @@ const COSMETIC_SPECIES = [
   "Pikachu-Alola",
   "Pikachu-Partner",
   "Pikachu-World",
-  "Basculin-Blue-Striped",
   "Vivillon-Pokeball",
   "Vivillon-Fancy",
   "Cramorant-Gorging",
@@ -139,6 +138,7 @@ export type RulesetId =
 export class Ruleset extends Generation {
   name: RulesetId;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+  isNatDex: boolean;
   constructor(
     dex: ModdedDex,
     exists: (d: Data) => boolean,
@@ -148,6 +148,7 @@ export class Ruleset extends Generation {
     super(dex, exists);
     this.name = name;
     this.restriction = options?.restriction;
+    this.isNatDex = this.exists === NATDEX_EXISTS;
   }
 }
 
