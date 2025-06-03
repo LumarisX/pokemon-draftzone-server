@@ -4,15 +4,7 @@ import * as RRDex from "../mods/radicalred";
 import * as InsDex from "../mods/insurgance";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
-  "Eevee-Starter",
   "Pichu-Spiky-eared",
-  "Pikachu-Belle",
-  "Pikachu-Cosplay",
-  "Pikachu-Libre",
-  "Pikachu-PhD",
-  "Pikachu-Pop-Star",
-  "Pikachu-Rock-Star",
-  "Pikachu-Starter",
   "Eternatus-Eternamax",
 ];
 
