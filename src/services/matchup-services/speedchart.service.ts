@@ -159,37 +159,39 @@ function generateTiers(
                 if (id === "aegislash") {
                   id = "aegislash-shield" as ID;
                 }
-                const pokemonCalc = new Pokemon(pokemon.ruleset.num, id, {
-                  level,
-                  evs: pConfig.evs,
-                  ivs: pConfig.ivs,
-                  nature: pConfig.nature,
-                  item: item.item,
-                  boosts: { spe: stage },
-                  status: status.status,
-                });
-                const modifiers = [
-                  ...(pConfig.modifiers || []),
-                  ...(sConfig.modifiers || []),
-                  ...(fConfig.modifiers || []),
-                ];
-                if (stage !== 0) {
-                  if (stage >= 0) {
-                    modifiers.push("+" + stage);
-                  } else {
-                    modifiers.push("" + stage);
+                try {
+                  const pokemonCalc = new Pokemon(pokemon.ruleset.num, id, {
+                    level,
+                    evs: pConfig.evs,
+                    ivs: pConfig.ivs,
+                    nature: pConfig.nature,
+                    item: item.item,
+                    boosts: { spe: stage },
+                    status: status.status,
+                  });
+                  const modifiers = [
+                    ...(pConfig.modifiers || []),
+                    ...(sConfig.modifiers || []),
+                    ...(fConfig.modifiers || []),
+                  ];
+                  if (stage !== 0) {
+                    if (stage >= 0) {
+                      modifiers.push("+" + stage);
+                    } else {
+                      modifiers.push("" + stage);
+                    }
                   }
-                }
-                if (status.modifier) modifiers.push(status.modifier);
-                if (item.item) modifiers.push(item.item);
-                if (additional.modifier) modifiers.push(additional.modifier);
-                tiers.push({
-                  speed: Math.floor(
-                    getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
-                      additional.mult
-                  ),
-                  modifiers,
-                });
+                  if (status.modifier) modifiers.push(status.modifier);
+                  if (item.item) modifiers.push(item.item);
+                  if (additional.modifier) modifiers.push(additional.modifier);
+                  tiers.push({
+                    speed: Math.floor(
+                      getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
+                        additional.mult
+                    ),
+                    modifiers,
+                  });
+                } catch {}
               }
             }
           }
