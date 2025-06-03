@@ -209,6 +209,7 @@ export const DraftRoutes: Route = {
     "/:team_id/:matchup_id/opponent": {
       get: async function (req: Request, res: MatchupResponse) {
         try {
+          console.log(res.matchup);
           const opponent = res.matchup!.toOpponent();
           res.json(opponent.toClient());
         } catch (error) {
@@ -217,7 +218,6 @@ export const DraftRoutes: Route = {
             .json({ message: (error as Error).message, code: "DR-R7-01" });
         }
       },
-
       patch: async function (req: Request, res: MatchupResponse) {
         if (!res.draftOld) return;
         try {

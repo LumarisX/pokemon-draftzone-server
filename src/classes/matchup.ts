@@ -270,11 +270,11 @@ export class Matchup {
         team: draft.team,
         teamName: draft.teamName,
         _id: draft._id!,
-        // coach:
       },
       {
         team: opponent.team,
         teamName: opponent.teamName,
+        coach: opponent.coach,
       },
       draft.ruleset,
       draft.format,
@@ -290,10 +290,8 @@ export class Matchup {
       this.ruleset,
       this.bTeam.team,
       this.bTeam.teamName,
-
       this.matches,
       this.stage,
-
       this.bTeam.coach,
       this.bTeam._id
     );
