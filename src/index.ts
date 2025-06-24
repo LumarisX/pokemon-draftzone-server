@@ -5,7 +5,7 @@ import { app, logger } from "./app";
 import { config } from "./config";
 import { startDiscordBot } from "./discord";
 import { connectDB } from "./database";
-import { Server } from "socket.io"; // <-- IMPORT Socket.IO Server
+import { startWebSocket } from "./websocket";
 
 const debugLogger = debug("tpl-express-pro:server");
 
@@ -111,31 +111,7 @@ function setupGracefulShutdown(server: http.Server) {
 
     const server = http.createServer(app);
 
-    const io = new Server(server, {
-      cors: {
-        // origin: config.CORS_ORIGIN || "http://localhost:4200",
-        origin: "http://localhost:4200",
-        methods: ["GET", "POST"],
-      },
-    });
-
-    io.on("connection", (socket) => {
-      logger.info(`New WebSocket client connected: ${socket.id}`);
-      socket.on("joinRoom", (leagueId) => {
-        socket.join(leagueId);
-        logger.info(`Socket ${socket.id} joined room: ${leagueId}`);
-      });
-      socket.on("sendMessage", (data) => {
-        logger.info(`Message received via WebSocket from ${socket.id}:`, data);
-        io.to(data.leagueId).emit("newMessage", data);
-      });
-
-      socket.on("disconnect", () => {
-        logger.info(`WebSocket client disconnected: ${socket.id}`);
-      });
-    });
-
-    logger.info("Socket.IO server initialized and attached to HTTP server.");
+    startWebSocket(logger, server);
 
     server.on("error", (error: NodeJS.ErrnoException) => onError(error, port));
     server.on("listening", () => onListening(server));
