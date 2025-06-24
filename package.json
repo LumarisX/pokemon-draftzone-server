@@ -43,6 +43,7 @@
     "node-cache": "^5.1.2",
     "openai": "^4.67.3",
     "pug": "^3.0.2",
+    "socket.io": "^4.8.1",
     "web-push": "^3.6.7",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0",
