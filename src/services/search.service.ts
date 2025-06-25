@@ -312,7 +312,7 @@ async function evaluate(
               leftValue = 0;
             }
             break;
-          case "dexNum":
+          case "dexnum":
             leftValue = pokemon.num;
             rightValue = +node.right?.value;
             break;
