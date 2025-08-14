@@ -168,7 +168,6 @@ export class DraftSpecie implements Specie, Pokemon {
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
     this.shiny = pokemonData.shiny;
-    this._formeNum = specie.formeNum;
 
     if (specie.unreleasedHidden) {
       this.abilities = {
@@ -181,9 +180,21 @@ export class DraftSpecie implements Specie, Pokemon {
     }
     this.bst = getBst(specie);
   }
-  _formeNum: number;
-  get formeNum(): number {
-    return this._formeNum;
+
+  get formeNum() {
+    return this.baseSpecies === this.name
+      ? this.formeOrder
+        ? this.formeOrder.findIndex((name) => name === this.name)
+        : 0
+      : this.ruleset.species
+          .get(this.baseSpecies)!
+          .formeOrder?.findIndex(
+            (name) =>
+              name ===
+              (this.isNonstandard === "Gigantamax"
+                ? this.baseSpecies
+                : this.name)
+          ) ?? 0;
   }
 
   toClient(): PokemonFormData {
