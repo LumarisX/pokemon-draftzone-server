@@ -35,81 +35,86 @@ const COSMETIC_SPECIES = [
   "Tatsugiri-Droopy",
 ];
 
+type ExistFilter = {
+  nonstandard?: string[];
+  species?: {
+    unobtainable?: string[];
+    cosmetic?: string[];
+  };
+};
+
+function _exists(d: Data, filters: ExistFilter = {}) {
+  if (!d.exists) return false;
+  if (d.kind === "Ability" && d.id === "noability") return false;
+  if ("isNonstandard" in d && d.isNonstandard) {
+    if ("tier" in d && d.tier === "Unreleased") return false;
+    if (filters.nonstandard && filters.nonstandard.includes(d.isNonstandard)) {
+      return false;
+    }
+    if (
+      d.kind === "Move" &&
+      d.isNonstandard !== "Past" &&
+      d.isNonstandard !== "Unobtainable"
+    ) {
+      return false;
+    }
+  }
+  if (d.kind === "Species") {
+    if (d.forme === "Totem" || d.forme === "Alola-Totem") return false;
+    if (filters.species) {
+      if (
+        filters.species.unobtainable &&
+        filters.species.unobtainable.includes(d.name)
+      )
+        return false;
+      if (filters.species.cosmetic && filters.species.cosmetic.includes(d.name))
+        return false;
+    }
+  }
+
+  if (
+    d.kind === "Item" &&
+    d.isNonstandard &&
+    ["Past", "Unobtainable"].includes(d.isNonstandard) &&
+    !d.zMove &&
+    !d.itemUser &&
+    !d.forcedForme
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function ROM_EXISTS(d: Data) {
+  return _exists(d, {
+    nonstandard: ["CAP", "Custom", "Future"],
+  });
+}
+
+function NATDEX_EXISTS(d: Data) {
+  return _exists(d, {
+    nonstandard: ["CAP", "Custom", "Future"],
+    species: {
+      unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
+      cosmetic: COSMETIC_SPECIES,
+    },
+  });
+}
+
+function CAP_EXISTS(d: Data) {
+  return _exists(d, {
+    nonstandard: ["Custom", "Future"],
+    species: {
+      unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
+      cosmetic: COSMETIC_SPECIES,
+    },
+  });
+}
+
 function DRAFT_EXISTS(d: Data) {
   if (!NATDEX_EXISTS(d)) return false;
   if ("isNonstandard" in d && d.isNonstandard) return false;
   return !("tier" in d && ["Illegal"].includes(d.tier));
-}
-
-function ROM_EXISTS(d: Data) {
-  if (!d.exists) return false;
-  if (d.kind === "Ability" && d.id === "noability") return false;
-  if ("isNonstandard" in d && d.isNonstandard && d.isNonstandard !== "Past") {
-    if ("tier" in d && d.tier === "Unreleased") return false;
-    if (d.isNonstandard === "CAP") return false;
-    if (d.isNonstandard === "Custom") return false;
-  }
-  if (
-    d.kind === "Move" &&
-    d.isNonstandard &&
-    d.isNonstandard !== "Past" &&
-    d.isNonstandard !== "Unobtainable"
-  ) {
-    return false;
-  }
-  if (
-    d.kind === "Species" &&
-    (d.forme === "Totem" || d.forme === "Alola-Totem")
-  )
-    return false;
-  return !(
-    d.kind === "Item" &&
-    ["Past", "Unobtainable"].includes(d.isNonstandard!) &&
-    !d.zMove &&
-    !d.itemUser &&
-    !d.forcedForme
-  );
-}
-
-function NATDEX_EXISTS(d: Data) {
-  if (!d.exists) return false;
-  if (d.kind === "Ability" && d.id === "noability") return false;
-  if ("isNonstandard" in d && d.isNonstandard && d.isNonstandard !== "Past") {
-    if ("tier" in d && d.tier === "Unreleased") return false;
-    if (d.isNonstandard === "CAP") return false;
-    if (d.isNonstandard === "Custom" || d.isNonstandard === "Future")
-      return false;
-  }
-  if (
-    d.kind === "Move" &&
-    d.isNonstandard &&
-    d.isNonstandard !== "Past" &&
-    d.isNonstandard !== "Unobtainable"
-  ) {
-    return false;
-  }
-  if (
-    d.kind === "Species" &&
-    (NATDEX_UNOBTAINABLE_SPECIES.includes(d.name) ||
-      COSMETIC_SPECIES.includes(d.name) ||
-      // (d.battleOnly &&
-      //   !(
-      //     d.forme == "Mega" ||
-      //     d.forme == "Mega-X" ||
-      //     d.forme == "Mega-Y" ||
-      //     d.forme == "Crowned"
-      //   )) ||
-      d.forme === "Totem" ||
-      d.forme === "Alola-Totem")
-  )
-    return false;
-  return !(
-    d.kind === "Item" &&
-    ["Past", "Unobtainable"].includes(d.isNonstandard!) &&
-    !d.zMove &&
-    !d.itemUser &&
-    !d.forcedForme
-  );
 }
 
 export type RulesetId =
@@ -126,7 +131,8 @@ export type RulesetId =
   | "Kanto Dex"
   | "Sword/Shield"
   | "radicalred"
-  | "insurgance";
+  | "insurgance"
+  | "capgen9";
 
 export class Ruleset extends Generation {
   name: RulesetId;
@@ -267,6 +273,18 @@ export const Rulesets: {
         let mod = new ModdedDex("insurgance" as ID, InsDex as ModData);
         return new Ruleset(mod, ROM_EXISTS, this.id);
       },
+    },
+  },
+  CAP: {
+    "Generation 9": {
+      id: "capgen9",
+      desc: "All pokemon in Gen 9 and CAP pokemon",
+      ruleset: new Ruleset(
+        Dex.forGen(9),
+        (d: Data) =>
+          !(!CAP_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
+        "Gen9 NatDex"
+      ),
     },
   },
 };
