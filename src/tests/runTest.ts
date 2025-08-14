@@ -13,7 +13,6 @@ async function testReplay() {
   const replayDataOld = new ReplayAnalysisOld(text);
 }
 
-testReplay();
 // const TRIALS = 10000000;
 // let avg = 0;
 

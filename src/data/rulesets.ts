@@ -132,7 +132,7 @@ export type RulesetId =
   | "Sword/Shield"
   | "radicalred"
   | "insurgance"
-  | "capgen9";
+  | "CAP Gen 9";
 
 export class Ruleset extends Generation {
   name: RulesetId;
@@ -256,7 +256,7 @@ export const Rulesets: {
       },
     },
   },
-  // "Other Metas": {},
+  // TODO: Fix these IDs to be properly capiolized (update db instances)
   "Rom Hacks": {
     "Radical Red": {
       id: "radicalred",
@@ -277,14 +277,16 @@ export const Rulesets: {
   },
   CAP: {
     "Generation 9": {
-      id: "capgen9",
+      id: "CAP Gen 9",
       desc: "All pokemon in Gen 9 and CAP pokemon",
-      ruleset: new Ruleset(
-        Dex.forGen(9),
-        (d: Data) =>
-          !(!CAP_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-        "Gen9 NatDex"
-      ),
+      get ruleset() {
+        return new Ruleset(
+          Dex.forGen(9),
+          (d: Data) =>
+            !(!CAP_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
+          this.id
+        );
+      },
     },
   },
 };
