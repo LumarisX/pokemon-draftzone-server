@@ -5,7 +5,7 @@ import { app, logger } from "./app";
 import { config } from "./config";
 import { startDiscordBot } from "./discord";
 import { connectDB } from "./database";
-import { Client } from "discord.js";
+import { startWebSocket } from "./websocket";
 
 const debugLogger = debug("tpl-express-pro:server");
 
@@ -110,6 +110,8 @@ function setupGracefulShutdown(server: http.Server) {
     app.set("port", port);
 
     const server = http.createServer(app);
+
+    startWebSocket(logger, server);
 
     server.on("error", (error: NodeJS.ErrnoException) => onError(error, port));
     server.on("listening", () => onListening(server));
