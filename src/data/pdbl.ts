@@ -104,21 +104,13 @@ namespace TierList {
       };
     }
 
-    toDetails(): ({
-      name: string;
-      banned?: {
-        moves?: string[];
-        abilities?: string[];
-        tera?: true;
-      };
-      drafted?: string[];
-    } & ({ tier: number } | { ref: string }))[] {
+    toDetails(): TierDetail[] {
       return [
         {
           name: this.specie.id,
           banned: this.banned,
           drafted: this.drafted.length > 0 ? this.drafted : undefined,
-          tier: this.tier?.index,
+          tier: this.tier?.name,
         },
         ...(this.subPokemon
           ? this.subPokemon?.map((sub) => ({
@@ -137,6 +129,16 @@ namespace TierList {
   }
 }
 
+type TierDetail = {
+  name: string;
+  banned?: {
+    moves?: string[];
+    abilities?: string[];
+    tera?: true;
+  };
+  drafted?: string[];
+} & ({ tier: string } | { ref: string });
+
 type DraftDetails = {
   tierGroups: { tiers: string[]; label?: string }[];
   banned: {
@@ -144,15 +146,7 @@ type DraftDetails = {
     abilities: string[];
   };
   divisions: string[];
-  tiers: ({
-    name: string;
-    banned?: {
-      moves?: string[];
-      abilities?: string[];
-      tera?: true;
-    };
-    drafted?: string[];
-  } & ({ tier: number } | { ref: string }))[];
+  tiers: TierDetail[];
 };
 
 function getDetailsFromJson(): DraftDetails {
@@ -202,7 +196,7 @@ export function getDetails(details?: DraftDetails) {
     });
 
     if ("tier" in pokemon) {
-      const tier = tiers.find((tier) => tier.index === pokemon.tier);
+      const tier = tiers.find((tier) => tier.name === pokemon.tier);
       if (!tier)
         throw new Error(`${pokemon.tier} outside range for ${pokemon.name}`);
       const tierPokemon = new TierList.Pokemon(

@@ -1,11 +1,10 @@
 {
   "tierGroups": [
     { "tiers": ["Ban"], "label": "" },
-    { "tiers": ["20", "19", "18", "17"], "label": "Tera Banned" },
-    { "tiers": ["16", "15", "14", "13"], "label": "1 Tera Type" },
-    { "tiers": ["12", "11", "10", "9"], "label": "2 Tera Types" },
-    { "tiers": ["8", "7", "6", "5"], "label": "3 Tera Types" },
-    { "tiers": ["4", "3", "2", "1"], "label": "4 Tera Types" }
+    { "tiers": ["12", "11", "10"], "label": "Tera Banned" },
+    { "tiers": ["9", "8", "7"], "label": "1 Tera Type" },
+    { "tiers": ["6", "5", "4"], "label": "2 Tera Types" },
+    { "tiers": ["3", "2", "1"], "label": "3 Tera Types" }
   ],
   "banned": {
     "moves": ["Last Respects", "Shed Tail", "Revival Blessing"],
@@ -20,1308 +19,4868 @@
   },
   "divisions": ["Attack", "Defense"],
   "tiers": [
-    { "name": "bulbasaur", "tier": 20 },
-    { "name": "ivysaur", "tier": 20 },
-    { "name": "venusaur", "tier": 10 },
-    { "name": "venusaurmega", "tier": 10 },
-    { "name": "charmander", "tier": 20 },
-    { "name": "charmeleon", "tier": 20 },
-    { "name": "charizard", "tier": 15 },
-    { "name": "charizardmegax", "tier": 6 },
-    { "name": "charizardmegay", "tier": 6 },
-    { "name": "squirtle", "tier": 20 },
-    { "name": "wartortle", "tier": 19 },
-    { "name": "blastoise", "tier": 9 },
-    { "name": "blastoisemega", "tier": 0 },
-    { "name": "caterpie", "tier": 20 },
-    { "name": "metapod", "tier": 20 },
-    { "name": "butterfree", "tier": 20 },
-    { "name": "weedle", "tier": 20 },
-    { "name": "kakuna", "tier": 20 },
-    { "name": "beedrill", "tier": 20 },
-    { "name": "beedrillmega", "tier": 10 },
-    { "name": "pidgey", "tier": 20 },
-    { "name": "pidgeotto", "tier": 20 },
-    { "name": "pidgeot", "tier": 18 },
-    { "name": "pidgeotmega", "tier": 11 },
-    { "name": "rattata", "tier": 20 },
-    { "name": "rattataalola", "tier": 20 },
-    { "name": "raticate", "tier": 20 },
-    { "name": "raticatealola", "tier": 19 },
-    { "name": "spearow", "tier": 20 },
-    { "name": "fearow", "tier": 19 },
-    { "name": "ekans", "tier": 20 },
-    { "name": "arbok", "tier": 19 },
-    { "name": "pikachu", "tier": 20 },
-    { "name": "raichu", "tier": 16 },
-    { "name": "raichualola", "tier": 14 },
-    { "name": "sandshrew", "tier": 20 },
-    { "name": "sandshrewalola", "tier": 20 },
-    { "name": "sandslash", "tier": 18 },
-    { "name": "sandslashalola", "tier": 17 },
-    { "name": "nidoranf", "tier": 20 },
-    { "name": "nidorina", "tier": 20 },
-    { "name": "nidoqueen", "tier": 9 },
-    { "name": "nidoranm", "tier": 20 },
-    { "name": "nidorino", "tier": 20 },
-    { "name": "nidoking", "tier": 9 },
-    { "name": "clefairy", "tier": 18 },
-    { "name": "clefable", "tier": 5 },
-    { "name": "vulpix", "tier": 20 },
-    { "name": "vulpixalola", "tier": 20 },
-    { "name": "ninetales", "tier": 14 },
-    { "name": "ninetalesalola", "tier": 11 },
-    { "name": "jigglypuff", "tier": 20 },
-    { "name": "wigglytuff", "tier": 19 },
-    { "name": "zubat", "tier": 20 },
-    { "name": "golbat", "tier": 16 },
-    { "name": "oddish", "tier": 20 },
-    { "name": "gloom", "tier": 20 },
-    { "name": "vileplume", "tier": 16 },
-    { "name": "paras", "tier": 20 },
-    { "name": "parasect", "tier": 20 },
-    { "name": "venonat", "tier": 20 },
-    { "name": "venomoth", "tier": 15 },
-    { "name": "diglett", "tier": 20 },
-    { "name": "diglettalola", "tier": 20 },
-    { "name": "dugtrio", "tier": 16 },
-    { "name": "dugtrioalola", "tier": 19 },
-    { "name": "meowth", "tier": 20 },
-    { "name": "meowthalola", "tier": 20 },
-    { "name": "meowthgalar", "tier": 20 },
-    { "name": "persian", "tier": 18 },
-    { "name": "persianalola", "tier": 15 },
-    { "name": "psyduck", "tier": 20 },
-    { "name": "golduck", "tier": 19 },
-    { "name": "mankey", "tier": 20 },
-    { "name": "primeape", "tier": 16 },
-    { "name": "growlithe", "tier": 20 },
-    { "name": "growlithehisui", "tier": 20 },
-    { "name": "arcanine", "tier": 10 },
-    { "name": "arcaninehisui", "tier": 10 },
-    { "name": "poliwag", "tier": 20 },
-    { "name": "poliwhirl", "tier": 20 },
-    { "name": "poliwrath", "tier": 17 },
-    { "name": "abra", "tier": 20 },
-    { "name": "kadabra", "tier": 19 },
-    { "name": "alakazam", "tier": 11 },
-    { "name": "alakazammega", "tier": 0 },
-    { "name": "machop", "tier": 20 },
-    { "name": "machoke", "tier": 19 },
-    { "name": "machamp", "tier": 15 },
-    { "name": "bellsprout", "tier": 20 },
-    { "name": "weepinbell", "tier": 20 },
-    { "name": "victreebel", "tier": 17 },
-    { "name": "tentacool", "tier": 20 },
-    { "name": "tentacruel", "tier": 12 },
-    { "name": "geodude", "tier": 20 },
-    { "name": "geodudealola", "tier": 20 },
-    { "name": "graveler", "tier": 20 },
-    { "name": "graveleralola", "tier": 20 },
-    { "name": "golem", "tier": 18 },
-    { "name": "golemalola", "tier": 18 },
-    { "name": "ponyta", "tier": 20 },
-    { "name": "ponytagalar", "tier": 20 },
-    { "name": "rapidash", "tier": 17 },
-    { "name": "rapidashgalar", "tier": 17 },
-    { "name": "slowpoke", "tier": 20 },
-    { "name": "slowpokegalar", "tier": 20 },
-    { "name": "slowbro", "tier": 6 },
-    { "name": "slowbrogalar", "tier": 12 },
-    { "name": "slowbromega", "tier": 8 },
-    { "name": "magnemite", "tier": 20 },
-    { "name": "magneton", "tier": 16 },
-    { "name": "farfetchd", "tier": 20 },
-    { "name": "farfetchdgalar", "tier": 20 },
-    { "name": "doduo", "tier": 20 },
-    { "name": "dodrio", "tier": 19 },
-    { "name": "seel", "tier": 20 },
-    { "name": "dewgong", "tier": 19 },
-    { "name": "grimer", "tier": 20 },
-    { "name": "grimeralola", "tier": 20 },
-    { "name": "muk", "tier": 16 },
-    { "name": "mukalola", "tier": 9 },
-    { "name": "shellder", "tier": 20 },
-    { "name": "cloyster", "tier": 9 },
-    { "name": "gastly", "tier": 20 },
-    { "name": "haunter", "tier": 18 },
-    { "name": "gengar", "tier": 10 },
-    { "name": "gengarmega", "tier": 0 },
-    { "name": "onix", "tier": 20 },
-    { "name": "drowzee", "tier": 20 },
-    { "name": "hypno", "tier": 17 },
-    { "name": "krabby", "tier": 20 },
-    { "name": "kingler", "tier": 18 },
-    { "name": "voltorb", "tier": 20 },
-    { "name": "voltorbhisui", "tier": 20 },
-    { "name": "electrode", "tier": 19 },
-    { "name": "electrodehisui", "tier": 17 },
-    { "name": "exeggcute", "tier": 20 },
-    { "name": "exeggutor", "tier": 19 },
-    { "name": "exeggutoralola", "tier": 19 },
-    { "name": "cubone", "tier": 20 },
-    { "name": "marowak", "tier": 20 },
-    { "name": "marowakalola", "tier": 14 },
-    { "name": "hitmonlee", "tier": 14 },
-    { "name": "hitmonchan", "tier": 17 },
-    { "name": "lickitung", "tier": 19 },
-    { "name": "koffing", "tier": 20 },
-    { "name": "weezing", "tier": 14 },
-    { "name": "weezinggalar", "tier": 11 },
-    { "name": "rhyhorn", "tier": 20 },
-    { "name": "rhydon", "tier": 16 },
-    { "name": "chansey", "tier": 13 },
-    { "name": "tangela", "tier": 17 },
-    { "name": "kangaskhan", "tier": 17 },
-    { "name": "kangaskhanmega", "tier": 0 },
-    { "name": "horsea", "tier": 20 },
-    { "name": "seadra", "tier": 20 },
-    { "name": "goldeen", "tier": 20 },
-    { "name": "seaking", "tier": 20 },
-    { "name": "staryu", "tier": 20 },
-    { "name": "starmie", "tier": 12 },
-    { "name": "mrmime", "tier": 19 },
-    { "name": "mrmimegalar", "tier": 19 },
-    { "name": "scyther", "tier": 16 },
-    { "name": "jynx", "tier": 19 },
-    { "name": "electabuzz", "tier": 19 },
-    { "name": "magmar", "tier": 19 },
-    { "name": "pinsir", "tier": 19 },
-    { "name": "pinsirmega", "tier": 7 },
-    { "name": "tauros", "tier": 16 },
-    { "name": "taurospaldea", "tier": 17 },
-    { "name": "taurospaldeafire", "tier": 14 },
-    { "name": "taurospaldeawater", "tier": 13 },
-    { "name": "magikarp", "tier": 20 },
-    { "name": "gyarados", "tier": 13 },
-    { "name": "gyaradosmega", "tier": 10 },
-    { "name": "lapras", "tier": 18 },
-    { "name": "ditto", "tier": 14 },
-    { "name": "eevee", "tier": 20 },
-    { "name": "vaporeon", "tier": 11 },
-    { "name": "jolteon", "tier": 13 },
-    { "name": "flareon", "tier": 18 },
-    { "name": "porygon", "tier": 20 },
-    { "name": "omanyte", "tier": 20 },
-    { "name": "omastar", "tier": 13 },
-    { "name": "kabuto", "tier": 20 },
-    { "name": "kabutops", "tier": 16 },
-    { "name": "aerodactyl", "tier": 12 },
-    { "name": "aerodactylmega", "tier": 6 },
-    { "name": "snorlax", "tier": 11 },
-    { "name": "articuno", "tier": 18 },
-    { "name": "articunogalar", "tier": 14 },
-    { "name": "zapdos", "tier": 5 },
-    { "name": "zapdosgalar", "tier": 8 },
-    { "name": "moltres", "tier": 9 },
-    { "name": "moltresgalar", "tier": 10 },
-    { "name": "dratini", "tier": 20 },
-    { "name": "dragonair", "tier": 18 },
-    { "name": "dragonite", "tier": 4 },
-    { "name": "mewtwo", "tier": 0 },
-    { "name": "mewtwomegax", "tier": 0 },
-    { "name": "mewtwomegay", "tier": 0 },
-    { "name": "mew", "tier": 5 },
-    { "name": "chikorita", "tier": 20 },
-    { "name": "bayleef", "tier": 20 },
-    { "name": "meganium", "tier": 19 },
-    { "name": "cyndaquil", "tier": 20 },
-    { "name": "quilava", "tier": 20 },
-    { "name": "typhlosion", "tier": 17 },
-    { "name": "typhlosionhisui", "tier": 16 },
-    { "name": "totodile", "tier": 20 },
-    { "name": "croconaw", "tier": 20 },
-    { "name": "feraligatr", "tier": 15 },
-    { "name": "sentret", "tier": 20 },
-    { "name": "furret", "tier": 20 },
-    { "name": "hoothoot", "tier": 20 },
-    { "name": "noctowl", "tier": 20 },
-    { "name": "ledyba", "tier": 20 },
-    { "name": "ledian", "tier": 20 },
-    { "name": "spinarak", "tier": 20 },
-    { "name": "ariados", "tier": 19 },
-    { "name": "crobat", "tier": 9 },
-    { "name": "chinchou", "tier": 20 },
-    { "name": "lanturn", "tier": 15 },
-    { "name": "pichu", "tier": 20 },
-    { "name": "cleffa", "tier": 20 },
-    { "name": "igglybuff", "tier": 20 },
-    { "name": "togepi", "tier": 20 },
-    { "name": "togetic", "tier": 17 },
-    { "name": "natu", "tier": 20 },
-    { "name": "xatu", "tier": 16 },
-    { "name": "mareep", "tier": 20 },
-    { "name": "flaaffy", "tier": 20 },
-    { "name": "ampharos", "tier": 19 },
-    { "name": "ampharosmega", "tier": 16 },
-    { "name": "bellossom", "tier": 18 },
-    { "name": "marill", "tier": 20 },
-    { "name": "azumarill", "tier": 7 },
-    { "name": "sudowoodo", "tier": 18 },
-    { "name": "politoed", "tier": 13 },
-    { "name": "hoppip", "tier": 20 },
-    { "name": "skiploom", "tier": 20 },
-    { "name": "jumpluff", "tier": 18 },
-    { "name": "aipom", "tier": 20 },
-    { "name": "sunkern", "tier": 20 },
-    { "name": "sunflora", "tier": 18 },
-    { "name": "yanma", "tier": 20 },
-    { "name": "wooper", "tier": 20 },
-    { "name": "wooperpaldea", "tier": 20 },
-    { "name": "quagsire", "tier": 14 },
-    { "name": "espeon", "tier": 14 },
-    { "name": "umbreon", "tier": 12 },
-    { "name": "murkrow", "tier": 19 },
-    { "name": "slowking", "tier": 8 },
-    { "name": "slowkinggalar", "tier": 5 },
-    { "name": "misdreavus", "tier": 19 },
-    { "name": "unown", "tier": 20 },
-    { "name": "wobbuffet", "tier": 19 },
-    { "name": "girafarig", "tier": 19 },
-    { "name": "pineco", "tier": 20 },
-    { "name": "forretress", "tier": 15 },
-    { "name": "dunsparce", "tier": 17 },
-    { "name": "gligar", "tier": 15 },
-    { "name": "steelix", "tier": 14 },
-    { "name": "steelixmega", "tier": 12 },
-    { "name": "snubbull", "tier": 20 },
-    { "name": "granbull", "tier": 15 },
-    { "name": "qwilfish", "tier": 14 },
-    { "name": "qwilfishhisui", "tier": 14 },
-    { "name": "scizor", "tier": 7 },
-    { "name": "scizormega", "tier": 3 },
-    { "name": "shuckle", "tier": 18 },
-    { "name": "heracross", "tier": 11 },
-    { "name": "heracrossmega", "tier": 7 },
-    { "name": "sneasel", "tier": 16 },
-    { "name": "sneaselhisui", "tier": 19 },
-    { "name": "teddiursa", "tier": 20 },
-    { "name": "ursaring", "tier": 14 },
-    { "name": "slugma", "tier": 20 },
-    { "name": "magcargo", "tier": 18 },
-    { "name": "swinub", "tier": 20 },
-    { "name": "piloswine", "tier": 14 },
-    { "name": "corsola", "tier": 20 },
-    { "name": "corsolagalar", "tier": 16 },
-    { "name": "remoraid", "tier": 20 },
-    { "name": "octillery", "tier": 18 },
-    { "name": "delibird", "tier": 19 },
-    { "name": "mantine", "tier": 14 },
-    { "name": "skarmory", "tier": 8 },
-    { "name": "houndour", "tier": 20 },
-    { "name": "houndoom", "tier": 18 },
-    { "name": "houndoommega", "tier": 13 },
-    { "name": "kingdra", "tier": 12 },
-    { "name": "phanpy", "tier": 20 },
-    { "name": "donphan", "tier": 11 },
-    { "name": "porygon2", "tier": 10 },
-    { "name": "stantler", "tier": 20 },
-    { "name": "smeargle", "tier": 18 },
-    { "name": "tyrogue", "tier": 20 },
-    { "name": "hitmontop", "tier": 15 },
-    { "name": "smoochum", "tier": 20 },
-    { "name": "elekid", "tier": 20 },
-    { "name": "magby", "tier": 20 },
-    { "name": "miltank", "tier": 13 },
-    { "name": "blissey", "tier": 11 },
-    { "name": "raikou", "tier": 9 },
-    { "name": "entei", "tier": 12 },
-    { "name": "suicune", "tier": 10 },
-    { "name": "larvitar", "tier": 20 },
-    { "name": "pupitar", "tier": 20 },
-    { "name": "tyranitar", "tier": 9 },
-    { "name": "tyranitarmega", "tier": 8 },
-    { "name": "lugia", "tier": 0 },
-    { "name": "hooh", "tier": 0 },
-    { "name": "celebi", "tier": 12 },
-    { "name": "treecko", "tier": 20 },
-    { "name": "grovyle", "tier": 20 },
-    { "name": "sceptile", "tier": 17, "banned": { "moves": ["Shed Tail"] } },
     {
-      "name": "sceptilemega",
-      "tier": 12,
-      "banned": { "moves": ["Shed Tail"] }
+      "name": "abomasnow",
+      "tier": "5"
     },
-    { "name": "torchic", "tier": 20 },
-    { "name": "combusken", "tier": 20 },
-    { "name": "blaziken", "tier": 6 },
-    { "name": "blazikenmega", "tier": 0 },
-    { "name": "mudkip", "tier": 20 },
-    { "name": "marshtomp", "tier": 20 },
-    { "name": "swampert", "tier": 9 },
-    { "name": "swampertmega", "tier": 9 },
-    { "name": "poochyena", "tier": 20 },
-    { "name": "mightyena", "tier": 18 },
-    { "name": "zigzagoon", "tier": 20 },
-    { "name": "zigzagoongalar", "tier": 20 },
-    { "name": "linoone", "tier": 16 },
-    { "name": "linoonegalar", "tier": 20 },
-    { "name": "wurmple", "tier": 20 },
-    { "name": "silcoon", "tier": 20 },
-    { "name": "beautifly", "tier": 20 },
-    { "name": "cascoon", "tier": 20 },
-    { "name": "dustox", "tier": 19 },
-    { "name": "lotad", "tier": 20 },
-    { "name": "lombre", "tier": 20 },
-    { "name": "ludicolo", "tier": 16 },
-    { "name": "seedot", "tier": 20 },
-    { "name": "nuzleaf", "tier": 20 },
-    { "name": "shiftry", "tier": 18 },
-    { "name": "taillow", "tier": 20 },
-    { "name": "swellow", "tier": 13 },
-    { "name": "wingull", "tier": 20 },
-    { "name": "pelipper", "tier": 10 },
-    { "name": "ralts", "tier": 20 },
-    { "name": "kirlia", "tier": 20 },
-    { "name": "gardevoir", "tier": 12 },
-    { "name": "gardevoirmega", "tier": 7 },
-    { "name": "surskit", "tier": 20 },
-    { "name": "masquerain", "tier": 17 },
-    { "name": "shroomish", "tier": 20 },
-    { "name": "breloom", "tier": 12 },
-    { "name": "slakoth", "tier": 20 },
-    { "name": "vigoroth", "tier": 19 },
-    { "name": "slaking", "tier": 19 },
-    { "name": "nincada", "tier": 20 },
-    { "name": "ninjask", "tier": 20 },
     {
-      "name": "shedinja",
-      "tier": 19,
-      "banned": {
-        "tera": true
-      }
+      "name": "abomasnowmega",
+      "tier": "6"
     },
-    { "name": "whismur", "tier": 20 },
-    { "name": "loudred", "tier": 20 },
-    { "name": "exploud", "tier": 16 },
-    { "name": "makuhita", "tier": 20 },
-    { "name": "hariyama", "tier": 15 },
-    { "name": "azurill", "tier": 20 },
-    { "name": "nosepass", "tier": 20 },
-    { "name": "skitty", "tier": 20 },
-    { "name": "delcatty", "tier": 20 },
-    { "name": "sableye", "tier": 16 },
-    { "name": "sableyemega", "tier": 8 },
-    { "name": "mawile", "tier": 19 },
-    { "name": "mawilemega", "tier": 3 },
-    { "name": "aron", "tier": 20 },
-    { "name": "lairon", "tier": 20 },
-    { "name": "aggron", "tier": 19 },
-    { "name": "aggronmega", "tier": 10 },
-    { "name": "meditite", "tier": 20 },
-    { "name": "medicham", "tier": 13 },
-    { "name": "medichammega", "tier": 4 },
-    { "name": "electrike", "tier": 20 },
-    { "name": "manectric", "tier": 18 },
-    { "name": "manectricmega", "tier": 12 },
-    { "name": "plusle", "tier": 20 },
-    { "name": "minun", "tier": 20 },
-    { "name": "volbeat", "tier": 20 },
-    { "name": "illumise", "tier": 19 },
-    { "name": "roselia", "tier": 17 },
-    { "name": "gulpin", "tier": 20 },
-    { "name": "swalot", "tier": 20 },
-    { "name": "carvanha", "tier": 20 },
-    { "name": "sharpedo", "tier": 15 },
-    { "name": "sharpedomega", "tier": 11 },
-    { "name": "wailmer", "tier": 20 },
-    { "name": "wailord", "tier": 19 },
-    { "name": "numel", "tier": 20 },
-    { "name": "camerupt", "tier": 19 },
-    { "name": "cameruptmega", "tier": 16 },
-    { "name": "torkoal", "tier": 10 },
-    { "name": "spoink", "tier": 20 },
-    { "name": "grumpig", "tier": 20 },
-    { "name": "spinda", "tier": 20 },
-    { "name": "trapinch", "tier": 19 },
-    { "name": "vibrava", "tier": 20 },
-    { "name": "flygon", "tier": 14 },
-    { "name": "cacnea", "tier": 20 },
-    { "name": "cacturne", "tier": 19 },
-    { "name": "swablu", "tier": 20 },
-    { "name": "altaria", "tier": 18 },
-    { "name": "altariamega", "tier": 8 },
-    { "name": "zangoose", "tier": 17 },
-    { "name": "seviper", "tier": 20 },
-    { "name": "lunatone", "tier": 20 },
-    { "name": "solrock", "tier": 18 },
-    { "name": "barboach", "tier": 20 },
-    { "name": "whiscash", "tier": 17 },
-    { "name": "corphish", "tier": 20 },
-    { "name": "crawdaunt", "tier": 15 },
-    { "name": "baltoy", "tier": 20 },
-    { "name": "claydol", "tier": 18 },
-    { "name": "lileep", "tier": 20 },
-    { "name": "cradily", "tier": 18 },
-    { "name": "anorith", "tier": 20 },
-    { "name": "armaldo", "tier": 19 },
-    { "name": "feebas", "tier": 20 },
-    { "name": "milotic", "tier": 10 },
-    { "name": "castform", "tier": 20 },
-    { "name": "kecleon", "tier": 18 },
-    { "name": "shuppet", "tier": 20 },
-    { "name": "banette", "tier": 19 },
-    { "name": "banettemega", "tier": 13 },
-    { "name": "duskull", "tier": 20 },
-    { "name": "dusclops", "tier": 18 },
-    { "name": "tropius", "tier": 18 },
-    { "name": "chimecho", "tier": 19 },
-    { "name": "absol", "tier": 19 },
-    { "name": "absolmega", "tier": 16 },
-    { "name": "wynaut", "tier": 20 },
-    { "name": "snorunt", "tier": 20 },
-    { "name": "glalie", "tier": 19 },
-    { "name": "glaliemega", "tier": 16 },
-    { "name": "spheal", "tier": 20 },
-    { "name": "sealeo", "tier": 20 },
-    { "name": "walrein", "tier": 19 },
-    { "name": "clamperl", "tier": 20 },
-    { "name": "huntail", "tier": 18 },
-    { "name": "gorebyss", "tier": 18 },
-    { "name": "relicanth", "tier": 19 },
-    { "name": "luvdisc", "tier": 20 },
-    { "name": "bagon", "tier": 20 },
-    { "name": "shelgon", "tier": 19 },
-    { "name": "salamence", "tier": 9 },
-    { "name": "salamencemega", "tier": 0 },
-    { "name": "beldum", "tier": 20 },
-    { "name": "metang", "tier": 18 },
-    { "name": "metagross", "tier": 9 },
-    { "name": "metagrossmega", "tier": 0 },
-    { "name": "regirock", "tier": 16 },
-    { "name": "regice", "tier": 18 },
-    { "name": "registeel", "tier": 11 },
-    { "name": "latias", "tier": 4 },
-    { "name": "latiasmega", "tier": 0 },
-    { "name": "latios", "tier": 4 },
-    { "name": "latiosmega", "tier": 2 },
-    { "name": "kyogre", "tier": 0 },
-    { "name": "kyogreprimal", "tier": 0 },
-    { "name": "groudon", "tier": 0 },
-    { "name": "groudonprimal", "tier": 0 },
-    { "name": "rayquaza", "tier": 0 },
-    { "name": "rayquazamega", "tier": 0 },
-    { "name": "jirachi", "tier": 8 },
-    { "name": "deoxys", "tier": 0 },
-    { "name": "deoxysattack", "tier": 0 },
-    { "name": "deoxysdefense", "tier": 9 },
-    { "name": "deoxysspeed", "tier": 3 },
-    { "name": "turtwig", "tier": 20 },
-    { "name": "grotle", "tier": 19 },
-    { "name": "torterra", "tier": 14 },
-    { "name": "chimchar", "tier": 20 },
-    { "name": "monferno", "tier": 19 },
-    { "name": "infernape", "tier": 8 },
-    { "name": "piplup", "tier": 20 },
-    { "name": "prinplup", "tier": 20 },
-    { "name": "empoleon", "tier": 9 },
-    { "name": "starly", "tier": 20 },
-    { "name": "staravia", "tier": 20 },
-    { "name": "staraptor", "tier": 14 },
-    { "name": "bidoof", "tier": 20 },
-    { "name": "bibarel", "tier": 19 },
-    { "name": "kricketot", "tier": 20 },
-    { "name": "kricketune", "tier": 19 },
-    { "name": "shinx", "tier": 20 },
-    { "name": "luxio", "tier": 20 },
-    { "name": "luxray", "tier": 17 },
-    { "name": "budew", "tier": 20 },
-    { "name": "roserade", "tier": 11 },
-    { "name": "cranidos", "tier": 20 },
-    { "name": "rampardos", "tier": 19 },
-    { "name": "shieldon", "tier": 20 },
-    { "name": "bastiodon", "tier": 18 },
-    { "name": "burmy", "tier": 20 },
-    { "name": "wormadam", "tier": 19 },
-    { "name": "wormadamsandy", "tier": 19 },
-    { "name": "wormadamtrash", "tier": 18 },
-    { "name": "mothim", "tier": 20 },
-    { "name": "combee", "tier": 20 },
-    { "name": "vespiquen", "tier": 18 },
-    { "name": "pachirisu", "tier": 19 },
-    { "name": "buizel", "tier": 20 },
-    { "name": "floatzel", "tier": 14 },
-    { "name": "cherubi", "tier": 20 },
-    { "name": "cherrim", "tier": 20 },
-    { "name": "shellos", "tier": 20 },
-    { "name": "gastrodon", "tier": 11 },
-    { "name": "ambipom", "tier": 16 },
-    { "name": "drifloon", "tier": 20 },
-    { "name": "drifblim", "tier": 15 },
-    { "name": "buneary", "tier": 20 },
-    { "name": "lopunny", "tier": 18 },
-    { "name": "lopunnymega", "tier": 5 },
-    { "name": "mismagius", "tier": 15 },
-    { "name": "honchkrow", "tier": 16 },
-    { "name": "glameow", "tier": 20 },
-    { "name": "purugly", "tier": 20 },
-    { "name": "chingling", "tier": 20 },
-    { "name": "stunky", "tier": 20 },
-    { "name": "skuntank", "tier": 16 },
-    { "name": "bronzor", "tier": 20 },
-    { "name": "bronzong", "tier": 12 },
-    { "name": "bonsly", "tier": 20 },
-    { "name": "mimejr", "tier": 20 },
-    { "name": "happiny", "tier": 20 },
-    { "name": "chatot", "tier": 20 },
-    { "name": "spiritomb", "tier": 17 },
-    { "name": "gible", "tier": 20 },
-    { "name": "gabite", "tier": 17 },
-    { "name": "garchomp", "tier": 2 },
-    { "name": "garchompmega", "tier": 4 },
-    { "name": "munchlax", "tier": 18 },
-    { "name": "riolu", "tier": 20 },
-    { "name": "lucario", "tier": 13 },
-    { "name": "lucariomega", "tier": 0 },
-    { "name": "hippopotas", "tier": 20 },
-    { "name": "hippowdon", "tier": 10 },
-    { "name": "skorupi", "tier": 20 },
-    { "name": "drapion", "tier": 12 },
-    { "name": "croagunk", "tier": 20 },
-    { "name": "toxicroak", "tier": 17 },
-    { "name": "carnivine", "tier": 19 },
-    { "name": "finneon", "tier": 20 },
-    { "name": "lumineon", "tier": 20 },
-    { "name": "mantyke", "tier": 20 },
-    { "name": "snover", "tier": 20 },
-    { "name": "abomasnow", "tier": 16 },
-    { "name": "abomasnowmega", "tier": 15 },
-    { "name": "weavile", "tier": 5 },
-    { "name": "magnezone", "tier": 12 },
-    { "name": "lickilicky", "tier": 14 },
-    { "name": "rhyperior", "tier": 14 },
-    { "name": "tangrowth", "tier": 10 },
-    { "name": "electivire", "tier": 16 },
-    { "name": "magmortar", "tier": 16 },
-    { "name": "togekiss", "tier": 9 },
-    { "name": "yanmega", "tier": 14 },
-    { "name": "leafeon", "tier": 18 },
-    { "name": "glaceon", "tier": 19 },
-    { "name": "gliscor", "tier": 7 },
-    { "name": "mamoswine", "tier": 10 },
-    { "name": "porygonz", "tier": 10 },
-    { "name": "gallade", "tier": 11 },
-    { "name": "gallademega", "tier": 2 },
-    { "name": "probopass", "tier": 19 },
-    { "name": "dusknoir", "tier": 19 },
-    { "name": "froslass", "tier": 15 },
-    { "name": "rotom", "tier": 17 },
-    { "name": "rotomheat", "tier": 9 },
-    { "name": "rotomwash", "tier": 6 },
-    { "name": "rotomfrost", "tier": 15 },
-    { "name": "rotomfan", "tier": 16 },
-    { "name": "rotommow", "tier": 12 },
-    { "name": "uxie", "tier": 10 },
-    { "name": "mesprit", "tier": 12 },
-    { "name": "azelf", "tier": 8 },
-    { "name": "dialga", "tier": 0 },
-    { "name": "dialgaorigin", "tier": 0 },
-    { "name": "palkia", "tier": 0 },
-    { "name": "palkiaorigin", "tier": 0 },
-    { "name": "heatran", "tier": 8 },
-    { "name": "regigigas", "tier": 18 },
-    { "name": "giratina", "tier": 0 },
-    { "name": "giratinaorigin", "tier": 0 },
-    { "name": "cresselia", "tier": 11 },
-    { "name": "phione", "tier": 18 },
-    { "name": "manaphy", "tier": 7 },
-    { "name": "darkrai", "tier": 3 },
-    { "name": "shaymin", "tier": 12 },
-    { "name": "shayminsky", "tier": 0 },
-    { "name": "arceus", "tier": 0 },
-    { "name": "arceusbug", "tier": 0 },
-    { "name": "arceusdark", "tier": 0 },
-    { "name": "arceusdragon", "tier": 0 },
-    { "name": "arceuselectric", "tier": 0 },
-    { "name": "arceusfairy", "tier": 0 },
-    { "name": "arceusfighting", "tier": 0 },
-    { "name": "arceusfire", "tier": 0 },
-    { "name": "arceusflying", "tier": 0 },
-    { "name": "arceusghost", "tier": 0 },
-    { "name": "arceusgrass", "tier": 0 },
-    { "name": "arceusground", "tier": 0 },
-    { "name": "arceusice", "tier": 0 },
-    { "name": "arceuspoison", "tier": 0 },
-    { "name": "arceuspsychic", "tier": 0 },
-    { "name": "arceusrock", "tier": 0 },
-    { "name": "arceussteel", "tier": 0 },
-    { "name": "arceuswater", "tier": 0 },
-    { "name": "victini", "tier": 6 },
-    { "name": "snivy", "tier": 20 },
-    { "name": "servine", "tier": 18 },
-    { "name": "serperior", "tier": 7 },
-    { "name": "tepig", "tier": 20 },
-    { "name": "pignite", "tier": 20 },
-    { "name": "emboar", "tier": 15 },
-    { "name": "oshawott", "tier": 20 },
-    { "name": "dewott", "tier": 20 },
-    { "name": "samurott", "tier": 18 },
-    { "name": "samurotthisui", "tier": 6 },
-    { "name": "patrat", "tier": 20 },
-    { "name": "watchog", "tier": 19 },
-    { "name": "lillipup", "tier": 20 },
-    { "name": "herdier", "tier": 20 },
-    { "name": "stoutland", "tier": 18 },
-    { "name": "purrloin", "tier": 20 },
-    { "name": "liepard", "tier": 18 },
-    { "name": "pansage", "tier": 20 },
-    { "name": "simisage", "tier": 19 },
-    { "name": "pansear", "tier": 20 },
-    { "name": "simisear", "tier": 19 },
-    { "name": "panpour", "tier": 20 },
-    { "name": "simipour", "tier": 19 },
-    { "name": "munna", "tier": 20 },
-    { "name": "musharna", "tier": 16 },
-    { "name": "pidove", "tier": 20 },
-    { "name": "tranquill", "tier": 20 },
-    { "name": "unfezant", "tier": 19 },
-    { "name": "blitzle", "tier": 20 },
-    { "name": "zebstrika", "tier": 19 },
-    { "name": "roggenrola", "tier": 20 },
-    { "name": "boldore", "tier": 20 },
-    { "name": "gigalith", "tier": 12 },
-    { "name": "woobat", "tier": 20 },
-    { "name": "swoobat", "tier": 17 },
-    { "name": "drilbur", "tier": 20 },
-    { "name": "excadrill", "tier": 7 },
-    { "name": "audino", "tier": 16 },
-    { "name": "audinomega", "tier": 15 },
-    { "name": "timburr", "tier": 20 },
-    { "name": "gurdurr", "tier": 16 },
-    { "name": "conkeldurr", "tier": 13 },
-    { "name": "tympole", "tier": 20 },
-    { "name": "palpitoad", "tier": 20 },
-    { "name": "seismitoad", "tier": 11 },
-    { "name": "throh", "tier": 17 },
-    { "name": "sawk", "tier": 17 },
-    { "name": "sewaddle", "tier": 20 },
-    { "name": "swadloon", "tier": 20 },
-    { "name": "leavanny", "tier": 19 },
-    { "name": "venipede", "tier": 20 },
-    { "name": "whirlipede", "tier": 20 },
-    { "name": "scolipede", "tier": 10 },
-    { "name": "cottonee", "tier": 20 },
-    { "name": "whimsicott", "tier": 14 },
-    { "name": "petilil", "tier": 20 },
-    { "name": "lilligant", "tier": 17 },
-    { "name": "lilliganthisui", "tier": 10 },
-    { "name": "basculin", "tier": 16 },
-    { "name": "sandile", "tier": 20 },
-    { "name": "krokorok", "tier": 20 },
-    { "name": "krookodile", "tier": 8 },
-    { "name": "darumaka", "tier": 20 },
-    { "name": "darumakagalar", "tier": 20 },
-    { "name": "darmanitan", "tier": 12 },
-    { "name": "darmanitangalar", "tier": 0 },
-    { "name": "maractus", "tier": 20 },
-    { "name": "dwebble", "tier": 20 },
-    { "name": "crustle", "tier": 17 },
-    { "name": "scraggy", "tier": 20 },
-    { "name": "scrafty", "tier": 14 },
-    { "name": "sigilyph", "tier": 16 },
-    { "name": "yamask", "tier": 20 },
-    { "name": "yamaskgalar", "tier": 20 },
-    { "name": "cofagrigus", "tier": 13 },
-    { "name": "tirtouga", "tier": 20 },
-    { "name": "carracosta", "tier": 18 },
-    { "name": "archen", "tier": 20 },
-    { "name": "archeops", "tier": 16 },
-    { "name": "trubbish", "tier": 20 },
-    { "name": "garbodor", "tier": 16 },
-    { "name": "zorua", "tier": 20 },
-    { "name": "zoruahisui", "tier": 20 },
-    { "name": "zoroark", "tier": 13 },
-    { "name": "zoroarkhisui", "tier": 9 },
-    { "name": "minccino", "tier": 20 },
-    { "name": "cinccino", "tier": 15 },
-    { "name": "gothita", "tier": 20 },
-    { "name": "gothorita", "tier": 17 },
-    { "name": "gothitelle", "tier": 13 },
-    { "name": "solosis", "tier": 20 },
-    { "name": "duosion", "tier": 19 },
-    { "name": "reuniclus", "tier": 12 },
-    { "name": "ducklett", "tier": 20 },
-    { "name": "swanna", "tier": 20 },
-    { "name": "vanillite", "tier": 20 },
-    { "name": "vanillish", "tier": 20 },
-    { "name": "vanilluxe", "tier": 15 },
-    { "name": "deerling", "tier": 20 },
-    { "name": "sawsbuck", "tier": 19 },
-    { "name": "emolga", "tier": 19 },
-    { "name": "karrablast", "tier": 20 },
-    { "name": "escavalier", "tier": 14 },
-    { "name": "foongus", "tier": 20 },
-    { "name": "amoonguss", "tier": 11 },
-    { "name": "frillish", "tier": 20 },
-    { "name": "jellicent", "tier": 12 },
-    { "name": "alomomola", "tier": 7 },
-    { "name": "joltik", "tier": 20 },
-    { "name": "galvantula", "tier": 14 },
-    { "name": "ferroseed", "tier": 18 },
-    { "name": "ferrothorn", "tier": 8 },
-    { "name": "klink", "tier": 20 },
-    { "name": "klang", "tier": 20 },
-    { "name": "klinklang", "tier": 18 },
-    { "name": "tynamo", "tier": 20 },
-    { "name": "eelektrik", "tier": 20 },
-    { "name": "eelektross", "tier": 13 },
-    { "name": "elgyem", "tier": 20 },
-    { "name": "beheeyem", "tier": 19 },
-    { "name": "litwick", "tier": 20 },
-    { "name": "lampent", "tier": 20 },
-    { "name": "chandelure", "tier": 12 },
-    { "name": "axew", "tier": 20 },
-    { "name": "fraxure", "tier": 19 },
-    { "name": "haxorus", "tier": 10 },
-    { "name": "cubchoo", "tier": 20 },
-    { "name": "beartic", "tier": 18 },
-    { "name": "cryogonal", "tier": 16 },
-    { "name": "shelmet", "tier": 20 },
-    { "name": "accelgor", "tier": 14 },
-    { "name": "stunfisk", "tier": 15 },
-    { "name": "stunfiskgalar", "tier": 18 },
-    { "name": "mienfoo", "tier": 20 },
-    { "name": "mienshao", "tier": 10 },
-    { "name": "druddigon", "tier": 15 },
-    { "name": "golett", "tier": 20 },
-    { "name": "golurk", "tier": 16 },
-    { "name": "pawniard", "tier": 20 },
-    { "name": "bisharp", "tier": 13 },
-    { "name": "bouffalant", "tier": 17 },
-    { "name": "rufflet", "tier": 20 },
-    { "name": "braviary", "tier": 15 },
-    { "name": "braviaryhisui", "tier": 13 },
-    { "name": "vullaby", "tier": 19 },
-    { "name": "mandibuzz", "tier": 9 },
-    { "name": "heatmor", "tier": 18 },
-    { "name": "durant", "tier": 15 },
-    { "name": "deino", "tier": 20 },
-    { "name": "zweilous", "tier": 18 },
-    { "name": "hydreigon", "tier": 7 },
-    { "name": "larvesta", "tier": 20 },
     {
-      "name": "volcarona",
-      "tier": 5,
-      "banned": {
-        "tera": true
-      }
+      "name": "abra",
+      "tier": "1"
     },
-    { "name": "cobalion", "tier": 11 },
-    { "name": "terrakion", "tier": 9 },
-    { "name": "virizion", "tier": 16 },
-    { "name": "tornadus", "tier": 13 },
-    { "name": "tornadustherian", "tier": 2 },
-    { "name": "thundurus", "tier": 9 },
-    { "name": "thundurustherian", "tier": 9 },
-    { "name": "reshiram", "tier": 0 },
-    { "name": "zekrom", "tier": 0 },
-    { "name": "landorus", "tier": 0 },
-    { "name": "landorustherian", "tier": 3 },
-    { "name": "kyurem", "tier": 3 },
-    { "name": "kyuremblack", "tier": 0 },
-    { "name": "kyuremwhite", "tier": 0 },
-    { "name": "keldeo", "tier": 8 },
-    { "name": "meloetta", "tier": 12 },
-    { "name": "genesect", "tier": 0 },
-    { "name": "chespin", "tier": 20 },
-    { "name": "quilladin", "tier": 18 },
-    { "name": "chesnaught", "tier": 14 },
-    { "name": "fennekin", "tier": 20 },
-    { "name": "braixen", "tier": 20 },
-    { "name": "delphox", "tier": 14 },
-    { "name": "froakie", "tier": 20 },
-    { "name": "frogadier", "tier": 19 },
-    { "name": "greninja", "tier": 4 },
-    { "name": "bunnelby", "tier": 20 },
-    { "name": "diggersby", "tier": 10 },
-    { "name": "fletchling", "tier": 20 },
-    { "name": "fletchinder", "tier": 20 },
-    { "name": "talonflame", "tier": 10 },
-    { "name": "scatterbug", "tier": 20 },
-    { "name": "spewpa", "tier": 20 },
-    { "name": "vivillon", "tier": 18 },
-    { "name": "litleo", "tier": 20 },
-    { "name": "pyroar", "tier": 17 },
-    { "name": "flabebe", "tier": 20 },
-    { "name": "floette", "tier": 20 },
-    { "name": "florges", "tier": 12 },
-    { "name": "skiddo", "tier": 20 },
-    { "name": "gogoat", "tier": 18 },
-    { "name": "pancham", "tier": 20 },
-    { "name": "pangoro", "tier": 14 },
-    { "name": "furfrou", "tier": 20 },
-    { "name": "espurr", "tier": 20 },
-    { "name": "meowsticf", "tier": 19 },
-    { "name": "honedge", "tier": 20 },
-    { "name": "doublade", "tier": 15 },
-    { "name": "aegislash", "tier": 7 },
-    { "name": "spritzee", "tier": 20 },
-    { "name": "aromatisse", "tier": 15 },
-    { "name": "swirlix", "tier": 20 },
-    { "name": "slurpuff", "tier": 13 },
-    { "name": "inkay", "tier": 20 },
-    { "name": "malamar", "tier": 18 },
-    { "name": "binacle", "tier": 20 },
-    { "name": "barbaracle", "tier": 17 },
-    { "name": "skrelp", "tier": 20 },
-    { "name": "dragalge", "tier": 13 },
-    { "name": "clauncher", "tier": 20 },
-    { "name": "clawitzer", "tier": 16 },
-    { "name": "helioptile", "tier": 20 },
-    { "name": "heliolisk", "tier": 13 },
-    { "name": "tyrunt", "tier": 20 },
-    { "name": "tyrantrum", "tier": 14 },
-    { "name": "amaura", "tier": 20 },
-    { "name": "aurorus", "tier": 18 },
-    { "name": "sylveon", "tier": 11 },
-    { "name": "hawlucha", "tier": 9 },
-    { "name": "dedenne", "tier": 20 },
-    { "name": "carbink", "tier": 19 },
-    { "name": "goomy", "tier": 20 },
-    { "name": "sliggoo", "tier": 20 },
-    { "name": "sliggoohisui", "tier": 19 },
-    { "name": "goodra", "tier": 9 },
-    { "name": "goodrahisui", "tier": 9 },
-    { "name": "klefki", "tier": 10 },
-    { "name": "phantump", "tier": 20 },
-    { "name": "trevenant", "tier": 15 },
-    { "name": "pumpkaboo", "tier": 20 },
-    { "name": "pumpkaboosmall", "tier": 20 },
-    { "name": "pumpkaboolarge", "tier": 20 },
-    { "name": "pumpkaboosuper", "tier": 20 },
-    { "name": "gourgeist", "tier": 16 },
-    { "name": "gourgeistsmall", "tier": 15 },
-    { "name": "gourgeistlarge", "tier": 16 },
-    { "name": "gourgeistsuper", "tier": 16 },
-    { "name": "bergmite", "tier": 20 },
-    { "name": "avalugg", "tier": 17 },
-    { "name": "avalugghisui", "tier": 17 },
-    { "name": "noibat", "tier": 20 },
-    { "name": "noivern", "tier": 12 },
-    { "name": "xerneas", "tier": 0 },
-    { "name": "yveltal", "tier": 0 },
-    { "name": "zygarde", "tier": 5 },
-    { "name": "zygarde10", "tier": 14 },
-    { "name": "zygardecomplete", "tier": 0 },
-    { "name": "diancie", "tier": 13 },
-    { "name": "dianciemega", "tier": 4 },
-    { "name": "hoopa", "tier": 14 },
-    { "name": "hoopaunbound", "tier": 8 },
-    { "name": "volcanion", "tier": 10 },
-    { "name": "rowlet", "tier": 20 },
-    { "name": "dartrix", "tier": 20 },
-    { "name": "decidueye", "tier": 14 },
-    { "name": "decidueyehisui", "tier": 15 },
-    { "name": "litten", "tier": 20 },
-    { "name": "torracat", "tier": 20 },
-    { "name": "incineroar", "tier": 10 },
-    { "name": "popplio", "tier": 20 },
-    { "name": "brionne", "tier": 20 },
-    { "name": "primarina", "tier": 9 },
-    { "name": "pikipek", "tier": 20 },
-    { "name": "trumbeak", "tier": 20 },
-    { "name": "toucannon", "tier": 20 },
-    { "name": "yungoos", "tier": 20 },
-    { "name": "gumshoos", "tier": 20 },
-    { "name": "grubbin", "tier": 20 },
-    { "name": "charjabug", "tier": 20 },
-    { "name": "vikavolt", "tier": 13 },
-    { "name": "crabrawler", "tier": 20 },
-    { "name": "crabominable", "tier": 18 },
-    { "name": "oricorio", "tier": 14 },
-    { "name": "oricoriopompom", "tier": 13 },
-    { "name": "oricoriopau", "tier": 14 },
-    { "name": "oricoriosensu", "tier": 14 },
-    { "name": "cutiefly", "tier": 20 },
-    { "name": "ribombee", "tier": 11 },
-    { "name": "rockruff", "tier": 20 },
-    { "name": "lycanroc", "tier": 12 },
-    { "name": "lycanrocmidnight", "tier": 19 },
-    { "name": "lycanrocdusk", "tier": 9 },
-    { "name": "wishiwashi", "tier": 19 },
-    { "name": "mareanie", "tier": 20 },
-    { "name": "toxapex", "tier": 4 },
-    { "name": "mudbray", "tier": 20 },
-    { "name": "mudsdale", "tier": 13 },
-    { "name": "dewpider", "tier": 20 },
-    { "name": "araquanid", "tier": 13 },
-    { "name": "fomantis", "tier": 20 },
-    { "name": "lurantis", "tier": 18 },
-    { "name": "morelull", "tier": 20 },
-    { "name": "shiinotic", "tier": 19 },
-    { "name": "salandit", "tier": 20 },
-    { "name": "salazzle", "tier": 12 },
-    { "name": "stufful", "tier": 20 },
-    { "name": "bewear", "tier": 15 },
-    { "name": "bounsweet", "tier": 20 },
-    { "name": "steenee", "tier": 20 },
-    { "name": "tsareena", "tier": 12 },
-    { "name": "comfey", "tier": 14 },
-    { "name": "oranguru", "tier": 19 },
-    { "name": "passimian", "tier": 15 },
-    { "name": "wimpod", "tier": 20 },
-    { "name": "golisopod", "tier": 15 },
-    { "name": "sandygast", "tier": 20 },
-    { "name": "palossand", "tier": 15 },
-    { "name": "pyukumuku", "tier": 18 },
-    { "name": "typenull", "tier": 16 },
-    { "name": "silvally", "tier": 13 },
-    { "name": "silvallybug", "tier": 14 },
-    { "name": "silvallydark", "tier": 12 },
-    { "name": "silvallydragon", "tier": 12 },
-    { "name": "silvallyelectric", "tier": 13 },
-    { "name": "silvallyfairy", "tier": 11 },
-    { "name": "silvallyfighting", "tier": 13 },
-    { "name": "silvallyfire", "tier": 13 },
-    { "name": "silvallyflying", "tier": 13 },
-    { "name": "silvallyghost", "tier": 12 },
-    { "name": "silvallygrass", "tier": 14 },
-    { "name": "silvallyground", "tier": 12 },
-    { "name": "silvallyice", "tier": 14 },
-    { "name": "silvallypoison", "tier": 12 },
-    { "name": "silvallypsychic", "tier": 13 },
-    { "name": "silvallyrock", "tier": 13 },
-    { "name": "silvallysteel", "tier": 11 },
-    { "name": "silvallywater", "tier": 11 },
-    { "name": "miniorred", "tier": 15 },
-    { "name": "komala", "tier": 18 },
-    { "name": "turtonator", "tier": 18 },
-    { "name": "togedemaru", "tier": 18 },
-    { "name": "mimikyu", "tier": 13 },
-    { "name": "bruxish", "tier": 18 },
-    { "name": "drampa", "tier": 16 },
-    { "name": "dhelmise", "tier": 14 },
-    { "name": "jangmoo", "tier": 20 },
-    { "name": "hakamoo", "tier": 18 },
-    { "name": "kommoo", "tier": 8 },
-    { "name": "tapukoko", "tier": 2, "drafted": ["Defense"] },
     {
-      "name": "tapulele",
-      "tier": 5,
-      "banned": {
-        "tera": true
-      }
+      "name": "absol",
+      "tier": "2"
     },
-    { "name": "tapubulu", "tier": 11 },
-    { "name": "tapufini", "tier": 5 },
-    { "name": "cosmog", "tier": 20 },
-    { "name": "cosmoem", "tier": 20 },
-    { "name": "solgaleo", "tier": 0 },
-    { "name": "lunala", "tier": 0 },
-    { "name": "nihilego", "tier": 8 },
-    { "name": "buzzwole", "tier": 7 },
-    { "name": "pheromosa", "tier": 0 },
-    { "name": "xurkitree", "tier": 9 },
-    { "name": "celesteela", "tier": 7 },
-    { "name": "kartana", "tier": 4 },
-    { "name": "guzzlord", "tier": 18 },
     {
-      "name": "necrozma",
-      "tier": 5,
-      "banned": {
-        "tera": true
-      }
+      "name": "absolmega",
+      "tier": "6"
     },
-    { "name": "necrozmadusk", "tier": 0 },
-    { "name": "necrozmadawn", "tier": 0 },
-    { "name": "necrozmaultra", "tier": 0 },
-    { "name": "magearna", "tier": 0 },
-    { "name": "marshadow", "tier": 0 },
-    { "name": "poipole", "tier": 19 },
-    { "name": "naganadel", "tier": 0 },
-    { "name": "stakataka", "tier": 14 },
-    { "name": "blacephalon", "tier": 7 },
-    { "name": "zeraora", "tier": 5 },
-    { "name": "meltan", "tier": 20 },
     {
-      "name": "melmetal",
-      "tier": 5,
-      "banned": {
-        "tera": true
-      }
+      "name": "accelgor",
+      "tier": "7"
     },
-    { "name": "grookey", "tier": 20 },
-    { "name": "thwackey", "tier": 18 },
-    { "name": "rillaboom", "tier": 7 },
-    { "name": "scorbunny", "tier": 20 },
-    { "name": "raboot", "tier": 20 },
-    { "name": "cinderace", "tier": 7 },
-    { "name": "sobble", "tier": 20 },
-    { "name": "drizzile", "tier": 20 },
-    { "name": "inteleon", "tier": 14 },
-    { "name": "skwovet", "tier": 20 },
-    { "name": "greedent", "tier": 18 },
-    { "name": "rookidee", "tier": 20 },
-    { "name": "corvisquire", "tier": 20 },
-    { "name": "corviknight", "tier": 8 },
-    { "name": "blipbug", "tier": 20 },
-    { "name": "dottler", "tier": 19 },
-    { "name": "orbeetle", "tier": 18 },
-    { "name": "nickit", "tier": 20 },
-    { "name": "thievul", "tier": 19 },
-    { "name": "gossifleur", "tier": 20 },
-    { "name": "eldegoss", "tier": 19 },
-    { "name": "wooloo", "tier": 20 },
-    { "name": "dubwool", "tier": 18 },
-    { "name": "chewtle", "tier": 20 },
-    { "name": "drednaw", "tier": 15 },
-    { "name": "yamper", "tier": 20 },
-    { "name": "boltund", "tier": 17 },
-    { "name": "rolycoly", "tier": 20 },
-    { "name": "carkol", "tier": 19 },
-    { "name": "coalossal", "tier": 17 },
-    { "name": "applin", "tier": 20 },
-    { "name": "flapple", "tier": 17 },
-    { "name": "appletun", "tier": 18 },
-    { "name": "silicobra", "tier": 20 },
-    { "name": "sandaconda", "tier": 15 },
-    { "name": "cramorant", "tier": 19 },
-    { "name": "arrokuda", "tier": 20 },
-    { "name": "barraskewda", "tier": 12 },
-    { "name": "toxel", "tier": 20 },
-    { "name": "toxtricity", "tier": 13 },
-    { "name": "sizzlipede", "tier": 20 },
-    { "name": "centiskorch", "tier": 15 },
-    { "name": "clobbopus", "tier": 20 },
-    { "name": "grapploct", "tier": 19 },
-    { "name": "sinistea", "tier": 20 },
-    { "name": "polteageist", "tier": 8 },
-    { "name": "hatenna", "tier": 20 },
-    { "name": "hattrem", "tier": 18 },
-    { "name": "hatterene", "tier": 10 },
-    { "name": "impidimp", "tier": 20 },
-    { "name": "morgrem", "tier": 18 },
-    { "name": "grimmsnarl", "tier": 9 },
-    { "name": "obstagoon", "tier": 11 },
-    { "name": "perrserker", "tier": 18 },
-    { "name": "cursola", "tier": 17 },
-    { "name": "sirfetchd", "tier": 14 },
-    { "name": "mrrime", "tier": 19 },
-    { "name": "runerigus", "tier": 15 },
-    { "name": "milcery", "tier": 20 },
-    { "name": "alcremie", "tier": 16 },
-    { "name": "falinks", "tier": 16 },
-    { "name": "pincurchin", "tier": 16 },
-    { "name": "snom", "tier": 20 },
-    { "name": "frosmoth", "tier": 16 },
-    { "name": "stonjourner", "tier": 19 },
-    { "name": "eiscue", "tier": 19 },
-    { "name": "indeedee", "tier": 15 },
-    { "name": "indeedeef", "tier": 15 },
-    { "name": "morpeko", "tier": 16 },
-    { "name": "cufant", "tier": 20 },
-    { "name": "copperajah", "tier": 15 },
-    { "name": "dracozolt", "tier": 9 },
-    { "name": "arctozolt", "tier": 14 },
-    { "name": "dracovish", "tier": 3 },
-    { "name": "arctovish", "tier": 18 },
-    { "name": "duraludon", "tier": 17 },
-    { "name": "dreepy", "tier": 20 },
-    { "name": "drakloak", "tier": 18 },
-    { "name": "dragapult", "tier": 1 },
-    { "name": "zacian", "tier": 0 },
-    { "name": "zaciancrowned", "tier": 0 },
-    { "name": "zamazenta", "tier": 1 },
-    { "name": "zamazentacrowned", "tier": 0 },
-    { "name": "eternatus", "tier": 0 },
-    { "name": "kubfu", "tier": 19 },
-    { "name": "urshifu", "tier": 2 },
-    { "name": "urshifurapidstrike", "tier": 5 },
-    { "name": "zarude", "tier": 9 },
     {
-      "name": "regieleki",
-      "tier": 10,
-      "banned": {
-        "tera": true
-      }
+      "name": "aegislash",
+      "tier": "Ban"
     },
-    { "name": "regidrago", "tier": 12 },
-    { "name": "glastrier", "tier": 16 },
-    { "name": "spectrier", "tier": 0 },
-    { "name": "calyrex", "tier": 19 },
-    { "name": "calyrexice", "tier": 0 },
-    { "name": "calyrexshadow", "tier": 0 },
-    { "name": "wyrdeer", "tier": 18 },
-    { "name": "kleavor", "tier": 10 },
-    { "name": "ursaluna", "tier": 7 },
-    { "name": "ursalunabloodmoon", "tier": 6 },
+    {
+      "name": "aerodactyl",
+      "tier": "9"
+    },
+    {
+      "name": "aerodactylmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "aggron",
+      "tier": "2"
+    },
+    {
+      "name": "aggronmega",
+      "tier": "11"
+    },
+    {
+      "name": "aipom",
+      "tier": "1"
+    },
+    {
+      "name": "alakazam",
+      "tier": "10"
+    },
+    {
+      "name": "alakazammega",
+      "tier": "Ban"
+    },
+    {
+      "name": "alcremie",
+      "tier": "5"
+    },
+    {
+      "name": "alomomola",
+      "tier": "Ban"
+    },
+    {
+      "name": "altaria",
+      "tier": "3"
+    },
+    {
+      "name": "altariamega",
+      "tier": "Ban"
+    },
+    {
+      "name": "amaura",
+      "tier": "1"
+    },
+    {
+      "name": "ambipom",
+      "tier": "5"
+    },
+    {
+      "name": "amoonguss",
+      "tier": "10"
+    },
+    {
+      "name": "ampharos",
+      "tier": "2"
+    },
+    {
+      "name": "ampharosmega",
+      "tier": "5"
+    },
+    {
+      "name": "annihilape",
+      "tier": "Ban"
+    },
+    {
+      "name": "anorith",
+      "tier": "1"
+    },
+    {
+      "name": "appletun",
+      "tier": "3"
+    },
+    {
+      "name": "applin",
+      "tier": "1"
+    },
+    {
+      "name": "araquanid",
+      "tier": "8"
+    },
+    {
+      "name": "arbok",
+      "tier": "2"
+    },
+    {
+      "name": "arboliva",
+      "tier": "7"
+    },
+    {
+      "name": "arcanine",
+      "tier": "11"
+    },
+    {
+      "name": "arcaninehisui",
+      "tier": "11"
+    },
+    {
+      "name": "arceus",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusbug",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusdark",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusdragon",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceuselectric",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusfairy",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusfighting",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusfire",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusflying",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusghost",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusgrass",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusground",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusice",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceuspoison",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceuspsychic",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceusrock",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceussteel",
+      "tier": "Ban"
+    },
+    {
+      "name": "arceuswater",
+      "tier": "Ban"
+    },
+    {
+      "name": "archaludon",
+      "tier": "Ban"
+    },
+    {
+      "name": "archen",
+      "tier": "1"
+    },
+    {
+      "name": "archeops",
+      "tier": "5"
+    },
+    {
+      "name": "arctibax",
+      "tier": "1"
+    },
+    {
+      "name": "arctovish",
+      "tier": "3"
+    },
+    {
+      "name": "arctozolt",
+      "tier": "7"
+    },
+    {
+      "name": "ariados",
+      "tier": "2"
+    },
+    {
+      "name": "armaldo",
+      "tier": "2"
+    },
+    {
+      "name": "armarouge",
+      "tier": "9"
+    },
+    {
+      "name": "aromatisse",
+      "tier": "6"
+    },
+    {
+      "name": "aron",
+      "tier": "1"
+    },
+    {
+      "name": "arrokuda",
+      "tier": "1"
+    },
+    {
+      "name": "articuno",
+      "tier": "3"
+    },
+    {
+      "name": "articunogalar",
+      "tier": "7"
+    },
+    {
+      "name": "audino",
+      "tier": "4"
+    },
+    {
+      "name": "audinomega",
+      "tier": "6"
+    },
+    {
+      "name": "aurorus",
+      "tier": "3"
+    },
+    {
+      "name": "avalugg",
+      "tier": "4"
+    },
+    {
+      "name": "avalugghisui",
+      "tier": "4"
+    },
+    {
+      "name": "axew",
+      "tier": "1"
+    },
+    {
+      "name": "azelf",
+      "tier": "Ban"
+    },
+    {
+      "name": "azumarill",
+      "tier": "Ban"
+    },
+    {
+      "name": "azurill",
+      "tier": "1"
+    },
+    {
+      "name": "bagon",
+      "tier": "1"
+    },
+    {
+      "name": "baltoy",
+      "tier": "1"
+    },
+    {
+      "name": "banette",
+      "tier": "2"
+    },
+    {
+      "name": "banettemega",
+      "tier": "10"
+    },
+    {
+      "name": "barbaracle",
+      "tier": "4"
+    },
+    {
+      "name": "barboach",
+      "tier": "1"
+    },
+    {
+      "name": "barraskewda",
+      "tier": "9"
+    },
     {
       "name": "basculegion",
-      "tier": 8,
-      "banned": { "moves": ["Last Respects"] }
+      "tier": "Ban"
     },
     {
       "name": "basculegionf",
-      "tier": 8,
-      "banned": { "moves": ["Last Respects"] }
+      "tier": "Ban"
     },
-    { "name": "sneasler", "tier": 3 },
-    { "name": "overqwil", "tier": 9 },
-    { "name": "enamorus", "tier": 6 },
-    { "name": "enamorustherian", "tier": 11 },
-    { "name": "sprigatito", "tier": 20 },
-    { "name": "floragato", "tier": 20 },
-    { "name": "meowscarada", "tier": 5 },
-    { "name": "fuecoco", "tier": 20 },
-    { "name": "crocalor", "tier": 17 },
-    { "name": "skeledirge", "tier": 11 },
-    { "name": "quaxly", "tier": 20 },
-    { "name": "quaxwell", "tier": 18 },
-    { "name": "quaquaval", "tier": 5 },
-    { "name": "lechonk", "tier": 20 },
-    { "name": "oinkologne", "tier": 20 },
-    { "name": "oinkolognef", "tier": 20 },
-    { "name": "tarountula", "tier": 20 },
-    { "name": "spidops", "tier": 16 },
-    { "name": "nymble", "tier": 20 },
-    { "name": "lokix", "tier": 9 },
-    { "name": "pawmi", "tier": 20 },
-    { "name": "pawmo", "tier": 20 },
     {
-      "name": "pawmot",
-      "tier": 11,
-      "banned": { "moves": ["Revival Blessing"] }
+      "name": "basculin",
+      "tier": "5"
     },
-    { "name": "tandemaus", "tier": 20 },
-    { "name": "maushold", "tier": 14 },
-    { "name": "fidough", "tier": 20 },
-    { "name": "dachsbun", "tier": 16 },
-    { "name": "smoliv", "tier": 20 },
-    { "name": "dolliv", "tier": 19 },
-    { "name": "arboliva", "tier": 14 },
-    { "name": "squawkabilly", "tier": 19 },
-    { "name": "nacli", "tier": 20 },
-    { "name": "naclstack", "tier": 19 },
-    { "name": "garganacl", "tier": 7 },
-    { "name": "charcadet", "tier": 20 },
-    { "name": "armarouge", "tier": 12 },
-    { "name": "ceruledge", "tier": 9 },
-    { "name": "tadbulb", "tier": 20 },
-    { "name": "bellibolt", "tier": 15 },
-    { "name": "wattrel", "tier": 20 },
-    { "name": "kilowattrel", "tier": 10 },
-    { "name": "maschiff", "tier": 20 },
-    { "name": "mabosstiff", "tier": 17 },
-    { "name": "shroodle", "tier": 20 },
-    { "name": "grafaiai", "tier": 16 },
-    { "name": "bramblin", "tier": 20 },
-    { "name": "brambleghast", "tier": 15 },
-    { "name": "toedscool", "tier": 19 },
-    { "name": "toedscruel", "tier": 15 },
-    { "name": "klawf", "tier": 16 },
-    { "name": "capsakid", "tier": 20 },
-    { "name": "scovillain", "tier": 16 },
-    { "name": "rellor", "tier": 20 },
     {
-      "name": "rabsca",
-      "tier": 19,
-      "banned": { "moves": ["Revival Blessing"] }
+      "name": "bastiodon",
+      "tier": "3"
     },
-    { "name": "flittle", "tier": 20 },
-    { "name": "espathra", "tier": 0 },
-    { "name": "tinkatink", "tier": 20 },
-    { "name": "tinkatuff", "tier": 20 },
-    { "name": "tinkaton", "tier": 12 },
-    { "name": "wiglett", "tier": 20 },
-    { "name": "wugtrio", "tier": 19 },
-    { "name": "bombirdier", "tier": 16 },
-    { "name": "finizen", "tier": 20 },
-    { "name": "palafin", "tier": 0 },
-    { "name": "varoom", "tier": 20 },
-    { "name": "revavroom", "tier": 11 },
-    { "name": "cyclizar", "tier": 13, "banned": { "moves": ["Shed Tail"] } },
-    { "name": "orthworm", "tier": 15, "banned": { "moves": ["Shed Tail"] } },
-    { "name": "glimmet", "tier": 18 },
-    { "name": "glimmora", "tier": 8 },
-    { "name": "greavard", "tier": 20 },
     {
-      "name": "houndstone",
-      "tier": 17,
-      "banned": { "moves": ["Last Respects"] }
+      "name": "baxcalibur",
+      "tier": "Ban"
     },
-    { "name": "flamigo", "tier": 14 },
-    { "name": "cetoddle", "tier": 20 },
-    { "name": "cetitan", "tier": 14 },
-    { "name": "veluza", "tier": 16 },
-    { "name": "dondozo", "tier": 8 },
-    { "name": "tatsugiri", "tier": 15 },
-    { "name": "annihilape", "tier": 7 },
-    { "name": "clodsire", "tier": 11 },
-    { "name": "farigiraf", "tier": 16 },
-    { "name": "dudunsparce", "tier": 13 },
     {
-      "name": "kingambit",
-      "tier": 6,
-      "banned": {
-        "tera": true
-      }
+      "name": "bayleef",
+      "tier": "1"
+    },
+    {
+      "name": "beartic",
+      "tier": "3"
+    },
+    {
+      "name": "beautifly",
+      "tier": "1"
+    },
+    {
+      "name": "beedrill",
+      "tier": "1"
+    },
+    {
+      "name": "beedrillmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "beheeyem",
+      "tier": "2"
+    },
+    {
+      "name": "beldum",
+      "tier": "1"
+    },
+    {
+      "name": "bellibolt",
+      "tier": "6"
+    },
+    {
+      "name": "bellossom",
+      "tier": "4"
+    },
+    {
+      "name": "bellsprout",
+      "tier": "1"
+    },
+    {
+      "name": "bergmite",
+      "tier": "1"
+    },
+    {
+      "name": "bewear",
+      "tier": "6"
+    },
+    {
+      "name": "bibarel",
+      "tier": "2"
+    },
+    {
+      "name": "bidoof",
+      "tier": "1"
+    },
+    {
+      "name": "binacle",
+      "tier": "1"
+    },
+    {
+      "name": "bisharp",
+      "tier": "8"
+    },
+    {
+      "name": "blacephalon",
+      "tier": "Ban"
+    },
+    {
+      "name": "blastoise",
+      "tier": "12"
+    },
+    {
+      "name": "blastoisemega",
+      "tier": "Ban"
+    },
+    {
+      "name": "blaziken",
+      "tier": "Ban"
+    },
+    {
+      "name": "blazikenmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "blipbug",
+      "tier": "1"
+    },
+    {
+      "name": "blissey",
+      "tier": "10"
+    },
+    {
+      "name": "blitzle",
+      "tier": "1"
+    },
+    {
+      "name": "boldore",
+      "tier": "1"
+    },
+    {
+      "name": "boltund",
+      "tier": "4"
+    },
+    {
+      "name": "bombirdier",
+      "tier": "5"
+    },
+    {
+      "name": "bonsly",
+      "tier": "1"
+    },
+    {
+      "name": "bouffalant",
+      "tier": "4"
+    },
+    {
+      "name": "bounsweet",
+      "tier": "1"
+    },
+    {
+      "name": "braixen",
+      "tier": "1"
+    },
+    {
+      "name": "brambleghast",
+      "tier": "6"
+    },
+    {
+      "name": "bramblin",
+      "tier": "1"
+    },
+    {
+      "name": "braviary",
+      "tier": "6"
+    },
+    {
+      "name": "braviaryhisui",
+      "tier": "8"
+    },
+    {
+      "name": "breloom",
+      "tier": "9"
+    },
+    {
+      "name": "brionne",
+      "tier": "1"
+    },
+    {
+      "name": "bronzong",
+      "tier": "9"
+    },
+    {
+      "name": "bronzor",
+      "tier": "1"
+    },
+    {
+      "name": "brutebonnet",
+      "tier": "7"
+    },
+    {
+      "name": "bruxish",
+      "tier": "3"
+    },
+    {
+      "name": "budew",
+      "tier": "1"
+    },
+    {
+      "name": "buizel",
+      "tier": "1"
+    },
+    {
+      "name": "bulbasaur",
+      "tier": "1"
+    },
+    {
+      "name": "buneary",
+      "tier": "1"
+    },
+    {
+      "name": "bunnelby",
+      "tier": "1"
+    },
+    {
+      "name": "burmy",
+      "tier": "1"
+    },
+    {
+      "name": "butterfree",
+      "tier": "1"
+    },
+    {
+      "name": "buzzwole",
+      "tier": "Ban"
+    },
+    {
+      "name": "cacnea",
+      "tier": "1"
+    },
+    {
+      "name": "cacturne",
+      "tier": "2"
+    },
+    {
+      "name": "calyrex",
+      "tier": "2"
+    },
+    {
+      "name": "calyrexice",
+      "tier": "Ban"
+    },
+    {
+      "name": "calyrexshadow",
+      "tier": "Ban"
+    },
+    {
+      "name": "camerupt",
+      "tier": "2"
+    },
+    {
+      "name": "cameruptmega",
+      "tier": "5"
+    },
+    {
+      "name": "capsakid",
+      "tier": "1"
+    },
+    {
+      "name": "carbink",
+      "tier": "2"
+    },
+    {
+      "name": "carkol",
+      "tier": "2"
+    },
+    {
+      "name": "carnivine",
+      "tier": "2"
+    },
+    {
+      "name": "carracosta",
+      "tier": "3"
+    },
+    {
+      "name": "carvanha",
+      "tier": "1"
+    },
+    {
+      "name": "cascoon",
+      "tier": "1"
+    },
+    {
+      "name": "castform",
+      "tier": "1"
+    },
+    {
+      "name": "caterpie",
+      "tier": "1"
+    },
+    {
+      "name": "celebi",
+      "tier": "8"
+    },
+    {
+      "name": "celesteela",
+      "tier": "Ban"
+    },
+    {
+      "name": "centiskorch",
+      "tier": "6"
+    },
+    {
+      "name": "ceruledge",
+      "tier": "12"
+    },
+    {
+      "name": "cetitan",
+      "tier": "7"
+    },
+    {
+      "name": "cetoddle",
+      "tier": "1"
+    },
+    {
+      "name": "chandelure",
+      "tier": "9"
+    },
+    {
+      "name": "chansey",
+      "tier": "8"
+    },
+    {
+      "name": "charcadet",
+      "tier": "1"
+    },
+    {
+      "name": "charizard",
+      "tier": "6"
+    },
+    {
+      "name": "charizardmegax",
+      "tier": "Ban"
+    },
+    {
+      "name": "charizardmegay",
+      "tier": "Ban"
+    },
+    {
+      "name": "charjabug",
+      "tier": "1"
+    },
+    {
+      "name": "charmander",
+      "tier": "1"
+    },
+    {
+      "name": "charmeleon",
+      "tier": "1"
+    },
+    {
+      "name": "chatot",
+      "tier": "2"
+    },
+    {
+      "name": "cherrim",
+      "tier": "1"
+    },
+    {
+      "name": "cherubi",
+      "tier": "1"
+    },
+    {
+      "name": "chesnaught",
+      "tier": "7"
+    },
+    {
+      "name": "chespin",
+      "tier": "1"
+    },
+    {
+      "name": "chewtle",
+      "tier": "1"
+    },
+    {
+      "name": "chienpao",
+      "tier": "Ban"
+    },
+    {
+      "name": "chikorita",
+      "tier": "1"
+    },
+    {
+      "name": "chimchar",
+      "tier": "1"
+    },
+    {
+      "name": "chimecho",
+      "tier": "2"
+    },
+    {
+      "name": "chinchou",
+      "tier": "1"
+    },
+    {
+      "name": "chingling",
+      "tier": "1"
+    },
+    {
+      "name": "chiyu",
+      "tier": "Ban"
+    },
+    {
+      "name": "cinccino",
+      "tier": "7"
+    },
+    {
+      "name": "cinderace",
+      "tier": "Ban"
+    },
+    {
+      "name": "clamperl",
+      "tier": "2"
+    },
+    {
+      "name": "clauncher",
+      "tier": "1"
+    },
+    {
+      "name": "clawitzer",
+      "tier": "5"
+    },
+    {
+      "name": "claydol",
+      "tier": "3"
+    },
+    {
+      "name": "clefable",
+      "tier": "Ban"
+    },
+    {
+      "name": "clefairy",
+      "tier": "4"
+    },
+    {
+      "name": "cleffa",
+      "tier": "1"
+    },
+    {
+      "name": "clobbopus",
+      "tier": "1"
+    },
+    {
+      "name": "clodsire",
+      "tier": "10"
+    },
+    {
+      "name": "cloyster",
+      "tier": "12"
+    },
+    {
+      "name": "coalossal",
+      "tier": "4"
+    },
+    {
+      "name": "cobalion",
+      "tier": "10"
+    },
+    {
+      "name": "cofagrigus",
+      "tier": "8"
+    },
+    {
+      "name": "combee",
+      "tier": "1"
+    },
+    {
+      "name": "combusken",
+      "tier": "1"
+    },
+    {
+      "name": "comfey",
+      "tier": "7"
+    },
+    {
+      "name": "conkeldurr",
+      "tier": "8"
+    },
+    {
+      "name": "copperajah",
+      "tier": "6"
+    },
+    {
+      "name": "corphish",
+      "tier": "1"
+    },
+    {
+      "name": "corsola",
+      "tier": "1"
+    },
+    {
+      "name": "corsolagalar",
+      "tier": "5"
+    },
+    {
+      "name": "corviknight",
+      "tier": "Ban"
+    },
+    {
+      "name": "corvisquire",
+      "tier": "1"
+    },
+    {
+      "name": "cosmoem",
+      "tier": "1"
+    },
+    {
+      "name": "cosmog",
+      "tier": "1"
+    },
+    {
+      "name": "cottonee",
+      "tier": "1"
+    },
+    {
+      "name": "crabominable",
+      "tier": "3"
+    },
+    {
+      "name": "crabrawler",
+      "tier": "1"
+    },
+    {
+      "name": "cradily",
+      "tier": "3"
+    },
+    {
+      "name": "cramorant",
+      "tier": "2"
+    },
+    {
+      "name": "cranidos",
+      "tier": "1"
+    },
+    {
+      "name": "crawdaunt",
+      "tier": "7"
+    },
+    {
+      "name": "cresselia",
+      "tier": "10"
+    },
+    {
+      "name": "croagunk",
+      "tier": "1"
+    },
+    {
+      "name": "crobat",
+      "tier": "12"
+    },
+    {
+      "name": "crocalor",
+      "tier": "4"
+    },
+    {
+      "name": "croconaw",
+      "tier": "1"
+    },
+    {
+      "name": "crustle",
+      "tier": "5"
+    },
+    {
+      "name": "cryogonal",
+      "tier": "5"
+    },
+    {
+      "name": "cubchoo",
+      "tier": "1"
+    },
+    {
+      "name": "cubone",
+      "tier": "1"
+    },
+    {
+      "name": "cufant",
+      "tier": "1"
+    },
+    {
+      "name": "cursola",
+      "tier": "4"
+    },
+    {
+      "name": "cutiefly",
+      "tier": "1"
+    },
+    {
+      "name": "cyclizar",
+      "tier": "8"
+    },
+    {
+      "name": "cyndaquil",
+      "tier": "1"
+    },
+    {
+      "name": "dachsbun",
+      "tier": "5"
+    },
+    {
+      "name": "darkrai",
+      "tier": "Ban"
+    },
+    {
+      "name": "darmanitan",
+      "tier": "9"
+    },
+    {
+      "name": "darmanitangalar",
+      "tier": "Ban"
+    },
+    {
+      "name": "dartrix",
+      "tier": "1"
+    },
+    {
+      "name": "darumaka",
+      "tier": "1"
+    },
+    {
+      "name": "darumakagalar",
+      "tier": "1"
+    },
+    {
+      "name": "decidueye",
+      "tier": "7"
+    },
+    {
+      "name": "decidueyehisui",
+      "tier": "6"
+    },
+    {
+      "name": "dedenne",
+      "tier": "1"
+    },
+    {
+      "name": "deerling",
+      "tier": "1"
+    },
+    {
+      "name": "deino",
+      "tier": "1"
+    },
+    {
+      "name": "delcatty",
+      "tier": "1"
+    },
+    {
+      "name": "delibird",
+      "tier": "2"
+    },
+    {
+      "name": "delphox",
+      "tier": "7"
+    },
+    {
+      "name": "deoxys",
+      "tier": "Ban"
+    },
+    {
+      "name": "deoxysattack",
+      "tier": "Ban"
+    },
+    {
+      "name": "deoxysdefense",
+      "tier": "12"
+    },
+    {
+      "name": "deoxysspeed",
+      "tier": "Ban"
+    },
+    {
+      "name": "dewgong",
+      "tier": "2"
+    },
+    {
+      "name": "dewott",
+      "tier": "1"
+    },
+    {
+      "name": "dewpider",
+      "tier": "1"
+    },
+    {
+      "name": "dhelmise",
+      "tier": "7"
+    },
+    {
+      "name": "dialga",
+      "tier": "Ban"
+    },
+    {
+      "name": "dialgaorigin",
+      "tier": "Ban"
+    },
+    {
+      "name": "diancie",
+      "tier": "8"
+    },
+    {
+      "name": "dianciemega",
+      "tier": "Ban"
+    },
+    {
+      "name": "diggersby",
+      "tier": "11"
+    },
+    {
+      "name": "diglett",
+      "tier": "1"
+    },
+    {
+      "name": "diglettalola",
+      "tier": "1"
+    },
+    {
+      "name": "dipplin",
+      "tier": "4"
+    },
+    {
+      "name": "ditto",
+      "tier": "7"
+    },
+    {
+      "name": "dodrio",
+      "tier": "2"
+    },
+    {
+      "name": "doduo",
+      "tier": "1"
+    },
+    {
+      "name": "dolliv",
+      "tier": "2"
+    },
+    {
+      "name": "dondozo",
+      "tier": "Ban"
+    },
+    {
+      "name": "donphan",
+      "tier": "10"
+    },
+    {
+      "name": "dottler",
+      "tier": "2"
+    },
+    {
+      "name": "doublade",
+      "tier": "6"
+    },
+    {
+      "name": "dracovish",
+      "tier": "Ban"
+    },
+    {
+      "name": "dracozolt",
+      "tier": "12"
+    },
+    {
+      "name": "dragalge",
+      "tier": "8"
+    },
+    {
+      "name": "dragapult",
+      "tier": "Ban"
+    },
+    {
+      "name": "dragonair",
+      "tier": "3"
+    },
+    {
+      "name": "dragonite",
+      "tier": "Ban"
+    },
+    {
+      "name": "drakloak",
+      "tier": "3"
+    },
+    {
+      "name": "drampa",
+      "tier": "5"
+    },
+    {
+      "name": "drapion",
+      "tier": "9"
+    },
+    {
+      "name": "dratini",
+      "tier": "1"
+    },
+    {
+      "name": "drednaw",
+      "tier": "7"
+    },
+    {
+      "name": "dreepy",
+      "tier": "1"
+    },
+    {
+      "name": "drifblim",
+      "tier": "8"
+    },
+    {
+      "name": "drifloon",
+      "tier": "1"
+    },
+    {
+      "name": "drilbur",
+      "tier": "1"
+    },
+    {
+      "name": "drizzile",
+      "tier": "1"
+    },
+    {
+      "name": "drowzee",
+      "tier": "1"
+    },
+    {
+      "name": "druddigon",
+      "tier": "6"
+    },
+    {
+      "name": "dubwool",
+      "tier": "3"
+    },
+    {
+      "name": "ducklett",
+      "tier": "1"
+    },
+    {
+      "name": "dudunsparce",
+      "tier": "8"
+    },
+    {
+      "name": "dugtrio",
+      "tier": "5"
+    },
+    {
+      "name": "dugtrioalola",
+      "tier": "2"
+    },
+    {
+      "name": "dunsparce",
+      "tier": "4"
+    },
+    {
+      "name": "duosion",
+      "tier": "2"
+    },
+    {
+      "name": "duraludon",
+      "tier": "6"
+    },
+    {
+      "name": "durant",
+      "tier": "6"
+    },
+    {
+      "name": "dusclops",
+      "tier": "3"
+    },
+    {
+      "name": "dusknoir",
+      "tier": "2"
+    },
+    {
+      "name": "duskull",
+      "tier": "1"
+    },
+    {
+      "name": "dustox",
+      "tier": "2"
+    },
+    {
+      "name": "dwebble",
+      "tier": "1"
+    },
+    {
+      "name": "eelektrik",
+      "tier": "1"
+    },
+    {
+      "name": "eelektross",
+      "tier": "8"
+    },
+    {
+      "name": "eevee",
+      "tier": "1"
+    },
+    {
+      "name": "eiscue",
+      "tier": "2"
+    },
+    {
+      "name": "ekans",
+      "tier": "1"
+    },
+    {
+      "name": "eldegoss",
+      "tier": "2"
+    },
+    {
+      "name": "electabuzz",
+      "tier": "2"
+    },
+    {
+      "name": "electivire",
+      "tier": "5"
+    },
+    {
+      "name": "electrike",
+      "tier": "1"
+    },
+    {
+      "name": "electrode",
+      "tier": "2"
+    },
+    {
+      "name": "electrodehisui",
+      "tier": "4"
+    },
+    {
+      "name": "elekid",
+      "tier": "1"
+    },
+    {
+      "name": "elgyem",
+      "tier": "1"
+    },
+    {
+      "name": "emboar",
+      "tier": "6"
+    },
+    {
+      "name": "emolga",
+      "tier": "2"
+    },
+    {
+      "name": "empoleon",
+      "tier": "11"
+    },
+    {
+      "name": "enamorus",
+      "tier": "Ban"
+    },
+    {
+      "name": "enamorustherian",
+      "tier": "10"
+    },
+    {
+      "name": "entei",
+      "tier": "9"
+    },
+    {
+      "name": "escavalier",
+      "tier": "7"
+    },
+    {
+      "name": "espathra",
+      "tier": "Ban"
+    },
+    {
+      "name": "espeon",
+      "tier": "7"
+    },
+    {
+      "name": "espurr",
+      "tier": "1"
+    },
+    {
+      "name": "eternatus",
+      "tier": "Ban"
+    },
+    {
+      "name": "excadrill",
+      "tier": "Ban"
+    },
+    {
+      "name": "exeggcute",
+      "tier": "1"
+    },
+    {
+      "name": "exeggutor",
+      "tier": "2"
+    },
+    {
+      "name": "exeggutoralola",
+      "tier": "2"
+    },
+    {
+      "name": "exploud",
+      "tier": "5"
+    },
+    {
+      "name": "falinks",
+      "tier": "5"
+    },
+    {
+      "name": "farfetchd",
+      "tier": "1"
+    },
+    {
+      "name": "farfetchdgalar",
+      "tier": "1"
+    },
+    {
+      "name": "farigiraf",
+      "tier": "5"
+    },
+    {
+      "name": "fearow",
+      "tier": "2"
+    },
+    {
+      "name": "feebas",
+      "tier": "1"
+    },
+    {
+      "name": "fennekin",
+      "tier": "1"
+    },
+    {
+      "name": "feraligatr",
+      "tier": "7"
+    },
+    {
+      "name": "ferroseed",
+      "tier": "3"
+    },
+    {
+      "name": "ferrothorn",
+      "tier": "Ban"
+    },
+    {
+      "name": "fezandipiti",
+      "tier": "9"
+    },
+    {
+      "name": "fidough",
+      "tier": "1"
+    },
+    {
+      "name": "finizen",
+      "tier": "1"
+    },
+    {
+      "name": "finneon",
+      "tier": "1"
+    },
+    {
+      "name": "flaaffy",
+      "tier": "1"
+    },
+    {
+      "name": "flabebe",
+      "tier": "1"
+    },
+    {
+      "name": "flamigo",
+      "tier": "7"
+    },
+    {
+      "name": "flapple",
+      "tier": "4"
+    },
+    {
+      "name": "flareon",
+      "tier": "3"
+    },
+    {
+      "name": "fletchinder",
+      "tier": "1"
+    },
+    {
+      "name": "fletchling",
+      "tier": "1"
+    },
+    {
+      "name": "flittle",
+      "tier": "2"
+    },
+    {
+      "name": "floatzel",
+      "tier": "7"
+    },
+    {
+      "name": "floette",
+      "tier": "1"
+    },
+    {
+      "name": "floragato",
+      "tier": "1"
+    },
+    {
+      "name": "florges",
+      "tier": "9"
+    },
+    {
+      "name": "fluttermane",
+      "tier": "Ban"
+    },
+    {
+      "name": "flygon",
+      "tier": "7"
+    },
+    {
+      "name": "fomantis",
+      "tier": "1"
+    },
+    {
+      "name": "foongus",
+      "tier": "1"
+    },
+    {
+      "name": "forretress",
+      "tier": "6"
+    },
+    {
+      "name": "fraxure",
+      "tier": "2"
+    },
+    {
+      "name": "frigibax",
+      "tier": "1"
+    },
+    {
+      "name": "frillish",
+      "tier": "1"
+    },
+    {
+      "name": "froakie",
+      "tier": "1"
+    },
+    {
+      "name": "frogadier",
+      "tier": "2"
+    },
+    {
+      "name": "froslass",
+      "tier": "6"
+    },
+    {
+      "name": "frosmoth",
+      "tier": "5"
+    },
+    {
+      "name": "fuecoco",
+      "tier": "1"
+    },
+    {
+      "name": "furfrou",
+      "tier": "1"
+    },
+    {
+      "name": "furret",
+      "tier": "1"
+    },
+    {
+      "name": "gabite",
+      "tier": "4"
+    },
+    {
+      "name": "gallade",
+      "tier": "10"
+    },
+    {
+      "name": "gallademega",
+      "tier": "Ban"
+    },
+    {
+      "name": "galvantula",
+      "tier": "8"
+    },
+    {
+      "name": "garbodor",
+      "tier": "5"
+    },
+    {
+      "name": "garchomp",
+      "tier": "Ban"
+    },
+    {
+      "name": "garchompmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "gardevoir",
+      "tier": "9"
+    },
+    {
+      "name": "gardevoirmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "garganacl",
+      "tier": "Ban"
+    },
+    {
+      "name": "gastly",
+      "tier": "1"
+    },
+    {
+      "name": "gastrodon",
+      "tier": "10"
+    },
+    {
+      "name": "genesect",
+      "tier": "Ban"
+    },
+    {
+      "name": "gengar",
+      "tier": "11"
+    },
+    {
+      "name": "gengarmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "geodude",
+      "tier": "1"
+    },
+    {
+      "name": "geodudealola",
+      "tier": "1"
+    },
+    {
+      "name": "gholdengo",
+      "tier": "Ban"
+    },
+    {
+      "name": "gible",
+      "tier": "1"
+    },
+    {
+      "name": "gigalith",
+      "tier": "7"
+    },
+    {
+      "name": "gimmighoul",
+      "tier": "1"
+    },
+    {
+      "name": "girafarig",
+      "tier": "2"
+    },
+    {
+      "name": "giratina",
+      "tier": "Ban"
+    },
+    {
+      "name": "giratinaorigin",
+      "tier": "Ban"
+    },
+    {
+      "name": "glaceon",
+      "tier": "2"
+    },
+    {
+      "name": "glalie",
+      "tier": "2"
+    },
+    {
+      "name": "glaliemega",
+      "tier": "5"
+    },
+    {
+      "name": "glameow",
+      "tier": "1"
+    },
+    {
+      "name": "glastrier",
+      "tier": "5"
+    },
+    {
+      "name": "gligar",
+      "tier": "6"
+    },
+    {
+      "name": "glimmet",
+      "tier": "3"
+    },
+    {
+      "name": "glimmora",
+      "tier": "Ban"
+    },
+    {
+      "name": "gliscor",
+      "tier": "Ban"
+    },
+    {
+      "name": "gloom",
+      "tier": "1"
+    },
+    {
+      "name": "gogoat",
+      "tier": "3"
+    },
+    {
+      "name": "golbat",
+      "tier": "4"
+    },
+    {
+      "name": "goldeen",
+      "tier": "1"
+    },
+    {
+      "name": "golduck",
+      "tier": "2"
+    },
+    {
+      "name": "golem",
+      "tier": "3"
+    },
+    {
+      "name": "golemalola",
+      "tier": "3"
+    },
+    {
+      "name": "golett",
+      "tier": "1"
+    },
+    {
+      "name": "golisopod",
+      "tier": "6"
+    },
+    {
+      "name": "golurk",
+      "tier": "5"
+    },
+    {
+      "name": "goodra",
+      "tier": "12"
+    },
+    {
+      "name": "goodrahisui",
+      "tier": "12"
+    },
+    {
+      "name": "goomy",
+      "tier": "1"
+    },
+    {
+      "name": "gorebyss",
+      "tier": "4"
+    },
+    {
+      "name": "gossifleur",
+      "tier": "1"
+    },
+    {
+      "name": "gothita",
+      "tier": "1"
+    },
+    {
+      "name": "gothitelle",
+      "tier": "8"
+    },
+    {
+      "name": "gothorita",
+      "tier": "3"
+    },
+    {
+      "name": "gougingfire",
+      "tier": "Ban"
+    },
+    {
+      "name": "gourgeist",
+      "tier": "5"
+    },
+    {
+      "name": "gourgeistlarge",
+      "tier": "5"
+    },
+    {
+      "name": "gourgeistsmall",
+      "tier": "6"
+    },
+    {
+      "name": "gourgeistsuper",
+      "tier": "5"
+    },
+    {
+      "name": "grafaiai",
+      "tier": "5"
+    },
+    {
+      "name": "granbull",
+      "tier": "6"
+    },
+    {
+      "name": "grapploct",
+      "tier": "2"
+    },
+    {
+      "name": "graveler",
+      "tier": "1"
+    },
+    {
+      "name": "graveleralola",
+      "tier": "1"
     },
     {
       "name": "greattusk",
-      "tier": 1,
-      "drafted": ["Attack"]
+      "tier": "Ban"
     },
-    { "name": "screamtail", "tier": 8 },
-    { "name": "brutebonnet", "tier": 14 },
-    { "name": "fluttermane", "tier": 0 },
-    { "name": "slitherwing", "tier": 9 },
-    { "name": "sandyshocks", "tier": 10 },
-    { "name": "irontreads", "tier": 6 },
-    { "name": "ironbundle", "tier": 2 },
-    { "name": "ironhands", "tier": 6 },
-    { "name": "ironjugulis", "tier": 11 },
-    { "name": "ironmoth", "tier": 6 },
-    { "name": "ironthorns", "tier": 15 },
-    { "name": "frigibax", "tier": 20 },
-    { "name": "arctibax", "tier": 20 },
     {
-      "name": "baxcalibur",
-      "tier": 6,
-      "banned": {
-        "tera": true
-      }
+      "name": "greavard",
+      "tier": "1"
     },
-    { "name": "gimmighoul", "tier": 20 },
-    { "name": "gholdengo", "tier": 4 },
-    { "name": "wochien", "tier": 14 },
-    { "name": "chienpao", "tier": 0 },
-    { "name": "tinglu", "tier": 6 },
-    { "name": "chiyu", "tier": 3 },
-    { "name": "roaringmoon", "tier": 4 },
-    { "name": "ironvaliant", "tier": 1 },
-    { "name": "koraidon", "tier": 0 },
-    { "name": "miraidon", "tier": 0 },
-    { "name": "walkingwake", "tier": 7 },
-    { "name": "ironleaves", "tier": 13 },
-    { "name": "dipplin", "tier": 18 },
-    { "name": "sinistcha", "tier": 10 },
-    { "name": "poltchageist", "tier": 20 },
-    { "name": "okidogi", "tier": 9 },
-    { "name": "munkidori", "tier": 12 },
-    { "name": "fezandipiti", "tier": 11 },
+    {
+      "name": "greedent",
+      "tier": "3"
+    },
+    {
+      "name": "greninja",
+      "tier": "Ban"
+    },
+    {
+      "name": "grimer",
+      "tier": "1"
+    },
+    {
+      "name": "grimeralola",
+      "tier": "1"
+    },
+    {
+      "name": "grimmsnarl",
+      "tier": "10"
+    },
+    {
+      "name": "grookey",
+      "tier": "1"
+    },
+    {
+      "name": "grotle",
+      "tier": "2"
+    },
+    {
+      "name": "groudon",
+      "tier": "Ban"
+    },
+    {
+      "name": "groudonprimal",
+      "tier": "Ban"
+    },
+    {
+      "name": "grovyle",
+      "tier": "1"
+    },
+    {
+      "name": "growlithe",
+      "tier": "1"
+    },
+    {
+      "name": "growlithehisui",
+      "tier": "1"
+    },
+    {
+      "name": "grubbin",
+      "tier": "1"
+    },
+    {
+      "name": "grumpig",
+      "tier": "1"
+    },
+    {
+      "name": "gulpin",
+      "tier": "1"
+    },
+    {
+      "name": "gumshoos",
+      "tier": "1"
+    },
+    {
+      "name": "gurdurr",
+      "tier": "5"
+    },
+    {
+      "name": "guzzlord",
+      "tier": "3"
+    },
+    {
+      "name": "gyarados",
+      "tier": "8"
+    },
+    {
+      "name": "gyaradosmega",
+      "tier": "11"
+    },
+    {
+      "name": "hakamoo",
+      "tier": "3"
+    },
+    {
+      "name": "happiny",
+      "tier": "1"
+    },
+    {
+      "name": "hariyama",
+      "tier": "6"
+    },
+    {
+      "name": "hatenna",
+      "tier": "1"
+    },
+    {
+      "name": "hatterene",
+      "tier": "11"
+    },
+    {
+      "name": "hattrem",
+      "tier": "3"
+    },
+    {
+      "name": "haunter",
+      "tier": "3"
+    },
+    {
+      "name": "hawlucha",
+      "tier": "12"
+    },
+    {
+      "name": "haxorus",
+      "tier": "11"
+    },
+    {
+      "name": "heatmor",
+      "tier": "3"
+    },
+    {
+      "name": "heatran",
+      "tier": "Ban"
+    },
+    {
+      "name": "heliolisk",
+      "tier": "8"
+    },
+    {
+      "name": "helioptile",
+      "tier": "1"
+    },
+    {
+      "name": "heracross",
+      "tier": "10"
+    },
+    {
+      "name": "heracrossmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "herdier",
+      "tier": "1"
+    },
+    {
+      "name": "hippopotas",
+      "tier": "1"
+    },
+    {
+      "name": "hippowdon",
+      "tier": "10"
+    },
+    {
+      "name": "hitmonchan",
+      "tier": "4"
+    },
+    {
+      "name": "hitmonlee",
+      "tier": "7"
+    },
+    {
+      "name": "hitmontop",
+      "tier": "6"
+    },
+    {
+      "name": "honchkrow",
+      "tier": "5"
+    },
+    {
+      "name": "honedge",
+      "tier": "1"
+    },
+    {
+      "name": "hooh",
+      "tier": "Ban"
+    },
+    {
+      "name": "hoopa",
+      "tier": "8"
+    },
+    {
+      "name": "hoopaunbound",
+      "tier": "Ban"
+    },
+    {
+      "name": "hoothoot",
+      "tier": "1"
+    },
+    {
+      "name": "hoppip",
+      "tier": "1"
+    },
+    {
+      "name": "horsea",
+      "tier": "1"
+    },
+    {
+      "name": "houndoom",
+      "tier": "3"
+    },
+    {
+      "name": "houndoommega",
+      "tier": "8"
+    },
+    {
+      "name": "houndour",
+      "tier": "1"
+    },
+    {
+      "name": "houndstone",
+      "tier": "4"
+    },
+    {
+      "name": "huntail",
+      "tier": "3"
+    },
+    {
+      "name": "hydrapple",
+      "tier": "10"
+    },
+    {
+      "name": "hydreigon",
+      "tier": "Ban"
+    },
+    {
+      "name": "hypno",
+      "tier": "4"
+    },
+    {
+      "name": "igglybuff",
+      "tier": "1"
+    },
+    {
+      "name": "illumise",
+      "tier": "2"
+    },
+    {
+      "name": "impidimp",
+      "tier": "1"
+    },
+    {
+      "name": "incineroar",
+      "tier": "11"
+    },
+    {
+      "name": "indeedee",
+      "tier": "6"
+    },
+    {
+      "name": "indeedeef",
+      "tier": "6"
+    },
+    {
+      "name": "infernape",
+      "tier": "Ban"
+    },
+    {
+      "name": "inkay",
+      "tier": "1"
+    },
+    {
+      "name": "inteleon",
+      "tier": "7"
+    },
+    {
+      "name": "ironboulder",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironbundle",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironcrown",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironhands",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironjugulis",
+      "tier": "10"
+    },
+    {
+      "name": "ironleaves",
+      "tier": "8"
+    },
+    {
+      "name": "ironmoth",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironthorns",
+      "tier": "6"
+    },
+    {
+      "name": "irontreads",
+      "tier": "Ban"
+    },
+    {
+      "name": "ironvaliant",
+      "tier": "Ban"
+    },
+    {
+      "name": "ivysaur",
+      "tier": "1"
+    },
+    {
+      "name": "jangmoo",
+      "tier": "1"
+    },
+    {
+      "name": "jellicent",
+      "tier": "9"
+    },
+    {
+      "name": "jigglypuff",
+      "tier": "1"
+    },
+    {
+      "name": "jirachi",
+      "tier": "Ban"
+    },
+    {
+      "name": "jolteon",
+      "tier": "8"
+    },
+    {
+      "name": "joltik",
+      "tier": "1"
+    },
+    {
+      "name": "jumpluff",
+      "tier": "3"
+    },
+    {
+      "name": "jynx",
+      "tier": "2"
+    },
+    {
+      "name": "kabuto",
+      "tier": "1"
+    },
+    {
+      "name": "kabutops",
+      "tier": "5"
+    },
+    {
+      "name": "kadabra",
+      "tier": "2"
+    },
+    {
+      "name": "kakuna",
+      "tier": "1"
+    },
+    {
+      "name": "kangaskhan",
+      "tier": "4"
+    },
+    {
+      "name": "kangaskhanmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "karrablast",
+      "tier": "1"
+    },
+    {
+      "name": "kartana",
+      "tier": "Ban"
+    },
+    {
+      "name": "kecleon",
+      "tier": "3"
+    },
+    {
+      "name": "keldeo",
+      "tier": "Ban"
+    },
+    {
+      "name": "kilowattrel",
+      "tier": "11"
+    },
+    {
+      "name": "kingambit",
+      "tier": "Ban"
+    },
+    {
+      "name": "kingdra",
+      "tier": "9"
+    },
+    {
+      "name": "kingler",
+      "tier": "3"
+    },
+    {
+      "name": "kirlia",
+      "tier": "1"
+    },
+    {
+      "name": "klang",
+      "tier": "1"
+    },
+    {
+      "name": "klawf",
+      "tier": "5"
+    },
+    {
+      "name": "kleavor",
+      "tier": "11"
+    },
+    {
+      "name": "klefki",
+      "tier": "11"
+    },
+    {
+      "name": "klink",
+      "tier": "1"
+    },
+    {
+      "name": "klinklang",
+      "tier": "3"
+    },
+    {
+      "name": "koffing",
+      "tier": "1"
+    },
+    {
+      "name": "komala",
+      "tier": "3"
+    },
+    {
+      "name": "kommoo",
+      "tier": "Ban"
+    },
+    {
+      "name": "koraidon",
+      "tier": "Ban"
+    },
+    {
+      "name": "krabby",
+      "tier": "1"
+    },
+    {
+      "name": "kricketot",
+      "tier": "1"
+    },
+    {
+      "name": "kricketune",
+      "tier": "3"
+    },
+    {
+      "name": "krokorok",
+      "tier": "1"
+    },
+    {
+      "name": "krookodile",
+      "tier": "Ban"
+    },
+    {
+      "name": "kubfu",
+      "tier": "2"
+    },
+    {
+      "name": "kyogre",
+      "tier": "Ban"
+    },
+    {
+      "name": "kyogreprimal",
+      "tier": "Ban"
+    },
+    {
+      "name": "kyurem",
+      "tier": "Ban"
+    },
+    {
+      "name": "kyuremblack",
+      "tier": "Ban"
+    },
+    {
+      "name": "kyuremwhite",
+      "tier": "Ban"
+    },
+    {
+      "name": "lairon",
+      "tier": "1"
+    },
+    {
+      "name": "lampent",
+      "tier": "1"
+    },
+    {
+      "name": "landorus",
+      "tier": "Ban"
+    },
+    {
+      "name": "landorustherian",
+      "tier": "Ban"
+    },
+    {
+      "name": "lanturn",
+      "tier": "6"
+    },
+    {
+      "name": "lapras",
+      "tier": "3"
+    },
+    {
+      "name": "larvesta",
+      "tier": "1"
+    },
+    {
+      "name": "larvitar",
+      "tier": "1"
+    },
+    {
+      "name": "latias",
+      "tier": "Ban"
+    },
+    {
+      "name": "latiasmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "latios",
+      "tier": "Ban"
+    },
+    {
+      "name": "latiosmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "leafeon",
+      "tier": "3"
+    },
+    {
+      "name": "leavanny",
+      "tier": "2"
+    },
+    {
+      "name": "lechonk",
+      "tier": "1"
+    },
+    {
+      "name": "ledian",
+      "tier": "1"
+    },
+    {
+      "name": "ledyba",
+      "tier": "1"
+    },
+    {
+      "name": "lickilicky",
+      "tier": "7"
+    },
+    {
+      "name": "lickitung",
+      "tier": "2"
+    },
+    {
+      "name": "liepard",
+      "tier": "3"
+    },
+    {
+      "name": "lileep",
+      "tier": "1"
+    },
+    {
+      "name": "lilligant",
+      "tier": "4"
+    },
+    {
+      "name": "lilliganthisui",
+      "tier": "11"
+    },
+    {
+      "name": "lillipup",
+      "tier": "1"
+    },
+    {
+      "name": "linoone",
+      "tier": "7"
+    },
+    {
+      "name": "linoonegalar",
+      "tier": "1"
+    },
+    {
+      "name": "litleo",
+      "tier": "1"
+    },
+    {
+      "name": "litten",
+      "tier": "1"
+    },
+    {
+      "name": "litwick",
+      "tier": "1"
+    },
+    {
+      "name": "lokix",
+      "tier": "12"
+    },
+    {
+      "name": "lombre",
+      "tier": "1"
+    },
+    {
+      "name": "lopunny",
+      "tier": "3"
+    },
+    {
+      "name": "lopunnymega",
+      "tier": "Ban"
+    },
+    {
+      "name": "lotad",
+      "tier": "1"
+    },
+    {
+      "name": "loudred",
+      "tier": "1"
+    },
+    {
+      "name": "lucario",
+      "tier": "8"
+    },
+    {
+      "name": "lucariomega",
+      "tier": "Ban"
+    },
+    {
+      "name": "ludicolo",
+      "tier": "5"
+    },
+    {
+      "name": "lugia",
+      "tier": "Ban"
+    },
+    {
+      "name": "lumineon",
+      "tier": "1"
+    },
+    {
+      "name": "lunala",
+      "tier": "Ban"
+    },
+    {
+      "name": "lunatone",
+      "tier": "1"
+    },
+    {
+      "name": "lurantis",
+      "tier": "3"
+    },
+    {
+      "name": "luvdisc",
+      "tier": "1"
+    },
+    {
+      "name": "luxio",
+      "tier": "1"
+    },
+    {
+      "name": "luxray",
+      "tier": "4"
+    },
+    {
+      "name": "lycanroc",
+      "tier": "9"
+    },
+    {
+      "name": "lycanrocdusk",
+      "tier": "12"
+    },
+    {
+      "name": "lycanrocmidnight",
+      "tier": "2"
+    },
+    {
+      "name": "mabosstiff",
+      "tier": "4"
+    },
+    {
+      "name": "machamp",
+      "tier": "6"
+    },
+    {
+      "name": "machoke",
+      "tier": "2"
+    },
+    {
+      "name": "machop",
+      "tier": "1"
+    },
+    {
+      "name": "magby",
+      "tier": "1"
+    },
+    {
+      "name": "magcargo",
+      "tier": "3"
+    },
+    {
+      "name": "magearna",
+      "tier": "Ban"
+    },
+    {
+      "name": "magikarp",
+      "tier": "1"
+    },
+    {
+      "name": "magmar",
+      "tier": "2"
+    },
+    {
+      "name": "magmortar",
+      "tier": "5"
+    },
+    {
+      "name": "magnemite",
+      "tier": "1"
+    },
+    {
+      "name": "magneton",
+      "tier": "5"
+    },
+    {
+      "name": "magnezone",
+      "tier": "9"
+    },
+    {
+      "name": "makuhita",
+      "tier": "1"
+    },
+    {
+      "name": "malamar",
+      "tier": "3"
+    },
+    {
+      "name": "mamoswine",
+      "tier": "11"
+    },
+    {
+      "name": "manaphy",
+      "tier": "Ban"
+    },
+    {
+      "name": "mandibuzz",
+      "tier": "11"
+    },
+    {
+      "name": "manectric",
+      "tier": "3"
+    },
+    {
+      "name": "manectricmega",
+      "tier": "9"
+    },
+    {
+      "name": "mankey",
+      "tier": "1"
+    },
+    {
+      "name": "mantine",
+      "tier": "7"
+    },
+    {
+      "name": "mantyke",
+      "tier": "1"
+    },
+    {
+      "name": "maractus",
+      "tier": "1"
+    },
+    {
+      "name": "mareanie",
+      "tier": "1"
+    },
+    {
+      "name": "mareep",
+      "tier": "1"
+    },
+    {
+      "name": "marill",
+      "tier": "1"
+    },
+    {
+      "name": "marowak",
+      "tier": "3"
+    },
+    {
+      "name": "marowakalola",
+      "tier": "7"
+    },
+    {
+      "name": "marshadow",
+      "tier": "Ban"
+    },
+    {
+      "name": "marshtomp",
+      "tier": "1"
+    },
+    {
+      "name": "maschiff",
+      "tier": "1"
+    },
+    {
+      "name": "masquerain",
+      "tier": "4"
+    },
+    {
+      "name": "maushold",
+      "tier": "9"
+    },
+    {
+      "name": "mawile",
+      "tier": "2"
+    },
+    {
+      "name": "mawilemega",
+      "tier": "Ban"
+    },
+    {
+      "name": "medicham",
+      "tier": "8"
+    },
+    {
+      "name": "medichammega",
+      "tier": "Ban"
+    },
+    {
+      "name": "meditite",
+      "tier": "1"
+    },
+    {
+      "name": "meganium",
+      "tier": "2"
+    },
+    {
+      "name": "melmetal",
+      "tier": "Ban"
+    },
+    {
+      "name": "meloetta",
+      "tier": "9"
+    },
+    {
+      "name": "meltan",
+      "tier": "1"
+    },
+    {
+      "name": "meowscarada",
+      "tier": "Ban"
+    },
+    {
+      "name": "meowsticf",
+      "tier": "2"
+    },
+    {
+      "name": "meowth",
+      "tier": "1"
+    },
+    {
+      "name": "meowthalola",
+      "tier": "1"
+    },
+    {
+      "name": "meowthgalar",
+      "tier": "1"
+    },
+    {
+      "name": "mesprit",
+      "tier": "9"
+    },
+    {
+      "name": "metagross",
+      "tier": "12"
+    },
+    {
+      "name": "metagrossmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "metang",
+      "tier": "3"
+    },
+    {
+      "name": "metapod",
+      "tier": "1"
+    },
+    {
+      "name": "mew",
+      "tier": "Ban"
+    },
+    {
+      "name": "mewtwo",
+      "tier": "Ban"
+    },
+    {
+      "name": "mewtwomegax",
+      "tier": "Ban"
+    },
+    {
+      "name": "mewtwomegay",
+      "tier": "Ban"
+    },
+    {
+      "name": "mienfoo",
+      "tier": "1"
+    },
+    {
+      "name": "mienshao",
+      "tier": "11"
+    },
+    {
+      "name": "mightyena",
+      "tier": "3"
+    },
+    {
+      "name": "milcery",
+      "tier": "1"
+    },
+    {
+      "name": "milotic",
+      "tier": "11"
+    },
+    {
+      "name": "miltank",
+      "tier": "8"
+    },
+    {
+      "name": "mimejr",
+      "tier": "1"
+    },
+    {
+      "name": "mimikyu",
+      "tier": "8"
+    },
+    {
+      "name": "minccino",
+      "tier": "1"
+    },
+    {
+      "name": "miniorred",
+      "tier": "6"
+    },
+    {
+      "name": "minun",
+      "tier": "1"
+    },
+    {
+      "name": "miraidon",
+      "tier": "Ban"
+    },
+    {
+      "name": "misdreavus",
+      "tier": "2"
+    },
+    {
+      "name": "mismagius",
+      "tier": "6"
+    },
+    {
+      "name": "moltres",
+      "tier": "12"
+    },
+    {
+      "name": "moltresgalar",
+      "tier": "11"
+    },
+    {
+      "name": "monferno",
+      "tier": "2"
+    },
+    {
+      "name": "morelull",
+      "tier": "1"
+    },
+    {
+      "name": "morgrem",
+      "tier": "3"
+    },
+    {
+      "name": "morpeko",
+      "tier": "5"
+    },
+    {
+      "name": "mothim",
+      "tier": "1"
+    },
+    {
+      "name": "mrmime",
+      "tier": "2"
+    },
+    {
+      "name": "mrmimegalar",
+      "tier": "2"
+    },
+    {
+      "name": "mrrime",
+      "tier": "2"
+    },
+    {
+      "name": "mudbray",
+      "tier": "1"
+    },
+    {
+      "name": "mudkip",
+      "tier": "1"
+    },
+    {
+      "name": "mudsdale",
+      "tier": "8"
+    },
+    {
+      "name": "muk",
+      "tier": "5"
+    },
+    {
+      "name": "mukalola",
+      "tier": "10"
+    },
+    {
+      "name": "munchlax",
+      "tier": "3"
+    },
+    {
+      "name": "munkidori",
+      "tier": "9"
+    },
+    {
+      "name": "munna",
+      "tier": "1"
+    },
+    {
+      "name": "murkrow",
+      "tier": "2"
+    },
+    {
+      "name": "musharna",
+      "tier": "4"
+    },
+    {
+      "name": "nacli",
+      "tier": "1"
+    },
+    {
+      "name": "naclstack",
+      "tier": "4"
+    },
+    {
+      "name": "naganadel",
+      "tier": "Ban"
+    },
+    {
+      "name": "natu",
+      "tier": "1"
+    },
+    {
+      "name": "necrozma",
+      "tier": "Ban"
+    },
+    {
+      "name": "necrozmadawn",
+      "tier": "Ban"
+    },
+    {
+      "name": "necrozmadusk",
+      "tier": "Ban"
+    },
+    {
+      "name": "necrozmaultra",
+      "tier": "Ban"
+    },
+    {
+      "name": "nickit",
+      "tier": "1"
+    },
+    {
+      "name": "nidoking",
+      "tier": "12"
+    },
+    {
+      "name": "nidoqueen",
+      "tier": "11"
+    },
+    {
+      "name": "nidoranf",
+      "tier": "1"
+    },
+    {
+      "name": "nidoranm",
+      "tier": "1"
+    },
+    {
+      "name": "nidorina",
+      "tier": "1"
+    },
+    {
+      "name": "nidorino",
+      "tier": "1"
+    },
+    {
+      "name": "nihilego",
+      "tier": "Ban"
+    },
+    {
+      "name": "nincada",
+      "tier": "1"
+    },
+    {
+      "name": "ninetales",
+      "tier": "6"
+    },
+    {
+      "name": "ninetalesalola",
+      "tier": "10"
+    },
+    {
+      "name": "ninjask",
+      "tier": "1"
+    },
+    {
+      "name": "noctowl",
+      "tier": "1"
+    },
+    {
+      "name": "noibat",
+      "tier": "1"
+    },
+    {
+      "name": "noivern",
+      "tier": "9"
+    },
+    {
+      "name": "nosepass",
+      "tier": "1"
+    },
+    {
+      "name": "numel",
+      "tier": "1"
+    },
+    {
+      "name": "nuzleaf",
+      "tier": "1"
+    },
+    {
+      "name": "nymble",
+      "tier": "1"
+    },
+    {
+      "name": "obstagoon",
+      "tier": "8"
+    },
+    {
+      "name": "octillery",
+      "tier": "3"
+    },
+    {
+      "name": "oddish",
+      "tier": "1"
+    },
     {
       "name": "ogerpon",
-      "tier": 8,
+      "tier": "Ban"
+    },
+    {
+      "name": "ogerponcornerstone",
+      "tier": "Ban"
+    },
+    {
+      "name": "ogerponhearthflame",
+      "tier": "Ban"
+    },
+    {
+      "name": "ogerponwellspring",
+      "tier": "Ban"
+    },
+    {
+      "name": "oinkologne",
+      "tier": "1"
+    },
+    {
+      "name": "oinkolognef",
+      "tier": "1"
+    },
+    {
+      "name": "okidogi",
+      "tier": "10"
+    },
+    {
+      "name": "omanyte",
+      "tier": "1"
+    },
+    {
+      "name": "omastar",
+      "tier": "8"
+    },
+    {
+      "name": "onix",
+      "tier": "1"
+    },
+    {
+      "name": "oranguru",
+      "tier": "2"
+    },
+    {
+      "name": "orbeetle",
+      "tier": "3"
+    },
+    {
+      "name": "oricorio",
+      "tier": "8"
+    },
+    {
+      "name": "oricoriopau",
+      "tier": "8"
+    },
+    {
+      "name": "oricoriopompom",
+      "tier": "9"
+    },
+    {
+      "name": "oricoriosensu",
+      "tier": "8"
+    },
+    {
+      "name": "orthworm",
+      "tier": "6"
+    },
+    {
+      "name": "oshawott",
+      "tier": "1"
+    },
+    {
+      "name": "overqwil",
+      "tier": "11"
+    },
+    {
+      "name": "pachirisu",
+      "tier": "2"
+    },
+    {
+      "name": "palafin",
+      "tier": "Ban"
+    },
+    {
+      "name": "palkia",
+      "tier": "Ban"
+    },
+    {
+      "name": "palkiaorigin",
+      "tier": "Ban"
+    },
+    {
+      "name": "palossand",
+      "tier": "6"
+    },
+    {
+      "name": "palpitoad",
+      "tier": "1"
+    },
+    {
+      "name": "pancham",
+      "tier": "1"
+    },
+    {
+      "name": "pangoro",
+      "tier": "7"
+    },
+    {
+      "name": "panpour",
+      "tier": "1"
+    },
+    {
+      "name": "pansage",
+      "tier": "1"
+    },
+    {
+      "name": "pansear",
+      "tier": "1"
+    },
+    {
+      "name": "paras",
+      "tier": "1"
+    },
+    {
+      "name": "parasect",
+      "tier": "1"
+    },
+    {
+      "name": "passimian",
+      "tier": "6"
+    },
+    {
+      "name": "patrat",
+      "tier": "1"
+    },
+    {
+      "name": "pawmi",
+      "tier": "1"
+    },
+    {
+      "name": "pawmo",
+      "tier": "1"
+    },
+    {
+      "name": "pawmot",
+      "tier": "10"
+    },
+    {
+      "name": "pawniard",
+      "tier": "1"
+    },
+    {
+      "name": "pecharunt",
+      "tier": "12"
+    },
+    {
+      "name": "pelipper",
+      "tier": "11"
+    },
+    {
+      "name": "perrserker",
+      "tier": "3"
+    },
+    {
+      "name": "persian",
+      "tier": "3"
+    },
+    {
+      "name": "persianalola",
+      "tier": "6"
+    },
+    {
+      "name": "petilil",
+      "tier": "1"
+    },
+    {
+      "name": "phanpy",
+      "tier": "1"
+    },
+    {
+      "name": "phantump",
+      "tier": "1"
+    },
+    {
+      "name": "pheromosa",
+      "tier": "Ban"
+    },
+    {
+      "name": "phione",
+      "tier": "4"
+    },
+    {
+      "name": "pichu",
+      "tier": "1"
+    },
+    {
+      "name": "pidgeot",
+      "tier": "3"
+    },
+    {
+      "name": "pidgeotmega",
+      "tier": "10"
+    },
+    {
+      "name": "pidgeotto",
+      "tier": "1"
+    },
+    {
+      "name": "pidgey",
+      "tier": "1"
+    },
+    {
+      "name": "pidove",
+      "tier": "1"
+    },
+    {
+      "name": "pignite",
+      "tier": "1"
+    },
+    {
+      "name": "pikachu",
+      "tier": "3"
+    },
+    {
+      "name": "pikipek",
+      "tier": "1"
+    },
+    {
+      "name": "piloswine",
+      "tier": "7"
+    },
+    {
+      "name": "pincurchin",
+      "tier": "5"
+    },
+    {
+      "name": "pineco",
+      "tier": "1"
+    },
+    {
+      "name": "pinsir",
+      "tier": "2"
+    },
+    {
+      "name": "pinsirmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "piplup",
+      "tier": "1"
+    },
+    {
+      "name": "plusle",
+      "tier": "1"
+    },
+    {
+      "name": "poipole",
+      "tier": "2"
+    },
+    {
+      "name": "politoed",
+      "tier": "6"
+    },
+    {
+      "name": "poliwag",
+      "tier": "1"
+    },
+    {
+      "name": "poliwhirl",
+      "tier": "1"
+    },
+    {
+      "name": "poliwrath",
+      "tier": "4"
+    },
+    {
+      "name": "poltchageist",
+      "tier": "1"
+    },
+    {
+      "name": "polteageist",
+      "tier": "Ban"
+    },
+    {
+      "name": "ponyta",
+      "tier": "1"
+    },
+    {
+      "name": "ponytagalar",
+      "tier": "1"
+    },
+    {
+      "name": "poochyena",
+      "tier": "1"
+    },
+    {
+      "name": "popplio",
+      "tier": "1"
+    },
+    {
+      "name": "porygon",
+      "tier": "1"
+    },
+    {
+      "name": "porygon2",
+      "tier": "11"
+    },
+    {
+      "name": "porygonz",
+      "tier": "10"
+    },
+    {
+      "name": "primarina",
+      "tier": "12"
+    },
+    {
+      "name": "primeape",
+      "tier": "6"
+    },
+    {
+      "name": "prinplup",
+      "tier": "1"
+    },
+    {
+      "name": "probopass",
+      "tier": "4"
+    },
+    {
+      "name": "psyduck",
+      "tier": "1"
+    },
+    {
+      "name": "pumpkaboo",
+      "tier": "1"
+    },
+    {
+      "name": "pumpkaboolarge",
+      "tier": "1"
+    },
+    {
+      "name": "pumpkaboosmall",
+      "tier": "1"
+    },
+    {
+      "name": "pumpkaboosuper",
+      "tier": "1"
+    },
+    {
+      "name": "pupitar",
+      "tier": "1"
+    },
+    {
+      "name": "purrloin",
+      "tier": "1"
+    },
+    {
+      "name": "purugly",
+      "tier": "1"
+    },
+    {
+      "name": "pyroar",
+      "tier": "4"
+    },
+    {
+      "name": "pyukumuku",
+      "tier": "3"
+    },
+    {
+      "name": "quagsire",
+      "tier": "7"
+    },
+    {
+      "name": "quaquaval",
+      "tier": "Ban"
+    },
+    {
+      "name": "quaxly",
+      "tier": "1"
+    },
+    {
+      "name": "quaxwell",
+      "tier": "3"
+    },
+    {
+      "name": "quilava",
+      "tier": "1"
+    },
+    {
+      "name": "quilladin",
+      "tier": "3"
+    },
+    {
+      "name": "qwilfish",
+      "tier": "7"
+    },
+    {
+      "name": "qwilfishhisui",
+      "tier": "7"
+    },
+    {
+      "name": "raboot",
+      "tier": "1"
+    },
+    {
+      "name": "rabsca",
+      "tier": "2"
+    },
+    {
+      "name": "ragingbolt",
+      "tier": "Ban"
+    },
+    {
+      "name": "raichu",
+      "tier": "5"
+    },
+    {
+      "name": "raichualola",
+      "tier": "7"
+    },
+    {
+      "name": "raikou",
+      "tier": "12"
+    },
+    {
+      "name": "ralts",
+      "tier": "1"
+    },
+    {
+      "name": "rampardos",
+      "tier": "4"
+    },
+    {
+      "name": "rapidash",
+      "tier": "4"
+    },
+    {
+      "name": "rapidashgalar",
+      "tier": "4"
+    },
+    {
+      "name": "raticate",
+      "tier": "1"
+    },
+    {
+      "name": "raticatealola",
+      "tier": "2"
+    },
+    {
+      "name": "rattata",
+      "tier": "1"
+    },
+    {
+      "name": "rattataalola",
+      "tier": "1"
+    },
+    {
+      "name": "rayquaza",
+      "tier": "Ban"
+    },
+    {
+      "name": "rayquazamega",
+      "tier": "Ban"
+    },
+    {
+      "name": "regice",
+      "tier": "3"
+    },
+    {
+      "name": "regidrago",
+      "tier": "9"
+    },
+    {
+      "name": "regieleki",
+      "tier": "11"
+    },
+    {
+      "name": "regigigas",
+      "tier": "4"
+    },
+    {
+      "name": "regirock",
+      "tier": "5"
+    },
+    {
+      "name": "registeel",
+      "tier": "10"
+    },
+    {
+      "name": "relicanth",
+      "tier": "2"
+    },
+    {
+      "name": "rellor",
+      "tier": "1"
+    },
+    {
+      "name": "remoraid",
+      "tier": "1"
+    },
+    {
+      "name": "reshiram",
+      "tier": "Ban"
+    },
+    {
+      "name": "reuniclus",
+      "tier": "9"
+    },
+    {
+      "name": "revavroom",
+      "tier": "10"
+    },
+    {
+      "name": "rhydon",
+      "tier": "5"
+    },
+    {
+      "name": "rhyhorn",
+      "tier": "1"
+    },
+    {
+      "name": "rhyperior",
+      "tier": "7"
+    },
+    {
+      "name": "ribombee",
+      "tier": "11"
+    },
+    {
+      "name": "rillaboom",
+      "tier": "Ban"
+    },
+    {
+      "name": "riolu",
+      "tier": "1"
+    },
+    {
+      "name": "roaringmoon",
+      "tier": "Ban"
+    },
+    {
+      "name": "rockruff",
+      "tier": "1"
+    },
+    {
+      "name": "roggenrola",
+      "tier": "1"
+    },
+    {
+      "name": "rolycoly",
+      "tier": "1"
+    },
+    {
+      "name": "rookidee",
+      "tier": "1"
+    },
+    {
+      "name": "roselia",
+      "tier": "4"
+    },
+    {
+      "name": "roserade",
+      "tier": "10"
+    },
+    {
+      "name": "rotom",
+      "tier": "4"
+    },
+    {
+      "name": "rotomfan",
+      "tier": "5"
+    },
+    {
+      "name": "rotomfrost",
+      "tier": "6"
+    },
+    {
+      "name": "rotomheat",
+      "tier": "12"
+    },
+    {
+      "name": "rotommow",
+      "tier": "9"
+    },
+    {
+      "name": "rotomwash",
+      "tier": "Ban"
+    },
+    {
+      "name": "rowlet",
+      "tier": "1"
+    },
+    {
+      "name": "rufflet",
+      "tier": "1"
+    },
+    {
+      "name": "runerigus",
+      "tier": "6"
+    },
+    {
+      "name": "sableye",
+      "tier": "5"
+    },
+    {
+      "name": "sableyemega",
+      "tier": "Ban"
+    },
+    {
+      "name": "salamence",
+      "tier": "12"
+    },
+    {
+      "name": "salamencemega",
+      "tier": "Ban"
+    },
+    {
+      "name": "salandit",
+      "tier": "1"
+    },
+    {
+      "name": "salazzle",
+      "tier": "9"
+    },
+    {
+      "name": "samurott",
+      "tier": "3"
+    },
+    {
+      "name": "samurotthisui",
+      "tier": "Ban"
+    },
+    {
+      "name": "sandaconda",
+      "tier": "6"
+    },
+    {
+      "name": "sandile",
+      "tier": "1"
+    },
+    {
+      "name": "sandshrew",
+      "tier": "1"
+    },
+    {
+      "name": "sandshrewalola",
+      "tier": "1"
+    },
+    {
+      "name": "sandslash",
+      "tier": "3"
+    },
+    {
+      "name": "sandslashalola",
+      "tier": "4"
+    },
+    {
+      "name": "sandygast",
+      "tier": "1"
+    },
+    {
+      "name": "sandyshocks",
+      "tier": "11"
+    },
+    {
+      "name": "sawk",
+      "tier": "4"
+    },
+    {
+      "name": "sawsbuck",
+      "tier": "2"
+    },
+    {
+      "name": "scatterbug",
+      "tier": "1"
+    },
+    {
+      "name": "sceptile",
+      "tier": "4"
+    },
+    {
+      "name": "sceptilemega",
+      "tier": "9"
+    },
+    {
+      "name": "scizor",
+      "tier": "Ban"
+    },
+    {
+      "name": "scizormega",
+      "tier": "Ban"
+    },
+    {
+      "name": "scolipede",
+      "tier": "10"
+    },
+    {
+      "name": "scorbunny",
+      "tier": "1"
+    },
+    {
+      "name": "scovillain",
+      "tier": "5"
+    },
+    {
+      "name": "scrafty",
+      "tier": "7"
+    },
+    {
+      "name": "scraggy",
+      "tier": "1"
+    },
+    {
+      "name": "screamtail",
+      "tier": "Ban"
+    },
+    {
+      "name": "scyther",
+      "tier": "5"
+    },
+    {
+      "name": "seadra",
+      "tier": "1"
+    },
+    {
+      "name": "seaking",
+      "tier": "1"
+    },
+    {
+      "name": "sealeo",
+      "tier": "1"
+    },
+    {
+      "name": "seedot",
+      "tier": "1"
+    },
+    {
+      "name": "seel",
+      "tier": "1"
+    },
+    {
+      "name": "seismitoad",
+      "tier": "10"
+    },
+    {
+      "name": "sentret",
+      "tier": "1"
+    },
+    {
+      "name": "serperior",
+      "tier": "Ban"
+    },
+    {
+      "name": "servine",
+      "tier": "3"
+    },
+    {
+      "name": "seviper",
+      "tier": "1"
+    },
+    {
+      "name": "sewaddle",
+      "tier": "1"
+    },
+    {
+      "name": "sharpedo",
+      "tier": "6"
+    },
+    {
+      "name": "sharpedomega",
+      "tier": "10"
+    },
+    {
+      "name": "shaymin",
+      "tier": "8"
+    },
+    {
+      "name": "shayminsky",
+      "tier": "Ban"
+    },
+    {
+      "name": "shedinja",
+      "tier": "2",
       "banned": {
         "tera": true
       }
     },
-    { "name": "ogerponwellspring", "tier": 4 },
-    { "name": "ogerponhearthflame", "tier": 4 },
-    { "name": "ogerponcornerstone", "tier": 6 },
-    { "name": "archaludon", "tier": 3 },
-    { "name": "hydrapple", "tier": 11 },
-    { "name": "gougingfire", "tier": 4 },
-    { "name": "ragingbolt", "tier": 7 },
-    { "name": "ironboulder", "tier": 7 },
-    { "name": "ironcrown", "tier": 8 },
+    {
+      "name": "shelgon",
+      "tier": "2"
+    },
+    {
+      "name": "shellder",
+      "tier": "1"
+    },
+    {
+      "name": "shellos",
+      "tier": "1"
+    },
+    {
+      "name": "shelmet",
+      "tier": "1"
+    },
+    {
+      "name": "shieldon",
+      "tier": "1"
+    },
+    {
+      "name": "shiftry",
+      "tier": "3"
+    },
+    {
+      "name": "shiinotic",
+      "tier": "2"
+    },
+    {
+      "name": "shinx",
+      "tier": "1"
+    },
+    {
+      "name": "shroodle",
+      "tier": "1"
+    },
+    {
+      "name": "shroomish",
+      "tier": "1"
+    },
+    {
+      "name": "shuckle",
+      "tier": "3"
+    },
+    {
+      "name": "shuppet",
+      "tier": "1"
+    },
+    {
+      "name": "sigilyph",
+      "tier": "4"
+    },
+    {
+      "name": "silcoon",
+      "tier": "1"
+    },
+    {
+      "name": "silicobra",
+      "tier": "1"
+    },
+    {
+      "name": "silvally",
+      "tier": "8"
+    },
+    {
+      "name": "silvallybug",
+      "tier": "6"
+    },
+    {
+      "name": "silvallydark",
+      "tier": "9"
+    },
+    {
+      "name": "silvallydragon",
+      "tier": "9"
+    },
+    {
+      "name": "silvallyelectric",
+      "tier": "8"
+    },
+    {
+      "name": "silvallyfairy",
+      "tier": "10"
+    },
+    {
+      "name": "silvallyfighting",
+      "tier": "8"
+    },
+    {
+      "name": "silvallyfire",
+      "tier": "8"
+    },
+    {
+      "name": "silvallyflying",
+      "tier": "8"
+    },
+    {
+      "name": "silvallyghost",
+      "tier": "9"
+    },
+    {
+      "name": "silvallygrass",
+      "tier": "7"
+    },
+    {
+      "name": "silvallyground",
+      "tier": "9"
+    },
+    {
+      "name": "silvallyice",
+      "tier": "6"
+    },
+    {
+      "name": "silvallypoison",
+      "tier": "9"
+    },
+    {
+      "name": "silvallypsychic",
+      "tier": "8"
+    },
+    {
+      "name": "silvallyrock",
+      "tier": "7"
+    },
+    {
+      "name": "silvallysteel",
+      "tier": "10"
+    },
+    {
+      "name": "silvallywater",
+      "tier": "10"
+    },
+    {
+      "name": "simipour",
+      "tier": "2"
+    },
+    {
+      "name": "simisage",
+      "tier": "2"
+    },
+    {
+      "name": "simisear",
+      "tier": "2"
+    },
+    {
+      "name": "sinistcha",
+      "tier": "11"
+    },
+    {
+      "name": "sinistea",
+      "tier": "1"
+    },
+    {
+      "name": "sirfetchd",
+      "tier": "7"
+    },
+    {
+      "name": "sizzlipede",
+      "tier": "1"
+    },
+    {
+      "name": "skarmory",
+      "tier": "Ban"
+    },
+    {
+      "name": "skeledirge",
+      "tier": "10"
+    },
+    {
+      "name": "skiddo",
+      "tier": "1"
+    },
+    {
+      "name": "skiploom",
+      "tier": "1"
+    },
+    {
+      "name": "skitty",
+      "tier": "1"
+    },
+    {
+      "name": "skorupi",
+      "tier": "1"
+    },
+    {
+      "name": "skrelp",
+      "tier": "1"
+    },
+    {
+      "name": "skuntank",
+      "tier": "5"
+    },
+    {
+      "name": "skwovet",
+      "tier": "1"
+    },
+    {
+      "name": "slaking",
+      "tier": "4"
+    },
+    {
+      "name": "slakoth",
+      "tier": "1"
+    },
+    {
+      "name": "sliggoo",
+      "tier": "1"
+    },
+    {
+      "name": "sliggoohisui",
+      "tier": "2"
+    },
+    {
+      "name": "slitherwing",
+      "tier": "12"
+    },
+    {
+      "name": "slowbro",
+      "tier": "Ban"
+    },
+    {
+      "name": "slowbrogalar",
+      "tier": "9"
+    },
+    {
+      "name": "slowbromega",
+      "tier": "Ban"
+    },
+    {
+      "name": "slowking",
+      "tier": "Ban"
+    },
+    {
+      "name": "slowkinggalar",
+      "tier": "Ban"
+    },
+    {
+      "name": "slowpoke",
+      "tier": "1"
+    },
+    {
+      "name": "slowpokegalar",
+      "tier": "1"
+    },
+    {
+      "name": "slugma",
+      "tier": "1"
+    },
+    {
+      "name": "slurpuff",
+      "tier": "8"
+    },
+    {
+      "name": "smeargle",
+      "tier": "3"
+    },
+    {
+      "name": "smoliv",
+      "tier": "1"
+    },
+    {
+      "name": "smoochum",
+      "tier": "1"
+    },
+    {
+      "name": "sneasel",
+      "tier": "5"
+    },
+    {
+      "name": "sneaselhisui",
+      "tier": "2"
+    },
+    {
+      "name": "sneasler",
+      "tier": "Ban"
+    },
+    {
+      "name": "snivy",
+      "tier": "1"
+    },
+    {
+      "name": "snom",
+      "tier": "1"
+    },
+    {
+      "name": "snorlax",
+      "tier": "10"
+    },
+    {
+      "name": "snorunt",
+      "tier": "1"
+    },
+    {
+      "name": "snover",
+      "tier": "1"
+    },
+    {
+      "name": "snubbull",
+      "tier": "1"
+    },
+    {
+      "name": "sobble",
+      "tier": "1"
+    },
+    {
+      "name": "solgaleo",
+      "tier": "Ban"
+    },
+    {
+      "name": "solosis",
+      "tier": "1"
+    },
+    {
+      "name": "solrock",
+      "tier": "3"
+    },
+    {
+      "name": "spearow",
+      "tier": "1"
+    },
+    {
+      "name": "spectrier",
+      "tier": "Ban"
+    },
+    {
+      "name": "spewpa",
+      "tier": "1"
+    },
+    {
+      "name": "spheal",
+      "tier": "1"
+    },
+    {
+      "name": "spidops",
+      "tier": "5"
+    },
+    {
+      "name": "spinarak",
+      "tier": "1"
+    },
+    {
+      "name": "spinda",
+      "tier": "1"
+    },
+    {
+      "name": "spiritomb",
+      "tier": "4"
+    },
+    {
+      "name": "spoink",
+      "tier": "1"
+    },
+    {
+      "name": "sprigatito",
+      "tier": "1"
+    },
+    {
+      "name": "spritzee",
+      "tier": "1"
+    },
+    {
+      "name": "squawkabilly",
+      "tier": "2"
+    },
+    {
+      "name": "squirtle",
+      "tier": "1"
+    },
+    {
+      "name": "stakataka",
+      "tier": "10"
+    },
+    {
+      "name": "stantler",
+      "tier": "1"
+    },
+    {
+      "name": "staraptor",
+      "tier": "7"
+    },
+    {
+      "name": "staravia",
+      "tier": "1"
+    },
+    {
+      "name": "starly",
+      "tier": "1"
+    },
+    {
+      "name": "starmie",
+      "tier": "9"
+    },
+    {
+      "name": "staryu",
+      "tier": "1"
+    },
+    {
+      "name": "steelix",
+      "tier": "7"
+    },
+    {
+      "name": "steelixmega",
+      "tier": "9"
+    },
+    {
+      "name": "steenee",
+      "tier": "1"
+    },
+    {
+      "name": "stonjourner",
+      "tier": "2"
+    },
+    {
+      "name": "stoutland",
+      "tier": "3"
+    },
+    {
+      "name": "stufful",
+      "tier": "1"
+    },
+    {
+      "name": "stunfisk",
+      "tier": "6"
+    },
+    {
+      "name": "stunfiskgalar",
+      "tier": "3"
+    },
+    {
+      "name": "stunky",
+      "tier": "1"
+    },
+    {
+      "name": "sudowoodo",
+      "tier": "3"
+    },
+    {
+      "name": "suicune",
+      "tier": "11"
+    },
+    {
+      "name": "sunflora",
+      "tier": "3"
+    },
+    {
+      "name": "sunkern",
+      "tier": "1"
+    },
+    {
+      "name": "surskit",
+      "tier": "1"
+    },
+    {
+      "name": "swablu",
+      "tier": "1"
+    },
+    {
+      "name": "swadloon",
+      "tier": "1"
+    },
+    {
+      "name": "swalot",
+      "tier": "1"
+    },
+    {
+      "name": "swampert",
+      "tier": "12"
+    },
+    {
+      "name": "swampertmega",
+      "tier": "12"
+    },
+    {
+      "name": "swanna",
+      "tier": "1"
+    },
+    {
+      "name": "swellow",
+      "tier": "8"
+    },
+    {
+      "name": "swinub",
+      "tier": "1"
+    },
+    {
+      "name": "swirlix",
+      "tier": "1"
+    },
+    {
+      "name": "swoobat",
+      "tier": "4"
+    },
+    {
+      "name": "sylveon",
+      "tier": "10"
+    },
+    {
+      "name": "tadbulb",
+      "tier": "1"
+    },
+    {
+      "name": "taillow",
+      "tier": "1"
+    },
+    {
+      "name": "talonflame",
+      "tier": "11"
+    },
+    {
+      "name": "tandemaus",
+      "tier": "1"
+    },
+    {
+      "name": "tangela",
+      "tier": "4"
+    },
+    {
+      "name": "tangrowth",
+      "tier": "11"
+    },
+    {
+      "name": "tapubulu",
+      "tier": "10"
+    },
+    {
+      "name": "tapufini",
+      "tier": "Ban"
+    },
+    {
+      "name": "tapukoko",
+      "tier": "Ban"
+    },
+    {
+      "name": "tapulele",
+      "tier": "Ban"
+    },
+    {
+      "name": "tarountula",
+      "tier": "1"
+    },
+    {
+      "name": "tatsugiri",
+      "tier": "6"
+    },
+    {
+      "name": "tauros",
+      "tier": "5"
+    },
+    {
+      "name": "taurospaldea",
+      "tier": "4"
+    },
+    {
+      "name": "taurospaldeafire",
+      "tier": "7"
+    },
+    {
+      "name": "taurospaldeawater",
+      "tier": "8"
+    },
+    {
+      "name": "teddiursa",
+      "tier": "1"
+    },
+    {
+      "name": "tentacool",
+      "tier": "1"
+    },
+    {
+      "name": "tentacruel",
+      "tier": "9"
+    },
+    {
+      "name": "tepig",
+      "tier": "1"
+    },
     {
       "name": "terapagosterastal",
-      "tier": 8,
-      "banned": {
-        "tera": true
-      }
+      "tier": "Ban"
     },
-    { "name": "pecharunt", "tier": 9 }
+    {
+      "name": "terrakion",
+      "tier": "12"
+    },
+    {
+      "name": "thievul",
+      "tier": "2"
+    },
+    {
+      "name": "throh",
+      "tier": "4"
+    },
+    {
+      "name": "thundurus",
+      "tier": "12"
+    },
+    {
+      "name": "thundurustherian",
+      "tier": "12"
+    },
+    {
+      "name": "thwackey",
+      "tier": "3"
+    },
+    {
+      "name": "timburr",
+      "tier": "1"
+    },
+    {
+      "name": "tinglu",
+      "tier": "Ban"
+    },
+    {
+      "name": "tinkatink",
+      "tier": "1"
+    },
+    {
+      "name": "tinkaton",
+      "tier": "12"
+    },
+    {
+      "name": "tinkatuff",
+      "tier": "2"
+    },
+    {
+      "name": "tirtouga",
+      "tier": "1"
+    },
+    {
+      "name": "toedscool",
+      "tier": "2"
+    },
+    {
+      "name": "toedscruel",
+      "tier": "6"
+    },
+    {
+      "name": "togedemaru",
+      "tier": "3"
+    },
+    {
+      "name": "togekiss",
+      "tier": "11"
+    },
+    {
+      "name": "togepi",
+      "tier": "1"
+    },
+    {
+      "name": "togetic",
+      "tier": "4"
+    },
+    {
+      "name": "torchic",
+      "tier": "1"
+    },
+    {
+      "name": "torkoal",
+      "tier": "9"
+    },
+    {
+      "name": "tornadus",
+      "tier": "8"
+    },
+    {
+      "name": "tornadustherian",
+      "tier": "Ban"
+    },
+    {
+      "name": "torracat",
+      "tier": "1"
+    },
+    {
+      "name": "torterra",
+      "tier": "7"
+    },
+    {
+      "name": "totodile",
+      "tier": "1"
+    },
+    {
+      "name": "toucannon",
+      "tier": "1"
+    },
+    {
+      "name": "toxapex",
+      "tier": "Ban"
+    },
+    {
+      "name": "toxel",
+      "tier": "1"
+    },
+    {
+      "name": "toxicroak",
+      "tier": "4"
+    },
+    {
+      "name": "toxtricity",
+      "tier": "8"
+    },
+    {
+      "name": "tranquill",
+      "tier": "1"
+    },
+    {
+      "name": "trapinch",
+      "tier": "2"
+    },
+    {
+      "name": "treecko",
+      "tier": "1"
+    },
+    {
+      "name": "trevenant",
+      "tier": "6"
+    },
+    {
+      "name": "tropius",
+      "tier": "3"
+    },
+    {
+      "name": "trubbish",
+      "tier": "1"
+    },
+    {
+      "name": "trumbeak",
+      "tier": "1"
+    },
+    {
+      "name": "tsareena",
+      "tier": "9"
+    },
+    {
+      "name": "turtonator",
+      "tier": "3"
+    },
+    {
+      "name": "turtwig",
+      "tier": "1"
+    },
+    {
+      "name": "tympole",
+      "tier": "1"
+    },
+    {
+      "name": "tynamo",
+      "tier": "1"
+    },
+    {
+      "name": "typenull",
+      "tier": "5"
+    },
+    {
+      "name": "typhlosion",
+      "tier": "5"
+    },
+    {
+      "name": "typhlosionhisui",
+      "tier": "6"
+    },
+    {
+      "name": "tyranitar",
+      "tier": "12"
+    },
+    {
+      "name": "tyranitarmega",
+      "tier": "Ban"
+    },
+    {
+      "name": "tyrantrum",
+      "tier": "7"
+    },
+    {
+      "name": "tyrogue",
+      "tier": "1"
+    },
+    {
+      "name": "tyrunt",
+      "tier": "1"
+    },
+    {
+      "name": "umbreon",
+      "tier": "9"
+    },
+    {
+      "name": "unfezant",
+      "tier": "2"
+    },
+    {
+      "name": "unown",
+      "tier": "1"
+    },
+    {
+      "name": "ursaluna",
+      "tier": "Ban"
+    },
+    {
+      "name": "ursalunabloodmoon",
+      "tier": "Ban"
+    },
+    {
+      "name": "ursaring",
+      "tier": "7"
+    },
+    {
+      "name": "urshifu",
+      "tier": "Ban"
+    },
+    {
+      "name": "urshifurapidstrike",
+      "tier": "Ban"
+    },
+    {
+      "name": "uxie",
+      "tier": "11"
+    },
+    {
+      "name": "vanillish",
+      "tier": "1"
+    },
+    {
+      "name": "vanillite",
+      "tier": "1"
+    },
+    {
+      "name": "vanilluxe",
+      "tier": "4"
+    },
+    {
+      "name": "vaporeon",
+      "tier": "10"
+    },
+    {
+      "name": "varoom",
+      "tier": "1"
+    },
+    {
+      "name": "veluza",
+      "tier": "5"
+    },
+    {
+      "name": "venipede",
+      "tier": "1"
+    },
+    {
+      "name": "venomoth",
+      "tier": "6"
+    },
+    {
+      "name": "venonat",
+      "tier": "1"
+    },
+    {
+      "name": "venusaur",
+      "tier": "10"
+    },
+    {
+      "name": "venusaurmega",
+      "tier": "11"
+    },
+    {
+      "name": "vespiquen",
+      "tier": "3"
+    },
+    {
+      "name": "vibrava",
+      "tier": "1"
+    },
+    {
+      "name": "victini",
+      "tier": "Ban"
+    },
+    {
+      "name": "victreebel",
+      "tier": "4"
+    },
+    {
+      "name": "vigoroth",
+      "tier": "2"
+    },
+    {
+      "name": "vikavolt",
+      "tier": "8"
+    },
+    {
+      "name": "vileplume",
+      "tier": "5"
+    },
+    {
+      "name": "virizion",
+      "tier": "5"
+    },
+    {
+      "name": "vivillon",
+      "tier": "3"
+    },
+    {
+      "name": "volbeat",
+      "tier": "1"
+    },
+    {
+      "name": "volcanion",
+      "tier": "11"
+    },
+    {
+      "name": "volcarona",
+      "tier": "Ban"
+    },
+    {
+      "name": "voltorb",
+      "tier": "1"
+    },
+    {
+      "name": "voltorbhisui",
+      "tier": "1"
+    },
+    {
+      "name": "vullaby",
+      "tier": "2"
+    },
+    {
+      "name": "vulpix",
+      "tier": "1"
+    },
+    {
+      "name": "vulpixalola",
+      "tier": "1"
+    },
+    {
+      "name": "wailmer",
+      "tier": "1"
+    },
+    {
+      "name": "wailord",
+      "tier": "2"
+    },
+    {
+      "name": "walkingwake",
+      "tier": "Ban"
+    },
+    {
+      "name": "walrein",
+      "tier": "2"
+    },
+    {
+      "name": "wartortle",
+      "tier": "2"
+    },
+    {
+      "name": "watchog",
+      "tier": "2"
+    },
+    {
+      "name": "wattrel",
+      "tier": "1"
+    },
+    {
+      "name": "weavile",
+      "tier": "Ban"
+    },
+    {
+      "name": "weedle",
+      "tier": "1"
+    },
+    {
+      "name": "weepinbell",
+      "tier": "1"
+    },
+    {
+      "name": "weezing",
+      "tier": "7"
+    },
+    {
+      "name": "weezinggalar",
+      "tier": "10"
+    },
+    {
+      "name": "whimsicott",
+      "tier": "7"
+    },
+    {
+      "name": "whirlipede",
+      "tier": "1"
+    },
+    {
+      "name": "whiscash",
+      "tier": "4"
+    },
+    {
+      "name": "whismur",
+      "tier": "1"
+    },
+    {
+      "name": "wigglytuff",
+      "tier": "2"
+    },
+    {
+      "name": "wiglett",
+      "tier": "1"
+    },
+    {
+      "name": "wimpod",
+      "tier": "1"
+    },
+    {
+      "name": "wingull",
+      "tier": "1"
+    },
+    {
+      "name": "wishiwashi",
+      "tier": "2"
+    },
+    {
+      "name": "wobbuffet",
+      "tier": "2"
+    },
+    {
+      "name": "wochien",
+      "tier": "7"
+    },
+    {
+      "name": "woobat",
+      "tier": "1"
+    },
+    {
+      "name": "wooloo",
+      "tier": "1"
+    },
+    {
+      "name": "wooper",
+      "tier": "1"
+    },
+    {
+      "name": "wooperpaldea",
+      "tier": "1"
+    },
+    {
+      "name": "wormadam",
+      "tier": "2"
+    },
+    {
+      "name": "wormadamsandy",
+      "tier": "2"
+    },
+    {
+      "name": "wormadamtrash",
+      "tier": "3"
+    },
+    {
+      "name": "wugtrio",
+      "tier": "2"
+    },
+    {
+      "name": "wurmple",
+      "tier": "1"
+    },
+    {
+      "name": "wynaut",
+      "tier": "1"
+    },
+    {
+      "name": "wyrdeer",
+      "tier": "4"
+    },
+    {
+      "name": "xatu",
+      "tier": "4"
+    },
+    {
+      "name": "xerneas",
+      "tier": "Ban"
+    },
+    {
+      "name": "xurkitree",
+      "tier": "10"
+    },
+    {
+      "name": "yamask",
+      "tier": "1"
+    },
+    {
+      "name": "yamaskgalar",
+      "tier": "1"
+    },
+    {
+      "name": "yamper",
+      "tier": "1"
+    },
+    {
+      "name": "yanma",
+      "tier": "1"
+    },
+    {
+      "name": "yanmega",
+      "tier": "7"
+    },
+    {
+      "name": "yungoos",
+      "tier": "1"
+    },
+    {
+      "name": "yveltal",
+      "tier": "Ban"
+    },
+    {
+      "name": "zacian",
+      "tier": "Ban"
+    },
+    {
+      "name": "zaciancrowned",
+      "tier": "Ban"
+    },
+    {
+      "name": "zamazenta",
+      "tier": "Ban"
+    },
+    {
+      "name": "zamazentacrowned",
+      "tier": "Ban"
+    },
+    {
+      "name": "zangoose",
+      "tier": "4"
+    },
+    {
+      "name": "zapdos",
+      "tier": "Ban"
+    },
+    {
+      "name": "zapdosgalar",
+      "tier": "Ban"
+    },
+    {
+      "name": "zarude",
+      "tier": "Ban"
+    },
+    {
+      "name": "zebstrika",
+      "tier": "2"
+    },
+    {
+      "name": "zekrom",
+      "tier": "Ban"
+    },
+    {
+      "name": "zeraora",
+      "tier": "Ban"
+    },
+    {
+      "name": "zigzagoon",
+      "tier": "1"
+    },
+    {
+      "name": "zigzagoongalar",
+      "tier": "1"
+    },
+    {
+      "name": "zoroark",
+      "tier": "8"
+    },
+    {
+      "name": "zoroarkhisui",
+      "tier": "12"
+    },
+    {
+      "name": "zorua",
+      "tier": "1"
+    },
+    {
+      "name": "zoruahisui",
+      "tier": "1"
+    },
+    {
+      "name": "zubat",
+      "tier": "1"
+    },
+    {
+      "name": "zweilous",
+      "tier": "3"
+    },
+    {
+      "name": "zygarde",
+      "tier": "Ban"
+    },
+    {
+      "name": "zygarde10",
+      "tier": "7"
+    },
+    {
+      "name": "zygardecomplete",
+      "tier": "Ban"
+    }
   ]
 }

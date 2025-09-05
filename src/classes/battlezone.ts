@@ -8,6 +8,7 @@ export namespace BattleZone {
     droppedBefore: boolean;
     droppedWhy: string;
     confirm: boolean;
+    sub: string;
 
     constructor(
       name: string,
@@ -15,7 +16,8 @@ export namespace BattleZone {
       experience: string,
       droppedBefore: boolean,
       droppedWhy: string,
-      confirm: boolean
+      confirm: boolean,
+      sub: string
     ) {
       this.name = name;
       this.timezone = timezone;
@@ -23,6 +25,7 @@ export namespace BattleZone {
       this.droppedBefore = droppedBefore;
       this.droppedWhy = droppedWhy;
       this.confirm = confirm;
+      this.sub = sub;
     }
 
     toDocument() {
@@ -32,12 +35,13 @@ export namespace BattleZone {
         dropped: this.droppedBefore ? this.droppedWhy : null,
         experience: this.experience,
         confirm: this.confirm,
+        sub: this.sub,
       };
       return new PDBLModel(doc);
     }
   }
 
-  export function validateSignUpForm(data: unknown): SignUp {
+  export function validateSignUpForm(data: unknown, sub: string): SignUp {
     if (typeof data !== "object" || data === null) {
       throw new Error("Invalid data: Expected an object.");
     }
@@ -73,7 +77,8 @@ export namespace BattleZone {
       experience,
       droppedBefore,
       droppedWhy,
-      confirm
+      confirm,
+      sub
     );
   }
 }

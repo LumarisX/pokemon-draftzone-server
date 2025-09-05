@@ -1,6 +1,6 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
-import { type Route } from ".";
+import { jwtCheck, type Route } from ".";
 import { BattleZone } from "../classes/battlezone";
 import { getTiers } from "../data/pdbl";
 import { PDBLModel } from "../models/pdbl.model";
@@ -39,9 +39,13 @@ export const BattleZoneRoutes: Route = {
     },
 
     "/pdbl/signup": {
+      middleware: [jwtCheck],
       post: async (req: Request, res: Response) => {
         try {
-          const signup = BattleZone.validateSignUpForm(req.body);
+          const signup = BattleZone.validateSignUpForm(
+            req.body,
+            req.auth!.payload.sub!
+          );
           const existing = await PDBLModel.find({ name: signup.name });
           if (existing.length > 0)
             return res

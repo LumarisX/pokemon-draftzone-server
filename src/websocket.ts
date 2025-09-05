@@ -1,7 +1,7 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Logger } from "winston";
-import { joinRoom, sendMessage } from "./ws-functions/chat";
+import { joinRoom, sendMessage } from "./ws-functions/rooms";
 
 export type SocketListener = (...args: any[]) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
