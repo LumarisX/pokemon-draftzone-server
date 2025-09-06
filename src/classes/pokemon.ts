@@ -29,6 +29,7 @@ import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
 import { getBst } from "./specieUtil";
+import { abilityModifiers } from "../data/pokedex/abilities";
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -166,7 +167,7 @@ export class DraftSpecie implements Specie, Pokemon {
     this.ruleset = ruleset;
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
-    (this.capt = {
+    this.capt = {
       tera: pokemonData.capt?.tera
         ? pokemonData.capt.tera.length >= TYPES.length
           ? []
@@ -178,8 +179,8 @@ export class DraftSpecie implements Specie, Pokemon {
           : pokemonData.capt.z
         : undefined,
       dmax: pokemonData.capt?.dmax,
-    }),
-      (this.nickname = pokemonData.nickname);
+    };
+    this.nickname = pokemonData.nickname;
     this.modifiers = {
       moves: pokemonData.modifiers?.moves,
       abilities: pokemonData.modifiers?.abilities,
@@ -327,123 +328,10 @@ export class DraftSpecie implements Specie, Pokemon {
   typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
     const weak = typeWeak(this.types, this.ruleset);
-    this.getAbilities().forEach((ability) => {
-      switch (ability) {
-        case "Fluffy":
-          weak.Fire *= 2;
-          break;
-        case "Dry Skin":
-          weak.Fire *= 1.25;
-        case "Water Absorb":
-        case "Desolate Land":
-        case "Storm Drain":
-          weak.Water = 0;
-          break;
-        case "Volt Absorb":
-        case "Lightning Rod":
-        case "Motor Drive":
-          weak.Electric = 0;
-          break;
-        case "Flash Fire":
-        case "Primordial Sea":
-        case "Well-Baked Body":
-          weak.Fire = 0;
-          break;
-        case "Sap Sipper":
-          weak.Grass = 0;
-          break;
-        case "Levitate":
-        case "Earth Eater":
-          weak.Ground = 0;
-          break;
-        case "Thick Fat":
-          weak.Ice *= 0.5;
-        case "Heatproof":
-        case "Drizzle":
-          weak.Fire *= 0.5;
-          break;
-        case "Water Bubble":
-          weak.Fire *= 0.5;
-        case "Thermal Exchange":
-        case "Water Veil":
-          weak.brn = 0;
-          break;
-        case "Limber":
-          weak.par = 0;
-          break;
-        case "Sweet Veil":
-        case "Vital Spirit":
-        case "Insomnia":
-          weak.slp = 0;
-          break;
-        case "Magma Armor":
-          weak.frz = 0;
-          break;
-        case "Purifying Salt":
-          weak.Ghost *= 0.5;
-        case "Shields Down":
-        case "Comatose":
-          weak.brn = 0;
-          weak.par = 0;
-          weak.frz = 0;
-          weak.slp = 0;
-        case "Immunity":
-        case "Pastel Veil":
-          weak.psn = 0;
-          weak.tox = 0;
-          break;
-        case "Overcoat":
-          weak.powder = 0;
-        case "Magic Guard":
-          weak.hail = 0;
-        case "Sand Force":
-        case "Sand Rush":
-        case "Sand Veil":
-          weak.sandstorm = 0;
-          break;
-        case "Ice Body":
-        case "Snow Cloak":
-          weak.hail = 0;
-          break;
-        case "Drought":
-        case "Orichalcum Pulse":
-          weak.Water *= 0.5;
-          break;
-        case "Delta Stream":
-          if (this.types.includes("Flying")) {
-            weak.Ice *= 0.5;
-            weak.Electric *= 0.5;
-            weak.Rock *= 0.5;
-          }
-          break;
-        case "Wonder Guard":
-          for (let type in weak) {
-            if (weak[type] <= 1) {
-              weak[type] = 0;
-            }
-          }
-          break;
-        case "Mountaineer": {
-          weak.Rock = 0;
-          break;
-        }
-        case "Prism Armor":
-        case "Solid Rock":
-        case "Filter":
-          for (let type in weak) {
-            if (weak[type] > 1) {
-              weak[type] = weak[type] * 0.75;
-            }
-          }
-          break;
-
-        case "Primal Armor":
-          for (let type in weak) {
-            if (weak[type] > 1) {
-              weak[type] = weak[type] / 2;
-            }
-          }
-          break;
+    this.getAbilities().forEach((abilityName) => {
+      const modifier = abilityModifiers[abilityName as AbilityName];
+      if (modifier) {
+        modifier(weak, this);
       }
     });
     this.$typechart = weak;
@@ -690,8 +578,7 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   async bestCoverage(oppTeam: DraftSpecie[]) {
-    const baseCoverage = await this.coverage();
-    const coverage = JSON.parse(JSON.stringify(baseCoverage));
+    const coverage = await this.coverage();
     const allMoves = [...coverage.physical, ...coverage.special];
     const best: { moves: CoverageMove[]; maxEffectiveness: number } = {
       moves: [],
