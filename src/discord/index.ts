@@ -200,59 +200,66 @@ async function gptRespond(message: Message, logger: winston.Logger) {
       messages: [basePrompt, ...conversationHistory],
     });
 
-    let replyString = completion.choices[0]?.message?.content;
-    if (!replyString) {
+    let rawReply = completion.choices[0]?.message?.content;
+    if (!rawReply) {
       logger.warn("OpenAI completion returned empty content.");
-      replyString = "Normal: I have nothing to say to that.";
+      rawReply = "Normal: I have nothing to say to that.";
     }
 
-    logger.info(`DeoxysGPT Response | ${replyString}`);
-    let emotionUrl: string = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
-      FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
-    }/Normal.png`;
-    let emotion: string | undefined;
+    logger.info(`DeoxysGPT Response | ${rawReply}`);
 
-    const replySplit = replyString.split(": ");
-    const potentialEmotion = replySplit[0].toLowerCase().replace(/\W/g, "");
-    switch (potentialEmotion) {
-      case "angry":
-      case "crying":
-      case "determined":
-      case "dizzy":
-      case "happy":
-      case "inspire":
-      case "joyous":
-      case "normal":
-      case "pain":
-      case "sad":
-      case "shouting":
-      case "sigh":
-      case "stunned":
-      case "surprised":
-        emotion =
-          potentialEmotion.charAt(0).toUpperCase() +
-          potentialEmotion.substring(1);
-        break;
-      case "tearyeyed":
-        emotion = "Teary-Eyed";
-        break;
-      case "powerup":
-        emotion = "Special1";
-        break;
-    }
+    let emotion = "Normal"; // Default emotion
+    let replyString = rawReply;
 
-    if (emotion) {
-      replyString = replySplit.slice(1).join(": ");
-      emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
-        FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
-      }/${emotion}.png`;
-    } else {
-      emotion = "Normal";
+    const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
+
+    if (emotionMatch) {
+      const potentialEmotion = emotionMatch[1]
+        .trim()
+        .toLowerCase()
+        .replace(/\s/g, "");
+      let parsedEmotion: string | undefined;
+
+      switch (potentialEmotion) {
+        case "angry":
+        case "crying":
+        case "determined":
+        case "dizzy":
+        case "happy":
+        case "inspire":
+        case "joyous":
+        case "normal":
+        case "pain":
+        case "sad":
+        case "shouting":
+        case "sigh":
+        case "stunned":
+        case "surprised":
+          parsedEmotion =
+            potentialEmotion.charAt(0).toUpperCase() +
+            potentialEmotion.substring(1);
+          break;
+        case "tearyeyed":
+          parsedEmotion = "Teary-Eyed";
+          break;
+        case "powerup":
+          parsedEmotion = "Special1";
+          break;
+      }
+
+      if (parsedEmotion) {
+        emotion = parsedEmotion;
+        replyString = emotionMatch[2].trim();
+      }
     }
 
     if (!replyString?.trim()) {
       replyString = "I am unsure how to respond.";
     }
+
+    const emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
+      FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
+    }/${emotion}.png`;
 
     const responseEmbed = new EmbedBuilder()
       .setThumbnail(emotionUrl)
