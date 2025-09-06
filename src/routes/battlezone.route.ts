@@ -46,34 +46,31 @@ export const BattleZoneRoutes: Route = {
             req.body,
             req.auth!.payload.sub!
           );
-          const existing = await PDBLModel.find({ name: signup.name });
-          if (existing.length > 0)
+          const existing = await PDBLModel.findOne({ sub: signup.sub });
+          if (existing)
             return res
               .status(409)
               .json({ message: "User is already signed up" });
-          signup.toDocument().save();
+          await signup.toDocument().save();
           if (client) {
+            const totalSignups = await PDBLModel.countDocuments();
             const guild = await client.guilds.fetch("1183936734719922176");
             if (!guild) {
               console.error("Guild not found");
-              return;
+            } else {
+              // Fetch the channel from the guild
+              const channel = guild.channels.cache.get(
+                "1303896194187132978"
+              ) as TextChannel;
+              if (!channel || !channel.isTextBased()) {
+                console.error("Channel not found or not a text channel");
+              } else {
+                // Send a message in the designated channel
+                channel.send(
+                  `${signup.name} signed up for the league. Total signed up: ${totalSignups}.`
+                );
+              }
             }
-
-            // Fetch the channel from the guild
-            const channel = guild.channels.cache.get(
-              "1303896194187132978"
-            ) as TextChannel;
-            if (!channel || !channel.isTextBased()) {
-              console.error("Channel not found or not a text channel");
-              return;
-            }
-
-            // Send a message in the designated channel
-            channel.send(
-              `${signup.name} signed up for the league. Total signed up: ${
-                existing.length + 1
-              }.`
-            );
           }
           return res
             .status(201)
