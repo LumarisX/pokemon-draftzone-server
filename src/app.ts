@@ -16,7 +16,7 @@ import { ArchiveRoutes } from "./routes/archive.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
 import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
-import { LeagueAdRoutes } from "./routes/league-ad.route";
+// import { LeagueAdRoutes } from "./routes/league-ad.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
 import { PlannerRoutes } from "./routes/planner.route";
@@ -135,7 +135,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/data": DataRoutes,
   "/replay": ReplayRoutes,
   "/planner": PlannerRoutes,
-  "/leagues": LeagueAdRoutes,
+  // "/leagues": LeagueAdRoutes,
   "/teambuilder": TeambuilderRoutes,
   "/supporters": SupporterRoutes,
   "/battlezone": BattleZoneRoutes,
