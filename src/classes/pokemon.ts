@@ -1,4 +1,5 @@
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
+import { LRUCache } from "lru-cache";
 import {
   AbilityName,
   As,
@@ -20,16 +21,14 @@ import {
   Tier,
 } from "@pkmn/dex-types";
 import { Ruleset } from "../data/rulesets";
-import { PokemonData } from "../models/pokemon.schema";
-import { getEffectivePower } from "../services/data-services/move.service";
-import { typeWeak } from "../services/data-services/type.services";
 import {
   CoverageMove,
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
+import { PokemonData } from "../models/pokemon.schema";
+import { getEffectivePower } from "../services/data-services/move.service";
+import { typeWeak } from "../services/data-services/type.services";
 import { getBst } from "./specieUtil";
-import { PZError } from "..";
-
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -48,6 +47,29 @@ export type PokemonOptions = {
 export type Pokemon = PokemonOptions & {
   id: ID;
   name: string;
+};
+
+type RawCoverage = {
+  Physical: {
+    [key: string]: CoverageMove;
+  };
+  Special: {
+    [key: string]: CoverageMove;
+  };
+};
+
+const learnsetCache = new LRUCache<string, Promise<Move[]>>({ max: 500 });
+const coverageCache = new LRUCache<string, Coverage>({ max: 500 });
+const fullCoverageCache = new LRUCache<string, FullCoverage>({ max: 500 });
+
+type Coverage = {
+  physical: CoverageMove[];
+  special: CoverageMove[];
+};
+
+type FullCoverage = {
+  physical: { [key: string]: FullCoverageMove[] };
+  special: { [key: string]: FullCoverageMove[] };
 };
 
 export class DraftSpecie implements Specie, Pokemon {
@@ -455,203 +477,221 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   //Moveset functions
-  private $coverage?: {
-    physical: CoverageMove[];
-    special: CoverageMove[];
-  };
-  async coverage() {
-    if (this.$coverage) return this.$coverage;
-    const coverage: {
-      Physical: {
-        [key: string]: CoverageMove;
-      };
-      Special: {
-        [key: string]: CoverageMove;
-      };
-      teraBlast?: true;
-    } = { Physical: {}, Special: {} };
-    const learnset = await this.learnset();
-    if (!learnset)
-      return {
+  async coverage(): Promise<Coverage> {
+    const cacheKey = `${this.ruleset.name}:${this.id}`;
+    const cached = coverageCache.get(cacheKey);
+    let baseCoverage: Coverage;
+
+    if (cached) {
+      baseCoverage = cached;
+    } else {
+      const coverage: RawCoverage = { Physical: {}, Special: {} };
+      const learnset = await this.learnset();
+
+      if (learnset) {
+        for (const move of learnset) {
+          if (move.category !== "Status") {
+            const ePower = getEffectivePower(move);
+            let type = move.type;
+            if (move.id === "ivycudgel") {
+              if (this.requiredItem === "Wellspring Mask") {
+                type = "Water";
+              } else if (this.requiredItem === "Cornerstone Mask") {
+                type = "Rock";
+              } else if (this.requiredItem === "Hearthflame Mask") {
+                type = "Fire";
+              }
+            }
+            if (
+              !(type in coverage[move.category]) ||
+              coverage[move.category][type].ePower < ePower
+            ) {
+              coverage[move.category][type] = {
+                id: move.id,
+                name: move.name,
+                ePower: ePower,
+                cPower:
+                  ePower *
+                  (this.types.includes(type) ? 1.5 : 1) *
+                  (move.category === "Special"
+                    ? this.baseStats.spa
+                    : this.baseStats.atk),
+                type: type,
+                stab: this.types.includes(type) || undefined,
+                category: move.category,
+              };
+            }
+          }
+        }
+      }
+      baseCoverage = {
         physical: Object.values(coverage.Physical),
         special: Object.values(coverage.Special),
       };
-    if (learnset.some((move) => move.id === "terablast") && this.capt?.tera) {
+      coverageCache.set(cacheKey, baseCoverage);
+    }
+    const learnset = await this.learnset();
+    if (
+      !this.capt?.tera ||
+      this.capt.tera.length === 0 ||
+      !learnset.some((move) => move.id === "terablast")
+    ) {
+      return baseCoverage;
+    }
+
+    const finalCoverage: Coverage = JSON.parse(JSON.stringify(baseCoverage));
+
+    if (learnset.some((move) => move.id === "terablast")) {
       for (const type of this.capt.tera) {
         if (type === "Stellar") continue;
-        coverage.Physical[type] = {
-          id: "terablast" as ID,
-          ePower: -1,
-          cPower: -1,
-          name: "Tera Blast",
-          category: "Physical",
-          type: type,
-        };
-        coverage.Special[type] = {
-          id: "terablast" as ID,
-          ePower: -1,
-          cPower: -1,
-          name: "Tera Blast",
-          category: "Special",
-          type: type,
-        };
-      }
-    }
-    for (const move of learnset) {
-      if (move.category !== "Status") {
-        const ePower = getEffectivePower(move);
-        let type = move.type;
-        if (move.id === "ivycudgel") {
-          if (this.requiredItem === "Wellspring Mask") {
-            type = "Water";
-          } else if (this.requiredItem === "Cornerstone Mask") {
-            type = "Rock";
-          } else if (this.requiredItem === "Hearthflame Mask") {
-            type = "Fire";
-          }
-        }
-        if (
-          !(type in coverage[move.category]) ||
-          coverage[move.category][type].ePower < ePower
-        ) {
-          coverage[move.category][type] = {
-            id: move.id,
-            name: move.name,
-            ePower: ePower,
-            cPower:
-              ePower *
-              (this.types.includes(type) ? 1.5 : 1) *
-              (move.category === "Special"
-                ? this.baseStats.spa
-                : this.baseStats.atk),
+        if (finalCoverage.physical.every((move) => move.type !== type)) {
+          finalCoverage.physical.push({
+            id: "terablast" as ID,
+            ePower: -1,
+            cPower: -1,
+            name: "Tera Blast",
+            category: "Physical",
             type: type,
-            stab: this.types.includes(type) || undefined,
-            category: move.category,
-          };
+          });
+        }
+        if (finalCoverage.special.every((move) => move.type !== type)) {
+          finalCoverage.special.push({
+            id: "terablast" as ID,
+            ePower: -1,
+            cPower: -1,
+            name: "Tera Blast",
+            category: "Special",
+            type: type,
+          });
         }
       }
     }
-    const finalCoverage = {
-      physical: Object.values(coverage.Physical),
-      special: Object.values(coverage.Special),
-    };
-    this.$coverage = finalCoverage;
     return finalCoverage;
   }
 
-  //Moveset functions
-  private $fullcoverage?: {
-    physical: {
-      [key: string]: FullCoverageMove[];
-    };
-    special: {
-      [key: string]: FullCoverageMove[];
-    };
-  };
-  async fullcoverage(): Promise<{
-    physical: {
-      [key: string]: FullCoverageMove[];
-    };
-    special: {
-      [key: string]: FullCoverageMove[];
-    };
-  }> {
-    if (this.$fullcoverage) return this.$fullcoverage;
-    const learnset = await this.learnset();
-    if (!learnset) return { physical: {}, special: {} };
-    const coverage: {
-      physical: {
-        [key: string]: Move[];
-      };
-      special: {
-        [key: string]: Move[];
-      };
-      teraBlast?: true;
-    } = { physical: {}, special: {} };
-    const addMove = (
-      list: { [key: string]: Move[] },
-      move: Move,
-      type: TypeName
-    ) => {
-      if (!(type in list)) list[type] = [];
-      list[type].push(move);
-    };
+  async fullcoverage(): Promise<FullCoverage> {
+    const cacheKey = `${this.ruleset.name}:${this.id}`;
+    const cached = fullCoverageCache.get(cacheKey);
+    let baseFullCoverage: FullCoverage;
 
-    learnset.forEach((move) => {
-      if (move.category === "Status") return;
-      const ePower = getEffectivePower(move);
-      let type = move.type;
-      if (move.id === "ivycudgel") {
-        if (this.requiredItem === "Wellspring Mask") {
-          type = "Water";
-        } else if (this.requiredItem === "Cornerstone Mask") {
-          type = "Rock";
-        } else if (this.requiredItem === "Hearthflame Mask") {
-          type = "Fire";
-        }
-      }
-      const category =
-        move.category === "Physical" ? coverage.physical : coverage.special;
-      if (move.id === "terablast" && this.capt?.tera) {
-        this.capt.tera.forEach((teratype) => {
-          addMove(
-            coverage.physical,
-            { ...move, type: teratype, category: "Physical" },
-            teratype
-          );
-          addMove(
-            coverage.special,
-            { ...move, type: teratype, category: "Special" },
-            teratype
-          );
+    if (cached) {
+      baseFullCoverage = cached;
+    } else {
+      const learnset = await this.learnset();
+      const coverage: {
+        physical: { [key: string]: Move[] };
+        special: { [key: string]: Move[] };
+      } = { physical: {}, special: {} };
+
+      if (learnset) {
+        const addMove = (
+          list: { [key: string]: Move[] },
+          move: Move,
+          type: TypeName
+        ) => {
+          if (!(type in list)) list[type] = [];
+          list[type].push(move);
+        };
+
+        learnset.forEach((move) => {
+          if (move.category === "Status") return;
+          let type = move.type;
+          if (move.id === "ivycudgel") {
+            if (this.requiredItem === "Wellspring Mask") type = "Water";
+            else if (this.requiredItem === "Cornerstone Mask") type = "Rock";
+            else if (this.requiredItem === "Hearthflame Mask") type = "Fire";
+          }
+          const category =
+            move.category === "Physical" ? coverage.physical : coverage.special;
+          addMove(category, move, type);
         });
       }
-      addMove(category, move, type);
-    });
-    const finalCoverage = {
-      physical: Object.fromEntries(
-        Object.entries(coverage.physical).map(([type, moves]) => [
-          type,
-          moves
-            .sort((a, b) => b.basePower - a.basePower)
-            .map((move) => ({
-              value: 1 / moves.length,
-              id: move.id,
-              name: move.name,
-              accuracy: move.accuracy === true ? "-" : move.accuracy.toFixed(0),
-              basePower: move.basePower ? move.basePower.toFixed(0) : "-",
-              desc: move.shortDesc,
-              type: type,
-              pp: (move.pp * 8) / 5,
-              category: move.category,
-            })),
-        ])
-      ),
-      special: Object.fromEntries(
-        Object.entries(coverage.special).map(([type, moves]) => [
-          type,
-          moves
-            .sort((a, b) => b.basePower - a.basePower)
-            .map((move) => ({
-              value: 1 / moves.length,
-              id: move.id,
-              name: move.name,
-              accuracy: move.accuracy === true ? "-" : move.accuracy.toFixed(0),
-              basePower: move.basePower ? move.basePower.toFixed(0) : "-",
-              desc: move.shortDesc,
-              type: type,
-              pp: (move.pp * 8) / 5,
-              category: move.category,
-            })),
-        ])
-      ),
-    };
-    this.$fullcoverage = finalCoverage;
+
+      const formatMoves = (movesByType: {
+        [key: string]: Move[];
+      }): { [key: string]: FullCoverageMove[] } => {
+        return Object.fromEntries(
+          Object.entries(movesByType).map(([type, moves]) => [
+            type,
+            moves
+              .sort((a, b) => getEffectivePower(b) - getEffectivePower(a))
+              .map((move) => ({
+                value: 1 / moves.length,
+                id: move.id,
+                name: move.name,
+                accuracy:
+                  move.accuracy === true ? "-" : move.accuracy.toFixed(0),
+                basePower: move.basePower ? move.basePower.toFixed(0) : "-",
+                desc: move.shortDesc,
+                type: type as TypeName,
+                pp: (move.pp * 8) / 5,
+                category: move.category,
+              })),
+          ])
+        );
+      };
+
+      baseFullCoverage = {
+        physical: formatMoves(coverage.physical),
+        special: formatMoves(coverage.special),
+      };
+      fullCoverageCache.set(cacheKey, baseFullCoverage);
+    }
+
+    const learnset = await this.learnset();
+    if (
+      !this.capt?.tera ||
+      this.capt.tera.length === 0 ||
+      !learnset.some((m) => m.id === "terablast")
+    ) {
+      return baseFullCoverage;
+    }
+
+    const finalCoverage: FullCoverage = JSON.parse(
+      JSON.stringify(baseFullCoverage)
+    );
+    const teraBlastMove = learnset.find((m) => m.id === "terablast");
+
+    if (teraBlastMove) {
+      for (const type of this.capt.tera) {
+        if (type === "Stellar") continue;
+
+        const teraBlastEntry: Omit<FullCoverageMove, "category"> = {
+          value: 1,
+          id: "terablast" as ID,
+          name: "Tera Blast",
+          accuracy:
+            teraBlastMove.accuracy === true
+              ? "-"
+              : teraBlastMove.accuracy.toFixed(0),
+          basePower: teraBlastMove.basePower
+            ? teraBlastMove.basePower.toFixed(0)
+            : "-",
+          desc: teraBlastMove.shortDesc,
+          type: type,
+          pp: (teraBlastMove.pp * 8) / 5,
+        };
+
+        if (!finalCoverage.physical[type]) finalCoverage.physical[type] = [];
+        finalCoverage.physical[type].unshift({
+          ...teraBlastEntry,
+          category: "Physical",
+        });
+
+        if (!finalCoverage.special[type]) finalCoverage.special[type] = [];
+        finalCoverage.special[type].unshift({
+          ...teraBlastEntry,
+          category: "Special",
+        });
+      }
+    }
+
     return finalCoverage;
   }
 
   async bestCoverage(oppTeam: DraftSpecie[]) {
-    const coverage = await this.coverage();
+    const baseCoverage = await this.coverage();
+    const coverage = JSON.parse(JSON.stringify(baseCoverage));
     const allMoves = [...coverage.physical, ...coverage.special];
     const best: { moves: CoverageMove[]; maxEffectiveness: number } = {
       moves: [],
@@ -690,12 +730,18 @@ export class DraftSpecie implements Specie, Pokemon {
     return coverage;
   }
 
-  private $learnset?: Promise<Move[]>;
   async learnset(): Promise<Move[]> {
-    if (this.$learnset) return this.$learnset;
-    this.$learnset = (async () => {
+    const cacheKey = `${this.ruleset.name}:${this.id}:${
+      this.ruleset.restriction || ""
+    }`;
+    const cached = learnsetCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const learnsetPromise = (async () => {
       const learnset = await this.ruleset.learnsets.learnable(
         this.id,
+
         this.ruleset.restriction
       );
       if (!learnset) return [];
@@ -704,7 +750,8 @@ export class DraftSpecie implements Specie, Pokemon {
         .filter((move) => move !== undefined) as Move[];
       return moves;
     })();
-    return this.$learnset;
+    learnsetCache.set(cacheKey, learnsetPromise);
+    return learnsetPromise;
   }
 
   async canLearn(moveString: string): Promise<boolean> {
