@@ -67,14 +67,12 @@ export const BattleZoneRoutes: Route = {
               } else {
                 // Send a message in the designated channel
                 channel.send(
-                  `${signup.name} signed up for the league. Total signed up: ${totalSignups}.`
+                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`
                 );
               }
             }
           }
-          return res
-            .status(201)
-            .json({ message: "Sign up successfully created." });
+          return res.status(201).json({ message: "Sign up successful." });
         } catch (error) {
           console.error(error);
           res

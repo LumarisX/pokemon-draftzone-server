@@ -69,7 +69,7 @@ export function getFormat(formatId: string): Format {
         return Formats[groupKey][rulesetKey];
     }
   }
-  throw new Error(`Ruleset Id not found: ${formatId}`);
+  throw new Error(`Format ID not found: ${formatId}`);
 }
 
 export function getFormats() {

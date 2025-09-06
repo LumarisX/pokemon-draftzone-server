@@ -31,7 +31,7 @@ export const ArchiveRoutes: Route = {
             archive.team = archive.team
               .filter((mon) => {
                 if (mon.id) return true;
-                //throw an error that mons are missing
+                // TODO: throw an error that mons are missing
                 return false;
               })
               .map((mon) => ({
@@ -100,4 +100,5 @@ export const ArchiveRoutes: Route = {
       next();
     },
   },
+};
 };

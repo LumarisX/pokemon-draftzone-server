@@ -218,16 +218,19 @@ export const MatchupRoutes: Route = {
           res.rawMatchup = await MatchupModel.findById(matchup_id);
           if (!res.rawMatchup) {
             return res
-              .status(400)
-              .json({ message: "Matchup ID not found", code: "MR-P1-01" });
+              .status(404)
+              .json({ message: "Matchup not found.", code: "MR-P1-01" });
           }
           const matchupData = res.rawMatchup.toObject<MatchupData>();
           res.matchup = await Matchup.fromData(matchupData);
           const aTeam = await DraftModel.findById(matchupData.aTeam._id).lean();
           if (!aTeam) {
             res
-              .status(400)
-              .json({ message: "Draft ID not found", code: "MR-P1-02" });
+              .status(404)
+              .json({
+                message: "Draft not found for this matchup.",
+                code: "MR-P1-02",
+              });
             return next();
           }
           res.ruleset = getRuleset(aTeam.ruleset);
@@ -253,13 +256,16 @@ export const MatchupRoutes: Route = {
           };
           if (res.ruleset === undefined) {
             return res
-              .status(400)
-              .json({ message: "Invalid ruleset ID", code: "MR-P1-03" });
+              .status(500)
+              .json({
+                message: "Invalid ruleset ID for this matchup.",
+                code: "MR-P1-03",
+              });
           }
         } else {
           return res
-            .status(400)
-            .json({ message: "Invalid ID format", code: "MR-P1-04" });
+            .status(400) // Bad Request
+            .json({ message: "Invalid matchup ID format.", code: "MR-P1-04" });
         }
       } catch (error) {
         res

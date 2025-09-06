@@ -91,7 +91,7 @@ export class ArchiveOld {
           stats[id].brought =
             (stats[id].brought || 0) + (stat[id].brought || 0);
           stats[id].deaths = (stats[id].deaths || 0) + (stat[id].deaths || 0);
-          stats[id].deaths = (stats[id].kills || 0) + (stat[id].kills || 0);
+          stats[id].kills = (stats[id].kills || 0) + (stat[id].kills || 0);
           stats[id].indirect =
             (stats[id].indirect || 0) + (stat[id].indirect || 0);
         } else {

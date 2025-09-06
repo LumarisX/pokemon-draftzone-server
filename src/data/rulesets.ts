@@ -163,7 +163,7 @@ export const Rulesets: {
   "Gen 9": {
     "National Dex": {
       id: "Gen9 NatDex",
-      desc: "Only available Generation 9 and before",
+      desc: "Only Pokémon available in Generation 9 and before",
       ruleset: new Ruleset(
         Dex.forGen(9),
         (d: Data) =>
@@ -173,7 +173,7 @@ export const Rulesets: {
     },
     "Paldea Dex": {
       id: "Paldea Dex",
-      desc: "Only available in the Paldea Dex",
+      desc: "Only Pokémon available in the Paldea Dex",
       ruleset: new Ruleset(Dex.forGen(9), DRAFT_EXISTS, "Paldea Dex", {
         restriction: "Paldea",
       }),
@@ -183,21 +183,21 @@ export const Rulesets: {
   "Gen 8": {
     "National Dex": {
       id: "Gen8 NatDex",
-      desc: "All available Generation 8 and before",
+      desc: "All Pokémon available in Generation 8 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(8), NATDEX_EXISTS, this.id);
       },
     },
     "Sword/Shield": {
       id: "Sword/Shield",
-      desc: "All available to be transfered to Sword/Shield",
+      desc: "All Pokémon available to be transferred to Sword/Shield",
       get ruleset() {
         return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id);
       },
     },
     "Galar Dex": {
       id: "Galar Dex",
-      desc: "Only available in the Galar Dex",
+      desc: "Only Pokémon available in the Galar Dex",
       get ruleset() {
         return new Ruleset(Dex.forGen(8), DRAFT_EXISTS, this.id, {
           restriction: "Galar",
@@ -208,59 +208,59 @@ export const Rulesets: {
   "Older Gens": {
     "Generation 7": {
       id: "Alola Dex",
-      desc: "All available Generation 7 and before",
+      desc: "All Pokémon available in Generation 7 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(7), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 6": {
       id: "Kalos Dex",
-      desc: "All available Generation 6 and before",
+      desc: "All Pokémon available in Generation 6 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(6), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 5": {
       id: "Unova Dex",
-      desc: "All available Generation 5 and before",
+      desc: "All Pokémon available in Generation 5 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(5), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 4": {
       id: "Sinnoh Dex",
-      desc: "All available Generation 4 and before",
+      desc: "All Pokémon available in Generation 4 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(4), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 3": {
       id: "Hoenn Dex",
-      desc: "All available Generation 3 and before",
+      desc: "All Pokémon available in Generation 3 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(3), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 2": {
       id: "Johto Dex",
-      desc: "All available Generation 2 and before",
+      desc: "All Pokémon available in Generation 2 and before",
       get ruleset() {
         return new Ruleset(Dex.forGen(2), DRAFT_EXISTS, this.id);
       },
     },
     "Generation 1": {
       id: "Kanto Dex",
-      desc: "All available Generation 1",
+      desc: "All Pokémon available in Generation 1",
       get ruleset() {
         return new Ruleset(Dex.forGen(1), DRAFT_EXISTS, this.id);
       },
     },
   },
-  // TODO: Fix these IDs to be properly capiolized (update db instances)
+  // TODO: Fix these IDs to be properly capitalized (update db instances)
   "Rom Hacks": {
     "Radical Red": {
       id: "radicalred",
-      desc: "All pokemon from the Radical Red rom hack",
+      desc: "All Pokémon from the Radical Red rom hack",
       get ruleset() {
         let mod = new ModdedDex("radicalred" as ID, RRDex as ModData);
         return new Ruleset(mod, ROM_EXISTS, this.id);
@@ -268,7 +268,7 @@ export const Rulesets: {
     },
     Insurgance: {
       id: "insurgance",
-      desc: "All pokemon from the Insurgance rom hack",
+      desc: "All Pokémon from the Insurgance rom hack",
       get ruleset() {
         let mod = new ModdedDex("insurgance" as ID, InsDex as ModData);
         return new Ruleset(mod, ROM_EXISTS, this.id);
@@ -278,7 +278,7 @@ export const Rulesets: {
   CAP: {
     "Generation 9": {
       id: "CAP Gen 9",
-      desc: "All pokemon in Gen 9 and CAP pokemon",
+      desc: "All Pokémon in Gen 9 and CAP Pokémon",
       get ruleset() {
         return new Ruleset(
           Dex.forGen(9),

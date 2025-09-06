@@ -51,8 +51,8 @@ export const ReplayRoutes: Route = {
       try {
         if (url == null) {
           return res
-            .status(400)
-            .json({ message: "Team id not found", code: "DR-P1-01" });
+            .status(400) // Bad Request
+            .json({ message: "URL not provided.", code: "RA-P1-01" });
         } else {
           url = decodeURI(url).replace(/^https?:\/\//, "");
           const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;

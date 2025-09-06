@@ -60,14 +60,17 @@ export const LeagueAdRoutes: Route = {
               }
 
               // Send a message in the designated channel
-              channel.send(`A new league ad has been submitted:
-              ${ad.toString()}`);
+              channel.send(
+                `A new league ad has been submitted for **${ad.leagueName}** by ${ad.owner}.`
+              );
             }
-            res.status(201).json({ message: "LeagueAd successfully created." });
+            res
+              .status(201)
+              .json({ message: "League ad successfully created." });
           } else {
             res
               .status(400)
-              .json({ message: "Invalid LeagueAd data.", code: "LR-R2-02" });
+              .json({ message: "Invalid league ad data.", code: "LR-R2-02" });
           }
         } catch (error) {
           console.error(error);
@@ -100,14 +103,14 @@ export const LeagueAdRoutes: Route = {
       try {
         if (!ad_id) {
           return res
-            .status(400)
-            .json({ message: "League ID is nullish", code: "LR-P1-01" });
+            .status(400) // Bad Request
+            .json({ message: "League ID not provided.", code: "LR-P1-01" });
         }
         const ad = await LeagueAdModel.findById(ad_id);
         if (!ad) {
           res
-            .status(400)
-            .json({ message: "League ID not found", code: "LR-P1-03" });
+            .status(404) // Not Found
+            .json({ message: "League ad not found.", code: "LR-P1-03" });
           next();
           return;
         }
@@ -124,8 +127,8 @@ export const LeagueAdRoutes: Route = {
       try {
         if (!time) {
           return res
-            .status(400)
-            .json({ message: "Time is nullish", code: "LR-P2-01" });
+            .status(400) // Bad Request
+            .json({ message: "Time not provided.", code: "LR-P2-01" });
         }
         res.set("time", time);
       } catch (error) {

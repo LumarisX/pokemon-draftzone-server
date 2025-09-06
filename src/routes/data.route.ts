@@ -83,7 +83,7 @@ export const DataRoutes: Route = {
           }
         } catch (error) {
           console.error(
-            `Error in /search route:", ${
+            `Error in /search route: ${
               (error as Error).message
             }\nSearch query: ${req.query.query}`
           );
@@ -113,7 +113,7 @@ export const DataRoutes: Route = {
             .json({ error: "Query type error", code: "DT-R3-01" });
         } catch (error) {
           console.error(
-            `Error in /listpokemon route:", ${
+            `Error in /listpokemon route: ${
               (error as Error).message
             }\nSearch query: ${req.query.query}`
           );
@@ -208,7 +208,7 @@ export const DataRoutes: Route = {
             .json({ error: "Query type error", code: "DT-R3-01" });
         } catch (error) {
           console.error(
-            `Error in /random route:", ${
+            `Error in /random route: ${
               (error as Error).message
             }\nRandom query: ${req.query.query}`
           );
@@ -238,7 +238,7 @@ export const DataRoutes: Route = {
             .filter((forme) => forme !== null && forme.id !== pokemonData.id);
           return res.json(formes);
         } catch (error) {
-          console.error(`Error in forme route:", ${(error as Error).message}`);
+          console.error(`Error in forme route: ${(error as Error).message}`);
           res
             .status(500)
             .json({ error: "Internal Server Error", code: "DT-R4-02" });
@@ -257,8 +257,8 @@ export const DataRoutes: Route = {
       );
       if (!res.locals.pokemonData) {
         return res
-          .status(400)
-          .json({ error: "Pokemon not found error", code: "DT-R4-01" });
+          .status(404)
+          .json({ error: "Pokémon not found.", code: "DT-R4-01" });
       }
       next();
     },

@@ -70,8 +70,11 @@ export const DraftRoutes: Route = {
           });
           if (foundDrafts.length > 0)
             return res
-              .status(400)
-              .json({ message: "Draft ID already exists", code: "DR-R1-02" });
+              .status(409)
+              .json({
+                message: "A draft with this league name already exists.",
+                code: "DR-R1-02",
+              });
           await draftDoc.save();
           return res.status(201).json({ message: "Draft Added" });
         } catch (error) {
@@ -343,8 +346,8 @@ export const DraftRoutes: Route = {
 
         if (!rawDraft)
           return res
-            .status(400)
-            .json({ message: "Team id not found", code: "DR-P1-02" });
+            .status(404)
+            .json({ message: "Team ID not found.", code: "DR-P1-02" });
         res.rawDraft = rawDraft;
         res.draftOld = res.rawDraft.toObject<DraftData>();
         res.ruleset = getRuleset(rawDraft.ruleset);
@@ -363,15 +366,15 @@ export const DraftRoutes: Route = {
       try {
         if (!matchup_id)
           return res
-            .status(400)
-            .json({ message: "Team id not found", code: "DR-P1-01" });
+            .status(400) // Bad Request
+            .json({ message: "Matchup ID not provided.", code: "DR-P1-01" });
         const rawMatchup: MatchupDocument | null = await MatchupModel.findById(
           matchup_id
         );
         if (!rawMatchup) {
           return res
-            .status(400)
-            .json({ message: "Matchup ID not found", code: "DR-P1-02" });
+            .status(404) // Not Found
+            .json({ message: "Matchup not found.", code: "DR-P1-02" });
         }
         const matchup = rawMatchup.toObject<MatchupData>();
         res.matchup = await Matchup.fromData(matchup, res.draft!);
