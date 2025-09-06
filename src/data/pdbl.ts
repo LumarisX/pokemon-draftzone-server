@@ -153,20 +153,10 @@ function getDetailsFromJson(): DraftDetails {
   return JSON.parse(fs.readFileSync(path, "utf8"));
 }
 
-let cachedDetails: {
-  tiers: TierList.Tier[];
-  pokemons: TierList.Pokemon[];
-  tierGroups: TierList.TierGroup[];
-} | null = null;
+let cachedDetails: ReturnType<typeof _processDetails> | null = null;
 
-export function getDetails(details?: DraftDetails) {
-  if (cachedDetails && !details) {
-    return { ...cachedDetails };
-  }
-
+function _processDetails(sourceDetails: DraftDetails) {
   const tiers: TierList.Tier[] = [];
-
-  const sourceDetails = details || getDetailsFromJson();
 
   const tierGroups = sourceDetails.tierGroups.map((groupDetails) => {
     const tierGroup = new TierList.TierGroup(groupDetails.label);
@@ -222,13 +212,27 @@ export function getDetails(details?: DraftDetails) {
     }
   });
 
-  const processedDetails = { tiers, pokemons, tierGroups };
+  refList.forEach((pokemon) => {
+    const refMon = pokemons.find((p) => p.specie.id === pokemon.ref);
+    if (refMon) {
+      const specie = getRuleset("Gen9 NatDex").species.get(pokemon.name)!;
+      refMon.addSubPokemon(
+        new (TierList as any).SubPokemon(specie, pokemon.banned)
+      );
+    }
+  });
 
-  if (!details) {
-    cachedDetails = processedDetails;
+  return { tiers, pokemons, tierGroups, divisions: sourceDetails.divisions };
+}
+
+export function getDetails() {
+  if (cachedDetails) {
+    return cachedDetails;
   }
 
-  return { ...processedDetails };
+  const sourceDetails = getDetailsFromJson();
+  cachedDetails = _processDetails(sourceDetails);
+  return cachedDetails;
 }
 
 export function getTiers() {
@@ -236,7 +240,7 @@ export function getTiers() {
 }
 
 export function getDivisions() {
-  return getDetailsFromJson().divisions;
+  return getDetails().divisions;
 }
 
 function writeDetails(details: DraftDetails) {
@@ -248,12 +252,13 @@ export function setDrafted(
   division: string | null,
   setDrafted: boolean
 ) {
-  const details = getDetailsFromJson();
+  const currentDetails = getDetails();
   if (!division) throw new Error(`${division} is null.`);
-  if (!details.divisions.includes(division))
+  if (!currentDetails.divisions.includes(division))
     throw new Error(`${division} is an invalid division.`);
-  const list = getDetails(details).pokemons;
-  const foundMon = list.find((mon) => mon.specie.id === pokemonId);
+  const foundMon = currentDetails.pokemons.find(
+    (mon) => mon.specie.id === pokemonId
+  );
   if (!foundMon) throw new Error(`${pokemonId} not found.`);
   if (setDrafted) {
     if (foundMon.drafted.includes(division))
@@ -264,8 +269,16 @@ export function setDrafted(
   } else {
     foundMon.drafted = foundMon.drafted.filter((d) => d !== division);
   }
-  details.tiers = list.flatMap((mon) => mon.toDetails());
-  writeDetails(details);
-  cachedDetails = null;
+
+  const detailsToSave: DraftDetails = {
+    tierGroups: currentDetails.tierGroups.map((tg) => ({
+      label: tg.label,
+      tiers: tg.tiers.map((t) => t.name),
+    })),
+    banned: getDetailsFromJson().banned, // Keep original banned list
+    divisions: currentDetails.divisions,
+    tiers: currentDetails.pokemons.flatMap((mon) => mon.toDetails()),
+  };
+  writeDetails(detailsToSave);
   return foundMon.specie.name;
 }
