@@ -580,40 +580,68 @@ export class DraftSpecie implements Specie, Pokemon {
   async bestCoverage(oppTeam: DraftSpecie[]) {
     const coverage = await this.coverage();
     const allMoves = [...coverage.physical, ...coverage.special];
-    const best: { moves: CoverageMove[]; maxEffectiveness: number } = {
-      moves: [],
-      maxEffectiveness: 0,
-    };
-    const findBestCombination = (start: number, chosen: CoverageMove[]) => {
-      if (chosen.length === 4) {
-        const effectiveness = oppTeam.reduce((total, oppPokemon) => {
-          const typeEffectiveness = oppPokemon.typechart();
-          const maxEffectiveness = chosen.reduce((max, move) => {
-            const stat =
-              move.category === "Physical"
-                ? this.baseStats.atk
-                : this.baseStats.spa;
-            let value =
-              move.ePower * (typeEffectiveness[move.type] || 1) * stat;
-            if (move.stab) value *= 1.5;
-            return Math.max(max, value);
-          }, 0);
-          return total + maxEffectiveness;
-        }, 0);
-        if (effectiveness > best.maxEffectiveness) {
-          best.maxEffectiveness = effectiveness;
-          best.moves = [...chosen];
+    const numMoves = allMoves.length;
+    const numOpponents = oppTeam.length;
+
+    if (numMoves <= 4) {
+      allMoves.forEach((move) => (move.recommended = true));
+      return coverage;
+    }
+
+    const damages: number[][] = allMoves.map((move) => {
+      const stat =
+        move.category === "Physical" ? this.baseStats.atk : this.baseStats.spa;
+      return oppTeam.map((oppPokemon) => {
+        const typeEffectiveness = oppPokemon.typechart();
+        let value = move.ePower * (typeEffectiveness[move.type] || 1) * stat;
+        if (move.stab) value *= 1.5;
+        return value;
+      });
+    });
+
+    const selectedMoveIndices = new Set<number>();
+    const remainingMoveIndices = new Set<number>(
+      Array.from({ length: numMoves }, (_, i) => i)
+    );
+    const maxEffectivenessPerOpponent = Array(numOpponents).fill(0);
+
+    for (let i = 0; i < 4 && remainingMoveIndices.size > 0; i++) {
+      let bestMoveIndex = -1;
+      let maxGain = -1;
+
+      for (const moveIndex of remainingMoveIndices) {
+        let currentGain = 0;
+        for (let j = 0; j < numOpponents; j++) {
+          currentGain += Math.max(
+            0,
+            damages[moveIndex][j] - maxEffectivenessPerOpponent[j]
+          );
         }
-        return;
+
+        if (currentGain > maxGain) {
+          maxGain = currentGain;
+          bestMoveIndex = moveIndex;
+        }
       }
-      for (let i = start; i < allMoves.length; i++) {
-        chosen.push(allMoves[i]);
-        findBestCombination(i + 1, chosen);
-        chosen.pop();
+
+      if (bestMoveIndex !== -1) {
+        selectedMoveIndices.add(bestMoveIndex);
+        remainingMoveIndices.delete(bestMoveIndex);
+
+        for (let j = 0; j < numOpponents; j++) {
+          maxEffectivenessPerOpponent[j] = Math.max(
+            maxEffectivenessPerOpponent[j],
+            damages[bestMoveIndex][j]
+          );
+        }
+      } else {
+        break;
       }
-    };
-    findBestCombination(0, []);
-    best.moves.forEach((move) => (move.recommended = true));
+    }
+
+    selectedMoveIndices.forEach((index) => {
+      allMoves[index].recommended = true;
+    });
     return coverage;
   }
 
