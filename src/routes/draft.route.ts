@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { Types } from "mongoose";
+import { startSession, Types } from "mongoose";
 import { jwtCheck, Route, sendError } from ".";
+import { logger } from "../app";
 import { ArchiveOld } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
@@ -71,7 +72,7 @@ export const DraftRoutes: Route = {
           if (error.code === 11000) {
             return res.status(409).json({
               message: "A draft with this league name already exists.",
-              code: "DR-R1-02",
+              code: `${routeCode}-R1-02`,
             });
           }
           return sendError(res, 500, error as Error, `${routeCode}-R1-03`);
@@ -90,7 +91,7 @@ export const DraftRoutes: Route = {
           return sendError(res, 500, error as Error, `${routeCode}-R2-03`);
         }
       },
-      patch: async function (req: Request, res: DraftResponse) {
+      patch: async function (req: Request, res: MatchupResponse) {
         if (!req.auth!.payload.sub!) return;
         try {
           const draft = Draft.fromForm(
@@ -110,10 +111,11 @@ export const DraftRoutes: Route = {
             return res
               .status(200)
               .json({ message: "Draft Updated", draft: updatedDraft });
+          } else {
+            return res
+              .status(404)
+              .json({ message: "Draft not found", code: `${routeCode}-R2-02` });
           }
-          return res
-            .status(404)
-            .json({ message: "Draft not found", code: "DR-R2-02" });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-03`);
         }
@@ -124,7 +126,7 @@ export const DraftRoutes: Route = {
         }
         try {
           await deleteDraft(res.rawDraft);
-          res.status(201).json({ message: "Draft deleted" });
+          return res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-04`);
         }
@@ -144,16 +146,18 @@ export const DraftRoutes: Route = {
             )
           );
         } catch (error) {
-          console.log(this);
           return sendError(res, 500, error as Error, `${routeCode}-R3-01`);
         }
       },
       post: async function (req: Request, res: DraftResponse) {
+        if (!req.auth!.payload.sub!) {
+          return;
+        }
         try {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
           const matchup = Matchup.fromForm(res.draft!, opponent);
           await createMatchup(matchup.toData());
-          res.status(201).json({ message: "Matchup Added" });
+          return res.status(201).json({ message: "Matchup Added" });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R3-02`);
         }
@@ -167,7 +171,6 @@ export const DraftRoutes: Route = {
         try {
           res.json(await getStats(res.ruleset, res.draftOld._id));
         } catch (error) {
-          res.status(500).json({ message: (error as Error).message });
           return sendError(res, 500, error as Error, `${routeCode}-R4-01`);
         }
       },
@@ -177,45 +180,42 @@ export const DraftRoutes: Route = {
         if (!res.draftOld || !res.rawDraft) {
           return;
         }
+        const session = await startSession();
+        session.startTransaction();
         try {
           const archive = new ArchiveOld(res.draftOld);
           const archiveData = await archive.createArchive();
           await deleteDraft(res.rawDraft);
-          archiveData.save();
+          archiveData.save({ session });
+          await session.commitTransaction();
           res.status(201).json({ message: "Archive added" });
         } catch (error) {
-          console.error("Error handling archive:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R5-01" });
+          await session.abortTransaction();
+          return sendError(res, 500, error as Error, `${routeCode}-R5-01`);
+        } finally {
+          session.endSession();
         }
       },
     },
     "/:team_id/:matchup_id": {
       get: async function (req: Request, res: MatchupResponse) {
         try {
-          res.json(res.matchup!.toClient());
+          return res.json(res.matchup!.toClient());
         } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R6-01" });
+          return sendError(res, 500, error as Error, `${routeCode}-R6-01`);
         }
       },
     },
     "/:team_id/:matchup_id/opponent": {
       get: async function (req: Request, res: MatchupResponse) {
         try {
-          console.log(res.matchup);
           const opponent = res.matchup!.toOpponent();
-          res.json(opponent.toClient());
+          return res.json(opponent.toClient());
         } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R7-01" });
+          return sendError(res, 500, error as Error, `${routeCode}-R7-01`);
         }
       },
       patch: async function (req: Request, res: MatchupResponse) {
-        if (!res.draftOld) return;
         try {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
           const updatedMatchup = await updateMatchup(
@@ -224,13 +224,16 @@ export const DraftRoutes: Route = {
           );
           clearMatchupCacheById(req.params.matchup_id);
           if (updatedMatchup) {
-            res
+            return res
               .status(200)
               .json({ message: "Matchup Updated", draft: updatedMatchup });
           } else {
-            res
+            return res
               .status(404)
-              .json({ message: "Matchup not found", code: "DR-R7-02" });
+              .json({
+                message: "Matchup not found",
+                code: `${routeCode}-R7-02`,
+              });
           }
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R7-03`);
@@ -240,7 +243,6 @@ export const DraftRoutes: Route = {
     "/:team_id/:matchup_id/score": {
       patch: async function (req: Request, res: DraftResponse) {
         try {
-          console.log(req.body);
           const score = new Score(req.body);
           const processedScore = await score.processScore();
           const updatedMatchup = await updateMatchup(req.params.matchup_id, {
@@ -249,19 +251,20 @@ export const DraftRoutes: Route = {
             "bTeam.paste": processedScore.bTeamPaste,
           });
           if (updatedMatchup) {
-            res
+            return res
               .status(200)
               .json({ message: "Matchup Updated", draft: updatedMatchup });
           } else {
-            res
+            return res
               .status(404)
-              .json({ message: "Matchup not found", code: "DR-R8-01" });
+              .json({
+                message: "Matchup not found",
+                code: `${routeCode}-R8-01`,
+              });
           }
         } catch (error) {
-          console.error("Error updating matchup:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R8-02" });
+          logger.error("Error updating matchup:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-R8-02`);
         }
       },
     },
@@ -270,21 +273,18 @@ export const DraftRoutes: Route = {
         if (!res.draftOld) {
           return;
         }
-        try {
-          // if (res.matchup) {
-          //   res.json({
-          //     gameTime: res.matchup.gameTime,
-          //     reminder: res.matchup.reminder,
-          //   });
-          // } else {
-          //   res
-          //     .status(500)
-          //     .json({ message: "Matchup not found", code: "DR-R6-01" });
-          // }
-        } catch (error) {
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R9-02" });
+        if (res.matchup) {
+          return res.json({
+            gameTime: res.matchup.gameTime,
+            reminder: res.matchup.reminder,
+          });
+        } else {
+          return sendError(
+            res,
+            500,
+            new Error("Matchup not found"),
+            `${routeCode}-R6-01`
+          );
         }
       },
       patch: async function (req: Request, res: DraftResponse) {
@@ -296,19 +296,20 @@ export const DraftRoutes: Route = {
             reminder: processedTime.emailTime,
           });
           if (updatedMatchup) {
-            res
+            return res
               .status(200)
               .json({ message: "Matchup Updated", draft: updatedMatchup });
           } else {
-            res
+            return res
               .status(404)
-              .json({ message: "Matchup not found", code: "DR-R6-03" });
+              .json({
+                message: "Matchup not found",
+                code: `${routeCode}-R6-03`,
+              });
           }
         } catch (error) {
-          console.error("Error updating matchup:", error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "DR-R6-04" });
+          logger.error("Error updating matchup:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-R6-04`);
         }
       },
     },
@@ -321,7 +322,10 @@ export const DraftRoutes: Route = {
         if (!rawDraft)
           return res
             .status(404)
-            .json({ message: "Team ID not found.", code: "DR-P1-02" });
+            .json({
+              message: "Team ID not found.",
+              code: `${routeCode}-P1-02`,
+            });
         res.rawDraft = rawDraft;
         res.draftOld = res.rawDraft.toObject<DraftData>();
         res.ruleset = getRuleset(rawDraft.ruleset);
@@ -341,17 +345,31 @@ export const DraftRoutes: Route = {
         if (!matchup_id)
           return res
             .status(400) // Bad Request
-            .json({ message: "Matchup ID not provided.", code: "DR-P1-01" });
+            .json({
+              message: "Matchup ID not provided.",
+              code: `${routeCode}-P1-01`,
+            });
         const rawMatchup: MatchupDocument | null = await getMatchupById(
           matchup_id
         );
         if (!rawMatchup) {
           return res
             .status(404) // Not Found
-            .json({ message: "Matchup not found.", code: "DR-P1-02" });
+            .json({
+              message: "Matchup not found.",
+              code: `${routeCode}-P1-02`,
+            });
+        }
+        if (!res.draft) {
+          return sendError(
+            res,
+            500,
+            new Error("Draft not found in response locals."),
+            `${routeCode}-P1-05`
+          );
         }
         const matchup = rawMatchup.toObject<MatchupData>();
-        res.matchup = await Matchup.fromData(matchup, res.draft!);
+        res.matchup = await Matchup.fromData(matchup, res.draft);
       } catch (error) {
         return sendError(res, 500, error as Error, `DR-P1-04`);
       }
