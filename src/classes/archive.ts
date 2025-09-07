@@ -8,7 +8,7 @@ import {
 } from "../models/archive.model";
 import { DraftData } from "../models/draft.model";
 import { MatchData, MatchStatData } from "../models/matchup.model";
-import { getMatchups } from "../services/database-services/draft.services";
+import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
 
 export class ArchiveOld {
   constructor(
@@ -33,7 +33,7 @@ export class ArchiveOld {
       team: this.draft.team.map((pokemon) => ({ id: pokemon.id })),
       matches: [],
     };
-    const matchups = await getMatchups(this.draft._id);
+    const matchups = await getMatchupsByDraftId(this.draft._id);
     data.matches = matchups.map((matchup) => {
       let [winner, score] = this.matchupScore(matchup.matches!);
 

@@ -1,22 +1,29 @@
 import { Request, Response } from "express";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { jwtCheck, Route, sendError } from ".";
 import { ArchiveOld } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
 import { getRuleset, Ruleset } from "../data/rulesets";
-import { DraftData, DraftDocument, DraftModel } from "../models/draft.model";
+import { DraftData, DraftDocument } from "../models/draft.model";
+import { MatchupData, MatchupDocument } from "../models/matchup.model";
 import {
-  MatchupData,
-  MatchupDocument,
-  MatchupModel,
-} from "../models/matchup.model";
-import {
+  createDraft,
+  deleteDraft,
+  findDraft,
+  getDraftsByOwner,
   getScore,
   getStats,
-} from "../services/database-services/draft.services";
-import { $matchups } from "./matchup.route";
+  updateDraft,
+} from "../services/database-services/draft.service";
+import {
+  clearMatchupCacheById,
+  createMatchup,
+  getMatchupById,
+  getMatchupsByDraftId,
+  updateMatchup,
+} from "../services/database-services/matchup.service";
 
 type MatchupResponse = DraftResponse & {
   matchup?: Matchup;
@@ -40,12 +47,7 @@ export const DraftRoutes: Route = {
     "/teams": {
       get: async function (req: Request, res: DraftResponse) {
         try {
-          const drafts = await DraftModel.find({
-            owner: req.auth!.payload.sub!,
-          }).sort({
-            createdAt: -1,
-          });
-
+          const drafts = await getDraftsByOwner(req.auth!.payload.sub!);
           res.json(
             await Promise.all(
               drafts.map(
@@ -63,21 +65,15 @@ export const DraftRoutes: Route = {
         }
         try {
           const draft = Draft.fromForm(req.body, req.auth!.payload.sub!);
-          const draftDoc = new DraftModel(draft.toData());
-          const foundDrafts = await DraftModel.find({
-            owner: req.auth!.payload.sub!,
-            leagueId: draftDoc.leagueId,
-          });
-          if (foundDrafts.length > 0)
-            return res
-              .status(409)
-              .json({
-                message: "A draft with this league name already exists.",
-                code: "DR-R1-02",
-              });
-          await draftDoc.save();
+          await createDraft(draft.toData());
           return res.status(201).json({ message: "Draft Added" });
-        } catch (error) {
+        } catch (error: any) {
+          if (error.code === 11000) {
+            return res.status(409).json({
+              message: "A draft with this league name already exists.",
+              code: "DR-R1-02",
+            });
+          }
           return sendError(res, 500, error as Error, `${routeCode}-R1-03`);
         }
       },
@@ -101,18 +97,16 @@ export const DraftRoutes: Route = {
             req.body,
             req.auth!.payload.sub!
           ).toData();
-          const updatedDraft = await DraftModel.findOneAndUpdate(
-            { owner: req.auth!.payload.sub!, leagueId: req.params.team_id },
-            draft,
-            { new: true, upsert: true }
+          const updatedDraft = await updateDraft(
+            req.auth!.payload.sub!,
+            req.params.team_id,
+            draft
           );
           if (updatedDraft) {
-            $matchups
-              .keys()
-              .filter((key: string) =>
-                key.startsWith(updatedDraft._id.toString())
-              )
-              .forEach((key: any) => $matchups.del(key));
+            const matchups = await getMatchupsByDraftId(updatedDraft._id);
+            matchups.forEach((matchup) =>
+              clearMatchupCacheById(matchup._id.toString())
+            );
             return res
               .status(200)
               .json({ message: "Draft Updated", draft: updatedDraft });
@@ -129,7 +123,7 @@ export const DraftRoutes: Route = {
           return;
         }
         try {
-          await res.rawDraft.deleteOne();
+          await deleteDraft(res.rawDraft);
           res.status(201).json({ message: "Draft deleted" });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-04`);
@@ -158,8 +152,7 @@ export const DraftRoutes: Route = {
         try {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
           const matchup = Matchup.fromForm(res.draft!, opponent);
-          const doc: MatchupDocument = new MatchupModel(matchup.toData());
-          const response = await doc.save();
+          await createMatchup(matchup.toData());
           res.status(201).json({ message: "Matchup Added" });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R3-02`);
@@ -187,7 +180,7 @@ export const DraftRoutes: Route = {
         try {
           const archive = new ArchiveOld(res.draftOld);
           const archiveData = await archive.createArchive();
-          await res.rawDraft.deleteOne();
+          await deleteDraft(res.rawDraft);
           archiveData.save();
           res.status(201).json({ message: "Archive added" });
         } catch (error) {
@@ -225,12 +218,11 @@ export const DraftRoutes: Route = {
         if (!res.draftOld) return;
         try {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
-          const updatedMatchup = await MatchupModel.findByIdAndUpdate(
+          const updatedMatchup = await updateMatchup(
             req.params.matchup_id,
-            opponent.toData(),
-            { new: true, upsert: true }
+            opponent.toData()
           );
-          $matchups.del(`${res.draftOld._id}-${req.params.matchup_id}`);
+          clearMatchupCacheById(req.params.matchup_id);
           if (updatedMatchup) {
             res
               .status(200)
@@ -251,15 +243,11 @@ export const DraftRoutes: Route = {
           console.log(req.body);
           const score = new Score(req.body);
           const processedScore = await score.processScore();
-          const updatedMatchup = await MatchupModel.findByIdAndUpdate(
-            req.params.matchup_id,
-            {
-              matches: processedScore.matches,
-              "aTeam.paste": processedScore.aTeamPaste,
-              "bTeam.paste": processedScore.bTeamPaste,
-            },
-            { new: true, upsert: true }
-          );
+          const updatedMatchup = await updateMatchup(req.params.matchup_id, {
+            matches: processedScore.matches,
+            "aTeam.paste": processedScore.aTeamPaste,
+            "bTeam.paste": processedScore.bTeamPaste,
+          });
           if (updatedMatchup) {
             res
               .status(200)
@@ -303,14 +291,10 @@ export const DraftRoutes: Route = {
         try {
           const time = new GameTime(req.body);
           const processedTime = await time.processTime();
-          const updatedMatchup = await MatchupModel.findByIdAndUpdate(
-            req.params.matchup_id,
-            {
-              gameTime: processedTime.dateTime,
-              reminder: processedTime.emailTime,
-            },
-            { new: true, upsert: true }
-          );
+          const updatedMatchup = await updateMatchup(req.params.matchup_id, {
+            gameTime: processedTime.dateTime,
+            reminder: processedTime.emailTime,
+          });
           if (updatedMatchup) {
             res
               .status(200)
@@ -332,17 +316,7 @@ export const DraftRoutes: Route = {
   params: {
     team_id: async function (req: Request, res: DraftResponse, next, team_id) {
       try {
-        let user_id = req.auth!.payload.sub!;
-        const rawDraft: DraftDocument | null = mongoose.Types.ObjectId.isValid(
-          team_id
-        )
-          ? await DraftModel.findById(team_id)
-          : (
-              await DraftModel.find({
-                owner: user_id,
-                leagueId: team_id,
-              })
-            )[0];
+        const rawDraft = await findDraft(team_id, req.auth!.payload.sub!);
 
         if (!rawDraft)
           return res
@@ -368,7 +342,7 @@ export const DraftRoutes: Route = {
           return res
             .status(400) // Bad Request
             .json({ message: "Matchup ID not provided.", code: "DR-P1-01" });
-        const rawMatchup: MatchupDocument | null = await MatchupModel.findById(
+        const rawMatchup: MatchupDocument | null = await getMatchupById(
           matchup_id
         );
         if (!rawMatchup) {

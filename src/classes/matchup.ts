@@ -3,8 +3,9 @@ import { Types } from "mongoose";
 import { PZError } from "..";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
-import { DraftDocument, DraftModel } from "../models/draft.model";
+import { DraftDocument } from "../models/draft.model";
 import { MatchData, MatchupData } from "../models/matchup.model";
+import { getDraftById } from "../services/database-services/draft.service";
 import {
   Coveragechart,
   coveragechart,
@@ -51,9 +52,7 @@ export class Matchup {
     draft?: Draft
   ): Promise<Matchup> {
     if (!draft) {
-      const draftDoc: DraftDocument | null = await DraftModel.findById(
-        data.aTeam._id
-      );
+      const draftDoc: DraftDocument | null = await getDraftById(data.aTeam._id);
       if (!draftDoc) throw new PZError(400, "Draft ID not found.");
       draft = Draft.fromData(draftDoc);
     }
@@ -329,12 +328,12 @@ export class Score {
   ) {}
 
   async processScore(): Promise<{
-    matches: {}[];
+    matches: MatchData[];
     aTeamPaste?: string | undefined;
     bTeamPaste?: string | undefined;
   }> {
     const data: {
-      matches: {}[];
+      matches: MatchData[];
       aTeamPaste?: string;
       bTeamPaste?: string;
     } = {
@@ -349,15 +348,9 @@ export class Score {
       data.bTeamPaste = this.scoreData.bTeamPaste;
     }
     this.scoreData.matches.forEach((match) => {
-      let matchData: {
-        replay?: string;
-        winner: "" | "a" | "b";
-        aTeam: { stats: [string, any][]; score: number };
-        bTeam: { stats: [string, any][]; score: number };
-      } = {
+      let matchData: MatchData = {
         aTeam: { stats: [], score: 0 },
         bTeam: { stats: [], score: 0 },
-        winner: "",
       };
       if (match.replay != "") {
         matchData.replay = match.replay;
@@ -422,13 +415,15 @@ export class Score {
       matchData.aTeam.score =
         matchData.aTeam.stats.length -
         matchData.aTeam.stats.reduce(
-          (deaths, mon) => (deaths += +(mon[1].deaths > 0)),
+          (deaths, mon) =>
+            (deaths += +(mon[1].deaths !== undefined && mon[1].deaths > 0)),
           0
         );
       matchData.bTeam.score =
         matchData.bTeam.stats.length -
         matchData.bTeam.stats.reduce(
-          (deaths, mon) => (deaths += +(mon[1].deaths > 0)),
+          (deaths, mon) =>
+            (deaths += +(mon[1].deaths !== undefined && mon[1].deaths > 0)),
           0
         );
       data.matches.push(matchData);

@@ -30,6 +30,7 @@ import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
 import { getBst } from "./specieUtil";
 import { abilityModifiers } from "../data/pokedex/abilities";
+import { PZError } from "..";
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -149,20 +150,12 @@ export class DraftSpecie implements Specie, Pokemon {
     pokemonData: (PokemonData | PokemonFormData) | (Specie & PokemonOptions),
     ruleset: Ruleset
   ) {
-    let specie =
+    const specie =
       pokemonData instanceof Specie
         ? pokemonData
         : ruleset.species.get(pokemonData.id);
-    //Might get rid of eventually
     if (!specie)
-      specie = new DraftSpecie(
-        new Specie(
-          ruleset.dex,
-          ruleset.exists,
-          ruleset.dex.species.get(pokemonData.id)
-        ),
-        ruleset
-      );
+      throw new PZError(400, `Pokémon ID not found: ${pokemonData.id}`);
     Object.assign(this, specie);
     this.ruleset = ruleset;
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);

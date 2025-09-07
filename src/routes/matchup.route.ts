@@ -7,12 +7,10 @@ import { Matchup } from "../classes/matchup";
 import { DraftSpecie, PokemonFormData } from "../classes/pokemon";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
-import { DraftModel } from "../models/draft.model";
 import {
   MatchData,
   MatchupData,
   MatchupDocument,
-  MatchupModel,
 } from "../models/matchup.model";
 import {
   Coveragechart,
@@ -28,6 +26,9 @@ import {
 } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { getDraftById } from "../services/database-services/draft.service";
+import { DraftData, DraftModel } from "../models/draft.model";
+import { getMatchupById } from "../services/database-services/matchup.service";
 
 type MatchupOld = {
   formatId: FormatId;
@@ -215,7 +216,7 @@ export const MatchupRoutes: Route = {
     ) => {
       try {
         if (mongoose.Types.ObjectId.isValid(matchup_id)) {
-          res.rawMatchup = await MatchupModel.findById(matchup_id);
+          res.rawMatchup = await getMatchupById(matchup_id);
           if (!res.rawMatchup) {
             return res
               .status(404)
@@ -223,14 +224,12 @@ export const MatchupRoutes: Route = {
           }
           const matchupData = res.rawMatchup.toObject<MatchupData>();
           res.matchup = await Matchup.fromData(matchupData);
-          const aTeam = await DraftModel.findById(matchupData.aTeam._id).lean();
+          const aTeam = await getDraftById(matchupData.aTeam._id).lean();
           if (!aTeam) {
-            res
-              .status(404)
-              .json({
-                message: "Draft not found for this matchup.",
-                code: "MR-P1-02",
-              });
+            res.status(404).json({
+              message: "Draft not found for this matchup.",
+              code: "MR-P1-02",
+            });
             return next();
           }
           res.ruleset = getRuleset(aTeam.ruleset);
@@ -255,12 +254,10 @@ export const MatchupRoutes: Route = {
             rulesetId: aTeam.ruleset as RulesetId,
           };
           if (res.ruleset === undefined) {
-            return res
-              .status(500)
-              .json({
-                message: "Invalid ruleset ID for this matchup.",
-                code: "MR-P1-03",
-              });
+            return res.status(500).json({
+              message: "Invalid ruleset ID for this matchup.",
+              code: "MR-P1-03",
+            });
           }
         } else {
           return res

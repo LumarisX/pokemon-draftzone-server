@@ -3,7 +3,8 @@ import { Format, getFormat } from "../data/formats";
 import { Ruleset, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft.model";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { MatchupDocument, MatchupModel } from "../models/matchup.model";
+import { MatchupDocument } from "../models/matchup.model";
+import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
 
 export class Draft {
   constructor(
@@ -74,7 +75,7 @@ export class Draft {
       teamName: this.teamName,
       format: this.format.name,
       ruleset: this.ruleset.name,
-      score: await this.getScore(), //move away from computing each time
+      score: await this.getScore(),
       doc: this.doc,
       team: this.team.map((pokemon) => pokemon.toClient()),
     };
@@ -116,10 +117,9 @@ export class Draft {
     );
   }
 
-  //Add caching
   async getMatchups(): Promise<MatchupDocument[]> {
     if (!this._id) return Promise.resolve([]);
-    return MatchupModel.find({ "aTeam._id": this._id }).sort({ createdAt: -1 });
+    return getMatchupsByDraftId(this._id);
   }
 
   async getScore() {
