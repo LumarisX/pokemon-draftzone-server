@@ -1,4 +1,7 @@
 export function parseTime(time: string | number): Date | null {
+  if (typeof time === 'string' && time.trim() === '') {
+    return null;
+  }
   const timestamp =
     typeof time === "string" || typeof time === "number" ? +time : NaN;
   const date = new Date(timestamp);
