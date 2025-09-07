@@ -1,6 +1,7 @@
 import { ID } from "@pkmn/data";
 import { DraftSpecie, Pokemon } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
+import { LRUCache } from "lru-cache";
 
 type Token = { type: string; value: string };
 type ASTNode = {
@@ -12,19 +13,27 @@ type ASTNode = {
   cache?: (boolean | Pokemon)[];
 };
 
-let cache: [ASTNode, (boolean | Pokemon)[]][] = [];
+const cache = new LRUCache({
+  max: 500,
+  ttl: 1000 * 30,
+  allowStale: false,
+  updateAgeOnGet: false,
+  updateAgeOnHas: false,
+});
 
 export async function searchPokemon(
   query: string,
   rulesetId: string = "Gen9 NatDex"
 ) {
+  const cacheKey = `${rulesetId}:${query}`;
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
+
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
   const ast = parse(tokens);
-  // let cachedData = checkCache(ast);
-  // if (cachedData) {
-  //   return cachedData[1];
-  // } else {
+
   let ruleset = getRuleset(rulesetId);
   let searchResults = await Promise.all(
     Array.from(ruleset.species).map(async (specie) => {
@@ -52,52 +61,8 @@ export async function searchPokemon(
   let filteredResults = searchResults
     .filter((result) => result[1])
     .map((result) => result[0]);
-  cache.push([ast, filteredResults]);
+  cache.set(cacheKey, filteredResults);
   return filteredResults;
-  // }
-}
-
-function checkCache(node: ASTNode) {
-  for (let cachedNode of cache) {
-    subNodes(node, cachedNode);
-    if (sameNodes(node, cachedNode[0])) return cachedNode[1];
-  }
-  return undefined;
-}
-
-function subNodes(
-  subNode: ASTNode | undefined,
-  cachedData: [ASTNode, (boolean | Pokemon)[]]
-): boolean {
-  if (!subNode) return false;
-  if (sameNodes(subNode, cachedData[0])) {
-    subNode.cache = cachedData[1];
-    return true;
-  }
-  return (
-    (subNode.left !== undefined && subNodes(subNode.left, cachedData)) ||
-    (subNode.right !== undefined && subNodes(subNode.right, cachedData))
-  );
-}
-
-function sameNodes(
-  nodeA: ASTNode | undefined,
-  nodeB: ASTNode | undefined
-): boolean {
-  if (nodeA === undefined && nodeB === undefined) return true;
-  if (nodeA === undefined || nodeB === undefined) return false;
-  if (!sameNodes(nodeA.left, nodeB.left)) return false;
-  if (!sameNodes(nodeA.right, nodeB.right)) return false;
-  if (nodeA.type != nodeB.type) return false;
-  switch (nodeA.type) {
-    case "Literal":
-    case "Identifier":
-      return nodeA.value === nodeB.value;
-    case "LogicalExpression":
-    case "BinaryExpression":
-      return nodeA.operator === nodeB.operator;
-  }
-  return false;
 }
 
 function tokenize(input: string): Token[] {
@@ -149,7 +114,7 @@ function parse(tokens: Token[]): ASTNode {
           type: /^[A-Za-z_][A-Za-z0-9_]*$/.test(valueToken.type)
             ? "Identifier"
             : "Literal",
-          value: valueToken.value.replace(/^['"]|['"]$/g, ""),
+          value: valueToken.value.replace(/^["']|["']$/g, ""),
         },
       };
     }
