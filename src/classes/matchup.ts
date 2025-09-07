@@ -5,7 +5,6 @@ import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { DraftDocument } from "../models/draft.model";
 import { MatchData, MatchupData } from "../models/matchup.model";
-import { getDraftById } from "../services/database-services/draft.service";
 import {
   Coveragechart,
   coveragechart,
@@ -23,6 +22,7 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { getDraft } from "../services/database-services/draft.service";
 
 export type MatchupTeam = {
   teamName: string;
@@ -52,7 +52,7 @@ export class Matchup {
     draft?: Draft
   ): Promise<Matchup> {
     if (!draft) {
-      const draftDoc: DraftDocument | null = await getDraftById(data.aTeam._id);
+      const draftDoc: DraftDocument | null = await getDraft(data.aTeam._id);
       if (!draftDoc) throw new PZError(400, "Draft ID not found.");
       draft = Draft.fromData(draftDoc);
     }

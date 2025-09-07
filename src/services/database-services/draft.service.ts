@@ -30,34 +30,11 @@ export async function getDraftsByOwner(
   });
 }
 
-export function getDraftById(
-  objectId: Types.ObjectId
-): mongoose.Query<DraftDocument | null, DraftDocument, {}, DraftData> {
-  return DraftModel.findById(objectId);
-}
-
-async function findDraftById(
-  objectId: Types.ObjectId
-): Promise<DraftDocument | null> {
-  const key = objectId.toString();
-  if ($drafts.has(key)) {
-    return $drafts.get(key)!;
-  }
-
-  const draft = await DraftModel.findById(objectId);
-
-  if (draft) {
-    $drafts.set(key, draft);
-  }
-
-  return draft;
-}
-
-export async function findDraft(
-  id: string,
+export async function getDraft(
+  id: Types.ObjectId,
   ownerId?: string
 ): Promise<DraftDocument | null> {
-  const key = ownerId ? `${ownerId}:${id}` : id;
+  const key: string = ownerId ? `${ownerId}:${id}` : id.toString();
   if ($drafts.has(key)) {
     return $drafts.get(key)!;
   }
@@ -66,11 +43,18 @@ export async function findDraft(
   if (ownerId) {
     draft = await DraftModel.findOne({ owner: ownerId, leagueId: id });
   } else if (Types.ObjectId.isValid(id)) {
-    draft = await findDraftById(new Types.ObjectId(id));
+    draft = await DraftModel.findById(id);
   }
 
   if (draft) {
     $drafts.set(key, draft);
+    if (ownerId) {
+      $drafts.set(draft._id.toString(), draft);
+    } else {
+      if (draft.owner && draft.leagueId) {
+        $drafts.set(`${draft.owner}:${draft.leagueId}`, draft);
+      }
+    }
   }
 
   return draft;
@@ -99,7 +83,7 @@ export async function updateDraft(
 export async function deleteDraft(draft: DraftDocument) {
   const result = await draft.deleteOne();
   $drafts.delete(draft._id.toString());
-  if (draft.owner) {
+  if (draft.owner && draft.leagueId) {
     const key = `${draft.owner}:${draft.leagueId}`;
     $drafts.delete(key);
   }

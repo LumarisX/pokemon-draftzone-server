@@ -11,7 +11,7 @@ import { MatchupData, MatchupDocument } from "../models/matchup.model";
 import {
   createDraft,
   deleteDraft,
-  findDraft,
+  getDraft,
   getDraftsByOwner,
   getScore,
   getStats,
@@ -316,7 +316,7 @@ export const DraftRoutes: Route = {
   params: {
     team_id: async function (req: Request, res: DraftResponse, next, team_id) {
       try {
-        const rawDraft = await findDraft(team_id, req.auth!.payload.sub!);
+        const rawDraft = await getDraft(team_id, req.auth!.payload.sub!);
 
         if (!rawDraft)
           return res

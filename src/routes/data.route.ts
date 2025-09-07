@@ -227,7 +227,7 @@ export const DataRoutes: Route = {
           if (pokemonData.formes) formeNames = pokemonData.formes;
           if (pokemonData.changesFrom) {
             const basePokemon = ruleset.species.get(pokemonData.changesFrom);
-            if (!basePokemon || !basePokemon.formes) return;
+            if (!basePokemon || !basePokemon.formes) return res.json([]);
             formeNames = basePokemon.formes;
           }
           const formes = formeNames
