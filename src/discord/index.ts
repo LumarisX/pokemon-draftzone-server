@@ -49,7 +49,7 @@ export async function startDiscordBot(
     return undefined;
   }
 
-  client.once("ready", () => {
+  client.once("clientReady", () => {
     if (client.user) {
       logger.info(`Discord bot ready! Logged in as ${client.user.tag}`);
     } else {
