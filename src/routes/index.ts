@@ -3,6 +3,7 @@ import { auth } from "express-oauth2-jwt-bearer";
 import { EventEmitter } from "stream";
 import WebSocket from "ws";
 import { config } from "../config";
+import { logger } from "../app";
 
 export type Route = {
   middleware?: Handler[];
@@ -41,6 +42,6 @@ export function sendError(
   error: Error,
   code: string
 ) {
-  console.error(error);
+  logger.error(error);
   return res.status(status).json({ message: error.message, code });
 }
