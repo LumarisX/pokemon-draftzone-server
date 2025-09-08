@@ -89,44 +89,48 @@ function setupGracefulShutdown(server: http.Server) {
   });
 }
 
-(async () => {
-  process.on("unhandledRejection", (reason, promise) => {
-    logger.error("Unhandled Rejection at:", { promise, reason });
-  });
-  process.on("uncaughtException", (error) => {
-    logger.error("Uncaught Exception:", error);
-    logger.info("Attempting graceful shutdown due to uncaught exception...");
-    process.exit(1);
-  });
+if (!process.env.JEST_WORKER_ID) {
+  (async () => {
+    process.on("unhandledRejection", (reason, promise) => {
+      logger.error("Unhandled Rejection at:", { promise, reason });
+    });
+    process.on("uncaughtException", (error) => {
+      logger.error("Uncaught Exception:", error);
+      logger.info("Attempting graceful shutdown due to uncaught exception...");
+      process.exit(1);
+    });
 
-  try {
-    await connectDB(logger);
-    logger.info("connectDB() promise resolved.");
+    try {
+      await connectDB(logger);
+      logger.info("connectDB() promise resolved.");
 
-    const port = normalizePort(config.PORT || "9960");
-    if (port === false) {
-      throw new Error(`Invalid port specified: ${config.PORT || "9960"}`);
+      const port = normalizePort(config.PORT || "9960");
+      if (port === false) {
+        throw new Error(`Invalid port specified: ${config.PORT || "9960"}`);
+      }
+      app.set("port", port);
+
+      const server = http.createServer(app);
+
+      startWebSocket(logger, server);
+
+      server.on("error", (error: NodeJS.ErrnoException) =>
+        onError(error, port)
+      );
+      server.on("listening", () => onListening(server));
+
+      server.listen(port);
+
+      await startDiscordBot(logger);
+
+      setupGracefulShutdown(server);
+    } catch (error) {
+      const log = typeof logger !== "undefined" ? logger.error : console.error;
+      log("Failed to start server:", error);
+      process.exit(1);
     }
-    app.set("port", port);
-
-    const server = http.createServer(app);
-
-    startWebSocket(logger, server);
-
-    server.on("error", (error: NodeJS.ErrnoException) => onError(error, port));
-    server.on("listening", () => onListening(server));
-
-    server.listen(port);
-
-    await startDiscordBot(logger);
-
-    setupGracefulShutdown(server);
-  } catch (error) {
-    const log = typeof logger !== "undefined" ? logger.error : console.error;
-    log("Failed to start server:", error);
-    process.exit(1);
-  }
-})();
+  })();
+}
 export class PZError extends Error {
   constructor(public status: number, message?: string) {
     super(message);
