@@ -1,37 +1,31 @@
 import { Request, Response, NextFunction } from "express";
-import { logger } from "../app";
-
-const toMB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-
-const formatMemory = (usage: NodeJS.MemoryUsage) =>
-  Object.fromEntries(
-    Object.entries(usage).map(([key, value]) => [key, toMB(value)])
-  );
 
 export function logMemoryUsage(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+) {
+  console.log(`\n--- REQUEST RECEIVED: ${req.method} ${req.originalUrl} ---`);
+
   const startUsage = process.memoryUsage();
-  logger.info(`[Memory] Start: ${req.method} ${req.originalUrl}`, {
-    memory: formatMemory(startUsage),
-  });
+  console.log("--- MEMORY USAGE (START) ---");
+  for (const [key, value] of Object.entries(startUsage)) {
+    console.log(`${key}: ${Math.round((value / 1024 / 1024) * 100) / 100} MB`);
+  }
+  console.log("----------------------------");
 
   res.on("finish", () => {
+    console.log(
+      `--- RESPONSE FINISHED FOR: ${req.method} ${req.originalUrl} ---`
+    );
     const endUsage = process.memoryUsage();
-    const delta = Object.fromEntries(
-      Object.entries(endUsage).map(([key, value]) => [
-        key,
-        toMB(value - startUsage[key as keyof NodeJS.MemoryUsage]),
-      ])
-    ) as Record<keyof NodeJS.MemoryUsage, string>;
-
-    logger.info(`[Memory] End: ${req.method} ${req.originalUrl}`, {
-      statusCode: res.statusCode,
-      endMemory: formatMemory(endUsage),
-      delta,
-    });
+    console.log("--- MEMORY USAGE (END) ---");
+    for (const [key, value] of Object.entries(endUsage)) {
+      console.log(
+        `${key}: ${Math.round((value / 1024 / 1024) * 100) / 100} MB`
+      );
+    }
+    console.log("--------------------------\n");
   });
 
   next();
