@@ -14,7 +14,7 @@ export function logMemoryUsage(
   next: NextFunction
 ): void {
   const startUsage = process.memoryUsage();
-  logger.debug(`[Memory] Start: ${req.method} ${req.originalUrl}`, {
+  logger.info(`[Memory] Start: ${req.method} ${req.originalUrl}`, {
     memory: formatMemory(startUsage),
   });
 
@@ -27,7 +27,7 @@ export function logMemoryUsage(
       ])
     ) as Record<keyof NodeJS.MemoryUsage, string>;
 
-    logger.debug(`[Memory] End: ${req.method} ${req.originalUrl}`, {
+    logger.info(`[Memory] End: ${req.method} ${req.originalUrl}`, {
       statusCode: res.statusCode,
       endMemory: formatMemory(endUsage),
       delta,
