@@ -1,29 +1,10 @@
-import heapdump from "heapdump";
 import debug from "debug";
 import http from "http";
 import mongoose from "mongoose";
-
-process.on("uncaughtException", (err) => {
-  // We use console.error here because your custom logger might not be initialized yet.
-  console.error("FATAL UNCAUGHT EXCEPTION! Writing heapdump before exit...");
-  console.error(err);
-
-  try {
-    // Synchronously write the heap snapshot.
-    const filename = `./crash-${Date.now()}.heapsnapshot`;
-    heapdump.writeSnapshot(filename);
-    console.error(`Heapdump successfully written to ${filename}`);
-  } catch (heapErr) {
-    console.error("Error writing heapdump:", heapErr);
-  }
-
-  // It is critical to exit. The application is in an unstable state.
-  process.exit(1);
-});
 import { app, logger } from "./app";
 import { config } from "./config";
-import { startDiscordBot } from "./discord";
 import { connectDB } from "./database";
+import { startDiscordBot } from "./discord";
 import { startWebSocket } from "./websocket";
 
 const debugLogger = debug("tpl-express-pro:server");
@@ -113,11 +94,11 @@ if (!process.env.JEST_WORKER_ID) {
     process.on("unhandledRejection", (reason, promise) => {
       logger.error("Unhandled Rejection at:", { promise, reason });
     });
-    // process.on("uncaughtException", (error) => {
-    //   logger.error("Uncaught Exception:", error);
-    //   logger.info("Attempting graceful shutdown due to uncaught exception...");
-    //   process.exit(1);
-    // });
+    process.on("uncaughtException", (error) => {
+      logger.error("Uncaught Exception:", error);
+      logger.info("Attempting graceful shutdown due to uncaught exception...");
+      process.exit(1);
+    });
 
     try {
       await connectDB(logger);

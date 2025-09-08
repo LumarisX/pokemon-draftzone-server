@@ -25,6 +25,7 @@ import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
 import { UserRoutes } from "./routes/user.route";
+import { logMemoryUsage } from "./middleware/memoryLogger";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -126,6 +127,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(logMemoryUsage);
 
 app.use(morgan(config.NODE_ENV === "development" ? "dev" : "common"));
 export const ROUTES: { [path: string]: Route } = {
