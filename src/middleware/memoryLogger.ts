@@ -9,6 +9,7 @@ export function logMemoryUsage(
 
   const startUsage = process.memoryUsage();
   console.log("--- MEMORY USAGE (START) ---");
+  console.log(`PID: ${process.pid}`);
   for (const [key, value] of Object.entries(startUsage)) {
     console.log(`${key}: ${Math.round((value / 1024 / 1024) * 100) / 100} MB`);
   }
@@ -20,6 +21,7 @@ export function logMemoryUsage(
     );
     const endUsage = process.memoryUsage();
     console.log("--- MEMORY USAGE (END) ---");
+    console.log(`PID: ${process.pid}`);
     for (const [key, value] of Object.entries(endUsage)) {
       console.log(
         `${key}: ${Math.round((value / 1024 / 1024) * 100) / 100} MB`
