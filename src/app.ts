@@ -128,7 +128,7 @@ app.use(
   })
 );
 
-app.use(logMemoryUsage);
+// app.use(logMemoryUsage);
 
 app.use(morgan(config.NODE_ENV === "development" ? "dev" : "common"));
 export const ROUTES: { [path: string]: Route } = {
