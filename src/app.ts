@@ -10,6 +10,7 @@ import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import { config } from "./config";
+import { loggingContext } from "./middleware/loggingContext";
 import { Route } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
@@ -99,12 +100,17 @@ app.set("view engine", "pug");
 app.set("trust proxy", true);
 
 app.use(helmet());
+app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
+app.use(express.json());
+
+app.use(loggingContext);
 
 app.use(
   mongoSanitize({
     replaceWith: "_",
     onSanitize: ({ req, key }: { req: Request; key: string }) => {
-      logger.warn(`Request field sanitized`, {
+      req.logger.warn(`Request field sanitized`, {
         key,
         path: req.originalUrl,
         ip: req.ip,
@@ -112,10 +118,6 @@ app.use(
     },
   })
 );
-
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.json());
 
 const allowedOrigins = [
   "https://dqptrox2bn9qw.cloudfront.net",
@@ -138,7 +140,14 @@ app.use(
   })
 );
 
-// app.use(logMemoryUsage);
+// Morgan setup for router logging
+morgan.token("id", (req: Request) => req.id);
+morgan.token(
+  "user-id",
+  (req: Request) => req.auth?.payload?.sub || "unauthenticated"
+);
+morgan.token("body-length", (req: Request) => req.bodyLength.toString());
+morgan.token("body-hash", (req: Request) => req.bodyHash);
 
 const morganJSONFormat = (
   tokens: morgan.TokenIndexer<Request, Response>,
@@ -146,6 +155,8 @@ const morganJSONFormat = (
   res: Response
 ) => {
   return JSON.stringify({
+    "request-id": tokens.id(req, res),
+    "user-id": tokens["user-id"](req, res),
     "remote-address": tokens["remote-addr"](req, res),
     "remote-user": tokens["remote-user"](req, res),
     "http-version": tokens["http-version"](req, res),
@@ -154,6 +165,8 @@ const morganJSONFormat = (
     status: tokens.status(req, res),
     "response-time": tokens["response-time"](req, res, "ms"),
     "content-length": tokens.res(req, res, "content-length"),
+    "request-body-length": tokens["body-length"](req, res),
+    "request-body-hash": tokens["body-hash"](req, res),
     referrer: tokens.referrer(req, res),
     "user-agent": tokens["user-agent"](req, res),
   });
@@ -166,6 +179,7 @@ const routerStream = {
 };
 
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
+
 export const ROUTES: { [path: string]: Route } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
@@ -212,7 +226,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const status = err.status || 500;
   const message = err.message || "Internal Server Error";
 
-  logger.error(`Error processing request`, {
+  req.logger.error(`Error processing request`, {
     status,
     message,
     method: req.method,
