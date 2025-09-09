@@ -5,7 +5,6 @@ import mongoSanitize from "express-mongo-sanitize";
 import fs from "fs";
 import helmet from "helmet";
 import createError from "http-errors";
-import mongoose from "mongoose";
 import morgan from "morgan";
 import path from "path";
 import winston from "winston";
@@ -25,7 +24,6 @@ import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
 import { UserRoutes } from "./routes/user.route";
-import { logMemoryUsage } from "./middleware/memoryLogger";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -47,16 +45,28 @@ export const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.DailyRotateFile({
-      level: "error",
-      filename: path.join(logDir, "error-%DATE%.log"),
+      filename: path.join(logDir, "app-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
       zippedArchive: true,
       maxSize: "20m",
       maxFiles: "14d",
     }),
+  ],
+});
 
+const routerLogger = winston.createLogger({
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ timestamp, message }) => {
+      if (typeof message === "object" && message !== null) {
+        return JSON.stringify({ ...message, timestamp });
+      }
+      return JSON.stringify({ message, timestamp });
+    })
+  ),
+  transports: [
     new winston.transports.DailyRotateFile({
-      filename: path.join(logDir, "combined-%DATE%.log"),
+      filename: path.join(logDir, "router-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
       zippedArchive: true,
       maxSize: "20m",
@@ -130,7 +140,32 @@ app.use(
 
 // app.use(logMemoryUsage);
 
-app.use(morgan(config.NODE_ENV === "development" ? "dev" : "common"));
+const morganJSONFormat = (
+  tokens: morgan.TokenIndexer<Request, Response>,
+  req: Request,
+  res: Response
+) => {
+  return JSON.stringify({
+    "remote-address": tokens["remote-addr"](req, res),
+    "remote-user": tokens["remote-user"](req, res),
+    "http-version": tokens["http-version"](req, res),
+    method: tokens.method(req, res),
+    url: tokens.url(req, res),
+    status: tokens.status(req, res),
+    "response-time": tokens["response-time"](req, res, "ms"),
+    "content-length": tokens.res(req, res, "content-length"),
+    referrer: tokens.referrer(req, res),
+    "user-agent": tokens["user-agent"](req, res),
+  });
+};
+
+const routerStream = {
+  write: (message: string) => {
+    routerLogger.info(JSON.parse(message));
+  },
+};
+
+app.use(morgan(morganJSONFormat, { stream: routerStream }));
 export const ROUTES: { [path: string]: Route } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
