@@ -2,6 +2,7 @@ import { Specie } from "@pkmn/data";
 import fs from "fs";
 import { getBst } from "../classes/specieUtil";
 import { getRuleset } from "./rulesets";
+import eventEmitter from "../event-emitter";
 
 const path = "./src/data/pdbldetails.json";
 
@@ -280,5 +281,8 @@ export function setDrafted(
     tiers: currentDetails.pokemons.flatMap((mon) => mon.toDetails()),
   };
   writeDetails(detailsToSave);
+  cachedDetails = null;
+  eventEmitter.emit("tiersUpdated");
   return foundMon.specie.name;
 }
+

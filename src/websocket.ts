@@ -2,6 +2,9 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Logger } from "winston";
 import { joinRoom, sendMessage } from "./ws-functions/rooms";
+import { getTiers as getTiersRequest } from "./ws-functions/get-tiers";
+import eventEmitter from "./event-emitter";
+import { getTiers } from "./data/pdbl";
 
 export type SocketListener = (...args: any[]) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
@@ -12,6 +15,12 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       origin: "http://localhost:4200",
       methods: ["GET", "POST"],
     },
+    path: "/battlezone/",
+  });
+
+  eventEmitter.on('tiersUpdated', () => {
+    const tiers = getTiers();
+    io.emit('message', { event: 'tiersUpdated', data: tiers });
   });
 
   io.on("connection", (socket) => {
@@ -20,7 +29,14 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     const routes: { [key: string]: WSRoute } = {
       joinRoom,
       sendMessage,
+      getTiers: getTiersRequest,
     };
+
+    socket.on('message', (message: { event: string, id: number, [key: string]: any }) => {
+        if (message && message.event && routes[message.event]) {
+            routes[message.event](io, socket)(message);
+        }
+    });
 
     Object.entries(routes).forEach(([routeName, genFn]) => {
       socket.on(routeName, genFn(io, socket));
