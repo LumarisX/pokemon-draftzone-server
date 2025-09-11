@@ -28,7 +28,7 @@ export const LeagueRoutes: Route = {
           const roles = [];
           if (
             req.auth!.payload.sub! === "google-oauth2|110216442143129521066" ||
-            req.auth!.payload.sub! === "google-oauth2|106690316234920200307"
+            req.auth!.payload.sub! === "oauth2|discord|491431053471383575"
           ) {
             roles.push("organizer");
           }
