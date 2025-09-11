@@ -12,7 +12,7 @@ export type WSRoute = (io: Server, socket: Socket) => SocketListener;
 export function startWebSocket(logger: Logger, server: HttpServer) {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:4200",
+      origin: ["http://localhost:4200", "https://pokemondraftzone.com"],
       methods: ["GET", "POST"],
     },
     path: "/battlezone/",
