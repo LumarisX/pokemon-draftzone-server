@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { startSession } from "mongoose";
-import { jwtCheck, Route, sendError } from ".";
+import { Route, sendError } from ".";
 import { logger } from "../app";
 import { ArchiveOld } from "../classes/archive";
 import { Draft } from "../classes/draft";
@@ -24,6 +24,7 @@ import {
   getMatchupsByDraftId,
   updateMatchup,
 } from "../services/database-services/matchup.service";
+import { jwtCheck } from "../middleware/jwtcheck";
 
 type MatchupResponse = DraftResponse & {
   matchup?: Matchup;

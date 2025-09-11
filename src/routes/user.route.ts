@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { jwtCheck, Route, sendError } from ".";
+import { Route, sendError } from ".";
 import { getManagementToken } from "../services/auth0-services/auth0-service";
+import { jwtCheck } from "../middleware/jwtcheck";
 
 export const UserRoutes: Route = {
   middleware: [jwtCheck],

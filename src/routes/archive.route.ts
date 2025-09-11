@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
-import { jwtCheck, Route } from ".";
+import { Route } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { ArchiveModel } from "../models/archive.model";
 import { DraftDocument } from "../models/draft.model";
 import { MatchupDocument } from "../models/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
+import { jwtCheck } from "../middleware/jwtcheck";
 
 export type ArchiveResponse = Response & {
   rawArchive?: DraftDocument | null;

@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
-import { jwtCheck, Route, sendError } from ".";
+import { Route, sendError } from ".";
 import { PDBLModel } from "../models/pdbl.model";
 import { BattleZone } from "../classes/battlezone";
 import { client } from "../discord";
 import { TextChannel } from "discord.js";
+import { jwtCheck } from "../middleware/jwtcheck";
+import { getRoles } from "../services/league-services/league-service";
+import { rolecheck } from "../middleware/rolecheck";
 
 const routeCode = "LR";
 
@@ -25,28 +28,30 @@ export const LeagueRoutes: Route = {
     "/:league_id/roles": {
       get: async function (req: Request, res: Response) {
         try {
-          const roles = [];
-          if (
-            req.auth!.payload.sub! === "google-oauth2|110216442143129521066" ||
-            req.auth!.payload.sub! === "oauth2|discord|491431053471383575"
-          ) {
-            roles.push("organizer");
-          }
-          res.json(roles);
+          res.json(getRoles(req.auth?.payload.sub));
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R1-01`);
         }
       },
       middleware: [jwtCheck],
     },
-
+    "/:league_id/setdraft": {
+      post: async function (req: Request, res: Response) {
+        try {
+          return res.status(201).json({ message: "Draft set successfully." });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck, rolecheck("organizer")],
+    },
     "/:league_id/signup": {
       get: async function (req: Request, res: Response) {
         try {
           const responses = await PDBLModel.find();
           res.json(responses);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-01`);
+          return sendError(res, 500, error as Error, `${routeCode}-R1-03`);
         }
       },
       post: async (req: Request, res: Response) => {

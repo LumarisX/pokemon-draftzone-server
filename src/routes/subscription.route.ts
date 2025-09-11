@@ -1,9 +1,10 @@
-import { jwtCheck, Route } from ".";
+import { Route } from ".";
 import webPush from "web-push";
 import {
   PushSubscriptionModel,
   IPushSubscriptionDoc,
 } from "../models/push-subscription.model";
+import { jwtCheck } from "../middleware/jwtcheck";
 export const PushSubscriptionRoutes: Route = {
   middleware: [jwtCheck],
   subpaths: {

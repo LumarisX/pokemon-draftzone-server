@@ -1,8 +1,6 @@
 import { Handler, Request, RequestParamHandler, Response } from "express";
-import { auth } from "express-oauth2-jwt-bearer";
 import { EventEmitter } from "stream";
 import WebSocket from "ws";
-import { config } from "../config";
 import { logger } from "../app";
 
 export type Route = {
@@ -29,12 +27,6 @@ export type Route = {
     [value: string]: RequestParamHandler;
   };
 };
-
-export const jwtCheck = auth({
-  audience: config.AUTH0_AUDIENCE,
-  issuerBaseURL: config.AUTH0_ISSUER,
-  tokenSigningAlg: "RS256",
-});
 
 export function sendError(
   res: Response,

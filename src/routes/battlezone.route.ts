@@ -1,10 +1,11 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
-import { jwtCheck, type Route } from ".";
+import { type Route } from ".";
 import { BattleZone } from "../classes/battlezone";
 import { getTiers } from "../data/pdbl";
 import { PDBLModel } from "../models/pdbl.model";
 import { client } from "../discord";
+import { jwtCheck } from "../middleware/jwtcheck";
 
 export const BattleZoneRoutes: Route = {
   subpaths: {
