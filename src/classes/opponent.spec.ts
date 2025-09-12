@@ -1,9 +1,9 @@
-import { Opponent, getMatchesScore } from "./opponent";
-import { getRuleset, Ruleset } from "../data/rulesets";
-import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { MatchData } from "../models/matchup.model";
-import { Types } from "mongoose";
 import { ID } from "@pkmn/data";
+import { Types } from "mongoose";
+import { getRuleset, Ruleset } from "../data/rulesets";
+import { MatchData } from "../models/draft/matchup.model";
+import { getMatchesScore, Opponent } from "./opponent";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 describe("Opponent", () => {
   const ruleset: Ruleset = getRuleset("Gen9 NatDex");
@@ -17,15 +17,11 @@ describe("Opponent", () => {
 
   const matchData: MatchData = {
     aTeam: {
-      stats: [
-        ["absol", { brought: 1, deaths: 0, kills: 1 }],
-      ],
+      stats: [["absol", { brought: 1, deaths: 0, kills: 1 }]],
       score: 0,
     },
     bTeam: {
-      stats: [
-        ["absol", { brought: 1, deaths: 1, kills: 0 }],
-      ],
+      stats: [["absol", { brought: 1, deaths: 1, kills: 0 }]],
       score: 0,
     },
     winner: "a",

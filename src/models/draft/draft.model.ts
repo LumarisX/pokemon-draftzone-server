@@ -1,7 +1,7 @@
 import { Document, model, Schema, Types } from "mongoose";
-import { FormatId } from "../data/formats";
-import { RulesetId } from "../data/rulesets";
-import { PokemonData, pokemonSchema } from "./pokemon.schema";
+import { FormatId } from "../../data/formats";
+import { RulesetId } from "../../data/rulesets";
+import { PokemonData, pokemonSchema } from "../pokemon.schema";
 
 const draftSchema = new Schema<DraftData>(
   {

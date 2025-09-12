@@ -4,7 +4,7 @@ import { Route, sendError } from ".";
 import { logger } from "../app";
 import { Matchup } from "../classes/matchup";
 import { getRuleset, Ruleset } from "../data/rulesets";
-import { MatchupData, MatchupDocument } from "../models/matchup.model";
+import { MatchupData, MatchupDocument } from "../models/draft/matchup.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
   deleteMatchup,

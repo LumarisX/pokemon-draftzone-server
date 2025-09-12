@@ -1,8 +1,12 @@
 import { ID, toID } from "@pkmn/data";
 import { LRUCache } from "lru-cache";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { Ruleset } from "../../data/rulesets";
-import { DraftData, DraftDocument, DraftModel } from "../../models/draft.model";
+import {
+  DraftData,
+  DraftDocument,
+  DraftModel,
+} from "../../models/draft/draft.model";
 import { getName } from "../data-services/pokedex.service";
 import { getMatchupsByDraftId } from "./matchup.service";
 

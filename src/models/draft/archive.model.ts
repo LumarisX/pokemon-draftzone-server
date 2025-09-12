@@ -1,7 +1,7 @@
 import { ID } from "@pkmn/data";
 import mongoose, { Document } from "mongoose";
-import { FormatId } from "../data/formats";
-import { RulesetId } from "../data/rulesets";
+import { FormatId } from "../../data/formats";
+import { RulesetId } from "../../data/rulesets";
 
 const statsSchema = new mongoose.Schema(
   {

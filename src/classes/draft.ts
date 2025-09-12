@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 import { Format, getFormat } from "../data/formats";
 import { Ruleset, getRuleset } from "../data/rulesets";
-import { DraftData } from "../models/draft.model";
-import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { MatchupDocument } from "../models/matchup.model";
+import { DraftData } from "../models/draft/draft.model";
+import { MatchupDocument } from "../models/draft/matchup.model";
 import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 export class Draft {
   constructor(

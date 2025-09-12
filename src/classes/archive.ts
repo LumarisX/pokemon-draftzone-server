@@ -5,9 +5,9 @@ import {
   ArchiveData,
   ArchiveDocument,
   ArchiveModel,
-} from "../models/archive.model";
-import { DraftData } from "../models/draft.model";
-import { MatchData, MatchStatData } from "../models/matchup.model";
+} from "../models/draft/archive.model";
+import { DraftData } from "../models/draft/draft.model";
+import { MatchData, MatchStatData } from "../models/draft/matchup.model";
 import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
 
 export class ArchiveOld {

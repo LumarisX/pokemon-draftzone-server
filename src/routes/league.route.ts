@@ -7,6 +7,7 @@ import { TextChannel } from "discord.js";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { getRoles } from "../services/league-services/league-service";
 import { rolecheck } from "../middleware/rolecheck";
+import { setDrafted } from "../data/pdbl";
 
 const routeCode = "LR";
 
@@ -38,6 +39,8 @@ export const LeagueRoutes: Route = {
     "/:league_id/setdraft": {
       post: async function (req: Request, res: Response) {
         try {
+          console.log(req.body);
+          setDrafted(req.body["pokemonId"], "Attack", true);
           return res.status(201).json({ message: "Draft set successfully." });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R1-02`);

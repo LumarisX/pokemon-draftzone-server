@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { Route } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
-import { ArchiveModel } from "../models/archive.model";
-import { DraftDocument } from "../models/draft.model";
-import { MatchupDocument } from "../models/matchup.model";
-import { getName } from "../services/data-services/pokedex.service";
 import { jwtCheck } from "../middleware/jwtcheck";
+import { ArchiveModel } from "../models/draft/archive.model";
+import { DraftDocument } from "../models/draft/draft.model";
+import { MatchupDocument } from "../models/draft/matchup.model";
+import { getName } from "../services/data-services/pokedex.service";
 
 export type ArchiveResponse = Response & {
   rawArchive?: DraftDocument | null;

@@ -3,8 +3,9 @@ import { Types } from "mongoose";
 import { PZError } from "..";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
-import { DraftDocument } from "../models/draft.model";
-import { MatchData, MatchupData } from "../models/matchup.model";
+import { DraftDocument } from "../models/draft/draft.model";
+import { MatchData, MatchupData } from "../models/draft/matchup.model";
+import { getDraft } from "../services/database-services/draft.service";
 import {
   Coveragechart,
   coveragechart,
@@ -22,7 +23,6 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { getDraft } from "../services/database-services/draft.service";
 
 export type MatchupTeam = {
   teamName: string;

@@ -1,13 +1,50 @@
 {
   "tierGroups": [
-    { "tiers": ["Ban"], "label": "" },
-    { "tiers": ["12", "11", "10"], "label": "Tera Banned" },
-    { "tiers": ["9", "8", "7"], "label": "1 Tera Type" },
-    { "tiers": ["6", "5", "4"], "label": "2 Tera Types" },
-    { "tiers": ["3", "2", "1"], "label": "3 Tera Types" }
+    {
+      "label": "",
+      "tiers": [
+        "Ban"
+      ]
+    },
+    {
+      "label": "Tera Banned",
+      "tiers": [
+        "12",
+        "11",
+        "10"
+      ]
+    },
+    {
+      "label": "1 Tera Type",
+      "tiers": [
+        "9",
+        "8",
+        "7"
+      ]
+    },
+    {
+      "label": "2 Tera Types",
+      "tiers": [
+        "6",
+        "5",
+        "4"
+      ]
+    },
+    {
+      "label": "3 Tera Types",
+      "tiers": [
+        "3",
+        "2",
+        "1"
+      ]
+    }
   ],
   "banned": {
-    "moves": ["Last Respects", "Shed Tail", "Revival Blessing"],
+    "moves": [
+      "Last Respects",
+      "Shed Tail",
+      "Revival Blessing"
+    ],
     "abilities": [
       "Moody",
       "Sand Veil",
@@ -17,7 +54,10 @@
       "Power Construct"
     ]
   },
-  "divisions": ["Attack", "Defense"],
+  "divisions": [
+    "Attack",
+    "Defense"
+  ],
   "tiers": [
     {
       "name": "abomasnow",
@@ -269,6 +309,11 @@
     },
     {
       "name": "articuno",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -365,6 +410,11 @@
     },
     {
       "name": "beartic",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -409,10 +459,20 @@
     },
     {
       "name": "bibarel",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "2"
     },
     {
       "name": "bidoof",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -557,10 +617,20 @@
     },
     {
       "name": "cacnea",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "cacturne",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -621,6 +691,9 @@
     },
     {
       "name": "celebi",
+      "drafted": [
+        "Attack"
+      ],
       "tier": "8"
     },
     {
@@ -641,6 +714,11 @@
     },
     {
       "name": "cetoddle",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -785,6 +863,9 @@
     },
     {
       "name": "cobalion",
+      "drafted": [
+        "Attack"
+      ],
       "tier": "10"
     },
     {
@@ -869,6 +950,9 @@
     },
     {
       "name": "cresselia",
+      "drafted": [
+        "Attack"
+      ],
       "tier": "10"
     },
     {
@@ -897,6 +981,11 @@
     },
     {
       "name": "cubchoo",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -993,6 +1082,9 @@
     },
     {
       "name": "deoxysdefense",
+      "drafted": [
+        "Attack"
+      ],
       "tier": "12"
     },
     {
@@ -1037,10 +1129,21 @@
     },
     {
       "name": "diglett",
+      "banned": {
+        "abilities": [
+          "Sand Veil",
+          "Arena Trap"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "diglettalola",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -1069,6 +1172,11 @@
     },
     {
       "name": "donphan",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "10"
     },
     {
@@ -1165,10 +1273,21 @@
     },
     {
       "name": "dugtrio",
+      "banned": {
+        "abilities": [
+          "Sand Veil",
+          "Arena Trap"
+        ]
+      },
       "tier": "5"
     },
     {
       "name": "dugtrioalola",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -1469,6 +1588,11 @@
     },
     {
       "name": "froslass",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -1489,6 +1613,11 @@
     },
     {
       "name": "gabite",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "4"
     },
     {
@@ -1509,6 +1638,11 @@
     },
     {
       "name": "garchomp",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "Ban"
     },
     {
@@ -1545,10 +1679,20 @@
     },
     {
       "name": "gengarmega",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "Ban"
     },
     {
       "name": "geodude",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -1561,6 +1705,11 @@
     },
     {
       "name": "gible",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -1585,10 +1734,20 @@
     },
     {
       "name": "glaceon",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "2"
     },
     {
       "name": "glalie",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -1605,6 +1764,11 @@
     },
     {
       "name": "gligar",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -1617,6 +1781,11 @@
     },
     {
       "name": "gliscor",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "Ban"
     },
     {
@@ -1641,6 +1810,11 @@
     },
     {
       "name": "golem",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -1681,14 +1855,29 @@
     },
     {
       "name": "gothita",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "gothitelle",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "8"
     },
     {
       "name": "gothorita",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -1725,6 +1914,11 @@
     },
     {
       "name": "graveler",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -1865,10 +2059,20 @@
     },
     {
       "name": "heliolisk",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "8"
     },
     {
       "name": "helioptile",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -2253,6 +2457,11 @@
     },
     {
       "name": "larvitar",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -2481,6 +2690,11 @@
     },
     {
       "name": "mamoswine",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "11"
     },
     {
@@ -2684,7 +2898,7 @@
       "tier": "1"
     },
     {
-      "name": "miniorred",
+      "name": "minior",
       "tier": "6"
     },
     {
@@ -2804,11 +3018,11 @@
       "tier": "Ban"
     },
     {
-      "name": "necrozmadawn",
+      "name": "necrozmadawnwings",
       "tier": "Ban"
     },
     {
-      "name": "necrozmadusk",
+      "name": "necrozmaduskmane",
       "tier": "Ban"
     },
     {
@@ -2857,6 +3071,11 @@
     },
     {
       "name": "ninetalesalola",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "10"
     },
     {
@@ -2897,6 +3116,11 @@
     },
     {
       "name": "octillery",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -2969,6 +3193,11 @@
     },
     {
       "name": "orthworm",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -2997,6 +3226,11 @@
     },
     {
       "name": "palossand",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -3081,6 +3315,11 @@
     },
     {
       "name": "phanpy",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -3133,6 +3372,11 @@
     },
     {
       "name": "piloswine",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "7"
     },
     {
@@ -3401,6 +3645,11 @@
     },
     {
       "name": "remoraid",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -3537,6 +3786,11 @@
     },
     {
       "name": "sandaconda",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -3545,22 +3799,47 @@
     },
     {
       "name": "sandshrew",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "sandshrewalola",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "sandslash",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "3"
     },
     {
       "name": "sandslashalola",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "4"
     },
     {
       "name": "sandygast",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -3605,6 +3884,11 @@
     },
     {
       "name": "scovillain",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "5"
     },
     {
@@ -3685,10 +3969,10 @@
     },
     {
       "name": "shedinja",
-      "tier": "2",
       "banned": {
         "tera": true
-      }
+      },
+      "tier": "2"
     },
     {
       "name": "shelgon",
@@ -3748,6 +4032,11 @@
     },
     {
       "name": "silicobra",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -3944,6 +4233,11 @@
     },
     {
       "name": "smeargle",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "3"
     },
     {
@@ -3980,6 +4274,11 @@
     },
     {
       "name": "snorunt",
+      "banned": {
+        "abilities": [
+          "Moody"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4112,6 +4411,11 @@
     },
     {
       "name": "stunfisk",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "6"
     },
     {
@@ -4172,6 +4476,11 @@
     },
     {
       "name": "swinub",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4239,15 +4548,15 @@
       "tier": "5"
     },
     {
-      "name": "taurospaldea",
+      "name": "taurospaldeacombat",
       "tier": "4"
     },
     {
-      "name": "taurospaldeafire",
+      "name": "taurospaldeablaze",
       "tier": "7"
     },
     {
-      "name": "taurospaldeawater",
+      "name": "taurospaldeaaqua",
       "tier": "8"
     },
     {
@@ -4396,6 +4705,11 @@
     },
     {
       "name": "trapinch",
+      "banned": {
+        "abilities": [
+          "Arena Trap"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -4508,10 +4822,20 @@
     },
     {
       "name": "vanillish",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
       "name": "vanillite",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4616,6 +4940,11 @@
     },
     {
       "name": "vulpixalola",
+      "banned": {
+        "abilities": [
+          "Snow Cloak"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4688,6 +5017,11 @@
     },
     {
       "name": "wiglett",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4704,6 +5038,11 @@
     },
     {
       "name": "wobbuffet",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -4740,6 +5079,11 @@
     },
     {
       "name": "wugtrio",
+      "banned": {
+        "abilities": [
+          "Sand Veil"
+        ]
+      },
       "tier": "2"
     },
     {
@@ -4748,6 +5092,11 @@
     },
     {
       "name": "wynaut",
+      "banned": {
+        "abilities": [
+          "Shadow Tag"
+        ]
+      },
       "tier": "1"
     },
     {
@@ -4872,14 +5221,29 @@
     },
     {
       "name": "zygarde",
+      "banned": {
+        "abilities": [
+          "Power Construct"
+        ]
+      },
       "tier": "Ban"
     },
     {
       "name": "zygarde10",
+      "banned": {
+        "abilities": [
+          "Power Construct"
+        ]
+      },
       "tier": "7"
     },
     {
       "name": "zygardecomplete",
+      "banned": {
+        "abilities": [
+          "Power Construct"
+        ]
+      },
       "tier": "Ban"
     }
   ]

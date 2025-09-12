@@ -1,10 +1,10 @@
-import {
-  MatchupModel,
-  MatchupDocument,
-  MatchupData,
-} from "../../models/matchup.model";
 import { LRUCache } from "lru-cache";
 import { Types } from "mongoose";
+import {
+  MatchupData,
+  MatchupDocument,
+  MatchupModel,
+} from "../../models/draft/matchup.model";
 
 const $matchupsByDraft = new LRUCache<string, MatchupDocument[]>({
   max: 100,

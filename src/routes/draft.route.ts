@@ -7,8 +7,9 @@ import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
 import { getRuleset, Ruleset } from "../data/rulesets";
-import { DraftData, DraftDocument } from "../models/draft.model";
-import { MatchupData, MatchupDocument } from "../models/matchup.model";
+import { jwtCheck } from "../middleware/jwtcheck";
+import { DraftData, DraftDocument } from "../models/draft/draft.model";
+import { MatchupData, MatchupDocument } from "../models/draft/matchup.model";
 import {
   createDraft,
   deleteDraft,
@@ -24,7 +25,6 @@ import {
   getMatchupsByDraftId,
   updateMatchup,
 } from "../services/database-services/matchup.service";
-import { jwtCheck } from "../middleware/jwtcheck";
 
 type MatchupResponse = DraftResponse & {
   matchup?: Matchup;

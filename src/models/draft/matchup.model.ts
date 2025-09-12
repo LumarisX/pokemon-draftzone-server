@@ -1,5 +1,5 @@
 import { Document, model, Schema, Types } from "mongoose";
-import { PokemonData, pokemonSchema } from "./pokemon.schema";
+import { PokemonData, pokemonSchema } from "../pokemon.schema";
 
 const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
   {

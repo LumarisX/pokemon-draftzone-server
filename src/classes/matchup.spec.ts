@@ -1,16 +1,16 @@
-import { Score, GameTime, Matchup } from "./matchup";
+import { ID } from "@pkmn/data";
+import { Types } from "mongoose";
 import { getFormat } from "../data/formats";
 import { getRuleset } from "../data/rulesets";
+import { MatchupData } from "../models/draft/matchup.model";
 import * as draftService from "../services/database-services/draft.service";
-import { Types } from "mongoose";
-import { MatchupData } from "../models/matchup.model";
-import { Draft } from "./draft";
-import { Opponent } from "./opponent";
-import { PokemonFormData } from "./pokemon";
-import { ID } from "@pkmn/data";
 import * as coverageService from "../services/matchup-services/coverage.service";
 import * as movechartService from "../services/matchup-services/movechart.service";
 import * as speedchartService from "../services/matchup-services/speedchart.service";
+import { Draft } from "./draft";
+import { GameTime, Matchup, Score } from "./matchup";
+import { Opponent } from "./opponent";
+import { PokemonFormData } from "./pokemon";
 
 jest.mock("../services/database-services/draft.service");
 jest.mock("../services/matchup-services/coverage.service");
@@ -56,11 +56,17 @@ describe("Matchup", () => {
       format: "Singles",
       ruleset: "Gen9 NatDex",
       side1: {
-        team: [{ id: "pikachu" as ID, name: "Pikachu" }, { id: "charizard" as ID, name: "Charizard" }],
+        team: [
+          { id: "pikachu" as ID, name: "Pikachu" },
+          { id: "charizard" as ID, name: "Charizard" },
+        ],
         teamName: "Team 1",
       },
       side2: {
-        team: [{ id: "mewtwo" as ID, name: "Mewtwo" }, { id: "mew" as ID, name: "Mew" }],
+        team: [
+          { id: "mewtwo" as ID, name: "Mewtwo" },
+          { id: "mew" as ID, name: "Mew" },
+        ],
         teamName: "Team 2",
       },
     };
@@ -159,7 +165,10 @@ describe("Matchup", () => {
 
     (coverageService.coveragechart as jest.Mock).mockResolvedValue([]);
     (movechartService.movechart as jest.Mock).mockResolvedValue([]);
-    (speedchartService.speedchart as jest.Mock).mockReturnValue({ list: [], tiers: [] });
+    (speedchartService.speedchart as jest.Mock).mockReturnValue({
+      list: [],
+      tiers: [],
+    });
 
     const analysis = await matchup.analyze();
 
@@ -184,14 +193,38 @@ describe("Score", () => {
           winner: "a" as "a" | "b" | "",
           aTeam: {
             team: [
-              { pokemon: { id: "pikachu" }, kills: 1, fainted: 0, indirect: 0, brought: 1 },
-              { pokemon: { id: "charizard" }, kills: 0, fainted: 1, indirect: 0, brought: 1 },
+              {
+                pokemon: { id: "pikachu" },
+                kills: 1,
+                fainted: 0,
+                indirect: 0,
+                brought: 1,
+              },
+              {
+                pokemon: { id: "charizard" },
+                kills: 0,
+                fainted: 1,
+                indirect: 0,
+                brought: 1,
+              },
             ],
           },
           bTeam: {
             team: [
-              { pokemon: { id: "mewtwo" }, kills: 1, fainted: 0, indirect: 0, brought: 1 },
-              { pokemon: { id: "mew" }, kills: 0, fainted: 1, indirect: 0, brought: 1 },
+              {
+                pokemon: { id: "mewtwo" },
+                kills: 1,
+                fainted: 0,
+                indirect: 0,
+                brought: 1,
+              },
+              {
+                pokemon: { id: "mew" },
+                kills: 0,
+                fainted: 1,
+                indirect: 0,
+                brought: 1,
+              },
             ],
           },
         },
@@ -201,10 +234,16 @@ describe("Score", () => {
     const score = new Score(scoreData);
     const processedScore = await score.processScore();
 
-    expect(processedScore.aTeamPaste).toBe("https://pokepast.es/1234567890abcdef");
-    expect(processedScore.bTeamPaste).toBe("https://pokepast.es/fedcba0987654321");
+    expect(processedScore.aTeamPaste).toBe(
+      "https://pokepast.es/1234567890abcdef"
+    );
+    expect(processedScore.bTeamPaste).toBe(
+      "https://pokepast.es/fedcba0987654321"
+    );
     expect(processedScore.matches.length).toBe(1);
-    expect(processedScore.matches[0].replay).toBe("https://replay.pokemonshowdown.com/gen9vgc2023-1234567890");
+    expect(processedScore.matches[0].replay).toBe(
+      "https://replay.pokemonshowdown.com/gen9vgc2023-1234567890"
+    );
     expect(processedScore.matches[0].winner).toBe("a");
     expect(processedScore.matches[0].aTeam.stats.length).toBe(2);
     expect(processedScore.matches[0].bTeam.stats.length).toBe(2);
@@ -222,12 +261,24 @@ describe("Score", () => {
           winner: "" as "a" | "b" | "",
           aTeam: {
             team: [
-              { pokemon: { id: "pikachu" }, kills: 0, fainted: 0, indirect: 0, brought: 0 },
+              {
+                pokemon: { id: "pikachu" },
+                kills: 0,
+                fainted: 0,
+                indirect: 0,
+                brought: 0,
+              },
             ],
           },
           bTeam: {
             team: [
-              { pokemon: { id: "mewtwo" }, kills: 0, fainted: 0, indirect: 0, brought: 0 },
+              {
+                pokemon: { id: "mewtwo" },
+                kills: 0,
+                fainted: 0,
+                indirect: 0,
+                brought: 0,
+              },
             ],
           },
         },

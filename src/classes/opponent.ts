@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { Ruleset } from "../data/rulesets";
+import { MatchData } from "../models/draft/matchup.model";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { MatchData } from "../models/matchup.model";
 
 export class Opponent {
   constructor(
