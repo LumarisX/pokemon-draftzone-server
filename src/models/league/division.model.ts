@@ -1,11 +1,5 @@
 import mongoose, { Schema, Types } from "mongoose";
 import { DRAFT_TEAM_COLLECTION, DraftTeamDocument } from "./team.model";
-import {
-  DRAFT_TIER_LIST_COLLECTION,
-  DraftTierGroup,
-  DraftTierGroupSchema,
-  DraftTierListDocument,
-} from "./tier-list.model";
 
 export const LEAGUE_DIVISION_COLLECTION = "LeagueDivision";
 
@@ -23,17 +17,11 @@ export type DraftEventLog = {
 export type LeagueDivision = {
   name: string;
   teams: (Types.ObjectId | DraftTeamDocument)[];
-  draftOrder: (Types.ObjectId | DraftTeamDocument)[];
   timerOn: boolean;
   timerLength: number;
   draftStyle: "snake" | "linear";
   status: "PRE_DRAFT" | "IN_PROGRESS" | "COMPLETED";
   eventLog: DraftEventLog[];
-  sourceTierList?: Types.ObjectId | DraftTierListDocument;
-  activeTierList: {
-    tierGroups: DraftTierGroup[];
-  };
-  rules: DraftRule[];
 };
 
 export type LeagueDivisionDocument = Document &
@@ -70,14 +58,6 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
         timestamp: { type: Date, default: Date.now },
       },
     ],
-    sourceTierList: {
-      type: Schema.Types.ObjectId,
-      ref: DRAFT_TIER_LIST_COLLECTION,
-    },
-    activeTierList: {
-      tierGroups: [DraftTierGroupSchema],
-    },
-    rules: [DraftRuleSchema],
   },
   { timestamps: true }
 );

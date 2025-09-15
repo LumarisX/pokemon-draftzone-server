@@ -2,7 +2,7 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Logger } from "winston";
 import eventEmitter from "./event-emitter";
-import { getTierListTemplate } from "./services/league-services/league-service";
+import { getTierList } from "./services/league-services/league-service";
 import { JsonRpcRequest, sendError } from "./services/websocket.service";
 import { getTiers as getTiersRequest } from "./ws-functions/league";
 
@@ -18,10 +18,10 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     path: "/battlezone/",
   });
 
-  eventEmitter.on("tiersUpdated", async () => {
-    const tiers = await getTierListTemplate();
-    io.emit("message", { event: "tiersUpdated", data: tiers });
-  });
+  // eventEmitter.on("tiersUpdated", async () => {
+  //   const tiers = await getTierList();
+  //   io.emit("message", { event: "tiersUpdated", data: tiers });
+  // });
 
   io.on("connection", (socket) => {
     logger.info(`New WebSocket client connected: ${socket.id}`);

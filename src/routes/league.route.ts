@@ -7,8 +7,9 @@ import { TextChannel } from "discord.js";
 import mongoose, { Types } from "mongoose";
 import { jwtCheck } from "../middleware/jwtcheck";
 import {
+  getDrafted,
   getRoles,
-  getTierListTemplate,
+  getTierList,
 } from "../services/league-services/league-service";
 import { rolecheck } from "../middleware/rolecheck";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
@@ -67,8 +68,9 @@ export const LeagueRoutes: Route = {
     "/:league_id/tier-list": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
-          const tiers = await getTierListTemplate();
-          res.json(tiers);
+          const tierList = await getTierList(res.league!);
+          const divisions = await getDrafted(res.league!);
+          res.json({ tierList, divisions });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
         }

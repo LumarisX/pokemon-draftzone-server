@@ -1,7 +1,10 @@
 import { Specie } from "@pkmn/data";
 import { getBst } from "../../classes/specieUtil";
-import tierListTemplateModel from "../../models/league/tier-list.model";
+import tierListModel from "../../models/league/tier-list.model";
 import { getRuleset } from "../../data/rulesets";
+import { League, LeagueDocument } from "../../models/league/league.model";
+import { LeagueDivisionDocument } from "../../models/league/division.model";
+import { DraftTeamDocument } from "../../models/league/team.model";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
@@ -149,18 +152,16 @@ type TierDetail = {
   drafted?: string[];
 } & ({ tier: string } | { ref: string });
 
-export async function getTierListTemplate() {
-  const template = await tierListTemplateModel.findById(
-    "68c79d489e421c33de3d2b4f"
-  );
+export async function getTierList(league: League) {
+  const tierList = await tierListModel.findById(league.tierList);
 
-  if (!template) {
+  if (!tierList) {
     return null;
   }
 
   const tiers: TierList.Tier[] = [];
 
-  const tierGroups = template.tierGroups.map((groupDetails) => {
+  const tierGroups = tierList.tierGroups.map((groupDetails) => {
     const tierGroup = new TierList.TierGroup(groupDetails.name);
     groupDetails.tiers.forEach((tierDetails) => {
       const tier = new TierList.Tier(tierDetails.name, tiers.length);
@@ -179,4 +180,28 @@ export async function getTierListTemplate() {
   });
 
   return tierGroups.map((tg) => tg.toJSON());
+}
+
+export async function getDrafted(league: LeagueDocument): Promise<{
+  [key: string]: { pokemonId: string }[];
+}> {
+  const divisions: { [key: string]: { pokemonId: string }[] } = {};
+
+  await league.populate({
+    path: "divisions",
+    populate: {
+      path: "teams",
+    },
+  });
+
+  for (const division of league.divisions as LeagueDivisionDocument[]) {
+    divisions[division.name] = [];
+    for (const team of division.teams as DraftTeamDocument[]) {
+      for (const pick of team.picks) {
+        divisions[division.name].push({ pokemonId: pick.pokemonId });
+      }
+    }
+  }
+
+  return divisions;
 }

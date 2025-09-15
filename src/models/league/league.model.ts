@@ -4,6 +4,10 @@ import {
   LeagueDivisionDocument,
 } from "./division.model";
 import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
+import {
+  DRAFT_TIER_LIST_COLLECTION,
+  DraftTierListDocument,
+} from "./tier-list.model";
 
 export const LEAGUE_COLLECTION = "League";
 
@@ -19,6 +23,7 @@ export type League = {
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
   owner: Types.ObjectId | LeagueUserDocument;
   organizers: (Types.ObjectId | LeagueUserDocument)[];
+  tierList: Types.ObjectId | DraftTierListDocument;
   rules: LeagueRule[];
 };
 
@@ -47,6 +52,10 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
     },
     organizers: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
     rules: [LeagueRuleSchema],
+    tierList: {
+      type: Schema.Types.ObjectId,
+      ref: DRAFT_TIER_LIST_COLLECTION,
+    },
   },
   { timestamps: true }
 );
