@@ -6,7 +6,10 @@ import { client } from "../discord";
 import { TextChannel } from "discord.js";
 import mongoose, { Types } from "mongoose";
 import { jwtCheck } from "../middleware/jwtcheck";
-import { getRoles } from "../services/league-services/league-service";
+import {
+  getRoles,
+  getTierListTemplate,
+} from "../services/league-services/league-service";
 import { rolecheck } from "../middleware/rolecheck";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
 import { logger } from "../app";
@@ -19,6 +22,8 @@ import DraftTeamModel, {
   DraftTeamDocument,
   DraftPick,
 } from "../models/league/team.model";
+import { setDrafted } from "../data/pdbl";
+import eventEmitter from "../event-emitter";
 
 const routeCode = "LR";
 
@@ -59,6 +64,17 @@ export const LeagueRoutes: Route = {
         }
       },
     },
+    "/:league_id/tier-list": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const tiers = await getTierListTemplate();
+          res.json(tiers);
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+    },
+
     "/:league_id/:division_id/picks": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
@@ -196,6 +212,8 @@ export const LeagueRoutes: Route = {
           } as DraftPick);
 
           await team.save();
+
+          eventEmitter.emit("tiersUpdated");
 
           return res
             .status(200)
