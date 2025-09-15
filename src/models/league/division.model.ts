@@ -1,13 +1,18 @@
 import mongoose, { Schema, Types } from "mongoose";
 import { DRAFT_TEAM_COLLECTION, DraftTeamDocument } from "./team.model";
 import {
-  DRAFT_TIER_LIST_TEMPLATE_COLLECTION,
+  DRAFT_TIER_LIST_COLLECTION,
   DraftTierGroup,
   DraftTierGroupSchema,
-  DraftTierListTemplateDocument,
-} from "./tier-list-template.model";
+  DraftTierListDocument,
+} from "./tier-list.model";
 
-export const LEAGUE_DRAFT_COLLECTION = "LeagueDraft";
+export const LEAGUE_DIVISION_COLLECTION = "LeagueDivision";
+
+export type DraftRule = {
+  header: string;
+  details: string;
+};
 
 export type DraftEventLog = {
   eventType: "PICK" | "SKIP" | "TIMER_START" | "TIMER_PAUSE";
@@ -15,49 +20,37 @@ export type DraftEventLog = {
   timestamp: Date;
 };
 
-export type DraftPick = {
-  pickNumber: number;
-  team: Types.ObjectId | DraftTeamDocument;
-  pokemon?: string;
-  tier?: string;
-  isSkipped: boolean;
-  timestamp: Date;
-};
-
-export type LeagueDraftDocument = Document & {
+export type LeagueDivision = {
   name: string;
+  teams: (Types.ObjectId | DraftTeamDocument)[];
+  draftOrder: (Types.ObjectId | DraftTeamDocument)[];
   timerOn: boolean;
   timerLength: number;
   draftStyle: "snake" | "linear";
   status: "PRE_DRAFT" | "IN_PROGRESS" | "COMPLETED";
-  participatingTeams: (Types.ObjectId | DraftTeamDocument)[];
-  picks: DraftPick[];
   eventLog: DraftEventLog[];
-  sourceTierListTemplate?: Types.ObjectId | DraftTierListTemplateDocument;
+  sourceTierList?: Types.ObjectId | DraftTierListDocument;
   activeTierList: {
     tierGroups: DraftTierGroup[];
   };
+  rules: DraftRule[];
 };
 
-const DraftPickSchema: Schema<DraftPick> = new Schema(
+export type LeagueDivisionDocument = Document &
+  LeagueDivision & { _id: Types.ObjectId };
+
+const DraftRuleSchema: Schema<DraftRule> = new Schema(
   {
-    pickNumber: { type: Number, required: true },
-    team: {
-      type: Schema.Types.ObjectId,
-      ref: DRAFT_TEAM_COLLECTION,
-      required: true,
-    },
-    pokemon: { type: String },
-    tier: { type: String },
-    isSkipped: { type: Boolean, default: false },
-    timestamp: { type: Date, default: Date.now },
+    header: { type: String, required: true },
+    details: { type: String, required: true },
   },
   { _id: false }
 );
 
-const LeagueDraftSchema: Schema<LeagueDraftDocument> = new Schema(
+const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   {
     name: { type: String, required: true },
+    teams: [{ type: Schema.Types.ObjectId, ref: DRAFT_TEAM_COLLECTION }],
     timerOn: { type: Boolean, default: true },
     timerLength: { type: Number, default: 90 },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
@@ -66,10 +59,7 @@ const LeagueDraftSchema: Schema<LeagueDraftDocument> = new Schema(
       enum: ["PRE_DRAFT", "IN_PROGRESS", "COMPLETED"],
       default: "PRE_DRAFT",
     },
-    participatingTeams: [
-      { type: Schema.Types.ObjectId, ref: DRAFT_TEAM_COLLECTION },
-    ],
-    picks: [DraftPickSchema],
+
     eventLog: [
       {
         eventType: {
@@ -80,18 +70,19 @@ const LeagueDraftSchema: Schema<LeagueDraftDocument> = new Schema(
         timestamp: { type: Date, default: Date.now },
       },
     ],
-    sourceTierListTemplate: {
+    sourceTierList: {
       type: Schema.Types.ObjectId,
-      ref: DRAFT_TIER_LIST_TEMPLATE_COLLECTION,
+      ref: DRAFT_TIER_LIST_COLLECTION,
     },
     activeTierList: {
       tierGroups: [DraftTierGroupSchema],
     },
+    rules: [DraftRuleSchema],
   },
   { timestamps: true }
 );
 
-export default mongoose.model<LeagueDraftDocument>(
-  LEAGUE_DRAFT_COLLECTION,
-  LeagueDraftSchema
+export default mongoose.model<LeagueDivisionDocument>(
+  LEAGUE_DIVISION_COLLECTION,
+  LeagueDivisionSchema
 );

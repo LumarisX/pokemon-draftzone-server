@@ -1,31 +1,52 @@
-import { DraftTeamDocument, DRAFT_TEAM_COLLECTION } from "./team.model";
-import { LeagueUserDocument, LEAGUE_USER_COLLECTION } from "./user.model";
-import { LeagueDraftDocument, LEAGUE_DRAFT_COLLECTION } from "./draft.model";
-import mongoose, { Types, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
+import {
+  LEAGUE_DIVISION_COLLECTION,
+  LeagueDivisionDocument,
+} from "./division.model";
+import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
 
 export const LEAGUE_COLLECTION = "League";
 
-export type LeagueDocument = Document & {
+export type LeagueRule = {
+  header: string;
+  details: string[];
+};
+
+export type League = {
   name: string;
   description?: string;
-  teams: (Types.ObjectId | DraftTeamDocument)[];
   coaches: (Types.ObjectId | LeagueUserDocument)[];
-  drafts: (Types.ObjectId | LeagueDraftDocument)[];
-  commissioner: Types.ObjectId | LeagueUserDocument;
+  divisions: (Types.ObjectId | LeagueDivisionDocument)[];
+  owner: Types.ObjectId | LeagueUserDocument;
+  organizers: (Types.ObjectId | LeagueUserDocument)[];
+  rules: LeagueRule[];
 };
+
+export type LeagueDocument = Document & League & { _id: Types.ObjectId };
+
+const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
+  {
+    header: { type: String, required: true },
+    details: [{ type: String }],
+  },
+  { _id: false }
+);
 
 const LeagueSchema: Schema<LeagueDocument> = new Schema(
   {
     name: { type: String, required: true },
     description: { type: String },
-    teams: [{ type: Schema.Types.ObjectId, ref: DRAFT_TEAM_COLLECTION }],
     coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
-    drafts: [{ type: Schema.Types.ObjectId, ref: LEAGUE_DRAFT_COLLECTION }],
-    commissioner: {
+    divisions: [
+      { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
+    ],
+    owner: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_USER_COLLECTION,
       required: true,
     },
+    organizers: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
+    rules: [LeagueRuleSchema],
   },
   { timestamps: true }
 );

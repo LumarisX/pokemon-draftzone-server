@@ -2,9 +2,9 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Logger } from "winston";
 import { joinRoom, sendMessage } from "./ws-functions/rooms";
-import { getTiers as getTiersRequest } from "./ws-functions/get-tiers";
+import { getTiers as getTiersRequest } from "./ws-functions/league";
 import eventEmitter from "./event-emitter";
-import { getTiers } from "./data/pdbl";
+import { getTierListTemplate } from "./services/league-services/league-service";
 
 export type SocketListener = (...args: any[]) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
@@ -18,9 +18,9 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     path: "/battlezone/",
   });
 
-  eventEmitter.on('tiersUpdated', () => {
-    const tiers = getTiers();
-    io.emit('message', { event: 'tiersUpdated', data: tiers });
+  eventEmitter.on("tiersUpdated", async () => {
+    const tiers = await getTierListTemplate();
+    io.emit("message", { event: "tiersUpdated", data: tiers });
   });
 
   io.on("connection", (socket) => {
@@ -32,11 +32,14 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       getTiers: getTiersRequest,
     };
 
-    socket.on('message', (message: { event: string, id: number, [key: string]: any }) => {
+    socket.on(
+      "message",
+      (message: { event: string; id: number; [key: string]: any }) => {
         if (message && message.event && routes[message.event]) {
-            routes[message.event](io, socket)(message);
+          routes[message.event](io, socket)(message);
         }
-    });
+      }
+    );
 
     Object.entries(routes).forEach(([routeName, genFn]) => {
       socket.on(routeName, genFn(io, socket));

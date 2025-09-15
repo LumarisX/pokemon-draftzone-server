@@ -1,7 +1,7 @@
 import mongoose, { Schema, Types } from "mongoose";
 import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
 
-export const DRAFT_TIER_LIST_TEMPLATE_COLLECTION = "DraftTierListTemplate";
+export const DRAFT_TIER_LIST_COLLECTION = "DraftTierList";
 
 export type DraftTier = {
   name: string;
@@ -16,15 +16,19 @@ export type DraftTierGroup = {
   tiers: DraftTier[];
 };
 
-export type DraftTierListTemplateDocument = Document & {
+export type DraftTierList = {
   name: string;
   description?: string;
   createdBy: Types.ObjectId | LeagueUserDocument;
   tierGroups: DraftTierGroup[];
   bannedMoves: string[];
   bannedAbilities: string[];
-  divisions: string[];
+  points: number;
+  draftCount: [number, number];
 };
+
+export type DraftTierListDocument = Document &
+  DraftTierList & { _id: Types.ObjectId };
 
 export const DraftTierSchema: Schema<DraftTier> = new Schema(
   {
@@ -45,25 +49,25 @@ export const DraftTierGroupSchema: Schema<DraftTierGroup> = new Schema(
   { _id: false }
 );
 
-const DraftTierListTemplateSchema: Schema<DraftTierListTemplateDocument> =
-  new Schema(
-    {
-      name: { type: String, required: true },
-      description: { type: String },
-      createdBy: {
-        type: Schema.Types.ObjectId,
-        ref: LEAGUE_USER_COLLECTION,
-        required: true,
-      },
-      tierGroups: [DraftTierGroupSchema],
-      bannedMoves: [{ type: String }],
-      bannedAbilities: [{ type: String }],
-      divisions: [{ type: String }],
+const DraftTierListSchema: Schema<DraftTierListDocument> = new Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_USER_COLLECTION,
+      required: true,
     },
-    { timestamps: true }
-  );
+    tierGroups: [DraftTierGroupSchema],
+    bannedMoves: [{ type: String }],
+    bannedAbilities: [{ type: String }],
+    points: { type: Number },
+    draftCount: [{ type: Number }],
+  },
+  { timestamps: true }
+);
 
-export default mongoose.model<DraftTierListTemplateDocument>(
-  DRAFT_TIER_LIST_TEMPLATE_COLLECTION,
-  DraftTierListTemplateSchema
+export default mongoose.model<DraftTierListDocument>(
+  DRAFT_TIER_LIST_COLLECTION,
+  DraftTierListSchema
 );

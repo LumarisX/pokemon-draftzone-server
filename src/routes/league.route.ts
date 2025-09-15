@@ -4,15 +4,29 @@ import { PDBLModel } from "../models/pdbl.model";
 import { BattleZone } from "../classes/battlezone";
 import { client } from "../discord";
 import { TextChannel } from "discord.js";
+import mongoose, { Types } from "mongoose";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { getRoles } from "../services/league-services/league-service";
 import { rolecheck } from "../middleware/rolecheck";
-import { setDrafted } from "../data/pdbl";
+import LeagueModel, { LeagueDocument } from "../models/league/league.model";
+import { logger } from "../app";
+import LeagueDivisionModel from "../models/league/division.model";
+import LeagueUserModel, {
+  LeagueUser,
+  LeagueUserDocument,
+} from "../models/league/user.model";
+import DraftTeamModel, {
+  DraftTeamDocument,
+  DraftPick,
+} from "../models/league/team.model";
 
 const routeCode = "LR";
 
+type LeagueResponse = Response & {
+  league?: LeagueDocument | null;
+};
+
 export const LeagueRoutes: Route = {
-  middleware: [jwtCheck],
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
@@ -36,12 +50,156 @@ export const LeagueRoutes: Route = {
       },
       middleware: [jwtCheck],
     },
-    "/:league_id/setdraft": {
-      post: async function (req: Request, res: Response) {
+    "/:league_id/rules": {
+      get: async function (req: Request, res: LeagueResponse) {
         try {
-          console.log(req.body);
-          setDrafted(req.body["pokemonId"], "Attack", true);
-          return res.status(201).json({ message: "Draft set successfully." });
+          res.json(res.league!.rules);
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+    },
+    "/:league_id/:division_id/picks": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { division_id } = req.params;
+
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found."),
+              `${routeCode}-R3-01`
+            );
+          }
+
+          if (!res.league.divisions.some((d) => d.toString() === division_id)) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found in this league."),
+              `${routeCode}-R3-02`
+            );
+          }
+
+          const divisions = await LeagueDivisionModel.findById(
+            division_id
+          ).populate<{
+            teams: (DraftTeamDocument & {
+              picks: Types.DocumentArray<
+                DraftPick & { picker: LeagueUserDocument }
+              >;
+              coaches: LeagueUserDocument[];
+            })[];
+          }>({
+            path: "teams",
+            populate: [
+              {
+                path: "picks.picker",
+                model: "LeagueUser",
+              },
+              {
+                path: "coaches",
+                model: "LeagueUser",
+              },
+            ],
+          });
+
+          if (!divisions) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found."),
+              `${routeCode}-R3-03`
+            );
+          }
+
+          const allPicks = divisions.teams.map((team) => {
+            return {
+              name: team.name,
+              picks: team.picks.map((pick) => ({
+                pokemonId: pick.pokemonId,
+                timestamp: pick.timestamp,
+                picker: (pick.picker as LeagueUser).auth0Id,
+              })),
+              id: team._id.toString(),
+            };
+          });
+
+          res.json(allPicks);
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+        }
+      },
+    },
+    "/:league_id/setdraft": {
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { divisionId, pokemonId, teamId } = req.body;
+
+          if (!divisionId || !pokemonId || !teamId) {
+            return res.status(400).json({
+              message: "Missing required fields: divisionId, pokemonId, teamId",
+            });
+          }
+
+          // const leagueUser: LeagueUserDocument | null =
+          //   await LeagueUserModel.findOne({
+          //     auth0Id: req.auth!.payload.sub!,
+          //   });
+          // if (!leagueUser) {
+          //   return res.status(403).json({ message: "User not found." });
+          // }
+
+          if (!res.league!.divisions.some((d) => d.toString() === divisionId)) {
+            return res
+              .status(404)
+              .json({ message: "Division not found in this league." });
+          }
+
+          const division = await LeagueDivisionModel.findById(
+            divisionId
+          ).populate<{ teams: DraftTeamDocument[] }>("teams");
+
+          if (!division) {
+            return res.status(404).json({ message: "Division not found." });
+          }
+
+          const team = await DraftTeamModel.findById(teamId);
+
+          if (!team) {
+            return res.status(404).json({ message: "Team not found." });
+          }
+
+          if (!division.teams.some((t) => t._id.equals(team._id))) {
+            return res
+              .status(404)
+              .json({ message: "Team not found in this division." });
+          }
+
+          const isAlreadyDrafted = division.teams.some((t) =>
+            t.picks.some((p) => p.pokemonId === pokemonId)
+          );
+
+          if (isAlreadyDrafted) {
+            return res
+              .status(409)
+              .json({ message: "Pokemon has already been drafted." });
+          }
+
+          team.picks.push({
+            pokemonId: pokemonId,
+            // picker: leagueUser._id,
+            picker: new mongoose.Types.ObjectId(),
+            timestamp: new Date(),
+            isSkipped: false,
+          } as DraftPick);
+
+          await team.save();
+
+          return res
+            .status(200)
+            .json({ message: "Draft pick set successfully." });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
         }
@@ -101,12 +259,28 @@ export const LeagueRoutes: Route = {
     },
   },
   params: {
-    league_id: async function (req: Request, res: Response, next, league_id) {
+    league_id: async function (
+      req: Request,
+      res: LeagueResponse,
+      next,
+      league_id
+    ) {
       try {
+        const league = await LeagueModel.findOne({
+          name: "Pokemon Draftzone Battle League S2",
+        });
+        if (!league) {
+          logger.error(`League ID not found: ${league_id}`);
+          return res.status(404).json({
+            message: "League ID not found.",
+            code: `${routeCode}-P1-02`,
+          });
+        }
+        res.league = league;
+        next();
       } catch (error) {
         return sendError(res, 500, error as Error, `DR-P2-02`);
       }
-      next();
     },
   },
 };
