@@ -1,24 +1,28 @@
 import mongoose, { Types, Schema, Document } from "mongoose";
 import { LeagueUserDocument, LEAGUE_USER_COLLECTION } from "./user.model";
 
-export const DRAFT_TEAM_COLLECTION = "DraftTeam";
+export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 
-export type DraftPick = {
+export type TeamDraft = {
   timestamp: Date;
   pokemonId: string;
   picker: Types.ObjectId | LeagueUserDocument;
 };
 
-export type DraftTeam = {
+export type TeamPicks = {};
+
+export type LeagueTeam = {
   name: string;
   logoUrl?: string;
   coaches: (Types.ObjectId | LeagueUserDocument)[];
-  picks: DraftPick[];
+  picks: TeamPicks[];
+  draft: TeamDraft[];
 };
 
-export type DraftTeamDocument = Document & DraftTeam & { _id: Types.ObjectId };
+export type LeagueTeamDocument = Document &
+  LeagueTeam & { _id: Types.ObjectId };
 
-const DraftPickSchema: Schema<DraftPick> = new Schema(
+const TeamDraftSchema: Schema<TeamDraft> = new Schema(
   {
     pokemonId: {
       type: String,
@@ -33,15 +37,17 @@ const DraftPickSchema: Schema<DraftPick> = new Schema(
   },
   { _id: false }
 );
+const TeamPicksSchema: Schema<TeamPicks> = new Schema({}, { _id: false });
 
-const DraftTeamSchema: Schema<DraftTeamDocument> = new Schema({
+const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   name: { type: String, required: true },
   logoUrl: { type: String },
   coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
-  picks: [DraftPickSchema],
+  picks: [TeamPicksSchema],
+  draft: [TeamDraftSchema],
 });
 
-export default mongoose.model<DraftTeamDocument>(
-  DRAFT_TEAM_COLLECTION,
-  DraftTeamSchema
+export default mongoose.model<LeagueTeamDocument>(
+  LEAGUE_TEAM_COLLECTION,
+  LeagueTeamSchema
 );

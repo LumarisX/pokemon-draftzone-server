@@ -8,6 +8,7 @@ import {
   DRAFT_TIER_LIST_COLLECTION,
   DraftTierListDocument,
 } from "./tier-list.model";
+import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
 
 export const LEAGUE_COLLECTION = "League";
 
@@ -25,6 +26,7 @@ export type League = {
   organizers: (Types.ObjectId | LeagueUserDocument)[];
   tierList: Types.ObjectId | DraftTierListDocument;
   rules: LeagueRule[];
+  teams: (Types.ObjectId | LeagueTeamDocument)[];
 };
 
 export type LeagueDocument = Document & League & { _id: Types.ObjectId };
@@ -56,6 +58,7 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
       type: Schema.Types.ObjectId,
       ref: DRAFT_TIER_LIST_COLLECTION,
     },
+    teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
   },
   { timestamps: true }
 );

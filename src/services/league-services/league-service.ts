@@ -4,7 +4,7 @@ import tierListModel from "../../models/league/tier-list.model";
 import { getRuleset } from "../../data/rulesets";
 import { League, LeagueDocument } from "../../models/league/league.model";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
-import { DraftTeamDocument } from "../../models/league/team.model";
+import { LeagueTeamDocument } from "../../models/league/team.model";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
@@ -196,9 +196,9 @@ export async function getDrafted(league: LeagueDocument): Promise<{
 
   for (const division of league.divisions as LeagueDivisionDocument[]) {
     divisions[division.name] = [];
-    for (const team of division.teams as DraftTeamDocument[]) {
-      for (const pick of team.picks) {
-        divisions[division.name].push({ pokemonId: pick.pokemonId });
+    for (const team of division.teams as LeagueTeamDocument[]) {
+      for (const draft of team.draft) {
+        divisions[division.name].push({ pokemonId: draft.pokemonId });
       }
     }
   }

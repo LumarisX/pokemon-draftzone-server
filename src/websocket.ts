@@ -1,8 +1,6 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { Logger } from "winston";
-import eventEmitter from "./event-emitter";
-import { getTierList } from "./services/league-services/league-service";
 import { JsonRpcRequest, sendError } from "./services/websocket.service";
 import { getTiers as getTiersRequest } from "./ws-functions/league";
 

@@ -1,30 +1,30 @@
+import { TextChannel } from "discord.js";
 import { Request, Response } from "express";
+import mongoose, { Types } from "mongoose";
 import { Route, sendError } from ".";
-import { PDBLModel } from "../models/pdbl.model";
+import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
 import { client } from "../discord";
-import { TextChannel } from "discord.js";
-import mongoose, { Types } from "mongoose";
+import eventEmitter from "../event-emitter";
 import { jwtCheck } from "../middleware/jwtcheck";
+import { rolecheck } from "../middleware/rolecheck";
+import LeagueDivisionModel from "../models/league/division.model";
+import LeagueModel, { LeagueDocument } from "../models/league/league.model";
+import LeagueTeamModel, {
+  LeagueTeamDocument,
+  TeamDraft,
+  TeamPicks,
+} from "../models/league/team.model";
+import { DraftTierListDocument } from "../models/league/tier-list.model";
+import { LeagueUser, LeagueUserDocument } from "../models/league/user.model";
+import { PDBLModel } from "../models/pdbl.model";
 import {
   getDrafted,
   getRoles,
   getTierList,
 } from "../services/league-services/league-service";
-import { rolecheck } from "../middleware/rolecheck";
-import LeagueModel, { LeagueDocument } from "../models/league/league.model";
-import { logger } from "../app";
-import LeagueDivisionModel from "../models/league/division.model";
-import LeagueUserModel, {
-  LeagueUser,
-  LeagueUserDocument,
-} from "../models/league/user.model";
-import DraftTeamModel, {
-  DraftTeamDocument,
-  DraftPick,
-} from "../models/league/team.model";
-import { setDrafted } from "../data/pdbl";
-import eventEmitter from "../event-emitter";
+import { getPokemonTier } from "../services/league-services/tier-service";
+import { sendNotification } from "../services/websocket.service";
 
 const routeCode = "LR";
 
@@ -77,6 +77,84 @@ export const LeagueRoutes: Route = {
       },
     },
 
+    // "/:league_id/teams": {
+    //   get: async function (req: Request, res: LeagueResponse) {
+    //     try {
+    //       await res.league!.populate<{
+    //         tierList: DraftTierListDocument;
+    //       }>("tierList");
+    //       const tierList = res.league!.tierList as DraftTierListDocument;
+
+    //       const draft = await Promise.all(
+    //         team.draft.map(async (draftItem) => {
+    //           const tier = await getPokemonTier(
+    //             res.league!,
+    //             draftItem.pokemonId
+    //           );
+    //           return { id: draftItem.pokemonId, tier };
+    //         })
+    //       );
+
+    //       const picks: TeamPicks[] = [];
+    //       for (let i = 0; i < tierList.draftCount[1] - draft.length; i++) {
+    //         picks.push(team.picks[i] ?? []);
+    //       }
+    //       res.json({
+    //         name: team.name,
+    //         logoUrl: team.logoUrl,
+    //         draft,
+    //         picks,
+    //       });
+    //     } catch (error) {
+    //       return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+    //     }
+    //   },
+    // },
+
+    "/:league_id/teams/:team_id": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const team = await LeagueTeamModel.findById(req.params["team_id"]!);
+          if (!team) {
+            return sendError(
+              res,
+              404,
+              new Error("Team not found."),
+              `${routeCode}-R2-02`
+            );
+          }
+
+          await res.league!.populate<{
+            tierList: DraftTierListDocument;
+          }>("tierList");
+          const tierList = res.league!.tierList as DraftTierListDocument;
+
+          const draft = await Promise.all(
+            team.draft.map(async (draftItem) => {
+              const tier = await getPokemonTier(
+                res.league!,
+                draftItem.pokemonId
+              );
+              return { id: draftItem.pokemonId, tier };
+            })
+          );
+
+          const picks: TeamPicks[] = [];
+          for (let i = 0; i < tierList.draftCount[1] - draft.length; i++) {
+            picks.push(team.picks[i] ?? []);
+          }
+          res.json({
+            name: team.name,
+            logoUrl: team.logoUrl,
+            draft,
+            picks,
+          });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+    },
+
     "/:league_id/:division_id/picks": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
@@ -103,9 +181,9 @@ export const LeagueRoutes: Route = {
           const divisions = await LeagueDivisionModel.findById(
             division_id
           ).populate<{
-            teams: (DraftTeamDocument & {
+            teams: (LeagueTeamDocument & {
               picks: Types.DocumentArray<
-                DraftPick & { picker: LeagueUserDocument }
+                TeamDraft & { picker: LeagueUserDocument }
               >;
               coaches: LeagueUserDocument[];
             })[];
@@ -113,7 +191,7 @@ export const LeagueRoutes: Route = {
             path: "teams",
             populate: [
               {
-                path: "picks.picker",
+                path: "draft.picker",
                 model: "LeagueUser",
               },
               {
@@ -135,10 +213,10 @@ export const LeagueRoutes: Route = {
           const allPicks = divisions.teams.map((team) => {
             return {
               name: team.name,
-              picks: team.picks.map((pick) => ({
-                pokemonId: pick.pokemonId,
-                timestamp: pick.timestamp,
-                picker: (pick.picker as LeagueUser).auth0Id,
+              picks: team.draft.map((draft) => ({
+                pokemonId: draft.pokemonId,
+                timestamp: draft.timestamp,
+                picker: (draft.picker as LeagueUser).auth0Id,
               })),
               id: team._id.toString(),
             };
@@ -177,13 +255,13 @@ export const LeagueRoutes: Route = {
 
           const division = await LeagueDivisionModel.findById(
             divisionId
-          ).populate<{ teams: DraftTeamDocument[] }>("teams");
+          ).populate<{ teams: LeagueTeamDocument[] }>("teams");
 
           if (!division) {
             return res.status(404).json({ message: "Division not found." });
           }
 
-          const team = await DraftTeamModel.findById(teamId);
+          const team = await LeagueTeamModel.findById(teamId);
 
           if (!team) {
             return res.status(404).json({ message: "Team not found." });
@@ -196,7 +274,7 @@ export const LeagueRoutes: Route = {
           }
 
           const isAlreadyDrafted = division.teams.some((t) =>
-            t.picks.some((p) => p.pokemonId === pokemonId)
+            t.draft.some((p) => p.pokemonId === pokemonId)
           );
 
           if (isAlreadyDrafted) {
@@ -205,17 +283,15 @@ export const LeagueRoutes: Route = {
               .json({ message: "Pokemon has already been drafted." });
           }
 
-          team.picks.push({
+          team.draft.push({
             pokemonId: pokemonId,
             // picker: leagueUser._id,
-            picker: new mongoose.Types.ObjectId(),
+            //TODO: Make this dynamic
+            picker: team.coaches[0]._id,
             timestamp: new Date(),
-            isSkipped: false,
-          } as DraftPick);
+          });
 
           await team.save();
-
-          eventEmitter.emit("tiersUpdated");
 
           return res
             .status(200)

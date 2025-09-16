@@ -1,5 +1,5 @@
 import mongoose, { Schema, Types } from "mongoose";
-import { DRAFT_TEAM_COLLECTION, DraftTeamDocument } from "./team.model";
+import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
 
 export const LEAGUE_DIVISION_COLLECTION = "LeagueDivision";
 
@@ -16,7 +16,7 @@ export type DraftEventLog = {
 
 export type LeagueDivision = {
   name: string;
-  teams: (Types.ObjectId | DraftTeamDocument)[];
+  teams: (Types.ObjectId | LeagueTeamDocument)[];
   timerOn: boolean;
   timerLength: number;
   draftStyle: "snake" | "linear";
@@ -38,7 +38,7 @@ const DraftRuleSchema: Schema<DraftRule> = new Schema(
 const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   {
     name: { type: String, required: true },
-    teams: [{ type: Schema.Types.ObjectId, ref: DRAFT_TEAM_COLLECTION }],
+    teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     timerOn: { type: Boolean, default: true },
     timerLength: { type: Number, default: 90 },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
