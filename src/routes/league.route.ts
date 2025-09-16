@@ -1,6 +1,6 @@
 import { TextChannel } from "discord.js";
 import { Request, Response } from "express";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { Route, sendError } from ".";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
@@ -24,7 +24,6 @@ import {
   getTierList,
 } from "../services/league-services/league-service";
 import { getPokemonTier } from "../services/league-services/tier-service";
-import { sendNotification } from "../services/websocket.service";
 
 const routeCode = "LR";
 
@@ -293,6 +292,15 @@ export const LeagueRoutes: Route = {
 
           await team.save();
 
+          eventEmitter.emit("draft.added", {
+            leagueId: res.league!._id.toString(),
+            pick: {
+              pokemonId,
+              teamId,
+              division: division.name,
+            },
+          });
+
           return res
             .status(200)
             .json({ message: "Draft pick set successfully." });
@@ -362,9 +370,7 @@ export const LeagueRoutes: Route = {
       league_id
     ) {
       try {
-        const league = await LeagueModel.findOne({
-          name: "Pokemon Draftzone Battle League S2",
-        });
+        const league = await LeagueModel.findById(league_id);
         if (!league) {
           logger.error(`League ID not found: ${league_id}`);
           return res.status(404).json({

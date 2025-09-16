@@ -1,4 +1,4 @@
-import { Socket } from "socket.io";
+import { Server, Socket } from "socket.io";
 
 export type JsonRpcRequest<TParams = any> = {
   jsonrpc: "2.0";
@@ -65,4 +65,26 @@ export const sendNotification = <TParams = any>(
     params,
   };
   socket.emit("message", notification);
+};
+
+export const subscribeToLeague = (socket: Socket, leagueId: string) => {
+  socket.join(leagueId);
+};
+
+export const unsubscribeFromLeague = (socket: Socket, leagueId: string) => {
+  socket.leave(leagueId);
+};
+
+export const sendLeagueNotification = <TParams = any>(
+  io: Server,
+  leagueId: string,
+  event: string,
+  data?: TParams
+) => {
+  const notification = {
+    event,
+    data,
+  };
+  console.log(`Sending notification to league ${leagueId}:`, notification);
+  io.to(leagueId).emit("message", notification);
 };
