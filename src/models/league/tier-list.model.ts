@@ -25,6 +25,8 @@ export type DraftTierList = {
   bannedAbilities: string[];
   points: number;
   draftCount: [number, number];
+  format: string;
+  ruleset: string;
 };
 
 export type DraftTierListDocument = Document &
@@ -63,6 +65,8 @@ const DraftTierListSchema: Schema<DraftTierListDocument> = new Schema(
     bannedAbilities: [{ type: String }],
     points: { type: Number },
     draftCount: [{ type: Number }],
+    format: { type: String, required: true },
+    ruleset: { type: String, required: true },
   },
   { timestamps: true }
 );

@@ -19,6 +19,7 @@ export type LeagueRule = {
 
 export type League = {
   name: string;
+  leagueId: string;
   description?: string;
   coaches: (Types.ObjectId | LeagueUserDocument)[];
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
@@ -42,6 +43,7 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
 const LeagueSchema: Schema<LeagueDocument> = new Schema(
   {
     name: { type: String, required: true },
+    leagueId: { type: String, required: true, unique: true, index: true },
     description: { type: String },
     coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
     divisions: [
