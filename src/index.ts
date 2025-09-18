@@ -6,6 +6,7 @@ import { config } from "./config";
 import { connectDB } from "./database";
 import { startDiscordBot } from "./discord";
 import { startWebSocket } from "./websocket";
+import { agenda } from "./agenda";
 
 const debugLogger = debug("tpl-express-pro:server");
 
@@ -102,6 +103,7 @@ if (!process.env.JEST_WORKER_ID) {
 
     try {
       await connectDB(logger);
+      await agenda.start();
       logger.info("connectDB() promise resolved.");
 
       const port = normalizePort(config.PORT || "9960");

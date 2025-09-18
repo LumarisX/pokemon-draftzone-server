@@ -9,14 +9,11 @@ export type TeamDraft = {
   picker: Types.ObjectId | LeagueUserDocument;
 };
 
-export type TeamPicks = {};
-
 export type LeagueTeam = {
   name: string;
-  teamId: string;
   logoUrl?: string;
   coaches: (Types.ObjectId | LeagueUserDocument)[];
-  picks: TeamPicks[];
+  picks: string[][];
   draft: TeamDraft[];
 };
 
@@ -38,14 +35,12 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
   },
   { _id: false }
 );
-const TeamPicksSchema: Schema<TeamPicks> = new Schema({}, { _id: false });
 
 const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   name: { type: String, required: true },
-  teamId: { type: String, required: true, unique: true, index: true },
   logoUrl: { type: String },
   coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
-  picks: [TeamPicksSchema],
+  picks: [[{ type: String }]],
   draft: [TeamDraftSchema],
 });
 

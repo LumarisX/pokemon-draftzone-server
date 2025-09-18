@@ -4,35 +4,131 @@ import { Types } from "mongoose";
 import { Route, sendError } from ".";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
+import { getRuleset, Ruleset } from "../data/rulesets";
 import { client } from "../discord";
 import eventEmitter from "../event-emitter";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { rolecheck } from "../middleware/rolecheck";
-import LeagueDivisionModel from "../models/league/division.model";
+import LeagueDivisionModel, {
+  LeagueDivisionDocument,
+} from "../models/league/division.model";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
-  TeamPicks,
 } from "../models/league/team.model";
 import { DraftTierListDocument } from "../models/league/tier-list.model";
 import { LeagueUser, LeagueUserDocument } from "../models/league/user.model";
 import { PDBLModel } from "../models/pdbl.model";
+import { getName } from "../services/data-services/pokedex.service";
 import {
   getDrafted,
   getRoles,
   getTierList,
 } from "../services/league-services/league-service";
 import { getPokemonTier } from "../services/league-services/tier-service";
-import { getRuleset, Ruleset } from "../data/rulesets";
-import { getName } from "../services/data-services/pokedex.service";
 
 const routeCode = "LR";
 
 type LeagueResponse = Response & {
   league?: LeagueDocument | null;
+  division?: LeagueDivisionDocument | null;
+  team?: LeagueTeamDocument | null;
   ruleset?: Ruleset | null;
 };
+
+// Helper functions to ensure correct loading order for route params
+async function loadLeagueByKey(req: Request, res: LeagueResponse) {
+  if (res.league) return;
+  const league = await LeagueModel.findOne({
+    leagueKey: req.params.league_key,
+  }).populate<{
+    tierList: DraftTierListDocument;
+  }>("tierList");
+  if (!league) {
+    logger.error(`League Key not found: ${req.params.league_key}`);
+    res.status(404).json({
+      message: "League Key not found.",
+      code: `${routeCode}-P1-02`,
+    });
+    return;
+  }
+  res.league = league;
+  res.ruleset = getRuleset(league.tierList.ruleset);
+}
+
+async function loadLeagueById(req: Request, res: LeagueResponse) {
+  if (res.league) return;
+  const league = await LeagueModel.findById(req.params.league_id).populate<{
+    tierList: DraftTierListDocument;
+  }>("tierList");
+  if (!league) {
+    logger.error(`League ID not found: ${req.params.league_id}`);
+    res.status(404).json({
+      message: "League ID not found.",
+      code: `${routeCode}-P1-02`,
+    });
+    return;
+  }
+  res.league = league;
+  res.ruleset = getRuleset(league.tierList.ruleset);
+}
+
+async function loadDivision(req: Request, res: LeagueResponse) {
+  if (!res.league) {
+    await (req.params.league_key
+      ? loadLeagueByKey(req, res)
+      : loadLeagueById(req, res));
+    if (res.headersSent) return;
+  }
+  if (res.division) return;
+
+  const division_id = req.params.division_id;
+  if (!res.league!.divisions.some((d) => d.toString() === division_id)) {
+    res.status(404).json({ message: "Division not found in this league." });
+    return;
+  }
+
+  const division = await LeagueDivisionModel.findById(division_id).populate<{
+    teams: LeagueTeamDocument[];
+  }>("teams");
+
+  if (!division) {
+    res.status(404).json({ message: "Division not found." });
+    return;
+  }
+
+  res.division = division;
+}
+
+async function loadTeam(req: Request, res: LeagueResponse) {
+  if (req.params.division_id && !res.division) {
+    await loadDivision(req, res);
+    if (res.headersSent) return;
+  } else if (!req.params.division_id && !res.league) {
+    await (req.params.league_key
+      ? loadLeagueByKey(req, res)
+      : loadLeagueById(req, res));
+    if (res.headersSent) return;
+  }
+
+  if (res.team) return;
+
+  const team_id = req.params.team_id;
+  const team = await LeagueTeamModel.findById(team_id);
+
+  if (!team) {
+    res.status(404).json({ message: "Team not found." });
+    return;
+  }
+
+  // This check is only possible if a division is loaded
+  if (res.division && !res.division.teams.some((t) => t._id.equals(team._id))) {
+    res.status(404).json({ message: "Team not found in this division." });
+    return;
+  }
+  res.team = team;
+}
 
 export const LeagueRoutes: Route = {
   subpaths: {
@@ -48,7 +144,7 @@ export const LeagueRoutes: Route = {
         }
       },
     },
-    "/:league_id/roles": {
+    "/:league_key/roles": {
       get: async function (req: Request, res: Response) {
         try {
           res.json(getRoles(req.auth?.payload.sub));
@@ -58,7 +154,7 @@ export const LeagueRoutes: Route = {
       },
       middleware: [jwtCheck],
     },
-    "/:league_id/rules": {
+    "/:league_key/rules": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
           res.json(res.league!.rules);
@@ -67,7 +163,7 @@ export const LeagueRoutes: Route = {
         }
       },
     },
-    "/:league_id/tier-list": {
+    "/:league_key/tier-list": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
           const tierList = await getTierList(res.league!);
@@ -79,7 +175,7 @@ export const LeagueRoutes: Route = {
       },
     },
 
-    // "/:league_id/teams": {
+    // "/:league_key/teams": {
     //   get: async function (req: Request, res: LeagueResponse) {
     //     try {
     //       await res.league!.populate<{
@@ -113,7 +209,7 @@ export const LeagueRoutes: Route = {
     //   },
     // },
 
-    "/:league_id/teams/:team_id": {
+    "/:league_key/teams/:team_id": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
           const team = await LeagueTeamModel.findById(req.params["team_id"]!);
@@ -146,9 +242,20 @@ export const LeagueRoutes: Route = {
             })
           );
 
-          const picks: TeamPicks[] = [];
+          const picks: { id: string; name: string; tier?: string }[][] = [];
           for (let i = 0; i < tierList.draftCount[1] - draft.length; i++) {
-            picks.push(team.picks[i] ?? []);
+            picks.push(
+              await Promise.all(
+                team.picks[i].map(async (pick) => {
+                  const tier = await getPokemonTier(res.league!, pick);
+                  return {
+                    id: pick,
+                    name: getName(pick),
+                    tier,
+                  };
+                }) ?? []
+              )
+            );
           }
           res.json({
             name: team.name,
@@ -162,7 +269,7 @@ export const LeagueRoutes: Route = {
       },
     },
 
-    "/:league_id/:division_id/picks": {
+    "/:league_key/:division_id/picks": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
           const { division_id } = req.params;
@@ -217,17 +324,29 @@ export const LeagueRoutes: Route = {
             );
           }
 
-          const allPicks = divisions.teams.map((team) => {
-            return {
-              name: team.name,
-              picks: team.draft.map((draft) => ({
-                pokemonId: draft.pokemonId,
-                timestamp: draft.timestamp,
-                picker: (draft.picker as LeagueUser).auth0Id,
-              })),
-              id: team._id.toString(),
-            };
-          });
+          const allPicks = await Promise.all(
+            divisions.teams.map(async (team) => {
+              const picks = await Promise.all(
+                team.draft.map(async (draftItem) => ({
+                  pokemon: {
+                    id: draftItem.pokemonId,
+                    name: getName(draftItem.pokemonId),
+                    tier: await getPokemonTier(
+                      res.league!,
+                      draftItem.pokemonId
+                    ),
+                  },
+                  timestamp: draftItem.timestamp,
+                  picker: (draftItem.picker as LeagueUser).auth0Id,
+                }))
+              );
+              return {
+                name: team.name,
+                picks: picks,
+                id: team._id.toString(),
+              };
+            })
+          );
 
           res.json(allPicks);
         } catch (error) {
@@ -235,140 +354,310 @@ export const LeagueRoutes: Route = {
         }
       },
     },
-
-    "/:league_id/division/:division_id/order": {
+    "/:league_key/divisions/:division_id/drafting": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
-          res.json([
-            [
-              {
-                teamName: "Mighty Murkrow",
-                pokemon: { id: "tapukoko", name: "Tapu Koko" },
-              },
-              {
-                teamName: "Montreal Mean Mareanies",
-                pokemon: { id: "dragapult", name: "Dragapult" },
-              },
-              {
-                teamName: "Philadelphia Flygons",
-                pokemon: { id: "latiosmega", name: "Mega Latios" },
-              },
-              {
-                teamName: "London Vespiquens",
-                pokemon: { id: "ironvaliant", name: "Iron Valiant" },
-              },
-              {
-                teamName: "Chicago White Fox",
-                pokemon: { id: "zamazenta", name: "Zamazenta" },
-              },
-              {
-                teamName: "Victorious Vigoroths",
-                pokemon: { id: "landorustherian", name: "Landorus-Therian" },
-              },
-              {
-                teamName: "Alpine Arcanines",
-                pokemon: { id: "tornadustherian", name: "Tornadus-Therian" },
-              },
-              {
-                teamName: "Twinleaf Tatsugiri",
-                pokemon: { id: "tapulele", name: "Tapu Lele" },
-              },
-              {
-                teamName: "Kalos Quagsires",
-                pokemon: { id: "urshifu", name: "Urshifu-Single" },
-              },
-              {
-                teamName: "Tampa T-Chainz",
-                pokemon: { id: "chiyu", name: "Chi-Yu" },
-              },
-              {
-                teamName: `Fitchburg's Sun Chasers`,
-                pokemon: { id: "roaringmoon", name: "Roaring Moon	" },
-              },
-              {
-                teamName: "Deep Sea Duskulls",
-                pokemon: { id: "gholdengo", name: "Gholdengo" },
-              },
-              {
-                teamName: `I like 'em THICC`,
-                status: "Skipped",
-              },
-              {
-                teamName: `Midnight teddy's`,
-                pokemon: { id: "zeraora", name: "Zeraora" },
-              },
-              {
-                teamName: `Chicago Sky Attack`,
-                pokemon: { id: "zygarde", name: "Zygarde" },
-              },
-              {
-                teamName: `Deimos Deoxys`,
-                pokemon: { id: "archaludon", name: "Archaludon" },
-              },
-            ],
-            [
-              {
-                teamName: "Mighty Murkrow",
-              },
-              {
-                teamName: "Montreal Mean Mareanies",
-              },
-              {
-                teamName: "Philadelphia Flygons",
-              },
-              {
-                teamName: "London Vespiquens",
-              },
-              {
-                teamName: "Chicago White Fox",
-              },
-              {
-                teamName: "Victorious Vigoroths",
-              },
-              {
-                teamName: "Alpine Arcanines",
-              },
-              {
-                teamName: "Twinleaf Tatsugiri",
-              },
-              {
-                teamName: "Kalos Quagsires",
-              },
-              {
-                teamName: "Tampa T-Chainz",
-              },
-              {
-                teamName: `Fitchburg's Sun Chasers`,
-              },
-              {
-                teamName: "Deep Sea Duskulls",
-                status: "On Deck",
-              },
-              {
-                teamName: `I like 'em THICC`,
-                status: "Picking",
-              },
-              {
-                teamName: `Midnight teddy's`,
-                pokemon: { id: "infernape", name: "Infernape" },
-              },
-              {
-                teamName: `Chicago Sky Attack`,
-                pokemon: { id: "scizormega", name: "Scizor-Mega" },
-              },
-              {
-                teamName: `Deimos Deoxys`,
-                pokemon: { id: "pelipper", name: "Pelipper" },
-              },
-            ].reverse(),
-          ]);
+          const { division_id } = req.params;
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found."),
+              `${routeCode}-R3-01`
+            );
+          }
+
+          if (!res.league.divisions.some((d) => d.toString() === division_id)) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found in this league."),
+              `${routeCode}-R3-02`
+            );
+          }
+
+          const division = await LeagueDivisionModel.findById(
+            division_id
+          ).populate<{ teams: LeagueTeamDocument[] }>("teams");
+
+          if (!division) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found."),
+              `${routeCode}-R3-03`
+            );
+          }
+
+          const draftStyle = division.draftStyle;
+          const numberOfRounds = (res.league.tierList as DraftTierListDocument)
+            .draftCount[1];
+          const initialTeamOrder = division.teams;
+
+          type DraftPick = {
+            teamName: string;
+            pokemon?: { id: string; name: string };
+            skipTime?: Date;
+          };
+
+          type DraftRound = DraftPick[];
+
+          const draftRounds: DraftRound[] = [];
+
+          for (let round = 0; round < numberOfRounds; round++) {
+            const currentRound: DraftPick[] = [];
+            let pickingOrder = [...initialTeamOrder];
+
+            if (draftStyle === "snake" && round % 2 === 1) {
+              pickingOrder.reverse();
+            }
+
+            for (const [index, team] of pickingOrder.entries()) {
+              const draftPick: DraftPick = { teamName: team.name };
+              if (team.draft[round]) {
+                const pokemonId = team.draft[round].pokemonId;
+                const pokemonName = getName(pokemonId);
+                draftPick.pokemon = { id: pokemonId, name: pokemonName };
+              }
+              // if (
+              //   division.draftCounter ===
+              //   round * pickingOrder.length + index
+              // ) {
+              //   // TODO: remove random for production
+              //   // draftPick.skipTime = division.skipTime
+              //   const now = new Date();
+              //   const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+              //   const randomOffsetMinutes = Math.random() * 20 - 10; // Random number between -10 and +10
+              //   const randomOffsetMilliseconds =
+              //     randomOffsetMinutes * 60 * 1000; // Convert to milliseconds
+              //   draftPick.skipTime = new Date(
+              //     now.getTime() + thirtyMinutes + randomOffsetMilliseconds
+              //   );
+              // }
+              currentRound.push(draftPick);
+            }
+            draftRounds.push(currentRound);
+          }
+
+          const now = new Date();
+          const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+          const randomOffsetMinutes = Math.random() * 20 - 10; // Random number between -10 and +10
+          const randomOffsetMilliseconds = randomOffsetMinutes * 60 * 1000; // Convert to milliseconds
+          const skipTime = new Date(
+            now.getTime() + thirtyMinutes + randomOffsetMilliseconds
+          );
+
+          const teams = await Promise.all(
+            division.teams.map(async (team, index) => {
+              //TODO: Add actual coach check
+              const isCoach = !index;
+              const picks = isCoach
+                ? await Promise.all(
+                    team.picks.map(
+                      async (round) =>
+                        await Promise.all(
+                          round.map(async (pick) => ({
+                            id: pick,
+                            name: getName(pick),
+                            tier: await getPokemonTier(res.league!, pick),
+                          }))
+                        )
+                    )
+                  )
+                : [];
+              const draft = await Promise.all(
+                team.draft.map(async (pick) => ({
+                  id: pick.pokemonId,
+                  name: getName(pick.pokemonId),
+                  tier: await getPokemonTier(res.league!, pick.pokemonId),
+                }))
+              );
+              return {
+                id: team._id,
+                name: team.name,
+                draft,
+                logoUrl: team.logoUrl,
+                isCoach,
+                picks,
+              };
+            })
+          );
+
+          res.json({
+            order: draftRounds,
+            teams: teams,
+            round: division.draftCounter,
+            skipTime,
+            status: division.status,
+          });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
         }
       },
     },
+    "/:league_key/division/:division_id/order": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { division_id } = req.params;
 
-    "/:league_id/setdraft": {
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found."),
+              `${routeCode}-R3-01`
+            );
+          }
+
+          if (!res.league.divisions.some((d) => d.toString() === division_id)) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found in this league."),
+              `${routeCode}-R3-02`
+            );
+          }
+
+          const division = await LeagueDivisionModel.findById(
+            division_id
+          ).populate<{ teams: LeagueTeamDocument[] }>("teams");
+
+          if (!division) {
+            return sendError(
+              res,
+              404,
+              new Error("Division not found."),
+              `${routeCode}-R3-03`
+            );
+          }
+
+          const draftStyle = division.draftStyle;
+          const numberOfRounds = (res.league.tierList as DraftTierListDocument)
+            .draftCount[1];
+          const initialTeamOrder = division.teams;
+
+          type DraftPick = {
+            teamName: string;
+            pokemon?: { id: string; name: string };
+            skipTime?: Date;
+          };
+
+          type DraftRound = DraftPick[];
+
+          const draftRounds: DraftRound[] = [];
+
+          for (let round = 0; round < numberOfRounds; round++) {
+            const currentRound: DraftPick[] = [];
+            let pickingOrder = [...initialTeamOrder];
+
+            if (draftStyle === "snake" && round % 2 === 1) {
+              pickingOrder.reverse();
+            }
+
+            for (const [index, team] of pickingOrder.entries()) {
+              const draftPick: DraftPick = { teamName: team.name };
+              if (team.draft[round]) {
+                const pokemonId = team.draft[round].pokemonId;
+                const pokemonName = getName(pokemonId);
+                draftPick.pokemon = { id: pokemonId, name: pokemonName };
+              }
+              if (
+                division.draftCounter ===
+                round * pickingOrder.length + index
+              ) {
+                // TODO: remove random for production
+                // draftPick.skipTime = division.skipTime
+                const now = new Date();
+                const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+                const randomOffsetMinutes = Math.random() * 20 - 10; // Random number between -10 and +10
+                const randomOffsetMilliseconds =
+                  randomOffsetMinutes * 60 * 1000; // Convert to milliseconds
+                draftPick.skipTime = new Date(
+                  now.getTime() + thirtyMinutes + randomOffsetMilliseconds
+                );
+              }
+              currentRound.push(draftPick);
+            }
+            draftRounds.push(currentRound);
+          }
+
+          res.json(draftRounds);
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+        }
+      },
+    },
+    "/:league_key/divisions/:division_id/teams/:team_id/draft": {
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { divisionId, pokemonId, teamId } = req.body;
+          if (!divisionId || !pokemonId || !teamId) {
+            return res.status(400).json({
+              message: "Missing required fields: divisionId, pokemonId, teamId",
+            });
+          }
+
+          // const leagueUser: LeagueUserDocument | null =
+          //   await LeagueUserModel.findOne({
+          //     auth0Id: req.auth!.payload.sub!,
+          //   });
+          // if (!leagueUser) {
+          //   return res.status(403).json({ message: "User not found." });
+          // }
+
+          const isAlreadyDrafted = (
+            res.division!.teams as LeagueTeamDocument[]
+          ).some((t) => t.draft.some((p) => p.pokemonId === pokemonId));
+
+          if (isAlreadyDrafted) {
+            return res
+              .status(409)
+              .json({ message: "Pokemon has already been drafted." });
+          }
+
+          res.team!.draft.push({
+            pokemonId: pokemonId,
+            // picker: leagueUser._id,
+            //TODO: Make this dynamic
+            picker: res.team!.coaches[0]._id,
+            timestamp: new Date(),
+          });
+
+          await res.team!.save();
+
+          eventEmitter.emit("draft.added", {
+            leagueId: req.params["league_id"],
+            pick: {
+              pokemonId,
+              teamId,
+              division: res.division!.name,
+            },
+          });
+
+          return res.status(200).json({ message: "Drafted successfully." });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck, rolecheck("organizer")],
+    },
+    "/:league_key/divisions/:division_id/teams/:team_id/picks": {
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          console.log(JSON.stringify(req.body, null, 2));
+
+          res.team!.picks = req.body.picks;
+          await res.team!.save();
+          return res
+            .status(200)
+            .json({ message: "Draft pick set successfully." });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck, rolecheck("organizer")],
+    },
+    "/:league_key/setdraft": {
       post: async function (req: Request, res: LeagueResponse) {
         try {
           const { divisionId, pokemonId, teamId } = req.body;
@@ -434,7 +723,7 @@ export const LeagueRoutes: Route = {
           await team.save();
 
           eventEmitter.emit("draft.added", {
-            leagueId: res.league!._id.toString(),
+            leagueId: req.params["league_id"],
             pick: {
               pokemonId,
               teamId,
@@ -451,7 +740,7 @@ export const LeagueRoutes: Route = {
       },
       middleware: [jwtCheck, rolecheck("organizer")],
     },
-    "/:league_id/signup": {
+    "/:league_key/signup": {
       get: async function (req: Request, res: Response) {
         try {
           const responses = await PDBLModel.find();
@@ -511,23 +800,50 @@ export const LeagueRoutes: Route = {
       league_id
     ) {
       try {
-        const league = await LeagueModel.findOne({
-          leagueId: league_id,
-        }).populate<{
-          tierList: DraftTierListDocument;
-        }>("tierList");
-        if (!league) {
-          logger.error(`League ID not found: ${league_id}`);
-          return res.status(404).json({
-            message: "League ID not found.",
-            code: `${routeCode}-P1-02`,
-          });
+        await loadLeagueById(req, res);
+        if (!res.headersSent) {
+          next();
         }
-        res.league = league;
-
-        res.ruleset = getRuleset(league.tierList.ruleset);
-
-        next();
+      } catch (error) {
+        return sendError(res, 500, error as Error, `DR-P2-02`);
+      }
+    },
+    league_key: async function (
+      req: Request,
+      res: LeagueResponse,
+      next,
+      league_key
+    ) {
+      try {
+        await loadLeagueByKey(req, res);
+        if (!res.headersSent) {
+          next();
+        }
+      } catch (error) {
+        return sendError(res, 500, error as Error, `DR-P2-02`);
+      }
+    },
+    division_id: async function (
+      req: Request,
+      res: LeagueResponse,
+      next,
+      division_id
+    ) {
+      try {
+        await loadDivision(req, res);
+        if (!res.headersSent) {
+          next();
+        }
+      } catch (error) {
+        return sendError(res, 500, error as Error, `DR-P2-02`);
+      }
+    },
+    team_id: async function (req: Request, res: LeagueResponse, next, team_id) {
+      try {
+        await loadTeam(req, res);
+        if (!res.headersSent) {
+          next();
+        }
       } catch (error) {
         return sendError(res, 500, error as Error, `DR-P2-02`);
       }

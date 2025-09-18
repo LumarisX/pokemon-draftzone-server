@@ -17,9 +17,10 @@ export type DraftEventLog = {
 export type LeagueDivision = {
   name: string;
   teams: (Types.ObjectId | LeagueTeamDocument)[];
-  timerOn: boolean;
+  skipTime: Date;
   timerLength: number;
   draftStyle: "snake" | "linear";
+  draftCounter: number;
   status: "PRE_DRAFT" | "IN_PROGRESS" | "COMPLETED";
   eventLog: DraftEventLog[];
 };
@@ -39,7 +40,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   {
     name: { type: String, required: true },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
-    timerOn: { type: Boolean, default: true },
+    skipTime: { type: Date },
     timerLength: { type: Number, default: 90 },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
     status: {
@@ -47,7 +48,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
       enum: ["PRE_DRAFT", "IN_PROGRESS", "COMPLETED"],
       default: "PRE_DRAFT",
     },
-
+    draftCounter: { type: Number, default: 0 },
     eventLog: [
       {
         eventType: {
