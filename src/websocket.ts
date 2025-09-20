@@ -29,6 +29,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "draft.added",
     (data: {
       leagueId: string;
+      canDraftTeams: string[];
       pick: { division: string; pokemonId: string };
     }) => {
       console.log("emitted!", data.pick);
@@ -38,6 +39,23 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
         "league.draft.added",
         data.pick
       );
+    }
+  );
+
+  eventEmitter.on(
+    "draft.counter",
+    (data: {
+      leagueId: string;
+      division: string;
+      currentPick: { round: number; position: number; skipTime?: Date };
+      nextTeam: string;
+    }) => {
+      console.log("emitted!", data);
+      sendLeagueNotification(io, data.leagueId, "league.draft.counter", {
+        division: data.division,
+        currentPick: data.currentPick,
+        nextTeam: data.nextTeam,
+      });
     }
   );
 

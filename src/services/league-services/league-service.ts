@@ -182,7 +182,10 @@ export async function getTierList(league: League) {
   return tierGroups.map((tg) => tg.toJSON());
 }
 
-export async function getDrafted(league: LeagueDocument): Promise<{
+export async function getDrafted(
+  league: LeagueDocument,
+  divisionNames?: string | string[]
+): Promise<{
   [key: string]: { pokemonId: string }[];
 }> {
   const divisions: { [key: string]: { pokemonId: string }[] } = {};
@@ -194,7 +197,18 @@ export async function getDrafted(league: LeagueDocument): Promise<{
     },
   });
 
-  for (const division of league.divisions as LeagueDivisionDocument[]) {
+  let divisionsToProcess = league.divisions as LeagueDivisionDocument[];
+
+  if (divisionNames) {
+    const divisionNameSet = new Set(
+      Array.isArray(divisionNames) ? divisionNames : [divisionNames]
+    );
+    divisionsToProcess = divisionsToProcess.filter((d) =>
+      divisionNameSet.has(d.divisionKey)
+    );
+  }
+
+  for (const division of divisionsToProcess) {
     divisions[division.name] = [];
     for (const team of division.teams as LeagueTeamDocument[]) {
       for (const draft of team.draft) {

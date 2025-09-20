@@ -10,11 +10,11 @@ import { WSRoute } from "../websocket";
 
 export const subscribeLeague: WSRoute = (io: Server, socket: Socket) => {
   return (request: JsonRpcRequest) => {
-    if (typeof request.params.leagueId === "string") {
-      subscribeToLeague(socket, request.params.leagueId);
+    if (typeof request.params.leagueKey === "string") {
+      subscribeToLeague(socket, request.params.leagueKey);
       sendResponse(
         socket,
-        `Subscribed to league ${request.params.leagueId}`,
+        `Subscribed to league ${request.params.leagueKey}`,
         request.id
       );
     } else {
@@ -25,11 +25,11 @@ export const subscribeLeague: WSRoute = (io: Server, socket: Socket) => {
 
 export const unsubscribeLeague: WSRoute = (io: Server, socket: Socket) => {
   return (request: JsonRpcRequest) => {
-    if (typeof request.params.leagueId === "string") {
-      unsubscribeFromLeague(socket, request.params.leagueId);
+    if (typeof request.params.leagueKey === "string") {
+      unsubscribeFromLeague(socket, request.params.leagueKey);
       sendResponse(
         socket,
-        `Unsubscribed from league ${request.params.leagueId}`,
+        `Unsubscribed from league ${request.params.leagueKey}`,
         request.id
       );
     } else {

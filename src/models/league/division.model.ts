@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types } from "mongoose";
+import mongoose, { Schema, Types, Document } from "mongoose";
 import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
 
 export const LEAGUE_DIVISION_COLLECTION = "LeagueDivision";
@@ -15,6 +15,7 @@ export type DraftEventLog = {
 };
 
 export type LeagueDivision = {
+  divisionKey: string;
   name: string;
   teams: (Types.ObjectId | LeagueTeamDocument)[];
   skipTime: Date;
@@ -28,16 +29,9 @@ export type LeagueDivision = {
 export type LeagueDivisionDocument = Document &
   LeagueDivision & { _id: Types.ObjectId };
 
-const DraftRuleSchema: Schema<DraftRule> = new Schema(
-  {
-    header: { type: String, required: true },
-    details: { type: String, required: true },
-  },
-  { _id: false }
-);
-
 const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   {
+    divisionKey: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     skipTime: { type: Date },

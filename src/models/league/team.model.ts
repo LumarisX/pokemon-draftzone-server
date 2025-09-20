@@ -1,5 +1,6 @@
 import mongoose, { Types, Schema, Document } from "mongoose";
 import { LeagueUserDocument, LEAGUE_USER_COLLECTION } from "./user.model";
+import { LEAGUE_COLLECTION } from "./league.model";
 
 export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 

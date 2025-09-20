@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types } from "mongoose";
+import mongoose, { Schema, Types, Document } from "mongoose";
 import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
 
 export const DRAFT_TIER_LIST_COLLECTION = "DraftTierList";
