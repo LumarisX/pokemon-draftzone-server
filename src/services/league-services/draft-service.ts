@@ -322,7 +322,8 @@ export async function draftPokemon(
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   pokemonId: string,
-  session?: ClientSession
+  session?: ClientSession,
+  isAutodraft = false
 ) {
   let newSession = false;
   if (!session) {
@@ -355,9 +356,17 @@ export async function draftPokemon(
 
     console.log({ team });
 
+    // Also remove the pokemon from the team's own picks list.
+    team.picks = team.picks.map((round) =>
+      round.filter((p) => p !== pokemonId)
+    );
+
+    await team.save({ session });
+
     const tier = await getPokemonTier(league._id, pokemonId);
 
-    await removePokemonFromPicks(division, pokemonId, session);
+    // Now update the other teams, skipping the one we just saved.
+    await removePokemonFromPicks(division, pokemonId, session, team.id);
 
     const numberOfRounds = (league.tierList as DraftTierListDocument)
       .draftCount[1];
@@ -400,16 +409,21 @@ export async function draftPokemon(
         name: team.name,
         draft,
       },
+      currentPick: calculateCurrentPick(division),
     });
 
     if (division.channelId) {
       sendDiscordMessage(
         division.channelId,
-        `${pokemonName} was drafted by ${team.name}.`
+        `${pokemonName} was drafted by @${
+          (team.coaches[0] as LeagueUserDocument)?.discordId
+        }.`
       );
     }
 
-    await checkCounterIncrease(league, division, team, session);
+    if (!isAutodraft) {
+      await checkCounterIncrease(league, division, team, session);
+    }
     // Only commit and end the session if it was started in this function call
     if (newSession) {
       await session.commitTransaction();
@@ -450,6 +464,7 @@ export async function increaseCounter(
       division.draftStyle
     );
 
+    await cancelSkipPick(division);
     await scheduleSkipPick(league, division);
 
     const nextTeamPick = currentTeamPick(division);
@@ -459,7 +474,8 @@ export async function increaseCounter(
         division,
         getCurrentPickingTeam(division),
         nextTeamPick,
-        session
+        session,
+        true
       );
     } else {
       const nextTeam = getCurrentPickingTeam(division)._id.toString();
@@ -495,7 +511,7 @@ export async function checkCounterIncrease(
   const currentPickingTeam = getCurrentPickingTeam(division);
   if (
     currentPickingTeam._id.equals(team._id) &&
-    currentPickingTeam.draft.length >= currentRound
+    currentPickingTeam.draft.length > currentRound
   ) {
     await increaseCounter(league, division, session);
   }
@@ -619,14 +635,24 @@ export async function setDivsionState(
 async function removePokemonFromPicks(
   division: LeagueDivisionDocument,
   pokemonId: string,
-  session?: ClientSession
+  session?: ClientSession,
+  skipTeamId?: string
 ) {
-  const teams = division.teams as LeagueTeamDocument[];
-  const savePromises = teams.map((team) => {
-    team.picks = team.picks.map((round) =>
-      round.filter((p) => p !== pokemonId)
-    );
-    return team.save({ session });
-  });
-  await Promise.all(savePromises);
+  let teamsToProcess = division.teams as LeagueTeamDocument[];
+  if (skipTeamId) {
+    teamsToProcess = teamsToProcess.filter((team) => team.id !== skipTeamId);
+  }
+
+  const savePromises = teamsToProcess
+    .filter((team) => team.picks.some((round) => round.includes(pokemonId)))
+    .map((team) => {
+      team.picks = team.picks.map((round) =>
+        round.filter((p) => p !== pokemonId)
+      );
+      return team.save({ session });
+    });
+
+  if (savePromises.length > 0) {
+    await Promise.all(savePromises);
+  }
 }

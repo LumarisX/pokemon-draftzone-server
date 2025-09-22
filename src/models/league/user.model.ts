@@ -7,6 +7,7 @@ export type LeagueUser = {
   status: "active" | "inactive" | "pending_approval" | "banned";
   timezone?: string;
   discordName?: string;
+  discordId?: string;
   showdownName?: string;
 };
 
@@ -23,6 +24,7 @@ const LeagueUserSchema: Schema<LeagueUserDocument> = new Schema(
     },
     timezone: { type: String },
     discordName: { type: String },
+    discordId: { type: String },
     showdownName: { type: String },
   },
   { timestamps: true }
