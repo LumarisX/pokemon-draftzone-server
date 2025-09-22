@@ -223,6 +223,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (!req.logger) {
+    req.logger = logger;
+  }
   const status = err.status || 500;
   const message = err.message || "Internal Server Error";
 

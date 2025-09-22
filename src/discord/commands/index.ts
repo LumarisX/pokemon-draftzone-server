@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction,
   SharedSlashCommand,
 } from "discord.js";
-import { DraftRoute } from "./draft/draft.router";
+// import { DraftRoute } from "./draft/draft.router";
 
 export type Command = {
   data: SharedSlashCommand;
@@ -16,4 +16,5 @@ export type CommandRoute = {
   enabled?: boolean;
 };
 
-export let routes: CommandRoute[] = [DraftRoute];
+// export let routes: CommandRoute[] = [DraftRoute];
+export let routes: CommandRoute[] = [];
