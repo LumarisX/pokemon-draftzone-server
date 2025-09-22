@@ -1,4 +1,5 @@
 import {
+  ChannelType,
   Client,
   EmbedBuilder,
   GatewayIntentBits,
@@ -285,7 +286,7 @@ async function gptRespond(message: Message, logger: winston.Logger) {
 export async function sendDiscordMessage(channelId: string, message: string) {
   try {
     const channel = await client.channels.fetch(channelId);
-    if (channel && channel.isTextBased()) {
+    if (channel && (channel.type === ChannelType.GuildText || channel.type === ChannelType.DM)) {
       await channel.send(message);
     }
   } catch (error) {
