@@ -22,10 +22,11 @@ import { LeagueUser, LeagueUserDocument } from "../models/league/user.model";
 import { PDBLModel } from "../models/pdbl.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
-  checkCounterIncrease,
   draftPokemon,
   getDivisionDetails,
   isCoach,
+  setDivsionState,
+  skipCurrentPick,
 } from "../services/league-services/draft-service";
 import {
   getDrafted,
@@ -448,7 +449,7 @@ export const LeagueRoutes: Route = {
             });
           }
 
-          if (await isCoach(res.team!, req.auth!.payload.sub!)) {
+          if (!(await isCoach(res.team!, req.auth!.payload.sub!))) {
             return res
               .status(403)
               .json({ message: "User is not a coach on this team." });
@@ -476,6 +477,29 @@ export const LeagueRoutes: Route = {
         }
       },
       middleware: [jwtCheck],
+    },
+    "/:league_key/manage/divisions/:division_id/state": {
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { state } = req.body;
+          setDivsionState(res.league!, res.division!, state);
+          return res.status(200).json({ message: "Timer set successfully." });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck, rolecheck("organizer")],
+    },
+    "/:league_key/manage/divisions/:division_id/skip": {
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          await skipCurrentPick(res.league!, res.division!);
+          return res.status(200).json({ message: "Skip successful." });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck, rolecheck("organizer")],
     },
     "/:league_key/setdraft": {
       post: async function (req: Request, res: LeagueResponse) {

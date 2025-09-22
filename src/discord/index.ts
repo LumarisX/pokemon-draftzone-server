@@ -126,19 +126,19 @@ export async function startDiscordBot(
     }
   });
 
-  client.on("messageCreate", async (message: Message) => {
-    if (message.author.bot || message.mentions.everyone || !client.user) return;
+  // client.on("messageCreate", async (message: Message) => {
+  //   if (message.author.bot || message.mentions.everyone || !client.user) return;
 
-    if (
-      message.content.toLowerCase().includes("deoxys") ||
-      message.mentions.has(client.user.id)
-    ) {
-      logger.info(
-        `Message Mention | Author: ${message.author.tag} (${message.author.id}) | Content: ${message.content}`
-      );
-      gptRespond(message, logger);
-    }
-  });
+  //   if (
+  //     message.content.toLowerCase().includes("deoxys") ||
+  //     message.mentions.has(client.user.id)
+  //   ) {
+  //     logger.info(
+  //       `Message Mention | Author: ${message.author.tag} (${message.author.id}) | Content: ${message.content}`
+  //     );
+  //     gptRespond(message, logger);
+  //   }
+  // });
 
   try {
     await client.login(config.DISCORD_TOKEN);
@@ -279,5 +279,16 @@ async function gptRespond(message: Message, logger: winston.Logger) {
     } catch (replyError) {
       logger.error("Failed to send error reply to user:", replyError);
     }
+  }
+}
+
+export async function sendDiscordMessage(channelId: string, message: string) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (channel && channel.isTextBased()) {
+      await channel.send(message);
+    }
+  } catch (error) {
+    console.error("Failed to send Discord message:", error);
   }
 }

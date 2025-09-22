@@ -18,7 +18,8 @@ export type LeagueDivision = {
   divisionKey: string;
   name: string;
   teams: (Types.ObjectId | LeagueTeamDocument)[];
-  skipTime: Date;
+  skipTime?: Date;
+  channelId?: string;
   timerLength: number;
   remainingTime?: number;
   draftStyle: "snake" | "linear";
@@ -36,6 +37,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
     name: { type: String, required: true },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     skipTime: { type: Date },
+    channelId: { type: String },
     timerLength: { type: Number },
     remainingTime: { type: Number },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },

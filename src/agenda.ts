@@ -68,10 +68,11 @@ export async function resumeSkipPick(
   division: LeagueDivisionDocument
 ) {
   await agenda.start();
-  await agenda.schedule(division.skipTime, "skip-draft-pick", {
-    leagueId: league._id,
-    divisionId: division._id,
-  });
+  if (division.skipTime)
+    await agenda.schedule(division.skipTime, "skip-draft-pick", {
+      leagueId: league._id,
+      divisionId: division._id,
+    });
 }
 
 // Graceful shutdown

@@ -34,14 +34,12 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
         pokemon: { id: string; name: string; tier: string };
         team: { name: string; id: string };
       };
+      canDraftTeams: string[];
     }) => {
-      console.log("emitted!", data.pick);
-      sendLeagueNotification(
-        io,
-        data.leagueId,
-        "league.draft.added",
-        data.pick
-      );
+      sendLeagueNotification(io, data.leagueId, "league.draft.added", {
+        pick: data.pick,
+        canDraftTeams: data.canDraftTeams,
+      });
     }
   );
 
@@ -54,7 +52,6 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       nextTeam: string;
       canDraftTeams: string[];
     }) => {
-      console.log("emitted!", data);
       sendLeagueNotification(io, data.leagueId, "league.draft.counter", {
         division: data.division,
         currentPick: data.currentPick,
@@ -66,18 +63,22 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
 
   eventEmitter.on(
     "draft.status",
-    (data: { leagueId: string; division: string; status: string }) => {
-      console.log("emitted!", data);
+    (data: {
+      leagueId: string;
+      division: string;
+      status: string;
+      currentPick: { round: number; position: number; skipTime?: Date };
+    }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.status", {
         division: data.division,
         status: data.status,
+        currentPick: data.currentPick,
       });
     }
   );
   eventEmitter.on(
     "league.draft.skip",
     (data: { leagueId: string; division: string; teamName: string }) => {
-      console.log("emitted!", data);
       sendLeagueNotification(io, data.leagueId, "league.draft.skip", {
         division: data.division,
         teamName: data.teamName,

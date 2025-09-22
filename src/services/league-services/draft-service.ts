@@ -1,14 +1,14 @@
 import mongoose, { ClientSession } from "mongoose";
+import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
+import { sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueDocument } from "../../models/league/league.model";
-import { LeagueTeam, LeagueTeamDocument } from "../../models/league/team.model";
+import { LeagueTeamDocument } from "../../models/league/team.model";
 import { DraftTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueUserDocument } from "../../models/league/user.model";
-import { scheduleSkipPick, cancelSkipPick, resumeSkipPick } from "../../agenda";
 import { getName } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-service";
-import { Session } from "inspector/promises";
 
 export type DraftPick = {
   teamName: string;
@@ -369,12 +369,13 @@ export async function draftPokemon(
       division.draftStyle
     );
     const canDraft = calculateCanDraft(division, pickOrder);
+    const pokemonName = getName(pokemonId);
     eventEmitter.emit("draft.added", {
       leagueId: league.leagueKey,
       pick: {
         pokemon: {
           id: pokemonId,
-          name: getName(pokemonId),
+          name: pokemonName,
           tier,
         },
         team: {
@@ -385,6 +386,13 @@ export async function draftPokemon(
       },
       canDraft,
     });
+
+    if (division.channelId) {
+      sendDiscordMessage(
+        division.channelId,
+        `${pokemonName} was drafted by ${team.name}.`
+      );
+    }
 
     await checkCounterIncrease(league, division, team, session);
     // Only commit and end the session if it was started in this function call
@@ -439,13 +447,18 @@ export async function increaseCounter(
         session
       );
     } else {
+      const nextTeam = getCurrentPickingTeam(division)._id.toString();
       eventEmitter.emit("draft.counter", {
         leagueId: league.leagueKey,
         division: division.name,
         currentPick: calculateCurrentPick(division),
-        nextTeam: getCurrentPickingTeam(division)._id.toString(),
+        nextTeam,
         canDraftTeams: calculateCanDraft(division, pickOrder),
       });
+
+      if (division.channelId) {
+        sendDiscordMessage(division.channelId, `Now Drafting: ${nextTeam}.`);
+      }
     }
 
     await division.save({ session });
@@ -546,7 +559,9 @@ export async function skipCurrentPick(
 
 export function cancelSkipTime(division: LeagueDivisionDocument) {
   const now: Date = new Date();
-  const differenceInMs = division.skipTime.getTime() - now.getTime();
+  const differenceInMs = division.skipTime
+    ? division.skipTime.getTime() - now.getTime()
+    : 0;
   division.remainingTime = differenceInMs / 1000;
 }
 
@@ -557,22 +572,18 @@ export async function setDivsionState(
 ) {
   const statusActions: { [key: string]: () => Promise<void> } = {
     play: async () => {
-      const now = new Date();
       division.status = "IN_PROGRESS";
-      // When resuming, recalculate remainingTime based on when the timer should end.
-      const differenceInMs = division.skipTime.getTime() - now.getTime();
-      division.remainingTime = differenceInMs / 1000;
-      await resumeSkipPick(league, division);
-    },
-    pause: async () => {
-      division.status = "PAUSED";
-      // When pausing, calculate the future time when the timer would have ended.
       const newSkipTime = new Date();
       const secondsToAdd = division.remainingTime ?? division.timerLength;
       newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
       division.skipTime = newSkipTime;
-      // Clear remainingTime as it's now stored in skipTime.
       division.remainingTime = undefined;
+      await resumeSkipPick(league, division);
+    },
+    pause: async () => {
+      division.status = "PAUSED";
+      cancelSkipTime(division);
+      division.skipTime = undefined;
       await cancelSkipPick(division);
     },
   };
@@ -586,6 +597,7 @@ export async function setDivsionState(
       leagueId: league.leagueKey,
       division: division.name,
       status: division.status,
+      currentPick: calculateCurrentPick(division),
     });
   }
 }
