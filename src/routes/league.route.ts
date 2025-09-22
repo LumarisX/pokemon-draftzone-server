@@ -455,7 +455,13 @@ export const LeagueRoutes: Route = {
               .json({ message: "User is not a coach on this team." });
           }
 
-          await draftPokemon(res.league!, res.division!, res.team!, pokemonId);
+          await draftPokemon(
+            res.league!,
+            res.division!,
+            res.team!,
+            req.auth!.payload.sub!,
+            pokemonId
+          );
 
           return res.status(200).json({ message: "Drafted successfully." });
         } catch (error) {
