@@ -12,6 +12,7 @@ import {
   subscribeLeague,
   unsubscribeLeague,
 } from "./ws-functions/league-subscription";
+import { TeamDraft } from "./models/league/team.model";
 
 export type SocketListener = (request: JsonRpcRequest) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
@@ -34,11 +35,17 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
         pokemon: { id: string; name: string; tier: string };
         team: { name: string; id: string };
       };
+      team: {
+        id: string;
+        name: string;
+        draft: TeamDraft[];
+      };
       canDraftTeams: string[];
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.added", {
         pick: data.pick,
         canDraftTeams: data.canDraftTeams,
+        team: data.team,
       });
     }
   );

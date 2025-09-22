@@ -370,6 +370,17 @@ export async function draftPokemon(
     );
     const canDraft = calculateCanDraft(division, pickOrder);
     const pokemonName = getName(pokemonId);
+
+    const pokemonTierMap = createPokemonTierMap(league);
+
+    const draft = await Promise.all(
+      team.draft.map(async (pick) => ({
+        id: pick.pokemonId,
+        name: getName(pick.pokemonId),
+        tier: pokemonTierMap.get(pick.pokemonId),
+      }))
+    );
+
     eventEmitter.emit("draft.added", {
       leagueId: league.leagueKey,
       pick: {
@@ -385,6 +396,11 @@ export async function draftPokemon(
         division: division.name,
       },
       canDraft,
+      teams: {
+        id: team.id,
+        name: team.name,
+        draft,
+      },
     });
 
     if (division.channelId) {
