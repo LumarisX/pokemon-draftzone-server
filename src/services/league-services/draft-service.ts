@@ -368,7 +368,7 @@ export async function draftPokemon(
       numberOfRounds,
       division.draftStyle
     );
-    const canDraft = calculateCanDraft(division, pickOrder);
+    const canDraftTeams = calculateCanDraft(division, pickOrder);
     const pokemonName = getName(pokemonId);
 
     const pokemonTierMap = createPokemonTierMap(league);
@@ -380,7 +380,6 @@ export async function draftPokemon(
         tier: pokemonTierMap.get(pick.pokemonId),
       }))
     );
-
     eventEmitter.emit("draft.added", {
       leagueId: league.leagueKey,
       pick: {
@@ -395,8 +394,8 @@ export async function draftPokemon(
         },
         division: division.name,
       },
-      canDraft,
-      teams: {
+      canDraftTeams,
+      team: {
         id: team.id,
         name: team.name,
         draft,
