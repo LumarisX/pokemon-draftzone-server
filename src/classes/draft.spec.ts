@@ -4,8 +4,8 @@ import { getRuleset, RulesetId } from "../data/rulesets";
 import { Draft } from "./draft";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
 import * as matchupService from "../services/database-services/matchup.service";
-import { MatchupDocument } from "../models/matchup.model";
 import { ID, TypeName } from "@pkmn/data";
+import { MatchupDocument } from "../models/draft/matchup.model";
 
 jest.mock("../services/database-services/matchup.service");
 
@@ -164,7 +164,10 @@ describe("Draft", () => {
           {
             id: "pikachu" as ID,
             nickname: "Pika",
-            capt: { tera: ["Electric"] as TypeName[], z: ["Normal"] as TypeName[] },
+            capt: {
+              tera: ["Electric"] as TypeName[],
+              z: ["Normal"] as TypeName[],
+            },
           },
         ],
       };
@@ -174,14 +177,16 @@ describe("Draft", () => {
     });
 
     it("should handle pokemon without capt", () => {
-        const draftData = {
-            ...baseDraftData,
-            team: [
-                { id: "pikachu" as ID, nickname: "Pika" },
-            ],
-        };
-        const draft = Draft.fromData(draftData, ruleset, format);
-        expect(draft.team[0].capt).toEqual({ tera: undefined, z: undefined, dmax: undefined });
+      const draftData = {
+        ...baseDraftData,
+        team: [{ id: "pikachu" as ID, nickname: "Pika" }],
+      };
+      const draft = Draft.fromData(draftData, ruleset, format);
+      expect(draft.team[0].capt).toEqual({
+        tera: undefined,
+        z: undefined,
+        dmax: undefined,
+      });
     });
   });
 
