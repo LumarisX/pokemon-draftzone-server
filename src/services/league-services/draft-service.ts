@@ -353,7 +353,7 @@ export async function draftPokemon(
       team.picks.shift();
     }
 
-    await team.save({ session });
+    console.log({ team });
 
     const tier = await getPokemonTier(league._id, pokemonId);
 
