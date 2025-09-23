@@ -43,7 +43,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       canDraftTeams: string[];
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.added", {
-        divisonId: data.divisionId,
+        divisionId: data.divisionId,
         pick: data.pick,
         canDraftTeams: data.canDraftTeams,
         team: data.team,
@@ -61,7 +61,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       canDraftTeams: string[];
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.counter", {
-        divisonId: data.divisionId,
+        divisionId: data.divisionId,
         currentPick: data.currentPick,
         nextTeam: data.nextTeam,
         canDraftTeams: data.canDraftTeams,
@@ -73,12 +73,12 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "draft.status",
     (data: {
       leagueId: string;
-      divisonId: string;
+      divisionId: string;
       status: string;
       currentPick: { round: number; position: number; skipTime?: Date };
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.status", {
-        divisonId: data.divisonId,
+        divisionId: data.divisionId,
         status: data.status,
         currentPick: data.currentPick,
       });
@@ -88,7 +88,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "league.draft.skip",
     (data: { leagueId: string; divisionId: string; teamName: string }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.skip", {
-        divisonId: data.divisionId,
+        divisionId: data.divisionId,
         teamName: data.teamName,
       });
     }
