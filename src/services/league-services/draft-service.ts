@@ -1,6 +1,9 @@
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
-import { sendDiscordMessage } from "../../discord";
+import {
+  sendDiscordMessage,
+  sendDiscordMessageWithPokemonEmbed,
+} from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueDocument } from "../../models/league/league.model";
@@ -199,16 +202,13 @@ export function calculateCanDraft(
   }
 
   const initialTeamOrder = division.teams as LeagueTeamDocument[];
-  const teamMap = new Map(initialTeamOrder.map((t) => [t.id, t]));
 
-  // Calculate how many picks each team should have made
   const picksExpected = new Map<string, number>();
   for (let i = 0; i < division.draftCounter; i++) {
     const teamId = pickOrder[i].id;
     picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
   }
 
-  // Add teams that have missed picks
   for (const team of initialTeamOrder) {
     const expected = picksExpected.get(team.id) || 0;
     if (team.draft.length < expected) {
@@ -216,14 +216,12 @@ export function calculateCanDraft(
     }
   }
 
-  // Add the current picker
   if (division.draftCounter < pickOrder.length) {
     const currentPickingTeamId = pickOrder[division.draftCounter].id;
     if (!canDraft.includes(currentPickingTeamId)) {
       canDraft.push(currentPickingTeamId);
     }
   }
-
   return canDraft;
 }
 
@@ -322,8 +320,7 @@ export async function draftPokemon(
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   pokemonId: string,
-  session?: ClientSession,
-  isAutodraft = false
+  session?: ClientSession
 ) {
   let newSession = false;
   if (!session) {
@@ -354,14 +351,20 @@ export async function draftPokemon(
       team.picks.shift();
     }
 
-    console.log({ team });
-
     // Also remove the pokemon from the team's own picks list.
     team.picks = team.picks.map((round) =>
       round.filter((p) => p !== pokemonId)
     );
 
     await team.save({ session });
+
+    // Manually update the team in the division object so calculateCanDraft works correctly
+    const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex(
+      (t) => t.id === team.id
+    );
+    if (teamIndex !== -1) {
+      (division.teams as LeagueTeamDocument[])[teamIndex] = team;
+    }
 
     const tier = await getPokemonTier(league._id, pokemonId);
 
@@ -391,6 +394,7 @@ export async function draftPokemon(
     );
     eventEmitter.emit("draft.added", {
       leagueId: league.leagueKey,
+      divisionId: division.divisionKey,
       pick: {
         pokemon: {
           id: pokemonId,
@@ -413,17 +417,30 @@ export async function draftPokemon(
     });
 
     if (division.channelId) {
-      sendDiscordMessage(
+      const pokemon = {
+        name: pokemonName,
+        id: pokemonId,
+      };
+
+      await team.populate<{
+        coaches: LeagueUserDocument[];
+      }>({
+        path: "coaches",
+        model: "LeagueUser",
+      });
+
+      const messageContent = `${pokemon.name} was drafted by <@${
+        (team.coaches[0] as LeagueUserDocument)?.discordId
+      }>.`;
+
+      sendDiscordMessageWithPokemonEmbed(
         division.channelId,
-        `${pokemonName} was drafted by @${
-          (team.coaches[0] as LeagueUserDocument)?.discordId
-        }.`
+        messageContent,
+        pokemon
       );
     }
 
-    if (!isAutodraft) {
-      await checkCounterIncrease(league, division, team, session);
-    }
+    await checkCounterIncrease(league, division, team, session);
     // Only commit and end the session if it was started in this function call
     if (newSession) {
       await session.commitTransaction();
@@ -474,21 +491,33 @@ export async function increaseCounter(
         division,
         getCurrentPickingTeam(division),
         nextTeamPick,
-        session,
-        true
+        session
       );
     } else {
-      const nextTeam = getCurrentPickingTeam(division)._id.toString();
+      const nextTeam = getCurrentPickingTeam(division);
+
+      await nextTeam.populate<{
+        coaches: LeagueUserDocument[];
+      }>({
+        path: "coaches",
+        model: "LeagueUser",
+      });
+
       eventEmitter.emit("draft.counter", {
         leagueId: league.leagueKey,
-        division: division.name,
+        divisionId: division.divisionKey,
         currentPick: calculateCurrentPick(division),
-        nextTeam,
+        nextTeam: nextTeam._id.toString(),
         canDraftTeams: calculateCanDraft(division, pickOrder),
       });
 
       if (division.channelId) {
-        sendDiscordMessage(division.channelId, `Now Drafting: ${nextTeam}.`);
+        sendDiscordMessage(
+          division.channelId,
+          `<@${
+            (nextTeam.coaches[0] as LeagueUserDocument).discordId
+          }>, it is now your turn!`
+        );
       }
     }
 
@@ -511,7 +540,7 @@ export async function checkCounterIncrease(
   const currentPickingTeam = getCurrentPickingTeam(division);
   if (
     currentPickingTeam._id.equals(team._id) &&
-    currentPickingTeam.draft.length > currentRound
+    currentPickingTeam.draft.length >= currentRound
   ) {
     await increaseCounter(league, division, session);
   }
@@ -581,7 +610,7 @@ export async function skipCurrentPick(
   console.log({ division, team });
   eventEmitter.emit("league.draft.skip", {
     leagueId: league.leagueKey,
-    division: division.name,
+    divisionId: division.divisionKey,
     teamName: team.name,
   });
 
@@ -626,7 +655,7 @@ export async function setDivsionState(
     await division.save();
     eventEmitter.emit("draft.status", {
       leagueId: league.leagueKey,
-      division: division.name,
+      divisionId: division.divisionKey,
       status: division.status,
       currentPick: calculateCurrentPick(division),
     });

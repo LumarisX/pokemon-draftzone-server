@@ -30,8 +30,8 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "draft.added",
     (data: {
       leagueId: string;
+      divisionId: string;
       pick: {
-        division: string;
         pokemon: { id: string; name: string; tier: string };
         team: { name: string; id: string };
       };
@@ -43,6 +43,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       canDraftTeams: string[];
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.added", {
+        divisonId: data.divisionId,
         pick: data.pick,
         canDraftTeams: data.canDraftTeams,
         team: data.team,
@@ -54,13 +55,13 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "draft.counter",
     (data: {
       leagueId: string;
-      division: string;
+      divisionId: string;
       currentPick: { round: number; position: number; skipTime?: Date };
       nextTeam: string;
       canDraftTeams: string[];
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.counter", {
-        division: data.division,
+        divisonId: data.divisionId,
         currentPick: data.currentPick,
         nextTeam: data.nextTeam,
         canDraftTeams: data.canDraftTeams,
@@ -72,12 +73,12 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
     "draft.status",
     (data: {
       leagueId: string;
-      division: string;
+      divisonId: string;
       status: string;
       currentPick: { round: number; position: number; skipTime?: Date };
     }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.status", {
-        division: data.division,
+        divisonId: data.divisonId,
         status: data.status,
         currentPick: data.currentPick,
       });
@@ -85,9 +86,9 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
   );
   eventEmitter.on(
     "league.draft.skip",
-    (data: { leagueId: string; division: string; teamName: string }) => {
+    (data: { leagueId: string; divisionId: string; teamName: string }) => {
       sendLeagueNotification(io, data.leagueId, "league.draft.skip", {
-        division: data.division,
+        divisonId: data.divisionId,
         teamName: data.teamName,
       });
     }
