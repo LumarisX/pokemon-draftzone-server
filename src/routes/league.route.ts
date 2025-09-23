@@ -14,6 +14,7 @@ import LeagueDivisionModel, {
 } from "../models/league/division.model";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
 import LeagueTeamModel, {
+  LeagueTeam,
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
@@ -501,85 +502,26 @@ export const LeagueRoutes: Route = {
       },
       middleware: [jwtCheck, rolecheck("organizer")],
     },
-    "/:league_key/setdraft": {
+    "/:league_key/manage/divisions/:division_id/setdraft": {
       post: async function (req: Request, res: LeagueResponse) {
         try {
-          const { divisionId, pokemonId, teamId } = req.body;
+          const { pokemonId, teamId } = req.body;
 
-          if (!divisionId || !pokemonId || !teamId) {
+          if (!pokemonId || !teamId) {
             return res.status(400).json({
               message: "Missing required fields: divisionId, pokemonId, teamId",
             });
           }
 
-          // const leagueUser: LeagueUserDocument | null =
-          //   await LeagueUserModel.findOne({
-          //     auth0Id: req.auth!.payload.sub!,
-          //   });
-          // if (!leagueUser) {
-          //   return res.status(403).json({ message: "User not found." });
-          // }
-
-          if (!res.league!.divisions.some((d) => d.toString() === divisionId)) {
-            return res
-              .status(404)
-              .json({ message: "Division not found in this league." });
-          }
-
-          const division = await LeagueDivisionModel.findById(
-            divisionId
-          ).populate<{ teams: LeagueTeamDocument[] }>("teams");
-
-          if (!division) {
-            return res.status(404).json({ message: "Division not found." });
-          }
-
-          const team = await LeagueTeamModel.findById(teamId);
-
+          const team = res.division!.teams.find((team) =>
+            team._id.equals(teamId)
+          ) as LeagueTeamDocument | undefined;
           if (!team) {
-            return res.status(404).json({ message: "Team not found." });
+            return res.status(400).json({
+              message: "Team Id not found",
+            });
           }
-
-          if (!division.teams.some((t) => t._id.equals(team._id))) {
-            return res
-              .status(404)
-              .json({ message: "Team not found in this division." });
-          }
-
-          const isAlreadyDrafted = division.teams.some((t) =>
-            t.draft.some((p) => p.pokemonId === pokemonId)
-          );
-
-          if (isAlreadyDrafted) {
-            return res
-              .status(409)
-              .json({ message: "Pokemon has already been drafted." });
-          }
-
-          team.draft.push({
-            pokemonId: pokemonId,
-            // picker: leagueUser._id,
-            //TODO: Make this dynamic
-            picker: team.coaches[0]._id,
-            timestamp: new Date(),
-          });
-
-          await team.save();
-
-          eventEmitter.emit("draft.added", {
-            leagueId: req.params["league_key"],
-            pick: {
-              pokemon: {
-                id: pokemonId,
-                name: getName(pokemonId),
-              },
-              team: {
-                id: res.team!.id,
-                name: res.team!.name,
-              },
-              division: res.division!.name,
-            },
-          });
+          await draftPokemon(res.league!, res.division!, team, pokemonId);
 
           return res
             .status(200)
