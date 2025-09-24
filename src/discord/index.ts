@@ -1,6 +1,8 @@
 import {
+  APIEmbedField,
   ChannelType,
   Client,
+  ColorResolvable,
   EmbedBuilder,
   GatewayIntentBits,
   Interaction,
@@ -283,55 +285,62 @@ async function gptRespond(message: Message, logger: winston.Logger) {
   }
 }
 
-export async function sendDiscordMessage(channelId: string, message: string) {
-  try {
-    const channel = await client.channels.fetch(channelId);
-    if (
-      channel &&
-      (channel.type === ChannelType.GuildText ||
-        channel.type === ChannelType.DM)
-    ) {
-      await channel.send(message);
-    }
-  } catch (error) {
-    console.error("Failed to send Discord message:", error);
-  }
-}
-
-/**
- * Sends a message with a Pokémon embed to a specific Discord channel.
- * @param channelId - The ID of the Discord channel.
- * @param message - The text content of the message.
- * @param pokemon - The Pokémon object containing its name and ID.
- */
-export async function sendDiscordMessageWithPokemonEmbed(
+export async function sendDiscordMessage(
   channelId: string,
-  message: string,
-  pokemon: { id: string; name: string }
+  options?:
+    | {
+        content?: string;
+        embed?: {
+          title?: string;
+          description?: string;
+          url?: string;
+          color?: ColorResolvable;
+          fields?: APIEmbedField[];
+          image?: string;
+        };
+      }
+    | string
 ) {
   try {
     const channel = await client.channels.fetch(channelId);
-
-    // Ensure the channel is a text-based channel before sending a message.
+    if (typeof options === "string") options = { content: options };
     if (
-      channel &&
-      (channel.type === ChannelType.GuildText ||
-        channel.type === ChannelType.DM)
+      !(
+        channel &&
+        (channel.type === ChannelType.GuildText ||
+          channel.type === ChannelType.DM)
+      )
     ) {
-      // Create a new embed
+      console.warn(`Channel ${channelId} not found or is not a text channel.`);
+      return;
+    }
+
+    const embedsToSend = [];
+
+    if (options?.embed) {
       const pokemonEmbed = new EmbedBuilder()
-        .setColor("#FFDE00") // A gold/yellow color, fitting for a draft pick
-        .setDescription(message)
-        .setImage(
-          `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`
-        )
+        .setColor(options.embed.color || "#FFDE00")
+        .setImage(options.embed.image ?? null)
         .setTimestamp();
 
-      // Send the embed to the channel
-      await channel.send({ embeds: [pokemonEmbed] });
+      if (options.embed.title) {
+        pokemonEmbed.setTitle(options.embed.title);
+      }
+      if (options.embed.description) {
+        pokemonEmbed.setDescription(options.embed.description);
+      }
+      if (options.embed.url) {
+        pokemonEmbed.setURL(options.embed.url);
+      }
+      if (options.embed.fields && options.embed.fields.length > 0) {
+        pokemonEmbed.addFields(options.embed.fields);
+      }
+      embedsToSend.push(pokemonEmbed);
+    }
+
+    if (options?.content || embedsToSend.length > 0) {
+      await channel.send({ content: options?.content, embeds: embedsToSend });
       console.log(`Successfully sent message to channel ${channelId}`);
-    } else {
-      console.warn(`Channel ${channelId} not found or is not a text channel.`);
     }
   } catch (error) {
     console.error("Failed to send Discord message with embed:", error);

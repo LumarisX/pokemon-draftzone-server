@@ -1,9 +1,6 @@
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
-import {
-  sendDiscordMessage,
-  sendDiscordMessageWithPokemonEmbed,
-} from "../../discord";
+import { sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueDocument } from "../../models/league/league.model";
@@ -248,11 +245,18 @@ export async function isCoach(
   return (team.coaches as LeagueUserDocument[]).some((c) => c.auth0Id === sub);
 }
 
+export function getCurrentRound(division: LeagueDivisionDocument) {
+  return Math.floor(division.draftCounter / division.teams.length);
+}
+
+export function getCurrentPositionInRound(division: LeagueDivisionDocument) {
+  return Math.floor(division.draftCounter % division.teams.length);
+}
+
 export function getCurrentPickingTeam(division: LeagueDivisionDocument) {
   const teams = division.teams as LeagueTeamDocument[];
-  const teamsCount = teams.length;
-  const currentRound = Math.floor(division.draftCounter / teamsCount);
-  const currentPositionInRound = division.draftCounter % teamsCount;
+  const currentRound = getCurrentRound(division);
+  const currentPositionInRound = getCurrentPositionInRound(division);
 
   let pickingOrder = [...teams];
   if (division.draftStyle === "snake" && currentRound % 2 === 1) {
@@ -370,9 +374,6 @@ export async function currentTeamPicks(
   return picks;
 }
 
-/**
- * Performs a draft pick within a database transaction to ensure atomicity.
- */
 export async function draftPokemon(
   league: LeagueDocument,
   division: LeagueDivisionDocument,
@@ -409,14 +410,12 @@ export async function draftPokemon(
       team.picks.shift();
     }
 
-    // Also remove the pokemon from the team's own picks list.
     team.picks = team.picks.map((round) =>
       round.filter((p) => p !== pokemonId)
     );
 
     await team.save({ session });
 
-    // Manually update the team in the division object so calculateCanDraft works correctly
     const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex(
       (t) => t.id === team.id
     );
@@ -426,7 +425,6 @@ export async function draftPokemon(
 
     const tier = await getPokemonTier(league._id, pokemonId);
 
-    // Now update the other teams, skipping the one we just saved.
     await removePokemonFromPicks(division, pokemonId, session, team.id);
 
     const numberOfRounds = (league.tierList as DraftTierListDocument)
@@ -491,11 +489,27 @@ export async function draftPokemon(
         (team.coaches[0] as LeagueUserDocument)?.discordId
       }>.`;
 
-      sendDiscordMessageWithPokemonEmbed(
-        division.channelId,
-        messageContent,
-        pokemon
-      );
+      const currentRound = getCurrentRound(division);
+      const currentPositionInRound = getCurrentPositionInRound(division);
+
+      sendDiscordMessage(division.channelId, {
+        content: messageContent,
+        embed: {
+          title: `${team.name} drafted ${pokemon.name}!`,
+          url: `https://pokemondraftzone.com/leagues/pdbls2/${division.divisionKey}/draft`,
+          fields: [
+            {
+              name: "Round",
+              value: `${currentRound + 1}`,
+            },
+            {
+              name: "Position",
+              value: `${currentPositionInRound + 1}`,
+            },
+          ],
+          image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
+        },
+      });
     }
 
     await checkCounterIncrease(league, division, team, session);
@@ -544,6 +558,7 @@ export async function increaseCounter(
     await cancelSkipPick(division);
     await scheduleSkipPick(league, division);
     const nextTeam = getCurrentPickingTeam(division);
+    //BREAKGLASS: make this always false
     if (await isTeamDoneDrafting(league, division, nextTeam)) {
       return increaseCounter(league, division, session);
     }
@@ -582,6 +597,7 @@ export async function increaseCounter(
       if (division.channelId) {
         sendDiscordMessage(
           division.channelId,
+
           `<@${
             (nextTeam.coaches[0] as LeagueUserDocument).discordId
           }>, it is now your turn!`
