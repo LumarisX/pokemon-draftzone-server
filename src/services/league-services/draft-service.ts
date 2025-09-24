@@ -9,6 +9,7 @@ import { DraftTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueUserDocument } from "../../models/league/user.model";
 import { getName } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-service";
+import { APIEmbedField } from "discord.js";
 
 export type DraftPick = {
   teamName: string;
@@ -425,7 +426,12 @@ export async function draftPokemon(
 
     const tier = await getPokemonTier(league._id, pokemonId);
 
-    await removePokemonFromPicks(division, pokemonId, session, team.id);
+    const snipeCount = await removePokemonFromPicks(
+      division,
+      pokemonId,
+      session,
+      team.id
+    );
 
     const numberOfRounds = (league.tierList as DraftTierListDocument)
       .draftCount[1];
@@ -492,21 +498,28 @@ export async function draftPokemon(
       const currentRound = getCurrentRound(division);
       const currentPositionInRound = getCurrentPositionInRound(division);
 
+      const fields: APIEmbedField[] = [
+        {
+          name: "Round",
+          value: `${currentRound + 1}`,
+        },
+        {
+          name: "Position",
+          value: `${currentPositionInRound + 1}`,
+        },
+      ];
+
+      if (snipeCount)
+        fields.push({
+          name: "Sniped Teams",
+          value: snipeCount.toString(),
+        });
       sendDiscordMessage(division.channelId, {
         content: messageContent,
         embed: {
           title: `${team.name} drafted ${pokemon.name}!`,
           url: `https://pokemondraftzone.com/leagues/pdbls2/${division.divisionKey}/draft`,
-          fields: [
-            {
-              name: "Round",
-              value: `${currentRound + 1}`,
-            },
-            {
-              name: "Position",
-              value: `${currentPositionInRound + 1}`,
-            },
-          ],
+          fields,
           image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
         },
       });
@@ -745,6 +758,7 @@ export async function setDivsionState(
     });
   }
 }
+
 async function removePokemonFromPicks(
   division: LeagueDivisionDocument,
   pokemonId: string,
@@ -756,16 +770,20 @@ async function removePokemonFromPicks(
     teamsToProcess = teamsToProcess.filter((team) => team.id !== skipTeamId);
   }
 
-  const savePromises = teamsToProcess
-    .filter((team) => team.picks.some((round) => round.includes(pokemonId)))
-    .map((team) => {
-      team.picks = team.picks.map((round) =>
-        round.filter((p) => p !== pokemonId)
-      );
-      return team.save({ session });
-    });
+  const teamsWithPick = teamsToProcess.filter((team) =>
+    team.picks.some((round) => round.includes(pokemonId))
+  );
 
-  if (savePromises.length > 0) {
-    await Promise.all(savePromises);
+  if (teamsWithPick.length > 0) {
+    await Promise.all(
+      teamsWithPick.map((team) => {
+        team.picks = team.picks.map((round) =>
+          round.filter((p) => p !== pokemonId)
+        );
+        return team.save({ session });
+      })
+    );
   }
+
+  return teamsWithPick.length;
 }
