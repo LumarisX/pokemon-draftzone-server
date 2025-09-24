@@ -502,10 +502,12 @@ export async function draftPokemon(
         {
           name: "Round",
           value: `${currentRound + 1}`,
+          inline: true,
         },
         {
           name: "Position",
           value: `${currentPositionInRound + 1}`,
+          inline: true,
         },
       ];
 
@@ -513,6 +515,7 @@ export async function draftPokemon(
         fields.push({
           name: "Sniped Teams",
           value: snipeCount.toString(),
+          inline: true,
         });
       sendDiscordMessage(division.channelId, {
         content: messageContent,
@@ -526,19 +529,15 @@ export async function draftPokemon(
     }
 
     await checkCounterIncrease(league, division, team, session);
-    // Only commit and end the session if it was started in this function call
     if (newSession) {
       await session.commitTransaction();
     }
   } catch (error) {
-    // Only abort and end the session if it was started in this function call
     if (newSession) {
       await session.abortTransaction();
     }
-    // Re-throw the error so the caller can handle it
     throw error;
   } finally {
-    // Only end the session if it was started in this function call
     if (newSession) {
       session.endSession();
     }
