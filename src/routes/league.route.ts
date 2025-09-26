@@ -446,31 +446,36 @@ export const LeagueRoutes: Route = {
         }
       },
     },
-    "/:league_key/divisions/:division_id/teams/:team_id": {
+    "/:league_key/divisions/:division_id/power-rankings": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
           const tierList = res.league!.tierList as DraftTierListDocument;
           const ruleset = getRuleset(tierList.ruleset);
-          const team = DraftSpecie.getTeam(
-            res.team!.draft.map((pick) => pick.pokemonId as ID),
-            ruleset
+          const teams = await Promise.all(
+            (res.division!.teams as LeagueTeamDocument[]).map(
+              async (team, index) => {
+                const draft = DraftSpecie.getTeam(
+                  team.draft.map((pick) => ({ id: pick.pokemonId as ID })),
+                  ruleset
+                );
+                const typechart = new Typechart(draft);
+                const summary = new SummaryClass(draft);
+                return {
+                  info: {
+                    name: team.name,
+                    index,
+                    id: team._id.toString(),
+                  },
+                  typechart: typechart.toJson(),
+                  recommended: typechart.recommended(),
+                  summary: summary.toJson(),
+                  movechart: await movechart(draft, ruleset),
+                  coverage: await plannerCoverage(draft),
+                };
+              }
+            )
           );
-          const typechart = new Typechart(team);
-          const summary = new SummaryClass(team);
-          const index = res.division!.teams.findIndex((team) =>
-            team._id.equals(res.team!._id)
-          );
-          res.json({
-            team: {
-              name: res.team!.name,
-              index,
-            },
-            typechart: typechart.toJson(),
-            recommended: typechart.recommended(),
-            summary: summary.toJson(),
-            movechart: await movechart(team, ruleset),
-            coverage: await plannerCoverage(team),
-          });
+          return res.json(teams);
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
         }
