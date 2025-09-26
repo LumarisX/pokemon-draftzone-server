@@ -88,7 +88,6 @@ export class Draft {
   ): Draft {
     if (!ruleset) ruleset = getRuleset(data.ruleset);
     if (!format) format = getFormat(data.format);
-    const types = Array.from(ruleset.types).map((type) => type.name);
     return new Draft(
       ruleset,
       format,
@@ -97,21 +96,7 @@ export class Draft {
       data.leagueId,
       data.score,
       data.owner,
-      data.team.map((pokemon) => {
-        if (pokemon.capt) {
-          pokemon.capt.tera = pokemon.capt?.tera
-            ? pokemon.capt.tera.length
-              ? pokemon.capt.tera
-              : types
-            : undefined;
-          pokemon.capt.z = pokemon.capt?.z
-            ? pokemon.capt.z.length
-              ? pokemon.capt.z
-              : types.filter((type) => type !== "Stellar")
-            : undefined;
-        }
-        return new DraftSpecie(pokemon, ruleset);
-      }),
+      DraftSpecie.getTeam(data.team, ruleset),
       data.doc,
       data._id
     );
