@@ -35,6 +35,12 @@ import {
   getTierList,
 } from "../services/league-services/league-service";
 import { getPokemonTier } from "../services/league-services/tier-service";
+import { DraftSpecie } from "../classes/pokemon";
+import { ID } from "@pkmn/data";
+import { plannerCoverage } from "../services/matchup-services/coverage.service";
+import { movechart } from "../services/matchup-services/movechart.service";
+import { SummaryClass } from "../services/matchup-services/summary.service";
+import { Typechart } from "../services/matchup-services/typechart.service";
 
 const routeCode = "LR";
 
@@ -439,6 +445,37 @@ export const LeagueRoutes: Route = {
           return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
         }
       },
+    },
+    "/:league_key/divisions/:division_id/teams/:team_id": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const tierList = res.league!.tierList as DraftTierListDocument;
+          const ruleset = getRuleset(tierList.ruleset);
+          const team = DraftSpecie.getTeam(
+            res.team!.draft.map((pick) => pick.pokemonId as ID),
+            ruleset
+          );
+          const typechart = new Typechart(team);
+          const summary = new SummaryClass(team);
+          const index = res.division!.teams.findIndex((team) =>
+            team._id.equals(res.team!._id)
+          );
+          res.json({
+            team: {
+              name: res.team!.name,
+              index,
+            },
+            typechart: typechart.toJson(),
+            recommended: typechart.recommended(),
+            summary: summary.toJson(),
+            movechart: await movechart(team, ruleset),
+            coverage: await plannerCoverage(team),
+          });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+        }
+      },
+      middleware: [jwtCheck],
     },
     "/:league_key/divisions/:division_id/teams/:team_id/draft": {
       post: async function (req: Request, res: LeagueResponse) {

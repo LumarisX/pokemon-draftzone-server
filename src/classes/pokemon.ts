@@ -147,9 +147,13 @@ export class DraftSpecie implements Specie, Pokemon {
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
   constructor(
-    pokemonData: (PokemonData | PokemonFormData) | (Specie & PokemonOptions),
+    pokemonData:
+      | ID
+      | (PokemonData | PokemonFormData)
+      | (Specie & PokemonOptions),
     ruleset: Ruleset
   ) {
+    if (typeof pokemonData === "string") pokemonData = { id: pokemonData };
     const specie =
       pokemonData instanceof Specie
         ? pokemonData
@@ -669,7 +673,7 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   static getTeam(
-    team: (PokemonFormData | PokemonData | (Specie & PokemonOptions))[],
+    team: (ID | (PokemonData | PokemonFormData) | (Specie & PokemonOptions))[],
     ruleset: Ruleset
   ) {
     const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
