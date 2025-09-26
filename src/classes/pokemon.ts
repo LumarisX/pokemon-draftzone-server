@@ -1,5 +1,4 @@
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
-import { LRUCache } from "lru-cache";
 import {
   AbilityName,
   As,
@@ -20,17 +19,18 @@ import {
   StatsTable,
   Tier,
 } from "@pkmn/dex-types";
+import { LRUCache } from "lru-cache";
+import { PZError } from "..";
+import { abilityModifiers } from "../data/pokedex/abilities";
 import { Ruleset } from "../data/rulesets";
+import { PokemonData } from "../models/pokemon.schema";
+import { getEffectivePower } from "../services/data-services/move.service";
+import { typeWeak } from "../services/data-services/type.services";
 import {
   CoverageMove,
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
-import { PokemonData } from "../models/pokemon.schema";
-import { getEffectivePower } from "../services/data-services/move.service";
-import { typeWeak } from "../services/data-services/type.services";
 import { getBst } from "./specieUtil";
-import { abilityModifiers } from "../data/pokedex/abilities";
-import { PZError } from "..";
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -666,6 +666,21 @@ export class DraftSpecie implements Specie, Pokemon {
     if (this.id === "smeargle") return true;
     let moveID = toID(moveString);
     return (await this.learnset()).some((move) => move.id === moveID);
+  }
+
+  static getTeam(
+    team: (PokemonFormData | PokemonData | (Specie & PokemonOptions))[],
+    ruleset: Ruleset
+  ) {
+    const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
+      try {
+        acc.push(new DraftSpecie(pokemon, ruleset));
+      } catch (e) {
+        // ignore pokemon that throws error
+      }
+      return acc;
+    }, []);
+    return specieTeam;
   }
 }
 

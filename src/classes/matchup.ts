@@ -67,9 +67,7 @@ export class Matchup {
       {
         teamName: data.bTeam.teamName,
         coach: data.bTeam.coach,
-        team: data.bTeam.team.map(
-          (pokemon) => new DraftSpecie(pokemon, draft.ruleset)
-        ),
+        team: DraftSpecie.getTeam(data.bTeam.team, draft.ruleset),
         _id: data._id,
         paste: data.bTeam.paste,
       },
@@ -102,15 +100,11 @@ export class Matchup {
     return new Matchup(
       {
         teamName: data.side1.teamName || "Team 1",
-        team: data.side1.team.map(
-          (pokemon) => new DraftSpecie(pokemon, ruleset)
-        ),
+        team: DraftSpecie.getTeam(data.side1.team, ruleset),
       },
       {
         teamName: data.side2.teamName || "Team 2",
-        team: data.side2.team.map(
-          (pokemon) => new DraftSpecie(pokemon, ruleset)
-        ),
+        team: DraftSpecie.getTeam(data.side2.team, ruleset),
       },
       ruleset,
       format,
