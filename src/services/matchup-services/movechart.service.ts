@@ -248,7 +248,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   revelationdance: ["Type Changing"],
   technoblast: ["Type Changing"],
   splash: ["Z-Setup"],
-  bellydrum: ["Z-Setup"],
+  bellydrum: ["Setup", "Z-Setup"],
   celebrate: ["Z-Setup"],
   conversion: ["Z-Setup"],
   forestscurse: ["Z-Setup"],
