@@ -454,10 +454,13 @@ export const LeagueRoutes: Route = {
           const teams = await Promise.all(
             (res.division!.teams as LeagueTeamDocument[]).map(
               async (team, index) => {
-                const draft = DraftSpecie.getTeam(
-                  team.draft.map((pick) => ({ id: pick.pokemonId as ID })),
-                  ruleset
-                );
+                const teamRaw = team.draft.map((pick) => ({
+                  id: pick.pokemonId as ID,
+                  capt: pick.capt,
+                }));
+
+                const draft = DraftSpecie.getTeam(teamRaw, ruleset);
+
                 const typechart = new Typechart(draft);
                 const summary = new SummaryClass(draft);
                 return {

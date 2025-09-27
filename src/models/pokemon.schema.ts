@@ -1,8 +1,7 @@
-import { ID, TypeName } from "@pkmn/data";
 import mongoose from "mongoose";
 import { Pokemon } from "../classes/pokemon";
 
-const captSchema = new mongoose.Schema(
+export const captSchema = new mongoose.Schema(
   {
     tera: {
       type: [String],
