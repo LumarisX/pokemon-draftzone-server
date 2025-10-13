@@ -386,6 +386,16 @@ export class DraftSpecie implements Specie, Pokemon {
               } else if (this.requiredItem === "Hearthflame Mask") {
                 type = "Fire";
               }
+            } else if (
+              (move.id === "multiattack" &&
+                this.getAbilities().includes("RKS System")) ||
+              (move.id === "judgement" &&
+                this.getAbilities().includes("Multitype")) ||
+              move.id === "revelationdance"
+            ) {
+              type = this.types[0];
+            } else if (move.id === "ragingbull" && this.types[1]) {
+              type = this.types[1];
             }
             if (
               !(type in coverage[move.category]) ||
