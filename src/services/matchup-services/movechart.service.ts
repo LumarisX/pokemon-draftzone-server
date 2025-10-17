@@ -251,7 +251,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   bellydrum: ["Setup", "Z-Setup"],
   celebrate: ["Z-Setup"],
   conversion: ["Z-Setup"],
-  forestscurse: ["Z-Setup"],
+  shinyscurse: ["Z-Setup"],
   happyhour: ["Z-Setup"],
   holdhands: ["Z-Setup"],
   sketch: ["Z-Setup"],
