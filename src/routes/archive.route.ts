@@ -3,15 +3,15 @@ import mongoose from "mongoose";
 import { Route } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { jwtCheck } from "../middleware/jwtcheck";
-import { ArchiveModel } from "../models/draft/archive.model";
-import { DraftDocument } from "../models/draft/draft.model";
+import { ArchiveDocument, ArchiveModel } from "../models/draft/archive.model";
 import { MatchupDocument } from "../models/draft/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
+import { getStats } from "../services/database-services/archive.service";
 
 export type ArchiveResponse = Response & {
-  rawArchive?: DraftDocument | null;
+  rawArchive?: ArchiveDocument | null;
   rawMatchup?: MatchupDocument | null;
-  archive?: DraftDocument;
+  archive?: ArchiveDocument;
   ruleset?: Ruleset;
   matchup?: MatchupDocument;
 };
@@ -68,10 +68,9 @@ export const ArchiveRoutes: Route = {
     },
     "/:team_id/stats": {
       get: async (req: Request, res: ArchiveResponse) => {
-        if (!res.archive || !res.ruleset) {
-          return;
-        }
+        if (!res.archive || !res.ruleset) return;
         try {
+          res.json(await getStats(res.ruleset!, res.archive));
         } catch (error) {
           console.error(error);
           res.status(500).json({ message: (error as Error).message });
