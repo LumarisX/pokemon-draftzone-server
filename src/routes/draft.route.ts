@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { startSession } from "mongoose";
 import { Route, sendError } from ".";
 import { logger } from "../app";
-import { ArchiveOld } from "../classes/archive";
+import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
@@ -173,13 +173,11 @@ export const DraftRoutes: Route = {
     },
     "/:team_id/archive": {
       delete: async function (req: Request, res: DraftResponse) {
-        if (!res.rawDraft) {
-          return;
-        }
+        if (!res.rawDraft) return;
         const session = await startSession();
         session.startTransaction();
         try {
-          const archive = new ArchiveOld(res.rawDraft.toObject<DraftData>());
+          const archive = new Archive(res.rawDraft.toObject<DraftData>());
           const archiveData = await archive.createArchive();
           await deleteDraft(res.rawDraft);
           archiveData.save({ session });

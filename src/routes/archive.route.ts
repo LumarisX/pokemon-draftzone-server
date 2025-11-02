@@ -3,15 +3,21 @@ import mongoose from "mongoose";
 import { Route } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { jwtCheck } from "../middleware/jwtcheck";
-import { ArchiveDocument, ArchiveModel } from "../models/draft/archive.model";
 import { MatchupDocument } from "../models/draft/matchup.model";
 import { getName } from "../services/data-services/pokedex.service";
 import { getStats } from "../services/database-services/archive.service";
+import {
+  ArchiveBaseModel,
+  ArchiveV1Data,
+  ArchiveV1Document,
+  ArchiveV2Data,
+  ArchiveV2Document,
+} from "../models/draft/archive.model";
 
 export type ArchiveResponse = Response & {
-  rawArchive?: ArchiveDocument | null;
+  rawArchive?: ArchiveV1Document | ArchiveV2Document | null;
   rawMatchup?: MatchupDocument | null;
-  archive?: ArchiveDocument;
+  archive?: ArchiveV1Data | ArchiveV2Data;
   ruleset?: Ruleset;
   matchup?: MatchupDocument;
 };
@@ -22,24 +28,20 @@ export const ArchiveRoutes: Route = {
     "/teams": {
       get: async (req: Request, res: ArchiveResponse) => {
         try {
-          let rawArchives = await ArchiveModel.find({
+          let rawArchives = await ArchiveBaseModel.find({
             owner: req.auth!.payload.sub!,
           }).sort({
             createdAt: -1,
           });
           let archives = rawArchives.map((rawArchive) => {
             let archive = rawArchive.toObject();
-            archive.team = archive.team
-              .filter((mon) => {
-                if (mon.id) return true;
-                // TODO: throw an error that mons are missing
-                return false;
-              })
-              .map((mon) => ({
-                id: mon.id,
-                name: getName(mon.id),
-              }));
-            return archive;
+            return {
+              ...archive,
+              team: archive.team.map((pokemon) => ({
+                ...pokemon,
+                name: getName(pokemon.id),
+              })),
+            };
           });
           res.json(archives);
         } catch (error) {
@@ -82,7 +84,7 @@ export const ArchiveRoutes: Route = {
     team_id: async (req: Request, res: ArchiveResponse, next, team_id) => {
       try {
         if (mongoose.Types.ObjectId.isValid(team_id)) {
-          res.rawArchive = await ArchiveModel.findById(team_id);
+          res.rawArchive = await ArchiveBaseModel.findById(team_id);
         }
         if (res.rawArchive == null) {
           return res
