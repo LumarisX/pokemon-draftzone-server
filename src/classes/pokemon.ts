@@ -90,6 +90,7 @@ export class DraftSpecie implements Specie, Pokemon {
   cosmeticFormes?: SpeciesName[];
   otherFormes?: SpeciesName[];
   formeOrder?: SpeciesName[];
+  isCosmeticForme!: boolean;
   genderRatio!: { M: number; F: number };
   weighthg!: number;
   tags!: SpeciesTag[];

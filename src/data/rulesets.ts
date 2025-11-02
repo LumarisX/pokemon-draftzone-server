@@ -61,6 +61,7 @@ function _exists(d: Data, filters: ExistFilter = {}) {
   }
   if (d.kind === "Species") {
     if (d.forme === "Totem" || d.forme === "Alola-Totem") return false;
+    if (d.isCosmeticForme) return false;
     if (filters.species) {
       if (
         filters.species.unobtainable &&
@@ -101,6 +102,16 @@ function NATDEX_EXISTS(d: Data) {
   });
 }
 
+function ZA_EXISTS(d: Data) {
+  return _exists(d, {
+    nonstandard: ["CAP", "Custom"],
+    species: {
+      unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
+      cosmetic: COSMETIC_SPECIES,
+    },
+  });
+}
+
 function CAP_EXISTS(d: Data) {
   return _exists(d, {
     nonstandard: ["Custom", "Future"],
@@ -118,6 +129,7 @@ function DRAFT_EXISTS(d: Data) {
 }
 
 export type RulesetId =
+  | "ZA NatDex"
   | "Gen9 NatDex"
   | "Paldea Dex"
   | "Gen8 NatDex"
@@ -177,6 +189,16 @@ export const Rulesets: {
       ruleset: new Ruleset(Dex.forGen(9), DRAFT_EXISTS, "Paldea Dex", {
         restriction: "Paldea",
       }),
+    },
+    "ZA National Dex": {
+      id: "ZA NatDex",
+      desc: "Only Pokémon available in Generation 9 and before",
+      ruleset: new Ruleset(
+        Dex.forGen(9),
+        (d: Data) =>
+          !(!ZA_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
+        "Gen9 NatDex"
+      ),
     },
   },
   //Lazy-loaded since not frequently accessed

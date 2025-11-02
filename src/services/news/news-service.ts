@@ -13,7 +13,7 @@ export async function getNews(): Promise<NewsDocument[]> {
     .sort({
       createdAt: -1,
     })
-    .lean();
+    .exec();
 
   cache.set(cacheKey, news);
   return news;
