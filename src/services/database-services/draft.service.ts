@@ -182,5 +182,5 @@ export async function getStats(ruleset: Ruleset, draftId: Types.ObjectId) {
         ? (stats[id].kills + stats[id].indirect) / stats[id].brought
         : 0;
   }
-  return Object.values(stats);
+  return { pokemon: Object.values(stats) };
 }
