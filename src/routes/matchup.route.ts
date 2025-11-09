@@ -15,6 +15,7 @@ import { movechart } from "../services/matchup-services/movechart.service";
 import { speedchart } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { jwtCheck } from "../middleware/jwtcheck";
 
 type MatchupResponse = Response & {
   rawMatchup?: MatchupDocument | null;
@@ -114,6 +115,83 @@ export const MatchupRoutes: Route = {
           return sendError(res, 500, error as Error, `MR-R6-01`);
         }
       },
+    },
+    "/:matchup_id/notes": {
+      get: async (req: Request, res: MatchupResponse) => {
+        try {
+          const matchupDoc = res.rawMatchup;
+          if (!matchupDoc) {
+            return sendError(
+              res,
+              404,
+              new Error("Matchup not found"),
+              `MR-R1-03`
+            );
+          }
+          res.json({ notes: matchupDoc.notes || "" });
+        } catch (error) {
+          logger.error(`[update-notes] Error: ${error}`);
+          return sendError(res, 500, error as Error, `MR-R1-01`);
+        }
+      },
+    },
+    "/:matchup_id/update-notes": {
+      post: async (req: Request, res: MatchupResponse) => {
+        try {
+          const matchupDoc = res.rawMatchup;
+          if (!matchupDoc) {
+            return sendError(
+              res,
+              404,
+              new Error("Matchup not found"),
+              `MR-R1-03`
+            );
+          }
+
+          const userSub = req.auth?.payload.sub;
+          const aTeamDraft = await getDraft(matchupDoc.aTeam._id);
+          if (!aTeamDraft) {
+            return sendError(
+              res,
+              404,
+              new Error("Draft not found for aTeam"),
+              `MR-R1-06`
+            );
+          }
+          const ownerSub = aTeamDraft.owner;
+          if (!userSub || userSub !== ownerSub) {
+            return sendError(
+              res,
+              403,
+              new Error("Forbidden: Not matchup owner"),
+              `MR-R1-04`
+            );
+          }
+
+          const notes = req.body.notes;
+          if (typeof notes !== "string") {
+            return sendError(
+              res,
+              400,
+              new Error("Invalid notes format"),
+              `MR-R1-05`
+            );
+          }
+          matchupDoc.notes = notes;
+          logger.info(
+            `[update-notes] About to save matchupDoc for id: ${matchupDoc._id}`
+          );
+          await matchupDoc.save();
+          logger.info(
+            `[update-notes] Successfully saved matchupDoc for id: ${matchupDoc._id}`
+          );
+          res.json({ success: true });
+        } catch (error) {
+          logger.error(`[update-notes] Error: ${error}`);
+          return sendError(res, 500, error as Error, `MR-R1-01`);
+        }
+      },
+      middleware: [jwtCheck],
     },
     "/quick": {
       post: async (req: Request, res: Response) => {
