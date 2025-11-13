@@ -311,6 +311,7 @@ export class DraftSpecie implements Specie, Pokemon {
           accuracy: move.accuracy,
         }))
         .sort((x, y) => y.effectivePower - x.effectivePower),
+      teraType: this.forceTeraType,
       data: {
         ...this.toClient(),
         types: this.types,
