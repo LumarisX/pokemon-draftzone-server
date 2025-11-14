@@ -301,15 +301,31 @@ export class DraftSpecie implements Specie, Pokemon {
 
       items,
       learnset: (await this.learnset())
-        .map((move) => ({
-          id: move.id,
-          name: move.name,
-          type: move.type,
-          category: move.category,
-          effectivePower: getEffectivePower(move),
-          basePower: move.basePower,
-          accuracy: move.accuracy,
-        }))
+        .map((move) => {
+          const tags: string[] = [];
+          if (move.flags.bite) tags.push("Bite");
+          if (move.flags.bullet) tags.push("Bullet");
+          if (move.flags.contact) tags.push("Contact");
+          if (move.flags.slicing) tags.push("Slicing");
+          if (move.flags.sound) tags.push("Sound");
+          if (move.flags.wind) tags.push("Wind");
+          if (move.isZ) tags.push("Z");
+          if (move.isMax) tags.push("Max");
+          if (move.flags.pulse) tags.push("Pulse");
+          if (move.flags.punch) tags.push("Punch");
+          if (move.recoil) tags.push("Recoil");
+          if (move.flags.heal) tags.push("Healing");
+          return {
+            id: move.id,
+            name: move.name,
+            type: move.type,
+            category: move.category,
+            effectivePower: getEffectivePower(move),
+            basePower: move.basePower,
+            accuracy: move.accuracy,
+            tags,
+          };
+        })
         .sort((x, y) => y.effectivePower - x.effectivePower),
       teraType: this.forceTeraType,
       data: {
