@@ -13,6 +13,13 @@ import {
   unsubscribeLeague,
 } from "./ws-functions/league-subscription";
 import { TeamDraft } from "./models/league/team.model";
+import {
+  shouldHighlightMove,
+  shouldHighlightItem,
+  getModifiedMove,
+  getModifiedType,
+  getProcessedLearnset,
+} from "./ws-functions/teambuilder";
 
 export type SocketListener = (request: JsonRpcRequest) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
@@ -101,6 +108,11 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       getTiers: getTiersRequest,
       "league.subscribe": subscribeLeague,
       "league.unsubscribe": unsubscribeLeague,
+      "teambuilder.shouldHighlightMove": shouldHighlightMove,
+      "teambuilder.shouldHighlightItem": shouldHighlightItem,
+      "teambuilder.getModifiedMove": getModifiedMove,
+      "teambuilder.getModifiedType": getModifiedType,
+      "teambuilder.getProcessedLearnset": getProcessedLearnset,
     };
 
     socket.on("message", async (message: any) => {
