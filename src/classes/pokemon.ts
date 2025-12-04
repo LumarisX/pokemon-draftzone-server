@@ -234,11 +234,17 @@ export class DraftSpecie implements Specie, Pokemon {
         : undefined,
       dmax: this.capt?.dmax,
     };
+
+    const genders: ("M" | "F")[] = [];
+    if (this.genderRatio.M > 0) genders.push("M");
+    if (this.genderRatio.F > 0) genders.push("F");
+
     return {
       id: this.id,
       name: this.name,
       nickname: this.nickname,
       shiny: this.shiny,
+      genders,
       draftFormes: this.draftFormes?.map((pokemon) => {
         const specie = this.ruleset.species.get(pokemon)!;
         return { id: specie.id, name: specie.name };
@@ -289,7 +295,7 @@ export class DraftSpecie implements Specie, Pokemon {
           pngId: `https://play.pokemonshowdown.com/sprites/itemicons/${item.name
             .replace(" ", "-")
             .toLowerCase()}.png`,
-          desc: item.desc,
+          desc: item.shortDesc,
           tags,
         };
       });
@@ -300,33 +306,6 @@ export class DraftSpecie implements Specie, Pokemon {
       ) as AbilityName[],
 
       items,
-      learnset: (await this.learnset())
-        .map((move) => {
-          const tags: string[] = [];
-          if (move.flags.bite) tags.push("Bite");
-          if (move.flags.bullet) tags.push("Bullet");
-          if (move.flags.contact) tags.push("Contact");
-          if (move.flags.slicing) tags.push("Slicing");
-          if (move.flags.sound) tags.push("Sound");
-          if (move.flags.wind) tags.push("Wind");
-          if (move.isZ) tags.push("Z");
-          if (move.isMax) tags.push("Max");
-          if (move.flags.pulse) tags.push("Pulse");
-          if (move.flags.punch) tags.push("Punch");
-          if (move.recoil) tags.push("Recoil");
-          if (move.flags.heal) tags.push("Healing");
-          return {
-            id: move.id,
-            name: move.name,
-            type: move.type,
-            category: move.category,
-            effectivePower: getEffectivePower(move),
-            basePower: move.basePower,
-            accuracy: move.accuracy,
-            tags,
-          };
-        })
-        .sort((x, y) => y.effectivePower - x.effectivePower),
       teraType: this.forceTeraType,
       data: {
         ...this.toClient(),
@@ -722,6 +701,7 @@ export type PokemonFormData = {
   shiny?: boolean;
   nickname?: string;
   draftFormes?: Pokemon[];
+  genders?: ("M" | "F")[];
   modifiers?: {
     abilities?: string[];
     moves?: string[];
