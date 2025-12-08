@@ -221,6 +221,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   expandingforce: ["Field Manipulation"],
   grassyglide: ["Field Manipulation"],
   gravity: ["Field Manipulation"],
+  wonderroom: ["Field Manipulation"],
   pursuit: ["Trapping"],
   anchorshot: ["Trapping"],
   block: ["Trapping"],
