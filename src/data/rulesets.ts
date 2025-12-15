@@ -197,7 +197,7 @@ export const Rulesets: {
         Dex.forGen(9),
         (d: Data) =>
           !(!ZA_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-        "Gen9 NatDex"
+        "ZA NatDex"
       ),
     },
   },
