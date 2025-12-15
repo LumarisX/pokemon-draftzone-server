@@ -9,7 +9,7 @@ import {
   Ruleset,
 } from "../data/rulesets";
 import { getRandom } from "../services/data-services/pokedex.service";
-import { getApprovedLeagues } from "../services/league-ad/league-ad-service";
+import { getLeagueAds } from "../services/league-ad/league-ad-service";
 import { getNews } from "../services/news/news-service";
 import { searchPokemon } from "../services/search.service";
 import { parseTime } from "../util";
@@ -138,7 +138,7 @@ export const DataRoutes: Route = {
                 if (!time) return [type, -1];
                 switch (type) {
                   case "leagueAd":
-                    const leagues = await getApprovedLeagues();
+                    const leagues = await getLeagueAds();
                     return [
                       type,
                       leagues.filter((l) => l.createdAt > time).length,

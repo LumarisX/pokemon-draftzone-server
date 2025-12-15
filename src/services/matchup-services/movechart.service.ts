@@ -1,7 +1,6 @@
 import { TypeName } from "@pkmn/data";
-import { DraftSpecie, Pokemon, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
-import { PokemonData } from "../../models/pokemon.schema";
 
 const MOVECATEGORIES = [
   "Priority",

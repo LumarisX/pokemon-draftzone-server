@@ -1,28 +1,27 @@
 import NodeCache from "node-cache";
-import { LeagueAdDocument, LeagueAdModel } from "../../models/leaguelist.model";
+import { LeagueAd } from "../../classes/league-ad";
+import { LeagueAdModel } from "../../models/league-ad.model";
 
 const cache = new NodeCache({ stdTTL: 3000 });
+const CACHE_KEY = "approvedLeagues";
 
-export async function getApprovedLeagues(): Promise<LeagueAdDocument[]> {
-  // const cacheKey = "approvedLeagues";
-  // const cachedLeagues: LeagueAdDocument[] | undefined = cache.get(cacheKey);
+export function invalidateLeagueAdsCache(): void {
+  cache.del(CACHE_KEY);
+}
 
-  // if (cachedLeagues) {
-  //   return cachedLeagues;
-  // }
+export async function getLeagueAds(): Promise<LeagueAd[]> {
+  const cachedLeagues: LeagueAd[] | undefined = cache.get(CACHE_KEY);
 
-  // const today = new Date();
-  // today.setUTCHours(0, 0, 0, 0);
-  // const leagues: LeagueAdDocument[] = await LeagueAdModel.find({
-  //   status: "Approved",
-  //   closesAt: { $gte: today },
-  // })
-  //   .sort({
-  //     createdAt: -1,
-  //   })
-  //   .lean();
+  if (cachedLeagues) {
+    return cachedLeagues;
+  }
 
-  // cache.set(cacheKey, leagues);
-  // return leagues;
-  return [];
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const documents = await LeagueAdModel.find({
+    closesAt: { $gte: today },
+  }).sort({ createdAt: -1 });
+  const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
+  cache.set(CACHE_KEY, leagueAds);
+  return leagueAds;
 }

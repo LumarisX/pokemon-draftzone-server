@@ -1,20 +1,22 @@
+import { ID } from "@pkmn/data";
 import { TextChannel } from "discord.js";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import { Route, sendError } from ".";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
+import { LeagueAd } from "../classes/league-ad";
+import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { client } from "../discord";
-import eventEmitter from "../event-emitter";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { rolecheck } from "../middleware/rolecheck";
+import { LeagueAdModel } from "../models/league-ad.model";
 import LeagueDivisionModel, {
   LeagueDivisionDocument,
 } from "../models/league/division.model";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
 import LeagueTeamModel, {
-  LeagueTeam,
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
@@ -35,12 +37,14 @@ import {
   getTierList,
 } from "../services/league-services/league-service";
 import { getPokemonTier } from "../services/league-services/tier-service";
-import { DraftSpecie } from "../classes/pokemon";
-import { ID } from "@pkmn/data";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import {
+  getLeagueAds,
+  invalidateLeagueAdsCache,
+} from "../services/league-ad/league-ad-service";
 
 const routeCode = "LR";
 
@@ -546,6 +550,121 @@ export const LeagueRoutes: Route = {
           return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
         }
       },
+    },
+    "/ad-list": {
+      get: async function (req: Request, res: Response) {
+        try {
+          const leagueAds = await getLeagueAds();
+          res.json(leagueAds);
+        } catch (error) {
+          logger.error("Error fetching league ads:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-AL-01`);
+        }
+      },
+    },
+    "/ad-list/manage": {
+      get: async function (req: Request, res: Response) {
+        try {
+          const owner = req.auth?.payload.sub;
+          if (!owner) {
+            return sendError(
+              res,
+              401,
+              new Error("Unauthorized"),
+              `${routeCode}-AL-05`
+            );
+          }
+
+          const documents = await LeagueAdModel.find({ owner }).sort({
+            createdAt: -1,
+          });
+
+          const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
+          res.json(leagueAds);
+        } catch (error) {
+          logger.error("Error fetching user's league ads:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-AL-06`);
+        }
+      },
+      post: async function (req: Request, res: Response) {
+        try {
+          const owner = req.auth?.payload.sub;
+          if (!owner) {
+            return sendError(
+              res,
+              401,
+              new Error("Unauthorized"),
+              `${routeCode}-AL-02`
+            );
+          }
+
+          const leagueAd = LeagueAd.fromForm(req.body, owner);
+
+          if (!leagueAd.isValid()) {
+            return sendError(
+              res,
+              400,
+              new Error("Invalid league ad data"),
+              `${routeCode}-AL-03`
+            );
+          }
+
+          const document = await leagueAd.toDocument();
+          await document.save();
+
+          invalidateLeagueAdsCache();
+          logger.info(`New league ad created: ${document._id}`);
+          res.status(201).json({ _id: document._id, status: document.status });
+        } catch (error) {
+          logger.error("Error creating league ad:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-AL-04`);
+        }
+      },
+      middleware: [jwtCheck],
+    },
+    "/ad-list/manage/:ad_id": {
+      delete: async function (req: Request, res: Response) {
+        try {
+          const owner = req.auth?.payload.sub;
+          if (!owner) {
+            return sendError(
+              res,
+              401,
+              new Error("Unauthorized"),
+              `${routeCode}-AL-07`
+            );
+          }
+
+          const ad = await LeagueAdModel.findById(req.params.ad_id);
+
+          if (!ad) {
+            return sendError(
+              res,
+              404,
+              new Error("Ad not found"),
+              `${routeCode}-AL-08`
+            );
+          }
+
+          if (ad.owner !== owner) {
+            return sendError(
+              res,
+              403,
+              new Error("You can only delete your own ads"),
+              `${routeCode}-AL-09`
+            );
+          }
+
+          await LeagueAdModel.findByIdAndDelete(req.params.ad_id);
+          invalidateLeagueAdsCache();
+          logger.info(`League ad deleted: ${req.params.ad_id}`);
+          res.status(200).json({ message: "Ad deleted successfully" });
+        } catch (error) {
+          logger.error("Error deleting league ad:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-AL-10`);
+        }
+      },
+      middleware: [jwtCheck],
     },
     "/:league_key/roles": {
       get: async function (req: Request, res: Response) {
