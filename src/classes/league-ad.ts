@@ -196,7 +196,7 @@ export class LeagueAd {
 
   static fromForm(formData: any, owner: string) {
     const cleanString = (str: string) =>
-      str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]]/g, "");
+      str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]:@#&=%~]/g, "");
     const cleanMarkdown = (str: string) =>
       str
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
