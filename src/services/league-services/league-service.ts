@@ -1,5 +1,5 @@
 import { Specie } from "@pkmn/data";
-import { getBst } from "../../classes/specieUtil";
+import { getBST } from "../../classes/specieUtil";
 import tierListModel from "../../models/league/tier-list.model";
 import { getRuleset } from "../../data/rulesets";
 import { League, LeagueDocument } from "../../models/league/league.model";
@@ -74,7 +74,7 @@ namespace TierList {
       }
     ) {
       this.specie = specie;
-      this.bst = getBst(this.specie);
+      this.bst = getBST(this.specie);
       this.banned = banned;
     }
 

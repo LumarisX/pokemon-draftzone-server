@@ -30,7 +30,7 @@ import {
   CoverageMove,
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
-import { getBst } from "./specieUtil";
+import { getBST, getCST } from "./specieUtil";
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -137,6 +137,7 @@ export class DraftSpecie implements Specie, Pokemon {
   capt?: Partial<{ tera: TypeName[]; z: TypeName[]; dmax: boolean }>;
   ruleset: Ruleset;
   bst: number;
+  cst: number;
   inheritsFrom!: ID;
   formes?: SpeciesName[];
   evoRegion?: "Alola" | "Galar";
@@ -199,7 +200,8 @@ export class DraftSpecie implements Specie, Pokemon {
     } else {
       this.abilities = specie.abilities;
     }
-    this.bst = getBst(specie);
+    this.bst = getBST(specie);
+    this.cst = getCST(specie);
   }
 
   get formeNum() {
