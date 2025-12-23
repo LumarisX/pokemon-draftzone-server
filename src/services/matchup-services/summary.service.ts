@@ -1,7 +1,7 @@
 import { StatID } from "@pkmn/data";
 import { DraftSpecie } from "../../classes/pokemon";
 
-type StatKey = StatID | "bst";
+type StatKey = StatID | "bst" | "cst";
 
 interface TeamStatistics {
   mean: Record<StatKey, number>;
@@ -39,7 +39,7 @@ export class SummaryClass {
 
   private teamStatistics(): TeamStatistics {
     const statCollections = this.collectStats();
-    const allStatKeys = [...SummaryClass.STAT_KEYS, "bst"] as const;
+    const allStatKeys = [...SummaryClass.STAT_KEYS, "bst", "cst"] as const;
 
     return allStatKeys.reduce(
       (stats, stat) => {
@@ -67,6 +67,7 @@ export class SummaryClass {
       spd: [],
       spe: [],
       bst: [],
+      cst: [],
     };
 
     for (const pokemon of this.team) {
@@ -76,6 +77,7 @@ export class SummaryClass {
         collections[stat].push(pokemon.baseStats[stat]);
       }
       collections.bst.push(pokemon.bst);
+      collections.cst.push(pokemon.cst);
     }
 
     return collections;
@@ -107,6 +109,7 @@ export class SummaryClass {
         abilities: pokemon.getAbilities(),
         baseStats: pokemon.baseStats,
         bst: pokemon.bst,
+        cst: pokemon.cst,
         index,
         types: pokemon.types,
       })),

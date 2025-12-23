@@ -1,6 +1,6 @@
 import { Specie } from "@pkmn/data";
 import fs from "fs";
-import { getBst } from "../classes/specieUtil";
+import { getBST } from "../classes/specieUtil";
 import { getRuleset } from "./rulesets";
 import eventEmitter from "../event-emitter";
 
@@ -62,7 +62,7 @@ namespace TierList {
       }
     ) {
       this.specie = specie;
-      this.bst = getBst(this.specie);
+      this.bst = getBST(this.specie);
       this.banned = banned;
     }
 
@@ -285,4 +285,3 @@ export function setDrafted(
   eventEmitter.emit("tiersUpdated");
   return foundMon.specie.name;
 }
-
