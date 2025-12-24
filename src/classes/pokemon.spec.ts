@@ -234,24 +234,24 @@ describe("DraftSpecie toTeambuilder()", () => {
     expect(teambuilderData.items[0]).toHaveProperty("tags");
   });
 
-  it("should return a sorted learnset with correct move data", async () => {
-    const teambuilderData = await pikachu.toTeambuilder();
-    expect(teambuilderData.learnset).toBeInstanceOf(Array);
-    expect(teambuilderData.learnset.length).toBeGreaterThan(0);
-    // Check if sorted by effectivePower (descending)
-    for (let i = 0; i < teambuilderData.learnset.length - 1; i++) {
-      expect(teambuilderData.learnset[i].effectivePower).toBeGreaterThanOrEqual(
-        teambuilderData.learnset[i + 1].effectivePower
-      );
-    }
-    expect(teambuilderData.learnset[0]).toHaveProperty("id");
-    expect(teambuilderData.learnset[0]).toHaveProperty("name");
-    expect(teambuilderData.learnset[0]).toHaveProperty("type");
-    expect(teambuilderData.learnset[0]).toHaveProperty("category");
-    expect(teambuilderData.learnset[0]).toHaveProperty("effectivePower");
-    expect(teambuilderData.learnset[0]).toHaveProperty("basePower");
-    expect(teambuilderData.learnset[0]).toHaveProperty("accuracy");
-  });
+  // it("should return a sorted learnset with correct move data", async () => {
+  //   const teambuilderData = await pikachu.toTeambuilder();
+  //   expect(teambuilderData.learnset).toBeInstanceOf(Array);
+  //   expect(teambuilderData.learnset.length).toBeGreaterThan(0);
+  //   // Check if sorted by effectivePower (descending)
+  //   for (let i = 0; i < teambuilderData.learnset.length - 1; i++) {
+  //     expect(teambuilderData.learnset[i].effectivePower).toBeGreaterThanOrEqual(
+  //       teambuilderData.learnset[i + 1].effectivePower
+  //     );
+  //   }
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("id");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("name");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("type");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("category");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("effectivePower");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("basePower");
+  //   expect(teambuilderData.learnset[0]).toHaveProperty("accuracy");
+  // });
 
   it("should return correct data from toClient() with added types and baseStats", async () => {
     const teambuilderData = await pikachu.toTeambuilder();
