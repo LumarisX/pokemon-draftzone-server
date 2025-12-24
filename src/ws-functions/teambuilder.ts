@@ -1,7 +1,7 @@
 import { ID, Move, TypeName } from "@pkmn/data";
 import { Server, Socket } from "socket.io";
-import { pdzCalculateMove } from "../../../dmg/src/mechanics";
-import { PokemonOptions, State } from "../../../dmg/src/state";
+// import { pdzCalculateMove } from "../../../dmg/src/mechanics";
+// import { PokemonOptions, State } from "../../../dmg/src/state";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import { getEffectivePower } from "../services/data-services/move.service";
@@ -170,6 +170,8 @@ type ClientMove = {
   strength: number;
 };
 
+type PokemonOptions = {};
+
 export const getProcessedLearnset: WSRoute =
   (io: Server, socket: Socket) =>
   async (
@@ -200,28 +202,32 @@ export const getProcessedLearnset: WSRoute =
 
       const specie = new DraftSpecie(pokemon.id, ruleset);
 
-      const statePokemon = State.createPokemon(ruleset, pokemon.id, {
-        ability: pokemon.ability,
-        level: pokemon.level,
-        item: pokemon.item,
-        nature: pokemon.nature,
-        status: pokemon.status,
-        hpPercent: pokemon.hpPercent,
-        happiness: pokemon.happiness,
-        evs: pokemon.evs,
-        ivs: pokemon.ivs,
-        boosts: pokemon.boosts,
-        teraType: pokemon.teraType,
-      });
+      // const statePokemon = State.createPokemon(ruleset, pokemon.id, {
+      //   ability: pokemon.ability,
+      //   level: pokemon.level,
+      //   item: pokemon.item,
+      //   nature: pokemon.nature,
+      //   status: pokemon.status,
+      //   hpPercent: pokemon.hpPercent,
+      //   happiness: pokemon.happiness,
+      //   evs: pokemon.evs,
+      //   ivs: pokemon.ivs,
+      //   boosts: pokemon.boosts,
+      //   teraType: pokemon.teraType,
+      // });
 
       const processedMoves: ClientMove[] = (await specie.learnset())
         .map((move) => {
-          const stateMove = State.createMove(ruleset, move.id);
-          const {
-            move: contextMove,
-            pokemon: contextPokemon,
-            strength,
-          } = pdzCalculateMove(ruleset, statePokemon, stateMove);
+          // const stateMove = State.createMove(ruleset, move.id);
+          // const {
+          //   move: contextMove,
+          //   pokemon: contextPokemon,
+          //   strength,
+          // } = pdzCalculateMove(ruleset, statePokemon, stateMove);
+
+          const contextMove = move;
+          const strength = 1;
+          const contextPokemon = specie;
 
           const tags: string[] = [];
           if (move.flags.bite) tags.push("Bite");
@@ -252,10 +258,10 @@ export const getProcessedLearnset: WSRoute =
             pp: move.pp,
             strength,
             tags,
-            modified: {
-              basePower:
-                contextPokemon.move?.relevant.modified.basePower || undefined,
-            },
+            // modified: {
+            //   basePower:
+            //     contextPokemon.move?.relevant.modified.basePower || undefined,
+            // },
           };
           return clientMove;
         })
