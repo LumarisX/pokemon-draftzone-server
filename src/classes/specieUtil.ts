@@ -45,13 +45,12 @@ function sigmoidStat(
   amplitude: number,
   skew: number
 ): number {
-  const UPPERBOUND = 255;
   return (
     amplitude /
     (1 +
       ((amplitude - center) / center) *
         Math.exp(
-          -1 * (UPPERBOUND / (UPPERBOUND - center)) * ((value - center) / skew)
+          -1 * (amplitude / (amplitude - center)) * ((value - center) / skew)
         ))
   );
 }
