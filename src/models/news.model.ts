@@ -27,7 +27,7 @@ const newsSchema = new Schema(
         {
           type: {
             type: String,
-            enum: ["para", "buttons", "images", "heading", "list"],
+            enum: ["para", "buttons", "images", "heading", "list", "markdown"],
             required: true,
           },
 
@@ -58,6 +58,10 @@ const newsSchema = new Schema(
 export type Section =
   | {
       type: "para";
+      description: string;
+    }
+  | {
+      type: "markdown";
       description: string;
     }
   | {
