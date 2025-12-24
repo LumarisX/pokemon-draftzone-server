@@ -28,7 +28,7 @@ export function competitiveDefenses(def: number, spd: number): number {
 }
 
 export function competitiveSpeed(spe: number): number {
-  return sigmoidStat(spe, 80, 256);
+  return sigmoidStat(spe, 80, 196, 80);
 }
 
 function parabolicStat(x: number, y: number, amplitude: number): number {
@@ -39,9 +39,19 @@ function squaredAverage(x: number, y: number): number {
   return Math.sqrt((x * x + y * y) / 2);
 }
 
-function sigmoidStat(x: number, center: number, amplitude: number): number {
-  const h = 1.5 * center - amplitude / 2;
-  const s = -4 / (amplitude - center);
-
-  return (amplitude - center) / (1 + Math.exp(s * (x - center))) + h;
+function sigmoidStat(
+  value: number,
+  center: number,
+  amplitude: number,
+  skew: number
+): number {
+  const UPPERBOUND = 255;
+  return (
+    amplitude /
+    (1 +
+      ((amplitude - center) / center) *
+        Math.exp(
+          -1 * (UPPERBOUND / (UPPERBOUND - center)) * ((value - center) / skew)
+        ))
+  );
 }
