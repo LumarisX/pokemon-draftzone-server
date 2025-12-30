@@ -236,17 +236,11 @@ export class DraftSpecie implements Specie, Pokemon {
         : undefined,
       dmax: this.capt?.dmax,
     };
-
-    const genders: ("M" | "F")[] = [];
-    if (this.genderRatio.M > 0) genders.push("M");
-    if (this.genderRatio.F > 0) genders.push("F");
-
     return {
       id: this.id,
       name: this.name,
       nickname: this.nickname,
       shiny: this.shiny,
-      genders,
       draftFormes: this.draftFormes?.map((pokemon) => {
         const specie = this.ruleset.species.get(pokemon)!;
         return { id: specie.id, name: specie.name };
@@ -302,18 +296,21 @@ export class DraftSpecie implements Specie, Pokemon {
         };
       });
 
+    const genders: ("M" | "F")[] = [];
+    if (this.genderRatio.M > 0) genders.push("M");
+    if (this.genderRatio.F > 0) genders.push("F");
+
     return {
+      id: this.id,
+      name: this.name,
       abilities: this.getAbilities().filter(
         (ability) => ability !== ""
       ) as AbilityName[],
-
       items,
       teraType: this.forceTeraType,
-      data: {
-        ...this.toClient(),
-        types: this.types,
-        baseStats: this.baseStats,
-      },
+      types: this.types,
+      baseStats: this.baseStats,
+      genders,
     };
   }
 
