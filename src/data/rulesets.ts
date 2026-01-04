@@ -16,6 +16,7 @@ const COSMETIC_SPECIES = [
   "Poltchageist-Artisan",
   "Sinistcha-Masterpiece",
   "Magearna-Original",
+  "Magearna-Original-Mega",
   "Pikachu-Original",
   "Pikachu-Hoenn",
   "Pikachu-Sinnoh",
@@ -33,6 +34,8 @@ const COSMETIC_SPECIES = [
   "Ogerpon-Wellspring-Tera",
   "Tatsugiri-Stretchy",
   "Tatsugiri-Droopy",
+  "Tatsugiri-Stretchy-Mega",
+  "Tatsugiri-Droopy-Mega",
 ];
 
 type ExistFilter = {

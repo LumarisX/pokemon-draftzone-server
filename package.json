@@ -18,10 +18,10 @@
     "node": "20.19.5"
   },
   "dependencies": {
-    "@pkmn/data": "^0.10.1",
-    "@pkmn/dex": "^0.10.1",
-    "@pkmn/mods": "^0.10.1",
-    "@pkmn/sim": "^0.10.1",
+    "@pkmn/data": "^0.10.4",
+    "@pkmn/dex": "^0.10.4",
+    "@pkmn/mods": "^0.10.4",
+    "@pkmn/sim": "^0.10.4",
     "@smogon/calc": "^0.10.0",
     "agenda": "^5.0.0",
     "auth0": "^4.21.0",

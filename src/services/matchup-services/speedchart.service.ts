@@ -186,6 +186,8 @@ function generateTiers(
                   if (additional.modifier) modifiers.push(additional.modifier);
                   tiers.push({
                     speed: Math.floor(
+                      //TODO: fix ts-expect-error by updating @smogon/calc
+                      // @ts-expect-error @smogon/calc uses older Generation version than mutual dependency
                       getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
                         additional.mult
                     ),
