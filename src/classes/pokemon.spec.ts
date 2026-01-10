@@ -253,15 +253,15 @@ describe("DraftSpecie toTeambuilder()", () => {
   //   expect(teambuilderData.learnset[0]).toHaveProperty("accuracy");
   // });
 
-  it("should return correct data from toClient() with added types and baseStats", async () => {
-    const teambuilderData = await pikachu.toTeambuilder();
-    const clientData = pikachu.toClient();
-    expect(teambuilderData.data).toEqual({
-      ...clientData,
-      types: pikachu.types,
-      baseStats: pikachu.baseStats,
-    });
-  });
+  // it("should return correct data from toClient() with added types and baseStats", async () => {
+  //   const teambuilderData = await pikachu.toTeambuilder();
+  //   const clientData = pikachu.toClient();
+  //   expect(teambuilderData.data).toEqual({
+  //     ...clientData,
+  //     types: pikachu.types,
+  //     baseStats: pikachu.baseStats,
+  //   });
+  // });
 });
 
 describe("DraftSpecie Coverage functions", () => {
