@@ -262,13 +262,7 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   async toTeambuilder() {
-    const items = (
-      ((this.requiredItem ? [this.requiredItem] : this.requiredItems)
-        ?.map((itemName) => this.ruleset.items.get(itemName))
-        .filter((item) => item !== undefined && item.exists) as
-        | Item[]
-        | undefined) ?? Array.from(this.ruleset.items)
-    )
+    const items = Array.from(this.ruleset.items)
       .filter((item) => {
         if (this.requiredItem && item.name === this.requiredItem) return true;
         if (item.itemUser && !item.itemUser.includes(this.name)) return false;
@@ -300,6 +294,12 @@ export class DraftSpecie implements Specie, Pokemon {
     if (this.genderRatio.M > 0) genders.push("M");
     if (this.genderRatio.F > 0) genders.push("F");
 
+    const item = this.requiredItem
+      ? this.ruleset.items.get(this.requiredItem)?.name
+      : this.requiredItems
+      ? this.ruleset.items.get(this.requiredItems[0])?.name
+      : undefined;
+
     return {
       id: this.id,
       name: this.name,
@@ -307,6 +307,7 @@ export class DraftSpecie implements Specie, Pokemon {
         (ability) => ability !== ""
       ) as AbilityName[],
       items,
+      item,
       teraType: this.forceTeraType,
       types: this.types,
       baseStats: this.baseStats,
