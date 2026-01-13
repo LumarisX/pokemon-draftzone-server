@@ -1,7 +1,7 @@
 import { ID, Move, TypeName } from "@pkmn/data";
 import { Server, Socket } from "socket.io";
-// import { pdzCalculateMove } from "../../../dmg/src/mechanics";
-// import { PokemonOptions, State } from "../../../dmg/src/state";
+import { calculate } from "../../../dmg/src/mechanics";
+import { PokemonOptions, State } from "../../../dmg/src/state";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import { getEffectivePower } from "../services/data-services/move.service";
@@ -170,7 +170,7 @@ type ClientMove = {
   strength: number;
 };
 
-type PokemonOptions = {};
+// type PokemonOptions = {};
 
 const CRIT_KEY: number[] = [0, 1, 3, 12] as const;
 const situationalMoves = ["steelroller", "dreameater"];
@@ -320,3 +320,29 @@ export const getProcessedLearnset: WSRoute =
       sendResponse(socket, [], request.id);
     }
   };
+
+export const getMoveCalculations: WSRoute = (io, socket) => async (request) => {
+  const ruleset = getRuleset("Gen9 NatDex");
+
+  const attacker = State.createPokemon(ruleset, request.params.attacker.id);
+  const result = calculate(
+    ruleset,
+    attacker,
+    State.createPokemon(ruleset, request.params.target.id),
+    State.createMove(ruleset, request.params.move.id)
+  );
+  console.log({
+    attacker: request.params.attacker.id,
+    target: request.params.target.id,
+    move: request.params.move.id,
+    knockout: result.knockout(),
+    minDamage: result.damage.min,
+    maxDamage: result.damage.max,
+    mode: result.damage.mode,
+    damage: result.damage
+      .added(-1 * attacker.hp)
+      .multiply(-1)
+      .toString(),
+  });
+  sendResponse(socket, [], request.id);
+};

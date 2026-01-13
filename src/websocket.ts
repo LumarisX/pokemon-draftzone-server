@@ -19,7 +19,9 @@ import {
   getModifiedMove,
   getModifiedType,
   getProcessedLearnset,
+  getMoveCalculations,
 } from "./ws-functions/teambuilder";
+import { calculateDamage } from "./ws-functions/calculator";
 
 export type SocketListener = (request: JsonRpcRequest) => void;
 export type WSRoute = (io: Server, socket: Socket) => SocketListener;
@@ -113,6 +115,8 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       "teambuilder.getModifiedMove": getModifiedMove,
       "teambuilder.getModifiedType": getModifiedType,
       "teambuilder.getProcessedLearnset": getProcessedLearnset,
+      "teambuilder.getMoveCalculations": getMoveCalculations,
+      "calculator.calculate": calculateDamage,
     };
 
     socket.on("message", async (message: any) => {
