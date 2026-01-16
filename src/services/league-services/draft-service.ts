@@ -22,9 +22,10 @@ export type TeamWithCoachStatus = {
   id: string;
   name: string;
   draft: { id: string; name: string; tier: string | undefined }[];
-  logoUrl?: string;
+  logo?: string;
   isCoach: boolean;
   picks: { id: string; name: string; tier: string | undefined }[][];
+  timezone?: string;
 };
 
 /**
@@ -172,10 +173,11 @@ export async function getTeamsWithCoachStatus(
         id: team._id.toString(),
         name: team.name,
         draft,
-        logoUrl: team.logoUrl,
+        logo: team.logo,
         isCoach,
         picks,
         pointTotal,
+        timezone: team.timezone,
       };
     })
   );

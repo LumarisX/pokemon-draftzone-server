@@ -40,7 +40,7 @@ export class LeagueTeamLoader {
 
   // Add other getters as needed for team properties
   public get logoUrl(): string | undefined {
-    return this._team?.logoUrl;
+    return this._team?.logo;
   }
 
   public get picks(): LeagueTeam["picks"] | undefined {

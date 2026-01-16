@@ -751,7 +751,8 @@ export const LeagueRoutes: Route = {
           }
           res.json({
             name: team.name,
-            logoUrl: team.logoUrl,
+            timezone: team.timezone,
+            logo: team.logo,
             draft,
             picks,
           });

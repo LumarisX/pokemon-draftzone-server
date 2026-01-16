@@ -18,10 +18,11 @@ export type TeamDraft = {
 
 export type LeagueTeam = {
   name: string;
-  logoUrl?: string;
+  logo?: string;
   coaches: (Types.ObjectId | LeagueUserDocument)[];
   picks: string[][];
   draft: TeamDraft[];
+  timezone?: string;
 };
 
 export type LeagueTeamDocument = Document &
@@ -48,7 +49,7 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
 
 const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   name: { type: String, required: true },
-  logoUrl: { type: String },
+  logo: { type: String },
   coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
   picks: [[{ type: String }]],
   draft: [TeamDraftSchema],
