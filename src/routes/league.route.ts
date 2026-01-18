@@ -22,6 +22,8 @@ import LeagueTeamModel, {
 } from "../models/league/team.model";
 import { DraftTierListDocument } from "../models/league/tier-list.model";
 import { LeagueUser, LeagueUserDocument } from "../models/league/user.model";
+import { LeagueMatchupModel } from "../models/league/matchup.model";
+import { LeagueStageModel } from "../models/league/stage.model";
 import { PDBLModel } from "../models/pdbl.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
@@ -54,6 +56,90 @@ type LeagueResponse = Response & {
   team?: LeagueTeamDocument | null;
   ruleset?: Ruleset | null;
 };
+
+// Helper function to calculate score for a result
+function calculateResultScore(team: {
+  score?: number;
+  pokemon: { stats?: { brought?: number; deaths?: number } }[];
+}): number {
+  if (team.score !== undefined) {
+    return team.score;
+  }
+  // Sum pokemon.brought where deaths < 1 (i.e., 0 or undefined)
+  return team.pokemon.reduce((sum, pokemon) => {
+    const deaths = pokemon.stats?.deaths ?? 0;
+    if (deaths < 1) {
+      return sum + (pokemon.stats?.brought ?? 0);
+    }
+    return sum;
+  }, 0);
+}
+
+// Helper function to calculate team summary score for a matchup
+function calculateTeamMatchupScore(
+  matchup: any,
+  teamNumber: "team1" | "team2",
+): number {
+  // If scoreOverride exists, use it
+  if (matchup.scoreOverride) {
+    return teamNumber === "team1"
+      ? matchup.scoreOverride.team1score
+      : matchup.scoreOverride.team2score;
+  }
+
+  // If no results, score is 0
+  if (!matchup.results || matchup.results.length === 0) {
+    return 0;
+  }
+
+  // If only 1 match, use that match's score
+  if (matchup.results.length === 1) {
+    return teamNumber === "team1"
+      ? calculateResultScore(matchup.results[0].team1)
+      : calculateResultScore(matchup.results[0].team2);
+  }
+
+  // Multiple matches: count wins
+  return matchup.results.reduce((wins: number, result: any) => {
+    if (teamNumber === "team1" && result.winner === "team1") {
+      return wins + 1;
+    }
+    if (teamNumber === "team2" && result.winner === "team2") {
+      return wins + 1;
+    }
+    return wins;
+  }, 0);
+}
+
+// Helper function to calculate team matchup score and determine winner
+function calculateTeamMatchupScoreAndWinner(matchup: any): {
+  team1Score: number;
+  team2Score: number;
+  winner: "team1" | "team2" | undefined;
+} {
+  const team1Score = calculateTeamMatchupScore(matchup, "team1");
+  const team2Score = calculateTeamMatchupScore(matchup, "team2");
+
+  // If scoreOverride exists, use its winner
+  if (matchup.scoreOverride) {
+    return {
+      team1Score,
+      team2Score,
+      winner: matchup.scoreOverride.winner,
+    };
+  }
+
+  // Otherwise determine winner based on scores
+  if (team1Score > team2Score) {
+    return { team1Score, team2Score, winner: "team1" };
+  }
+  if (team2Score > team1Score) {
+    return { team1Score, team2Score, winner: "team2" };
+  }
+
+  // Scores are equal
+  return { team1Score, team2Score, winner: undefined };
+}
 
 // Helper functions to ensure correct loading order for route params
 async function loadLeagueByKey(req: Request, res: LeagueResponse) {
@@ -102,12 +188,12 @@ async function loadDivision(req: Request, res: LeagueResponse) {
   if (res.division) return;
 
   await res.league!.populate<{ divisions: LeagueDivisionDocument[] }>(
-    "divisions"
+    "divisions",
   );
 
   const division_id = req.params.division_id;
   const division = (res.league!.divisions as LeagueDivisionDocument[]).find(
-    (d) => d.divisionKey === division_id
+    (d) => d.divisionKey === division_id,
   );
 
   if (!division) {
@@ -571,7 +657,7 @@ export const LeagueRoutes: Route = {
               res,
               401,
               new Error("Unauthorized"),
-              `${routeCode}-AL-05`
+              `${routeCode}-AL-05`,
             );
           }
 
@@ -594,7 +680,7 @@ export const LeagueRoutes: Route = {
               res,
               401,
               new Error("Unauthorized"),
-              `${routeCode}-AL-02`
+              `${routeCode}-AL-02`,
             );
           }
 
@@ -605,7 +691,7 @@ export const LeagueRoutes: Route = {
               res,
               400,
               new Error("Invalid league ad data"),
-              `${routeCode}-AL-03`
+              `${routeCode}-AL-03`,
             );
           }
 
@@ -631,7 +717,7 @@ export const LeagueRoutes: Route = {
               res,
               401,
               new Error("Unauthorized"),
-              `${routeCode}-AL-07`
+              `${routeCode}-AL-07`,
             );
           }
 
@@ -642,7 +728,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Ad not found"),
-              `${routeCode}-AL-08`
+              `${routeCode}-AL-08`,
             );
           }
 
@@ -651,7 +737,7 @@ export const LeagueRoutes: Route = {
               res,
               403,
               new Error("You can only delete your own ads"),
-              `${routeCode}-AL-09`
+              `${routeCode}-AL-09`,
             );
           }
 
@@ -692,11 +778,137 @@ export const LeagueRoutes: Route = {
           const tierList = await getTierList(res.league!);
           const divisions = await getDrafted(
             res.league!,
-            division as string | string[]
+            division as string | string[],
           );
           res.json({ tierList, divisions });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+    },
+
+    "/:league_key/schedule": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found."),
+              `${routeCode}-SCHED-LEG-01`,
+            );
+          }
+
+          // Fetch all stages for this league
+          const stages = await LeagueStageModel.find({
+            leagueId: res.league._id,
+          });
+
+          // For each stage, fetch its matchups
+          const stagesWithMatchups = await Promise.all(
+            stages.map(async (stage) => {
+              const matchups = await LeagueMatchupModel.find({
+                stageId: stage._id,
+              }).populate([
+                {
+                  path: "team1Id",
+                  select: "name logo coaches",
+                  populate: {
+                    path: "coaches",
+                    select: "name",
+                  },
+                },
+                {
+                  path: "team2Id",
+                  select: "name logo coaches",
+                  populate: {
+                    path: "coaches",
+                    select: "name",
+                  },
+                },
+              ]);
+
+              // Transform matchups to match League.Matchup interface
+              const transformedMatchups = matchups.map((matchup) => {
+                const team1Doc = matchup.team1Id as any;
+                const team2Doc = matchup.team2Id as any;
+                const { team1Score, team2Score, winner } =
+                  calculateTeamMatchupScoreAndWinner(matchup);
+
+                return {
+                  team1: {
+                    teamName: team1Doc?.name || "Unknown Team",
+                    coach: team1Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    score: team1Score,
+                    logo: team1Doc?.logo || "",
+                    winner:
+                      winner === "team1"
+                        ? true
+                        : winner === "team2"
+                          ? false
+                          : undefined,
+                  },
+                  team2: {
+                    teamName: team2Doc?.name || "Unknown Team",
+                    coach: team2Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    score: team2Score,
+                    logo: team2Doc?.logo || "",
+                    winner:
+                      winner === "team2"
+                        ? true
+                        : winner === "team1"
+                          ? false
+                          : undefined,
+                  },
+                  matches: matchup.results.map((result) => ({
+                    link: result.replay || "",
+                    team1: {
+                      team: result.team1.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team1),
+                      winner: result.winner === "team1",
+                    },
+                    team2: {
+                      team: result.team2.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team2),
+                      winner: result.winner === "team2",
+                    },
+                  })),
+                };
+              });
+
+              return {
+                _id: stage._id,
+                name: stage.name,
+                matchups: transformedMatchups,
+              };
+            }),
+          );
+
+          res.json(stagesWithMatchups);
+        } catch (error) {
+          logger.error("Error fetching league schedule:", error);
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-SCHED-LEG-02`,
+          );
         }
       },
     },
@@ -710,7 +922,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Team not found."),
-              `${routeCode}-R2-02`
+              `${routeCode}-R2-02`,
             );
           }
 
@@ -723,7 +935,7 @@ export const LeagueRoutes: Route = {
             team.draft.map(async (draftItem) => {
               const tier = await getPokemonTier(
                 res.league!,
-                draftItem.pokemonId
+                draftItem.pokemonId,
               );
               const pokemonName = getName(draftItem.pokemonId);
               return {
@@ -731,7 +943,7 @@ export const LeagueRoutes: Route = {
                 name: pokemonName,
                 tier,
               };
-            })
+            }),
           );
 
           const picks: { id: string; name: string; tier?: string }[][] = [];
@@ -745,8 +957,8 @@ export const LeagueRoutes: Route = {
                     name: getName(pick),
                     tier,
                   };
-                }) ?? []
-              )
+                }) ?? [],
+              ),
             );
           }
           res.json({
@@ -771,7 +983,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("League not found."),
-              `${routeCode}-R3-01`
+              `${routeCode}-R3-01`,
             );
           }
 
@@ -780,12 +992,12 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Division not found in this league."),
-              `${routeCode}-R3-02`
+              `${routeCode}-R3-02`,
             );
           }
 
           const division = await LeagueDivisionModel.findById(
-            res.division._id
+            res.division._id,
           ).populate<{
             teams: (LeagueTeamDocument & {
               picks: Types.DocumentArray<
@@ -812,7 +1024,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Division not found."),
-              `${routeCode}-R3-03`
+              `${routeCode}-R3-03`,
             );
           }
 
@@ -825,19 +1037,19 @@ export const LeagueRoutes: Route = {
                     name: getName(draftItem.pokemonId),
                     tier: await getPokemonTier(
                       res.league!,
-                      draftItem.pokemonId
+                      draftItem.pokemonId,
                     ),
                   },
                   timestamp: draftItem.timestamp,
                   picker: (draftItem.picker as LeagueUser)?.auth0Id,
-                }))
+                })),
               );
               return {
                 name: team.name,
                 picks: picks,
                 id: team._id.toString(),
               };
-            })
+            }),
           );
 
           res.json(allPicks);
@@ -854,11 +1066,391 @@ export const LeagueRoutes: Route = {
             await getDivisionDetails(
               res.league!,
               res.division!,
-              req.auth!.payload.sub!
-            )
+              req.auth!.payload.sub!,
+            ),
           );
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+        }
+      },
+    },
+    "/:league_key/divisions/:division_id/schedule": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const stages = await LeagueStageModel.find({
+            divisionIds: res.division!._id,
+          });
+
+          const stagesWithMatchups = await Promise.all(
+            stages.map(async (stage) => {
+              const matchups = await LeagueMatchupModel.find({
+                stageId: stage._id,
+              }).populate([
+                {
+                  path: "team1Id",
+                  select: "name logo coaches",
+                  populate: {
+                    path: "coaches",
+                    select: "name",
+                  },
+                },
+                {
+                  path: "team2Id",
+                  select: "name logo coaches",
+                  populate: {
+                    path: "coaches",
+                    select: "name",
+                  },
+                },
+              ]);
+
+              // Transform matchups to match League.Matchup interface
+              const transformedMatchups = matchups.map((matchup) => {
+                const team1Doc = matchup.team1Id as any;
+                const team2Doc = matchup.team2Id as any;
+                const { team1Score, team2Score, winner } =
+                  calculateTeamMatchupScoreAndWinner(matchup);
+
+                return {
+                  team1: {
+                    teamName: team1Doc?.name || "Unknown Team",
+                    coach: team1Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    score: team1Score,
+                    logo: team1Doc?.logo || "",
+                    winner:
+                      winner === "team1"
+                        ? true
+                        : winner === "team2"
+                          ? false
+                          : undefined,
+                  },
+                  team2: {
+                    teamName: team2Doc?.name || "Unknown Team",
+                    coach: team2Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    score: team2Score,
+                    logo: team2Doc?.logo || "",
+                    winner:
+                      winner === "team2"
+                        ? true
+                        : winner === "team1"
+                          ? false
+                          : undefined,
+                  },
+                  matches: matchup.results.map((result) => ({
+                    link: result.replay || "",
+                    team1: {
+                      team: result.team1.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team1),
+                      winner: result.winner === "team1",
+                    },
+                    team2: {
+                      team: result.team2.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team2),
+                      winner: result.winner === "team2",
+                    },
+                  })),
+                };
+              });
+
+              return {
+                _id: stage._id,
+                name: stage.name,
+                matchups: transformedMatchups,
+              };
+            }),
+          );
+
+          res.json(stagesWithMatchups);
+        } catch (error) {
+          logger.error("Error fetching schedule:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-SCHED-03`);
+        }
+      },
+    },
+    "/:league_key/divisions/:division_id/standings": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const stages = await LeagueStageModel.find({
+            divisionIds: res.division!._id,
+          });
+
+          const allMatchups = await LeagueMatchupModel.find({
+            stageId: { $in: stages.map((s) => s._id) },
+          }).populate([
+            {
+              path: "team1Id",
+              select: "name logo coaches",
+              populate: { path: "coaches", select: "name" },
+            },
+            {
+              path: "team2Id",
+              select: "name logo coaches",
+              populate: { path: "coaches", select: "name" },
+            },
+          ]);
+
+          // Build coach standings
+          const coachStandingsMap = new Map<
+            string,
+            {
+              name: string;
+              results: number[];
+              coaches: string[];
+              wins: number;
+              losses: number;
+              diff: number;
+              logo?: string;
+              teamId: string;
+            }
+          >();
+
+          // Build pokemon standings
+          const pokemonStandingsMap = new Map<
+            string,
+            {
+              id: string;
+              name: string;
+              coaches: Set<string>;
+              teamName: string;
+              teamId: string;
+              brought: number;
+              kills: number;
+              deaths: number;
+            }
+          >();
+
+          // First, initialize standings for all teams in the division with base 0-0 records
+          const divisionTeams = await LeagueTeamModel.find({
+            _id: { $in: res.division!.teams },
+          }).populate({ path: "coaches", select: "name" });
+
+          for (const team of divisionTeams) {
+            const teamKey = team._id.toString();
+            const teamCoaches = team.coaches.map((c: any) => c.name).join(", ");
+
+            coachStandingsMap.set(teamKey, {
+              name: team.name,
+              results: Array(stages.length).fill(0),
+              coaches: [teamCoaches],
+              wins: 0,
+              losses: 0,
+              diff: 0,
+              logo: team.logo,
+              teamId: teamKey,
+            });
+          }
+
+          for (const matchup of allMatchups) {
+            const team1Doc = matchup.team1Id as any;
+            const team2Doc = matchup.team2Id as any;
+            const { team1Score, team2Score, winner } =
+              calculateTeamMatchupScoreAndWinner(matchup);
+
+            const team1Key = team1Doc._id.toString();
+            const team2Key = team2Doc._id.toString();
+            const team1Coaches = team1Doc.coaches
+              .map((c: any) => c.name)
+              .join(", ");
+            const team2Coaches = team2Doc.coaches
+              .map((c: any) => c.name)
+              .join(", ");
+
+            // Find the stage index for this matchup
+            const stageIndex = stages.findIndex((s) =>
+              s._id.equals(matchup.stageId),
+            );
+
+            // Ensure both teams have standings entries (should already exist from initialization)
+            if (!coachStandingsMap.has(team1Key)) {
+              coachStandingsMap.set(team1Key, {
+                name: team1Doc.name,
+                results: Array(stages.length).fill(0),
+                coaches: [team1Coaches],
+                wins: 0,
+                losses: 0,
+                diff: 0,
+                logo: team1Doc.logo,
+                teamId: team1Key,
+              });
+            }
+            if (!coachStandingsMap.has(team2Key)) {
+              coachStandingsMap.set(team2Key, {
+                name: team2Doc.name,
+                results: Array(stages.length).fill(0),
+                coaches: [team2Coaches],
+                wins: 0,
+                losses: 0,
+                diff: 0,
+                logo: team2Doc.logo,
+                teamId: team2Key,
+              });
+            }
+
+            // Update win/loss records
+            const team1Standing = coachStandingsMap.get(team1Key)!;
+            const team2Standing = coachStandingsMap.get(team2Key)!;
+
+            const team1StageDiff = team1Score - team2Score;
+            const team2StageDiff = team2Score - team1Score;
+
+            if (winner === "team1") {
+              team1Standing.wins += 1;
+              team2Standing.losses += 1;
+            } else if (winner === "team2") {
+              team2Standing.wins += 1;
+              team1Standing.losses += 1;
+            }
+
+            team1Standing.results[stageIndex] = team1StageDiff;
+            team2Standing.results[stageIndex] = team2StageDiff;
+
+            team1Standing.diff += team1StageDiff;
+            team2Standing.diff += team2StageDiff;
+
+            // Process pokemon stats
+            for (const pokemon of matchup.results[0]?.team1?.pokemon || []) {
+              const pokemonId = pokemon.id;
+              const pokemonKey = `${pokemonId}-${team1Key}`;
+
+              if (!pokemonStandingsMap.has(pokemonKey)) {
+                pokemonStandingsMap.set(pokemonKey, {
+                  id: pokemonId,
+                  name: pokemon.name,
+                  coaches: new Set([team1Coaches]),
+                  teamName: team1Doc.name,
+                  teamId: team1Key,
+                  brought: 0,
+                  kills: 0,
+                  deaths: 0,
+                });
+              }
+
+              const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
+              pokemonStats.brought += pokemon.stats?.brought ?? 0;
+              pokemonStats.kills +=
+                (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
+              pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
+            }
+
+            for (const pokemon of matchup.results[0]?.team2?.pokemon || []) {
+              const pokemonId = pokemon.id;
+              const pokemonKey = `${pokemonId}-${team2Key}`;
+
+              if (!pokemonStandingsMap.has(pokemonKey)) {
+                pokemonStandingsMap.set(pokemonKey, {
+                  id: pokemonId,
+                  name: pokemon.name,
+                  coaches: new Set([team2Coaches]),
+                  teamName: team2Doc.name,
+                  teamId: team2Key,
+                  brought: 0,
+                  kills: 0,
+                  deaths: 0,
+                });
+              }
+
+              const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
+              pokemonStats.brought += pokemon.stats?.brought ?? 0;
+              pokemonStats.kills +=
+                (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
+              pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
+            }
+          }
+
+          // Convert coach standings to array and calculate streaks
+          const coachStandings = Array.from(coachStandingsMap.values())
+            .map((team) => {
+              let streak = 0;
+              //TODO: Add direction once stage updates are tracked
+              let direction = 0;
+
+              for (const result of team.results) {
+                if (result > 0) {
+                  if (streak >= 0) {
+                    streak += 1;
+                  } else {
+                    streak = 1;
+                  }
+                } else if (result < 0) {
+                  if (streak <= 0) {
+                    streak -= 1;
+                  } else {
+                    streak = -1;
+                  }
+                }
+              }
+
+              return {
+                name: team.name,
+                results: team.results,
+                coaches: team.coaches,
+                streak,
+                wins: team.wins,
+                loses: team.losses,
+                diff: team.diff,
+                logo: team.logo,
+              };
+            })
+            .sort((a, b) => {
+              // Sort by wins descending, then by diff descending
+              if (b.wins !== a.wins) return b.wins - a.wins;
+              return b.diff - a.diff;
+            });
+
+          // Convert pokemon standings to array
+          const pokemonStandings = Array.from(pokemonStandingsMap.values())
+            .map((pokemon) => {
+              //TODO: Add direction once stage updates are tracked
+              let direction = 0;
+
+              return {
+                id: pokemon.id,
+                name: pokemon.name,
+                coaches: Array.from(pokemon.coaches),
+                teamName: pokemon.teamName,
+                record: {
+                  brought: pokemon.brought,
+                  kills: pokemon.kills,
+                  deaths: pokemon.deaths,
+                  diff: pokemon.kills - pokemon.deaths,
+                },
+              };
+            })
+            .sort((a, b) => {
+              // Sort by kills descending, then by diff descending
+              if (b.record.kills !== a.record.kills)
+                return b.record.kills - a.record.kills;
+              return b.record.diff - a.record.diff;
+            });
+
+          res.json({
+            coachStandings: {
+              //TODO: make dynamic
+              cutoff: 8,
+              weeks: stages.length,
+              teams: coachStandings,
+            },
+            pokemonStandings,
+          });
+        } catch (error) {
+          logger.error("Error fetching standings:", error);
+          return sendError(res, 500, error as Error, `${routeCode}-STAND-03`);
         }
       },
     },
@@ -870,7 +1462,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("League not found."),
-              `${routeCode}-R3-01`
+              `${routeCode}-R3-01`,
             );
           }
 
@@ -879,12 +1471,12 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Division not found in this league."),
-              `${routeCode}-R3-02`
+              `${routeCode}-R3-02`,
             );
           }
 
           const division = await LeagueDivisionModel.findById(
-            res.division._id
+            res.division._id,
           ).populate<{ teams: LeagueTeamDocument[] }>("teams");
 
           if (!division) {
@@ -892,7 +1484,7 @@ export const LeagueRoutes: Route = {
               res,
               404,
               new Error("Division not found."),
-              `${routeCode}-R3-03`
+              `${routeCode}-R3-03`,
             );
           }
 
@@ -938,7 +1530,7 @@ export const LeagueRoutes: Route = {
                 const randomOffsetMilliseconds =
                   randomOffsetMinutes * 60 * 1000; // Convert to milliseconds
                 draftPick.skipTime = new Date(
-                  now.getTime() + thirtyMinutes + randomOffsetMilliseconds
+                  now.getTime() + thirtyMinutes + randomOffsetMilliseconds,
                 );
               }
               currentRound.push(draftPick);
@@ -981,8 +1573,8 @@ export const LeagueRoutes: Route = {
                   movechart: await movechart(draft, ruleset),
                   coverage: await plannerCoverage(draft),
                 };
-              }
-            )
+              },
+            ),
           );
           return res.json(teams);
         } catch (error) {
@@ -1065,7 +1657,7 @@ export const LeagueRoutes: Route = {
           }
 
           const team = res.division!.teams.find((team) =>
-            team._id.equals(teamId)
+            team._id.equals(teamId),
           ) as LeagueTeamDocument | undefined;
           if (!team) {
             return res.status(400).json({
@@ -1096,7 +1688,7 @@ export const LeagueRoutes: Route = {
         try {
           const signup = BattleZone.validateSignUpForm(
             req.body,
-            req.auth!.payload.sub!
+            req.auth!.payload.sub!,
           );
           const existing = await PDBLModel.findOne({ sub: signup.sub });
           if (existing)
@@ -1112,14 +1704,14 @@ export const LeagueRoutes: Route = {
             } else {
               // Fetch the channel from the guild
               const channel = guild.channels.cache.get(
-                "1303896194187132978"
+                "1303896194187132978",
               ) as TextChannel;
               if (!channel || !channel.isTextBased()) {
                 console.error("Channel not found or not a text channel");
               } else {
                 // Send a message in the designated channel
                 channel.send(
-                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`
+                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`,
                 );
               }
             }
@@ -1140,7 +1732,7 @@ export const LeagueRoutes: Route = {
       req: Request,
       res: LeagueResponse,
       next,
-      league_id
+      league_id,
     ) {
       try {
         await loadLeagueById(req, res);
@@ -1155,7 +1747,7 @@ export const LeagueRoutes: Route = {
       req: Request,
       res: LeagueResponse,
       next,
-      league_key
+      league_key,
     ) {
       try {
         await loadLeagueByKey(req, res);
@@ -1170,7 +1762,7 @@ export const LeagueRoutes: Route = {
       req: Request,
       res: LeagueResponse,
       next,
-      division_id
+      division_id,
     ) {
       try {
         await loadDivision(req, res);
