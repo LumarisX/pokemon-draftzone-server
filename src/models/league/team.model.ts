@@ -19,7 +19,7 @@ export type TeamDraft = {
 export type LeagueTeam = {
   name: string;
   logo?: string;
-  coaches: (Types.ObjectId | LeagueUserDocument)[];
+  coach: Types.ObjectId | LeagueUserDocument;
   picks: string[][];
   draft: TeamDraft[];
   timezone?: string;
@@ -44,18 +44,22 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
       type: captSchema,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   name: { type: String, required: true },
   logo: { type: String },
-  coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
+  coach: {
+    type: Schema.Types.ObjectId,
+    ref: LEAGUE_USER_COLLECTION,
+    required: true,
+  },
   picks: [[{ type: String }]],
   draft: [TeamDraftSchema],
 });
 
 export default mongoose.model<LeagueTeamDocument>(
   LEAGUE_TEAM_COLLECTION,
-  LeagueTeamSchema
+  LeagueTeamSchema,
 );

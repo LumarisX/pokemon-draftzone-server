@@ -39,6 +39,12 @@ import {
   getTierList,
 } from "../services/league-services/league-service";
 import { getPokemonTier } from "../services/league-services/tier-service";
+import {
+  calculateDivisionCoachStandings,
+  calculateDivisionPokemonStandings,
+  calculateResultScore,
+  calculateTeamMatchupScoreAndWinner,
+} from "../services/league-services/standings-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
@@ -56,90 +62,6 @@ type LeagueResponse = Response & {
   team?: LeagueTeamDocument | null;
   ruleset?: Ruleset | null;
 };
-
-// Helper function to calculate score for a result
-function calculateResultScore(team: {
-  score?: number;
-  pokemon: { stats?: { brought?: number; deaths?: number } }[];
-}): number {
-  if (team.score !== undefined) {
-    return team.score;
-  }
-  // Sum pokemon.brought where deaths < 1 (i.e., 0 or undefined)
-  return team.pokemon.reduce((sum, pokemon) => {
-    const deaths = pokemon.stats?.deaths ?? 0;
-    if (deaths < 1) {
-      return sum + (pokemon.stats?.brought ?? 0);
-    }
-    return sum;
-  }, 0);
-}
-
-// Helper function to calculate team summary score for a matchup
-function calculateTeamMatchupScore(
-  matchup: any,
-  teamNumber: "team1" | "team2",
-): number {
-  // If scoreOverride exists, use it
-  if (matchup.scoreOverride) {
-    return teamNumber === "team1"
-      ? matchup.scoreOverride.team1score
-      : matchup.scoreOverride.team2score;
-  }
-
-  // If no results, score is 0
-  if (!matchup.results || matchup.results.length === 0) {
-    return 0;
-  }
-
-  // If only 1 match, use that match's score
-  if (matchup.results.length === 1) {
-    return teamNumber === "team1"
-      ? calculateResultScore(matchup.results[0].team1)
-      : calculateResultScore(matchup.results[0].team2);
-  }
-
-  // Multiple matches: count wins
-  return matchup.results.reduce((wins: number, result: any) => {
-    if (teamNumber === "team1" && result.winner === "team1") {
-      return wins + 1;
-    }
-    if (teamNumber === "team2" && result.winner === "team2") {
-      return wins + 1;
-    }
-    return wins;
-  }, 0);
-}
-
-// Helper function to calculate team matchup score and determine winner
-function calculateTeamMatchupScoreAndWinner(matchup: any): {
-  team1Score: number;
-  team2Score: number;
-  winner: "team1" | "team2" | undefined;
-} {
-  const team1Score = calculateTeamMatchupScore(matchup, "team1");
-  const team2Score = calculateTeamMatchupScore(matchup, "team2");
-
-  // If scoreOverride exists, use its winner
-  if (matchup.scoreOverride) {
-    return {
-      team1Score,
-      team2Score,
-      winner: matchup.scoreOverride.winner,
-    };
-  }
-
-  // Otherwise determine winner based on scores
-  if (team1Score > team2Score) {
-    return { team1Score, team2Score, winner: "team1" };
-  }
-  if (team2Score > team1Score) {
-    return { team1Score, team2Score, winner: "team2" };
-  }
-
-  // Scores are equal
-  return { team1Score, team2Score, winner: undefined };
-}
 
 // Helper functions to ensure correct loading order for route params
 async function loadLeagueByKey(req: Request, res: LeagueResponse) {
@@ -257,199 +179,199 @@ export const LeagueRoutes: Route = {
         try {
           const teamData: {
             teamName: string;
-            coaches: string[];
+            coach: string;
             logo: string;
             seed: number;
           }[] = [
             {
               teamName: `Philadelphia Flygons`,
-              coaches: ["02ThatOneGuy"],
+              coach: "02ThatOneGuy",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565385237-Philadelphia_Flygons.png",
               seed: 1,
             },
             {
               teamName: `Mighty Murkrow`,
-              coaches: ["hsoj"],
+              coach: "hsoj",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097094680-Mighty Murkrow.png",
               seed: 5,
             },
             {
               teamName: `Fitchburg's Sun Chasers`,
-              coaches: ["Feather"],
+              coach: "Feather",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565484354-Fitchburgs_Sun_Chaser.png",
               seed: 2,
             },
             {
               teamName: `Chicago White Fox`,
-              coaches: ["TheNotoriousABS"],
+              coach: "TheNotoriousABS",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565596549-Chicago_Ninetales.png",
               seed: 8,
             },
             {
               teamName: `Deimos Deoxys`,
-              coaches: ["Lumaris"],
+              coach: "Lumaris",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1744422916695-DeimosDeoxys.png",
               seed: 3,
             },
             {
               teamName: `Alpine Arcanines`,
-              coaches: ["Lion"],
+              coach: "Lion",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565450693-AlpineArcanines.png",
               seed: 4,
             },
             {
               teamName: `Victorious Vigoroths`,
-              coaches: ["Speedy"],
+              coach: "Speedy",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097393478-Victorious_Vigoroths.png",
               seed: 7,
             },
             {
               teamName: `Deep Sea Duskulls`,
-              coaches: ["Emeglebon"],
+              coach: "Emeglebon",
               logo: "",
               seed: 9,
             },
             {
               teamName: `Twinleaf Tatsugiri`,
-              coaches: ["Penic"],
+              coach: "Penic",
               logo: "",
               seed: 10,
             },
             {
               teamName: `I like 'em THICC`,
-              coaches: ["Kat"],
+              coach: "Kat",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565503663-I_like_em_THICC.png",
               seed: 6,
             },
             {
               teamName: `London Vespiquens`,
-              coaches: ["Jake W"],
+              coach: "Jake W",
               logo: "",
               seed: 11,
             },
             {
               teamName: `Tampa T-Chainz`,
-              coaches: ["Spite"],
+              coach: "Spite",
               logo: "",
               seed: 12,
             },
             {
               teamName: `Kalos Quagsires`,
-              coaches: ["Caltech_"],
+              coach: "Caltech_",
               logo: "",
               seed: 13,
             },
             {
               teamName: `Montreal Mean Mareanies`,
-              coaches: ["Qofol"],
+              coach: "Qofol",
               logo: "",
               seed: 14,
             },
             {
               teamName: `Chicago Sky Attack`,
-              coaches: ["Quincy"],
+              coach: "Quincy",
               logo: "",
               seed: 15,
             },
             {
               teamName: `Midnight Teddy's`,
-              coaches: ["neb5"],
+              coach: "neb5",
               logo: "",
               seed: 16,
             },
             {
               teamName: `Moochelin Star Chefs`,
-              coaches: ["Rai"],
+              coach: "Rai",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565579136-Moochelin_Star_Chefs.png",
               seed: 17,
             },
             {
               teamName: `Kalamazoo Komalas`,
-              coaches: ["SuperSpiderPig"],
+              coach: "SuperSpiderPig",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565551389-Kalamazoo_Komalas.png",
               seed: 18,
             },
             {
               teamName: `Jokic Lokix`,
-              coaches: ["Dotexe"],
+              coach: "Dotexe",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565520216-Jokic_Lokix.png",
               seed: 19,
             },
             {
               teamName: `Jimothy Jirachi Tomfoolery`,
-              coaches: ["Jimothy J"],
+              coach: "Jimothy J",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565565925-Jimothy_Jirachi.png",
               seed: 20,
             },
             {
               teamName: `Memphis Bloodmoons`,
-              coaches: ["Steven"],
+              coach: "Steven",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565465031-Memphis_Bloodmoons.png",
               seed: 21,
             },
             {
               teamName: `F.C. Monterayquaza`,
-              coaches: ["ChristianDeputy"],
+              coach: "ChristianDeputy",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565535075-F.C._Monterrayquaza.png",
               seed: 22,
             },
             {
               teamName: `Chicago White Sawks`,
-              coaches: ["BR@D"],
+              coach: "BR@D",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565766076-Chicago_White_SawksBrad.png",
               seed: 23,
             },
             {
               teamName: `Bug Brigade`,
-              coaches: ["TheNPC420"],
+              coach: "TheNPC420",
               logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565423936-Bug_Brigade.png",
               seed: 24,
             },
             {
               teamName: `Minnesota Lycanrocs`,
-              coaches: ["SpiralBB"],
+              coach: "SpiralBB",
               logo: "",
               seed: 25,
             },
             {
               teamName: `Seattle Supersonics`,
-              coaches: ["AwesomenessGuy"],
+              coach: "AwesomenessGuy",
               logo: "",
               seed: 26,
             },
             {
               teamName: `Fairview Floatzels`,
-              coaches: ["Lupa"],
+              coach: "Lupa",
               logo: "",
               seed: 27,
             },
             {
               teamName: `McTesuda's`,
-              coaches: ["Lewis"],
+              coach: "Lewis",
               logo: "",
               seed: 28,
             },
             {
               teamName: `Pacifidlog Pichus`,
-              coaches: ["13Luken"],
+              coach: "13Luken",
               logo: "",
               seed: 29,
             },
             {
               teamName: `Mossdeep City Sharpedos`,
-              coaches: ["Travis"],
+              coach: "Travis",
               logo: "",
               seed: 30,
             },
             {
               teamName: `Texas Thousand`,
-              coaches: ["CheesyBP"],
+              coach: "CheesyBP",
               logo: "",
               seed: 31,
             },
             {
               teamName: `Kommo-o Kommanders`,
-              coaches: ["AnimaSean"],
+              coach: "AnimaSean",
               logo: "",
               seed: 32,
             },
@@ -460,7 +382,7 @@ export const LeagueRoutes: Route = {
             teams: teamData
               .map((t) => ({
                 teamName: t.teamName,
-                coachName: t.coaches[0],
+                coachName: t.coach,
                 seed: t.seed,
                 logo: t.logo,
               }))
@@ -812,17 +734,17 @@ export const LeagueRoutes: Route = {
               }).populate([
                 {
                   path: "team1Id",
-                  select: "name logo coaches",
+                  select: "name logo coach",
                   populate: {
-                    path: "coaches",
+                    path: "coach",
                     select: "name",
                   },
                 },
                 {
                   path: "team2Id",
-                  select: "name logo coaches",
+                  select: "name logo coach",
                   populate: {
-                    path: "coaches",
+                    path: "coach",
                     select: "name",
                   },
                 },
@@ -838,7 +760,7 @@ export const LeagueRoutes: Route = {
                 return {
                   team1: {
                     teamName: team1Doc?.name || "Unknown Team",
-                    coach: team1Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    coach: team1Doc?.coach?.name || "Unknown Coach",
                     score: team1Score,
                     logo: team1Doc?.logo || "",
                     winner:
@@ -850,7 +772,7 @@ export const LeagueRoutes: Route = {
                   },
                   team2: {
                     teamName: team2Doc?.name || "Unknown Team",
-                    coach: team2Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    coach: team2Doc?.coach?.name || "Unknown Coach",
                     score: team2Score,
                     logo: team2Doc?.logo || "",
                     winner:
@@ -929,7 +851,6 @@ export const LeagueRoutes: Route = {
           await res.league!.populate<{
             tierList: DraftTierListDocument;
           }>("tierList");
-          const tierList = res.league!.tierList as DraftTierListDocument;
 
           const draft = await Promise.all(
             team.draft.map(async (draftItem) => {
@@ -946,27 +867,34 @@ export const LeagueRoutes: Route = {
             }),
           );
 
-          const picks: { id: string; name: string; tier?: string }[][] = [];
-          for (let i = 0; i < tierList.draftCount[1] - draft.length; i++) {
-            picks.push(
-              await Promise.all(
-                team.picks[i].map(async (pick) => {
-                  const tier = await getPokemonTier(res.league!, pick);
-                  return {
-                    id: pick,
-                    name: getName(pick),
-                    tier,
-                  };
-                }) ?? [],
-              ),
-            );
-          }
+          // Get pokemon standings for this team
+          const teamMatchups = await LeagueMatchupModel.find({
+            $or: [{ team1Id: team._id }, { team2Id: team._id }],
+          }).populate([
+            {
+              path: "team1Id",
+              select: "name coaches",
+              populate: { path: "coaches", select: "name" },
+            },
+            {
+              path: "team2Id",
+              select: "name coaches",
+              populate: { path: "coaches", select: "name" },
+            },
+          ]);
+
+          // Filter to only include pokemon for this team
+          const pokemonStandings = await calculateDivisionPokemonStandings(
+            teamMatchups,
+            team._id.toString(),
+          );
+
           res.json({
             name: team.name,
             timezone: team.timezone,
             logo: team.logo,
             draft,
-            picks,
+            pokemonStandings,
           });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
@@ -1003,7 +931,7 @@ export const LeagueRoutes: Route = {
               picks: Types.DocumentArray<
                 TeamDraft & { picker: LeagueUserDocument }
               >;
-              coaches: LeagueUserDocument[];
+              coach: LeagueUserDocument;
             })[];
           }>({
             path: "teams",
@@ -1013,7 +941,7 @@ export const LeagueRoutes: Route = {
                 model: "LeagueUser",
               },
               {
-                path: "coaches",
+                path: "coach",
                 model: "LeagueUser",
               },
             ],
@@ -1088,17 +1016,17 @@ export const LeagueRoutes: Route = {
               }).populate([
                 {
                   path: "team1Id",
-                  select: "name logo coaches",
+                  select: "name logo coach",
                   populate: {
-                    path: "coaches",
+                    path: "coach",
                     select: "name",
                   },
                 },
                 {
                   path: "team2Id",
-                  select: "name logo coaches",
+                  select: "name logo coach",
                   populate: {
-                    path: "coaches",
+                    path: "coach",
                     select: "name",
                   },
                 },
@@ -1114,7 +1042,7 @@ export const LeagueRoutes: Route = {
                 return {
                   team1: {
                     teamName: team1Doc?.name || "Unknown Team",
-                    coach: team1Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    coach: team1Doc?.coach?.name || "Unknown Coach",
                     score: team1Score,
                     logo: team1Doc?.logo || "",
                     winner:
@@ -1126,7 +1054,7 @@ export const LeagueRoutes: Route = {
                   },
                   team2: {
                     teamName: team2Doc?.name || "Unknown Team",
-                    coach: team2Doc?.coaches?.[0]?.name || "Unknown Coach",
+                    coach: team2Doc?.coach?.name || "Unknown Coach",
                     score: team2Score,
                     logo: team2Doc?.logo || "",
                     winner:
@@ -1195,249 +1123,28 @@ export const LeagueRoutes: Route = {
           }).populate([
             {
               path: "team1Id",
-              select: "name logo coaches",
-              populate: { path: "coaches", select: "name" },
+              select: "name logo coach",
+              populate: { path: "coach", select: "name" },
             },
             {
               path: "team2Id",
-              select: "name logo coaches",
-              populate: { path: "coaches", select: "name" },
+              select: "name logo coach",
+              populate: { path: "coach", select: "name" },
             },
           ]);
 
-          // Build coach standings
-          const coachStandingsMap = new Map<
-            string,
-            {
-              name: string;
-              results: number[];
-              coaches: string[];
-              wins: number;
-              losses: number;
-              diff: number;
-              logo?: string;
-              teamId: string;
-            }
-          >();
-
-          // Build pokemon standings
-          const pokemonStandingsMap = new Map<
-            string,
-            {
-              id: string;
-              name: string;
-              coaches: Set<string>;
-              teamName: string;
-              teamId: string;
-              brought: number;
-              kills: number;
-              deaths: number;
-            }
-          >();
-
-          // First, initialize standings for all teams in the division with base 0-0 records
           const divisionTeams = await LeagueTeamModel.find({
             _id: { $in: res.division!.teams },
-          }).populate({ path: "coaches", select: "name" });
+          }).populate({ path: "coach", select: "name" });
 
-          for (const team of divisionTeams) {
-            const teamKey = team._id.toString();
-            const teamCoaches = team.coaches.map((c: any) => c.name).join(", ");
+          const coachStandings = await calculateDivisionCoachStandings(
+            allMatchups,
+            stages,
+            divisionTeams,
+          );
 
-            coachStandingsMap.set(teamKey, {
-              name: team.name,
-              results: Array(stages.length).fill(0),
-              coaches: [teamCoaches],
-              wins: 0,
-              losses: 0,
-              diff: 0,
-              logo: team.logo,
-              teamId: teamKey,
-            });
-          }
-
-          for (const matchup of allMatchups) {
-            const team1Doc = matchup.team1Id as any;
-            const team2Doc = matchup.team2Id as any;
-            const { team1Score, team2Score, winner } =
-              calculateTeamMatchupScoreAndWinner(matchup);
-
-            const team1Key = team1Doc._id.toString();
-            const team2Key = team2Doc._id.toString();
-            const team1Coaches = team1Doc.coaches
-              .map((c: any) => c.name)
-              .join(", ");
-            const team2Coaches = team2Doc.coaches
-              .map((c: any) => c.name)
-              .join(", ");
-
-            // Find the stage index for this matchup
-            const stageIndex = stages.findIndex((s) =>
-              s._id.equals(matchup.stageId),
-            );
-
-            // Ensure both teams have standings entries (should already exist from initialization)
-            if (!coachStandingsMap.has(team1Key)) {
-              coachStandingsMap.set(team1Key, {
-                name: team1Doc.name,
-                results: Array(stages.length).fill(0),
-                coaches: [team1Coaches],
-                wins: 0,
-                losses: 0,
-                diff: 0,
-                logo: team1Doc.logo,
-                teamId: team1Key,
-              });
-            }
-            if (!coachStandingsMap.has(team2Key)) {
-              coachStandingsMap.set(team2Key, {
-                name: team2Doc.name,
-                results: Array(stages.length).fill(0),
-                coaches: [team2Coaches],
-                wins: 0,
-                losses: 0,
-                diff: 0,
-                logo: team2Doc.logo,
-                teamId: team2Key,
-              });
-            }
-
-            // Update win/loss records
-            const team1Standing = coachStandingsMap.get(team1Key)!;
-            const team2Standing = coachStandingsMap.get(team2Key)!;
-
-            const team1StageDiff = team1Score - team2Score;
-            const team2StageDiff = team2Score - team1Score;
-
-            if (winner === "team1") {
-              team1Standing.wins += 1;
-              team2Standing.losses += 1;
-            } else if (winner === "team2") {
-              team2Standing.wins += 1;
-              team1Standing.losses += 1;
-            }
-
-            team1Standing.results[stageIndex] = team1StageDiff;
-            team2Standing.results[stageIndex] = team2StageDiff;
-
-            team1Standing.diff += team1StageDiff;
-            team2Standing.diff += team2StageDiff;
-
-            // Process pokemon stats
-            for (const pokemon of matchup.results[0]?.team1?.pokemon || []) {
-              const pokemonId = pokemon.id;
-              const pokemonKey = `${pokemonId}-${team1Key}`;
-
-              if (!pokemonStandingsMap.has(pokemonKey)) {
-                pokemonStandingsMap.set(pokemonKey, {
-                  id: pokemonId,
-                  name: pokemon.name,
-                  coaches: new Set([team1Coaches]),
-                  teamName: team1Doc.name,
-                  teamId: team1Key,
-                  brought: 0,
-                  kills: 0,
-                  deaths: 0,
-                });
-              }
-
-              const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
-              pokemonStats.brought += pokemon.stats?.brought ?? 0;
-              pokemonStats.kills +=
-                (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
-              pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
-            }
-
-            for (const pokemon of matchup.results[0]?.team2?.pokemon || []) {
-              const pokemonId = pokemon.id;
-              const pokemonKey = `${pokemonId}-${team2Key}`;
-
-              if (!pokemonStandingsMap.has(pokemonKey)) {
-                pokemonStandingsMap.set(pokemonKey, {
-                  id: pokemonId,
-                  name: pokemon.name,
-                  coaches: new Set([team2Coaches]),
-                  teamName: team2Doc.name,
-                  teamId: team2Key,
-                  brought: 0,
-                  kills: 0,
-                  deaths: 0,
-                });
-              }
-
-              const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
-              pokemonStats.brought += pokemon.stats?.brought ?? 0;
-              pokemonStats.kills +=
-                (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
-              pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
-            }
-          }
-
-          // Convert coach standings to array and calculate streaks
-          const coachStandings = Array.from(coachStandingsMap.values())
-            .map((team) => {
-              let streak = 0;
-              //TODO: Add direction once stage updates are tracked
-              let direction = 0;
-
-              for (const result of team.results) {
-                if (result > 0) {
-                  if (streak >= 0) {
-                    streak += 1;
-                  } else {
-                    streak = 1;
-                  }
-                } else if (result < 0) {
-                  if (streak <= 0) {
-                    streak -= 1;
-                  } else {
-                    streak = -1;
-                  }
-                }
-              }
-
-              return {
-                name: team.name,
-                results: team.results,
-                coaches: team.coaches,
-                streak,
-                wins: team.wins,
-                loses: team.losses,
-                diff: team.diff,
-                logo: team.logo,
-              };
-            })
-            .sort((a, b) => {
-              // Sort by wins descending, then by diff descending
-              if (b.wins !== a.wins) return b.wins - a.wins;
-              return b.diff - a.diff;
-            });
-
-          // Convert pokemon standings to array
-          const pokemonStandings = Array.from(pokemonStandingsMap.values())
-            .map((pokemon) => {
-              //TODO: Add direction once stage updates are tracked
-              let direction = 0;
-
-              return {
-                id: pokemon.id,
-                name: pokemon.name,
-                coaches: Array.from(pokemon.coaches),
-                teamName: pokemon.teamName,
-                record: {
-                  brought: pokemon.brought,
-                  kills: pokemon.kills,
-                  deaths: pokemon.deaths,
-                  diff: pokemon.kills - pokemon.deaths,
-                },
-              };
-            })
-            .sort((a, b) => {
-              // Sort by kills descending, then by diff descending
-              if (b.record.kills !== a.record.kills)
-                return b.record.kills - a.record.kills;
-              return b.record.diff - a.record.diff;
-            });
+          const pokemonStandings =
+            await calculateDivisionPokemonStandings(allMatchups);
 
           res.json({
             coachStandings: {
