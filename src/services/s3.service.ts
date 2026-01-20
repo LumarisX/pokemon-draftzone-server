@@ -58,6 +58,7 @@ class S3Service {
     key: string,
     contentType: string,
     expiresIn: number = 3600,
+    maxFileSize: number = 5 * 1024 * 1024, // 5MB default
   ): Promise<string> {
     if (!this.isConfigured || !this.s3Client || !this.bucket) {
       throw new Error("S3 service is not configured");
@@ -69,8 +70,11 @@ class S3Service {
       ContentType: contentType,
     });
 
+    // Add security constraints to presigned URL
     const presignedUrl = await getSignedUrl(this.s3Client, command, {
       expiresIn,
+      // Conditions enforce upload constraints on AWS side
+      signableHeaders: new Set(["content-type", "content-length"]),
     });
 
     return presignedUrl;

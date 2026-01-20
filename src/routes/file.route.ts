@@ -3,11 +3,18 @@ import { Route, sendError } from "./index";
 import { s3Service } from "../services/s3.service";
 import { logger } from "../app";
 import { jwtCheck } from "../middleware/jwtcheck";
+import { validateUploadRequest } from "../middleware/file-validation";
+import {
+  uploadRateLimiter,
+  checkUserStorageQuota,
+} from "../middleware/upload-rate-limiter";
+import FileUploadModel from "../models/file-upload.model";
 
 export const FileRoutes: Route = {
-  middleware: [jwtCheck],
+  middleware: [jwtCheck, uploadRateLimiter, checkUserStorageQuota],
   subpaths: {
     "/league-upload": {
+      middleware: [validateUploadRequest],
       get: async (req: Request, res: Response) => {
         try {
           if (!s3Service.isEnabled()) {
@@ -16,6 +23,7 @@ export const FileRoutes: Route = {
             });
           }
 
+          const userId = req.auth?.payload?.sub;
           const { filename, contentType } = req.query;
 
           if (
@@ -29,6 +37,19 @@ export const FileRoutes: Route = {
 
           const key = s3Service.generateFileKey(filename, "league-uploads");
 
+          // Create database record for tracking
+          await FileUploadModel.create({
+            key,
+            uploadedBy: userId,
+            uploadType: "league-logo",
+            fileName: filename,
+            fileSize: 0, // Will be updated on confirmation
+            contentType: contentType,
+            status: "pending",
+            ipAddress: req.ip,
+            userAgent: req.get("user-agent"),
+          });
+
           // Get presigned URL (expires in 2 minutes)
           const url = await s3Service.getPresignedUploadUrl(
             key,
@@ -36,7 +57,9 @@ export const FileRoutes: Route = {
             120,
           );
 
-          logger.info(`Generated presigned URL for league upload: ${key}`);
+          logger.info(
+            `Generated presigned URL for league upload: ${key} (user: ${userId})`,
+          );
 
           return res.json({ url, key });
         } catch (error) {
@@ -48,6 +71,7 @@ export const FileRoutes: Route = {
       },
     },
     "/team-upload": {
+      middleware: [validateUploadRequest],
       get: async (req: Request, res: Response) => {
         try {
           if (!s3Service.isEnabled()) {
@@ -56,6 +80,7 @@ export const FileRoutes: Route = {
             });
           }
 
+          const userId = req.auth?.payload?.sub;
           const { filename, contentType } = req.query;
 
           if (
@@ -69,6 +94,19 @@ export const FileRoutes: Route = {
 
           const key = s3Service.generateFileKey(filename, "team-uploads");
 
+          // Create database record for tracking
+          await FileUploadModel.create({
+            key,
+            uploadedBy: userId,
+            uploadType: "team-logo",
+            fileName: filename,
+            fileSize: 0, // Will be updated on confirmation
+            contentType: contentType,
+            status: "pending",
+            ipAddress: req.ip,
+            userAgent: req.get("user-agent"),
+          });
+
           // Get presigned URL (expires in 2 minutes)
           const url = await s3Service.getPresignedUploadUrl(
             key,
@@ -76,7 +114,9 @@ export const FileRoutes: Route = {
             120,
           );
 
-          logger.info(`Generated presigned URL for team upload: ${key}`);
+          logger.info(
+            `Generated presigned URL for team upload: ${key} (user: ${userId})`,
+          );
 
           return res.json({ url, key });
         } catch (error) {
@@ -96,29 +136,54 @@ export const FileRoutes: Route = {
             });
           }
 
-          const { fileKey } = req.body;
+          const userId = req.auth?.payload?.sub;
+          const { fileKey, fileSize, contentType, relatedEntityId } = req.body;
 
           if (!fileKey || typeof fileKey !== "string") {
             return res.status(400).json({ error: "File key is required" });
           }
 
+          // Verify file exists in S3
           const result = await s3Service.verifyFileExists(fileKey);
 
           if (!result.exists) {
+            // Mark as failed in database
+            await FileUploadModel.findOneAndUpdate(
+              { key: fileKey },
+              { status: "deleted" },
+            );
             return res.status(400).json({ error: "File not found in S3" });
           }
 
+          // Update database record with confirmation
+          const uploadRecord = await FileUploadModel.findOneAndUpdate(
+            { key: fileKey, uploadedBy: userId },
+            {
+              status: "confirmed",
+              fileSize: fileSize || result.size,
+              relatedEntityId: relatedEntityId,
+            },
+            { new: true },
+          );
+
+          if (!uploadRecord) {
+            logger.warn(
+              `Upload record not found for key: ${fileKey} (user: ${userId})`,
+            );
+          }
+
           logger.info(
-            `Upload confirmed for file: ${fileKey} (${result.size} bytes)`,
+            `Upload confirmed for file: ${fileKey} (${result.size} bytes, user: ${userId})`,
           );
 
           return res.json({
             message: "Upload verified",
             size: result.size,
+            key: fileKey,
           });
         } catch (error) {
           logger.error("Error confirming upload:", error);
-          return res.status(400).json({ error: "File not found in S3" });
+          return res.status(400).json({ error: "File confirmation failed" });
         }
       },
     },

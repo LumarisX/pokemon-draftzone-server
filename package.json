@@ -36,6 +36,7 @@
     "express": "^4.17.2",
     "express-mongo-sanitize": "^2.2.0",
     "express-oauth2-jwt-bearer": "^1.6.0",
+    "file-type": "^16.5.4",
     "helmet": "^8.1.0",
     "http-errors": "^2.0.0",
     "lru-cache": "^10.2.2",
