@@ -13,14 +13,21 @@ import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
 export const LEAGUE_COLLECTION = "League";
 
 export type LeagueRule = {
-  header: string;
-  details: string[];
+  title: string;
+  body: string;
 };
 
 export type League = {
   name: string;
   leagueKey: string;
   description?: string;
+  format: string;
+  ruleset: string;
+  signUpDeadline: Date;
+  draftStart?: Date;
+  draftEnd?: Date;
+  seasonStart?: Date;
+  seasonEnd?: Date;
   coaches: (Types.ObjectId | LeagueUserDocument)[];
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
   owner: Types.ObjectId | LeagueUserDocument;
@@ -28,16 +35,17 @@ export type League = {
   tierList: Types.ObjectId | DraftTierListDocument;
   rules: LeagueRule[];
   teams: (Types.ObjectId | LeagueTeamDocument)[];
+  logo?: string;
 };
 
 export type LeagueDocument = Document & League & { _id: Types.ObjectId };
 
 const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   {
-    header: { type: String, required: true },
-    details: [{ type: String }],
+    title: { type: String, required: true },
+    body: { type: String, default: "" },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const LeagueSchema: Schema<LeagueDocument> = new Schema(
@@ -45,6 +53,13 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
     name: { type: String, required: true },
     leagueKey: { type: String, required: true, unique: true, index: true },
     description: { type: String },
+    format: { type: String, required: true },
+    ruleset: { type: String, required: true },
+    signUpDeadline: { type: Date, required: true },
+    draftStart: { type: Date },
+    draftEnd: { type: Date },
+    seasonStart: { type: Date },
+    seasonEnd: { type: Date },
     coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
     divisions: [
       { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
@@ -61,8 +76,9 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
       ref: DRAFT_TIER_LIST_COLLECTION,
     },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
+    logo: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<LeagueDocument>(LEAGUE_COLLECTION, LeagueSchema);

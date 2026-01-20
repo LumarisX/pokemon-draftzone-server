@@ -174,6 +174,37 @@ export const LeagueRoutes: Route = {
       },
     },
 
+    "/:league_key/info": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found"),
+              `${routeCode}-INFO-01`,
+            );
+          }
+
+          res.json({
+            name: res.league.name,
+            leagueKey: res.league.leagueKey,
+            description: res.league.description,
+            format: res.league.format,
+            ruleset: res.league.ruleset,
+            signUpDeadline: res.league.signUpDeadline,
+            draftStart: res.league.draftStart,
+            draftEnd: res.league.draftEnd,
+            seasonStart: res.league.seasonStart,
+            seasonEnd: res.league.seasonEnd,
+            logo: res.league.logo,
+          });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-INFO-02`);
+        }
+      },
+    },
+
     "/bracket": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
