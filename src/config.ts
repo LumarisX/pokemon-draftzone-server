@@ -19,6 +19,10 @@ const optionalEnvVars = [
   "OPENAI_API_KEY",
   "APPLICATION_ID",
   "DISCORD_DISABLED",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_REGION",
+  "AWS_S3_BUCKET",
 ] as const;
 
 type Config = { [key in (typeof requiredEnvVars)[number]]: string } & Partial<{

@@ -16,6 +16,7 @@ import { ArchiveRoutes } from "./routes/archive.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
 import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
+import { FileRoutes } from "./routes/file.route";
 import { LeagueRoutes } from "./routes/league.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
@@ -42,7 +43,7 @@ export const logger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
     winston.format.splat(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [
     new winston.transports.DailyRotateFile({
@@ -63,7 +64,7 @@ const routerLogger = winston.createLogger({
         return JSON.stringify({ ...message, timestamp });
       }
       return JSON.stringify({ message, timestamp });
-    })
+    }),
   ),
   transports: [
     new winston.transports.DailyRotateFile({
@@ -86,10 +87,10 @@ if (config.NODE_ENV !== "production") {
           (info) =>
             `${info.timestamp} ${info.level}: ${info.message} ${
               info.stack || ""
-            }`
-        )
+            }`,
+        ),
       ),
-    })
+    }),
   );
 }
 
@@ -116,7 +117,7 @@ app.use(
         ip: req.ip,
       });
     },
-  })
+  }),
 );
 
 const allowedOrigins = [
@@ -137,14 +138,14 @@ app.use(
       return callback(null, true);
     },
     credentials: true,
-  })
+  }),
 );
 
 // Morgan setup for router logging
 morgan.token("id", (req: Request) => req.id);
 morgan.token(
   "user-id",
-  (req: Request) => req.auth?.payload?.sub || "unauthenticated"
+  (req: Request) => req.auth?.payload?.sub || "unauthenticated",
 );
 morgan.token("body-length", (req: Request) => req.bodyLength.toString());
 morgan.token("body-hash", (req: Request) => req.bodyHash);
@@ -152,7 +153,7 @@ morgan.token("body-hash", (req: Request) => req.bodyHash);
 const morganJSONFormat = (
   tokens: morgan.TokenIndexer<Request, Response>,
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   return JSON.stringify({
     "request-id": tokens.id(req, res),
@@ -194,6 +195,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/user": UserRoutes,
   "/push": PushSubscriptionRoutes,
   "/news": NewsRoutes,
+  "/file": FileRoutes,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;
@@ -207,7 +209,7 @@ for (const path in ROUTES) {
       if (route.subpaths[subpath][method])
         subroute[method](
           ...(route.subpaths[subpath].middleware ?? []),
-          route.subpaths[subpath][method]
+          route.subpaths[subpath][method],
         );
     }
   }
