@@ -34,8 +34,8 @@ export class LeagueTeamLoader {
     return this._team?.name;
   }
 
-  public get coaches(): (Types.ObjectId | LeagueUserDocument)[] | undefined {
-    return this._team?.coaches;
+  public get coach(): (Types.ObjectId | LeagueUserDocument) | undefined {
+    return this._team?.coach;
   }
 
   // Add other getters as needed for team properties
