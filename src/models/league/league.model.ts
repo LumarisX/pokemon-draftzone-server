@@ -36,6 +36,7 @@ export type League = {
   rules: LeagueRule[];
   teams: (Types.ObjectId | LeagueTeamDocument)[];
   logo?: string;
+  discord?: string;
 };
 
 export type LeagueDocument = Document & League & { _id: Types.ObjectId };
@@ -77,6 +78,7 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
     },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     logo: { type: String },
+    discord: { type: String },
   },
   { timestamps: true },
 );

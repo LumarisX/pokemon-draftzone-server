@@ -186,6 +186,19 @@ export const LeagueRoutes: Route = {
             );
           }
 
+          // Populate divisions
+          await res.league.populate<{ divisions: LeagueDivisionDocument[] }>(
+            "divisions", ['divisionKey', 'name']
+          );
+
+          // Format division information
+          const divisions = (res.league.divisions as LeagueDivisionDocument[]).map(
+            (div) => ({
+              divisionKey: div.divisionKey,
+              name: div.name,
+            }),
+          );
+
           res.json({
             name: res.league.name,
             leagueKey: res.league.leagueKey,
@@ -198,6 +211,8 @@ export const LeagueRoutes: Route = {
             seasonStart: res.league.seasonStart,
             seasonEnd: res.league.seasonEnd,
             logo: res.league.logo,
+            divisions,
+            discord: res.league.discord,
           });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-INFO-02`);
