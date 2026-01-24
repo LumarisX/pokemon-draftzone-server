@@ -20,7 +20,7 @@ export class LeagueTeamLoader {
     }
 
     this._team = await LeagueTeamModel.findById(this.teamId)
-      .populate<{ coaches: LeagueUserDocument[] }>("coaches")
+      .populate<{ coach: LeagueUserDocument }>("coach")
       .exec();
 
     return this._team;
