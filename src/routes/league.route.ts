@@ -16,16 +16,23 @@ import LeagueDivisionModel, {
   LeagueDivisionDocument,
 } from "../models/league/division.model";
 import LeagueModel, { LeagueDocument } from "../models/league/league.model";
+import { LeagueMatchupModel } from "../models/league/matchup.model";
+import { LeagueStageModel } from "../models/league/stage.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
 import { DraftTierListDocument } from "../models/league/tier-list.model";
-import { LeagueUser, LeagueUserDocument } from "../models/league/user.model";
-import { LeagueMatchupModel } from "../models/league/matchup.model";
-import { LeagueStageModel } from "../models/league/stage.model";
-import { PDBLModel } from "../models/pdbl.model";
+import LeagueUserModel, {
+  LeagueUser,
+  LeagueUserDocument,
+} from "../models/league/user.model";
 import { getName } from "../services/data-services/pokedex.service";
+import { s3Service } from "../services/s3.service";
+import {
+  getLeagueAds,
+  invalidateLeagueAdsCache,
+} from "../services/league-ad/league-ad-service";
 import {
   draftPokemon,
   getDivisionDetails,
@@ -38,21 +45,17 @@ import {
   getRoles,
   getTierList,
 } from "../services/league-services/league-service";
-import { getPokemonTier } from "../services/league-services/tier-service";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
   calculateResultScore,
   calculateTeamMatchupScoreAndWinner,
 } from "../services/league-services/standings-service";
+import { getPokemonTier } from "../services/league-services/tier-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
-import {
-  getLeagueAds,
-  invalidateLeagueAdsCache,
-} from "../services/league-ad/league-ad-service";
 
 const routeCode = "LR";
 
@@ -188,16 +191,17 @@ export const LeagueRoutes: Route = {
 
           // Populate divisions
           await res.league.populate<{ divisions: LeagueDivisionDocument[] }>(
-            "divisions", ['divisionKey', 'name']
+            "divisions",
+            ["divisionKey", "name"],
           );
 
           // Format division information
-          const divisions = (res.league.divisions as LeagueDivisionDocument[]).map(
-            (div) => ({
-              divisionKey: div.divisionKey,
-              name: div.name,
-            }),
-          );
+          const divisions = (
+            res.league.divisions as LeagueDivisionDocument[]
+          ).map((div) => ({
+            divisionKey: div.divisionKey,
+            name: div.name,
+          }));
 
           res.json({
             name: res.league.name,
@@ -1429,52 +1433,148 @@ export const LeagueRoutes: Route = {
       middleware: [jwtCheck, rolecheck("organizer")],
     },
     "/:league_key/signup": {
-      get: async function (req: Request, res: Response) {
+      get: async function (req: Request, res: LeagueResponse) {
         try {
-          const responses = await PDBLModel.find();
-          res.json(responses);
+          if (!res.league) {
+            return sendError(
+              res,
+              400,
+              new Error("League not found"),
+              `${routeCode}-SU-01`,
+            );
+          }
+
+          // Get all coaches in this league
+          await res.league.populate<{ coaches: LeagueUserDocument[] }>(
+            "coaches",
+          );
+
+          // Transform coaches to include logo URLs
+          const coaches = res.league.coaches as LeagueUserDocument[];
+          const coachesWithLogos = coaches.map((coach) => ({
+            _id: coach._id,
+            auth0Id: coach.auth0Id,
+            discordName: coach.discordName,
+            timezone: coach.timezone,
+            logoFileKey: coach.logoFileKey,
+            logo: coach.logoFileKey
+              ? s3Service.getPublicUrl(coach.logoFileKey)
+              : undefined,
+            signups: coach.signups,
+          }));
+
+          res.json(coachesWithLogos);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-03`);
+          return sendError(res, 500, error as Error, `${routeCode}-SU-02`);
         }
       },
-      post: async (req: Request, res: Response) => {
+      post: async (req: Request, res: LeagueResponse) => {
         try {
-          const signup = BattleZone.validateSignUpForm(
-            req.body,
-            req.auth!.payload.sub!,
-          );
-          const existing = await PDBLModel.findOne({ sub: signup.sub });
-          if (existing)
+          if (!res.league) {
+            return sendError(
+              res,
+              400,
+              new Error("League not found"),
+              `${routeCode}-SU-01`,
+            );
+          }
+
+          const auth0Id = req.auth!.payload.sub!;
+          const signup = BattleZone.validateSignUpForm(req.body, auth0Id);
+
+          // Check if user already exists in the league
+          let leagueUser = await LeagueUserModel.findOne({ auth0Id });
+
+          if (
+            leagueUser &&
+            res.league.coaches.some((c: any) => c._id.equals(leagueUser!._id))
+          ) {
             return res
               .status(409)
-              .json({ message: "User is already signed up" });
-          await signup.toDocument().save();
+              .json({ message: "User is already signed up for this league" });
+          }
+
+          // If user doesn't exist, create a new LeagueUser
+          if (!leagueUser) {
+            leagueUser = new LeagueUserModel({
+              auth0Id,
+              discordName: signup.name,
+              timezone: signup.timezone,
+              signups: [
+                {
+                  leagueId: res.league._id,
+                  teamName: signup.teamName,
+                  experience: signup.experience,
+                  droppedBefore: signup.droppedBefore,
+                  droppedWhy: signup.droppedWhy,
+                  confirmed: signup.confirm,
+                  status: "pending",
+                  signedUpAt: new Date(),
+                },
+              ],
+            });
+            await leagueUser.save();
+          } else {
+            // Add signup info to existing user
+            if (!leagueUser.signups) {
+              leagueUser.signups = [];
+            }
+            leagueUser.signups.push({
+              leagueId: res.league._id,
+              teamName: signup.teamName,
+              experience: signup.experience,
+              droppedBefore: signup.droppedBefore,
+              droppedWhy: signup.droppedWhy,
+              confirmed: signup.confirm,
+              status: "pending",
+              signedUpAt: new Date(),
+            });
+            await leagueUser.save();
+          }
+
+          // Add user to league coaches if not already there
+          if (
+            !res.league.coaches.some((c: any) => c._id?.equals(leagueUser!._id))
+          ) {
+            res.league.coaches.push(leagueUser._id);
+            await res.league.save();
+          }
+
+          // Send Discord notification if signup is successful
           if (client) {
-            const totalSignups = await PDBLModel.countDocuments();
-            const guild = await client.guilds.fetch("1183936734719922176");
-            if (!guild) {
-              console.error("Guild not found");
-            } else {
-              // Fetch the channel from the guild
-              const channel = guild.channels.cache.get(
-                "1303896194187132978",
-              ) as TextChannel;
-              if (!channel || !channel.isTextBased()) {
-                console.error("Channel not found or not a text channel");
-              } else {
-                // Send a message in the designated channel
-                channel.send(
-                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`,
-                );
+            try {
+              const guild = await client.guilds.fetch("1183936734719922176");
+              if (guild) {
+                const channel = guild.channels.cache.get(
+                  "1303896194187132978",
+                ) as TextChannel;
+                if (channel && channel.isTextBased()) {
+                  await res.league.populate<{ coaches: LeagueUserDocument[] }>(
+                    "coaches",
+                  );
+                  const totalCoaches = res.league.coaches.length;
+                  channel.send(
+                    `${signup.name} signed up for **${res.league.name}**. Total coaches: ${totalCoaches}.`,
+                  );
+                }
               }
+            } catch (discordError) {
+              logger.warn("Failed to send Discord notification:", discordError);
+              // Don't fail the signup if Discord notification fails
             }
           }
-          return res.status(201).json({ message: "Sign up successful." });
+
+          return res.status(201).json({
+            message: "Sign up successful.",
+            userId: leagueUser._id.toString(),
+            leagueId: res.league._id.toString(),
+          });
         } catch (error) {
-          console.error(error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "BR-R1-01" });
+          logger.error("Signup error:", error);
+          res.status(500).json({
+            message: (error as Error).message,
+            code: `${routeCode}-SU-03`,
+          });
         }
       },
       middleware: [jwtCheck],

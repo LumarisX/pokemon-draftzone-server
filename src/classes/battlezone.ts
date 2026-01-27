@@ -3,6 +3,7 @@ import { PDBLDoc, PDBLModel } from "../models/pdbl.model";
 export namespace BattleZone {
   class SignUp {
     name: string;
+    teamName: string;
     timezone: string;
     experience: string;
     droppedBefore: boolean;
@@ -12,14 +13,16 @@ export namespace BattleZone {
 
     constructor(
       name: string,
+      teamName: string,
       timezone: string,
       experience: string,
       droppedBefore: boolean,
       droppedWhy: string,
       confirm: boolean,
-      sub: string
+      sub: string,
     ) {
       this.name = name;
+      this.teamName = teamName;
       this.timezone = timezone;
       this.experience = experience;
       this.droppedBefore = droppedBefore;
@@ -47,6 +50,7 @@ export namespace BattleZone {
     }
     const {
       discordName,
+      teamName,
       timezone,
       experience,
       droppedBefore,
@@ -55,6 +59,8 @@ export namespace BattleZone {
     } = data as { [key: string]: unknown };
     if (typeof discordName !== "string" || discordName.trim() === "")
       throw new Error("Invalid discordName: Must be a non-empty string.");
+    if (typeof teamName !== "string" || teamName.trim() === "")
+      throw new Error("Invalid teamName: Must be a non-empty string.");
     if (typeof timezone !== "string" || timezone.trim() === "")
       throw new Error("Invalid timezone: Must be a non-empty string.");
     if (typeof experience !== "string")
@@ -66,19 +72,20 @@ export namespace BattleZone {
       (droppedBefore && droppedWhy.trim() === "")
     )
       throw new Error(
-        "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true."
+        "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
       );
     if (typeof confirm !== "boolean" || !confirm)
       throw new Error("Invalid confirm: Must be true.");
 
     return new SignUp(
       discordName,
+      teamName,
       timezone,
       experience,
       droppedBefore,
       droppedWhy,
       confirm,
-      sub
+      sub,
     );
   }
 }

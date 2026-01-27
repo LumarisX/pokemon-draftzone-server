@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config";
@@ -111,6 +112,19 @@ class S3Service {
     }
 
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    if (!this.isConfigured || !this.s3Client || !this.bucket) {
+      throw new Error("S3 service is not configured");
+    }
+
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+
+    await this.s3Client.send(command);
   }
 
   isEnabled(): boolean {

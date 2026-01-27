@@ -9,6 +9,7 @@ import {
   checkUserStorageQuota,
 } from "../middleware/upload-rate-limiter";
 import FileUploadModel from "../models/file-upload.model";
+import LeagueUserModel from "../models/league/user.model";
 
 export const FileRoutes: Route = {
   middleware: [jwtCheck, uploadRateLimiter, checkUserStorageQuota],
@@ -24,25 +25,25 @@ export const FileRoutes: Route = {
           }
 
           const userId = req.auth?.payload?.sub;
-          const { filename, contentType } = req.query;
+          const { fileName, contentType } = req.query;
 
           if (
-            !filename ||
-            typeof filename !== "string" ||
+            !fileName ||
+            typeof fileName !== "string" ||
             typeof contentType !== "string" ||
             !contentType.startsWith("image/")
           ) {
             return res.status(400).json({ error: "Invalid file metadata" });
           }
 
-          const key = s3Service.generateFileKey(filename, "league-uploads");
+          const key = s3Service.generateFileKey(fileName, "league-uploads");
 
           // Create database record for tracking
           await FileUploadModel.create({
             key,
             uploadedBy: userId,
             uploadType: "league-logo",
-            fileName: filename,
+            fileName,
             fileSize: 0, // Will be updated on confirmation
             contentType: contentType,
             status: "pending",
@@ -81,25 +82,25 @@ export const FileRoutes: Route = {
           }
 
           const userId = req.auth?.payload?.sub;
-          const { filename, contentType } = req.query;
+          const { fileName, contentType } = req.query;
 
           if (
-            !filename ||
-            typeof filename !== "string" ||
+            !fileName ||
+            typeof fileName !== "string" ||
             typeof contentType !== "string" ||
             !contentType.startsWith("image/")
           ) {
             return res.status(400).json({ error: "Invalid file metadata" });
           }
 
-          const key = s3Service.generateFileKey(filename, "team-uploads");
+          const key = s3Service.generateFileKey(fileName, "team-uploads");
 
           // Create database record for tracking
           await FileUploadModel.create({
             key,
             uploadedBy: userId,
             uploadType: "team-logo",
-            fileName: filename,
+            fileName,
             fileSize: 0, // Will be updated on confirmation
             contentType: contentType,
             status: "pending",
@@ -170,6 +171,25 @@ export const FileRoutes: Route = {
             logger.warn(
               `Upload record not found for key: ${fileKey} (user: ${userId})`,
             );
+          }
+
+          // If this is a league-logo upload for a user, update their profile
+          if (uploadRecord?.uploadType === "league-logo" && relatedEntityId) {
+            try {
+              await LeagueUserModel.findByIdAndUpdate(
+                relatedEntityId,
+                { logoFileKey: fileKey },
+                { new: true },
+              );
+              logger.info(
+                `Updated LeagueUser ${relatedEntityId} with logo: ${fileKey}`,
+              );
+            } catch (updateError) {
+              logger.warn(
+                `Failed to update LeagueUser with logo: ${updateError}`,
+              );
+              // Don't fail the confirmation if user update fails
+            }
           }
 
           logger.info(

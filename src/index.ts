@@ -6,12 +6,12 @@ import { config } from "./config";
 import { connectDB } from "./database";
 import { startDiscordBot } from "./discord";
 import { startWebSocket } from "./websocket";
-import { agenda } from "./agenda";
+import { agenda, startRecurringJobs } from "./agenda";
 
 const debugLogger = debug("tpl-express-pro:server");
 
 function normalizePort(
-  val: string | number | undefined
+  val: string | number | undefined,
 ): number | string | boolean {
   if (!val) {
     return false;
@@ -28,7 +28,7 @@ function normalizePort(
 
 function onError(
   error: NodeJS.ErrnoException,
-  port: number | string | boolean
+  port: number | string | boolean,
 ): void {
   if (error.syscall !== "listen") {
     throw error;
@@ -104,6 +104,7 @@ if (!process.env.JEST_WORKER_ID) {
     try {
       await connectDB(logger);
       await agenda.start();
+      await startRecurringJobs();
       logger.info("connectDB() promise resolved.");
 
       const port = normalizePort(config.PORT || "9960");
@@ -117,7 +118,7 @@ if (!process.env.JEST_WORKER_ID) {
       startWebSocket(logger, server);
 
       server.on("error", (error: NodeJS.ErrnoException) =>
-        onError(error, port)
+        onError(error, port),
       );
       server.on("listening", () => onListening(server));
 
@@ -134,7 +135,10 @@ if (!process.env.JEST_WORKER_ID) {
   })();
 }
 export class PZError extends Error {
-  constructor(public status: number, message?: string) {
+  constructor(
+    public status: number,
+    message?: string,
+  ) {
     super(message);
     Object.setPrototypeOf(this, PZError.prototype);
   }
