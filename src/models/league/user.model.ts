@@ -5,6 +5,7 @@ export const LEAGUE_USER_COLLECTION = "LeagueUser";
 export type SignupInfo = {
   leagueId: Types.ObjectId;
   teamName: string;
+  logoFileKey?: string; // S3 file key for team logo in this league
   experience: string;
   droppedBefore: boolean;
   droppedWhy?: string;
@@ -19,7 +20,6 @@ export type LeagueUser = {
   discordName?: string;
   discordId?: string;
   showdownName?: string;
-  logoFileKey?: string; // S3 file key for user's profile logo
   signups?: SignupInfo[];
 };
 
@@ -34,6 +34,7 @@ const SignupInfoSchema: Schema<SignupInfo> = new Schema(
       required: true,
     },
     teamName: { type: String, required: true },
+    logoFileKey: { type: String, index: true },
     experience: { type: String, required: true },
     droppedBefore: { type: Boolean, required: true, default: false },
     droppedWhy: { type: String },
@@ -55,7 +56,6 @@ const LeagueUserSchema: Schema<LeagueUserDocument> = new Schema(
     discordName: { type: String },
     discordId: { type: String },
     showdownName: { type: String },
-    logoFileKey: { type: String, index: true },
     signups: [SignupInfoSchema],
   },
   { timestamps: true },

@@ -138,7 +138,8 @@ export const FileRoutes: Route = {
           }
 
           const userId = req.auth?.payload?.sub;
-          const { fileKey, fileSize, contentType, relatedEntityId } = req.body;
+          const { fileKey, fileSize, contentType, relatedEntityId, leagueId } =
+            req.body;
 
           if (!fileKey || typeof fileKey !== "string") {
             return res.status(400).json({ error: "File key is required" });
@@ -173,20 +174,34 @@ export const FileRoutes: Route = {
             );
           }
 
-          // If this is a league-logo upload for a user, update their profile
-          if (uploadRecord?.uploadType === "league-logo" && relatedEntityId) {
+          // If this is a league-logo upload for a user, update their signup
+          if (
+            uploadRecord?.uploadType === "league-logo" &&
+            relatedEntityId &&
+            leagueId
+          ) {
             try {
-              await LeagueUserModel.findByIdAndUpdate(
-                relatedEntityId,
-                { logoFileKey: fileKey },
-                { new: true },
-              );
-              logger.info(
-                `Updated LeagueUser ${relatedEntityId} with logo: ${fileKey}`,
-              );
+              // Find the user and update the specific signup's logoFileKey
+              const user = await LeagueUserModel.findById(relatedEntityId);
+              if (user && user.signups) {
+                const signup = user.signups.find((s) =>
+                  s.leagueId.equals(leagueId),
+                );
+                if (signup) {
+                  signup.logoFileKey = fileKey;
+                  await user.save();
+                  logger.info(
+                    `Updated LeagueUser ${relatedEntityId} signup for league ${leagueId} with logo: ${fileKey}`,
+                  );
+                } else {
+                  logger.warn(
+                    `Signup not found for league ${leagueId} in LeagueUser ${relatedEntityId}`,
+                  );
+                }
+              }
             } catch (updateError) {
               logger.warn(
-                `Failed to update LeagueUser with logo: ${updateError}`,
+                `Failed to update LeagueUser signup with logo: ${updateError}`,
               );
               // Don't fail the confirmation if user update fails
             }

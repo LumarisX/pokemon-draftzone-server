@@ -1449,19 +1449,27 @@ export const LeagueRoutes: Route = {
             "coaches",
           );
 
-          // Transform coaches to include logo URLs
+          // Transform coaches to include logo URLs from their signup for this league
           const coaches = res.league.coaches as LeagueUserDocument[];
-          const coachesWithLogos = coaches.map((coach) => ({
-            _id: coach._id,
-            auth0Id: coach.auth0Id,
-            discordName: coach.discordName,
-            timezone: coach.timezone,
-            logoFileKey: coach.logoFileKey,
-            logo: coach.logoFileKey
-              ? s3Service.getPublicUrl(coach.logoFileKey)
-              : undefined,
-            signups: coach.signups,
-          }));
+          const coachesWithLogos = coaches.map((coach) => {
+            // Find signup for this specific league
+            const signup = coach.signups?.find((s) =>
+              s.leagueId.equals(res.league!._id),
+            );
+
+            return {
+              _id: coach._id,
+              auth0Id: coach.auth0Id,
+              discordName: coach.discordName,
+              timezone: coach.timezone,
+              signups: coach.signups,
+              // Logo from this league's signup
+              logoFileKey: signup?.logoFileKey,
+              logo: signup?.logoFileKey
+                ? s3Service.getPublicUrl(signup.logoFileKey)
+                : undefined,
+            };
+          });
 
           res.json(coachesWithLogos);
         } catch (error) {
