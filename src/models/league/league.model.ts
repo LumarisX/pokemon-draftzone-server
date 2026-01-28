@@ -3,12 +3,12 @@ import {
   LEAGUE_DIVISION_COLLECTION,
   LeagueDivisionDocument,
 } from "./division.model";
-import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
-import {
-  DRAFT_TIER_LIST_COLLECTION,
-  DraftTierListDocument,
-} from "./tier-list.model";
 import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
+import {
+  LEAGUE_TIER_LIST_COLLECTION,
+  LeagueTierListDocument,
+} from "./tier-list.model";
+import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
 
 export const LEAGUE_COLLECTION = "League";
 
@@ -32,7 +32,7 @@ export type League = {
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
   owner: Types.ObjectId | LeagueUserDocument;
   organizers: (Types.ObjectId | LeagueUserDocument)[];
-  tierList: Types.ObjectId | DraftTierListDocument;
+  tierList: Types.ObjectId | LeagueTierListDocument;
   rules: LeagueRule[];
   teams: (Types.ObjectId | LeagueTeamDocument)[];
   logo?: string;
@@ -74,7 +74,7 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
     rules: [LeagueRuleSchema],
     tierList: {
       type: Schema.Types.ObjectId,
-      ref: DRAFT_TIER_LIST_COLLECTION,
+      ref: LEAGUE_TIER_LIST_COLLECTION,
     },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     logo: { type: String },

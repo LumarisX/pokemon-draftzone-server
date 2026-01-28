@@ -1,10 +1,10 @@
 import { Specie } from "@pkmn/data";
 import { getBST } from "../../classes/specieUtil";
-import tierListModel from "../../models/league/tier-list.model";
 import { getRuleset } from "../../data/rulesets";
-import { League, LeagueDocument } from "../../models/league/league.model";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
+import { League, LeagueDocument } from "../../models/league/league.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
+import tierListModel from "../../models/league/tier-list.model";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
@@ -71,7 +71,7 @@ namespace TierList {
         moves?: string[];
         abilities?: string[];
         tera?: true;
-      }
+      },
     ) {
       this.specie = specie;
       this.bst = getBST(this.specie);
@@ -102,7 +102,7 @@ namespace TierList {
         moves?: string[];
         abilities?: string[];
         tera?: true;
-      }
+      },
     ) {
       super(specie, banned);
       this.drafted = drafted;
@@ -152,39 +152,56 @@ type TierDetail = {
   drafted?: string[];
 } & ({ tier: string } | { ref: string });
 
-export async function getTierList(league: League) {
+export async function getTierList(league: League, showAll: boolean = false) {
   const tierList = await tierListModel.findById(league.tierList);
-
-  if (!tierList) {
-    return null;
-  }
+  if (!tierList) return null;
 
   const tiers: TierList.Tier[] = [];
+  const tierGroup = new TierList.TierGroup("");
+  const ruleset = getRuleset(tierList.ruleset);
 
-  const tierGroups = tierList.tierGroups.map((groupDetails) => {
-    const tierGroup = new TierList.TierGroup(groupDetails.name);
-    groupDetails.tiers.forEach((tierDetails) => {
-      const tier = new TierList.Tier(tierDetails.name, tiers.length);
-      tiers.push(tier);
-      tierGroup.tiers.push(tier);
+  // Track which pokemon have been assigned to tiers
+  const assignedPokemon = new Set<string>();
 
-      tierDetails.pokemon.forEach((pokemonId) => {
-        const specie = getRuleset("Gen9 NatDex").species.get(pokemonId);
+  // Build tiers from the tier list
+  tierList.tiers.forEach((tierDetails, index) => {
+    const tier = new TierList.Tier(tierDetails.name, index);
+    tiers.push(tier);
+    tierGroup.tiers.push(tier);
+
+    tierList.pokemon.forEach((pokemonData, pokemonId) => {
+      if (pokemonData.tier === tierDetails.name) {
+        const specie = ruleset.species.get(pokemonId);
         if (specie) {
           const tierPokemon = new TierList.Pokemon(specie, tier);
           tier.addPokemon(tierPokemon);
+          assignedPokemon.add(pokemonId);
         }
-      });
+      }
     });
-    return tierGroup;
   });
 
-  return tierGroups.map((tg) => tg.toJSON());
+  if (showAll) {
+    // Create "Null" tier for all unassigned species
+    const nullTier = new TierList.Tier("Null", tiers.length);
+    tiers.push(nullTier);
+    tierGroup.tiers.push(nullTier);
+
+    // Add all species from ruleset that aren't already assigned
+    for (const specie of ruleset.species) {
+      if (!assignedPokemon.has(specie.id)) {
+        const tierPokemon = new TierList.Pokemon(specie, nullTier);
+        nullTier.addPokemon(tierPokemon);
+      }
+    }
+  }
+
+  return [tierGroup.toJSON()];
 }
 
 export async function getDrafted(
   league: LeagueDocument,
-  divisionNames?: string | string[]
+  divisionNames?: string | string[],
 ): Promise<{
   [key: string]: { pokemonId: string }[];
 }> {
@@ -201,10 +218,10 @@ export async function getDrafted(
 
   if (divisionNames) {
     const divisionNameSet = new Set(
-      Array.isArray(divisionNames) ? divisionNames : [divisionNames]
+      Array.isArray(divisionNames) ? divisionNames : [divisionNames],
     );
     divisionsToProcess = divisionsToProcess.filter((d) =>
-      divisionNameSet.has(d.divisionKey)
+      divisionNameSet.has(d.divisionKey),
     );
   }
 

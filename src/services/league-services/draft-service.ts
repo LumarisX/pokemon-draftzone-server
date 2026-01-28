@@ -5,11 +5,12 @@ import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueDocument } from "../../models/league/league.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
-import { DraftTierListDocument } from "../../models/league/tier-list.model";
+import { DraftTierListDocument } from "../../models/league/tier-list-old.model";
 import { LeagueUserDocument } from "../../models/league/user.model";
 import { getName } from "../data-services/pokedex.service";
-import { getPokemonTier } from "./tier-service";
+import { convertToOldFormat, getPokemonTier } from "./tier-list-service";
 import { APIEmbedField } from "discord.js";
+import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 
 export type DraftPick = {
   teamName: string;
@@ -35,7 +36,8 @@ export type TeamWithCoachStatus = {
  */
 function createPokemonTierMap(league: LeagueDocument): Map<string, string> {
   const tierMap = new Map<string, string>();
-  const tierList = league.tierList as DraftTierListDocument;
+  const newtierList = league.tierList as LeagueTierListDocument;
+  const tierList = convertToOldFormat(newtierList);
   for (const tierGroup of tierList.tierGroups) {
     for (const tier of tierGroup.tiers) {
       for (const pokemon of tier.pokemon) {
@@ -329,14 +331,14 @@ export async function teamHasEnoughPoints(
 ): Promise<boolean> {
   const tier = await getPokemonTier(league, pokemonId);
   if (!tier) return false;
-  const tierList = league.tierList as DraftTierListDocument;
-  const maxPoints = tierList.points;
+  const tierList = league.tierList as LeagueTierListDocument;
+  const maxPoints = tierList.pointTotal;
   if (!maxPoints) return true;
   const pickCeiling =
     maxPoints +
     team.draft.length +
     1 -
-    Math.max(tierList.draftCount[0], team.draft.length + 1);
+    Math.max(tierList.draftCount.min, team.draft.length + 1);
   const teamPoints = (await getTeamPoints(league, team)) + Number(tier);
   return teamPoints <= pickCeiling;
 }
@@ -429,8 +431,8 @@ export async function draftPokemon(
       team.id,
     );
 
-    const numberOfRounds = (league.tierList as DraftTierListDocument)
-      .draftCount[1];
+    const numberOfRounds = (league.tierList as LeagueTierListDocument)
+      .draftCount.max;
     const initialTeamOrder = division.teams as LeagueTeamDocument[];
 
     const pickOrder = generatePickOrder(
@@ -549,10 +551,10 @@ export async function isTeamDoneDrafting(
     tierList: DraftTierListDocument;
   }>("tierList");
 
-  const tierList = league.tierList as DraftTierListDocument;
-  if (team.draft.length >= tierList.draftCount[1]) return true;
+  const tierList = league.tierList as LeagueTierListDocument;
+  if (team.draft.length >= tierList.draftCount.max) return true;
   const teamPoints = await getTeamPoints(league, team);
-  if (teamPoints >= tierList.points) return true;
+  if (teamPoints >= tierList.pointTotal) return true;
   return false;
 }
 export async function increaseCounter(
@@ -586,8 +588,8 @@ export async function increaseCounter(
         session,
       );
     } else {
-      const numberOfRounds = (league.tierList as DraftTierListDocument)
-        .draftCount[1];
+      const numberOfRounds = (league.tierList as LeagueTierListDocument)
+        .draftCount.max;
       const initialTeamOrder = division.teams as LeagueTeamDocument[];
       const pickOrder = generatePickOrder(
         initialTeamOrder,
@@ -643,8 +645,8 @@ export async function getDivisionDetails(
   division: LeagueDivisionDocument,
   userId: string,
 ) {
-  const numberOfRounds = (league.tierList as DraftTierListDocument)
-    .draftCount[1];
+  const numberOfRounds = (league.tierList as LeagueTierListDocument).draftCount
+    .max;
   const initialTeamOrder = division.teams as LeagueTeamDocument[];
 
   const pickOrder = generatePickOrder(
@@ -674,10 +676,10 @@ export async function getDivisionDetails(
   const currentPick = calculateCurrentPick(division);
 
   await league.populate<{
-    tierList: DraftTierListDocument;
+    tierList: LeagueTierListDocument;
   }>("tierList");
 
-  const tierList = league.tierList as DraftTierListDocument;
+  const tierList = league.tierList as LeagueTierListDocument;
 
   return {
     leagueName: league.name,
@@ -690,7 +692,7 @@ export async function getDivisionDetails(
     skipTime: division.skipTime,
     status: division.status,
     canDraft,
-    points: tierList.points,
+    points: tierList.pointTotal,
   };
 }
 

@@ -22,7 +22,7 @@ import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
-import { DraftTierListDocument } from "../models/league/tier-list.model";
+import { DraftTierListDocument } from "../models/league/tier-list-old.model";
 import LeagueUserModel, {
   LeagueUser,
   LeagueUserDocument,
@@ -51,11 +51,15 @@ import {
   calculateResultScore,
   calculateTeamMatchupScoreAndWinner,
 } from "../services/league-services/standings-service";
-import { getPokemonTier } from "../services/league-services/tier-service";
+import {
+  convertToOldFormat,
+  getPokemonTier,
+} from "../services/league-services/tier-list-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
+import { LeagueTierListDocument } from "../models/league/tier-list.model";
 
 const routeCode = "LR";
 
@@ -72,7 +76,7 @@ async function loadLeagueByKey(req: Request, res: LeagueResponse) {
   const league = await LeagueModel.findOne({
     leagueKey: req.params.league_key,
   }).populate<{
-    tierList: DraftTierListDocument;
+    tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
     logger.error(`League Key not found: ${req.params.league_key}`);
@@ -89,7 +93,7 @@ async function loadLeagueByKey(req: Request, res: LeagueResponse) {
 async function loadLeagueById(req: Request, res: LeagueResponse) {
   if (res.league) return;
   const league = await LeagueModel.findById(req.params.league_id).populate<{
-    tierList: DraftTierListDocument;
+    tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
     logger.error(`League ID not found: ${req.params.league_id}`);
@@ -743,6 +747,7 @@ export const LeagueRoutes: Route = {
         }
       },
     },
+
     "/:league_key/tier-list": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
@@ -758,7 +763,22 @@ export const LeagueRoutes: Route = {
         }
       },
     },
-
+    "/:league_key/tier-list/edit": {
+      get: async function (req: Request, res: LeagueResponse) {
+        try {
+          const { division } = req.query;
+          const tierList = await getTierList(res.league!, true);
+          const divisions = await getDrafted(
+            res.league!,
+            division as string | string[],
+          );
+          res.json({ tierList, divisions });
+        } catch (error) {
+          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+      middleware: [jwtCheck],
+    },
     "/:league_key/schedule": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
@@ -1246,8 +1266,8 @@ export const LeagueRoutes: Route = {
           }
 
           const draftStyle = division.draftStyle;
-          const numberOfRounds = (res.league.tierList as DraftTierListDocument)
-            .draftCount[1];
+          const numberOfRounds = (res.league.tierList as LeagueTierListDocument)
+            .draftCount.max;
           const initialTeamOrder = division.teams;
 
           type DraftPick = {
@@ -1304,7 +1324,7 @@ export const LeagueRoutes: Route = {
     "/:league_key/divisions/:division_id/power-rankings": {
       get: async function (req: Request, res: LeagueResponse) {
         try {
-          const tierList = res.league!.tierList as DraftTierListDocument;
+          const tierList = res.league!.tierList as LeagueTierListDocument;
           const ruleset = getRuleset(tierList.ruleset);
           const teams = await Promise.all(
             (res.division!.teams as LeagueTeamDocument[]).map(
@@ -1601,7 +1621,7 @@ export const LeagueRoutes: Route = {
           next();
         }
       } catch (error) {
-        return sendError(res, 500, error as Error, `DR-P2-02`);
+        return sendError(res, 500, error as Error, `LR-P2-01`);
       }
     },
     league_key: async function (
@@ -1616,7 +1636,7 @@ export const LeagueRoutes: Route = {
           next();
         }
       } catch (error) {
-        return sendError(res, 500, error as Error, `DR-P2-02`);
+        return sendError(res, 500, error as Error, `LR-P2-02`);
       }
     },
     division_id: async function (
@@ -1631,7 +1651,7 @@ export const LeagueRoutes: Route = {
           next();
         }
       } catch (error) {
-        return sendError(res, 500, error as Error, `DR-P2-02`);
+        return sendError(res, 500, error as Error, `LR-P2-03`);
       }
     },
     team_id: async function (req: Request, res: LeagueResponse, next, team_id) {
@@ -1641,7 +1661,7 @@ export const LeagueRoutes: Route = {
           next();
         }
       } catch (error) {
-        return sendError(res, 500, error as Error, `DR-P2-02`);
+        return sendError(res, 500, error as Error, `LR-P2-04`);
       }
     },
   },
