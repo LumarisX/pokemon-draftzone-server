@@ -23,12 +23,12 @@ import LeagueTeamModel, {
   TeamDraft,
 } from "../models/league/team.model";
 import { DraftTierListDocument } from "../models/league/tier-list-old.model";
+import { LeagueTierListDocument } from "../models/league/tier-list.model";
 import LeagueUserModel, {
   LeagueUser,
   LeagueUserDocument,
 } from "../models/league/user.model";
 import { getName } from "../services/data-services/pokedex.service";
-import { s3Service } from "../services/s3.service";
 import {
   getLeagueAds,
   invalidateLeagueAdsCache,
@@ -44,6 +44,7 @@ import {
   getDrafted,
   getRoles,
   getTierList,
+  updateTierList,
 } from "../services/league-services/league-service";
 import {
   calculateDivisionCoachStandings,
@@ -51,15 +52,12 @@ import {
   calculateResultScore,
   calculateTeamMatchupScoreAndWinner,
 } from "../services/league-services/standings-service";
-import {
-  convertToOldFormat,
-  getPokemonTier,
-} from "../services/league-services/tier-list-service";
+import { getPokemonTier } from "../services/league-services/tier-list-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
-import { LeagueTierListDocument } from "../models/league/tier-list.model";
+import { s3Service } from "../services/s3.service";
 
 const routeCode = "LR";
 
@@ -775,6 +773,49 @@ export const LeagueRoutes: Route = {
           res.json({ tierList, divisions });
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+        }
+      },
+      post: async function (req: Request, res: LeagueResponse) {
+        try {
+          if (!res.league) {
+            return sendError(
+              res,
+              404,
+              new Error("League not found"),
+              `${routeCode}-TIER-EDIT-01`,
+            );
+          }
+
+          // Extract tiers from request body
+          const { tiers } = req.body;
+          if (!tiers || !Array.isArray(tiers)) {
+            return sendError(
+              res,
+              400,
+              new Error("Invalid tiers data"),
+              `${routeCode}-TIER-EDIT-02`,
+            );
+          }
+
+          // Update the tier list
+          await updateTierList(res.league, tiers);
+
+          logger.info(
+            `Tier list updated for league ${res.league.leagueKey} by ${req.auth?.payload.sub}`,
+          );
+
+          res.json({
+            success: true,
+            message: "Tier list updated successfully",
+          });
+        } catch (error) {
+          logger.error("Error updating tier list:", error);
+          return sendError(
+            res,
+            500,
+            error as Error,
+            `${routeCode}-TIER-EDIT-03`,
+          );
         }
       },
       middleware: [jwtCheck],

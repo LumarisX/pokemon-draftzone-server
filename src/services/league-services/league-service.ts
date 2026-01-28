@@ -18,6 +18,8 @@ export function getRoles(sub: string | undefined) {
   return roles;
 }
 
+const UNTIERED_TIER_NAME = "Untiered";
+
 namespace TierList {
   export class TierGroup {
     label?: string;
@@ -159,11 +161,7 @@ export async function getTierList(league: League, showAll: boolean = false) {
   const tiers: TierList.Tier[] = [];
   const tierGroup = new TierList.TierGroup("");
   const ruleset = getRuleset(tierList.ruleset);
-
-  // Track which pokemon have been assigned to tiers
   const assignedPokemon = new Set<string>();
-
-  // Build tiers from the tier list
   tierList.tiers.forEach((tierDetails, index) => {
     const tier = new TierList.Tier(tierDetails.name, index);
     tiers.push(tier);
@@ -182,12 +180,9 @@ export async function getTierList(league: League, showAll: boolean = false) {
   });
 
   if (showAll) {
-    // Create "Null" tier for all unassigned species
-    const nullTier = new TierList.Tier("Null", tiers.length);
+    const nullTier = new TierList.Tier(UNTIERED_TIER_NAME, tiers.length);
     tiers.push(nullTier);
     tierGroup.tiers.push(nullTier);
-
-    // Add all species from ruleset that aren't already assigned
     for (const specie of ruleset.species) {
       if (!assignedPokemon.has(specie.id)) {
         const tierPokemon = new TierList.Pokemon(specie, nullTier);
@@ -235,4 +230,47 @@ export async function getDrafted(
   }
 
   return divisions;
+}
+
+export async function updateTierList(
+  league: League,
+  clientTiers: Array<{
+    name: string;
+    pokemon: Array<{ id: string; name: string }>;
+  }>,
+) {
+  const tierList = await tierListModel.findById(league.tierList);
+  if (!tierList) throw new Error("Tier list not found");
+  const serverTiers = clientTiers
+    .filter(
+      (tier) => tier.name.toLowerCase() !== UNTIERED_TIER_NAME.toLowerCase(),
+    )
+    .map((tier) => ({
+      name: tier.name,
+      ...(tierList.tiers.find((t) => t.name === tier.name) || {}),
+    }));
+
+  tierList.tiers = serverTiers;
+  const pokemonMap = new Map<string, any>();
+  clientTiers.forEach((tier) => {
+    if (tier.name.toLowerCase() === UNTIERED_TIER_NAME.toLowerCase()) return;
+
+    tier.pokemon.forEach((pokemon) => {
+      const existingData = tierList.pokemon.get(pokemon.id);
+      pokemonMap.set(pokemon.id, {
+        name: pokemon.name,
+        tier: tier.name,
+        ...(existingData?.notes && { notes: existingData.notes }),
+        ...(existingData?.teraTier && { teraTier: existingData.teraTier }),
+        ...(existingData?.customData && {
+          customData: existingData.customData,
+        }),
+      });
+    });
+  });
+
+  tierList.pokemon = pokemonMap;
+  await tierList.save();
+
+  return tierList;
 }
