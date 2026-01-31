@@ -9,7 +9,7 @@ import {
   checkUserStorageQuota,
 } from "../middleware/upload-rate-limiter";
 import FileUploadModel from "../models/file-upload.model";
-import LeagueUserModel from "../models/league/user.model";
+import LeagueUserModel from "../models/league/coach.model";
 
 export const FileRoutes: Route = {
   middleware: [jwtCheck, uploadRateLimiter, checkUserStorageQuota],
@@ -183,21 +183,17 @@ export const FileRoutes: Route = {
             try {
               // Find the user and update the specific signup's logoFileKey
               const user = await LeagueUserModel.findById(relatedEntityId);
-              if (user && user.signups) {
-                const signup = user.signups.find((s) =>
-                  s.leagueId.equals(leagueId),
+
+              if (user) {
+                user.logo = fileKey;
+                await user.save();
+                logger.info(
+                  `Updated LeagueUser ${relatedEntityId} signup for league ${leagueId} with logo: ${fileKey}`,
                 );
-                if (signup) {
-                  signup.logoFileKey = fileKey;
-                  await user.save();
-                  logger.info(
-                    `Updated LeagueUser ${relatedEntityId} signup for league ${leagueId} with logo: ${fileKey}`,
-                  );
-                } else {
-                  logger.warn(
-                    `Signup not found for league ${leagueId} in LeagueUser ${relatedEntityId}`,
-                  );
-                }
+              } else {
+                logger.warn(
+                  `Signup not found for league ${leagueId} in LeagueUser ${relatedEntityId}`,
+                );
               }
             } catch (updateError) {
               logger.warn(

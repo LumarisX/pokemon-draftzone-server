@@ -1,5 +1,5 @@
 import mongoose, { Types, Schema, Document } from "mongoose";
-import { LeagueUserDocument, LEAGUE_USER_COLLECTION } from "./user.model";
+import { LeagueCoachDocument, LEAGUE_COACH_COLLECTION } from "./coach.model";
 import { captSchema } from "../pokemon.schema";
 import { TypeName } from "@pkmn/data";
 
@@ -8,7 +8,7 @@ export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 export type TeamDraft = {
   timestamp: Date;
   pokemonId: string;
-  picker: Types.ObjectId | LeagueUserDocument;
+  picker: Types.ObjectId | LeagueCoachDocument;
   capt?: {
     tera?: TypeName[];
     z?: TypeName[];
@@ -17,12 +17,9 @@ export type TeamDraft = {
 };
 
 export type LeagueTeam = {
-  name: string;
-  logo?: string;
-  coach: Types.ObjectId | LeagueUserDocument;
+  coach: Types.ObjectId | LeagueCoachDocument;
   picks: string[][];
   draft: TeamDraft[];
-  timezone?: string;
 };
 
 export type LeagueTeamDocument = Document &
@@ -37,7 +34,7 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
     timestamp: { type: Date, default: Date.now },
     picker: {
       type: Schema.Types.ObjectId,
-      ref: LEAGUE_USER_COLLECTION,
+      ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
     capt: {
@@ -48,11 +45,9 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
 );
 
 const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
-  name: { type: String, required: true },
-  logo: { type: String },
   coach: {
     type: Schema.Types.ObjectId,
-    ref: LEAGUE_USER_COLLECTION,
+    ref: LEAGUE_COACH_COLLECTION,
     required: true,
   },
   picks: [[{ type: String }]],

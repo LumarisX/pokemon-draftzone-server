@@ -1,4 +1,5 @@
 import { LeagueTeamDocument } from "../../models/league/team.model";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
 
 // Helper function to calculate score for a result
 export function calculateResultScore(team: {
@@ -106,8 +107,8 @@ export async function calculateDivisionPokemonStandings(
   for (const matchup of matchups) {
     const team1Doc = matchup.team1Id as any;
     const team2Doc = matchup.team2Id as any;
-    const team1Coach = team1Doc.coach?.name || "Unknown Coach";
-    const team2Coach = team2Doc.coach?.name || "Unknown Coach";
+    const team1Coach = team1Doc.coach?.teamName || "Unknown Coach";
+    const team2Coach = team2Doc.coach?.teamName || "Unknown Coach";
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
 
@@ -127,7 +128,7 @@ export async function calculateDivisionPokemonStandings(
           id: pokemonId,
           name: pokemon.name,
           coach: team1Coach,
-          teamName: team1Doc.name,
+          teamName: team1Doc.coach?.teamName,
           teamId: team1Key,
           brought: 0,
           kills: 0,
@@ -158,7 +159,7 @@ export async function calculateDivisionPokemonStandings(
           id: pokemonId,
           name: pokemon.name,
           coach: team2Coach,
-          teamName: team2Doc.name,
+          teamName: team2Doc.coach?.teamName,
           teamId: team2Key,
           brought: 0,
           kills: 0,
@@ -221,15 +222,18 @@ export async function calculateDivisionCoachStandings(
   // Initialize standings for all teams with base 0-0 records
   for (const team of divisionTeams) {
     const teamKey = team._id.toString();
+    const coach = team.coach as LeagueCoachDocument;
 
     coachStandingsMap.set(teamKey, {
-      name: team.name,
+      name: coach.teamName,
       results: Array(stages.length).fill(0),
       coach: team.coach.toString(),
       wins: 0,
       losses: 0,
       diff: 0,
-      logo: team.logo,
+      // logo: team.logo,  TODO:
+      //  Fix this to be team.coach.logo
+      logo: undefined,
       teamId: teamKey,
     });
   }

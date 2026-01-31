@@ -24,10 +24,10 @@ import LeagueTeamModel, {
 } from "../models/league/team.model";
 import { DraftTierListDocument } from "../models/league/tier-list-old.model";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
-import LeagueUserModel, {
-  LeagueUser,
-  LeagueUserDocument,
-} from "../models/league/user.model";
+import LeagueCoachModel, {
+  LeagueCoach,
+  LeagueCoachDocument,
+} from "../models/league/coach.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
   getLeagueAds,
@@ -845,18 +845,18 @@ export const LeagueRoutes: Route = {
               }).populate([
                 {
                   path: "team1Id",
-                  select: "name logo coach",
+                  select: "logo coach",
                   populate: {
                     path: "coach",
-                    select: "name",
+                    select: "teamName",
                   },
                 },
                 {
                   path: "team2Id",
-                  select: "name logo coach",
+                  select: "logo coach",
                   populate: {
                     path: "coach",
-                    select: "name",
+                    select: "teamName",
                   },
                 },
               ]);
@@ -870,8 +870,8 @@ export const LeagueRoutes: Route = {
 
                 return {
                   team1: {
-                    teamName: team1Doc?.name || "Unknown Team",
-                    coach: team1Doc?.coach?.name || "Unknown Coach",
+                    teamName: team1Doc?.coach?.teamName || "Unknown Team",
+                    coach: team1Doc?.coach?.teamName || "Unknown Coach",
                     score: team1Score,
                     logo: team1Doc?.logo || "",
                     winner:
@@ -882,8 +882,8 @@ export const LeagueRoutes: Route = {
                           : undefined,
                   },
                   team2: {
-                    teamName: team2Doc?.name || "Unknown Team",
-                    coach: team2Doc?.coach?.name || "Unknown Coach",
+                    teamName: team2Doc?.coach?.teamName || "Unknown Team",
+                    coach: team2Doc?.coach?.teamName || "Unknown Coach",
                     score: team2Score,
                     logo: team2Doc?.logo || "",
                     winner:
@@ -984,13 +984,13 @@ export const LeagueRoutes: Route = {
           }).populate([
             {
               path: "team1Id",
-              select: "name coaches",
-              populate: { path: "coaches", select: "name" },
+              select: "coach",
+              populate: "coach",
             },
             {
               path: "team2Id",
-              select: "name coaches",
-              populate: { path: "coaches", select: "name" },
+              select: "coach",
+              populate: "coach",
             },
           ]);
 
@@ -1000,10 +1000,12 @@ export const LeagueRoutes: Route = {
             team._id.toString(),
           );
 
+          const coach = team.coach as LeagueCoachDocument;
+
           res.json({
-            name: team.name,
-            timezone: team.timezone,
-            logo: team.logo,
+            name: coach.teamName,
+            timezone: coach.timezone,
+            logo: coach.logo,
             draft,
             pokemonStandings,
           });
@@ -1040,22 +1042,13 @@ export const LeagueRoutes: Route = {
           ).populate<{
             teams: (LeagueTeamDocument & {
               picks: Types.DocumentArray<
-                TeamDraft & { picker: LeagueUserDocument }
+                TeamDraft & { picker: LeagueCoachDocument }
               >;
-              coach: LeagueUserDocument;
+              coach: LeagueCoachDocument;
             })[];
           }>({
             path: "teams",
-            populate: [
-              {
-                path: "draft.picker",
-                model: "LeagueUser",
-              },
-              {
-                path: "coach",
-                model: "LeagueUser",
-              },
-            ],
+            populate: ["draft.picker", "coach"],
           });
 
           if (!division) {
@@ -1080,11 +1073,13 @@ export const LeagueRoutes: Route = {
                     ),
                   },
                   timestamp: draftItem.timestamp,
-                  picker: (draftItem.picker as LeagueUser)?.auth0Id,
+                  picker: (draftItem.picker as LeagueCoach)?.auth0Id,
                 })),
               );
+
+              const coach = team.coach as LeagueCoachDocument;
               return {
-                name: team.name,
+                name: coach.teamName,
                 picks: picks,
                 id: team._id.toString(),
               };
@@ -1127,18 +1122,18 @@ export const LeagueRoutes: Route = {
               }).populate([
                 {
                   path: "team1Id",
-                  select: "name logo coach",
+                  select: "logo coach",
                   populate: {
                     path: "coach",
-                    select: "name",
+                    select: "name teamName",
                   },
                 },
                 {
                   path: "team2Id",
-                  select: "name logo coach",
+                  select: "logo coach",
                   populate: {
                     path: "coach",
-                    select: "name",
+                    select: "name teamName",
                   },
                 },
               ]);
@@ -1152,7 +1147,7 @@ export const LeagueRoutes: Route = {
 
                 return {
                   team1: {
-                    teamName: team1Doc?.name || "Unknown Team",
+                    teamName: team1Doc?.coach?.teamName || "Unknown Team",
                     coach: team1Doc?.coach?.name || "Unknown Coach",
                     score: team1Score,
                     logo: team1Doc?.logo || "",
@@ -1164,7 +1159,7 @@ export const LeagueRoutes: Route = {
                           : undefined,
                   },
                   team2: {
-                    teamName: team2Doc?.name || "Unknown Team",
+                    teamName: team2Doc?.coach?.teamName || "Unknown Team",
                     coach: team2Doc?.coach?.name || "Unknown Coach",
                     score: team2Score,
                     logo: team2Doc?.logo || "",
@@ -1234,19 +1229,19 @@ export const LeagueRoutes: Route = {
           }).populate([
             {
               path: "team1Id",
-              select: "name logo coach",
-              populate: { path: "coach", select: "name" },
+              select: "logo coach",
+              populate: { path: "coach", select: "teamName" },
             },
             {
               path: "team2Id",
-              select: "name logo coach",
-              populate: { path: "coach", select: "name" },
+              select: "logo coach",
+              populate: { path: "coach", select: "teamName" },
             },
           ]);
 
           const divisionTeams = await LeagueTeamModel.find({
             _id: { $in: res.division!.teams },
-          }).populate({ path: "coach", select: "name" });
+          }).populate({ path: "coach", select: "teamName" });
 
           const coachStandings = await calculateDivisionCoachStandings(
             allMatchups,
@@ -1309,7 +1304,15 @@ export const LeagueRoutes: Route = {
           const draftStyle = division.draftStyle;
           const numberOfRounds = (res.league.tierList as LeagueTierListDocument)
             .draftCount.max;
-          const initialTeamOrder = division.teams;
+          const divisionFull = await LeagueDivisionModel.findById(
+            res.division._id,
+          ).populate<{
+            teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+          }>({
+            path: "teams",
+            populate: "coach",
+          });
+          const initialTeamOrder = divisionFull!.teams;
 
           type DraftPick = {
             teamName: string;
@@ -1330,7 +1333,8 @@ export const LeagueRoutes: Route = {
             }
 
             for (const [index, team] of pickingOrder.entries()) {
-              const draftPick: DraftPick = { teamName: team.name };
+              const coach = team.coach as LeagueCoachDocument;
+              const draftPick: DraftPick = { teamName: coach.teamName };
               if (team.draft[round]) {
                 const pokemonId = team.draft[round].pokemonId;
                 const pokemonName = getName(pokemonId);
@@ -1368,31 +1372,34 @@ export const LeagueRoutes: Route = {
           const tierList = res.league!.tierList as LeagueTierListDocument;
           const ruleset = getRuleset(tierList.ruleset);
           const teams = await Promise.all(
-            (res.division!.teams as LeagueTeamDocument[]).map(
-              async (team, index) => {
-                const teamRaw = team.draft.map((pick) => ({
-                  id: pick.pokemonId as ID,
-                  capt: pick.capt,
-                }));
+            (
+              res.division!.teams as (LeagueTeamDocument & {
+                coach: LeagueCoachDocument;
+              })[]
+            ).map(async (team, index) => {
+              const teamRaw = team.draft.map((pick) => ({
+                id: pick.pokemonId as ID,
+                capt: pick.capt,
+              }));
 
-                const draft = DraftSpecie.getTeam(teamRaw, ruleset);
+              const draft = DraftSpecie.getTeam(teamRaw, ruleset);
 
-                const typechart = new Typechart(draft);
-                const summary = new SummaryClass(draft);
-                return {
-                  info: {
-                    name: team.name,
-                    index,
-                    id: team._id.toString(),
-                  },
-                  typechart: typechart.toJson(),
-                  recommended: typechart.recommended(),
-                  summary: summary.toJson(),
-                  movechart: await movechart(draft, ruleset),
-                  coverage: await plannerCoverage(draft),
-                };
-              },
-            ),
+              const typechart = new Typechart(draft);
+              const summary = new SummaryClass(draft);
+              const coach = team.coach as LeagueCoachDocument;
+              return {
+                info: {
+                  name: coach.teamName,
+                  index,
+                  id: team._id.toString(),
+                },
+                typechart: typechart.toJson(),
+                recommended: typechart.recommended(),
+                summary: summary.toJson(),
+                movechart: await movechart(draft, ruleset),
+                coverage: await plannerCoverage(draft),
+              };
+            }),
           );
           return res.json(teams);
         } catch (error) {
@@ -1505,30 +1512,27 @@ export const LeagueRoutes: Route = {
             );
           }
 
-          // Get all coaches in this league
-          await res.league.populate<{ coaches: LeagueUserDocument[] }>(
-            "coaches",
-          );
+          const users = await LeagueCoachModel.find({
+            leagueId: res.league._id,
+          });
 
-          // Transform coaches to include logo URLs from their signup for this league
-          const coaches = res.league.coaches as LeagueUserDocument[];
-          const coachesWithLogos = coaches.map((coach) => {
-            // Find signup for this specific league
-            const signup = coach.signups?.find((s) =>
-              s.leagueId.equals(res.league!._id),
-            );
+          // await res.league!.populate<{
+          //   divisions: LeagueDivisionDocument[];
+          // }>("divisions");
+
+          const coachesWithLogos = users.map((user) => {
+            const division = undefined;
 
             return {
-              _id: coach._id,
-              auth0Id: coach.auth0Id,
-              discordName: coach.discordName,
-              timezone: coach.timezone,
-              signups: coach.signups,
-              // Logo from this league's signup
-              logoFileKey: signup?.logoFileKey,
-              logo: signup?.logoFileKey
-                ? s3Service.getPublicUrl(signup.logoFileKey)
-                : undefined,
+              name: user.discordName,
+              timezone: user.timezone,
+              experience: user.experience,
+              dropped: user.droppedBefore ? user.droppedWhy : undefined,
+              status: user.status,
+              teamName: user.teamName,
+              signedUpAt: user.signedUpAt,
+              logo: user.logo ? s3Service.getPublicUrl(user.logo) : undefined,
+              division,
             };
           });
 
@@ -1551,65 +1555,39 @@ export const LeagueRoutes: Route = {
           const auth0Id = req.auth!.payload.sub!;
           const signup = BattleZone.validateSignUpForm(req.body, auth0Id);
 
-          // Check if user already exists in the league
-          let leagueUser = await LeagueUserModel.findOne({ auth0Id });
+          let leagueUser = await LeagueCoachModel.findOne({
+            auth0Id,
+            leagueId: res.league._id,
+          });
 
-          if (
-            leagueUser &&
-            res.league.coaches.some((c: any) => c._id.equals(leagueUser!._id))
-          ) {
+          if (leagueUser) {
             return res
               .status(409)
               .json({ message: "User is already signed up for this league" });
           }
 
-          // If user doesn't exist, create a new LeagueUser
-          if (!leagueUser) {
-            leagueUser = new LeagueUserModel({
-              auth0Id,
-              discordName: signup.name,
-              timezone: signup.timezone,
-              signups: [
-                {
-                  leagueId: res.league._id,
-                  teamName: signup.teamName,
-                  experience: signup.experience,
-                  droppedBefore: signup.droppedBefore,
-                  droppedWhy: signup.droppedWhy,
-                  confirmed: signup.confirm,
-                  status: "pending",
-                  signedUpAt: new Date(),
-                },
-              ],
-            });
-            await leagueUser.save();
-          } else {
-            // Add signup info to existing user
-            if (!leagueUser.signups) {
-              leagueUser.signups = [];
-            }
-            leagueUser.signups.push({
-              leagueId: res.league._id,
-              teamName: signup.teamName,
-              experience: signup.experience,
-              droppedBefore: signup.droppedBefore,
-              droppedWhy: signup.droppedWhy,
-              confirmed: signup.confirm,
-              status: "pending",
-              signedUpAt: new Date(),
-            });
-            await leagueUser.save();
-          }
+          leagueUser = new LeagueCoachModel({
+            auth0Id,
+            discordName: signup.name,
+            timezone: signup.timezone,
+            leagueId: res.league._id,
+            teamName: signup.teamName,
+            experience: signup.experience,
+            droppedBefore: signup.droppedBefore,
+            droppedWhy: signup.droppedWhy,
+            confirmed: signup.confirm,
+            status: "pending",
+            signedUpAt: new Date(),
+          });
+          await leagueUser.save();
 
-          // Add user to league coaches if not already there
-          if (
-            !res.league.coaches.some((c: any) => c._id?.equals(leagueUser!._id))
-          ) {
-            res.league.coaches.push(leagueUser._id);
-            await res.league.save();
-          }
+          // if (
+          //   !res.league.coaches.some((c: any) => c._id?.equals(leagueUser!._id))
+          // ) {
+          //   res.league.coaches.push(leagueUser._id);
+          //   await res.league.save();
+          // }
 
-          // Send Discord notification if signup is successful
           if (client) {
             try {
               const guild = await client.guilds.fetch("1183936734719922176");
@@ -1618,7 +1596,7 @@ export const LeagueRoutes: Route = {
                   "1303896194187132978",
                 ) as TextChannel;
                 if (channel && channel.isTextBased()) {
-                  await res.league.populate<{ coaches: LeagueUserDocument[] }>(
+                  await res.league.populate<{ coaches: LeagueCoachDocument[] }>(
                     "coaches",
                   );
                   const totalCoaches = res.league.coaches.length;
@@ -1629,7 +1607,6 @@ export const LeagueRoutes: Route = {
               }
             } catch (discordError) {
               logger.warn("Failed to send Discord notification:", discordError);
-              // Don't fail the signup if Discord notification fails
             }
           }
 

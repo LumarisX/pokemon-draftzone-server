@@ -86,6 +86,7 @@ namespace TierList {
         name: this.specie.name,
         stats: this.specie.baseStats,
         types: this.specie.types,
+        abilities: this.specie.abilities,
         bst: this.bst,
         banned: this.banned,
       };
@@ -96,6 +97,7 @@ namespace TierList {
     subPokemon?: SubPokemon[];
     drafted: string[];
     tier: Tier;
+    teraCost?: string;
     constructor(
       specie: Specie,
       tier: Tier,
@@ -105,16 +107,19 @@ namespace TierList {
         abilities?: string[];
         tera?: true;
       },
+      teraCost?: string,
     ) {
       super(specie, banned);
       this.drafted = drafted;
       this.tier = tier;
+      this.teraCost = teraCost;
     }
 
     toJSON() {
       return {
         ...super.toJSON(),
         drafted: this.drafted,
+        teraCost: this.teraCost,
         subPokemon: this.subPokemon?.map((pokemon) => pokemon.toJSON()),
       };
     }
@@ -171,7 +176,13 @@ export async function getTierList(league: League, showAll: boolean = false) {
       if (pokemonData.tier === tierDetails.name) {
         const specie = ruleset.species.get(pokemonId);
         if (specie) {
-          const tierPokemon = new TierList.Pokemon(specie, tier);
+          const tierPokemon = new TierList.Pokemon(
+            specie,
+            tier,
+            undefined,
+            undefined,
+            pokemonData.teraTier,
+          );
           tier.addPokemon(tierPokemon);
           assignedPokemon.add(pokemonId);
         }

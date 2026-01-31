@@ -4,9 +4,11 @@ import { sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueDocument } from "../../models/league/league.model";
-import { LeagueTeamDocument } from "../../models/league/team.model";
+import LeagueTeamModel, {
+  LeagueTeamDocument,
+} from "../../models/league/team.model";
 import { DraftTierListDocument } from "../../models/league/tier-list-old.model";
-import { LeagueUserDocument } from "../../models/league/user.model";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { getName } from "../data-services/pokedex.service";
 import { convertToOldFormat, getPokemonTier } from "./tier-list-service";
 import { APIEmbedField } from "discord.js";
@@ -77,18 +79,30 @@ export function generatePickOrder(
  * @param pickOrder - The generated pick order.
  * @returns An object containing the flat draft board and the draft rounds.
  */
-export function buildDraftBoards(
+export async function buildDraftBoards(
   division: LeagueDivisionDocument,
   pickOrder: LeagueTeamDocument[],
-): { flatDraftBoard: DraftPick[]; draftRounds: DraftRound[] } {
+): Promise<{ flatDraftBoard: DraftPick[]; draftRounds: DraftRound[] }> {
   const initialTeamOrder = division.teams as LeagueTeamDocument[];
   const teamDraftCursors = new Map<string, number>();
   initialTeamOrder.forEach((t) => teamDraftCursors.set(t.id, 0));
 
+  await division.populate<{
+    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+  }>({
+    path: "teams",
+    populate: {
+      path: "coach",
+      model: "LeagueUser",
+    },
+  });
+
   const flatDraftBoard: DraftPick[] = [];
   for (let i = 0; i < pickOrder.length; i++) {
     const team = pickOrder[i];
-    const draftPick: DraftPick = { teamName: team.name };
+    const draftPick: DraftPick = {
+      teamName: (team.coach as LeagueCoachDocument).teamName,
+    };
 
     const cursor = teamDraftCursors.get(team.id)!;
     if (team.draft[cursor]) {
@@ -134,10 +148,10 @@ export async function getTeamsWithCoachStatus(
   const teams = await Promise.all(
     (
       division.teams as (LeagueTeamDocument & {
-        coach: LeagueUserDocument;
+        coach: LeagueCoachDocument;
       })[]
     ).map(async (team) => {
-      const isCoach = (team.coach as LeagueUserDocument).auth0Id === userId;
+      const isCoach = (team.coach as LeagueCoachDocument).auth0Id === userId;
       const maxPicks = numberOfRounds - team.draft.length;
       let picks: any[] = [];
       if (isCoach) {
@@ -169,15 +183,17 @@ export async function getTeamsWithCoachStatus(
         .filter((pokemon) => pokemon.tier)
         .reduce((total, pokemon) => total + Number(pokemon.tier), 0);
 
+      const coach = team.coach as LeagueCoachDocument;
+
       return {
         id: team._id.toString(),
-        name: team.name,
+        name: coach.teamName,
         draft,
-        logo: team.logo,
+        logo: coach.logo,
         isCoach,
         picks,
         pointTotal,
-        timezone: team.timezone,
+        timezone: coach.timezone,
       };
     }),
   );
@@ -243,9 +259,9 @@ export async function isCoach(
   team: LeagueTeamDocument,
   sub: string,
 ): Promise<boolean> {
-  await team.populate<{ coach: LeagueUserDocument }>("coach");
+  await team.populate<{ coach: LeagueCoachDocument }>("coach");
 
-  return (team.coach as LeagueUserDocument).auth0Id === sub;
+  return (team.coach as LeagueCoachDocument).auth0Id === sub;
 }
 
 export function getCurrentRound(division: LeagueDivisionDocument) {
@@ -415,6 +431,10 @@ export async function draftPokemon(
 
     await team.save({ session });
 
+    await team.populate<{ coach: LeagueCoachDocument }>("coach");
+
+    const coach = team.coach as LeagueCoachDocument;
+
     const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex(
       (t) => t.id === team.id,
     );
@@ -463,14 +483,14 @@ export async function draftPokemon(
         },
         team: {
           id: team.id,
-          name: team.name,
+          name: coach.teamName,
         },
         division: division.name,
       },
       canDraftTeams,
       team: {
         id: team.id,
-        name: team.name,
+        name: coach.teamName,
         draft,
       },
       currentPick: calculateCurrentPick(division),
@@ -483,14 +503,14 @@ export async function draftPokemon(
       };
 
       await team.populate<{
-        coach: LeagueUserDocument;
+        coach: LeagueCoachDocument;
       }>({
         path: "coach",
         model: "LeagueUser",
       });
 
       const messageContent = `${pokemon.name} was drafted by <@${
-        (team.coach as LeagueUserDocument)?.discordId
+        (team.coach as LeagueCoachDocument)?.discordName
       }>.`;
 
       const currentRound = getCurrentRound(division);
@@ -518,8 +538,8 @@ export async function draftPokemon(
       sendDiscordMessage(division.channelId, {
         content: messageContent,
         embed: {
-          title: `${team.name} drafted ${pokemon.name}!`,
-          url: `https://pokemondraftzone.com/leagues/pdbls2/${division.divisionKey}/draft`,
+          title: `${coach.teamName} drafted ${pokemon.name}!`,
+          url: `https://pokemondraftzone.com/leagues/${league.leagueKey}/${division.divisionKey}/draft`,
           fields,
           image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
         },
@@ -573,7 +593,7 @@ export async function increaseCounter(
       return increaseCounter(league, division, session);
     }
     await nextTeam.populate<{
-      coach: LeagueUserDocument;
+      coach: LeagueCoachDocument;
     }>({
       path: "coach",
       model: "LeagueUser",
@@ -609,7 +629,7 @@ export async function increaseCounter(
           division.channelId,
 
           `<@${
-            (nextTeam.coach as LeagueUserDocument).discordId
+            (nextTeam.coach as LeagueCoachDocument).discordName
           }>, it is now your turn!`,
         );
       }
@@ -656,7 +676,7 @@ export async function getDivisionDetails(
   );
 
   await division.populate<{
-    teams: (LeagueTeamDocument & { coach: LeagueUserDocument })[];
+    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
   }>({
     path: "teams",
     populate: {
@@ -701,11 +721,18 @@ export async function skipCurrentPick(
   division: LeagueDivisionDocument,
 ) {
   const team = getCurrentPickingTeam(division);
+  // Populate coach if not already populated to get teamName
+  const fullTeam = (await LeagueTeamModel.findById(team._id).populate(
+    "coach",
+  )) as (LeagueTeamDocument & { coach: LeagueCoachDocument }) | null;
+  const teamName =
+    (fullTeam?.coach as LeagueCoachDocument)?.teamName || "Unknown Team";
+
   console.log({ division, team });
   eventEmitter.emit("league.draft.skip", {
     leagueId: league.leagueKey,
     divisionId: division.divisionKey,
-    teamName: team.name,
+    teamName,
   });
 
   await increaseCounter(league, division);

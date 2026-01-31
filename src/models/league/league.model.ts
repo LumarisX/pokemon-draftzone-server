@@ -8,7 +8,7 @@ import {
   LEAGUE_TIER_LIST_COLLECTION,
   LeagueTierListDocument,
 } from "./tier-list.model";
-import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
+import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
 
 export const LEAGUE_COLLECTION = "League";
 
@@ -28,10 +28,10 @@ export type League = {
   draftEnd?: Date;
   seasonStart?: Date;
   seasonEnd?: Date;
-  coaches: (Types.ObjectId | LeagueUserDocument)[];
+  coaches: (Types.ObjectId | LeagueCoachDocument)[];
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
-  owner: Types.ObjectId | LeagueUserDocument;
-  organizers: (Types.ObjectId | LeagueUserDocument)[];
+  owner: Types.ObjectId | LeagueCoachDocument;
+  organizers: (Types.ObjectId | LeagueCoachDocument)[];
   tierList: Types.ObjectId | LeagueTierListDocument;
   rules: LeagueRule[];
   teams: (Types.ObjectId | LeagueTeamDocument)[];
@@ -61,16 +61,16 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
     draftEnd: { type: Date },
     seasonStart: { type: Date },
     seasonEnd: { type: Date },
-    coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
+    coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION }],
     divisions: [
       { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
     ],
     owner: {
       type: Schema.Types.ObjectId,
-      ref: LEAGUE_USER_COLLECTION,
+      ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
-    organizers: [{ type: Schema.Types.ObjectId, ref: LEAGUE_USER_COLLECTION }],
+    organizers: [{ type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION }],
     rules: [LeagueRuleSchema],
     tierList: {
       type: Schema.Types.ObjectId,

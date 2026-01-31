@@ -3,7 +3,7 @@ import LeagueTeamModel, {
   LeagueTeamDocument,
   LeagueTeam,
 } from "../../models/league/team.model";
-import { LeagueUserDocument } from "../../models/league/user.model";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
 
 export class LeagueTeamLoader {
   private teamId: Types.ObjectId;
@@ -20,7 +20,7 @@ export class LeagueTeamLoader {
     }
 
     this._team = await LeagueTeamModel.findById(this.teamId)
-      .populate<{ coach: LeagueUserDocument }>("coach")
+      .populate<{ coach: LeagueCoachDocument }>("coach")
       .exec();
 
     return this._team;
@@ -31,17 +31,18 @@ export class LeagueTeamLoader {
   }
 
   public get name(): string | undefined {
-    return this._team?.name;
+    const coach = this._team?.coach as LeagueCoachDocument | undefined;
+    return coach?.teamName;
   }
 
-  public get coach(): (Types.ObjectId | LeagueUserDocument) | undefined {
+  public get coach(): (Types.ObjectId | LeagueCoachDocument) | undefined {
     return this._team?.coach;
   }
 
-  // Add other getters as needed for team properties
-  public get logoUrl(): string | undefined {
-    return this._team?.logo;
-  }
+  // // Add other getters as needed for team properties
+  // public get logoUrl(): string | undefined {
+  //   return this._team?.logo;
+  // }
 
   public get picks(): LeagueTeam["picks"] | undefined {
     return this._team?.picks;

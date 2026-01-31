@@ -1,5 +1,5 @@
 import mongoose, { Schema, Types, Document } from "mongoose";
-import { LEAGUE_USER_COLLECTION, LeagueUserDocument } from "./user.model";
+import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
 
 export const LEAGUE_TIER_LIST_COLLECTION = "LeagueTierList";
 
@@ -26,7 +26,7 @@ export type DraftCount = {
 export type LeagueTierList = {
   name: string;
   description?: string;
-  createdBy: Types.ObjectId | LeagueUserDocument;
+  createdBy: Types.ObjectId | LeagueCoachDocument;
   pokemon: Map<string, LeagueTierListPokemon>;
   tiers: LeagueTier[];
   bannedMoves: string[];
@@ -67,7 +67,7 @@ const LeagueTierListSchema: Schema<LeagueTierListDocument> = new Schema(
     description: { type: String },
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: LEAGUE_USER_COLLECTION,
+      ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
     pokemon: {
