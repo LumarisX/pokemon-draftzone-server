@@ -12,6 +12,10 @@ import { client } from "../discord";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { rolecheck } from "../middleware/rolecheck";
 import { LeagueAdModel } from "../models/league-ad.model";
+import LeagueCoachModel, {
+  LeagueCoach,
+  LeagueCoachDocument,
+} from "../models/league/coach.model";
 import LeagueDivisionModel, {
   LeagueDivisionDocument,
 } from "../models/league/division.model";
@@ -22,12 +26,7 @@ import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
-import { DraftTierListDocument } from "../models/league/tier-list-old.model";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
-import LeagueCoachModel, {
-  LeagueCoach,
-  LeagueCoachDocument,
-} from "../models/league/coach.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
   getLeagueAds,
@@ -960,7 +959,7 @@ export const LeagueRoutes: Route = {
           }
 
           await res.league!.populate<{
-            tierList: DraftTierListDocument;
+            tierList: LeagueTierListDocument;
           }>("tierList");
 
           const draft = await Promise.all(

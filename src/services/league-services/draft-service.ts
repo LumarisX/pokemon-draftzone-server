@@ -7,10 +7,9 @@ import { LeagueDocument } from "../../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
 } from "../../models/league/team.model";
-import { DraftTierListDocument } from "../../models/league/tier-list-old.model";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { getName } from "../data-services/pokedex.service";
-import { convertToOldFormat, getPokemonTier } from "./tier-list-service";
+import { getPokemonTier } from "./tier-list-service";
 import { APIEmbedField } from "discord.js";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 
@@ -38,15 +37,10 @@ export type TeamWithCoachStatus = {
  */
 function createPokemonTierMap(league: LeagueDocument): Map<string, string> {
   const tierMap = new Map<string, string>();
-  const newtierList = league.tierList as LeagueTierListDocument;
-  const tierList = convertToOldFormat(newtierList);
-  for (const tierGroup of tierList.tierGroups) {
-    for (const tier of tierGroup.tiers) {
-      for (const pokemon of tier.pokemon) {
-        tierMap.set(pokemon, tier.name);
-      }
-    }
-  }
+  const tierList = league.tierList as LeagueTierListDocument;
+  tierList.pokemon.forEach((data, pokemonId) => {
+    tierMap.set(pokemonId, data.tier);
+  });
   return tierMap;
 }
 
@@ -568,7 +562,7 @@ export async function isTeamDoneDrafting(
   team: LeagueTeamDocument,
 ): Promise<boolean> {
   await league.populate<{
-    tierList: DraftTierListDocument;
+    tierList: LeagueTierListDocument;
   }>("tierList");
 
   const tierList = league.tierList as LeagueTierListDocument;
