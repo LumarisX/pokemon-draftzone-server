@@ -10,6 +10,7 @@ import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import { config } from "./config";
+import { errorHandler } from "./errors/error-handler";
 import { loggingContext } from "./middleware/loggingContext";
 import { Route } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
@@ -18,6 +19,7 @@ import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
 import { FileRoutes } from "./routes/file.route";
 import { LeagueRoutes } from "./routes/league.route";
+// import { LeagueRoutes } from "./routes/league";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
 import { PlannerRoutes } from "./routes/planner.route";
@@ -26,6 +28,7 @@ import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
 import { TeambuilderRoutes } from "./routes/teambuilder.route";
 import { UserRoutes } from "./routes/user.route";
+import { Router } from "express";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -181,7 +184,7 @@ const routerStream = {
 
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
-export const ROUTES: { [path: string]: Route } = {
+export const ROUTES: { [path: string]: Route | Router } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
   "/matchup": MatchupRoutes,
@@ -201,7 +204,14 @@ export const ROUTES: { [path: string]: Route } = {
 const METHODS = ["get", "post", "delete", "patch"] as const;
 
 for (const path in ROUTES) {
-  const route = ROUTES[path];
+  let route = ROUTES[path];
+
+  if (route && typeof route === "function" && "stack" in route) {
+    app.use(path, route as Router);
+    continue;
+  }
+
+  route = route as Route;
   const router = express.Router();
   for (const subpath in route.subpaths) {
     const subroute = router.route(subpath);
@@ -224,25 +234,5 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next(createError(404));
 });
 
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (!req.logger) {
-    req.logger = logger;
-  }
-  const status = err.status || 500;
-  const message = err.message || "Internal Server Error";
-
-  req.logger.error(`Error processing request`, {
-    status,
-    message,
-    method: req.method,
-    path: req.originalUrl,
-    ip: req.ip,
-    error: err,
-  });
-  res.status(status).json({
-    error: {
-      message: message,
-      stack: config.NODE_ENV === "development" ? err.stack : undefined,
-    },
-  });
-});
+// Use the centralized error handler
+app.use(errorHandler);

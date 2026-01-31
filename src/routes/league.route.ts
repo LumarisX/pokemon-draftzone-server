@@ -5,6 +5,8 @@ import { Types } from "mongoose";
 import { Route, sendError } from ".";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
 import { LeagueAd } from "../classes/league-ad";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
@@ -76,12 +78,9 @@ async function loadLeagueByKey(req: Request, res: LeagueResponse) {
     tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
-    logger.error(`League Key not found: ${req.params.league_key}`);
-    res.status(404).json({
-      message: "League Key not found.",
-      code: `${routeCode}-P1-02`,
+    throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+      leagueKey: req.params.league_key,
     });
-    return;
   }
   res.league = league;
   res.ruleset = getRuleset(league.tierList.ruleset);
@@ -93,12 +92,9 @@ async function loadLeagueById(req: Request, res: LeagueResponse) {
     tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
-    logger.error(`League ID not found: ${req.params.league_id}`);
-    res.status(404).json({
-      message: "League ID not found.",
-      code: `${routeCode}-P1-02`,
+    throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+      leagueId: req.params.league_id,
     });
-    return;
   }
   res.league = league;
   res.ruleset = getRuleset(league.tierList.ruleset);
@@ -109,7 +105,6 @@ async function loadDivision(req: Request, res: LeagueResponse) {
     await (req.params.league_key
       ? loadLeagueByKey(req, res)
       : loadLeagueById(req, res));
-    if (res.headersSent) return;
   }
   if (res.division) return;
 
@@ -123,8 +118,10 @@ async function loadDivision(req: Request, res: LeagueResponse) {
   );
 
   if (!division) {
-    res.status(404).json({ message: "Division not found in this league." });
-    return;
+    throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
+      divisionKey: division_id,
+      leagueKey: res.league!.leagueKey,
+    });
   }
 
   await division.populate<{
@@ -137,12 +134,10 @@ async function loadDivision(req: Request, res: LeagueResponse) {
 async function loadTeam(req: Request, res: LeagueResponse) {
   if (req.params.division_id && !res.division) {
     await loadDivision(req, res);
-    if (res.headersSent) return;
   } else if (!req.params.division_id && !res.league) {
     await (req.params.league_key
       ? loadLeagueByKey(req, res)
       : loadLeagueById(req, res));
-    if (res.headersSent) return;
   }
 
   if (res.team) return;
@@ -151,14 +146,15 @@ async function loadTeam(req: Request, res: LeagueResponse) {
   const team = await LeagueTeamModel.findById(team_id);
 
   if (!team) {
-    res.status(404).json({ message: "Team not found." });
-    return;
+    throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: team_id });
   }
 
   // This check is only possible if a division is loaded
   if (res.division && !res.division.teams.some((t) => t._id.equals(team._id))) {
-    res.status(404).json({ message: "Team not found in this division." });
-    return;
+    throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, {
+      teamId: team_id,
+      divisionKey: res.division.divisionKey,
+    });
   }
   res.team = team;
 }
@@ -166,28 +162,20 @@ async function loadTeam(req: Request, res: LeagueResponse) {
 export const LeagueRoutes: Route = {
   subpaths: {
     "/": {
-      get: async (req: Request, res: Response) => {
+      get: async (req: Request, res: Response, next) => {
         try {
           res.json([]);
         } catch (error) {
-          console.error(error);
-          res
-            .status(500)
-            .json({ message: (error as Error).message, code: "LR-R1-01" });
+          next(error);
         }
       },
     },
 
     "/:league_key/info": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              404,
-              new Error("League not found"),
-              `${routeCode}-INFO-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           // Populate divisions
@@ -220,13 +208,13 @@ export const LeagueRoutes: Route = {
             discord: res.league.discord,
           });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-INFO-02`);
+          next(error);
         }
       },
     },
 
     "/bracket": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const teamData: {
             teamName: string;
@@ -606,32 +594,26 @@ export const LeagueRoutes: Route = {
 
           res.json(normalized24);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+          next(error);
         }
       },
     },
     "/ad-list": {
-      get: async function (req: Request, res: Response) {
+      get: async function (req: Request, res: Response, next) {
         try {
           const leagueAds = await getLeagueAds();
           res.json(leagueAds);
         } catch (error) {
-          logger.error("Error fetching league ads:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-AL-01`);
+          next(error);
         }
       },
     },
     "/ad-list/manage": {
-      get: async function (req: Request, res: Response) {
+      get: async function (req: Request, res: Response, next) {
         try {
           const owner = req.auth?.payload.sub;
           if (!owner) {
-            return sendError(
-              res,
-              401,
-              new Error("Unauthorized"),
-              `${routeCode}-AL-05`,
-            );
+            throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
           }
 
           const documents = await LeagueAdModel.find({ owner }).sort({
@@ -641,31 +623,20 @@ export const LeagueRoutes: Route = {
           const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
           res.json(leagueAds);
         } catch (error) {
-          logger.error("Error fetching user's league ads:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-AL-06`);
+          next(error);
         }
       },
-      post: async function (req: Request, res: Response) {
+      post: async function (req: Request, res: Response, next) {
         try {
           const owner = req.auth?.payload.sub;
           if (!owner) {
-            return sendError(
-              res,
-              401,
-              new Error("Unauthorized"),
-              `${routeCode}-AL-02`,
-            );
+            throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
           }
 
           const leagueAd = LeagueAd.fromForm(req.body, owner);
 
           if (!leagueAd.isValid()) {
-            return sendError(
-              res,
-              400,
-              new Error("Invalid league ad data"),
-              `${routeCode}-AL-03`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE_AD.INVALID_AD_DATA);
           }
 
           const document = await leagueAd.toDocument();
@@ -675,43 +646,27 @@ export const LeagueRoutes: Route = {
           logger.info(`New league ad created: ${document._id}`);
           res.status(201).json({ _id: document._id, status: document.status });
         } catch (error) {
-          logger.error("Error creating league ad:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-AL-04`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/ad-list/manage/:ad_id": {
-      delete: async function (req: Request, res: Response) {
+      delete: async function (req: Request, res: Response, next) {
         try {
           const owner = req.auth?.payload.sub;
           if (!owner) {
-            return sendError(
-              res,
-              401,
-              new Error("Unauthorized"),
-              `${routeCode}-AL-07`,
-            );
+            throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
           }
 
           const ad = await LeagueAdModel.findById(req.params.ad_id);
 
           if (!ad) {
-            return sendError(
-              res,
-              404,
-              new Error("Ad not found"),
-              `${routeCode}-AL-08`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE_AD.NOT_FOUND);
           }
 
           if (ad.owner !== owner) {
-            return sendError(
-              res,
-              403,
-              new Error("You can only delete your own ads"),
-              `${routeCode}-AL-09`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE_AD.UNAUTHORIZED_ACCESS);
           }
 
           await LeagueAdModel.findByIdAndDelete(req.params.ad_id);
@@ -719,34 +674,33 @@ export const LeagueRoutes: Route = {
           logger.info(`League ad deleted: ${req.params.ad_id}`);
           res.status(200).json({ message: "Ad deleted successfully" });
         } catch (error) {
-          logger.error("Error deleting league ad:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-AL-10`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/roles": {
-      get: async function (req: Request, res: Response) {
+      get: async function (req: Request, res: Response, next) {
         try {
           res.json(getRoles(req.auth?.payload.sub));
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-01`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/rules": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           res.json(res.league!.rules);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+          next(error);
         }
       },
     },
 
     "/:league_key/tier-list": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const { division } = req.query;
           const tierList = await getTierList(res.league!);
@@ -756,12 +710,12 @@ export const LeagueRoutes: Route = {
           );
           res.json({ tierList, divisions });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+          next(error);
         }
       },
     },
     "/:league_key/tier-list/edit": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const { division } = req.query;
           const tierList = await getTierList(res.league!, true);
@@ -771,29 +725,23 @@ export const LeagueRoutes: Route = {
           );
           res.json({ tierList, divisions });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+          next(error);
         }
       },
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              404,
-              new Error("League not found"),
-              `${routeCode}-TIER-EDIT-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           // Extract tiers from request body
           const { tiers } = req.body;
           if (!tiers || !Array.isArray(tiers)) {
-            return sendError(
-              res,
-              400,
-              new Error("Invalid tiers data"),
-              `${routeCode}-TIER-EDIT-02`,
-            );
+            throw new PDZError(ErrorCodes.TIER_LIST.INVALID_DATA, {
+              field: "tiers",
+              expected: "array",
+              received: typeof tiers,
+            });
           }
 
           // Update the tier list
@@ -808,27 +756,16 @@ export const LeagueRoutes: Route = {
             message: "Tier list updated successfully",
           });
         } catch (error) {
-          logger.error("Error updating tier list:", error);
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-TIER-EDIT-03`,
-          );
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/schedule": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              404,
-              new Error("League not found."),
-              `${routeCode}-SCHED-LEG-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           // Fetch all stages for this league
@@ -934,28 +871,19 @@ export const LeagueRoutes: Route = {
 
           res.json(stagesWithMatchups);
         } catch (error) {
-          logger.error("Error fetching league schedule:", error);
-          return sendError(
-            res,
-            500,
-            error as Error,
-            `${routeCode}-SCHED-LEG-02`,
-          );
+          next(error);
         }
       },
     },
 
     "/:league_key/teams/:team_id": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const team = await LeagueTeamModel.findById(req.params["team_id"]!);
           if (!team) {
-            return sendError(
-              res,
-              404,
-              new Error("Team not found."),
-              `${routeCode}-R2-02`,
-            );
+            throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+              teamId: req.params["team_id"],
+            });
           }
 
           await res.league!.populate<{
@@ -1009,31 +937,21 @@ export const LeagueRoutes: Route = {
             pokemonStandings,
           });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R2-01`);
+          next(error);
         }
       },
     },
 
     "/:league_key/divisions/:division_id/picks": {
       middleware: [jwtCheck],
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              404,
-              new Error("League not found."),
-              `${routeCode}-R3-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           if (!res.division) {
-            return sendError(
-              res,
-              404,
-              new Error("Division not found in this league."),
-              `${routeCode}-R3-02`,
-            );
+            throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE);
           }
 
           const division = await LeagueDivisionModel.findById(
@@ -1051,12 +969,7 @@ export const LeagueRoutes: Route = {
           });
 
           if (!division) {
-            return sendError(
-              res,
-              404,
-              new Error("Division not found."),
-              `${routeCode}-R3-03`,
-            );
+            throw new PDZError(ErrorCodes.DIVISION.NOT_FOUND);
           }
 
           const allPicks = await Promise.all(
@@ -1087,13 +1000,13 @@ export const LeagueRoutes: Route = {
 
           res.json(allPicks);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+          next(error);
         }
       },
     },
     "/:league_key/divisions/:division_id": {
       middleware: [jwtCheck],
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           res.json(
             await getDivisionDetails(
@@ -1103,12 +1016,12 @@ export const LeagueRoutes: Route = {
             ),
           );
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+          next(error);
         }
       },
     },
     "/:league_key/divisions/:division_id/schedule": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const stages = await LeagueStageModel.find({
             divisionIds: res.division!._id,
@@ -1211,13 +1124,12 @@ export const LeagueRoutes: Route = {
 
           res.json(stagesWithMatchups);
         } catch (error) {
-          logger.error("Error fetching schedule:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-SCHED-03`);
+          next(error);
         }
       },
     },
     "/:league_key/divisions/:division_id/standings": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const stages = await LeagueStageModel.find({
             divisionIds: res.division!._id,
@@ -1261,30 +1173,19 @@ export const LeagueRoutes: Route = {
             pokemonStandings,
           });
         } catch (error) {
-          logger.error("Error fetching standings:", error);
-          return sendError(res, 500, error as Error, `${routeCode}-STAND-03`);
+          next(error);
         }
       },
     },
     "/:league_key/divisions/:division_id/order": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              404,
-              new Error("League not found."),
-              `${routeCode}-R3-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           if (!res.division) {
-            return sendError(
-              res,
-              404,
-              new Error("Division not found in this league."),
-              `${routeCode}-R3-02`,
-            );
+            throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE);
           }
 
           const division = await LeagueDivisionModel.findById(
@@ -1292,12 +1193,7 @@ export const LeagueRoutes: Route = {
           ).populate<{ teams: LeagueTeamDocument[] }>("teams");
 
           if (!division) {
-            return sendError(
-              res,
-              404,
-              new Error("Division not found."),
-              `${routeCode}-R3-03`,
-            );
+            throw new PDZError(ErrorCodes.DIVISION.NOT_FOUND);
           }
 
           const draftStyle = division.draftStyle;
@@ -1361,12 +1257,12 @@ export const LeagueRoutes: Route = {
 
           res.json(draftRounds);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R3-04`);
+          next(error);
         }
       },
     },
     "/:league_key/divisions/:division_id/power-rankings": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           const tierList = res.league!.tierList as LeagueTierListDocument;
           const ruleset = getRuleset(tierList.ruleset);
@@ -1402,38 +1298,38 @@ export const LeagueRoutes: Route = {
           );
           return res.json(teams);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/divisions/:division_id/teams/:team_id/draft": {
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           const { pokemonId } = req.body;
           if (!pokemonId) {
-            return res.status(400).json({
-              message: "Missing required fields: pokemonId",
+            throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+              field: "pokemonId",
             });
           }
 
           if (!(await isCoach(res.team!, req.auth!.payload.sub!))) {
-            return res
-              .status(403)
-              .json({ message: "User is not a coach on this team." });
+            throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
+              reason: "User is not a coach on this team",
+            });
           }
 
           await draftPokemon(res.league!, res.division!, res.team!, pokemonId);
 
           return res.status(200).json({ message: "Drafted successfully." });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/divisions/:division_id/teams/:team_id/picks": {
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           res.team!.picks = req.body.picks;
           await res.team!.save();
@@ -1441,42 +1337,43 @@ export const LeagueRoutes: Route = {
             .status(200)
             .json({ message: "Draft pick set successfully." });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck],
     },
     "/:league_key/manage/divisions/:division_id/state": {
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           const { state } = req.body;
           setDivsionState(res.league!, res.division!, state);
           return res.status(200).json({ message: "Timer set successfully." });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck, rolecheck("organizer")],
     },
     "/:league_key/manage/divisions/:division_id/skip": {
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           await skipCurrentPick(res.league!, res.division!);
           return res.status(200).json({ message: "Skip successful." });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck, rolecheck("organizer")],
     },
     "/:league_key/manage/divisions/:division_id/setdraft": {
-      post: async function (req: Request, res: LeagueResponse) {
+      post: async function (req: Request, res: LeagueResponse, next) {
         try {
           const { pokemonId, teamId } = req.body;
 
           if (!pokemonId || !teamId) {
-            return res.status(400).json({
-              message: "Missing required fields: divisionId, pokemonId, teamId",
+            throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+              required: ["pokemonId", "teamId"],
+              received: { pokemonId, teamId },
             });
           }
 
@@ -1484,9 +1381,7 @@ export const LeagueRoutes: Route = {
             team._id.equals(teamId),
           ) as LeagueTeamDocument | undefined;
           if (!team) {
-            return res.status(400).json({
-              message: "Team Id not found",
-            });
+            throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, { teamId });
           }
           await draftPokemon(res.league!, res.division!, team, pokemonId);
 
@@ -1494,21 +1389,16 @@ export const LeagueRoutes: Route = {
             .status(200)
             .json({ message: "Draft pick set successfully." });
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-R1-02`);
+          next(error);
         }
       },
       middleware: [jwtCheck, rolecheck("organizer")],
     },
     "/:league_key/signup": {
-      get: async function (req: Request, res: LeagueResponse) {
+      get: async function (req: Request, res: LeagueResponse, next) {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              400,
-              new Error("League not found"),
-              `${routeCode}-SU-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           const users = await LeagueCoachModel.find({
@@ -1537,18 +1427,13 @@ export const LeagueRoutes: Route = {
 
           res.json(coachesWithLogos);
         } catch (error) {
-          return sendError(res, 500, error as Error, `${routeCode}-SU-02`);
+          next(error);
         }
       },
-      post: async (req: Request, res: LeagueResponse) => {
+      post: async (req: Request, res: LeagueResponse, next) => {
         try {
           if (!res.league) {
-            return sendError(
-              res,
-              400,
-              new Error("League not found"),
-              `${routeCode}-SU-01`,
-            );
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND);
           }
 
           const auth0Id = req.auth!.payload.sub!;
@@ -1560,9 +1445,9 @@ export const LeagueRoutes: Route = {
           });
 
           if (leagueUser) {
-            return res
-              .status(409)
-              .json({ message: "User is already signed up for this league" });
+            throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+              leagueId: res.league._id.toString(),
+            });
           }
 
           leagueUser = new LeagueCoachModel({
@@ -1615,11 +1500,7 @@ export const LeagueRoutes: Route = {
             leagueId: res.league._id.toString(),
           });
         } catch (error) {
-          logger.error("Signup error:", error);
-          res.status(500).json({
-            message: (error as Error).message,
-            code: `${routeCode}-SU-03`,
-          });
+          next(error);
         }
       },
       middleware: [jwtCheck],
@@ -1634,11 +1515,9 @@ export const LeagueRoutes: Route = {
     ) {
       try {
         await loadLeagueById(req, res);
-        if (!res.headersSent) {
-          next();
-        }
+        next();
       } catch (error) {
-        return sendError(res, 500, error as Error, `LR-P2-01`);
+        next(error);
       }
     },
     league_key: async function (
@@ -1649,11 +1528,9 @@ export const LeagueRoutes: Route = {
     ) {
       try {
         await loadLeagueByKey(req, res);
-        if (!res.headersSent) {
-          next();
-        }
+        next();
       } catch (error) {
-        return sendError(res, 500, error as Error, `LR-P2-02`);
+        next(error);
       }
     },
     division_id: async function (
@@ -1664,21 +1541,17 @@ export const LeagueRoutes: Route = {
     ) {
       try {
         await loadDivision(req, res);
-        if (!res.headersSent) {
-          next();
-        }
+        next();
       } catch (error) {
-        return sendError(res, 500, error as Error, `LR-P2-03`);
+        next(error);
       }
     },
     team_id: async function (req: Request, res: LeagueResponse, next, team_id) {
       try {
         await loadTeam(req, res);
-        if (!res.headersSent) {
-          next();
-        }
+        next();
       } catch (error) {
-        return sendError(res, 500, error as Error, `LR-P2-04`);
+        next(error);
       }
     },
   },

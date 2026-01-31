@@ -1,4 +1,10 @@
-import { Handler, Request, RequestParamHandler, Response } from "express";
+import {
+  Handler,
+  NextFunction,
+  Request,
+  RequestParamHandler,
+  Response,
+} from "express";
 import { EventEmitter } from "stream";
 import WebSocket from "ws";
 import { logger } from "../app";
@@ -7,15 +13,15 @@ export type Route = {
   middleware?: Handler[];
   subpaths: {
     [subpath: string]: {
-      get?: (req: Request, res: Response) => any;
-      delete?: (req: Request, res: Response) => any;
-      post?: (req: Request, res: Response) => any;
-      patch?: (req: Request, res: Response) => any;
+      get?: (req: Request, res: Response, next: NextFunction) => any;
+      delete?: (req: Request, res: Response, next: NextFunction) => any;
+      post?: (req: Request, res: Response, next: NextFunction) => any;
+      patch?: (req: Request, res: Response, next: NextFunction) => any;
       ws?: (
         socket: WebSocket,
         message: string,
         emitter: EventEmitter,
-        data?: any
+        data?: any,
       ) => any;
       middleware?: Handler[];
     };
@@ -32,7 +38,7 @@ export function sendError(
   res: Response,
   status: number,
   error: Error,
-  code: string
+  code: string,
 ) {
   logger.error(error);
   return res.status(status).json({ message: error.message, code });
