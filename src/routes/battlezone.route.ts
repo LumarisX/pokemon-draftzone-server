@@ -1,13 +1,13 @@
 import { TextChannel } from "discord.js";
 import type { Request, Response } from "express";
-import { type Route } from ".";
+import { type RouteOld } from ".";
 import { BattleZone } from "../classes/battlezone";
 import { getTiers } from "../data/pdbl";
 import { PDBLModel } from "../models/pdbl.model";
 import { client } from "../discord";
 import { jwtCheck } from "../middleware/jwtcheck";
 
-export const BattleZoneRoutes: Route = {
+export const BattleZoneRoutes: RouteOld = {
   subpaths: {
     "/pdbl": {
       get: async (req: Request, res: Response) => {
@@ -45,7 +45,7 @@ export const BattleZoneRoutes: Route = {
         try {
           const signup = BattleZone.validateSignUpForm(
             req.body,
-            req.auth!.payload.sub!
+            req.auth!.payload.sub!,
           );
           const existing = await PDBLModel.findOne({ sub: signup.sub });
           if (existing)
@@ -61,14 +61,14 @@ export const BattleZoneRoutes: Route = {
             } else {
               // Fetch the channel from the guild
               const channel = guild.channels.cache.get(
-                "1303896194187132978"
+                "1303896194187132978",
               ) as TextChannel;
               if (!channel || !channel.isTextBased()) {
                 console.error("Channel not found or not a text channel");
               } else {
                 // Send a message in the designated channel
                 channel.send(
-                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`
+                  `${signup.name} signed up for the league. Total sign-ups: ${totalSignups}.`,
                 );
               }
             }

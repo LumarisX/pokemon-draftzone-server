@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { startSession } from "mongoose";
-import { Route, sendError } from ".";
+import { RouteOld, sendError } from ".";
 import { logger } from "../app";
 import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
@@ -39,7 +39,7 @@ type DraftResponse = Response & {
 
 const routeCode = "DR";
 
-export const DraftRoutes: Route = {
+export const DraftRoutes: RouteOld = {
   middleware: [jwtCheck],
   subpaths: {
     "/teams": {
@@ -49,9 +49,9 @@ export const DraftRoutes: Route = {
           res.json(
             await Promise.all(
               drafts.map(
-                async (draft) => await Draft.fromData(draft).toClient()
-              )
-            )
+                async (draft) => await Draft.fromData(draft).toClient(),
+              ),
+            ),
           );
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R1-01`);
@@ -94,17 +94,17 @@ export const DraftRoutes: Route = {
         try {
           const draft = Draft.fromForm(
             req.body,
-            req.auth!.payload.sub!
+            req.auth!.payload.sub!,
           ).toData();
           const updatedDraft = await updateDraft(
             req.auth!.payload.sub!,
             req.params.team_id,
-            draft
+            draft,
           );
           if (updatedDraft) {
             const matchups = await getMatchupsByDraftId(updatedDraft._id);
             matchups.forEach((matchup) =>
-              clearMatchupCacheById(matchup._id.toString())
+              clearMatchupCacheById(matchup._id.toString()),
             );
             return res
               .status(200)
@@ -141,8 +141,8 @@ export const DraftRoutes: Route = {
                 const matchupData = rawMatchup.toObject<MatchupData>();
                 const matchup = await Matchup.fromData(matchupData);
                 return matchup.toOpponent().toClient();
-              })
-            )
+              }),
+            ),
           );
         } catch (error) {
           return sendError(res, 500, error as Error, `${routeCode}-R3-01`);
@@ -214,7 +214,7 @@ export const DraftRoutes: Route = {
           const opponent = Opponent.fromForm(req.body, res.ruleset!);
           const updatedMatchup = await updateMatchup(
             req.params.matchup_id,
-            opponent.toData()
+            opponent.toData(),
           );
           clearMatchupCacheById(req.params.matchup_id);
           if (updatedMatchup) {
@@ -223,7 +223,7 @@ export const DraftRoutes: Route = {
               .json({ message: "Matchup Updated", draft: updatedMatchup });
           } else {
             logger.error(
-              `Matchup not found for matchup_id: ${req.params.matchup_id}`
+              `Matchup not found for matchup_id: ${req.params.matchup_id}`,
             );
             return res.status(404).json({
               message: "Matchup not found",
@@ -272,13 +272,13 @@ export const DraftRoutes: Route = {
           });
         } else {
           logger.error(
-            `Matchup not found in response locals for team_id: ${req.params.team_id}, matchup_id: ${req.params.matchup_id}`
+            `Matchup not found in response locals for team_id: ${req.params.team_id}, matchup_id: ${req.params.matchup_id}`,
           );
           return sendError(
             res,
             500,
             new Error("Matchup not found"),
-            `${routeCode}-R6-01`
+            `${routeCode}-R6-01`,
           );
         }
       },
@@ -330,7 +330,7 @@ export const DraftRoutes: Route = {
       req: Request,
       res: MatchupResponse,
       next,
-      matchup_id
+      matchup_id,
     ) => {
       try {
         if (!matchup_id) {
@@ -342,9 +342,8 @@ export const DraftRoutes: Route = {
               code: `${routeCode}-P1-01`,
             });
         }
-        const rawMatchup: MatchupDocument | null = await getMatchupById(
-          matchup_id
-        );
+        const rawMatchup: MatchupDocument | null =
+          await getMatchupById(matchup_id);
         if (!rawMatchup) {
           logger.error(`Matchup not found for matchup_id: ${matchup_id}`);
           return res
@@ -359,7 +358,7 @@ export const DraftRoutes: Route = {
             res,
             500,
             new Error("Draft not found in response locals."),
-            `${routeCode}-P1-05`
+            `${routeCode}-P1-05`,
           );
         }
         const matchup = rawMatchup.toObject<MatchupData>();

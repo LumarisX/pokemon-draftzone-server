@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Route } from ".";
+import { RouteOld } from ".";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import fs from "fs";
@@ -7,7 +7,7 @@ import { toID } from "@pkmn/data";
 import { Pokemon } from "@smogon/calc";
 import { PikalyticData, testSet } from "../services/pats-services/test-set";
 
-export const TeambuilderRoutes: Route = {
+export const TeambuilderRoutes: RouteOld = {
   subpaths: {
     "/pokemonData": {
       get: async (req: Request, res: Response) => {
@@ -37,14 +37,14 @@ export const TeambuilderRoutes: Route = {
       get: async (req: Request, res: Response) => {
         try {
           const data: PikalyticData[] = JSON.parse(
-            fs.readFileSync("./src/services/pats-services/pats.json", "utf-8")
+            fs.readFileSync("./src/services/pats-services/pats.json", "utf-8"),
           );
           return res.json(
             data.map((pokemon) => ({
               name: pokemon.name,
               id: toID(pokemon.name),
               percent: pokemon.percent,
-            }))
+            })),
           );
         } catch (error) {
           console.error("Error in /formats/ route:", error);

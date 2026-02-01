@@ -9,7 +9,10 @@ import { EventEmitter } from "stream";
 import WebSocket from "ws";
 import { logger } from "../app";
 
-export type Route = {
+/**
+ * @deprecated The method should not be used
+ */
+export type RouteOld = {
   middleware?: Handler[];
   subpaths: {
     [subpath: string]: {

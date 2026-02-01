@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { Route } from ".";
+import { RouteOld } from ".";
 import { Supporter, SupporterModel } from "../models/supporters.model";
 
-export const SupporterRoutes: Route = {
+export const SupporterRoutes: RouteOld = {
   subpaths: {
     "/": {
       get: async (req: Request, res: Response) => {
@@ -70,7 +70,7 @@ export const SupporterRoutes: Route = {
                 luxury: [] as { name: string; months: number }[],
                 master: [] as { name: string; months: number }[],
               },
-            }
+            },
           );
 
           supporterData.top.all = supporterData.top.all

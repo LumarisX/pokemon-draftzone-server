@@ -1,11 +1,11 @@
-import { Route } from ".";
+import { RouteOld } from ".";
 import webPush from "web-push";
 import {
   PushSubscriptionModel,
   IPushSubscriptionDoc,
 } from "../models/push-subscription.model";
 import { jwtCheck } from "../middleware/jwtcheck";
-export const PushSubscriptionRoutes: Route = {
+export const PushSubscriptionRoutes: RouteOld = {
   middleware: [jwtCheck],
   subpaths: {
     "/subscribe": {
@@ -30,7 +30,7 @@ export const PushSubscriptionRoutes: Route = {
           ) {
             console.error(
               "Received invalid subscription object:",
-              subscription
+              subscription,
             );
             return res
               .status(400)
@@ -40,8 +40,8 @@ export const PushSubscriptionRoutes: Route = {
           console.log(
             `Received subscription for user: ${userId}, endpoint: ${subscription.endpoint.substring(
               0,
-              30
-            )}...`
+              30,
+            )}...`,
           );
 
           // Use findOneAndUpdate with upsert based on the unique endpoint
@@ -66,14 +66,14 @@ export const PushSubscriptionRoutes: Route = {
             await PushSubscriptionModel.findOneAndUpdate(
               filter,
               update,
-              options
+              options,
             );
 
           console.log(
             `Subscription saved/updated for user ${userId}, endpoint: ${savedSubscription!.endpoint.substring(
               0,
-              30
-            )}...`
+              30,
+            )}...`,
           );
           res
             .status(201)
@@ -118,7 +118,7 @@ export const PushSubscriptionRoutes: Route = {
           }
 
           console.log(
-            `Attempting to send notification to user: ${targetUserId}`
+            `Attempting to send notification to user: ${targetUserId}`,
           );
 
           // Find all subscriptions for the target user
@@ -140,7 +140,7 @@ export const PushSubscriptionRoutes: Route = {
           // Send notification to each subscription
           const sendPromises = userSubscriptions.map((subDoc) => {
             console.log(
-              `Sending to endpoint: ${subDoc.endpoint.substring(0, 30)}...`
+              `Sending to endpoint: ${subDoc.endpoint.substring(0, 30)}...`,
             );
             // Use the nested 'subscription' object which has the correct structure
             return webPush
@@ -148,7 +148,7 @@ export const PushSubscriptionRoutes: Route = {
               .then(() => {
                 successCount++;
                 console.log(
-                  `Successfully sent to ${subDoc.endpoint.substring(0, 30)}...`
+                  `Successfully sent to ${subDoc.endpoint.substring(0, 30)}...`,
                 );
               })
               .catch((err) => {
@@ -156,15 +156,15 @@ export const PushSubscriptionRoutes: Route = {
                 console.error(
                   `Error sending to ${subDoc.endpoint.substring(0, 30)}...:`,
                   err.statusCode,
-                  err.body
+                  err.body,
                 );
                 if (err.statusCode === 404 || err.statusCode === 410) {
                   // Subscription is invalid or expired
                   console.log(
                     `Subscription ${subDoc.endpoint.substring(
                       0,
-                      30
-                    )}... expired/invalid. Marking for removal.`
+                      30,
+                    )}... expired/invalid. Marking for removal.`,
                   );
                   expiredSubsEndpoints.push(subDoc.endpoint);
                 }
@@ -176,7 +176,7 @@ export const PushSubscriptionRoutes: Route = {
           // Remove expired subscriptions from DB *after* attempting all sends
           if (expiredSubsEndpoints.length > 0) {
             console.log(
-              `Removing ${expiredSubsEndpoints.length} expired subscriptions...`
+              `Removing ${expiredSubsEndpoints.length} expired subscriptions...`,
             );
             await PushSubscriptionModel.deleteMany({
               endpoint: { $in: expiredSubsEndpoints },
@@ -184,7 +184,7 @@ export const PushSubscriptionRoutes: Route = {
           }
 
           console.log(
-            `Notification sending complete for user ${targetUserId}. Success: ${successCount}, Failed: ${failureCount}, Removed: ${expiredSubsEndpoints.length}`
+            `Notification sending complete for user ${targetUserId}. Success: ${successCount}, Failed: ${failureCount}, Removed: ${expiredSubsEndpoints.length}`,
           );
           res.status(200).json({
             message: `Notifications sent. Success: ${successCount}, Failed: ${failureCount}, Removed: ${expiredSubsEndpoints.length}`,

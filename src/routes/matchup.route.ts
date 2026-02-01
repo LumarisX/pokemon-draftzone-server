@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
-import { Route, sendError } from ".";
+import { RouteOld, sendError } from ".";
 import { logger } from "../app";
 import { Matchup } from "../classes/matchup";
 import { getRuleset, Ruleset } from "../data/rulesets";
@@ -25,7 +25,7 @@ type MatchupResponse = Response & {
 
 const routeCode = "MR";
 
-export const MatchupRoutes: Route = {
+export const MatchupRoutes: RouteOld = {
   subpaths: {
     "/:matchup_id": {
       get: async (req: Request, res: MatchupResponse) => {
@@ -51,11 +51,11 @@ export const MatchupRoutes: Route = {
         try {
           const aTeamsummary = new SummaryClass(
             res.matchup!.aTeam.team,
-            res.matchup!.aTeam.teamName
+            res.matchup!.aTeam.teamName,
           );
           const bTeamsummary = new SummaryClass(
             res.matchup!.bTeam.team,
-            res.matchup!.bTeam.teamName
+            res.matchup!.bTeam.teamName,
           );
           res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
         } catch (error) {
@@ -82,8 +82,8 @@ export const MatchupRoutes: Route = {
           res.json(
             speedchart(
               [res.matchup!.aTeam.team, res.matchup!.bTeam.team],
-              level
-            )
+              level,
+            ),
           );
         } catch (error) {
           return sendError(res, 500, error as Error, `MR-R4-01`);
@@ -109,7 +109,7 @@ export const MatchupRoutes: Route = {
             await Promise.all([
               movechart(res.matchup!.aTeam.team, res.matchup!.ruleset),
               movechart(res.matchup!.bTeam.team, res.matchup!.ruleset),
-            ])
+            ]),
           );
         } catch (error) {
           return sendError(res, 500, error as Error, `MR-R6-01`);
@@ -125,7 +125,7 @@ export const MatchupRoutes: Route = {
               res,
               404,
               new Error("Matchup not found"),
-              `MR-R1-03`
+              `MR-R1-03`,
             );
           }
           res.json({ notes: matchupDoc.notes || "" });
@@ -144,7 +144,7 @@ export const MatchupRoutes: Route = {
               res,
               404,
               new Error("Matchup not found"),
-              `MR-R1-03`
+              `MR-R1-03`,
             );
           }
 
@@ -155,7 +155,7 @@ export const MatchupRoutes: Route = {
               res,
               404,
               new Error("Draft not found for aTeam"),
-              `MR-R1-06`
+              `MR-R1-06`,
             );
           }
           const ownerSub = aTeamDraft.owner;
@@ -164,7 +164,7 @@ export const MatchupRoutes: Route = {
               res,
               403,
               new Error("Forbidden: Not matchup owner"),
-              `MR-R1-04`
+              `MR-R1-04`,
             );
           }
 
@@ -174,16 +174,16 @@ export const MatchupRoutes: Route = {
               res,
               400,
               new Error("Invalid notes format"),
-              `MR-R1-05`
+              `MR-R1-05`,
             );
           }
           matchupDoc.notes = notes;
           logger.info(
-            `[update-notes] About to save matchupDoc for id: ${matchupDoc._id}`
+            `[update-notes] About to save matchupDoc for id: ${matchupDoc._id}`,
           );
           await matchupDoc.save();
           logger.info(
-            `[update-notes] Successfully saved matchupDoc for id: ${matchupDoc._id}`
+            `[update-notes] Successfully saved matchupDoc for id: ${matchupDoc._id}`,
           );
           res.json({ success: true });
         } catch (error) {
@@ -206,7 +206,7 @@ export const MatchupRoutes: Route = {
       req: Request,
       res: MatchupResponse,
       next,
-      matchup_id
+      matchup_id,
     ) => {
       try {
         if (mongoose.Types.ObjectId.isValid(matchup_id)) {
@@ -223,7 +223,7 @@ export const MatchupRoutes: Route = {
           const aTeam = await getDraft(matchupData.aTeam._id);
           if (!aTeam) {
             logger.error(
-              `Draft not found for matchup's aTeam._id: ${matchupData.aTeam._id}`
+              `Draft not found for matchup's aTeam._id: ${matchupData.aTeam._id}`,
             );
             return res.status(404).json({
               message: "Draft not found for this matchup.",
@@ -233,7 +233,7 @@ export const MatchupRoutes: Route = {
           res.ruleset = getRuleset(aTeam.ruleset);
           if (!res.ruleset) {
             logger.error(
-              `Invalid ruleset ID for matchup's aTeam.ruleset: ${aTeam.ruleset}`
+              `Invalid ruleset ID for matchup's aTeam.ruleset: ${aTeam.ruleset}`,
             );
             return res.status(500).json({
               message: "Invalid ruleset ID for this matchup.",

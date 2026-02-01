@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Route, sendError } from "./index";
+import { RouteOld, sendError } from "./index";
 import { s3Service } from "../services/s3.service";
 import { logger } from "../app";
 import { jwtCheck } from "../middleware/jwtcheck";
@@ -11,7 +11,7 @@ import {
 import FileUploadModel from "../models/file-upload.model";
 import LeagueUserModel from "../models/league/coach.model";
 
-export const FileRoutes: Route = {
+export const FileRoutes: RouteOld = {
   middleware: [jwtCheck, uploadRateLimiter, checkUserStorageQuota],
   subpaths: {
     "/league-upload": {

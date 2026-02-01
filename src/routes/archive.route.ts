@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
-import { Route } from ".";
+import { RouteOld } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { MatchupDocument } from "../models/draft/matchup.model";
@@ -22,7 +22,7 @@ export type ArchiveResponse = Response & {
   matchup?: MatchupDocument;
 };
 
-export const ArchiveRoutes: Route = {
+export const ArchiveRoutes: RouteOld = {
   middleware: [jwtCheck],
   subpaths: {
     "/teams": {

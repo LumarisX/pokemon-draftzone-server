@@ -4,7 +4,11 @@ export interface ErrorDefinition {
   message: string;
 }
 
-export const ErrorCodes = {
+export const ErrorCodes: {
+  [key: string]: {
+    [key: string]: ErrorDefinition;
+  };
+} = {
   LEAGUE: {
     NOT_FOUND: {
       code: "LR-001",
@@ -104,6 +108,11 @@ export const ErrorCodes = {
       status: 500,
       message: "Internal server error",
     },
+    BAD_REQUEST: {
+      code: "SYS-004",
+      status: 400,
+      message: "Bad request",
+    },
   },
   VALIDATION: {
     INVALID_BODY: {
@@ -180,6 +189,38 @@ export const ErrorCodes = {
       message: "Invalid stage configuration",
     },
   },
+
+  SPECIES: {
+    NOT_FOUND: {
+      code: "SPC-001",
+      status: 404,
+      message: "Species not found",
+    },
+  },
+  REPLAY: {
+    INVALID_URL: {
+      code: "RA-001",
+      status: 400,
+      message: "Invalid replay URL format",
+    },
+    FETCH_FAILED: {
+      code: "RA-002",
+      status: 500,
+      message: "Failed to fetch replay data",
+    },
+    PARSE_FAILED: {
+      code: "RA-003",
+      status: 500,
+      message: "Failed to parse replay",
+    },
+  },
+  PARAMS: {
+    REQUIRED: {
+      code: "PARAM-001",
+      status: 400,
+      message: "Required parameter is missing",
+    },
+  },
 } as const;
 
 export type ErrorCodePath =
@@ -192,4 +233,7 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.AUTH
   | keyof typeof ErrorCodes.LEAGUE_AD
   | keyof typeof ErrorCodes.TIER_LIST
-  | keyof typeof ErrorCodes.SCHEDULE;
+  | keyof typeof ErrorCodes.SCHEDULE
+  | keyof typeof ErrorCodes.SPECIES
+  | keyof typeof ErrorCodes.REPLAY
+  | keyof typeof ErrorCodes.PARAMS;

@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { Route, sendError } from ".";
+import { RouteOld, sendError } from ".";
 import { getManagementToken } from "../services/auth0-services/auth0-service";
 import { jwtCheck } from "../middleware/jwtcheck";
 
-export const UserRoutes: Route = {
+export const UserRoutes: RouteOld = {
   middleware: [jwtCheck],
   subpaths: {
     "/settings": {
@@ -28,13 +28,13 @@ export const UserRoutes: Route = {
               res,
               400,
               new Error("Body is not a valid object."),
-              "UR-R2-01"
+              "UR-R2-01",
             );
           const management = await getManagementToken();
           const userId = req.auth!.payload.sub!!;
           await management.users.update(
             { id: userId },
-            { user_metadata: { settings: req.body } }
+            { user_metadata: { settings: req.body } },
           );
           return res.status(201).json({ settings: req.body });
         } catch (error) {

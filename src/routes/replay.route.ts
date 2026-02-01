@@ -1,14 +1,17 @@
 import { Request, Response } from "express";
-import { Route } from ".";
+import { RouteOld } from ".";
 import {
   formatUrl,
   Replay,
   validateUrl,
 } from "../services/replay-services/replay-analyze.service";
+import { Route } from "./route-builder";
+import { PDZError } from "../errors/pdz-error";
+import { ErrorCodes } from "../errors/error-codes";
 
 type ReplayResponse = Response & { url?: string };
 
-export const ReplayRoutes: Route = {
+export const ReplayRoutes: RouteOld = {
   subpaths: {
     "/analyze/:url": {
       get: async (req: Request, res: ReplayResponse) => {
@@ -72,3 +75,29 @@ export const ReplayRoutes: Route = {
     },
   },
 };
+
+export const ReplayRoute = new Route({
+  paths: {
+    "/analyze/:url": {
+      get: async (req, res, ctx) => {
+        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
+        const replay = new Replay.Analysis(await replayData.text());
+        res.json(replay.toJson());
+      },
+    },
+    "/log/:url": {
+      get: async (req: Request, res: Response, ctx: { url: string }) => {
+        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
+        res.send(await replayData.text());
+      },
+    },
+  },
+  params: {
+    url: async (req, res, value) => {
+      const url = decodeURI(value).replace(/^https?:\/\//, "");
+      if (!validateUrl(url))
+        throw new PDZError(ErrorCodes.REPLAY.INVALID_URL, { url: value });
+      return { url };
+    },
+  },
+});

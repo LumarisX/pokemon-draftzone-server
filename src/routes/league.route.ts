@@ -2,7 +2,7 @@ import { ID } from "@pkmn/data";
 import { TextChannel } from "discord.js";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { Route, sendError } from ".";
+import { RouteOld, sendError } from ".";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
 import { ErrorCodes } from "../errors/error-codes";
@@ -159,7 +159,7 @@ async function loadTeam(req: Request, res: LeagueResponse) {
   res.team = team;
 }
 
-export const LeagueRoutes: Route = {
+export const LeagueRoutes: RouteOld = {
   subpaths: {
     "/": {
       get: async (req: Request, res: Response, next) => {
