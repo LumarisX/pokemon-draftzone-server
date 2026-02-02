@@ -3,15 +3,24 @@ import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
 import { sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
-import { LeagueDocument } from "../../models/league/league.model";
+import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
+  TeamDraft,
 } from "../../models/league/team.model";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { getName } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-list-service";
 import { APIEmbedField } from "discord.js";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
+import { toID } from "@pkmn/data";
+
+/**
+ * Extracts the Pokemon ID from a draft pick.
+ */
+export function getPokemonIdFromDraft(draft: TeamDraft): string {
+  return draft.pokemon.id;
+}
 
 export type DraftPick = {
   teamName: string;
@@ -28,6 +37,7 @@ export type TeamWithCoachStatus = {
   isCoach: boolean;
   picks: { id: string; name: string; tier: string | undefined }[][];
   timezone?: string;
+  skipCount: number;
 };
 
 /**
@@ -35,7 +45,9 @@ export type TeamWithCoachStatus = {
  * @param league - The league document with a populated tierList
  * @returns A map where keys are pokemonIds and values are tier names
  */
-function createPokemonTierMap(league: LeagueDocument): Map<string, string> {
+function createPokemonTierMap(
+  league: LeagueTournamentDocument,
+): Map<string, string> {
   const tierMap = new Map<string, string>();
   const tierList = league.tierList as LeagueTierListDocument;
   tierList.pokemon.forEach((data, pokemonId) => {
@@ -100,7 +112,7 @@ export async function buildDraftBoards(
 
     const cursor = teamDraftCursors.get(team.id)!;
     if (team.draft[cursor]) {
-      const pokemonId = team.draft[cursor].pokemonId;
+      const pokemonId = getPokemonIdFromDraft(team.draft[cursor]);
       draftPick.pokemon = {
         id: pokemonId,
         name: getName(pokemonId),
@@ -133,7 +145,7 @@ export async function buildDraftBoards(
  */
 export async function getTeamsWithCoachStatus(
   division: LeagueDivisionDocument,
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   userId: string,
   numberOfRounds: number,
 ): Promise<TeamWithCoachStatus[]> {
@@ -167,9 +179,9 @@ export async function getTeamsWithCoachStatus(
       }
       const draft = await Promise.all(
         team.draft.map(async (pick) => ({
-          id: pick.pokemonId,
-          name: getName(pick.pokemonId),
-          tier: pokemonTierMap.get(pick.pokemonId),
+          id: getPokemonIdFromDraft(pick),
+          name: getName(getPokemonIdFromDraft(pick)),
+          tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
         })),
       );
 
@@ -188,6 +200,7 @@ export async function getTeamsWithCoachStatus(
         picks,
         pointTotal,
         timezone: coach.timezone,
+        skipCount: team.skipCount || 0,
       };
     }),
   );
@@ -212,9 +225,14 @@ export function calculateCanDraft(
   }
 
   const initialTeamOrder = division.teams as LeagueTeamDocument[];
+  if (!initialTeamOrder || initialTeamOrder.length === 0) {
+    return canDraft;
+  }
 
   const picksExpected = new Map<string, number>();
-  for (let i = 0; i < division.draftCounter; i++) {
+  const counterLimit = Math.min(division.draftCounter, pickOrder.length);
+  for (let i = 0; i < counterLimit; i++) {
+    if (i >= pickOrder.length) break;
     const teamId = pickOrder[i].id;
     picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
   }
@@ -263,17 +281,25 @@ export function getCurrentRound(division: LeagueDivisionDocument) {
 }
 
 export function getCurrentPositionInRound(division: LeagueDivisionDocument) {
-  return Math.floor(division.draftCounter % division.teams.length);
+  return division.draftCounter % division.teams.length;
 }
 
-export function getCurrentPickingTeam(division: LeagueDivisionDocument) {
+export function getCurrentPickingTeam(
+  division: LeagueDivisionDocument,
+): LeagueTeamDocument | null {
   const teams = division.teams as LeagueTeamDocument[];
+  if (!teams || teams.length === 0) return null;
+
   const currentRound = getCurrentRound(division);
   const currentPositionInRound = getCurrentPositionInRound(division);
 
   let pickingOrder = [...teams];
   if (division.draftStyle === "snake" && currentRound % 2 === 1) {
     pickingOrder.reverse();
+  }
+
+  if (currentPositionInRound >= pickingOrder.length) {
+    return null;
   }
 
   return pickingOrder[currentPositionInRound];
@@ -315,17 +341,17 @@ export function isAlreadyDrafted(
   pokemonId: string,
 ) {
   return (division.teams as LeagueTeamDocument[]).some((t) =>
-    t.draft.some((p) => p.pokemonId === pokemonId),
+    t.draft.some((p) => getPokemonIdFromDraft(p) === pokemonId),
   );
 }
 
 export async function getTeamPoints(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   team: LeagueTeamDocument,
 ) {
   const tiers = await Promise.all(
     team.draft.map(async (pick) => {
-      const tier = await getPokemonTier(league, pick.pokemonId);
+      const tier = await getPokemonTier(league, getPokemonIdFromDraft(pick));
       return Number(tier) || 0;
     }),
   );
@@ -334,7 +360,7 @@ export async function getTeamPoints(
 }
 
 export async function teamHasEnoughPoints(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   pokemonId: string,
@@ -344,51 +370,86 @@ export async function teamHasEnoughPoints(
   const tierList = league.tierList as LeagueTierListDocument;
   const maxPoints = tierList.pointTotal;
   if (!maxPoints) return true;
-  const pickCeiling =
-    maxPoints +
-    team.draft.length +
-    1 -
-    Math.max(tierList.draftCount.min, team.draft.length + 1);
-  const teamPoints = (await getTeamPoints(league, team)) + Number(tier);
-  return teamPoints <= pickCeiling;
+
+  const currentTeamPoints = await getTeamPoints(league, team);
+  const projectedPoints = currentTeamPoints + Number(tier);
+  const picksAfterThis = team.draft.length + 1;
+  const minPicksRequired = Math.max(tierList.draftCount.min, picksAfterThis);
+  const pickCeiling = maxPoints + picksAfterThis - minPicksRequired;
+
+  return projectedPoints <= pickCeiling;
 }
 
 export async function canBeDrafted(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   pokemonId: string,
 ): Promise<boolean> {
+  if (!pokemonId || pokemonId.trim() === "") return false;
   return (
     !isAlreadyDrafted(division, pokemonId) &&
     (await teamHasEnoughPoints(league, division, team, pokemonId))
   );
 }
 
+export async function canBeDraftedWithReason(
+  league: LeagueTournamentDocument,
+  division: LeagueDivisionDocument,
+  team: LeagueTeamDocument,
+  pokemonId: string,
+): Promise<{ canDraft: boolean; reason?: string }> {
+  if (!pokemonId || pokemonId.trim() === "") {
+    return { canDraft: false, reason: "Invalid Pokemon ID" };
+  }
+
+  if (isAlreadyDrafted(division, pokemonId)) {
+    return {
+      canDraft: false,
+      reason: "Pokemon has already been drafted by another team",
+    };
+  }
+
+  if (!(await teamHasEnoughPoints(league, division, team, pokemonId))) {
+    return {
+      canDraft: false,
+      reason: "Team does not have enough points to draft this Pokemon",
+    };
+  }
+
+  return { canDraft: true };
+}
+
 export async function currentTeamPicks(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   session?: ClientSession,
 ): Promise<string[] | null> {
-  if (!team.picks.length) return null;
-  const picks = await Promise.all(
-    team.picks[0].filter(
-      async (pick) =>
+  if (!team.picks.length || !team.picks[0].length) return null;
+
+  const validationResults = await Promise.all(
+    team.picks[0].map(async (pick) => ({
+      pick,
+      isValid:
         pick.trim() && (await canBeDrafted(league, division, team, pick)),
-    ),
+    })),
   );
+
+  const picks = validationResults
+    .filter((result) => result.isValid)
+    .map((result) => result.pick);
 
   if (picks.length !== team.picks[0].length) {
     team.picks[0] = picks;
-    team.save({ session });
+    await team.save({ session });
   }
   if (!picks.length) return null;
   return picks;
 }
 
 export async function draftPokemon(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   pokemonId: string,
@@ -405,12 +466,20 @@ export async function draftPokemon(
       throw new Error("It is not this team's turn to draft.");
     }
 
-    if (!(await canBeDrafted(league, division, team, pokemonId))) {
-      throw new Error(`Pokemon can not be drafted.`);
+    const draftCheck = await canBeDraftedWithReason(
+      league,
+      division,
+      team,
+      pokemonId,
+    );
+    if (!draftCheck.canDraft) {
+      throw new Error(draftCheck.reason || "Pokemon cannot be drafted.");
     }
 
     team.draft.push({
-      pokemonId: pokemonId,
+      pokemon: {
+        id: toID(pokemonId),
+      },
       picker: team.coach._id,
       timestamp: new Date(),
     });
@@ -461,9 +530,9 @@ export async function draftPokemon(
 
     const draft = await Promise.all(
       team.draft.map(async (pick) => ({
-        id: pick.pokemonId,
-        name: getName(pick.pokemonId),
-        tier: pokemonTierMap.get(pick.pokemonId),
+        id: getPokemonIdFromDraft(pick),
+        name: getName(getPokemonIdFromDraft(pick)),
+        tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
       })),
     );
     eventEmitter.emit("draft.added", {
@@ -557,7 +626,7 @@ export async function draftPokemon(
 }
 
 export async function isTeamDoneDrafting(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
 ): Promise<boolean> {
@@ -567,49 +636,108 @@ export async function isTeamDoneDrafting(
 
   const tierList = league.tierList as LeagueTierListDocument;
   if (team.draft.length >= tierList.draftCount.max) return true;
+
   const teamPoints = await getTeamPoints(league, team);
   if (teamPoints >= tierList.pointTotal) return true;
+
+  const picksRemaining = tierList.draftCount.max - team.draft.length;
+  if (picksRemaining <= 0) return true;
+
+  const pointsRemaining = tierList.pointTotal - teamPoints;
+  if (pointsRemaining < 1) return true;
+
   return false;
 }
+
+export function isDraftComplete(
+  league: LeagueTournamentDocument,
+  division: LeagueDivisionDocument,
+): boolean {
+  const tierList = league.tierList as LeagueTierListDocument;
+  const totalPicksNeeded =
+    (division.teams as LeagueTeamDocument[]).length * tierList.draftCount.max;
+
+  if (division.draftCounter >= totalPicksNeeded) return true;
+
+  const allTeamsDone = (division.teams as LeagueTeamDocument[]).every(
+    (team) => team.draft.length >= tierList.draftCount.max,
+  );
+
+  return allTeamsDone;
+}
 export async function increaseCounter(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   session?: ClientSession,
 ) {
   try {
+    const tierList = league.tierList as LeagueTierListDocument;
+    const numberOfRounds = tierList.draftCount.max;
+    const initialTeamOrder = division.teams as LeagueTeamDocument[];
+    const pickOrder = generatePickOrder(
+      initialTeamOrder,
+      numberOfRounds,
+      division.draftStyle,
+    );
+
+    if (isDraftComplete(league, division)) {
+      await completeDraft(league, division, session);
+      return;
+    }
+
     division.draftCounter++;
 
-    await cancelSkipPick(division);
-    await scheduleSkipPick(league, division);
-    const nextTeam = getCurrentPickingTeam(division);
-    //BREAKGLASS: make this always false
-    if (await isTeamDoneDrafting(league, division, nextTeam)) {
-      return increaseCounter(league, division, session);
+    if (division.draftCounter >= pickOrder.length) {
+      await completeDraft(league, division, session);
+      return;
     }
+
+    await cancelSkipPick(division);
+
+    const nextTeam = getCurrentPickingTeam(division);
+    if (!nextTeam) {
+      await completeDraft(league, division, session);
+      return;
+    }
+
+    let skippedTeams = 0;
+    const maxSkips = initialTeamOrder.length;
+
+    while (await isTeamDoneDrafting(league, division, nextTeam)) {
+      skippedTeams++;
+      if (
+        skippedTeams > maxSkips ||
+        division.draftCounter >= pickOrder.length - 1
+      ) {
+        await completeDraft(league, division, session);
+        return;
+      }
+      division.draftCounter++;
+      const newNextTeam = getCurrentPickingTeam(division);
+      if (!newNextTeam) {
+        await completeDraft(league, division, session);
+        return;
+      }
+    }
+
+    await scheduleSkipPick(league, division);
+
     await nextTeam.populate<{
       coach: LeagueCoachDocument;
     }>({
       path: "coach",
       model: "LeagueUser",
     });
-    const nextTeamPicks = await currentTeamPicks(league, division, nextTeam);
+
+    const nextTeamPicks = await currentTeamPicks(
+      league,
+      division,
+      nextTeam,
+      session,
+    );
     if (nextTeamPicks) {
-      await draftPokemon(
-        league,
-        division,
-        getCurrentPickingTeam(division),
-        nextTeamPicks[0],
-        session,
-      );
+      await draftPokemon(league, division, nextTeam, nextTeamPicks[0], session);
     } else {
-      const numberOfRounds = (league.tierList as LeagueTierListDocument)
-        .draftCount.max;
-      const initialTeamOrder = division.teams as LeagueTeamDocument[];
-      const pickOrder = generatePickOrder(
-        initialTeamOrder,
-        numberOfRounds,
-        division.draftStyle,
-      );
       eventEmitter.emit("draft.counter", {
         leagueId: league.leagueKey,
         divisionId: division.divisionKey,
@@ -621,7 +749,6 @@ export async function increaseCounter(
       if (division.channelId) {
         sendDiscordMessage(
           division.channelId,
-
           `<@${
             (nextTeam.coach as LeagueCoachDocument).discordName
           }>, it is now your turn!`,
@@ -636,8 +763,42 @@ export async function increaseCounter(
   }
 }
 
+async function completeDraft(
+  league: LeagueTournamentDocument,
+  division: LeagueDivisionDocument,
+  session?: ClientSession,
+) {
+  if (division.status === "COMPLETED") return;
+
+  division.status = "COMPLETED";
+  await cancelSkipPick(division);
+  division.skipTime = undefined;
+  division.remainingTime = undefined;
+
+  await division.save({ session });
+
+  eventEmitter.emit("draft.completed", {
+    leagueId: league.leagueKey,
+    divisionId: division.divisionKey,
+    divisionName: division.name,
+  });
+
+  if (division.channelId) {
+    sendDiscordMessage(division.channelId, {
+      content: `🎉 The draft for ${division.name} has been completed!`,
+      embed: {
+        title: `${division.name} Draft Complete`,
+        url: `https://pokemondraftzone.com/leagues/${league.leagueKey}/${division.divisionKey}/draft`,
+        description:
+          "All teams have finished drafting. Good luck in your matches!",
+        color: 0x00ff00,
+      },
+    });
+  }
+}
+
 export async function checkCounterIncrease(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   session?: ClientSession,
@@ -646,16 +807,21 @@ export async function checkCounterIncrease(
     division.draftCounter / division.teams.length,
   );
   const currentPickingTeam = getCurrentPickingTeam(division);
+  if (!currentPickingTeam) {
+    await completeDraft(league, division, session);
+    return;
+  }
+
   if (
     currentPickingTeam._id.equals(team._id) &&
-    currentPickingTeam.draft.length >= currentRound
+    currentPickingTeam.draft.length >= currentRound + 1
   ) {
     await increaseCounter(league, division, session);
   }
 }
 
 export async function getDivisionDetails(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   userId: string,
 ) {
@@ -711,22 +877,54 @@ export async function getDivisionDetails(
 }
 
 export async function skipCurrentPick(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
   const team = getCurrentPickingTeam(division);
-  // Populate coach if not already populated to get teamName
+  if (!team) {
+    return;
+  }
+
   const fullTeam = (await LeagueTeamModel.findById(team._id).populate(
     "coach",
   )) as (LeagueTeamDocument & { coach: LeagueCoachDocument }) | null;
   const teamName =
     (fullTeam?.coach as LeagueCoachDocument)?.teamName || "Unknown Team";
 
+  if (fullTeam) {
+    fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
+    await fullTeam.save();
+
+    const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex((t) =>
+      t._id.equals(fullTeam._id),
+    );
+    if (teamIndex !== -1) {
+      (division.teams as LeagueTeamDocument[])[teamIndex] = fullTeam;
+    }
+  }
+
+  if (division.timerLength && division.skipTimerPenalty) {
+    division.timerLength = Math.max(
+      30,
+      division.timerLength - division.skipTimerPenalty,
+    );
+  }
+
+  division.eventLog.push({
+    eventType: "SKIP",
+    details: `${teamName} was skipped`,
+    timestamp: new Date(),
+  });
+
+  await division.save();
+
   console.log({ division, team });
   eventEmitter.emit("league.draft.skip", {
     leagueId: league.leagueKey,
     divisionId: division.divisionKey,
     teamName,
+    skipCount: fullTeam?.skipCount || 1,
+    newTimerLength: division.timerLength,
   });
 
   await increaseCounter(league, division);
@@ -741,7 +939,7 @@ export function cancelSkipTime(division: LeagueDivisionDocument) {
 }
 
 export async function setDivsionState(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   state: string,
 ) {

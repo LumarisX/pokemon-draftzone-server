@@ -21,6 +21,7 @@ export type LeagueDivision = {
   skipTime?: Date;
   channelId?: string;
   timerLength: number;
+  skipTimerPenalty: number;
   remainingTime?: number;
   draftStyle: "snake" | "linear";
   draftCounter: number;
@@ -39,6 +40,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
     skipTime: { type: Date },
     channelId: { type: String },
     timerLength: { type: Number },
+    skipTimerPenalty: { type: Number, default: 30 },
     remainingTime: { type: Number },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
     status: {
@@ -58,10 +60,10 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model<LeagueDivisionDocument>(
   LEAGUE_DIVISION_COLLECTION,
-  LeagueDivisionSchema
+  LeagueDivisionSchema,
 );

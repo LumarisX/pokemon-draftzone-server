@@ -2,7 +2,10 @@ import { Specie } from "@pkmn/data";
 import { getBST } from "../../classes/specieUtil";
 import { getRuleset } from "../../data/rulesets";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
-import { League, LeagueDocument } from "../../models/league/league.model";
+import {
+  LeagueTournament,
+  LeagueTournamentDocument,
+} from "../../models/league/tournament.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
 import tierListModel from "../../models/league/tier-list.model";
 
@@ -159,7 +162,10 @@ type TierDetail = {
   drafted?: string[];
 } & ({ tier: string } | { ref: string });
 
-export async function getTierList(league: League, showAll: boolean = false) {
+export async function getTierList(
+  league: LeagueTournament,
+  showAll: boolean = false,
+) {
   const tierList = await tierListModel.findById(league.tierList);
   if (!tierList) return null;
 
@@ -206,7 +212,7 @@ export async function getTierList(league: League, showAll: boolean = false) {
 }
 
 export async function getDrafted(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   divisionNames?: string | string[],
 ): Promise<{
   [key: string]: { pokemonId: string }[];
@@ -235,7 +241,7 @@ export async function getDrafted(
     divisions[division.name] = [];
     for (const team of division.teams as LeagueTeamDocument[]) {
       for (const draft of team.draft) {
-        divisions[division.name].push({ pokemonId: draft.pokemonId });
+        divisions[division.name].push({ pokemonId: draft.pokemon.id });
       }
     }
   }
@@ -244,7 +250,7 @@ export async function getDrafted(
 }
 
 export async function updateTierList(
-  league: League,
+  league: LeagueTournament,
   clientTiers: Array<{
     name: string;
     pokemon: Array<{ id: string; name: string }>;

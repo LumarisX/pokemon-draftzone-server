@@ -1,9 +1,11 @@
 import { Types } from "mongoose";
-import LeagueModel, { LeagueDocument } from "../../models/league/league.model";
+import LeagueTournamentModel, {
+  LeagueTournamentDocument,
+} from "../../models/league/tournament.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 
 export async function getPokemonTier(
-  leagueId: Types.ObjectId | LeagueDocument,
+  leagueId: Types.ObjectId | LeagueTournamentDocument,
   pokemonId: string,
 ): Promise<string | undefined> {
   try {
@@ -12,7 +14,7 @@ export async function getPokemonTier(
         ? await leagueId.populate<{
             tierList: LeagueTierListDocument;
           }>("tierList")
-        : await LeagueModel.findById(leagueId).populate<{
+        : await LeagueTournamentModel.findById(leagueId).populate<{
             tierList: LeagueTierListDocument;
           }>("tierList");
 

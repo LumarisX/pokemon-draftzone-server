@@ -10,14 +10,14 @@ import {
 } from "./tier-list.model";
 import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
 
-export const LEAGUE_COLLECTION = "Leagues";
+export const LEAGUE_TOURNAMENT_COLLECTION = "LeagueTournaments";
 
 export type LeagueRule = {
   title: string;
   body: string;
 };
 
-export type League = {
+export type LeagueTournament = {
   name: string;
   leagueKey: string;
   description?: string;
@@ -39,7 +39,8 @@ export type League = {
   discord?: string;
 };
 
-export type LeagueDocument = Document & League & { _id: Types.ObjectId };
+export type LeagueTournamentDocument = Document &
+  LeagueTournament & { _id: Types.ObjectId };
 
 const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   {
@@ -49,7 +50,7 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   { _id: false },
 );
 
-const LeagueSchema: Schema<LeagueDocument> = new Schema(
+const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
   {
     name: { type: String, required: true },
     leagueKey: { type: String, required: true, unique: true, index: true },
@@ -83,4 +84,7 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
   { timestamps: true },
 );
 
-export default mongoose.model<LeagueDocument>(LEAGUE_COLLECTION, LeagueSchema);
+export default mongoose.model<LeagueTournamentDocument>(
+  LEAGUE_TOURNAMENT_COLLECTION,
+  LeagueTournamentSchema,
+);

@@ -2,7 +2,9 @@ import Agenda, { Job } from "agenda";
 import { config } from "./config";
 import { skipCurrentPick } from "./services/league-services/draft-service";
 import { LeagueDivisionDocument } from "./models/league/division.model";
-import League, { LeagueDocument } from "./models/league/league.model";
+import League, {
+  LeagueTournamentDocument,
+} from "./models/league/tournament.model";
 import FileUploadModel from "./models/file-upload.model";
 import { s3Service } from "./services/s3.service";
 import { logger } from "./app";
@@ -82,7 +84,7 @@ agenda.define("cleanup-file-uploads", async (job: Job) => {
 });
 
 export async function scheduleSkipPick(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
   await agenda.start();
@@ -104,7 +106,7 @@ export async function cancelSkipPick(division: LeagueDivisionDocument) {
 }
 
 export async function resumeSkipPick(
-  league: LeagueDocument,
+  league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
   await agenda.start();

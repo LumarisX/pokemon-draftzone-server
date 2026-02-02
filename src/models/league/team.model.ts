@@ -1,13 +1,13 @@
 import mongoose, { Types, Schema, Document } from "mongoose";
 import { LeagueCoachDocument, LEAGUE_COACH_COLLECTION } from "./coach.model";
-import { captSchema } from "../pokemon.schema";
+import { captSchema, pokemonSchema, PokemonData } from "../pokemon.schema";
 import { TypeName } from "@pkmn/data";
 
 export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 
 export type TeamDraft = {
   timestamp: Date;
-  pokemonId: string;
+  pokemon: PokemonData;
   picker: Types.ObjectId | LeagueCoachDocument;
   capt?: {
     tera?: TypeName[];
@@ -20,6 +20,7 @@ export type LeagueTeam = {
   coach: Types.ObjectId | LeagueCoachDocument;
   picks: string[][];
   draft: TeamDraft[];
+  skipCount: number;
 };
 
 export type LeagueTeamDocument = Document &
@@ -27,8 +28,8 @@ export type LeagueTeamDocument = Document &
 
 const TeamDraftSchema: Schema<TeamDraft> = new Schema(
   {
-    pokemonId: {
-      type: String,
+    pokemon: {
+      type: pokemonSchema,
       required: true,
     },
     timestamp: { type: Date, default: Date.now },
@@ -52,6 +53,7 @@ const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   },
   picks: [[{ type: String }]],
   draft: [TeamDraftSchema],
+  skipCount: { type: Number, default: 0 },
 });
 
 export default mongoose.model<LeagueTeamDocument>(

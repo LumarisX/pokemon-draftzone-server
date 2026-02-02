@@ -21,7 +21,9 @@ import LeagueCoachModel, {
 import LeagueDivisionModel, {
   LeagueDivisionDocument,
 } from "../models/league/division.model";
-import LeagueModel, { LeagueDocument } from "../models/league/league.model";
+import LeagueTournamentModel, {
+  LeagueTournamentDocument,
+} from "../models/league/tournament.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
 import { LeagueStageModel } from "../models/league/stage.model";
 import LeagueTeamModel, {
@@ -63,7 +65,7 @@ import { s3Service } from "../services/s3.service";
 const routeCode = "LR";
 
 type LeagueResponse = Response & {
-  league?: LeagueDocument | null;
+  league?: LeagueTournamentDocument | null;
   division?: LeagueDivisionDocument | null;
   team?: LeagueTeamDocument | null;
   ruleset?: Ruleset | null;
@@ -72,7 +74,7 @@ type LeagueResponse = Response & {
 // Helper functions to ensure correct loading order for route params
 async function loadLeagueByKey(req: Request, res: LeagueResponse) {
   if (res.league) return;
-  const league = await LeagueModel.findOne({
+  const league = await LeagueTournamentModel.findOne({
     leagueKey: req.params.league_key,
   }).populate<{
     tierList: LeagueTierListDocument;
@@ -88,7 +90,9 @@ async function loadLeagueByKey(req: Request, res: LeagueResponse) {
 
 async function loadLeagueById(req: Request, res: LeagueResponse) {
   if (res.league) return;
-  const league = await LeagueModel.findById(req.params.league_id).populate<{
+  const league = await LeagueTournamentModel.findById(
+    req.params.league_id,
+  ).populate<{
     tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
@@ -894,11 +898,11 @@ export const LeagueRoutes: RouteOld = {
             team.draft.map(async (draftItem) => {
               const tier = await getPokemonTier(
                 res.league!,
-                draftItem.pokemonId,
+                draftItem.pokemon.id,
               );
-              const pokemonName = getName(draftItem.pokemonId);
+              const pokemonName = getName(draftItem.pokemon.id);
               return {
-                id: draftItem.pokemonId,
+                id: draftItem.pokemon.id,
                 name: pokemonName,
                 tier,
               };
@@ -977,11 +981,11 @@ export const LeagueRoutes: RouteOld = {
               const picks = await Promise.all(
                 team.draft.map(async (draftItem) => ({
                   pokemon: {
-                    id: draftItem.pokemonId,
-                    name: getName(draftItem.pokemonId),
+                    id: draftItem.pokemon.id,
+                    name: getName(draftItem.pokemon.id),
                     tier: await getPokemonTier(
                       res.league!,
-                      draftItem.pokemonId,
+                      draftItem.pokemon.id,
                     ),
                   },
                   timestamp: draftItem.timestamp,
@@ -1016,6 +1020,7 @@ export const LeagueRoutes: RouteOld = {
             ),
           );
         } catch (error) {
+          console.log(error);
           next(error);
         }
       },
@@ -1231,7 +1236,7 @@ export const LeagueRoutes: RouteOld = {
               const coach = team.coach as LeagueCoachDocument;
               const draftPick: DraftPick = { teamName: coach.teamName };
               if (team.draft[round]) {
-                const pokemonId = team.draft[round].pokemonId;
+                const pokemonId = team.draft[round].pokemon.id;
                 const pokemonName = getName(pokemonId);
                 draftPick.pokemon = { id: pokemonId, name: pokemonName };
               }
@@ -1273,7 +1278,7 @@ export const LeagueRoutes: RouteOld = {
               })[]
             ).map(async (team, index) => {
               const teamRaw = team.draft.map((pick) => ({
-                id: pick.pokemonId as ID,
+                id: pick.pokemon.id,
                 capt: pick.capt,
               }));
 
