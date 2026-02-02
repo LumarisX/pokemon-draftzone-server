@@ -14,7 +14,7 @@ export class Archive {
   constructor(
     private draft: DraftData & {
       _id: Types.ObjectId;
-    }
+    },
   ) {}
 
   async createArchive() {
@@ -27,7 +27,7 @@ export class Archive {
     const data: ArchiveV2Data = {
       archiveType: "ArchiveV2",
       leagueName: this.draft.leagueName,
-      leagueId: this.draft.leagueId,
+      tournamentId: this.draft.tournamentId,
       format: this.draft.format as FormatId,
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,
@@ -134,7 +134,7 @@ export class Archive {
         else if (m.winner === "b") acc[1]++;
         return acc;
       },
-      [0, 0] as [number, number]
+      [0, 0] as [number, number],
     );
 
     let winner: "a" | "b" | undefined;

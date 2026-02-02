@@ -536,7 +536,7 @@ export async function draftPokemon(
       })),
     );
     eventEmitter.emit("draft.added", {
-      leagueId: league.leagueKey,
+      tournamentId: league.tournamentKey,
       divisionId: division.divisionKey,
       pick: {
         pokemon: {
@@ -602,7 +602,7 @@ export async function draftPokemon(
         content: messageContent,
         embed: {
           title: `${coach.teamName} drafted ${pokemon.name}!`,
-          url: `https://pokemondraftzone.com/leagues/${league.leagueKey}/${division.divisionKey}/draft`,
+          url: `https://pokemondraftzone.com/leagues/${league.tournamentKey}/${division.divisionKey}/draft`,
           fields,
           image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
         },
@@ -739,7 +739,7 @@ export async function increaseCounter(
       await draftPokemon(league, division, nextTeam, nextTeamPicks[0], session);
     } else {
       eventEmitter.emit("draft.counter", {
-        leagueId: league.leagueKey,
+        tournamentId: league.tournamentKey,
         divisionId: division.divisionKey,
         currentPick: calculateCurrentPick(division),
         nextTeam: nextTeam._id.toString(),
@@ -778,7 +778,7 @@ async function completeDraft(
   await division.save({ session });
 
   eventEmitter.emit("draft.completed", {
-    leagueId: league.leagueKey,
+    tournamentId: league.tournamentKey,
     divisionId: division.divisionKey,
     divisionName: division.name,
   });
@@ -788,7 +788,7 @@ async function completeDraft(
       content: `🎉 The draft for ${division.name} has been completed!`,
       embed: {
         title: `${division.name} Draft Complete`,
-        url: `https://pokemondraftzone.com/leagues/${league.leagueKey}/${division.divisionKey}/draft`,
+        url: `https://pokemondraftzone.com/leagues/${league.tournamentKey}/${division.divisionKey}/draft`,
         description:
           "All teams have finished drafting. Good luck in your matches!",
         color: 0x00ff00,
@@ -920,7 +920,7 @@ export async function skipCurrentPick(
 
   console.log({ division, team });
   eventEmitter.emit("league.draft.skip", {
-    leagueId: league.leagueKey,
+    tournamentId: league.tournamentKey,
     divisionId: division.divisionKey,
     teamName,
     skipCount: fullTeam?.skipCount || 1,
@@ -967,7 +967,7 @@ export async function setDivsionState(
     await action();
     await division.save();
     eventEmitter.emit("draft.status", {
-      leagueId: league.leagueKey,
+      tournamentId: league.tournamentKey,
       divisionId: division.divisionKey,
       status: division.status,
       currentPick: calculateCurrentPick(division),

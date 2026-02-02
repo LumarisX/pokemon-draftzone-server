@@ -7,7 +7,7 @@ export type LeagueCoach = {
   timezone?: string;
   discordName: string;
   showdownName?: string;
-  leagueId: Types.ObjectId;
+  tournamentId: Types.ObjectId;
   teamName: string;
   logo?: string;
   experience: string;
@@ -27,7 +27,7 @@ const LeagueCoachSchema: Schema<LeagueCoachDocument> = new Schema(
     timezone: { type: String },
     discordName: { type: String },
     showdownName: { type: String },
-    leagueId: {
+    tournamentId: {
       type: Schema.Types.ObjectId,
       ref: "League",
       required: true,

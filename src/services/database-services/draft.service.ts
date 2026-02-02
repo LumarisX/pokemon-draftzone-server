@@ -18,14 +18,14 @@ const $drafts = new LRUCache<string, DraftDocument>({
 export async function createDraft(draft: DraftData) {
   const draftDoc = new DraftModel(draft);
   await draftDoc.save();
-  const key = `${draftDoc.owner}:${draftDoc.leagueId}`;
+  const key = `${draftDoc.owner}:${draftDoc.tournamentId}`;
   $drafts.set(key, draftDoc);
   $drafts.set(draftDoc._id.toString(), draftDoc);
   return draftDoc;
 }
 
 export async function getDraftsByOwner(
-  ownerId: string
+  ownerId: string,
 ): Promise<DraftDocument[]> {
   return DraftModel.find({
     owner: ownerId,
@@ -36,7 +36,7 @@ export async function getDraftsByOwner(
 
 export async function getDraft(
   id: Types.ObjectId,
-  ownerId?: string
+  ownerId?: string,
 ): Promise<DraftDocument | null> {
   const key: string = ownerId ? `${ownerId}:${id}` : id.toString();
   if ($drafts.has(key)) {
@@ -45,7 +45,7 @@ export async function getDraft(
 
   let draft: DraftDocument | null = null;
   if (ownerId) {
-    draft = await DraftModel.findOne({ owner: ownerId, leagueId: id });
+    draft = await DraftModel.findOne({ owner: ownerId, tournamentId: id });
   } else if (Types.ObjectId.isValid(id)) {
     draft = await DraftModel.findById(id);
   }
@@ -55,8 +55,8 @@ export async function getDraft(
     if (ownerId) {
       $drafts.set(draft._id.toString(), draft);
     } else {
-      if (draft.owner && draft.leagueId) {
-        $drafts.set(`${draft.owner}:${draft.leagueId}`, draft);
+      if (draft.owner && draft.tournamentId) {
+        $drafts.set(`${draft.owner}:${draft.tournamentId}`, draft);
       }
     }
   }
@@ -66,16 +66,16 @@ export async function getDraft(
 
 export async function updateDraft(
   ownerId: string,
-  leagueId: string,
-  draft: DraftData
+  tournamentId: string,
+  draft: DraftData,
 ) {
   const updatedDraft = await DraftModel.findOneAndUpdate(
-    { owner: ownerId, leagueId: leagueId },
+    { owner: ownerId, tournamentId: tournamentId },
     draft,
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   );
   if (updatedDraft) {
-    const key = `${ownerId}:${leagueId}`;
+    const key = `${ownerId}:${tournamentId}`;
     $drafts.delete(key);
     $drafts.delete(updatedDraft._id.toString());
     $drafts.set(key, updatedDraft);
@@ -87,8 +87,8 @@ export async function updateDraft(
 export async function deleteDraft(draft: DraftDocument) {
   const result = await draft.deleteOne();
   $drafts.delete(draft._id.toString());
-  if (draft.owner && draft.leagueId) {
-    const key = `${draft.owner}:${draft.leagueId}`;
+  if (draft.owner && draft.tournamentId) {
+    const key = `${draft.owner}:${draft.tournamentId}`;
     $drafts.delete(key);
   }
   return result;

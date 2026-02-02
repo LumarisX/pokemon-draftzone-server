@@ -16,8 +16,8 @@ export const agenda = new Agenda({
 });
 
 agenda.define("skip-draft-pick", async (job: Job) => {
-  const { leagueId, divisionId } = job.attrs.data;
-  const league = await League.findById(leagueId).populate([
+  const { tournamentId, divisionId } = job.attrs.data;
+  const league = await League.findById(tournamentId).populate([
     {
       path: "divisions",
       populate: {
@@ -32,14 +32,16 @@ agenda.define("skip-draft-pick", async (job: Job) => {
     },
   ]);
   if (!league) {
-    console.error(`League not found: ${leagueId}`);
+    console.error(`League not found: ${tournamentId}`);
     return;
   }
   const division = league.divisions.find((d) =>
     d._id.equals(divisionId),
   ) as LeagueDivisionDocument;
   if (!division) {
-    console.error(`Division not found: ${divisionId} in league ${leagueId}`);
+    console.error(
+      `Division not found: ${divisionId} in league ${tournamentId}`,
+    );
     return;
   }
 
@@ -92,7 +94,7 @@ export async function scheduleSkipPick(
   now.setSeconds(now.getSeconds() + division.timerLength);
   division.skipTime = now;
   await agenda.schedule(division.skipTime, "skip-draft-pick", {
-    leagueId: league._id,
+    tournamentId: league._id,
     divisionId: division._id,
   });
 }
@@ -112,7 +114,7 @@ export async function resumeSkipPick(
   await agenda.start();
   if (division.skipTime)
     await agenda.schedule(division.skipTime, "skip-draft-pick", {
-      leagueId: league._id,
+      tournamentId: league._id,
       divisionId: division._id,
     });
 }

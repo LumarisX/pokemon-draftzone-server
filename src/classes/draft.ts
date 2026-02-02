@@ -12,12 +12,12 @@ export class Draft {
     public format: Format,
     public leagueName: string,
     public teamName: string,
-    public leagueId: string,
+    public tournamentId: string,
     public score: { wins: number; loses: number; diff: string },
     public owner: string,
     public team: DraftSpecie[],
     public doc?: string | undefined,
-    public _id?: Types.ObjectId
+    public _id?: Types.ObjectId,
   ) {}
 
   static fromForm(
@@ -31,7 +31,7 @@ export class Draft {
     },
     user_id: string,
     ruleset?: Ruleset,
-    format?: Format
+    format?: Format,
   ): Draft {
     if (!ruleset) ruleset = getRuleset(formData.ruleset);
     if (!format) format = getFormat(formData.format);
@@ -50,14 +50,14 @@ export class Draft {
       formData.team
         .filter((pokemonData) => pokemonData.id)
         .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
-      formData.doc?.trim()
+      formData.doc?.trim(),
     );
   }
 
   toData(): DraftData {
     return {
       leagueName: this.leagueName,
-      leagueId: this.leagueId,
+      tournamentId: this.tournamentId,
       teamName: this.teamName,
       format: this.format.name,
       ruleset: this.ruleset.name,
@@ -71,7 +71,7 @@ export class Draft {
   async toClient() {
     return {
       leagueName: this.leagueName,
-      leagueId: this.leagueId,
+      tournamentId: this.tournamentId,
       teamName: this.teamName,
       format: this.format.name,
       ruleset: this.ruleset.name,
@@ -84,7 +84,7 @@ export class Draft {
   static fromData(
     data: DraftData & { _id: Types.ObjectId },
     ruleset?: Ruleset,
-    format?: Format
+    format?: Format,
   ): Draft {
     if (!ruleset) ruleset = getRuleset(data.ruleset);
     if (!format) format = getFormat(data.format);
@@ -93,12 +93,12 @@ export class Draft {
       format,
       data.leagueName,
       data.teamName,
-      data.leagueId,
+      data.tournamentId,
       data.score,
       data.owner,
       DraftSpecie.getTeam(data.team, ruleset),
       data.doc,
-      data._id
+      data._id,
     );
   }
 

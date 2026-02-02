@@ -75,13 +75,13 @@ type LeagueResponse = Response & {
 async function loadLeagueByKey(req: Request, res: LeagueResponse) {
   if (res.league) return;
   const league = await LeagueTournamentModel.findOne({
-    leagueKey: req.params.league_key,
+    tournamentKey: req.params.league_key,
   }).populate<{
     tierList: LeagueTierListDocument;
   }>("tierList");
   if (!league) {
     throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-      leagueKey: req.params.league_key,
+      tournamentKey: req.params.league_key,
     });
   }
   res.league = league;
@@ -97,7 +97,7 @@ async function loadLeagueById(req: Request, res: LeagueResponse) {
   }>("tierList");
   if (!league) {
     throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-      leagueId: req.params.league_id,
+      tournamentId: req.params.league_id,
     });
   }
   res.league = league;
@@ -124,7 +124,7 @@ async function loadDivision(req: Request, res: LeagueResponse) {
   if (!division) {
     throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
       divisionKey: division_id,
-      leagueKey: res.league!.leagueKey,
+      tournamentKey: res.league!.tournamentKey,
     });
   }
 
@@ -198,7 +198,7 @@ export const LeagueRoutes: RouteOld = {
 
           res.json({
             name: res.league.name,
-            leagueKey: res.league.leagueKey,
+            tournamentKey: res.league.tournamentKey,
             description: res.league.description,
             format: res.league.format,
             ruleset: res.league.ruleset,
@@ -752,7 +752,7 @@ export const LeagueRoutes: RouteOld = {
           await updateTierList(res.league, tiers);
 
           logger.info(
-            `Tier list updated for league ${res.league.leagueKey} by ${req.auth?.payload.sub}`,
+            `Tier list updated for league ${res.league.tournamentKey} by ${req.auth?.payload.sub}`,
           );
 
           res.json({
@@ -774,7 +774,7 @@ export const LeagueRoutes: RouteOld = {
 
           // Fetch all stages for this league
           const stages = await LeagueStageModel.find({
-            leagueId: res.league._id,
+            tournamentId: res.league._id,
           });
 
           // For each stage, fetch its matchups
@@ -1407,7 +1407,7 @@ export const LeagueRoutes: RouteOld = {
           }
 
           const users = await LeagueCoachModel.find({
-            leagueId: res.league._id,
+            tournamentId: res.league._id,
           });
 
           // await res.league!.populate<{
@@ -1446,12 +1446,12 @@ export const LeagueRoutes: RouteOld = {
 
           let leagueUser = await LeagueCoachModel.findOne({
             auth0Id,
-            leagueId: res.league._id,
+            tournamentId: res.league._id,
           });
 
           if (leagueUser) {
             throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
-              leagueId: res.league._id.toString(),
+              tournamentId: res.league._id.toString(),
             });
           }
 
@@ -1459,7 +1459,7 @@ export const LeagueRoutes: RouteOld = {
             auth0Id,
             discordName: signup.name,
             timezone: signup.timezone,
-            leagueId: res.league._id,
+            tournamentId: res.league._id,
             teamName: signup.teamName,
             experience: signup.experience,
             droppedBefore: signup.droppedBefore,
@@ -1502,7 +1502,7 @@ export const LeagueRoutes: RouteOld = {
           return res.status(201).json({
             message: "Sign up successful.",
             userId: leagueUser._id.toString(),
-            leagueId: res.league._id.toString(),
+            tournamentId: res.league._id.toString(),
           });
         } catch (error) {
           next(error);

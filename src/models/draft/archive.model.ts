@@ -7,7 +7,7 @@ const pokemonSchema = new Schema(
   {
     id: { type: String, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchSchemaV1 = new Schema(
@@ -19,7 +19,7 @@ const matchSchemaV1 = new Schema(
     replay: { type: String },
     stats: { type: [] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const statsSchema = new Schema(
@@ -29,7 +29,7 @@ const statsSchema = new Schema(
     deaths: { type: Number },
     brought: { type: Number },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchTeamSchema = new Schema(
@@ -37,7 +37,7 @@ const matchTeamSchema = new Schema(
     stats: { type: [], required: true },
     score: { type: Number, default: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchSchemaV2 = new Schema(
@@ -47,7 +47,7 @@ const matchSchemaV2 = new Schema(
     replay: { type: String },
     winner: { type: String, enum: ["a", "b"] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchupSchema = new Schema(
@@ -92,7 +92,7 @@ const matchupSchema = new Schema(
       default: {},
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const baseSchema = new Schema(
@@ -108,7 +108,7 @@ const baseSchema = new Schema(
     timestamps: true,
     discriminatorKey: "archiveType",
     strict: false,
-  }
+  },
 );
 
 export const ArchiveBaseModel: Model<ArchiveBaseDocument> =
@@ -118,17 +118,17 @@ const v1Extra = new Schema(
   {
     matches: { type: [matchSchemaV1], required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 export const ArchiveV1Model = ArchiveBaseModel.discriminator<ArchiveV1Document>(
   "ArchiveV1",
-  new Schema(v1Extra.obj)
+  new Schema(v1Extra.obj),
 );
 
 const v2Extra = new Schema(
   {
-    leagueId: { type: String, required: true },
+    tournamentId: { type: String, required: true },
     doc: { type: String, default: undefined },
     stats: { type: Map, of: statsSchema, default: {} },
     score: {
@@ -138,12 +138,12 @@ const v2Extra = new Schema(
     },
     matchups: { type: [matchupSchema], required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 export const ArchiveV2Model = ArchiveBaseModel.discriminator<ArchiveV2Document>(
   "ArchiveV2",
-  new Schema(v2Extra.obj)
+  new Schema(v2Extra.obj),
 );
 
 export type StatData = {
@@ -184,7 +184,7 @@ export type ArchiveV1Data = ArchiveBaseData & {
         kills?: number;
         deaths?: number;
         brought?: number;
-      }
+      },
     ][];
     score: [number, number];
     replays?: (string | undefined)[];

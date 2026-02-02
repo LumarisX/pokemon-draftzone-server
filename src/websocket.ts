@@ -36,7 +36,7 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
   eventEmitter.on(
     "draft.added",
     (data: {
-      leagueId: string;
+      tournamentId: string;
       divisionId: string;
       pick: {
         pokemon: { id: string; name: string; tier: string };
@@ -49,56 +49,56 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       };
       canDraftTeams: string[];
     }) => {
-      sendLeagueNotification(io, data.leagueId, "league.draft.added", {
+      sendLeagueNotification(io, data.tournamentId, "league.draft.added", {
         divisionId: data.divisionId,
         pick: data.pick,
         canDraftTeams: data.canDraftTeams,
         team: data.team,
       });
-    }
+    },
   );
 
   eventEmitter.on(
     "draft.counter",
     (data: {
-      leagueId: string;
+      tournamentId: string;
       divisionId: string;
       currentPick: { round: number; position: number; skipTime?: Date };
       nextTeam: string;
       canDraftTeams: string[];
     }) => {
-      sendLeagueNotification(io, data.leagueId, "league.draft.counter", {
+      sendLeagueNotification(io, data.tournamentId, "league.draft.counter", {
         divisionId: data.divisionId,
         currentPick: data.currentPick,
         nextTeam: data.nextTeam,
         canDraftTeams: data.canDraftTeams,
       });
-    }
+    },
   );
 
   eventEmitter.on(
     "draft.status",
     (data: {
-      leagueId: string;
+      tournamentId: string;
       divisionId: string;
       status: string;
       currentPick: { round: number; position: number; skipTime?: Date };
     }) => {
-      sendLeagueNotification(io, data.leagueId, "league.draft.status", {
+      sendLeagueNotification(io, data.tournamentId, "league.draft.status", {
         divisionId: data.divisionId,
         status: data.status,
         currentPick: data.currentPick,
       });
-    }
+    },
   );
   eventEmitter.on(
     "league.draft.skip",
-    (data: { leagueId: string; divisionId: string; teamName: string }) => {
-      sendLeagueNotification(io, data.leagueId, "league.draft.skip", {
+    (data: { tournamentId: string; divisionId: string; teamName: string }) => {
+      sendLeagueNotification(io, data.tournamentId, "league.draft.skip", {
         divisionId: data.divisionId,
         teamName: data.teamName,
       });
-    }
+    },
   );
 
   io.on("connection", (socket) => {
@@ -132,20 +132,20 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       } catch (error: any) {
         logger.error(
           `WebSocket message handling error: ${error.message}`,
-          error
+          error,
         );
         if (message && typeof message.id === "number") {
           sendError(
             socket,
             -32000,
             error.message || "Server error",
-            message.id
+            message.id,
           );
         } else {
           console.error(
             "Error processing WebSocket message without ID:",
             message,
-            error
+            error,
           );
         }
       }

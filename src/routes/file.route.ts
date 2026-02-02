@@ -138,8 +138,13 @@ export const FileRoutes: RouteOld = {
           }
 
           const userId = req.auth?.payload?.sub;
-          const { fileKey, fileSize, contentType, relatedEntityId, leagueId } =
-            req.body;
+          const {
+            fileKey,
+            fileSize,
+            contentType,
+            relatedEntityId,
+            tournamentId,
+          } = req.body;
 
           if (!fileKey || typeof fileKey !== "string") {
             return res.status(400).json({ error: "File key is required" });
@@ -178,7 +183,7 @@ export const FileRoutes: RouteOld = {
           if (
             uploadRecord?.uploadType === "league-logo" &&
             relatedEntityId &&
-            leagueId
+            tournamentId
           ) {
             try {
               // Find the user and update the specific signup's logoFileKey
@@ -188,11 +193,11 @@ export const FileRoutes: RouteOld = {
                 user.logo = fileKey;
                 await user.save();
                 logger.info(
-                  `Updated LeagueUser ${relatedEntityId} signup for league ${leagueId} with logo: ${fileKey}`,
+                  `Updated LeagueUser ${relatedEntityId} signup for league ${tournamentId} with logo: ${fileKey}`,
                 );
               } else {
                 logger.warn(
-                  `Signup not found for league ${leagueId} in LeagueUser ${relatedEntityId}`,
+                  `Signup not found for league ${tournamentId} in LeagueUser ${relatedEntityId}`,
                 );
               }
             } catch (updateError) {

@@ -74,7 +74,7 @@ describe("Draft", () => {
     const draftData = {
       _id: new Types.ObjectId(),
       leagueName: "Test League",
-      leagueId: "testleague",
+      tournamentId: "testleague",
       teamName: "Test Team",
       format: "Singles" as FormatId,
       ruleset: "Gen9 NatDex" as RulesetId,
@@ -103,7 +103,7 @@ describe("Draft", () => {
     const baseDraftData = {
       _id: new Types.ObjectId(),
       leagueName: "Test League",
-      leagueId: "testleague",
+      tournamentId: "testleague",
       teamName: "Test Team",
       format: "Singles" as FormatId,
       ruleset: "Gen9 NatDex" as RulesetId,
@@ -208,7 +208,7 @@ describe("Draft", () => {
       ] as unknown as MatchupDocument[];
 
       (matchupService.getMatchupsByDraftId as jest.Mock).mockResolvedValue(
-        matchups
+        matchups,
       );
 
       const score = await draft.getScore();
@@ -235,7 +235,7 @@ describe("Draft", () => {
       ] as unknown as MatchupDocument[];
 
       (matchupService.getMatchupsByDraftId as jest.Mock).mockResolvedValue(
-        matchups
+        matchups,
       );
 
       const score = await draft.getScore();

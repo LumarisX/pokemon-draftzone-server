@@ -12,7 +12,7 @@ const draftSchema = new Schema<DraftData>(
     teamName: {
       type: String,
     },
-    leagueId: {
+    tournamentId: {
       type: String,
       required: true,
     },
@@ -43,13 +43,13 @@ const draftSchema = new Schema<DraftData>(
       diff: { type: String, required: true, default: "0" },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export type DraftData = {
   leagueName: string;
   teamName: string;
-  leagueId: string;
+  tournamentId: string;
   format: FormatId;
   ruleset: RulesetId;
   doc?: string;
@@ -64,6 +64,6 @@ export type DraftData = {
 
 export type DraftDocument = DraftData & Document<Types.ObjectId>;
 
-draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
+draftSchema.index({ owner: 1, tournamentId: 1 }, { unique: true });
 
 export const DraftModel = model<DraftData>("draft", draftSchema);

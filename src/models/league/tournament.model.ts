@@ -19,7 +19,7 @@ export type LeagueRule = {
 
 export type LeagueTournament = {
   name: string;
-  leagueKey: string;
+  tournamentKey: string;
   description?: string;
   format: string;
   ruleset: string;
@@ -53,7 +53,7 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
 const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
   {
     name: { type: String, required: true },
-    leagueKey: { type: String, required: true, unique: true, index: true },
+    tournamentKey: { type: String, required: true, unique: true, index: true },
     description: { type: String },
     format: { type: String, required: true },
     ruleset: { type: String, required: true },

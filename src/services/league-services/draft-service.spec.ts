@@ -303,7 +303,7 @@ describe("draft-service", () => {
   describe("draftPokemon", () => {
     it("should draft a pokemon", async () => {
       const league = {
-        leagueKey: "test",
+        tournamentKey: "test",
         tierList: {
           points: 100,
           draftCount: [1, 12],
@@ -353,7 +353,7 @@ describe("draft-service", () => {
   describe("increaseCounter", () => {
     it("should increase the draft counter", async () => {
       const league = {
-        leagueKey: "test",
+        tournamentKey: "test",
         tierList: { draftCount: [1, 12] },
         populate: jest.fn().mockReturnThis(),
       } as any;
@@ -385,7 +385,7 @@ describe("draft-service", () => {
   describe("checkCounterIncrease", () => {
     it("should increase the counter if the current picking team has drafted", async () => {
       const league = {
-        leagueKey: "test",
+        tournamentKey: "test",
         tierList: { draftCount: [1, 12] },
         populate: jest.fn().mockReturnThis(),
       } as any;
@@ -412,7 +412,7 @@ describe("draft-service", () => {
     it("should return the division details", async () => {
       const league = {
         name: "league",
-        leagueKey: "test",
+        tournamentKey: "test",
         tierList: {
           draftCount: [1, 12],
           points: 100,
@@ -441,7 +441,7 @@ describe("draft-service", () => {
   describe("skipCurrentPick", () => {
     it("should skip the current pick", async () => {
       const league = {
-        leagueKey: "test",
+        tournamentKey: "test",
         tierList: { draftCount: [1, 12] },
         populate: jest.fn().mockReturnThis(),
       } as any;
@@ -477,7 +477,7 @@ describe("draft-service", () => {
 
   describe("setDivsionState", () => {
     it("should set the division state to play", async () => {
-      const league = { leagueKey: "test" } as any;
+      const league = { tournamentKey: "test" } as any;
       const division = {
         status: "PAUSED",
         timerLength: 60,
@@ -490,7 +490,7 @@ describe("draft-service", () => {
     });
 
     it("should set the division state to pause", async () => {
-      const league = { leagueKey: "test" } as any;
+      const league = { tournamentKey: "test" } as any;
       const division = {
         status: "IN_PROGRESS",
         skipTime: new Date(),

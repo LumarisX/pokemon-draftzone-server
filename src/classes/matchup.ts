@@ -39,17 +39,17 @@ export class Matchup {
     public ruleset: Ruleset,
     public format: Format,
     public leagueName: string,
-    public leagueId: string,
+    public tournamentId: string,
     public stage: string,
     public matches: MatchData[],
     public notes?: string,
     public gameTime?: string,
-    public reminder?: number
+    public reminder?: number,
   ) {}
 
   static async fromData(
     data: MatchupData & { _id: Types.ObjectId },
-    draft?: Draft
+    draft?: Draft,
   ): Promise<Matchup> {
     if (!draft) {
       const draftDoc: DraftDocument | null = await getDraft(data.aTeam._id);
@@ -74,12 +74,12 @@ export class Matchup {
       draft.ruleset,
       draft.format,
       draft.leagueName,
-      draft.leagueId,
+      draft.tournamentId,
       data.stage,
       data.matches,
       data.notes,
       data.gameTime,
-      data.reminder
+      data.reminder,
     );
   }
 
@@ -111,7 +111,7 @@ export class Matchup {
       "",
       "",
       "",
-      []
+      [],
     );
   }
 
@@ -206,11 +206,9 @@ export class Matchup {
       speedchart: Speedchart;
       coveragechart: Coveragechart[];
       typechart: {
-        team: (
-          | PokemonFormData & {
-              weak: { [key: string]: number }[];
-            }
-        )[];
+        team: (PokemonFormData & {
+          weak: { [key: string]: number }[];
+        })[];
         teraTypes: {
           [key: string]: {};
         };
@@ -229,17 +227,17 @@ export class Matchup {
         new SummaryClass(
           this.aTeam.team,
           this.aTeam.teamName,
-          this.aTeam.coach
+          this.aTeam.coach,
         ).toJson(),
         new SummaryClass(
           this.bTeam.team,
           this.bTeam.teamName,
-          this.bTeam.coach
+          this.bTeam.coach,
         ).toJson(),
       ],
       speedchart: speedchart(
         [this.aTeam.team, this.bTeam.team],
-        this.format.level
+        this.format.level,
       ),
       coveragechart: [
         await coveragechart(this.aTeam.team, this.bTeam.team),
@@ -272,9 +270,9 @@ export class Matchup {
       draft.ruleset,
       draft.format,
       draft.leagueName,
-      draft.leagueId,
+      draft.tournamentId,
       opponent.stage,
-      []
+      [],
     );
   }
 
@@ -286,7 +284,7 @@ export class Matchup {
       this.matches,
       this.stage,
       this.bTeam.coach,
-      this.bTeam._id
+      this.bTeam._id,
     );
   }
 }
@@ -318,7 +316,7 @@ export class Score {
           }[];
         };
       }[];
-    }
+    },
   ) {}
 
   async processScore(): Promise<{
@@ -411,14 +409,14 @@ export class Score {
         matchData.aTeam.stats.reduce(
           (deaths, mon) =>
             (deaths += +(mon[1].deaths !== undefined && mon[1].deaths > 0)),
-          0
+          0,
         );
       matchData.bTeam.score =
         matchData.bTeam.stats.length -
         matchData.bTeam.stats.reduce(
           (deaths, mon) =>
             (deaths += +(mon[1].deaths !== undefined && mon[1].deaths > 0)),
-          0
+          0,
         );
       data.matches.push(matchData);
     });
@@ -428,7 +426,7 @@ export class Score {
 
 export class GameTime {
   constructor(
-    private timeData: { dateTime: string; email: boolean; emailTime: number }
+    private timeData: { dateTime: string; email: boolean; emailTime: number },
   ) {}
 
   async processTime(): Promise<{ dateTime: string; emailTime: number }> {

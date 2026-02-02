@@ -5,7 +5,7 @@ import { LEAGUE_TOURNAMENT_COLLECTION } from "./tournament.model";
 export const LEAGUE_STAGE_COLLECTION = "LeagueStage";
 
 export type LeagueStageData = {
-  leagueId: Types.ObjectId;
+  tournamentId: Types.ObjectId;
   divisionIds: Types.ObjectId[];
   name: string;
 };
@@ -14,7 +14,7 @@ export type LeagueStageDocument = Document<Types.ObjectId> & LeagueStageData;
 
 export const leagueStageSchema = new Schema<LeagueStageData>(
   {
-    leagueId: {
+    tournamentId: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TOURNAMENT_COLLECTION,
       required: true,

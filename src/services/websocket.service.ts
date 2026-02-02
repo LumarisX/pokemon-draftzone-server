@@ -28,7 +28,7 @@ export const sendError = (
   socket: Socket,
   code: number,
   message: string,
-  id: number | undefined
+  id: number | undefined,
 ) => {
   const errorResponse: JsonRpcResponse = {
     jsonrpc: "2.0",
@@ -44,7 +44,7 @@ export const sendError = (
 export const sendResponse = <TResult = any>(
   socket: Socket,
   result: TResult,
-  id: number
+  id: number,
 ) => {
   const response: JsonRpcResponse<TResult> = {
     jsonrpc: "2.0",
@@ -57,7 +57,7 @@ export const sendResponse = <TResult = any>(
 export const sendNotification = <TParams = any>(
   socket: Socket,
   method: string,
-  params?: TParams
+  params?: TParams,
 ) => {
   const notification: JsonRpcNotification<TParams> = {
     jsonrpc: "2.0",
@@ -67,24 +67,24 @@ export const sendNotification = <TParams = any>(
   socket.emit("message", notification);
 };
 
-export const subscribeToLeague = (socket: Socket, leagueId: string) => {
-  socket.join(leagueId);
+export const subscribeToLeague = (socket: Socket, tournamentId: string) => {
+  socket.join(tournamentId);
 };
 
-export const unsubscribeFromLeague = (socket: Socket, leagueId: string) => {
-  socket.leave(leagueId);
+export const unsubscribeFromLeague = (socket: Socket, tournamentId: string) => {
+  socket.leave(tournamentId);
 };
 
 export const sendLeagueNotification = <TParams = any>(
   io: Server,
-  leagueId: string,
+  tournamentId: string,
   event: string,
-  data?: TParams
+  data?: TParams,
 ) => {
   const notification = {
     event,
     data,
   };
-  console.log(`Sending notification to league ${leagueId}:`, notification);
-  io.to(leagueId).emit("message", notification);
+  console.log(`Sending notification to league ${tournamentId}:`, notification);
+  io.to(tournamentId).emit("message", notification);
 };
