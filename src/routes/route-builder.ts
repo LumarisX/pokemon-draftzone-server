@@ -14,6 +14,22 @@ type ContextBuilder<TParentCtx = any, TReturn = any> = (
   paramValue: string,
 ) => TReturn | Promise<TReturn>;
 
+type ParamValidator = (value: string) => boolean;
+type ParamTransformer<T> = (value: string) => T;
+type ParamLoader<TParentCtx, TTransformed, TReturn> = (
+  req: Request,
+  res: Response,
+  parentCtx: TParentCtx,
+  transformedValue: TTransformed,
+) => TReturn | Promise<TReturn>;
+
+type ParamConfig<TParentCtx, TTransformed, TReturn> = {
+  validate?: ParamValidator;
+  transform?: ParamTransformer<TTransformed>;
+  loader: ParamLoader<TParentCtx, TTransformed, TReturn>;
+  onValidationError?: (paramName: string, value: string) => Error;
+};
+
 type Handler<TCtx = any> = (
   req: Request,
   res: Response,
@@ -30,88 +46,6 @@ type RouteNode<TParentCtx = any> = Partial<MethodHandler> & {
     [segment: string]: RouteNode<any>;
   };
 };
-
-export class RouteBuilder<TCtx = {}> {
-  private node: RouteNode<TCtx> = {};
-  private children: Map<string, RouteBuilder<any>> = new Map();
-
-  context<TNewCtx>(builder: ContextBuilder<TCtx, TNewCtx>): void {
-    this.node.context = builder;
-  }
-
-  auth(): void {
-    this.node.authCheck = true;
-  }
-
-  use(...middleware: RequestHandler[]): void {
-    this.node.middleware = [...(this.node.middleware || []), ...middleware];
-  }
-
-  path(
-    segment: string,
-    configure: (builder: RouteBuilder<TCtx>) => void,
-  ): void {
-    let childBuilder = this.children.get(segment);
-    if (!childBuilder) {
-      childBuilder = new RouteBuilder<TCtx>();
-      this.children.set(segment, childBuilder);
-    }
-
-    configure(childBuilder);
-  }
-
-  get(handler: Handler<TCtx>): void {
-    if (this.node.get) {
-      logger.warn("Overwriting existing GET handler");
-    }
-    this.node.get = handler;
-  }
-
-  post(handler: Handler<TCtx>): void {
-    if (this.node.post) {
-      logger.warn("Overwriting existing POST handler");
-    }
-    this.node.post = handler;
-  }
-
-  patch(handler: Handler<TCtx>): void {
-    if (this.node.patch) {
-      logger.warn("Overwriting existing PATCH handler");
-    }
-    this.node.patch = handler;
-  }
-
-  delete(handler: Handler<TCtx>): void {
-    if (this.node.delete) {
-      logger.warn("Overwriting existing DELETE handler");
-    }
-    this.node.delete = handler;
-  }
-
-  param<TNewCtx>(
-    paramName: string,
-    contextBuilder: ContextBuilder<TCtx, TNewCtx>,
-    configure: (builder: RouteBuilder<TCtx & TNewCtx>) => void,
-  ): void {
-    this.path(`:${paramName}`, (childBuilder) => {
-      childBuilder.context(async (req, res, parentCtx) => {
-        const value = req.params[paramName];
-        return contextBuilder(req, res, parentCtx, value);
-      });
-      configure(childBuilder as RouteBuilder<TCtx & TNewCtx>);
-    });
-  }
-
-  getConfig(): RouteNode<TCtx> {
-    if (this.children.size > 0) {
-      this.node.paths = {};
-      for (const [segment, childBuilder] of this.children) {
-        this.node.paths[segment] = childBuilder.getConfig();
-      }
-    }
-    return this.node;
-  }
-}
 
 export class Route {
   private router: Router;
@@ -137,13 +71,15 @@ export class Route {
   ) {
     return async (req: Request, res: Response) => {
       try {
+        let ctx = parentContext;
         if (node.authCheck) {
           await this.executeAuthCheck(req, res);
+          ctx = { ...ctx, sub: req.auth!.payload.sub! };
         }
-        let ctx = parentContext;
+
         if (node.context) {
-          const nodeContext = await node.context(req, res, parentContext, "");
-          ctx = Object.assign(Object.create(null), parentContext, nodeContext);
+          const nodeContext = await node.context(req, res, ctx, "");
+          ctx = Object.assign(Object.create(null), ctx, nodeContext);
         }
 
         await handler(req, res, ctx);
@@ -151,11 +87,24 @@ export class Route {
         if (isPDZError(error)) {
           return res.status(error.status).json(error.toJSON());
         }
-        logger.error("Route error", { error, path: req.path });
+        logger.error("Route error", {
+          error,
+          errorType: error?.constructor?.name,
+          errorMessage: (error as Error)?.message,
+          errorStack: (error as Error)?.stack,
+          path: req.path,
+          method: req.method,
+        });
+
+        const errorMessage =
+          (error as Error)?.message ||
+          (error as any)?.toString() ||
+          "An unknown error occurred";
+
         return res.status(500).json({
           error: {
             code: "ROUTE-ERROR",
-            message: (error as Error).message,
+            message: errorMessage,
           },
         });
       }
@@ -196,11 +145,298 @@ export class Route {
   }
 }
 
-export function createRoute(
-  configure: (builder: RouteBuilder<{}>) => void,
-): Router {
+function createValidationWrapper<TBody, TQuery, TCtx>(
+  schema: {
+    body?: (data: any) => TBody;
+    query?: (data: any) => TQuery;
+  },
+  handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
+): Handler<TCtx> {
+  return async (req: Request, res: Response, ctx: TCtx) => {
+    const validatedCtx = { ...ctx } as TCtx & {
+      validatedBody: TBody;
+      validatedQuery: TQuery;
+    };
+
+    if (schema.body) {
+      try {
+        validatedCtx.validatedBody = schema.body(req.body);
+      } catch (error) {
+        logger.warn("Body validation failed", { error });
+        throw error;
+      }
+    }
+
+    if (schema.query) {
+      try {
+        validatedCtx.validatedQuery = schema.query(req.query);
+      } catch (error) {
+        logger.warn("Query validation failed", { error });
+        throw error;
+      }
+    }
+
+    return handler(req, res, validatedCtx);
+  };
+}
+
+type ConfigurableBuilder<TCtx> = {
+  (configure: (builder: RouteBuilder<TCtx>) => void): Route;
+  auth(): ConfigurableBuilder<TCtx & { sub: string }>;
+  use(...middleware: RequestHandler[]): ConfigurableBuilder<TCtx>;
+};
+
+type HttpMethodBuilderWithValidate<TCtx> = {
+  (handler: Handler<TCtx>): void;
+  validate<TBody = undefined, TQuery = undefined>(schema: {
+    body?: (data: any) => TBody;
+    query?: (data: any) => TQuery;
+  }): (
+    handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
+  ) => void;
+};
+
+type HttpMethodBuilder<TCtx> = {
+  (handler: Handler<TCtx>): void;
+  auth(): HttpMethodBuilderWithValidate<TCtx & { sub: string }>;
+  use(...middleware: RequestHandler[]): HttpMethodBuilderWithValidate<TCtx>;
+  validate<TBody = undefined, TQuery = undefined>(schema: {
+    body?: (data: any) => TBody;
+    query?: (data: any) => TQuery;
+  }): (
+    handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
+  ) => void;
+};
+
+export class RouteBuilder<TCtx = {}> {
+  private node: RouteNode<TCtx> = {};
+  private children: Map<string, RouteBuilder<any>> = new Map();
+
+  auth(): ConfigurableBuilder<TCtx & { sub: string }> {
+    this.node.authCheck = true;
+    return this.makeConfigurable() as ConfigurableBuilder<
+      TCtx & { sub: string }
+    >;
+  }
+
+  use(...middleware: RequestHandler[]): ConfigurableBuilder<TCtx> {
+    this.node.middleware = [...(this.node.middleware || []), ...middleware];
+    return this.makeConfigurable();
+  }
+
+  makeConfigurable(): ConfigurableBuilder<TCtx> {
+    const self = this;
+    const callable = ((configure: (builder: RouteBuilder<TCtx>) => void) => {
+      configure(self);
+      return new Route(self.getConfig());
+    }) as ConfigurableBuilder<TCtx>;
+
+    callable.auth = () => {
+      self.node.authCheck = true;
+      return self.makeConfigurable() as ConfigurableBuilder<
+        TCtx & { sub: string }
+      >;
+    };
+
+    callable.use = (...middleware: RequestHandler[]) => {
+      self.node.middleware = [...(self.node.middleware || []), ...middleware];
+      return self.makeConfigurable();
+    };
+
+    return callable;
+  }
+
+  path(segment: string): ConfigurableBuilder<TCtx> {
+    let childBuilder = this.children.get(segment);
+    if (!childBuilder) {
+      childBuilder = new RouteBuilder<TCtx>();
+      this.children.set(segment, childBuilder);
+    }
+    return childBuilder.makeConfigurable();
+  }
+
+  param<TNewCtx>(
+    paramName: string,
+    contextBuilder: ContextBuilder<TCtx, TNewCtx>,
+  ): ConfigurableBuilder<TCtx & TNewCtx>;
+  param<TTransformed = string, TNewCtx = any>(
+    paramName: string,
+    config: ParamConfig<TCtx, TTransformed, TNewCtx>,
+  ): ConfigurableBuilder<TCtx & TNewCtx>;
+  param<TTransformed = string, TNewCtx = any>(
+    paramName: string,
+    contextBuilderOrConfig:
+      | ContextBuilder<TCtx, TNewCtx>
+      | ParamConfig<TCtx, TTransformed, TNewCtx>,
+  ): ConfigurableBuilder<TCtx & TNewCtx> {
+    const paramSegment = `:${paramName}`;
+    let childBuilder = this.children.get(paramSegment);
+    if (!childBuilder) {
+      childBuilder = new RouteBuilder<TCtx & TNewCtx>();
+
+      if (typeof contextBuilderOrConfig === "function") {
+        childBuilder.node.context = async (
+          req: Request,
+          res: Response,
+          parentCtx: TCtx,
+        ) => {
+          const value = req.params[paramName];
+          return contextBuilderOrConfig(req, res, parentCtx, value);
+        };
+      } else {
+        const config = contextBuilderOrConfig;
+        childBuilder.node.context = async (
+          req: Request,
+          res: Response,
+          parentCtx: TCtx,
+        ) => {
+          const value = req.params[paramName];
+
+          if (config.validate && !config.validate(value)) {
+            if (config.onValidationError) {
+              throw config.onValidationError(paramName, value);
+            }
+            throw new Error(
+              `Invalid parameter '${paramName}': validation failed for value '${value}'`,
+            );
+          }
+
+          const transformed = config.transform
+            ? config.transform(value)
+            : (value as any);
+
+          return config.loader(req, res, parentCtx, transformed);
+        };
+      }
+
+      this.children.set(paramSegment, childBuilder);
+    }
+    return childBuilder.makeConfigurable() as ConfigurableBuilder<
+      TCtx & TNewCtx
+    >;
+  }
+
+  private createMethodBuilder(method: HttpMethod): HttpMethodBuilder<TCtx> {
+    const self = this;
+
+    const builder = ((handler: Handler<TCtx>) => {
+      if (self.node[method]) {
+        logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+      }
+      self.node[method] = handler;
+    }) as HttpMethodBuilder<TCtx>;
+
+    builder.auth = () => {
+      const authBuilder = ((handler: Handler<TCtx & { sub: string }>) => {
+        if (self.node[method]) {
+          logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+        }
+        self.node.authCheck = true;
+        self.node[method] = handler as Handler<any>;
+      }) as HttpMethodBuilderWithValidate<TCtx & { sub: string }>;
+
+      authBuilder.validate = <TBody = undefined, TQuery = undefined>(schema: {
+        body?: (data: any) => TBody;
+        query?: (data: any) => TQuery;
+      }) => {
+        return (
+          handler: Handler<
+            TCtx & { sub: string } & {
+              validatedBody: TBody;
+              validatedQuery: TQuery;
+            }
+          >,
+        ) => {
+          if (self.node[method]) {
+            logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+          }
+          self.node.authCheck = true;
+          self.node[method] = createValidationWrapper(schema, handler);
+        };
+      };
+
+      return authBuilder;
+    };
+
+    builder.use = (...middleware: RequestHandler[]) => {
+      const useBuilder = ((handler: Handler<TCtx>) => {
+        if (self.node[method]) {
+          logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+        }
+        self.node.middleware = [...(self.node.middleware || []), ...middleware];
+        self.node[method] = handler;
+      }) as HttpMethodBuilderWithValidate<TCtx>;
+
+      useBuilder.validate = <TBody, TQuery>(schema: {
+        body?: (data: any) => TBody;
+        query?: (data: any) => TQuery;
+      }) => {
+        return (
+          handler: Handler<
+            TCtx & { validatedBody: TBody; validatedQuery: TQuery }
+          >,
+        ) => {
+          if (self.node[method]) {
+            logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+          }
+          self.node.middleware = [
+            ...(self.node.middleware || []),
+            ...middleware,
+          ];
+          self.node[method] = createValidationWrapper(schema, handler);
+        };
+      };
+
+      return useBuilder;
+    };
+
+    builder.validate = <TBody, TQuery>(schema: {
+      body?: (data: any) => TBody;
+      query?: (data: any) => TQuery;
+    }) => {
+      return (
+        handler: Handler<
+          TCtx & { validatedBody: TBody; validatedQuery: TQuery }
+        >,
+      ) => {
+        if (self.node[method]) {
+          logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+        }
+        self.node[method] = createValidationWrapper(schema, handler);
+      };
+    };
+
+    return builder;
+  }
+
+  get get(): HttpMethodBuilder<TCtx> {
+    return this.createMethodBuilder("get");
+  }
+
+  get post(): HttpMethodBuilder<TCtx> {
+    return this.createMethodBuilder("post");
+  }
+
+  get patch(): HttpMethodBuilder<TCtx> {
+    return this.createMethodBuilder("patch");
+  }
+
+  get delete(): HttpMethodBuilder<TCtx> {
+    return this.createMethodBuilder("delete");
+  }
+
+  getConfig(): RouteNode<TCtx> {
+    if (this.children.size > 0) {
+      this.node.paths = {};
+      for (const [segment, childBuilder] of this.children) {
+        this.node.paths[segment] = childBuilder.getConfig();
+      }
+    }
+    return this.node;
+  }
+}
+
+export function createRoute(): ConfigurableBuilder<{}> {
   const builder = new RouteBuilder<{}>();
-  configure(builder);
-  const route = new Route(builder.getConfig());
-  return route.getRouter();
+  return builder.makeConfigurable();
 }

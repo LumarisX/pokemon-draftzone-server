@@ -89,7 +89,7 @@ export type MatchupV2Data = Omit<
 export type ScoreData = {
   wins: number;
   loses: number;
-  diff: number;
+  diff: string;
 };
 
 export type ArchiveV2Data = ArchiveBaseData &
@@ -198,7 +198,7 @@ const scoreSchema = new Schema<ScoreData>(
   {
     wins: { type: Number, required: true, default: 0 },
     loses: { type: Number, required: true, default: 0 },
-    diff: { type: Number, required: true, default: 0 },
+    diff: { type: String, required: true, default: "0" },
   },
   { _id: false },
 );

@@ -1,3 +1,6 @@
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
+
 export type FormatId =
   | "Singles"
   | "Singles 50"
@@ -69,12 +72,12 @@ export function getFormat(formatId: string): Format {
         return Formats[groupKey][rulesetKey];
     }
   }
-  throw new Error(`Format ID not found: ${formatId}`);
+  throw new PDZError(ErrorCodes.FORMAT.NOT_FOUND, { formatId });
 }
 
 export function getFormats() {
   return Object.values(Formats).flatMap((groupData) =>
-    Object.values(groupData).flatMap((formatData) => formatData.name)
+    Object.values(groupData).flatMap((formatData) => formatData.name),
   );
 }
 

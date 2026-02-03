@@ -4,11 +4,7 @@ export interface ErrorDefinition {
   message: string;
 }
 
-export const ErrorCodes: {
-  [key: string]: {
-    [key: string]: ErrorDefinition;
-  };
-} = {
+export const ErrorCodes = {
   LEAGUE: {
     NOT_FOUND: {
       code: "LR-001",
@@ -76,6 +72,11 @@ export const ErrorCodes: {
       status: 400,
       message: "It is not your turn to draft",
     },
+    NOT_FOUND: {
+      code: "DR-005",
+      status: 404,
+      message: "Draft not found",
+    },
     INVALID_POKEMON: {
       code: "DR-002",
       status: 400,
@@ -90,6 +91,11 @@ export const ErrorCodes: {
       code: "DR-004",
       status: 400,
       message: "Draft is already complete",
+    },
+    TEAM_ID_NOT_FOUND: {
+      code: "DR-006",
+      status: 404,
+      message: "Draft team ID not found",
     },
   },
   SYSTEM: {
@@ -190,11 +196,26 @@ export const ErrorCodes: {
     },
   },
 
+  ARCHIVE: {
+    NOT_FOUND: {
+      code: "AR-001",
+      status: 404,
+      message: "Archive not found",
+    },
+  },
+
   SPECIES: {
     NOT_FOUND: {
       code: "SPC-001",
       status: 404,
       message: "Species not found",
+    },
+  },
+  MATCHUP: {
+    NOT_FOUND: {
+      code: "MU-001",
+      status: 404,
+      message: "Matchup not found",
     },
   },
   REPLAY: {
@@ -221,6 +242,13 @@ export const ErrorCodes: {
       message: "Required parameter is missing",
     },
   },
+  FORMAT: {
+    NOT_FOUND: {
+      code: "FMT-001",
+      status: 400,
+      message: "Format not found",
+    },
+  },
 } as const;
 
 export type ErrorCodePath =
@@ -234,6 +262,9 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.LEAGUE_AD
   | keyof typeof ErrorCodes.TIER_LIST
   | keyof typeof ErrorCodes.SCHEDULE
+  | keyof typeof ErrorCodes.ARCHIVE
   | keyof typeof ErrorCodes.SPECIES
+  | keyof typeof ErrorCodes.MATCHUP
   | keyof typeof ErrorCodes.REPLAY
-  | keyof typeof ErrorCodes.PARAMS;
+  | keyof typeof ErrorCodes.PARAMS
+  | keyof typeof ErrorCodes.FORMAT;

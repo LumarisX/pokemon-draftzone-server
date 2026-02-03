@@ -107,12 +107,11 @@ export const ArchiveRoutes: RouteOld = {
   },
 };
 
-export const ArchiveRoute = createRoute((r) => {
-  r.auth();
-  r.path("teams", (r) => {
-    r.get(async (req, res, ctx) => {
+export const ArchiveRoute = createRoute()((r) => {
+  r.path("teams")((r) => {
+    r.get.auth()(async (req, res, ctx) => {
       const rawArchives = await ArchiveBaseModel.find({
-        owner: req.auth!.payload.sub!,
+        owner: ctx.sub,
       }).sort({
         createdAt: -1,
       });
@@ -131,50 +130,30 @@ export const ArchiveRoute = createRoute((r) => {
       res.json(archives);
     });
   });
-  r.param(
-    "team_id",
-    async (req, res, ctx, team_id) => {
-      if (!mongoose.Types.ObjectId.isValid(team_id)) {
-        throw new PDZError(
-          ErrorCodes.ARCHIVE.INVALID_ID || {
-            status: 400,
-            code: "AR-P1-01",
-            message: "Invalid archive ID format",
-          },
-        );
-      }
 
+  r.param("team_id", {
+    validate: (team_id) => mongoose.Types.ObjectId.isValid(team_id),
+    loader: async (req, res, ctx, team_id) => {
       const rawArchive = await ArchiveBaseModel.findById(team_id);
-
-      if (!rawArchive)
-        throw new PDZError(
-          ErrorCodes.ARCHIVE.NOT_FOUND || {
-            status: 404,
-            code: "AR-P1-02",
-            message: "Archive not found",
-          },
-        );
-
+      if (!rawArchive) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
       const archive = rawArchive.toObject() as unknown as
         | ArchiveV1Data
         | ArchiveV2Data;
       const ruleset = getRuleset(archive.ruleset);
-
       return { rawArchive, archive, ruleset };
     },
-    (r) => {
-      r.path("/", (r) => {
-        r.delete(async (req, res, ctx) => {
-          await ctx.rawArchive.deleteOne();
-          res.status(201).json({ message: "Draft deleted" });
-        });
+  })((r) => {
+    r.path("/")((r) => {
+      r.delete.auth()(async (req, res, ctx) => {
+        await ctx.rawArchive.deleteOne();
+        res.status(201).json({ message: "Draft deleted" });
       });
+    });
 
-      r.path("stats", (r) => {
-        r.get(async (req, res, ctx) => {
-          res.json(await getStats(ctx.ruleset, ctx.archive));
-        });
+    r.path("stats")((r) => {
+      r.get.auth()(async (req, res, ctx) => {
+        res.json(await getStats(ctx.ruleset, ctx.archive));
       });
-    },
-  );
+    });
+  });
 });

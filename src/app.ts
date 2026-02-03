@@ -15,14 +15,14 @@ import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
-import { DataRoutes } from "./routes/data.route";
+import { DataRoute, DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
 import { FileRoutes } from "./routes/file.route";
-import { LeagueRoutes } from "./routes/league.route";
+import { LeagueRoute, LeagueRoutes } from "./routes/league.route";
 import { MatchupRoutes } from "./routes/matchup.route";
-import { NewsRoutes } from "./routes/news.route";
-import { PlannerRoutes } from "./routes/planner.route";
-import { ReplayRoutes } from "./routes/replay.route";
+import { NewsRoute, NewsRoutes } from "./routes/news.route";
+import { PlannerRoute, PlannerRoutes } from "./routes/planner.route";
+import { ReplayRoute, ReplayRoutes } from "./routes/replay.route";
 import { Route } from "./routes/route-builder";
 import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
@@ -187,45 +187,27 @@ export const ROUTES: { [path: string]: RouteOld | Route } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
   "/matchup": MatchupRoutes,
-  "/data": DataRoutes,
-  "/replay": ReplayRoutes,
-  "/planner": PlannerRoutes,
-  "/leagues": LeagueRoutes,
+  "/data": DataRoute,
+  "/replay": ReplayRoute,
+  "/planner": PlannerRoute,
+  "/leagues": LeagueRoute,
   "/teambuilder": TeambuilderRoutes,
   "/supporters": SupporterRoutes,
   "/battlezone": BattleZoneRoutes,
   "/user": UserRoutes,
   "/push": PushSubscriptionRoutes,
-  "/news": NewsRoutes,
+  "/news": NewsRoute,
   "/file": FileRoutes,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;
 
 for (const path in ROUTES) {
-  let route = ROUTES[path];
-
-  const router = express.Router();
-
+  const route = ROUTES[path];
   if (route instanceof Route) {
-    const handlers = route.getExpressHandlers();
-    const params = route.getParams();
-
-    for (const subpath in handlers) {
-      const subroute = router.route(subpath);
-      for (const method of METHODS) {
-        if (handlers[subpath][method]) {
-          subroute[method](handlers[subpath][method]);
-        }
-      }
-    }
-
-    if (params) {
-      for (const param in params) {
-        router.param(param, params[param]);
-      }
-    }
+    app.use(path, route.getRouter());
   } else {
+    const router = express.Router();
     for (const subpath in route.subpaths) {
       const subroute = router.route(subpath);
       for (const method of METHODS) {
@@ -240,18 +222,13 @@ for (const path in ROUTES) {
       for (const param in route.params) {
         router.param(param, route.params[param]);
       }
-  }
 
-  app.use(
-    path,
-    ...(route instanceof Route ? [] : route.middleware || []),
-    router,
-  );
+    app.use(path, ...(route.middleware || []), router);
+  }
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   next(createError(404));
 });
 
-// Use the centralized error handler
 app.use(errorHandler);

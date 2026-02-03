@@ -35,7 +35,7 @@ export async function getDraftsByOwner(
 }
 
 export async function getDraft(
-  id: Types.ObjectId,
+  id: Types.ObjectId | string,
   ownerId?: string,
 ): Promise<DraftDocument | null> {
   const key: string = ownerId ? `${ownerId}:${id}` : id.toString();

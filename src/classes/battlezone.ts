@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { PDBLDoc, PDBLModel } from "../models/pdbl.model";
 
 export namespace BattleZone {
@@ -44,10 +45,64 @@ export namespace BattleZone {
     }
   }
 
+  const signUpSchema = z
+    .object({
+      discordName: z
+        .string()
+        .trim()
+        .min(1, "Invalid discordName: Must be a non-empty string."),
+      teamName: z
+        .string()
+        .trim()
+        .min(1, "Invalid teamName: Must be a non-empty string."),
+      timezone: z
+        .string()
+        .trim()
+        .min(1, "Invalid timezone: Must be a non-empty string."),
+      experience: z.string({
+        required_error: "Invalid experience: Must be a string.",
+        invalid_type_error: "Invalid experience: Must be a string.",
+      }),
+      droppedBefore: z.boolean({
+        required_error: "Invalid droppedBefore: Must be a boolean.",
+        invalid_type_error: "Invalid droppedBefore: Must be a boolean.",
+      }),
+      droppedWhy: z.string({
+        required_error:
+          "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
+        invalid_type_error:
+          "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
+      }),
+      confirm: z.boolean({
+        required_error: "Invalid confirm: Must be true.",
+        invalid_type_error: "Invalid confirm: Must be true.",
+      }),
+    })
+    .superRefine((value, ctx) => {
+      if (value.droppedBefore && value.droppedWhy.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["droppedWhy"],
+          message:
+            "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
+        });
+      }
+      if (!value.confirm) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["confirm"],
+          message: "Invalid confirm: Must be true.",
+        });
+      }
+    });
+
   export function validateSignUpForm(data: unknown, sub: string): SignUp {
-    if (typeof data !== "object" || data === null) {
-      throw new Error("Invalid data: Expected an object.");
+    const parsed = signUpSchema.safeParse(data);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw new Error(issue?.message ?? "Invalid data: Expected an object.");
     }
+
     const {
       discordName,
       teamName,
@@ -56,26 +111,7 @@ export namespace BattleZone {
       droppedBefore,
       droppedWhy,
       confirm,
-    } = data as { [key: string]: unknown };
-    if (typeof discordName !== "string" || discordName.trim() === "")
-      throw new Error("Invalid discordName: Must be a non-empty string.");
-    if (typeof teamName !== "string" || teamName.trim() === "")
-      throw new Error("Invalid teamName: Must be a non-empty string.");
-    if (typeof timezone !== "string" || timezone.trim() === "")
-      throw new Error("Invalid timezone: Must be a non-empty string.");
-    if (typeof experience !== "string")
-      throw new Error("Invalid experience: Must be a string.");
-    if (typeof droppedBefore !== "boolean")
-      throw new Error("Invalid droppedBefore: Must be a boolean.");
-    if (
-      typeof droppedWhy !== "string" ||
-      (droppedBefore && droppedWhy.trim() === "")
-    )
-      throw new Error(
-        "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
-      );
-    if (typeof confirm !== "boolean" || !confirm)
-      throw new Error("Invalid confirm: Must be true.");
+    } = parsed.data;
 
     return new SignUp(
       discordName,

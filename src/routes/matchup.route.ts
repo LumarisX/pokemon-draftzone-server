@@ -16,6 +16,10 @@ import { speedchart } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { jwtCheck } from "../middleware/jwtcheck";
+import { createRoute } from "./route-builder";
+import { PDZError } from "../errors/pdz-error";
+import { ErrorCodes } from "../errors/error-codes";
+import z from "zod";
 
 type MatchupResponse = Response & {
   rawMatchup?: MatchupDocument | null;
@@ -256,3 +260,112 @@ export const MatchupRoutes: RouteOld = {
     },
   },
 };
+
+export const MatchupRoute = createRoute()((r) => {
+  r.path("quick")((r) => {
+    r.post(async (req, res) => {
+      const matchup = await Matchup.fromQuickData(req.body);
+      const data = await matchup.analyze();
+      res.json(data);
+    });
+  });
+  r.param("matchup_id", {
+    validate: (matchup_id) => mongoose.Types.ObjectId.isValid(matchup_id),
+    loader: async (req, res, ctx, matchup_id) => {
+      const rawMatchup = await getMatchupById(matchup_id);
+      if (!rawMatchup) {
+        logger.error(`Matchup not found for matchup_id: ${matchup_id}`);
+        throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+      }
+      const matchupData = rawMatchup.toObject<MatchupData>();
+      const matchup = await Matchup.fromData(matchupData);
+      const aTeam = await getDraft(matchupData.aTeam._id);
+      if (!aTeam) {
+        logger.error(
+          `Draft not found for matchup's aTeam._id: ${matchupData.aTeam._id}`,
+        );
+        throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+      }
+      const ruleset = getRuleset(aTeam.ruleset);
+      return { rawMatchup, matchup, ruleset };
+    },
+  })((r) => {
+    r.get(async (req, res, ctx) => {
+      const matchup = ctx.matchup;
+      const data = await matchup.analyze();
+      res.json(data);
+    });
+    r.delete(async (req, res, ctx) => {
+      await deleteMatchup(req.params.matchup_id);
+      res.json({ message: "Matchup deleted" });
+    });
+    r.path("summary")((r) => {
+      r.get(async (req, res, ctx) => {
+        const aTeamsummary = new SummaryClass(
+          ctx.matchup.aTeam.team,
+          ctx.matchup.aTeam.teamName,
+        );
+        const bTeamsummary = new SummaryClass(
+          ctx.matchup.bTeam.team,
+          ctx.matchup.bTeam.teamName,
+        );
+        res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
+      });
+    });
+    r.path("typechart")((r) => {
+      r.get(async (req, res, ctx) => {
+        res.json([
+          new Typechart(ctx.matchup.aTeam.team).toJson(),
+          new Typechart(ctx.matchup.bTeam.team).toJson(),
+        ]);
+      });
+    });
+    r.path("speedchart")((r) => {
+      r.get(async (req, res, ctx) => {
+        const level = ctx.matchup.format.level;
+        res.json(
+          speedchart([ctx.matchup.aTeam.team, ctx.matchup.bTeam.team], level),
+        );
+      });
+    });
+    r.path("coveragechart")((r) => {
+      r.get(async (req, res, ctx) => {
+        res.json([
+          coveragechart(ctx.matchup.aTeam.team, ctx.matchup.bTeam.team),
+          coveragechart(ctx.matchup.bTeam.team, ctx.matchup.aTeam.team),
+        ]);
+      });
+    });
+    r.path("movechart")((r) => {
+      r.get(async (req, res, ctx) => {
+        res.json(
+          await Promise.all([
+            movechart(ctx.matchup.aTeam.team, ctx.ruleset),
+            movechart(ctx.matchup.bTeam.team, ctx.ruleset),
+          ]),
+        );
+      });
+    });
+    r.path("notes")((r) => {
+      r.get(async (req, res, ctx) => {
+        const matchupDoc = ctx.rawMatchup;
+        res.json({ notes: matchupDoc!.notes || "" });
+      });
+    });
+    r.path("update-notes")((r) => {
+      r.post.auth().validate({
+        body: (data) => z.object({ notes: z.string() }).parse(data),
+      })(async (req, res, ctx) => {
+        const matchupDoc = ctx.rawMatchup;
+        const aTeamDraft = await getDraft(matchupDoc.aTeam._id);
+        if (!aTeamDraft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+        const ownerSub = aTeamDraft.owner;
+        if (ctx.sub !== ownerSub) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+        const { notes } = ctx.validatedBody;
+        matchupDoc.notes = notes;
+        await matchupDoc.save();
+        res.json({ success: true });
+      });
+    });
+  });
+});

@@ -50,8 +50,8 @@ export const PlannerRoutes: RouteOld = {
   },
 };
 
-export const PlannerRoute = createRoute((r) => {
-  r.path("/", (r) => {
+export const PlannerRoute = createRoute()((r) => {
+  r.path("/")((r) => {
     r.get(async (req, res) => {
       let team: DraftSpecie[] = [];
       const ruleset = getRuleset(

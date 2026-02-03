@@ -8,6 +8,7 @@ import {
 import { PDZError } from "../errors/pdz-error";
 import { ErrorCodes } from "../errors/error-codes";
 import { createRoute } from "./route-builder";
+import z from "zod";
 
 type ReplayResponse = Response & { url?: string };
 
@@ -76,37 +77,40 @@ export const ReplayRoutes: RouteOld = {
   },
 };
 
-function URLHandler(req: Request, res: Response) {
-  const url = req.params.url;
-  if (!url) throw new PDZError(ErrorCodes.REPLAY.URL_NOT_PROVIDED);
+function URLHandler<T>(
+  req: Request,
+  res: Response,
+  ctx: T,
+  url: string,
+): { url: string } {
   const decodedUrl = decodeURI(url).replace(/^https?:\/\//, "");
   const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;
   if (!urlPattern.test(decodedUrl))
-    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL_FORMAT);
+    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
+  if (!validateUrl(decodedUrl))
+    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
   return { url: decodedUrl };
 }
 
-export const ReplayRoute = createRoute((r) => {
-  r.path("analyze", (r) => {
-    r.param("url", URLHandler, (r) => {
+export const ReplayRoute = createRoute()((r) => {
+  r.path("analyze")((r) => {
+    r.param(
+      "url",
+      URLHandler,
+    )((r) => {
       r.get(async (req, res, ctx) => {
-        if (!ctx.url || !validateUrl(ctx.url))
-          return res
-            .status(400)
-            .json({ message: "Invalid URL Format", code: "RA-R1-01" });
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         const replay = new Replay.Analysis(await replayData.text());
         res.json(replay.toJson());
       });
     });
   });
-  r.path("log", (r) => {
-    r.param("url", URLHandler, (r) => {
+  r.path("log")((r) => {
+    r.param(
+      "url",
+      URLHandler,
+    )((r) => {
       r.get(async (req, res, ctx) => {
-        if (!ctx.url || !validateUrl(ctx.url))
-          return res
-            .status(400)
-            .json({ message: "Invalid URL Format", code: "RA-R1-01" });
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         res.send(await replayData.text());
       });

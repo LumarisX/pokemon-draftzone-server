@@ -22,8 +22,8 @@ export const NewsRoutes: RouteOld = {
   params: {},
 };
 
-export const NewsRoute = createRoute((r) => {
-  r.path("/", (r) => {
+export const NewsRoute = createRoute()((r) => {
+  r.path("/")((r) => {
     r.get(async (req, res) => {
       const news = await getNews();
       res.json(news);
