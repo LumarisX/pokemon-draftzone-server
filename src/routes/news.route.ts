@@ -23,10 +23,8 @@ export const NewsRoutes: RouteOld = {
 };
 
 export const NewsRoute = createRoute()((r) => {
-  r.path("/")((r) => {
-    r.get(async (req, res) => {
-      const news = await getNews();
-      res.json(news);
-    });
+  r.get(async (req, res) => {
+    const news = await getNews();
+    res.json(news);
   });
 });

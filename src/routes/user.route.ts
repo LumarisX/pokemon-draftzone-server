@@ -48,7 +48,7 @@ export const UserRoutes: RouteOld = {
 };
 
 export const UserRoute = createRoute()((r) => {
-  r.path("/settings")((r) => {
+  r.path("settings")((r) => {
     r.get.auth()(async (req, res, ctx) => {
       const management = await getManagementToken();
       const user = await management.users.get({ id: ctx.sub });

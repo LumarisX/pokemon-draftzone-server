@@ -249,6 +249,23 @@ export const ErrorCodes = {
       message: "Format not found",
     },
   },
+  FILE: {
+    SERVICE_UNAVAILABLE: {
+      code: "FILE-001",
+      status: 503,
+      message: "File upload service is not configured",
+    },
+    INVALID_METADATA: {
+      code: "FILE-002",
+      status: 400,
+      message: "Invalid file metadata",
+    },
+    NOT_FOUND: {
+      code: "FILE-003",
+      status: 404,
+      message: "File not found",
+    },
+  },
 } as const;
 
 export type ErrorCodePath =

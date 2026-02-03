@@ -143,11 +143,9 @@ export const ArchiveRoute = createRoute()((r) => {
       return { rawArchive, archive, ruleset };
     },
   })((r) => {
-    r.path("/")((r) => {
-      r.delete.auth()(async (req, res, ctx) => {
-        await ctx.rawArchive.deleteOne();
-        res.status(201).json({ message: "Draft deleted" });
-      });
+    r.delete.auth()(async (req, res, ctx) => {
+      await ctx.rawArchive.deleteOne();
+      res.status(201).json({ message: "Draft deleted" });
     });
 
     r.path("stats")((r) => {
