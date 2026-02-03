@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
-import { RouteOld, sendError } from "./index";
-import { s3Service } from "../services/s3.service";
 import { logger } from "../app";
-import { jwtCheck } from "../middleware/jwtcheck";
 import { validateUploadRequest } from "../middleware/file-validation";
+import { jwtCheck } from "../middleware/jwtcheck";
 import {
-  uploadRateLimiter,
   checkUserStorageQuota,
+  uploadRateLimiter,
 } from "../middleware/upload-rate-limiter";
 import FileUploadModel from "../models/file-upload.model";
 import LeagueUserModel from "../models/league/coach.model";
+import { s3Service } from "../services/s3.service";
+import { RouteOld } from "./index";
 
 export const FileRoutes: RouteOld = {
   middleware: [jwtCheck, uploadRateLimiter, checkUserStorageQuota],

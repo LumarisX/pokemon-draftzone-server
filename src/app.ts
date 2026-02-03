@@ -15,15 +15,14 @@ import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
 import { ArchiveRoutes } from "./routes/archive.route";
 import { BattleZoneRoutes } from "./routes/battlezone.route";
-import { DataRoute, DataRoutes } from "./routes/data.route";
+import { DataRoutes } from "./routes/data.route";
 import { DraftRoutes } from "./routes/draft.route";
 import { FileRoutes } from "./routes/file.route";
 import { LeagueRoutes } from "./routes/league.route";
-// import { LeagueRoutes } from "./routes/league";
 import { MatchupRoutes } from "./routes/matchup.route";
-import { NewsRoute } from "./routes/news.route";
-import { PlannerRoute } from "./routes/planner.route";
-import { ReplayRoute } from "./routes/replay.route";
+import { NewsRoutes } from "./routes/news.route";
+import { PlannerRoutes } from "./routes/planner.route";
+import { ReplayRoutes } from "./routes/replay.route";
 import { Route } from "./routes/route-builder";
 import { PushSubscriptionRoutes } from "./routes/subscription.route";
 import { SupporterRoutes } from "./routes/supporters.route";
@@ -188,16 +187,16 @@ export const ROUTES: { [path: string]: RouteOld | Route } = {
   "/draft": DraftRoutes,
   "/archive": ArchiveRoutes,
   "/matchup": MatchupRoutes,
-  "/data": DataRoute,
-  "/replay": ReplayRoute,
-  "/planner": PlannerRoute,
+  "/data": DataRoutes,
+  "/replay": ReplayRoutes,
+  "/planner": PlannerRoutes,
   "/leagues": LeagueRoutes,
   "/teambuilder": TeambuilderRoutes,
   "/supporters": SupporterRoutes,
   "/battlezone": BattleZoneRoutes,
   "/user": UserRoutes,
   "/push": PushSubscriptionRoutes,
-  "/news": NewsRoute,
+  "/news": NewsRoutes,
   "/file": FileRoutes,
 };
 

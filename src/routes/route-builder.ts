@@ -1,66 +1,151 @@
-import { Request, RequestParamHandler, Response } from "express";
-import { sendError } from ".";
-import { ErrorCodes } from "../errors/error-codes";
-import { isPDZError, PDZError } from "../errors/pdz-error";
+import { Request, RequestHandler, Response, Router } from "express";
 import { logger } from "../app";
+import { isPDZError } from "../errors/pdz-error";
+import { jwtCheck } from "../middleware/jwtcheck";
 
-type HttpMethod = "get" | "post" | "patch" | "delete";
+const HTTP_METHODS = ["get", "post", "patch", "delete"] as const;
 
-type Handler<T = any> = (
+type HttpMethod = (typeof HTTP_METHODS)[number];
+
+type ContextBuilder<TParentCtx = any, TReturn = any> = (
   req: Request,
   res: Response,
-  ctx: T,
+  parentCtx: TParentCtx,
+  paramValue: string,
+) => TReturn | Promise<TReturn>;
+
+type Handler<TCtx = any> = (
+  req: Request,
+  res: Response,
+  ctx: TCtx,
 ) => Promise<any> | any;
 
-type ParamProcessor<T extends Record<string, any> = Record<string, any>> = (
-  req: Request,
-  res: Response,
-  value: string,
-  ctx: any,
-) => Promise<T> | T;
+type MethodHandler = { [m in HttpMethod]: Handler };
 
-type PathConfig<T = any> = {
-  [method in HttpMethod]?: Handler<T>;
-};
-
-type RouteConfig = {
-  paths: {
-    [path: string]: PathConfig;
-  };
-  params?: {
-    [paramName: string]: ParamProcessor;
+type RouteNode<TParentCtx = any> = Partial<MethodHandler> & {
+  context?: ContextBuilder<TParentCtx, any>;
+  authCheck?: boolean;
+  middleware?: RequestHandler[];
+  paths?: {
+    [segment: string]: RouteNode<any>;
   };
 };
+
+export class RouteBuilder<TCtx = {}> {
+  private node: RouteNode<TCtx> = {};
+  private children: Map<string, RouteBuilder<any>> = new Map();
+
+  context<TNewCtx>(builder: ContextBuilder<TCtx, TNewCtx>): void {
+    this.node.context = builder;
+  }
+
+  auth(): void {
+    this.node.authCheck = true;
+  }
+
+  use(...middleware: RequestHandler[]): void {
+    this.node.middleware = [...(this.node.middleware || []), ...middleware];
+  }
+
+  path(
+    segment: string,
+    configure: (builder: RouteBuilder<TCtx>) => void,
+  ): void {
+    let childBuilder = this.children.get(segment);
+    if (!childBuilder) {
+      childBuilder = new RouteBuilder<TCtx>();
+      this.children.set(segment, childBuilder);
+    }
+
+    configure(childBuilder);
+  }
+
+  get(handler: Handler<TCtx>): void {
+    if (this.node.get) {
+      logger.warn("Overwriting existing GET handler");
+    }
+    this.node.get = handler;
+  }
+
+  post(handler: Handler<TCtx>): void {
+    if (this.node.post) {
+      logger.warn("Overwriting existing POST handler");
+    }
+    this.node.post = handler;
+  }
+
+  patch(handler: Handler<TCtx>): void {
+    if (this.node.patch) {
+      logger.warn("Overwriting existing PATCH handler");
+    }
+    this.node.patch = handler;
+  }
+
+  delete(handler: Handler<TCtx>): void {
+    if (this.node.delete) {
+      logger.warn("Overwriting existing DELETE handler");
+    }
+    this.node.delete = handler;
+  }
+
+  param<TNewCtx>(
+    paramName: string,
+    contextBuilder: ContextBuilder<TCtx, TNewCtx>,
+    configure: (builder: RouteBuilder<TCtx & TNewCtx>) => void,
+  ): void {
+    this.path(`:${paramName}`, (childBuilder) => {
+      childBuilder.context(async (req, res, parentCtx) => {
+        const value = req.params[paramName];
+        return contextBuilder(req, res, parentCtx, value);
+      });
+      configure(childBuilder as RouteBuilder<TCtx & TNewCtx>);
+    });
+  }
+
+  getConfig(): RouteNode<TCtx> {
+    if (this.children.size > 0) {
+      this.node.paths = {};
+      for (const [segment, childBuilder] of this.children) {
+        this.node.paths[segment] = childBuilder.getConfig();
+      }
+    }
+    return this.node;
+  }
+}
 
 export class Route {
-  private config: RouteConfig;
+  private router: Router;
 
-  constructor(config: RouteConfig) {
-    this.config = config;
+  constructor(config: RouteNode<any>) {
+    this.router = Router();
+    this.buildRoute(config, this.router, {});
+  }
+
+  private async executeAuthCheck(req: Request, res: Response): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      jwtCheck(req, res, (err?: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 
   private wrapHandler(
-    handler: Handler,
-    paramProcessors?: { [key: string]: ParamProcessor },
+    handler: Handler<any>,
+    node: RouteNode<any>,
+    parentContext: Record<string, any>,
   ) {
     return async (req: Request, res: Response) => {
       try {
-        let ctx: any = {};
-        if (paramProcessors && req.params) {
-          for (const [paramName, processor] of Object.entries(
-            paramProcessors,
-          )) {
-            const value = req.params[paramName];
-
-            if (value !== undefined) {
-              if (value === null || value === "") {
-                throw new PDZError(ErrorCodes.PARAMS.REQUIRED, { paramName });
-              }
-              const result = await processor(req, res, value, ctx);
-              ctx = { ...ctx, ...result };
-            }
-          }
+        if (node.authCheck) {
+          await this.executeAuthCheck(req, res);
         }
+        let ctx = parentContext;
+        if (node.context) {
+          const nodeContext = await node.context(req, res, parentContext, "");
+          ctx = Object.assign(Object.create(null), parentContext, nodeContext);
+        }
+
         await handler(req, res, ctx);
       } catch (error) {
         if (isPDZError(error)) {
@@ -77,59 +162,45 @@ export class Route {
     };
   }
 
-  getExpressHandlers() {
-    const handlers: {
-      [path: string]: {
-        [method in HttpMethod]?: (req: Request, res: Response) => void;
-      };
-    } = {};
+  private buildRoute(
+    node: RouteNode<any>,
+    router: Router,
+    parentContext: Record<string, any>,
+  ) {
+    if (node.middleware) {
+      router.use(...node.middleware);
+    }
 
-    for (const [path, pathConfig] of Object.entries(this.config.paths)) {
-      handlers[path] = {};
-      for (const method of ["get", "post", "patch", "delete"] as HttpMethod[]) {
-        if (pathConfig[method]) {
-          handlers[path][method] = this.wrapHandler(
-            pathConfig[method]!,
-            this.config.params,
-          );
-        }
+    for (const method of HTTP_METHODS) {
+      if (node[method]) {
+        router[method](
+          "/",
+          this.wrapHandler(node[method]!, node, parentContext),
+        );
       }
     }
 
-    return handlers;
-  }
+    if (node.paths) {
+      let childContext = parentContext;
 
-  getParams(): { [key: string]: RequestParamHandler } | undefined {
-    if (!this.config.params) return undefined;
-
-    const params: { [key: string]: RequestParamHandler } = {};
-
-    for (const paramName in this.config.params) {
-      params[paramName] = async (req, res, next, value) => {
-        try {
-          const result = await this.config.params![paramName](
-            req,
-            res,
-            value,
-            res.locals,
-          );
-          res.locals = { ...res.locals, ...result };
-          next();
-        } catch (error) {
-          if (isPDZError(error)) {
-            return res.status(error.status).json(error.toJSON());
-          }
-          logger.error("Param error", { error, paramName });
-          return res.status(500).json({
-            error: {
-              code: "PARAM-ERROR",
-              message: (error as Error).message,
-            },
-          });
-        }
-      };
+      for (const [segment, childNode] of Object.entries(node.paths)) {
+        const childRouter = Router();
+        this.buildRoute(childNode, childRouter, childContext);
+        router.use(`/${segment}`, childRouter);
+      }
     }
-
-    return params;
   }
+
+  getRouter(): Router {
+    return this.router;
+  }
+}
+
+export function createRoute(
+  configure: (builder: RouteBuilder<{}>) => void,
+): Router {
+  const builder = new RouteBuilder<{}>();
+  configure(builder);
+  const route = new Route(builder.getConfig());
+  return route.getRouter();
 }

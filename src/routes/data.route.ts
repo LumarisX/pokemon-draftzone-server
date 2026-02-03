@@ -8,15 +8,14 @@ import {
   getRulesetsGrouped,
   Ruleset,
 } from "../data/rulesets";
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
 import { getRandom } from "../services/data-services/pokedex.service";
 import { getLeagueAds } from "../services/league-ad/league-ad-service";
 import { getNews } from "../services/news/news-service";
 import { searchPokemon } from "../services/search.service";
 import { parseTime } from "../util";
-import { Route } from "./route-builder";
-import { PDZError } from "../errors/pdz-error";
-import { ErrorCodes } from "../errors/error-codes";
-import { Rule } from "auth0";
+import { createRoute } from "./route-builder";
 
 type DataResponse = Response & { ruleset?: Ruleset };
 
@@ -269,174 +268,162 @@ export const DataRoutes: RouteOld = {
   },
 };
 
-export const DataRoute = new Route({
-  paths: {
-    "/formats": {
-      get: (req, res, ctx) => {
-        res.json(getFormats());
-      },
-    },
-    "/formatsgrouped": {
-      get: (req, res, ctx) => {
-        res.json(_getFormats());
-      },
-    },
-    "/rulesets": {
-      get: (req, res, ctx) => {
-        res.json(getRulesets());
-      },
-    },
-    "/rulesetsgrouped": {
-      get: (req, res, ctx) => {
-        res.json(getRulesetsGrouped());
-      },
-    },
-    "/advancesearch": {
-      get: async (req, res, ctx) => {
-        try {
-          let ruleset = req.query.ruleset;
-          let query = req.query.query;
-          if (typeof query == "string") {
-            query = decodeURIComponent(query);
-            if (typeof ruleset === "string")
-              res.json(await searchPokemon(query, ruleset));
-            else res.json(await searchPokemon(query));
-          } else {
-            res
-              .status(400)
-              .json({ error: "Query type error", code: "DT-R3-01" });
-          }
-        } catch (error) {
-          console.error(
-            `Error in /search route: ${
-              (error as Error).message
-            }\nSearch query: ${req.query.query}`,
-          );
-          res
-            .status(500)
-            .json({ error: "Internal Server Error", code: "DT-R3-02" });
-        }
-      },
-    },
-    "/listpokemon": {
-      get: async (req, res, ctx) => {
-        const rulesetId = req.query.ruleset;
-        if (typeof rulesetId === "string") {
-          const ruleset = getRuleset(rulesetId);
-          return res.json(
-            Array.from(ruleset.species)
-              .sort((a, b) => a.num - b.num)
-              .map((specie) => ({
-                name: specie.name,
-                id: specie.id,
-              })),
-          );
-        }
-        return res
-          .status(400)
-          .json({ error: "Query type error", code: "DT-R3-01" });
-      },
-    },
-    "/unread-counts": {
-      get: async (req, res, ctx) => {
-        const timeEntries = Object.entries(req.query) as [
-          string,
-          string | number,
-        ][];
-
-        const results = await Promise.all(
-          timeEntries.map(
-            async ([type, timeString]): Promise<[string, number]> => {
-              const time = parseTime(timeString);
-              if (!time) return [type, -1];
-              switch (type) {
-                case "leagueAd":
-                  const leagues = await getLeagueAds();
-                  return [
-                    type,
-                    leagues.filter((l) => l.createdAt > time).length,
-                  ];
-                case "news":
-                  const news = await getNews();
-                  return [type, news.filter((n) => n.createdAt > time).length];
-                default:
-                  return [type, -1];
-              }
-            },
-          ),
+export const DataRoute = createRoute((r) => {
+  r.path("formats", (r) => {
+    r.get((req, res, ctx) => res.json(getFormats()));
+  });
+  r.path("formatsgrouped", (r) => {
+    r.get((req, res, ctx) => res.json(_getFormats()));
+  });
+  r.path("rulesets", (r) => {
+    r.get((req, res, ctx) => res.json(getRulesets()));
+  });
+  r.path("rulesetsgrouped", (r) => {
+    r.get((req, res, ctx) => res.json(getRulesetsGrouped()));
+  });
+  r.path("advancesearch", (r) => {
+    r.get(async (req, res, ctx) => {
+      let ruleset = req.query.ruleset;
+      let query = req.query.query;
+      if (typeof query == "string") {
+        query = decodeURIComponent(query);
+        if (typeof ruleset === "string")
+          res.json(await searchPokemon(query, ruleset));
+        else res.json(await searchPokemon(query));
+      } else {
+        res.status(400).json({ error: "Query type error", code: "DT-R3-01" });
+      }
+    });
+  });
+  r.path("listpokemon", (r) => {
+    r.get(async (req, res, ctx) => {
+      const rulesetId = req.query.ruleset;
+      if (typeof rulesetId === "string") {
+        const ruleset = getRuleset(rulesetId);
+        return res.json(
+          Array.from(ruleset.species)
+            .sort((a, b) => a.num - b.num)
+            .map((specie) => ({
+              name: specie.name,
+              id: specie.id,
+            })),
         );
+      }
+      return res
+        .status(400)
+        .json({ error: "Query type error", code: "DT-R3-01" });
+    });
+  });
+  r.path("unread-counts", (r) => {
+    r.get(async (req, res, ctx) => {
+      const timeEntries = Object.entries(req.query) as [
+        string,
+        string | number,
+      ][];
 
-        const counts = Object.fromEntries(results);
-        res.json(counts);
-      },
-    },
-    "/random": {
-      get: async (req, res, ctx) => {
-        let rulesetId = req.query.ruleset;
-        let formatId = req.query.format;
+      const results = await Promise.all(
+        timeEntries.map(
+          async ([type, timeString]): Promise<[string, number]> => {
+            const time = parseTime(timeString);
+            if (!time) return [type, -1];
+            switch (type) {
+              case "leagueAd":
+                const leagues = await getLeagueAds();
+                return [type, leagues.filter((l) => l.createdAt > time).length];
+              case "news":
+                const news = await getNews();
+                return [type, news.filter((n) => n.createdAt > time).length];
+              default:
+                return [type, -1];
+            }
+          },
+        ),
+      );
+
+      const counts = Object.fromEntries(results);
+      res.json(counts);
+    });
+  });
+
+  r.path("random", (r) => {
+    r.get((req, res, ctx) => {
+      let rulesetId = req.query.ruleset;
+      let formatId = req.query.format;
+      if (
+        typeof req.query.count == "string" ||
+        typeof req.query.count == "number"
+      ) {
+        const count = +req.query.count;
         if (
-          typeof req.query.count == "string" ||
-          typeof req.query.count == "number"
+          typeof rulesetId === "string" &&
+          typeof formatId === "string" &&
+          count > 0 &&
+          count <= 20
         ) {
-          const count = +req.query.count;
-          if (
-            typeof rulesetId === "string" &&
-            typeof formatId === "string" &&
-            count > 0 &&
-            count <= 20
-          ) {
-            const ruleset = getRuleset(rulesetId);
-            const format = getFormat(formatId);
-            const randomMons = getRandom(count, ruleset, format, {
-              banned: Array.isArray(req.query.banned)
-                ? (req.query.banned as string[])
-                : typeof req.query.banned === "string"
-                  ? [req.query.banned]
-                  : undefined,
-              tier:
-                typeof req.query.tier === "string" ? req.query.tier : undefined,
+          const ruleset = getRuleset(rulesetId);
+          const format = getFormat(formatId);
+          const randomMons = getRandom(count, ruleset, format, {
+            banned: Array.isArray(req.query.banned)
+              ? (req.query.banned as string[])
+              : typeof req.query.banned === "string"
+                ? [req.query.banned]
+                : undefined,
+            tier:
+              typeof req.query.tier === "string" ? req.query.tier : undefined,
+          });
+          return res.json(
+            randomMons.map((pokemon) => ({
+              ...pokemon,
+              level: format.level,
+            })),
+          );
+        }
+      }
+      return res
+        .status(400)
+        .json({ error: "Query type error", code: "DT-R3-01" });
+    });
+
+    r.param(
+      "ruleset",
+      (req, res, ctx) => ({
+        ruleset: getRuleset(req.params.ruleset),
+      }),
+      (r) => {
+        r.param(
+          "pid",
+          (req, res, ctx) => {
+            const species = ctx.ruleset.species.get(req.params.pid);
+            if (!species)
+              throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
+                pid: req.params.pid,
+              });
+            return { species };
+          },
+          (r) => {
+            r.path("formes", (r) => {
+              r.get((req, res, ctx) => {
+                const { ruleset, species } = ctx;
+
+                let formeNames = [] as string[];
+                if (species.formes) formeNames = species.formes;
+                if (species.changesFrom) {
+                  const basePokemon = ruleset.species.get(species.changesFrom);
+                  if (!basePokemon || !basePokemon.formes) return res.json([]);
+                  formeNames = basePokemon.formes;
+                }
+                const formes = formeNames
+                  .map((formeName) => {
+                    const specie = ruleset.species.get(formeName);
+                    return specie ? { id: specie.id, name: specie.name } : null;
+                  })
+                  .filter((forme) => forme !== null && forme.id !== species.id);
+                return res.json(formes);
+              });
             });
-            return res.json(
-              randomMons.map((pokemon) => ({
-                ...pokemon,
-                level: format.level,
-              })),
-            );
-          }
-        }
-        return res
-          .status(400)
-          .json({ error: "Query type error", code: "DT-R3-01" });
+          },
+        );
       },
-    },
-    "/:ruleset/:pid/formes": {
-      get: async (req, res, ctx: { ruleset: Ruleset; species: Specie }) => {
-        let formeNames = [] as string[];
-        if (ctx.species.formes) formeNames = ctx.species.formes;
-        if (ctx.species.changesFrom) {
-          const basePokemon = ctx.ruleset.species.get(ctx.species.changesFrom);
-          if (!basePokemon || !basePokemon.formes) return res.json([]);
-          formeNames = basePokemon.formes;
-        }
-        const formes = formeNames
-          .map((formeName) => {
-            const specie = ctx.ruleset.species.get(formeName);
-            return specie ? { id: specie.id, name: specie.name } : null;
-          })
-          .filter((forme) => forme !== null && forme.id !== ctx.species.id);
-        return res.json(formes);
-      },
-    },
-  },
-  params: {
-    ruleset: async (req, res, value, ctx: {}) => {
-      return { ruleset: getRuleset(value) };
-    },
-    pid: async (req, res, value, ctx: { ruleset: Ruleset }) => {
-      const species = ctx.ruleset.species.get(value);
-      if (!species)
-        throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, { pid: value });
-      return { species };
-    },
-  },
+    );
+  });
 });

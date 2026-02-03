@@ -5,9 +5,9 @@ import {
   Replay,
   validateUrl,
 } from "../services/replay-services/replay-analyze.service";
-import { Route } from "./route-builder";
 import { PDZError } from "../errors/pdz-error";
 import { ErrorCodes } from "../errors/error-codes";
+import { createRoute } from "./route-builder";
 
 type ReplayResponse = Response & { url?: string };
 
@@ -76,28 +76,40 @@ export const ReplayRoutes: RouteOld = {
   },
 };
 
-export const ReplayRoute = new Route({
-  paths: {
-    "/analyze/:url": {
-      get: async (req, res, ctx) => {
+function URLHandler(req: Request, res: Response) {
+  const url = req.params.url;
+  if (!url) throw new PDZError(ErrorCodes.REPLAY.URL_NOT_PROVIDED);
+  const decodedUrl = decodeURI(url).replace(/^https?:\/\//, "");
+  const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;
+  if (!urlPattern.test(decodedUrl))
+    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL_FORMAT);
+  return { url: decodedUrl };
+}
+
+export const ReplayRoute = createRoute((r) => {
+  r.path("analyze", (r) => {
+    r.param("url", URLHandler, (r) => {
+      r.get(async (req, res, ctx) => {
+        if (!ctx.url || !validateUrl(ctx.url))
+          return res
+            .status(400)
+            .json({ message: "Invalid URL Format", code: "RA-R1-01" });
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         const replay = new Replay.Analysis(await replayData.text());
         res.json(replay.toJson());
-      },
-    },
-    "/log/:url": {
-      get: async (req: Request, res: Response, ctx: { url: string }) => {
+      });
+    });
+  });
+  r.path("log", (r) => {
+    r.param("url", URLHandler, (r) => {
+      r.get(async (req, res, ctx) => {
+        if (!ctx.url || !validateUrl(ctx.url))
+          return res
+            .status(400)
+            .json({ message: "Invalid URL Format", code: "RA-R1-01" });
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         res.send(await replayData.text());
-      },
-    },
-  },
-  params: {
-    url: async (req, res, value) => {
-      const url = decodeURI(value).replace(/^https?:\/\//, "");
-      if (!validateUrl(url))
-        throw new PDZError(ErrorCodes.REPLAY.INVALID_URL, { url: value });
-      return { url };
-    },
-  },
+      });
+    });
+  });
 });

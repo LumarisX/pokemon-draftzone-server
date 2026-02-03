@@ -1,16 +1,16 @@
-import { ID } from "@pkmn/data";
 import { TextChannel } from "discord.js";
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { RouteOld, sendError } from ".";
+import { RouteOld } from ".";
+import { createRoute } from "./route-builder";
 import { logger } from "../app";
 import { BattleZone } from "../classes/battlezone";
-import { ErrorCodes } from "../errors/error-codes";
-import { PDZError } from "../errors/pdz-error";
 import { LeagueAd } from "../classes/league-ad";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { client } from "../discord";
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
 import { jwtCheck } from "../middleware/jwtcheck";
 import { rolecheck } from "../middleware/rolecheck";
 import { LeagueAdModel } from "../models/league-ad.model";
@@ -21,9 +21,6 @@ import LeagueCoachModel, {
 import LeagueDivisionModel, {
   LeagueDivisionDocument,
 } from "../models/league/division.model";
-import LeagueTournamentModel, {
-  LeagueTournamentDocument,
-} from "../models/league/tournament.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
 import { LeagueStageModel } from "../models/league/stage.model";
 import LeagueTeamModel, {
@@ -31,6 +28,9 @@ import LeagueTeamModel, {
   TeamDraft,
 } from "../models/league/team.model";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
+import LeagueTournamentModel, {
+  LeagueTournamentDocument,
+} from "../models/league/tournament.model";
 import { getName } from "../services/data-services/pokedex.service";
 import {
   getLeagueAds,
@@ -879,7 +879,6 @@ export const LeagueRoutes: RouteOld = {
         }
       },
     },
-
     "/:league_key/teams/:team_id": {
       get: async function (req: Request, res: LeagueResponse, next) {
         try {
@@ -1561,3 +1560,1208 @@ export const LeagueRoutes: RouteOld = {
     },
   },
 };
+const DivisionHandler = async (
+  req: Request,
+  res: Response,
+  ctx: { league: LeagueTournamentDocument },
+  division_id: string,
+) => {
+  await ctx.league.populate<{ divisions: LeagueDivisionDocument[] }>(
+    "divisions",
+  );
+  const division = (ctx.league.divisions as LeagueDivisionDocument[]).find(
+    (d) => d.divisionKey === division_id,
+  );
+
+  if (!division) {
+    throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
+      divisionKey: division_id,
+      tournamentKey: ctx.league.tournamentKey,
+    });
+  }
+
+  await division.populate<{
+    teams: LeagueTeamDocument[];
+  }>("teams");
+
+  return { division };
+};
+export const LeagueRoute = createRoute((r) => {
+  r.get((req, res, ctx) => {
+    res.json([]);
+  });
+  r.path("bracket", (r) => {
+    r.get(async (req, res, ctx) => {
+      const teamData: {
+        teamName: string;
+        coach: string;
+        logo: string;
+        seed: number;
+      }[] = [
+        {
+          teamName: `Philadelphia Flygons`,
+          coach: "02ThatOneGuy",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565385237-Philadelphia_Flygons.png",
+          seed: 1,
+        },
+        {
+          teamName: `Mighty Murkrow`,
+          coach: "hsoj",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097094680-Mighty Murkrow.png",
+          seed: 5,
+        },
+        {
+          teamName: `Fitchburg's Sun Chasers`,
+          coach: "Feather",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565484354-Fitchburgs_Sun_Chaser.png",
+          seed: 2,
+        },
+        {
+          teamName: `Chicago White Fox`,
+          coach: "TheNotoriousABS",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565596549-Chicago_Ninetales.png",
+          seed: 8,
+        },
+        {
+          teamName: `Deimos Deoxys`,
+          coach: "Lumaris",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1744422916695-DeimosDeoxys.png",
+          seed: 3,
+        },
+        {
+          teamName: `Alpine Arcanines`,
+          coach: "Lion",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565450693-AlpineArcanines.png",
+          seed: 4,
+        },
+        {
+          teamName: `Victorious Vigoroths`,
+          coach: "Speedy",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097393478-Victorious_Vigoroths.png",
+          seed: 7,
+        },
+        {
+          teamName: `Deep Sea Duskulls`,
+          coach: "Emeglebon",
+          logo: "",
+          seed: 9,
+        },
+        {
+          teamName: `Twinleaf Tatsugiri`,
+          coach: "Penic",
+          logo: "",
+          seed: 10,
+        },
+        {
+          teamName: `I like 'em THICC`,
+          coach: "Kat",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565503663-I_like_em_THICC.png",
+          seed: 6,
+        },
+        {
+          teamName: `London Vespiquens`,
+          coach: "Jake W",
+          logo: "",
+          seed: 11,
+        },
+        {
+          teamName: `Tampa T-Chainz`,
+          coach: "Spite",
+          logo: "",
+          seed: 12,
+        },
+        {
+          teamName: `Kalos Quagsires`,
+          coach: "Caltech_",
+          logo: "",
+          seed: 13,
+        },
+        {
+          teamName: `Montreal Mean Mareanies`,
+          coach: "Qofol",
+          logo: "",
+          seed: 14,
+        },
+        {
+          teamName: `Chicago Sky Attack`,
+          coach: "Quincy",
+          logo: "",
+          seed: 15,
+        },
+        {
+          teamName: `Midnight Teddy's`,
+          coach: "neb5",
+          logo: "",
+          seed: 16,
+        },
+        {
+          teamName: `Moochelin Star Chefs`,
+          coach: "Rai",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565579136-Moochelin_Star_Chefs.png",
+          seed: 17,
+        },
+        {
+          teamName: `Kalamazoo Komalas`,
+          coach: "SuperSpiderPig",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565551389-Kalamazoo_Komalas.png",
+          seed: 18,
+        },
+        {
+          teamName: `Jokic Lokix`,
+          coach: "Dotexe",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565520216-Jokic_Lokix.png",
+          seed: 19,
+        },
+        {
+          teamName: `Jimothy Jirachi Tomfoolery`,
+          coach: "Jimothy J",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565565925-Jimothy_Jirachi.png",
+          seed: 20,
+        },
+        {
+          teamName: `Memphis Bloodmoons`,
+          coach: "Steven",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565465031-Memphis_Bloodmoons.png",
+          seed: 21,
+        },
+        {
+          teamName: `F.C. Monterayquaza`,
+          coach: "ChristianDeputy",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565535075-F.C._Monterrayquaza.png",
+          seed: 22,
+        },
+        {
+          teamName: `Chicago White Sawks`,
+          coach: "BR@D",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565766076-Chicago_White_SawksBrad.png",
+          seed: 23,
+        },
+        {
+          teamName: `Bug Brigade`,
+          coach: "TheNPC420",
+          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565423936-Bug_Brigade.png",
+          seed: 24,
+        },
+        {
+          teamName: `Minnesota Lycanrocs`,
+          coach: "SpiralBB",
+          logo: "",
+          seed: 25,
+        },
+        {
+          teamName: `Seattle Supersonics`,
+          coach: "AwesomenessGuy",
+          logo: "",
+          seed: 26,
+        },
+        {
+          teamName: `Fairview Floatzels`,
+          coach: "Lupa",
+          logo: "",
+          seed: 27,
+        },
+        {
+          teamName: `McTesuda's`,
+          coach: "Lewis",
+          logo: "",
+          seed: 28,
+        },
+        {
+          teamName: `Pacifidlog Pichus`,
+          coach: "13Luken",
+          logo: "",
+          seed: 29,
+        },
+        {
+          teamName: `Mossdeep City Sharpedos`,
+          coach: "Travis",
+          logo: "",
+          seed: 30,
+        },
+        {
+          teamName: `Texas Thousand`,
+          coach: "CheesyBP",
+          logo: "",
+          seed: 31,
+        },
+        {
+          teamName: `Kommo-o Kommanders`,
+          coach: "AnimaSean",
+          logo: "",
+          seed: 32,
+        },
+      ];
+
+      const normalized24 = {
+        format: "single-elim",
+        teams: teamData
+          .map((t) => ({
+            teamName: t.teamName,
+            coachName: t.coach,
+            seed: t.seed,
+            logo: t.logo,
+          }))
+          .filter((t) => t.seed <= 24)
+          .sort((a, b) => a.seed - b.seed),
+        matches: [
+          {
+            id: "R1M1",
+            round: 1,
+            position: 1,
+            a: { type: "seed", seed: 9 },
+            b: { type: "seed", seed: 24 },
+          },
+          {
+            id: "R1M2",
+            round: 1,
+            position: 2,
+            a: { type: "seed", seed: 16 },
+            b: { type: "seed", seed: 17 },
+          },
+          {
+            id: "R1M3",
+            round: 1,
+            position: 3,
+            a: { type: "seed", seed: 12 },
+            b: { type: "seed", seed: 21 },
+          },
+          {
+            id: "R1M4",
+            round: 1,
+            position: 4,
+            a: { type: "seed", seed: 13 },
+            b: { type: "seed", seed: 20 },
+          },
+          {
+            id: "R1M5",
+            round: 1,
+            position: 5,
+            a: { type: "seed", seed: 10 },
+            b: { type: "seed", seed: 23 },
+          },
+          {
+            id: "R1M6",
+            round: 1,
+            position: 6,
+            a: { type: "seed", seed: 15 },
+            b: { type: "seed", seed: 18 },
+          },
+          {
+            id: "R1M7",
+            round: 1,
+            position: 7,
+            a: { type: "seed", seed: 11 },
+            b: { type: "seed", seed: 22 },
+          },
+          {
+            id: "R1M8",
+            round: 1,
+            position: 8,
+            a: { type: "seed", seed: 14 },
+            b: { type: "seed", seed: 19 },
+          },
+          {
+            id: "R2M1",
+            round: 2,
+            position: 1,
+            a: { type: "seed", seed: 1 },
+            b: { type: "winner", from: "R1M1" },
+          },
+          {
+            id: "R2M2",
+            round: 2,
+            position: 2,
+            a: { type: "seed", seed: 8 },
+            b: { type: "winner", from: "R1M2" },
+          },
+          {
+            id: "R2M3",
+            round: 2,
+            position: 3,
+            a: { type: "seed", seed: 5 },
+            b: { type: "winner", from: "R1M3" },
+          },
+          {
+            id: "R2M4",
+            round: 2,
+            position: 4,
+            a: { type: "seed", seed: 4 },
+            b: { type: "winner", from: "R1M4" },
+          },
+          {
+            id: "R2M5",
+            round: 2,
+            position: 5,
+            a: { type: "seed", seed: 2 },
+            b: { type: "winner", from: "R1M5" },
+          },
+          {
+            id: "R2M6",
+            round: 2,
+            position: 6,
+            a: { type: "seed", seed: 7 },
+            b: { type: "winner", from: "R1M6" },
+          },
+          {
+            id: "R2M7",
+            round: 2,
+            position: 7,
+            a: { type: "seed", seed: 6 },
+            b: { type: "winner", from: "R1M7" },
+          },
+          {
+            id: "R2M8",
+            round: 2,
+            position: 8,
+            a: { type: "seed", seed: 3 },
+            b: { type: "winner", from: "R1M8" },
+          },
+          {
+            id: "R3M1",
+            round: 3,
+            position: 1,
+            a: { type: "winner", from: "R2M1" },
+            b: { type: "winner", from: "R2M2" },
+          },
+          {
+            id: "R3M2",
+            round: 3,
+            position: 2,
+            a: { type: "winner", from: "R2M3" },
+            b: { type: "winner", from: "R2M4" },
+          },
+          {
+            id: "R3M3",
+            round: 3,
+            position: 3,
+            a: { type: "winner", from: "R2M5" },
+            b: { type: "winner", from: "R2M6" },
+          },
+          {
+            id: "R3M4",
+            round: 3,
+            position: 4,
+            a: { type: "winner", from: "R2M7" },
+            b: { type: "winner", from: "R2M8" },
+          },
+          {
+            id: "R4M1",
+            round: 4,
+            position: 1,
+            a: { type: "winner", from: "R3M1" },
+            b: { type: "winner", from: "R3M2" },
+          },
+          {
+            id: "R4M2",
+            round: 4,
+            position: 2,
+            a: { type: "winner", from: "R3M3" },
+            b: { type: "winner", from: "R3M4" },
+          },
+          {
+            id: "R5M1",
+            round: 5,
+            position: 1,
+            a: { type: "winner", from: "R4M1" },
+            b: { type: "winner", from: "R4M2" },
+          },
+        ],
+      };
+
+      res.json(normalized24);
+    });
+  });
+  r.path("ad-list", (r) => {
+    r.get(async (req, res, ctx) => {
+      const leagueAds = await getLeagueAds();
+      res.json(leagueAds);
+    });
+    r.path("manage", (r) => {
+      r.auth();
+      r.get(async (req, res, ctx) => {
+        const owner = req.auth?.payload.sub;
+        if (!owner) throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
+        const documents = await LeagueAdModel.find({ owner }).sort({
+          createdAt: -1,
+        });
+        const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
+        res.json(leagueAds);
+      });
+      r.post(async (req, res, ctx) => {
+        const owner = req.auth?.payload.sub;
+        if (!owner) throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
+        const leagueAd = LeagueAd.fromForm(req.body, owner);
+        if (!leagueAd.isValid())
+          throw new PDZError(ErrorCodes.LEAGUE_AD.INVALID_AD_DATA);
+        const document = await leagueAd.toDocument();
+        await document.save();
+        invalidateLeagueAdsCache();
+        logger.info(`New league ad created: ${document._id}`);
+        res.status(201).json({ _id: document._id, status: document.status });
+      });
+      r.param(
+        "ad_id",
+        async (req, res, ctx) => {},
+        (r) => {
+          r.delete(async (req, res, ctx) => {
+            const owner = req.auth?.payload.sub;
+            if (!owner) throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
+            const ad = await LeagueAdModel.findById(req.params.ad_id);
+            if (!ad) throw new PDZError(ErrorCodes.LEAGUE_AD.NOT_FOUND);
+            if (ad.owner !== owner)
+              throw new PDZError(ErrorCodes.LEAGUE_AD.UNAUTHORIZED_ACCESS);
+            await LeagueAdModel.findByIdAndDelete(req.params.ad_id);
+            invalidateLeagueAdsCache();
+            logger.info(`League ad deleted: ${req.params.ad_id}`);
+            res.status(200).json({ message: "Ad deleted successfully" });
+          });
+        },
+      );
+    });
+  });
+  r.param(
+    "league_key",
+    async (req, res, ctx) => {
+      const league = await LeagueTournamentModel.findOne({
+        tournamentKey: req.params.league_key,
+      }).populate<{
+        tierList: LeagueTierListDocument;
+      }>("tierList");
+      if (!league) {
+        throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+          tournamentKey: req.params.league_key,
+        });
+      }
+      const ruleset = getRuleset(league.tierList.ruleset);
+      return { league, ruleset };
+    },
+    (r) => {
+      r.path("info", (r) => {
+        r.get(async (req, res, ctx) => {
+          await ctx.league.populate<{ divisions: LeagueDivisionDocument[] }>(
+            "divisions",
+            ["divisionKey", "name"],
+          );
+
+          const divisions = (
+            ctx.league.divisions as LeagueDivisionDocument[]
+          ).map((div) => ({
+            divisionKey: div.divisionKey,
+            name: div.name,
+          }));
+
+          res.json({
+            name: ctx.league.name,
+            tournamentKey: ctx.league.tournamentKey,
+            description: ctx.league.description,
+            format: ctx.league.format,
+            ruleset: ctx.league.ruleset,
+            signUpDeadline: ctx.league.signUpDeadline,
+            draftStart: ctx.league.draftStart,
+            draftEnd: ctx.league.draftEnd,
+            seasonStart: ctx.league.seasonStart,
+            seasonEnd: ctx.league.seasonEnd,
+            logo: ctx.league.logo,
+            divisions,
+            discord: ctx.league.discord,
+          });
+        });
+      });
+      r.path("roles", (r) => {
+        r.get(async (req, res, ctx) => {
+          res.json(getRoles(req.auth?.payload.sub));
+        });
+      });
+      r.path("signup", (r) => {
+        r.get(async (req, res, ctx) => {
+          const users = await LeagueCoachModel.find({
+            tournamentId: ctx.league._id,
+          });
+
+          const coachesWithLogos = users.map((user) => {
+            const division = undefined;
+
+            return {
+              name: user.discordName,
+              timezone: user.timezone,
+              experience: user.experience,
+              dropped: user.droppedBefore ? user.droppedWhy : undefined,
+              status: user.status,
+              teamName: user.teamName,
+              signedUpAt: user.signedUpAt,
+              logo: user.logo ? s3Service.getPublicUrl(user.logo) : undefined,
+              division,
+            };
+          });
+
+          res.json(coachesWithLogos);
+        });
+        r.post(async (req, res, ctx) => {
+          const auth0Id = req.auth!.payload.sub!;
+          const signup = BattleZone.validateSignUpForm(req.body, auth0Id);
+
+          let leagueUser = await LeagueCoachModel.findOne({
+            auth0Id,
+            tournamentId: ctx.league._id,
+          });
+
+          if (leagueUser) {
+            throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+              tournamentId: ctx.league._id.toString(),
+            });
+          }
+
+          leagueUser = new LeagueCoachModel({
+            auth0Id,
+            discordName: signup.name,
+            timezone: signup.timezone,
+            tournamentId: ctx.league._id,
+            teamName: signup.teamName,
+            experience: signup.experience,
+            droppedBefore: signup.droppedBefore,
+            droppedWhy: signup.droppedWhy,
+            confirmed: signup.confirm,
+            status: "pending",
+            signedUpAt: new Date(),
+          });
+          await leagueUser.save();
+          if (client) {
+            try {
+              const guild = await client.guilds.fetch("1183936734719922176");
+              if (guild) {
+                const channel = guild.channels.cache.get(
+                  "1303896194187132978",
+                ) as TextChannel;
+                if (channel && channel.isTextBased()) {
+                  await ctx.league.populate<{ coaches: LeagueCoachDocument[] }>(
+                    "coaches",
+                  );
+                  const totalCoaches = ctx.league.coaches.length;
+                  channel.send(
+                    `${signup.name} signed up for **${ctx.league.name}**. Total coaches: ${totalCoaches}.`,
+                  );
+                }
+              }
+            } catch (discordError) {
+              logger.warn("Failed to send Discord notification:", discordError);
+            }
+          }
+
+          return res.status(201).json({
+            message: "Sign up successful.",
+            userId: leagueUser._id.toString(),
+            tournamentId: ctx.league._id.toString(),
+          });
+        });
+      });
+      r.path("rules", (r) => {
+        r.get(async (req, res, ctx) => {
+          res.json(ctx.league.rules);
+        });
+      });
+      r.path("tier-list", (r) => {
+        r.get(async (req, res, ctx) => {
+          const { division } = req.query;
+          const tierList = await getTierList(ctx.league);
+          const divisions = await getDrafted(
+            ctx.league,
+            division as string | string[],
+          );
+          res.json({ tierList, divisions });
+        });
+        r.path("edit", (r) => {
+          r.auth();
+          r.get(async (req, res, ctx) => {
+            const { division } = req.query;
+            const tierList = await getTierList(ctx.league!, true);
+            const divisions = await getDrafted(
+              ctx.league!,
+              division as string | string[],
+            );
+            res.json({ tierList, divisions });
+          });
+          r.post(async (req, res, ctx) => {
+            const { tiers } = req.body;
+            if (!tiers || !Array.isArray(tiers))
+              throw new PDZError(ErrorCodes.TIER_LIST.INVALID_DATA, {
+                field: "tiers",
+                expected: "array",
+                received: typeof tiers,
+              });
+            await updateTierList(ctx.league, tiers);
+            logger.info(
+              `Tier list updated for league ${ctx.league.tournamentKey} by ${req.auth?.payload.sub}`,
+            );
+            res.json({
+              success: true,
+              message: "Tier list updated successfully",
+            });
+          });
+        });
+      });
+      r.path("schedule", (r) => {
+        r.get(async (req, res, ctx) => {
+          const stages = await LeagueStageModel.find({
+            tournamentId: ctx.league._id,
+          });
+          const stagesWithMatchups = await Promise.all(
+            stages.map(async (stage) => {
+              const matchups = await LeagueMatchupModel.find({
+                stageId: stage._id,
+              }).populate([
+                {
+                  path: "team1Id",
+                  select: "logo coach",
+                  populate: {
+                    path: "coach",
+                    select: "teamName",
+                  },
+                },
+                {
+                  path: "team2Id",
+                  select: "logo coach",
+                  populate: {
+                    path: "coach",
+                    select: "teamName",
+                  },
+                },
+              ]);
+              const transformedMatchups = matchups.map((matchup) => {
+                const team1Doc = matchup.team1Id as any;
+                const team2Doc = matchup.team2Id as any;
+                const { team1Score, team2Score, winner } =
+                  calculateTeamMatchupScoreAndWinner(matchup);
+
+                return {
+                  team1: {
+                    teamName: team1Doc?.coach?.teamName || "Unknown Team",
+                    coach: team1Doc?.coach?.teamName || "Unknown Coach",
+                    score: team1Score,
+                    logo: team1Doc?.logo || "",
+                    winner:
+                      winner === "team1"
+                        ? true
+                        : winner === "team2"
+                          ? false
+                          : undefined,
+                  },
+                  team2: {
+                    teamName: team2Doc?.coach?.teamName || "Unknown Team",
+                    coach: team2Doc?.coach?.teamName || "Unknown Coach",
+                    score: team2Score,
+                    logo: team2Doc?.logo || "",
+                    winner:
+                      winner === "team2"
+                        ? true
+                        : winner === "team1"
+                          ? false
+                          : undefined,
+                  },
+                  matches: matchup.results.map((result) => ({
+                    link: result.replay || "",
+                    team1: {
+                      team: result.team1.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team1),
+                      winner: result.winner === "team1",
+                    },
+                    team2: {
+                      team: result.team2.pokemon.map((pokemon) => ({
+                        id: pokemon.id,
+                        name: pokemon.name,
+                        status: pokemon.stats?.deaths
+                          ? "fainted"
+                          : pokemon.stats?.brought
+                            ? "brought"
+                            : undefined,
+                      })),
+                      score: calculateResultScore(result.team2),
+                      winner: result.winner === "team2",
+                    },
+                  })),
+                };
+              });
+              return {
+                _id: stage._id,
+                name: stage.name,
+                matchups: transformedMatchups,
+              };
+            }),
+          );
+          res.json(stagesWithMatchups);
+        });
+      });
+      r.path("divisions", (r) => {
+        r.param("division_id", DivisionHandler, (r) => {
+          r.get(async (req, res, ctx) => {
+            res.json(
+              await getDivisionDetails(
+                ctx.league,
+                ctx.division,
+                req.auth!.payload.sub!,
+              ),
+            );
+          });
+          r.path("picks", (r) => {
+            r.get(async (req, res, ctx) => {
+              const division = await LeagueDivisionModel.findById(
+                ctx.division._id,
+              ).populate<{
+                teams: (LeagueTeamDocument & {
+                  picks: Types.DocumentArray<
+                    TeamDraft & { picker: LeagueCoachDocument }
+                  >;
+                  coach: LeagueCoachDocument;
+                })[];
+              }>({
+                path: "teams",
+                populate: ["draft.picker", "coach"],
+              });
+
+              if (!division) throw new PDZError(ErrorCodes.DIVISION.NOT_FOUND);
+
+              const allPicks = await Promise.all(
+                division.teams.map(async (team) => {
+                  const picks = await Promise.all(
+                    team.draft.map(async (draftItem) => ({
+                      pokemon: {
+                        id: draftItem.pokemon.id,
+                        name: getName(draftItem.pokemon.id),
+                        tier: await getPokemonTier(
+                          ctx.league,
+                          draftItem.pokemon.id,
+                        ),
+                      },
+                      timestamp: draftItem.timestamp,
+                      picker: (draftItem.picker as LeagueCoach)?.auth0Id,
+                    })),
+                  );
+
+                  const coach = team.coach as LeagueCoachDocument;
+                  return {
+                    name: coach.teamName,
+                    picks: picks,
+                    id: team._id.toString(),
+                  };
+                }),
+              );
+
+              res.json(allPicks);
+            });
+          });
+          r.path("schedule", (r) => {
+            r.get(async (req, res, ctx) => {
+              const stages = await LeagueStageModel.find({
+                divisionIds: ctx.division._id,
+              });
+
+              const stagesWithMatchups = await Promise.all(
+                stages.map(async (stage) => {
+                  const matchups = await LeagueMatchupModel.find({
+                    stageId: stage._id,
+                  }).populate([
+                    {
+                      path: "team1Id",
+                      select: "logo coach",
+                      populate: {
+                        path: "coach",
+                        select: "name teamName",
+                      },
+                    },
+                    {
+                      path: "team2Id",
+                      select: "logo coach",
+                      populate: {
+                        path: "coach",
+                        select: "name teamName",
+                      },
+                    },
+                  ]);
+
+                  const transformedMatchups = matchups.map((matchup) => {
+                    const team1Doc = matchup.team1Id as any;
+                    const team2Doc = matchup.team2Id as any;
+                    const { team1Score, team2Score, winner } =
+                      calculateTeamMatchupScoreAndWinner(matchup);
+
+                    return {
+                      team1: {
+                        teamName: team1Doc?.coach?.teamName || "Unknown Team",
+                        coach: team1Doc?.coach?.name || "Unknown Coach",
+                        score: team1Score,
+                        logo: team1Doc?.logo || "",
+                        winner:
+                          winner === "team1"
+                            ? true
+                            : winner === "team2"
+                              ? false
+                              : undefined,
+                      },
+                      team2: {
+                        teamName: team2Doc?.coach?.teamName || "Unknown Team",
+                        coach: team2Doc?.coach?.name || "Unknown Coach",
+                        score: team2Score,
+                        logo: team2Doc?.logo || "",
+                        winner:
+                          winner === "team2"
+                            ? true
+                            : winner === "team1"
+                              ? false
+                              : undefined,
+                      },
+                      matches: matchup.results.map((result) => ({
+                        link: result.replay || "",
+                        team1: {
+                          team: result.team1.pokemon.map((pokemon) => ({
+                            id: pokemon.id,
+                            name: pokemon.name,
+                            status: pokemon.stats?.deaths
+                              ? "fainted"
+                              : pokemon.stats?.brought
+                                ? "brought"
+                                : undefined,
+                          })),
+                          score: calculateResultScore(result.team1),
+                          winner: result.winner === "team1",
+                        },
+                        team2: {
+                          team: result.team2.pokemon.map((pokemon) => ({
+                            id: pokemon.id,
+                            name: pokemon.name,
+                            status: pokemon.stats?.deaths
+                              ? "fainted"
+                              : pokemon.stats?.brought
+                                ? "brought"
+                                : undefined,
+                          })),
+                          score: calculateResultScore(result.team2),
+                          winner: result.winner === "team2",
+                        },
+                      })),
+                    };
+                  });
+
+                  return {
+                    _id: stage._id,
+                    name: stage.name,
+                    matchups: transformedMatchups,
+                  };
+                }),
+              );
+
+              res.json(stagesWithMatchups);
+            });
+          });
+          r.path("standings", (r) => {
+            r.get(async (req, res, ctx) => {
+              const stages = await LeagueStageModel.find({
+                divisionIds: ctx.division._id,
+              });
+
+              const allMatchups = await LeagueMatchupModel.find({
+                stageId: { $in: stages.map((s) => s._id) },
+              }).populate([
+                {
+                  path: "team1Id",
+                  select: "logo coach",
+                  populate: { path: "coach", select: "teamName" },
+                },
+                {
+                  path: "team2Id",
+                  select: "logo coach",
+                  populate: { path: "coach", select: "teamName" },
+                },
+              ]);
+
+              const divisionTeams = await LeagueTeamModel.find({
+                _id: { $in: ctx.division.teams },
+              }).populate({ path: "coach", select: "teamName" });
+
+              const coachStandings = await calculateDivisionCoachStandings(
+                allMatchups,
+                stages,
+                divisionTeams,
+              );
+
+              const pokemonStandings =
+                await calculateDivisionPokemonStandings(allMatchups);
+
+              res.json({
+                coachStandings: {
+                  //TODO: make dynamic
+                  cutoff: 8,
+                  weeks: stages.length,
+                  teams: coachStandings,
+                },
+                pokemonStandings,
+              });
+            });
+          });
+          r.path("order", (r) => {
+            r.get(async (req, res, ctx) => {
+              await ctx.division.populate<{ teams: LeagueTeamDocument[] }>(
+                "teams",
+              );
+
+              const draftStyle = ctx.division.draftStyle;
+              const numberOfRounds = (
+                ctx.league.tierList as LeagueTierListDocument
+              ).draftCount.max;
+
+              const initialTeamOrder = ctx.division
+                .teams as LeagueTeamDocument[];
+              type DraftPick = {
+                teamName: string;
+                pokemon?: { id: string; name: string };
+                skipTime?: Date;
+              };
+
+              type DraftRound = DraftPick[];
+
+              const draftRounds: DraftRound[] = [];
+
+              for (let round = 0; round < numberOfRounds; round++) {
+                const currentRound: DraftPick[] = [];
+                let pickingOrder = [...initialTeamOrder];
+
+                if (draftStyle === "snake" && round % 2 === 1) {
+                  pickingOrder.reverse();
+                }
+
+                for (const [index, team] of pickingOrder.entries()) {
+                  const coach = team.coach as LeagueCoachDocument;
+                  const draftPick: DraftPick = { teamName: coach.teamName };
+                  if (team.draft[round]) {
+                    const pokemonId = team.draft[round].pokemon.id;
+                    const pokemonName = getName(pokemonId);
+                    draftPick.pokemon = { id: pokemonId, name: pokemonName };
+                  }
+                  if (
+                    ctx.division.draftCounter ===
+                    round * pickingOrder.length + index
+                  ) {
+                    // TODO: remove random for production
+                    // draftPick.skipTime = division.skipTime
+                    const now = new Date();
+                    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+                    const randomOffsetMinutes = Math.random() * 20 - 10; // Random number between -10 and +10
+                    const randomOffsetMilliseconds =
+                      randomOffsetMinutes * 60 * 1000; // Convert to milliseconds
+                    draftPick.skipTime = new Date(
+                      now.getTime() + thirtyMinutes + randomOffsetMilliseconds,
+                    );
+                  }
+                  currentRound.push(draftPick);
+                }
+                draftRounds.push(currentRound);
+              }
+
+              res.json(draftRounds);
+            });
+          });
+          r.path("power-rankings", (r) => {
+            r.get(async (req, res, ctx) => {
+              const tierList = ctx.league.tierList as LeagueTierListDocument;
+              const ruleset = getRuleset(tierList.ruleset);
+              const teams = await Promise.all(
+                (
+                  ctx.division.teams as (LeagueTeamDocument & {
+                    coach: LeagueCoachDocument;
+                  })[]
+                ).map(async (team, index) => {
+                  const teamRaw = team.draft.map((pick) => ({
+                    id: pick.pokemon.id,
+                    capt: pick.capt,
+                  }));
+                  const draft = DraftSpecie.getTeam(teamRaw, ruleset);
+                  const typechart = new Typechart(draft);
+                  const summary = new SummaryClass(draft);
+                  const coach = team.coach as LeagueCoachDocument;
+                  return {
+                    info: {
+                      name: coach.teamName,
+                      index,
+                      id: team._id.toString(),
+                    },
+                    typechart: typechart.toJson(),
+                    recommended: typechart.recommended(),
+                    summary: summary.toJson(),
+                    movechart: await movechart(draft, ruleset),
+                    coverage: await plannerCoverage(draft),
+                  };
+                }),
+              );
+              return res.json(teams);
+            });
+          });
+          r.path("teams", (r) => {
+            r.param(
+              "team_id",
+              async (req, res, ctx, team_id) => {
+                const team = await LeagueTeamModel.findById(team_id);
+
+                if (!team)
+                  throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+                    teamId: team_id,
+                  });
+
+                if (!ctx.division.teams.some((t) => t._id.equals(team._id))) {
+                  throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, {
+                    teamId: team_id,
+                    divisionKey: ctx.division.divisionKey,
+                  });
+                }
+                return {
+                  team,
+                };
+              },
+              (r) => {
+                r.get(async (req, res, ctx) => {
+                  const team = await LeagueTeamModel.findById(
+                    req.params["team_id"]!,
+                  );
+                  if (!team) {
+                    throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+                      teamId: req.params["team_id"],
+                    });
+                  }
+
+                  await ctx.league.populate<{
+                    tierList: LeagueTierListDocument;
+                  }>("tierList");
+
+                  const draft = await Promise.all(
+                    team.draft.map(async (draftItem) => {
+                      const tier = await getPokemonTier(
+                        ctx.league,
+                        draftItem.pokemon.id,
+                      );
+                      const pokemonName = getName(draftItem.pokemon.id);
+                      return {
+                        id: draftItem.pokemon.id,
+                        name: pokemonName,
+                        tier,
+                      };
+                    }),
+                  );
+
+                  // Get pokemon standings for this team
+                  const teamMatchups = await LeagueMatchupModel.find({
+                    $or: [{ team1Id: team._id }, { team2Id: team._id }],
+                  }).populate([
+                    {
+                      path: "team1Id",
+                      select: "coach",
+                      populate: "coach",
+                    },
+                    {
+                      path: "team2Id",
+                      select: "coach",
+                      populate: "coach",
+                    },
+                  ]);
+
+                  // Filter to only include pokemon for this team
+                  const pokemonStandings =
+                    await calculateDivisionPokemonStandings(
+                      teamMatchups,
+                      team._id.toString(),
+                    );
+
+                  const coach = team.coach as LeagueCoachDocument;
+
+                  res.json({
+                    name: coach.teamName,
+                    timezone: coach.timezone,
+                    logo: coach.logo,
+                    draft,
+                    pokemonStandings,
+                  });
+                });
+                r.path("draft", (r) => {
+                  r.post(async (req, res, ctx) => {
+                    const { pokemonId } = req.body;
+                    if (!pokemonId)
+                      throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+                        field: "pokemonId",
+                      });
+
+                    if (!(await isCoach(ctx.team, req.auth!.payload.sub!)))
+                      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
+                        reason: "User is not a coach on this team",
+                      });
+
+                    await draftPokemon(
+                      ctx.league,
+                      ctx.division,
+                      ctx.team,
+                      pokemonId,
+                    );
+
+                    return res
+                      .status(200)
+                      .json({ message: "Drafted successfully." });
+                  });
+                });
+                r.path("picks", (r) => {
+                  r.post(async (req, res, ctx) => {
+                    ctx.team.picks = req.body.picks;
+                    await ctx.team.save();
+                    return res
+                      .status(200)
+                      .json({ message: "Draft pick set successfully." });
+                  });
+                });
+              },
+            );
+          });
+        });
+      });
+      r.path("manage", (r) => {
+        r.path("divisions", (r) => {
+          r.param("division_id", DivisionHandler, (r) => {
+            r.path("state", (r) => {
+              r.post(async (req, res, ctx) => {
+                const { state } = req.body;
+                setDivsionState(ctx.league, ctx.division, state);
+                return res
+                  .status(200)
+                  .json({ message: "Timer set successfully." });
+              });
+            });
+            r.path("setdraft", (r) => {
+              r.post(async (req, res, ctx) => {
+                const { pokemonId, teamId } = req.body;
+                if (!pokemonId || !teamId)
+                  throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+                    required: ["pokemonId", "teamId"],
+                    received: { pokemonId, teamId },
+                  });
+                const team = ctx.division.teams.find((team) =>
+                  team._id.equals(teamId),
+                ) as LeagueTeamDocument | undefined;
+                if (!team)
+                  throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, {
+                    teamId,
+                  });
+
+                await draftPokemon(ctx.league, ctx.division, team, pokemonId);
+
+                return res
+                  .status(200)
+                  .json({ message: "Draft pick set successfully." });
+              });
+            });
+          });
+        });
+      });
+    },
+  );
+});
