@@ -45,17 +45,21 @@ export class Typechart {
   } {
     const teamTypeChart = this.team
       .map((pokemon) => pokemon.typechart())
-      .reduce((totalTypes, pokemon) => {
-        for (let type in pokemon) {
-          let log = pokemon[type] > 0 ? Math.log2(pokemon[type]) : -2;
-          if (type in totalTypes) {
-            totalTypes[type] += log;
-          } else {
-            totalTypes[type] = log;
+      .reduce(
+        (totalTypes, pokemon) => {
+          for (const type of Object.keys(pokemon) as TypeName[]) {
+            const value = pokemon[type];
+            let log = value > 0 ? Math.log2(value) : -2;
+            if (type in totalTypes) {
+              totalTypes[type] += log;
+            } else {
+              totalTypes[type] = log;
+            }
           }
-        }
-        return totalTypes;
-      }, {});
+          return totalTypes;
+        },
+        {} as Record<TypeName, number>,
+      );
     const types: TypeName[] = Array.from(this.team[0].ruleset.types)
       .map((type) => type.toString())
       .filter((x) => x != "Stellar");
@@ -65,7 +69,7 @@ export class Typechart {
     }, new Set<TypeName>());
     const base = Object.values(teamTypeChart).reduce(
       (sum, e) => sum + Math.pow(2, e),
-      0
+      0,
     );
     let typeList: [[TypeName] | [TypeName, TypeName], number][] = [];
     for (let i = 0; i < types.length; i++) {
@@ -74,8 +78,9 @@ export class Typechart {
         if (i !== j) selectedTypes.push(types[j]);
         let newTC = { ...teamTypeChart };
         let tw = typeWeak(selectedTypes, this.team[0].ruleset);
-        for (let type in tw) {
-          let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;
+        for (const type of Object.keys(tw) as TypeName[]) {
+          const value = tw[type];
+          let log = value > 0 ? Math.log2(value) : -2;
           if (type in newTC) {
             newTC[type] += log;
           } else {
@@ -100,8 +105,9 @@ export class Typechart {
       const newTC = { ...teamTypeChart };
       const draftSpecies = new DraftSpecie(species, this.team[0].ruleset);
       const tw = draftSpecies.typechart();
-      for (let type in tw) {
-        let log = tw[type] > 0 ? Math.log2(tw[type]) : -2;
+      for (const type of Object.keys(tw) as TypeName[]) {
+        const value = tw[type];
+        let log = value > 0 ? Math.log2(value) : -2;
         if (type in newTC) {
           newTC[type] += log;
         } else {
@@ -127,7 +133,7 @@ export class Typechart {
       unique: {
         pokemon: pokemonList
           .filter(([pokemon]) =>
-            pokemon.types.some((type) => !usedTypes.has(type))
+            pokemon.types.some((type) => !usedTypes.has(type)),
           )
           .slice(0, 10)
           .map(([pokemon]) => ({

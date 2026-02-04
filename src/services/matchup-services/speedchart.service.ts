@@ -126,8 +126,10 @@ function getSpeedTiers(pokemon: DraftSpecie, level: number) {
 function tierModifiers(teams: Speedchart["teams"]): string[] {
   const uniqueModifiers: Set<string> = new Set(
     teams.flatMap((team) =>
-      team.flatMap((pokemon) => pokemon.tiers.flatMap((tier) => tier.modifiers))
-    )
+      team.flatMap((pokemon) =>
+        pokemon.tiers.flatMap((tier) => tier.modifiers),
+      ),
+    ),
   );
   return Array.from(uniqueModifiers);
 }
@@ -135,7 +137,7 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
 function generateTiers(
   pokemon: DraftSpecie,
   level: number,
-  configurations: Configurations
+  configurations: Configurations,
 ) {
   const tiers: Tier[] = [];
   for (const status of configurations.statuses) {
@@ -186,10 +188,8 @@ function generateTiers(
                   if (additional.modifier) modifiers.push(additional.modifier);
                   tiers.push({
                     speed: Math.floor(
-                      //TODO: fix ts-expect-error by updating @smogon/calc
-                      // @ts-expect-error @smogon/calc uses older Generation version than mutual dependency
                       getFinalSpeed(pokemon.ruleset, pokemonCalc, field, side) *
-                        additional.mult
+                        additional.mult,
                     ),
                     modifiers,
                   });
@@ -206,14 +206,14 @@ function generateTiers(
 
 export function speedchart(
   teamsRaw: DraftSpecie[][],
-  level: number
+  level: number,
 ): Speedchart {
   const teams = teamsRaw.map((team) =>
     team.map((pokemon) => ({
       ...pokemon.toClient(),
       spe: pokemon.baseStats.spe,
       tiers: getSpeedTiers(pokemon, level),
-    }))
+    })),
   );
   const modifiers = tierModifiers(teams);
   return {
