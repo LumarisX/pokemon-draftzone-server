@@ -3,17 +3,19 @@ import { Ruleset } from "../../data/rulesets";
 
 export function typeWeak(
   types: [TypeName] | [TypeName, TypeName],
-  ruleset: Ruleset
+  ruleset: Ruleset,
 ) {
-  const conversion = [1, 2, 0.5, 0];
-  let adjustedDamage: { [key: string]: number } = {};
-  types.forEach((type) => {
-    const damageTaken = ruleset.dex.types.get(type).damageTaken;
-    Object.keys(damageTaken).forEach((key) => {
-      adjustedDamage[key] = adjustedDamage.hasOwnProperty(key)
-        ? adjustedDamage[key] * conversion[damageTaken[key]]
-        : conversion[damageTaken[key]];
-    });
-  });
-  return adjustedDamage;
+  const typeNames = Object.keys(ruleset.dex.data.Types).map(
+    (id) => ruleset.dex.types.get(id).name,
+  );
+
+  return typeNames.reduce(
+    (acc, typeName) => {
+      const immune = !ruleset.dex.getImmunity(typeName, types);
+      const effectiveness = ruleset.dex.getEffectiveness(typeName, types);
+      acc[typeName] = immune ? 0 : Math.pow(2, effectiveness);
+      return acc;
+    },
+    {} as Record<TypeName, number>,
+  );
 }
