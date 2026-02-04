@@ -12,7 +12,7 @@ const draftSchema = new Schema<DraftData>(
     teamName: {
       type: String,
     },
-    tournamentId: {
+    leagueId: {
       type: String,
       required: true,
     },
@@ -49,7 +49,7 @@ const draftSchema = new Schema<DraftData>(
 export type DraftData = {
   leagueName: string;
   teamName: string;
-  tournamentId: string;
+  leagueId: string;
   format: FormatId;
   ruleset: RulesetId;
   doc?: string;

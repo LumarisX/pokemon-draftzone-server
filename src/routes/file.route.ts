@@ -242,7 +242,7 @@ export const FileRoute = createRoute()
             contentType: z.string(),
           })
           .parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx, req) => {
       if (!s3Service.isEnabled())
         throw new PDZError(ErrorCodes.FILE.SERVICE_UNAVAILABLE);
       const { fileName, contentType } = ctx.validatedQuery;
@@ -264,7 +264,7 @@ export const FileRoute = createRoute()
       logger.info(
         `Generated presigned URL for league upload: ${key} (user: ${ctx.sub})`,
       );
-      return res.json({ url, key });
+      return { url, key };
     });
   });
   r.path("team-upload").use(validateUploadRequest)((r) => {
@@ -276,7 +276,7 @@ export const FileRoute = createRoute()
             contentType: z.string(),
           })
           .parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx, req) => {
       if (!s3Service.isEnabled())
         throw new PDZError(ErrorCodes.FILE.SERVICE_UNAVAILABLE);
       const { fileName, contentType } = ctx.validatedQuery;
@@ -298,7 +298,7 @@ export const FileRoute = createRoute()
       logger.info(
         `Generated presigned URL for team upload: ${key} (user: ${ctx.sub})`,
       );
-      return res.json({ url, key });
+      return { url, key };
     });
   });
   r.path("confirm-upload")((r) => {
@@ -313,7 +313,7 @@ export const FileRoute = createRoute()
             tournamentId: z.string().optional(),
           })
           .parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx) => {
       if (!s3Service.isEnabled())
         throw new PDZError(ErrorCodes.FILE.SERVICE_UNAVAILABLE);
       const { fileKey, fileSize, contentType, relatedEntityId, tournamentId } =
@@ -372,11 +372,11 @@ export const FileRoute = createRoute()
         `Upload confirmed for file: ${fileKey} (${result.size} bytes, user: ${ctx.sub})`,
       );
 
-      return res.json({
+      return {
         message: "Upload verified",
         size: result.size,
         key: fileKey,
-      });
+      };
     });
   });
 });

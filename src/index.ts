@@ -134,12 +134,3 @@ if (!process.env.JEST_WORKER_ID) {
     }
   })();
 }
-export class PZError extends Error {
-  constructor(
-    public status: number,
-    message?: string,
-  ) {
-    super(message);
-    Object.setPrototypeOf(this, PZError.prototype);
-  }
-}

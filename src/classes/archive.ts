@@ -27,7 +27,7 @@ export class Archive {
     const data: ArchiveV2Data = {
       archiveType: "ArchiveV2",
       leagueName: this.draft.leagueName,
-      tournamentId: this.draft.tournamentId,
+      leagueId: this.draft.leagueId,
       format: this.draft.format as FormatId,
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,

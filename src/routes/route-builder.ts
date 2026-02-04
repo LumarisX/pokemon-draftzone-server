@@ -6,22 +6,48 @@ import { jwtCheck } from "../middleware/jwtcheck";
 
 const HTTP_METHODS = ["get", "post", "patch", "delete"] as const;
 
+type PDZAuthContext = { sub: string };
+type PDZRequest = Request & {
+  __pdzAuth?: PDZAuthContext;
+  __pdzContext?: Record<string, any>;
+};
+
+function getPdzAuth(req: Request): PDZAuthContext | undefined {
+  return (req as PDZRequest).__pdzAuth;
+}
+
+function setPdzAuth(req: Request, auth: PDZAuthContext): void {
+  (req as PDZRequest).__pdzAuth = auth;
+}
+
+function getPdzContext(req: Request): Record<string, any> | undefined {
+  return (req as PDZRequest).__pdzContext;
+}
+
+function setPdzContext(req: Request, ctx: Record<string, any>): void {
+  (req as PDZRequest).__pdzContext = ctx;
+}
+
+function getCtxSub(ctx: unknown): string | undefined {
+  const sub = (ctx as { sub?: unknown })?.sub;
+  return typeof sub === "string" ? sub : undefined;
+}
+
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 type ContextBuilder<TParentCtx = any, TReturn = any> = (
+  parentCtx: TParentCtx,
   req: Request,
   res: Response,
-  parentCtx: TParentCtx,
-  paramValue: string,
 ) => TReturn | Promise<TReturn>;
 
 type ParamValidator = (value: string) => boolean;
 type ParamTransformer<T> = (value: string) => T;
 type ParamLoader<TParentCtx, TTransformed, TReturn> = (
-  req: Request,
-  res: Response,
   parentCtx: TParentCtx,
   transformedValue: TTransformed,
+  req: Request,
+  res: Response,
 ) => TReturn | Promise<TReturn>;
 
 type ParamConfig<TParentCtx, TTransformed, TReturn> = {
@@ -32,9 +58,9 @@ type ParamConfig<TParentCtx, TTransformed, TReturn> = {
 };
 
 type Handler<TCtx = any> = (
+  ctx: TCtx,
   req: Request,
   res: Response,
-  ctx: TCtx,
 ) => Promise<any> | any;
 
 type MethodHandler = { [m in HttpMethod]: Handler };
@@ -73,15 +99,21 @@ export class Route {
     return async (req: Request, res: Response) => {
       try {
         let ctx = parentContext;
-        if ((req as any).__pdzAuth) {
-          ctx = { ...ctx, ...(req as any).__pdzAuth };
+        const pdzAuth = getPdzAuth(req);
+        if (pdzAuth) {
+          ctx = { ...ctx, ...pdzAuth };
         }
 
-        if ((req as any).__pdzContext) {
-          ctx = { ...ctx, ...(req as any).__pdzContext };
+        const pdzContext = getPdzContext(req);
+        if (pdzContext) {
+          ctx = { ...ctx, ...pdzContext };
         }
 
-        await handler(req, res, ctx);
+        const result = await handler(ctx, req, res);
+
+        if (!res.headersSent && result !== undefined) {
+          return res.json(result);
+        }
       } catch (error) {
         if (isPDZError(error)) {
           return res.status(error.status).json(error.toJSON());
@@ -117,7 +149,7 @@ export class Route {
       router.use(async (req: Request, res: Response, next) => {
         try {
           await this.executeAuthCheck(req, res);
-          (req as any).__pdzAuth = { sub: req.auth!.payload.sub! };
+          setPdzAuth(req, { sub: req.auth!.payload.sub! });
           next();
         } catch (error) {
           if (isPDZError(error)) {
@@ -134,18 +166,20 @@ export class Route {
       router.use(async (req: Request, res: Response, next) => {
         try {
           let ctx = parentContext;
-          if ((req as any).__pdzAuth) {
-            ctx = { ...ctx, ...(req as any).__pdzAuth };
+          const pdzAuth = getPdzAuth(req);
+          if (pdzAuth) {
+            ctx = { ...ctx, ...pdzAuth };
           }
-          if ((req as any).__pdzContext) {
-            ctx = { ...ctx, ...(req as any).__pdzContext };
+          const pdzContext = getPdzContext(req);
+          if (pdzContext) {
+            ctx = { ...ctx, ...pdzContext };
           }
-          const nodeContext = await node.context!(req, res, ctx, "");
+          const nodeContext = await node.context!(ctx, req, res);
 
-          (req as any).__pdzContext = {
-            ...((req as any).__pdzContext || {}),
+          setPdzContext(req, {
+            ...(getPdzContext(req) || {}),
             ...nodeContext,
-          };
+          });
           next();
         } catch (error) {
           if (isPDZError(error)) {
@@ -187,7 +221,7 @@ function createMiddlewareWrapper<TCtx>(
   middleware: RequestHandler[],
   handler: Handler<TCtx>,
 ): Handler<TCtx> {
-  return async (req: Request, res: Response, ctx: TCtx) => {
+  return async (ctx: TCtx, req: Request, res: Response) => {
     for (const mw of middleware) {
       if (res.headersSent) return;
 
@@ -199,7 +233,7 @@ function createMiddlewareWrapper<TCtx>(
       });
     }
 
-    if (!res.headersSent) return handler(req, res, ctx);
+    if (!res.headersSent) return handler(ctx, req, res);
   };
 }
 
@@ -218,13 +252,21 @@ async function executeAuthCheckStandalone(
 function createAuthWrapper<TCtx>(
   handler: Handler<TCtx & { sub: string }>,
 ): Handler<TCtx> {
-  return async (req: Request, res: Response, ctx: TCtx) => {
-    let authData = (req as any).__pdzAuth;
+  return async (ctx: TCtx, req: Request, res: Response) => {
+    let authData = getPdzAuth(req);
+
+    if (!authData) {
+      const ctxSub = getCtxSub(ctx);
+      if (ctxSub) {
+        authData = { sub: ctxSub };
+        setPdzAuth(req, authData);
+      }
+    }
 
     if (!authData) {
       try {
         authData = await executeAuthCheckStandalone(req, res);
-        (req as any).__pdzAuth = authData;
+        setPdzAuth(req, authData);
       } catch (error) {
         if (isPDZError(error)) {
           return res.status(error.status).json(error.toJSON());
@@ -236,7 +278,7 @@ function createAuthWrapper<TCtx>(
     }
 
     const authCtx = { ...ctx, ...authData } as TCtx & { sub: string };
-    return handler(req, res, authCtx);
+    return handler(authCtx, req, res);
   };
 }
 
@@ -247,7 +289,7 @@ function createValidationWrapper<TBody, TQuery, TCtx>(
   },
   handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
 ): Handler<TCtx> {
-  return async (req: Request, res: Response, ctx: TCtx) => {
+  return async (ctx: TCtx, req: Request, res: Response) => {
     const validatedCtx = { ...ctx } as TCtx & {
       validatedBody: TBody;
       validatedQuery: TQuery;
@@ -271,7 +313,7 @@ function createValidationWrapper<TBody, TQuery, TCtx>(
       }
     }
 
-    return handler(req, res, validatedCtx);
+    return handler(validatedCtx, req, res);
   };
 }
 
@@ -352,7 +394,7 @@ export class RouteBuilder<TCtx = {}> {
 
   param<TNewCtx>(
     paramName: string,
-    contextBuilder: ContextBuilder<TCtx, TNewCtx>,
+    loader: ParamLoader<TCtx, string, TNewCtx>,
   ): ConfigurableBuilder<TCtx & TNewCtx>;
   param<TTransformed = string, TNewCtx = any>(
     paramName: string,
@@ -361,7 +403,7 @@ export class RouteBuilder<TCtx = {}> {
   param<TTransformed = string, TNewCtx = any>(
     paramName: string,
     contextBuilderOrConfig:
-      | ContextBuilder<TCtx, TNewCtx>
+      | ParamLoader<TCtx, string, TNewCtx>
       | ParamConfig<TCtx, TTransformed, TNewCtx>,
   ): ConfigurableBuilder<TCtx & TNewCtx> {
     const paramSegment = `:${paramName}`;
@@ -371,36 +413,33 @@ export class RouteBuilder<TCtx = {}> {
 
       if (typeof contextBuilderOrConfig === "function") {
         childBuilder.node.context = async (
+          parentCtx: TCtx,
           req: Request,
           res: Response,
-          parentCtx: TCtx,
         ) => {
           const value = req.params[paramName];
-          return contextBuilderOrConfig(req, res, parentCtx, value);
+          return contextBuilderOrConfig(parentCtx, value, req, res);
         };
       } else {
         const config = contextBuilderOrConfig;
         childBuilder.node.context = async (
+          parentCtx: TCtx,
           req: Request,
           res: Response,
-          parentCtx: TCtx,
         ) => {
           const value = req.params[paramName];
 
           if (config.validate && !config.validate(value)) {
-            if (config.onValidationError) {
+            if (config.onValidationError)
               throw config.onValidationError(paramName, value);
-            }
             throw new Error(
               `Invalid parameter '${paramName}': validation failed for value '${value}'`,
             );
           }
-
           const transformed = config.transform
             ? config.transform(value)
             : (value as any);
-
-          return config.loader(req, res, parentCtx, transformed);
+          return config.loader(parentCtx, transformed, req, res);
         };
       }
 

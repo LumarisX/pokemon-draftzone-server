@@ -271,16 +271,16 @@ export const DataRoutes: RouteOld = {
 
 export const DataRoute = createRoute()((r) => {
   r.path("formats")((r) => {
-    r.get((req, res, ctx) => res.json(getFormats()));
+    r.get((ctx) => getFormats());
   });
   r.path("formatsgrouped")((r) => {
-    r.get((req, res, ctx) => res.json(_getFormats()));
+    r.get((ctx) => _getFormats());
   });
   r.path("rulesets")((r) => {
-    r.get((req, res, ctx) => res.json(getRulesets()));
+    r.get((ctx) => getRulesets());
   });
   r.path("rulesetsgrouped")((r) => {
-    r.get((req, res, ctx) => res.json(getRulesetsGrouped()));
+    r.get((ctx) => getRulesetsGrouped());
   });
   r.path("advancesearch")((r) => {
     r.get.validate({
@@ -288,36 +288,32 @@ export const DataRoute = createRoute()((r) => {
         z
           .object({ ruleset: z.string().optional(), query: z.string() })
           .parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx) => {
       let { ruleset, query } = ctx.validatedQuery;
       query = decodeURIComponent(query);
-      res.json(
-        ruleset
-          ? await searchPokemon(query, ruleset)
-          : await searchPokemon(query),
-      );
+      return ruleset
+        ? await searchPokemon(query, ruleset)
+        : await searchPokemon(query);
     });
   });
   r.path("listpokemon")((r) => {
     r.get.validate({
       query: (data) => z.object({ ruleset: z.string() }).parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx) => {
       const { ruleset: rulesetId } = ctx.validatedQuery;
       const ruleset = getRuleset(rulesetId);
-      return res.json(
-        Array.from(ruleset.species)
-          .sort((a, b) => a.num - b.num)
-          .map((specie) => ({
-            name: specie.name,
-            id: specie.id,
-          })),
-      );
+      return Array.from(ruleset.species)
+        .sort((a, b) => a.num - b.num)
+        .map((specie) => ({
+          name: specie.name,
+          id: specie.id,
+        }));
     });
   });
   r.path("unread-counts")((r) => {
     r.get.validate({
       query: (data) => z.record(z.string().or(z.number())).parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx) => {
       const timeEntries = Object.entries(ctx.validatedQuery);
       const results = await Promise.all(
         timeEntries.map(
@@ -338,7 +334,7 @@ export const DataRoute = createRoute()((r) => {
         ),
       );
       const counts = Object.fromEntries(results);
-      res.json(counts);
+      return counts;
     });
   });
   r.path("random")((r) => {
@@ -353,7 +349,7 @@ export const DataRoute = createRoute()((r) => {
             tier: z.string().optional(),
           })
           .parse(data),
-    })((req, res, ctx) => {
+    })((ctx) => {
       const {
         ruleset: rulesetId,
         format: formatId,
@@ -371,33 +367,31 @@ export const DataRoute = createRoute()((r) => {
             : undefined,
         tier,
       });
-      return res.json(
-        randomMons.map((pokemon) => ({
-          ...pokemon,
-          level: format.level,
-        })),
-      );
+      return randomMons.map((pokemon) => ({
+        ...pokemon,
+        level: format.level,
+      }));
     });
-    r.param("ruleset", (req, res, ctx) => ({
-      ruleset: getRuleset(req.params.ruleset),
+    r.param("ruleset", (ctx, ruleset) => ({
+      ruleset: getRuleset(ruleset),
     }))((r) => {
-      r.param("pid", (req, res, ctx) => {
-        const species = ctx.ruleset.species.get(req.params.pid);
+      r.param("pid", (ctx, pid) => {
+        const species = ctx.ruleset.species.get(pid);
         if (!species)
           throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
-            pid: req.params.pid,
+            pid,
           });
         return { species };
       })((r) => {
         r.path("formes")((r) => {
-          r.get((req, res, ctx) => {
+          r.get((ctx) => {
             const { ruleset, species } = ctx;
 
             let formeNames = [] as string[];
             if (species.formes) formeNames = species.formes;
             if (species.changesFrom) {
               const basePokemon = ruleset.species.get(species.changesFrom);
-              if (!basePokemon || !basePokemon.formes) return res.json([]);
+              if (!basePokemon || !basePokemon.formes) return [];
               formeNames = basePokemon.formes;
             }
             const formes = formeNames
@@ -406,7 +400,7 @@ export const DataRoute = createRoute()((r) => {
                 return specie ? { id: specie.id, name: specie.name } : null;
               })
               .filter((forme) => forme !== null && forme.id !== species.id);
-            return res.json(formes);
+            return formes;
           });
         });
       });

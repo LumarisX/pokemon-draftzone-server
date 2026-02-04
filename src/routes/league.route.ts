@@ -1561,24 +1561,20 @@ export const LeagueRoutes: RouteOld = {
 };
 
 const DivisionHandler = async (
-  req: Request,
-  res: Response,
-  ctx: { league: LeagueTournamentDocument },
+  ctx: { tournament: LeagueTournamentDocument },
   division_id: string,
 ) => {
-  await ctx.league.populate<{ divisions: LeagueDivisionDocument[] }>(
+  await ctx.tournament.populate<{ divisions: LeagueDivisionDocument[] }>(
     "divisions",
   );
-  const division = (ctx.league.divisions as LeagueDivisionDocument[]).find(
+  const division = (ctx.tournament.divisions as LeagueDivisionDocument[]).find(
     (d) => d.divisionKey === division_id,
   );
-
-  if (!division) {
+  if (!division)
     throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
       divisionKey: division_id,
-      tournamentKey: ctx.league.tournamentKey,
+      tournamentKey: ctx.tournament.tournamentKey,
     });
-  }
 
   await division.populate<{
     teams: LeagueTeamDocument[];
@@ -1587,11 +1583,11 @@ const DivisionHandler = async (
   return { division };
 };
 export const LeagueRoute = createRoute()((r) => {
-  r.get((req, res, ctx) => {
-    res.json([]);
+  r.get((ctx) => {
+    return [];
   });
   r.path("bracket")((r) => {
-    r.get(async (req, res, ctx) => {
+    r.get(async (ctx) => {
       const teamData: {
         teamName: string;
         coach: string;
@@ -1968,26 +1964,26 @@ export const LeagueRoute = createRoute()((r) => {
         ],
       };
 
-      res.json(normalized24);
+      return normalized24;
     });
   });
   r.path("ad-list")((r) => {
-    r.get(async (req, res, ctx) => {
+    r.get(async (ctx) => {
       const leagueAds = await getLeagueAds();
-      res.json(leagueAds);
+      return leagueAds;
     });
     r.path("manage").auth()((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const documents = await LeagueAdModel.find({ owner: ctx.sub }).sort({
           createdAt: -1,
         });
         const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
-        res.json(leagueAds);
+        return leagueAds;
       });
       r.post.validate({
         //TODO: Define proper schema
         body: (data) => z.object({}).parse(data),
-      })(async (req, res, ctx) => {
+      })(async (ctx, req, res) => {
         const leagueAd = LeagueAd.fromForm(ctx.validatedBody, ctx.sub);
         if (!leagueAd.isValid())
           throw new PDZError(ErrorCodes.LEAGUE_AD.INVALID_AD_DATA);
@@ -1997,73 +1993,73 @@ export const LeagueRoute = createRoute()((r) => {
         logger.info(`New league ad created: ${document._id}`);
         res.status(201).json({ _id: document._id, status: document.status });
       });
-      r.path(":ad_id")((r) => {
-        r.delete(async (req, res, ctx) => {
-          const ad = await LeagueAdModel.findById(req.params.ad_id);
+      r.param("ad_id", (ctx, ad_id) => ({ ad_id }))((r) => {
+        r.delete(async (ctx, req, res) => {
+          const ad = await LeagueAdModel.findById(ctx.ad_id);
           if (!ad) throw new PDZError(ErrorCodes.LEAGUE_AD.NOT_FOUND);
           if (ad.owner !== ctx.sub)
             throw new PDZError(ErrorCodes.LEAGUE_AD.UNAUTHORIZED_ACCESS);
-          await LeagueAdModel.findByIdAndDelete(req.params.ad_id);
+          await LeagueAdModel.findByIdAndDelete(ctx.ad_id);
           invalidateLeagueAdsCache();
-          logger.info(`League ad deleted: ${req.params.ad_id}`);
+          logger.info(`League ad deleted: ${ctx.ad_id}`);
           res.status(200).json({ message: "Ad deleted successfully" });
         });
       });
     });
   });
-  r.param("league_key", async (req, res, ctx) => {
-    const league = await LeagueTournamentModel.findOne({
-      tournamentKey: req.params.league_key,
+  r.param("tournament_key", async (ctx, tournament_key) => {
+    const tournament = await LeagueTournamentModel.findOne({
+      tournamentKey: tournament_key,
     }).populate<{
       tierList: LeagueTierListDocument;
     }>("tierList");
-    if (!league)
+    if (!tournament)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-        tournamentKey: req.params.league_key,
+        tournamentKey: tournament_key,
       });
-    const ruleset = getRuleset(league.tierList.ruleset);
-    return { league, ruleset };
+    const ruleset = getRuleset(tournament.tierList.ruleset);
+    return { tournament, ruleset };
   })((r) => {
     r.path("info")((r) => {
-      r.get(async (req, res, ctx) => {
-        await ctx.league.populate<{ divisions: LeagueDivisionDocument[] }>(
+      r.get(async (ctx) => {
+        await ctx.tournament.populate<{ divisions: LeagueDivisionDocument[] }>(
           "divisions",
           ["divisionKey", "name"],
         );
 
         const divisions = (
-          ctx.league.divisions as LeagueDivisionDocument[]
+          ctx.tournament.divisions as LeagueDivisionDocument[]
         ).map((div) => ({
           divisionKey: div.divisionKey,
           name: div.name,
         }));
 
-        res.json({
-          name: ctx.league.name,
-          tournamentKey: ctx.league.tournamentKey,
-          description: ctx.league.description,
-          format: ctx.league.format,
-          ruleset: ctx.league.ruleset,
-          signUpDeadline: ctx.league.signUpDeadline,
-          draftStart: ctx.league.draftStart,
-          draftEnd: ctx.league.draftEnd,
-          seasonStart: ctx.league.seasonStart,
-          seasonEnd: ctx.league.seasonEnd,
-          logo: ctx.league.logo,
+        return {
+          name: ctx.tournament.name,
+          tournamentKey: ctx.tournament.tournamentKey,
+          description: ctx.tournament.description,
+          format: ctx.tournament.format,
+          ruleset: ctx.tournament.ruleset,
+          signUpDeadline: ctx.tournament.signUpDeadline,
+          draftStart: ctx.tournament.draftStart,
+          draftEnd: ctx.tournament.draftEnd,
+          seasonStart: ctx.tournament.seasonStart,
+          seasonEnd: ctx.tournament.seasonEnd,
+          logo: ctx.tournament.logo,
           divisions,
-          discord: ctx.league.discord,
-        });
+          discord: ctx.tournament.discord,
+        };
       });
     });
     r.path("roles").auth()((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json(getRoles(ctx.sub));
+      r.get(async (ctx) => {
+        return getRoles(ctx.sub);
       });
     });
     r.path("signup")((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const users = await LeagueCoachModel.find({
-          tournamentId: ctx.league._id,
+          tournamentId: ctx.tournament._id,
         });
         const coachesWithLogos = users.map((user) => {
           const division = undefined;
@@ -2079,12 +2075,12 @@ export const LeagueRoute = createRoute()((r) => {
             division,
           };
         });
-        res.json(coachesWithLogos);
+        return coachesWithLogos;
       });
       r.post.auth().validate({
         //TODO: Define proper schema
         body: (data) => z.object({}).parse(data),
-      })(async (req, res, ctx) => {
+      })(async (ctx, req, res) => {
         const signup = BattleZone.validateSignUpForm(
           ctx.validatedBody,
           ctx.sub,
@@ -2092,19 +2088,19 @@ export const LeagueRoute = createRoute()((r) => {
 
         let leagueUser = await LeagueCoachModel.findOne({
           auth0Id: ctx.sub,
-          tournamentId: ctx.league._id,
+          tournamentId: ctx.tournament._id,
         });
 
         if (leagueUser)
           throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
-            tournamentId: ctx.league._id.toString(),
+            tournamentId: ctx.tournament._id.toString(),
           });
 
         leagueUser = new LeagueCoachModel({
           auth0Id: ctx.sub,
           discordName: signup.name,
           timezone: signup.timezone,
-          tournamentId: ctx.league._id,
+          tournamentId: ctx.tournament._id,
           teamName: signup.teamName,
           experience: signup.experience,
           droppedBefore: signup.droppedBefore,
@@ -2122,12 +2118,12 @@ export const LeagueRoute = createRoute()((r) => {
                 "1303896194187132978",
               ) as TextChannel;
               if (channel && channel.isTextBased()) {
-                await ctx.league.populate<{
+                await ctx.tournament.populate<{
                   coaches: LeagueCoachDocument[];
                 }>("coaches");
-                const totalCoaches = ctx.league.coaches.length;
+                const totalCoaches = ctx.tournament.coaches.length;
                 channel.send(
-                  `${signup.name} signed up for **${ctx.league.name}**. Total coaches: ${totalCoaches}.`,
+                  `${signup.name} signed up for **${ctx.tournament.name}**. Total coaches: ${totalCoaches}.`,
                 );
               }
             }
@@ -2139,13 +2135,13 @@ export const LeagueRoute = createRoute()((r) => {
         return res.status(201).json({
           message: "Sign up successful.",
           userId: leagueUser._id.toString(),
-          tournamentId: ctx.league._id.toString(),
+          tournamentId: ctx.tournament._id.toString(),
         });
       });
     });
     r.path("rules")((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json(ctx.league.rules);
+      r.get(async (ctx) => {
+        return ctx.tournament.rules;
       });
     });
     r.path("tier-list")((r) => {
@@ -2159,11 +2155,11 @@ export const LeagueRoute = createRoute()((r) => {
               ]),
             })
             .parse(data),
-      })(async (req, res, ctx) => {
+      })(async (ctx) => {
         const { division } = ctx.validatedQuery;
-        const tierList = await getTierList(ctx.league);
-        const divisions = await getDrafted(ctx.league, division);
-        res.json({ tierList, divisions });
+        const tierList = await getTierList(ctx.tournament);
+        const divisions = await getDrafted(ctx.tournament, division);
+        return { tierList, divisions };
       });
       r.path("edit").auth()((r) => {
         r.get.validate({
@@ -2176,11 +2172,11 @@ export const LeagueRoute = createRoute()((r) => {
                 ]),
               })
               .parse(data),
-        })(async (req, res, ctx) => {
+        })(async (ctx) => {
           const { division } = ctx.validatedQuery;
-          const tierList = await getTierList(ctx.league, true);
-          const divisions = await getDrafted(ctx.league, division);
-          res.json({ tierList, divisions });
+          const tierList = await getTierList(ctx.tournament, true);
+          const divisions = await getDrafted(ctx.tournament, division);
+          return { tierList, divisions };
         });
         r.post.validate({
           body: (data) =>
@@ -2199,23 +2195,23 @@ export const LeagueRoute = createRoute()((r) => {
                 ),
               })
               .parse(data),
-        })(async (req, res, ctx) => {
+        })(async (ctx) => {
           const { tiers } = ctx.validatedBody;
-          await updateTierList(ctx.league, tiers);
+          await updateTierList(ctx.tournament, tiers);
           logger.info(
-            `Tier list updated for league ${ctx.league.tournamentKey} by ${ctx.sub}`,
+            `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
           );
-          res.json({
+          return {
             success: true,
             message: "Tier list updated successfully",
-          });
+          };
         });
       });
     });
     r.path("schedule")((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const stages = await LeagueStageModel.find({
-          tournamentId: ctx.league._id,
+          tournamentId: ctx.tournament._id,
         });
         const stagesWithMatchups = await Promise.all(
           stages.map(async (stage) => {
@@ -2308,11 +2304,11 @@ export const LeagueRoute = createRoute()((r) => {
             };
           }),
         );
-        res.json(stagesWithMatchups);
+        return stagesWithMatchups;
       });
     });
     r.path("teams")((r) => {
-      r.param("team_id", async (req, res, ctx, team_id) => {
+      r.param("team_id", async (ctx, team_id) => {
         const team = await LeagueTeamModel.findById(team_id);
         if (!team)
           throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
@@ -2320,15 +2316,15 @@ export const LeagueRoute = createRoute()((r) => {
           });
         return { team };
       })((r) => {
-        r.get(async (req, res, ctx) => {
-          await ctx.league.populate<{
+        r.get(async (ctx) => {
+          await ctx.tournament.populate<{
             tierList: LeagueTierListDocument;
           }>("tierList");
 
           const draft = await Promise.all(
             ctx.team.draft.map(async (draftItem) => {
               const tier = await getPokemonTier(
-                ctx.league,
+                ctx.tournament,
                 draftItem.pokemon.id,
               );
               const pokemonName = getName(draftItem.pokemon.id);
@@ -2354,23 +2350,24 @@ export const LeagueRoute = createRoute()((r) => {
 
           const coach = ctx.team.coach as LeagueCoachDocument;
 
-          res.json({
+          return {
             name: coach.teamName,
             timezone: coach.timezone,
             logo: coach.logo,
             draft,
             pokemonStandings,
-          });
+          };
         });
       });
     });
     r.path("divisions")((r) => {
       r.param("division_id", DivisionHandler).auth()((r) => {
-        r.get(async (req, res, ctx) => {
-          res.json(await getDivisionDetails(ctx.league, ctx.division, ctx.sub));
-        });
+        r.get(
+          async (ctx) =>
+            await getDivisionDetails(ctx.tournament, ctx.division, ctx.sub),
+        );
         r.path("picks")((r) => {
-          r.get(async (req, res, ctx) => {
+          r.get(async (ctx) => {
             const division = await LeagueDivisionModel.findById(
               ctx.division._id,
             ).populate<{
@@ -2395,7 +2392,7 @@ export const LeagueRoute = createRoute()((r) => {
                       id: draftItem.pokemon.id,
                       name: getName(draftItem.pokemon.id),
                       tier: await getPokemonTier(
-                        ctx.league,
+                        ctx.tournament,
                         draftItem.pokemon.id,
                       ),
                     },
@@ -2413,11 +2410,11 @@ export const LeagueRoute = createRoute()((r) => {
               }),
             );
 
-            res.json(allPicks);
+            return allPicks;
           });
         });
         r.path("schedule")((r) => {
-          r.get(async (req, res, ctx) => {
+          r.get(async (ctx) => {
             const stages = await LeagueStageModel.find({
               divisionIds: ctx.division._id,
             });
@@ -2516,11 +2513,11 @@ export const LeagueRoute = createRoute()((r) => {
               }),
             );
 
-            res.json(stagesWithMatchups);
+            return stagesWithMatchups;
           });
         });
         r.path("standings")((r) => {
-          r.get(async (req, res, ctx) => {
+          r.get(async (ctx) => {
             const stages = await LeagueStageModel.find({
               divisionIds: ctx.division._id,
             });
@@ -2553,7 +2550,7 @@ export const LeagueRoute = createRoute()((r) => {
             const pokemonStandings =
               await calculateDivisionPokemonStandings(allMatchups);
 
-            res.json({
+            return {
               coachStandings: {
                 //TODO: make dynamic
                 cutoff: 8,
@@ -2561,18 +2558,18 @@ export const LeagueRoute = createRoute()((r) => {
                 teams: coachStandings,
               },
               pokemonStandings,
-            });
+            };
           });
         });
         r.path("order")((r) => {
-          r.get(async (req, res, ctx) => {
+          r.get(async (ctx) => {
             await ctx.division.populate<{ teams: LeagueTeamDocument[] }>(
               "teams",
             );
 
             const draftStyle = ctx.division.draftStyle;
             const numberOfRounds = (
-              ctx.league.tierList as LeagueTierListDocument
+              ctx.tournament.tierList as LeagueTierListDocument
             ).draftCount.max;
 
             const initialTeamOrder = ctx.division.teams as LeagueTeamDocument[];
@@ -2622,12 +2619,12 @@ export const LeagueRoute = createRoute()((r) => {
               draftRounds.push(currentRound);
             }
 
-            res.json(draftRounds);
+            return draftRounds;
           });
         });
         r.path("power-rankings").auth()((r) => {
-          r.get(async (req, res, ctx) => {
-            const tierList = ctx.league.tierList as LeagueTierListDocument;
+          r.get(async (ctx) => {
+            const tierList = ctx.tournament.tierList as LeagueTierListDocument;
             const ruleset = getRuleset(tierList.ruleset);
             const teams = await Promise.all(
               (
@@ -2657,12 +2654,12 @@ export const LeagueRoute = createRoute()((r) => {
                 };
               }),
             );
-            return res.json(teams);
+            return teams;
           });
         });
 
         r.path("teams")((r) => {
-          r.param("team_id", async (req, res, ctx, team_id) => {
+          r.param("team_id", async (ctx, team_id) => {
             const team = await LeagueTeamModel.findById(team_id);
             if (!team)
               throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
@@ -2683,21 +2680,19 @@ export const LeagueRoute = createRoute()((r) => {
                       pokemonId: z.string().min(1),
                     })
                     .parse(data),
-              })(async (req, res, ctx) => {
+              })(async (ctx) => {
                 const { pokemonId } = ctx.validatedBody;
                 if (!(await isCoach(ctx.team, ctx.sub)))
                   throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
                     reason: "User is not a coach on this team",
                   });
                 await draftPokemon(
-                  ctx.league,
+                  ctx.tournament,
                   ctx.division,
                   ctx.team,
                   pokemonId,
                 );
-                return res
-                  .status(200)
-                  .json({ message: "Drafted successfully." });
+                return { message: "Drafted successfully." };
               });
             });
             r.path("picks")((r) => {
@@ -2708,12 +2703,10 @@ export const LeagueRoute = createRoute()((r) => {
                       picks: z.array(z.array(z.string().min(1))),
                     })
                     .parse(data),
-              })(async (req, res, ctx) => {
+              })(async (ctx) => {
                 ctx.team.picks = ctx.validatedBody.picks;
                 await ctx.team.save();
-                return res
-                  .status(200)
-                  .json({ message: "Draft pick set successfully." });
+                return { message: "Draft pick set successfully." };
               });
             });
           });
@@ -2731,18 +2724,16 @@ export const LeagueRoute = createRoute()((r) => {
             r.post.validate({
               body: (data) =>
                 z.object({ state: z.string().min(1) }).parse(data),
-            })(async (req, res, ctx) => {
+            })(async (ctx) => {
               const { state } = ctx.validatedBody;
-              setDivsionState(ctx.league, ctx.division, state);
-              return res
-                .status(200)
-                .json({ message: "Timer set successfully." });
+              setDivsionState(ctx.tournament, ctx.division, state);
+              return { message: "Timer set successfully." };
             });
           });
           r.path("skip")((r) => {
-            r.post(async (req, res, ctx) => {
-              await skipCurrentPick(ctx.league, ctx.division);
-              return res.status(200).json({ message: "Skip successful." });
+            r.post(async (ctx) => {
+              await skipCurrentPick(ctx.tournament, ctx.division);
+              return { message: "Skip successful." };
             });
           });
           r.path("setdraft")((r) => {
@@ -2754,7 +2745,7 @@ export const LeagueRoute = createRoute()((r) => {
                     teamId: z.string().min(1),
                   })
                   .parse(data),
-            })(async (req, res, ctx) => {
+            })(async (ctx) => {
               const { pokemonId, teamId } = ctx.validatedBody;
               const team = ctx.division.teams.find((team) =>
                 team._id.equals(teamId),
@@ -2763,10 +2754,8 @@ export const LeagueRoute = createRoute()((r) => {
                 throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, {
                   teamId,
                 });
-              await draftPokemon(ctx.league, ctx.division, team, pokemonId);
-              return res
-                .status(200)
-                .json({ message: "Draft pick set successfully." });
+              await draftPokemon(ctx.tournament, ctx.division, team, pokemonId);
+              return { message: "Draft pick set successfully." };
             });
           });
         });

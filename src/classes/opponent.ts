@@ -11,7 +11,7 @@ export class Opponent {
     public matches: MatchData[],
     public stage: string,
     public coach?: string,
-    public _id?: Types.ObjectId
+    public _id?: Types.ObjectId,
   ) {}
 
   toClient() {
@@ -30,12 +30,12 @@ export class Opponent {
     data: {
       stage: string;
       teamName: string;
-      coach: string | undefined;
+      coach?: string;
       team: PokemonFormData[];
       matches: MatchData[];
-      _id?: Types.ObjectId;
+      _id?: string;
     },
-    ruleset: Ruleset
+    ruleset: Ruleset,
   ): Opponent {
     const errors: string[] = [];
     const opponent = new Opponent(
@@ -46,7 +46,7 @@ export class Opponent {
       data.teamName,
       data.matches,
       data.stage,
-      data.coach
+      data.coach,
     );
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
@@ -67,16 +67,16 @@ export class Opponent {
 }
 
 export function getMatchesScore(
-  matches?: MatchData[]
+  matches?: MatchData[],
 ): [number, number] | null {
   if (!matches?.length) return null;
   if (matches.length === 1)
     return [
       matches[0].aTeam.stats.filter(
-        (pokemon) => pokemon[1].brought && !pokemon[1].deaths
+        (pokemon) => pokemon[1].brought && !pokemon[1].deaths,
       ).length,
       matches[0].bTeam.stats.filter(
-        (pokemon) => pokemon[1].brought && !pokemon[1].deaths
+        (pokemon) => pokemon[1].brought && !pokemon[1].deaths,
       ).length,
     ];
 
@@ -86,6 +86,6 @@ export function getMatchesScore(
       else score[1]++;
       return score;
     },
-    [0, 0]
+    [0, 0],
   );
 }

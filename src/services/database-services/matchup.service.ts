@@ -5,6 +5,8 @@ import {
   MatchupDocument,
   MatchupModel,
 } from "../../models/draft/matchup.model";
+import { ErrorCodes } from "../../errors/error-codes";
+import { PDZError } from "../../errors/pdz-error";
 
 const $matchupsByDraft = new LRUCache<string, MatchupDocument[]>({
   max: 100,
@@ -20,27 +22,19 @@ export async function createMatchup(matchupData: MatchupData) {
   return matchup;
 }
 
-export async function getMatchupById(
-  id: string
-): Promise<MatchupDocument | null> {
-  if ($matchups.has(id)) {
-    return $matchups.get(id)!;
-  }
-
+export async function getMatchupById(id: string): Promise<MatchupDocument> {
+  if ($matchups.has(id)) return $matchups.get(id)!;
   const matchup = await MatchupModel.findById(id);
-  if (matchup) {
-    $matchups.set(id, matchup);
-  }
+  if (!matchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+  $matchups.set(id, matchup);
   return matchup;
 }
 
 export async function getMatchupsByDraftId(
-  draftId: Types.ObjectId
+  draftId: Types.ObjectId,
 ): Promise<MatchupDocument[]> {
   const cacheKey = draftId.toString();
-  if ($matchupsByDraft.has(cacheKey)) {
-    return $matchupsByDraft.get(cacheKey)!;
-  }
+  if ($matchupsByDraft.has(cacheKey)) return $matchupsByDraft.get(cacheKey)!;
 
   const matchups = await MatchupModel.find({ "aTeam._id": draftId }).sort({
     createdAt: -1,
@@ -51,25 +45,21 @@ export async function getMatchupsByDraftId(
 
 export async function updateMatchup(
   id: string,
-  data: { [key: string]: any }
+  data: { [key: string]: any },
 ): Promise<MatchupDocument | null> {
   const matchup = await MatchupModel.findByIdAndUpdate(id, data, {
     new: true,
     upsert: true,
   });
-
-  if (matchup) {
-    $matchups.delete(id);
-    clearMatchupsByDraftCache(matchup.aTeam._id as Types.ObjectId);
-  }
-
+  if (!matchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+  $matchups.delete(id);
+  clearMatchupsByDraftCache(matchup.aTeam._id as Types.ObjectId);
   return matchup;
 }
 
 export async function deleteMatchup(id: string) {
   const matchup = await getMatchupById(id);
-  if (!matchup) return;
-
+  if (!matchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
   const result = await MatchupModel.findByIdAndDelete(id);
   $matchups.delete(id);
   clearMatchupsByDraftCache(matchup.aTeam._id as Types.ObjectId);

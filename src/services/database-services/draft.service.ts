@@ -9,6 +9,8 @@ import {
 } from "../../models/draft/draft.model";
 import { getName } from "../data-services/pokedex.service";
 import { getMatchupsByDraftId } from "./matchup.service";
+import { ErrorCodes } from "../../errors/error-codes";
+import { PDZError } from "../../errors/pdz-error";
 
 const $drafts = new LRUCache<string, DraftDocument>({
   max: 100,
@@ -18,7 +20,7 @@ const $drafts = new LRUCache<string, DraftDocument>({
 export async function createDraft(draft: DraftData) {
   const draftDoc = new DraftModel(draft);
   await draftDoc.save();
-  const key = `${draftDoc.owner}:${draftDoc.tournamentId}`;
+  const key = `${draftDoc.owner}:${draftDoc.leagueId}`;
   $drafts.set(key, draftDoc);
   $drafts.set(draftDoc._id.toString(), draftDoc);
   return draftDoc;
@@ -37,28 +39,23 @@ export async function getDraftsByOwner(
 export async function getDraft(
   id: Types.ObjectId | string,
   ownerId?: string,
-): Promise<DraftDocument | null> {
+): Promise<DraftDocument> {
   const key: string = ownerId ? `${ownerId}:${id}` : id.toString();
-  if ($drafts.has(key)) {
-    return $drafts.get(key)!;
-  }
+  if ($drafts.has(key)) return $drafts.get(key)!;
 
   let draft: DraftDocument | null = null;
   if (ownerId) {
-    draft = await DraftModel.findOne({ owner: ownerId, tournamentId: id });
+    draft = await DraftModel.findOne({ owner: ownerId, leagueId: id });
   } else if (Types.ObjectId.isValid(id)) {
     draft = await DraftModel.findById(id);
   }
+  if (!draft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
 
-  if (draft) {
-    $drafts.set(key, draft);
-    if (ownerId) {
-      $drafts.set(draft._id.toString(), draft);
-    } else {
-      if (draft.owner && draft.tournamentId) {
-        $drafts.set(`${draft.owner}:${draft.tournamentId}`, draft);
-      }
-    }
+  $drafts.set(key, draft);
+  if (ownerId) {
+    $drafts.set(draft._id.toString(), draft);
+  } else if (draft.owner && draft.leagueId) {
+    $drafts.set(`${draft.owner}:${draft.leagueId}`, draft);
   }
 
   return draft;
@@ -70,25 +67,24 @@ export async function updateDraft(
   draft: DraftData,
 ) {
   const updatedDraft = await DraftModel.findOneAndUpdate(
-    { owner: ownerId, tournamentId: tournamentId },
+    { owner: ownerId, leagueId: tournamentId },
     draft,
     { new: true, upsert: true },
   );
-  if (updatedDraft) {
-    const key = `${ownerId}:${tournamentId}`;
-    $drafts.delete(key);
-    $drafts.delete(updatedDraft._id.toString());
-    $drafts.set(key, updatedDraft);
-    $drafts.set(updatedDraft._id.toString(), updatedDraft);
-  }
+  if (!updatedDraft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+  const key = `${ownerId}:${tournamentId}`;
+  $drafts.delete(key);
+  $drafts.delete(updatedDraft._id.toString());
+  $drafts.set(key, updatedDraft);
+  $drafts.set(updatedDraft._id.toString(), updatedDraft);
   return updatedDraft;
 }
 
 export async function deleteDraft(draft: DraftDocument) {
   const result = await draft.deleteOne();
   $drafts.delete(draft._id.toString());
-  if (draft.owner && draft.tournamentId) {
-    const key = `${draft.owner}:${draft.tournamentId}`;
+  if (draft.owner && draft.leagueId) {
+    const key = `${draft.owner}:${draft.leagueId}`;
     $drafts.delete(key);
   }
   return result;

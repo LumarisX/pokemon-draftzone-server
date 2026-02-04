@@ -20,7 +20,6 @@ import {
   Tier,
 } from "@pkmn/dex-types";
 import { LRUCache } from "lru-cache";
-import { PZError } from "..";
 import { abilityModifiers } from "../data/pokedex/abilities";
 import { Ruleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
@@ -31,6 +30,9 @@ import {
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
 import { getBST, getCST } from "./specieUtil";
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
+
 export type PokemonOptions = {
   shiny?: boolean;
   nickname?: string;
@@ -153,15 +155,15 @@ export class DraftSpecie implements Specie, Pokemon {
       | ID
       | (PokemonData | PokemonFormData)
       | (Specie & PokemonOptions),
-    ruleset: Ruleset
+    ruleset: Ruleset,
   ) {
     if (typeof pokemonData === "string") pokemonData = { id: pokemonData };
     const specie =
       pokemonData instanceof Specie
         ? pokemonData
         : ruleset.species.get(pokemonData.id);
-    if (!specie)
-      throw new PZError(400, `Pokémon ID not found: ${pokemonData.id}`);
+    if (!specie) throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND);
+
     Object.assign(this, specie);
     this.ruleset = ruleset;
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
@@ -185,7 +187,7 @@ export class DraftSpecie implements Specie, Pokemon {
       abilities: pokemonData.modifiers?.abilities,
     };
     this.draftFormes = pokemonData.draftFormes?.map((specie) =>
-      typeof specie === "string" ? specie : specie.id
+      typeof specie === "string" ? specie : specie.id,
     );
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
@@ -209,15 +211,15 @@ export class DraftSpecie implements Specie, Pokemon {
       ? this.formeOrder
         ? this.formeOrder.findIndex((name) => name === this.name)
         : 0
-      : this.ruleset.species
+      : (this.ruleset.species
           .get(this.baseSpecies)!
           .formeOrder?.findIndex(
             (name) =>
               name ===
               (this.isNonstandard === "Gigantamax"
                 ? this.baseSpecies
-                : this.name)
-          ) ?? 0;
+                : this.name),
+          ) ?? 0);
   }
 
   toClient(): PokemonFormData {
@@ -297,14 +299,14 @@ export class DraftSpecie implements Specie, Pokemon {
     const item = this.requiredItem
       ? this.ruleset.items.get(this.requiredItem)?.name
       : this.requiredItems
-      ? this.ruleset.items.get(this.requiredItems[0])?.name
-      : undefined;
+        ? this.ruleset.items.get(this.requiredItems[0])?.name
+        : undefined;
 
     return {
       id: this.id,
       name: this.name,
       abilities: this.getAbilities().filter(
-        (ability) => ability !== ""
+        (ability) => ability !== "",
       ) as AbilityName[],
       items,
       item,
@@ -479,7 +481,7 @@ export class DraftSpecie implements Specie, Pokemon {
         const addMove = (
           list: { [key: string]: Move[] },
           move: Move,
-          type: TypeName
+          type: TypeName,
         ) => {
           if (!(type in list)) list[type] = [];
           list[type].push(move);
@@ -519,7 +521,7 @@ export class DraftSpecie implements Specie, Pokemon {
                 pp: (move.pp * 8) / 5,
                 category: move.category,
               })),
-          ])
+          ]),
         );
       };
 
@@ -540,7 +542,7 @@ export class DraftSpecie implements Specie, Pokemon {
     }
 
     const finalCoverage: FullCoverage = JSON.parse(
-      JSON.stringify(baseFullCoverage)
+      JSON.stringify(baseFullCoverage),
     );
     const teraBlastMove = learnset.find((m) => m.id === "terablast");
 
@@ -605,7 +607,7 @@ export class DraftSpecie implements Specie, Pokemon {
 
     const selectedMoveIndices = new Set<number>();
     const remainingMoveIndices = new Set<number>(
-      Array.from({ length: numMoves }, (_, i) => i)
+      Array.from({ length: numMoves }, (_, i) => i),
     );
     const maxEffectivenessPerOpponent = Array(numOpponents).fill(0);
 
@@ -618,7 +620,7 @@ export class DraftSpecie implements Specie, Pokemon {
         for (let j = 0; j < numOpponents; j++) {
           currentGain += Math.max(
             0,
-            damages[moveIndex][j] - maxEffectivenessPerOpponent[j]
+            damages[moveIndex][j] - maxEffectivenessPerOpponent[j],
           );
         }
 
@@ -635,7 +637,7 @@ export class DraftSpecie implements Specie, Pokemon {
         for (let j = 0; j < numOpponents; j++) {
           maxEffectivenessPerOpponent[j] = Math.max(
             maxEffectivenessPerOpponent[j],
-            damages[bestMoveIndex][j]
+            damages[bestMoveIndex][j],
           );
         }
       } else {
@@ -661,7 +663,7 @@ export class DraftSpecie implements Specie, Pokemon {
       const learnset = await this.ruleset.learnsets.learnable(
         this.id,
 
-        this.ruleset.restriction
+        this.ruleset.restriction,
       );
       if (!learnset) return [];
       const moves: Move[] = Object.keys(learnset)
@@ -681,7 +683,7 @@ export class DraftSpecie implements Specie, Pokemon {
 
   static getTeam(
     team: (ID | (PokemonData | PokemonFormData) | (Specie & PokemonOptions))[],
-    ruleset: Ruleset
+    ruleset: Ruleset,
   ) {
     const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
       try {

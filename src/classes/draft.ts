@@ -57,7 +57,7 @@ export class Draft {
   toData(): DraftData {
     return {
       leagueName: this.leagueName,
-      tournamentId: this.tournamentId,
+      leagueId: this.tournamentId,
       teamName: this.teamName,
       format: this.format.name,
       ruleset: this.ruleset.name,
@@ -93,7 +93,7 @@ export class Draft {
       format,
       data.leagueName,
       data.teamName,
-      data.tournamentId,
+      data.leagueId,
       data.score,
       data.owner,
       DraftSpecie.getTeam(data.team, ruleset),

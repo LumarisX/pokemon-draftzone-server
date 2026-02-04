@@ -1,9 +1,7 @@
 import { StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
-import { PZError } from "..";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
-import { DraftDocument } from "../models/draft/draft.model";
 import { MatchData, MatchupData } from "../models/draft/matchup.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
@@ -52,8 +50,7 @@ export class Matchup {
     draft?: Draft,
   ): Promise<Matchup> {
     if (!draft) {
-      const draftDoc: DraftDocument | null = await getDraft(data.aTeam._id);
-      if (!draftDoc) throw new PZError(400, "Draft ID not found.");
+      const draftDoc = await getDraft(data.aTeam._id);
       draft = Draft.fromData(draftDoc);
     }
     return new Matchup(

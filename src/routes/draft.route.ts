@@ -338,23 +338,19 @@ export const DraftRoutes: RouteOld = {
       try {
         if (!matchup_id) {
           logger.error(`Matchup ID not provided.`);
-          return res
-            .status(400) // Bad Request
-            .json({
-              message: "Matchup ID not provided.",
-              code: `${routeCode}-P1-01`,
-            });
+          return res.status(400).json({
+            message: "Matchup ID not provided.",
+            code: `${routeCode}-P1-01`,
+          });
         }
         const rawMatchup: MatchupDocument | null =
           await getMatchupById(matchup_id);
         if (!rawMatchup) {
           logger.error(`Matchup not found for matchup_id: ${matchup_id}`);
-          return res
-            .status(404) // Not Found
-            .json({
-              message: "Matchup not found.",
-              code: `${routeCode}-P1-02`,
-            });
+          return res.status(404).json({
+            message: "Matchup not found.",
+            code: `${routeCode}-P1-02`,
+          });
         }
         if (!res.draft) {
           return sendError(
@@ -376,29 +372,29 @@ export const DraftRoutes: RouteOld = {
 
 export const DraftRoute = createRoute().auth()((r) => {
   r.path("teams")((r) => {
-    r.get(async (req, res, ctx) => {
+    r.get(async (ctx) => {
       const drafts = await getDraftsByOwner(ctx.sub);
-      res.json(
-        await Promise.all(
-          drafts.map(async (draft) => await Draft.fromData(draft).toClient()),
-        ),
+      return await Promise.all(
+        drafts.map(async (draft) => await Draft.fromData(draft).toClient()),
       );
     });
-    r.post(async (req, res, ctx) => {
-      const draft = Draft.fromForm(req.body, ctx.sub);
+    r.post.validate({
+      //TODO: refine this schema
+      body: (data) => z.any().parse(data),
+    })(async (ctx, req, res) => {
+      const draft = Draft.fromForm(ctx.validatedBody, ctx.sub);
       await createDraft(draft.toData());
-      return res.status(201).json({ message: "Draft Added" });
+      res.status(201).json({ message: "Draft Added" });
     });
   });
-  r.param("team_id", async (req, res, ctx, team_id) => {
+  r.param("team_id", async (ctx, team_id) => {
     const rawDraft = await getDraft(team_id, ctx.sub);
-    if (!rawDraft) throw new PDZError(ErrorCodes.DRAFT.TEAM_ID_NOT_FOUND);
     const ruleset = getRuleset(rawDraft.ruleset);
     const draft = Draft.fromData(rawDraft, ruleset);
     return { rawDraft, ruleset, draft, team_id };
   })((r) => {
-    r.get(async (req, res, ctx) => {
-      res.json(await ctx.draft.toClient());
+    r.get(async (ctx) => {
+      return await ctx.draft.toClient();
     });
     r.patch.validate({
       body: (data) =>
@@ -413,49 +409,45 @@ export const DraftRoute = createRoute().auth()((r) => {
             team: z.array(z.any()),
           })
           .parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx) => {
       const draft = Draft.fromForm(ctx.validatedBody, ctx.sub).toData();
       const updatedDraft = await updateDraft(ctx.sub, ctx.team_id, draft);
-      if (!updatedDraft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
       const matchups = await getMatchupsByDraftId(updatedDraft._id);
       matchups.forEach((matchup) =>
         clearMatchupCacheById(matchup._id.toString()),
       );
-      return res
-        .status(200)
-        .json({ message: "Draft Updated", draft: updatedDraft });
+      return { message: "Draft Updated", draft: updatedDraft };
     });
-    r.delete(async (req, res, ctx) => {
+    r.delete(async (ctx, req, res) => {
       await deleteDraft(ctx.rawDraft);
-      return res.status(201).json({ message: "Draft deleted" });
+      res.status(201).json({ message: "Draft deleted" });
     });
     r.path("matchups")((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const matchups: MatchupDocument[] = await ctx.draft.getMatchups();
-        res.json(
-          await Promise.all(
-            matchups.map(async (rawMatchup) => {
-              const matchupData = rawMatchup.toObject<MatchupData>();
-              const matchup = await Matchup.fromData(matchupData);
-              return matchup.toOpponent().toClient();
-            }),
-          ),
+        return await Promise.all(
+          matchups.map(async (rawMatchup) => {
+            const matchupData = rawMatchup.toObject<MatchupData>();
+            const matchup = await Matchup.fromData(matchupData);
+            return matchup.toOpponent().toClient();
+          }),
         );
       });
-      r.post(async (req, res, ctx) => {
-        const opponent = Opponent.fromForm(req.body, ctx.ruleset);
+      r.post.validate({
+        //TODO: refine this schema
+        body: (data) => z.any().parse(data),
+      })(async (ctx, req, res) => {
+        const opponent = Opponent.fromForm(ctx.validatedBody, ctx.ruleset);
         const matchup = Matchup.fromForm(ctx.draft, opponent);
         await createMatchup(matchup.toData());
-        return res.status(201).json({ message: "Matchup Added" });
+        res.status(201).json({ message: "Matchup Added" });
       });
     });
     r.path("stats")((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json(await getStats(ctx.ruleset, ctx.rawDraft._id));
-      });
+      r.get(async (ctx) => await getStats(ctx.ruleset, ctx.rawDraft._id));
     });
     r.path("archive")((r) => {
-      r.delete(async (req, res, ctx) => {
+      r.delete(async (ctx, req, res) => {
         const session = await startSession();
         session.startTransaction();
         try {
@@ -473,70 +465,73 @@ export const DraftRoute = createRoute().auth()((r) => {
         }
       });
     });
-    r.param("matchup_id", async (req, res, ctx, matchup_id) => {
-      const rawMatchup: MatchupDocument | null =
-        await getMatchupById(matchup_id);
-      if (!rawMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+    r.param("matchup_id", async (ctx, matchup_id) => {
+      const rawMatchup = await getMatchupById(matchup_id);
       const matchup = rawMatchup.toObject<MatchupData>();
       const matchupInstance = await Matchup.fromData(matchup, ctx.draft);
       return { rawMatchup, matchup: matchupInstance, matchup_id };
     })((r) => {
-      r.get(async (req, res, ctx) => {
-        return res.json(ctx.matchup.toClient());
-      });
+      r.get(async (ctx) => ctx.matchup.toClient());
       r.path("opponent")((r) => {
-        r.get(async (req, res, ctx) => {
-          const opponent = ctx.matchup.toOpponent();
-          return res.json(opponent.toClient());
-        });
-        r.patch(async (req, res, ctx) => {
-          const opponent = Opponent.fromForm(req.body, ctx.ruleset);
+        r.get(async (ctx) => ctx.matchup.toOpponent().toClient());
+        r.patch.validate({
+          body: (data) =>
+            z
+              .object({
+                stage: z.string().min(1),
+                teamName: z.string().min(1),
+                coach: z.string().min(1).optional(),
+                team: z.array(z.any()),
+                matches: z.array(z.any()),
+                _id: z.string().min(1),
+              })
+              .parse(data),
+        })(async (ctx) => {
+          const opponent = Opponent.fromForm(ctx.validatedBody, ctx.ruleset);
           const updatedMatchup = await updateMatchup(
             ctx.matchup_id,
             opponent.toData(),
           );
-          clearMatchupCacheById(req.params.matchup_id);
-          if (!updatedMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
-          return res
-            .status(200)
-            .json({ message: "Matchup Updated", draft: updatedMatchup });
+          clearMatchupCacheById(ctx.matchup_id);
+          return { message: "Matchup Updated", draft: updatedMatchup };
         });
       });
       r.path("score")((r) => {
-        r.patch(async (req, res, ctx) => {
-          const score = new Score(req.body);
+        r.patch.validate({
+          //TODO: refine this schema
+          body: (data) => z.any().parse(data),
+        })(async (ctx) => {
+          const score = new Score(ctx.validatedBody);
           const processedScore = await score.processScore();
           const updatedMatchup = await updateMatchup(ctx.matchup_id, {
             matches: processedScore.matches,
             "aTeam.paste": processedScore.aTeamPaste,
             "bTeam.paste": processedScore.bTeamPaste,
           });
-          if (!updatedMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
-          return res
-            .status(200)
-            .json({ message: "Matchup Updated", draft: updatedMatchup });
+          return { message: "Matchup Updated", draft: updatedMatchup };
         });
       });
       r.path("schedule")((r) => {
-        r.get(async (req, res, ctx) => {
-          return res.json({
+        r.get(async (ctx) => {
+          return {
             gameTime: ctx.matchup.gameTime,
             reminder: ctx.matchup.reminder,
-          });
+          };
         });
-        r.patch(async (req, res, ctx) => {
-          const time = new GameTime(req.body);
+        r.patch.validate({
+          //TODO: refine this schema
+          body: (data) => z.any().parse(data),
+        })(async (ctx, req, res) => {
+          const time = new GameTime(ctx.validatedBody);
           const processedTime = await time.processTime();
           const updatedMatchup = await updateMatchup(ctx.matchup_id, {
             gameTime: processedTime.dateTime,
             reminder: processedTime.emailTime,
           });
           if (updatedMatchup) {
-            return res
-              .status(200)
-              .json({ message: "Matchup Updated", draft: updatedMatchup });
+            return { message: "Matchup Updated", draft: updatedMatchup };
           } else {
-            return res.status(404).json({
+            res.status(404).json({
               message: "Matchup not found",
               code: `${routeCode}-R6-03`,
             });

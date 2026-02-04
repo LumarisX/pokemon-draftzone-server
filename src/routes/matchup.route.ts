@@ -263,44 +263,31 @@ export const MatchupRoutes: RouteOld = {
 
 export const MatchupRoute = createRoute()((r) => {
   r.path("quick")((r) => {
-    r.post(async (req, res) => {
-      const matchup = await Matchup.fromQuickData(req.body);
-      const data = await matchup.analyze();
-      res.json(data);
-    });
+    r.post.validate({
+      //TODO: refine this schema
+      body: (data) => z.any().parse(data),
+    })(
+      async (ctx) =>
+        await (await Matchup.fromQuickData(ctx.validatedBody)).analyze(),
+    );
   });
   r.param("matchup_id", {
     validate: (matchup_id) => mongoose.Types.ObjectId.isValid(matchup_id),
-    loader: async (req, res, ctx, matchup_id) => {
+    loader: async (ctx, matchup_id) => {
       const rawMatchup = await getMatchupById(matchup_id);
-      if (!rawMatchup) {
-        logger.error(`Matchup not found for matchup_id: ${matchup_id}`);
-        throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
-      }
-      const matchupData = rawMatchup.toObject<MatchupData>();
-      const matchup = await Matchup.fromData(matchupData);
-      const aTeam = await getDraft(matchupData.aTeam._id);
-      if (!aTeam) {
-        logger.error(
-          `Draft not found for matchup's aTeam._id: ${matchupData.aTeam._id}`,
-        );
-        throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
-      }
+      const matchup = await Matchup.fromData(rawMatchup);
+      const aTeam = await getDraft(rawMatchup.aTeam._id);
       const ruleset = getRuleset(aTeam.ruleset);
-      return { rawMatchup, matchup, ruleset };
+      return { rawMatchup, matchup, ruleset, matchup_id };
     },
   })((r) => {
-    r.get(async (req, res, ctx) => {
-      const matchup = ctx.matchup;
-      const data = await matchup.analyze();
-      res.json(data);
-    });
-    r.delete(async (req, res, ctx) => {
-      await deleteMatchup(req.params.matchup_id);
-      res.json({ message: "Matchup deleted" });
+    r.get(async (ctx) => await ctx.matchup.analyze());
+    r.delete(async (ctx) => {
+      await deleteMatchup(ctx.matchup_id);
+      return { message: "Matchup deleted" };
     });
     r.path("summary")((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const aTeamsummary = new SummaryClass(
           ctx.matchup.aTeam.team,
           ctx.matchup.aTeam.teamName,
@@ -309,62 +296,53 @@ export const MatchupRoute = createRoute()((r) => {
           ctx.matchup.bTeam.team,
           ctx.matchup.bTeam.teamName,
         );
-        res.json([aTeamsummary.toJson(), bTeamsummary.toJson()]);
+        return [aTeamsummary.toJson(), bTeamsummary.toJson()];
       });
     });
     r.path("typechart")((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json([
-          new Typechart(ctx.matchup.aTeam.team).toJson(),
-          new Typechart(ctx.matchup.bTeam.team).toJson(),
-        ]);
-      });
+      r.get(async (ctx) => [
+        new Typechart(ctx.matchup.aTeam.team).toJson(),
+        new Typechart(ctx.matchup.bTeam.team).toJson(),
+      ]);
     });
     r.path("speedchart")((r) => {
-      r.get(async (req, res, ctx) => {
-        const level = ctx.matchup.format.level;
-        res.json(
-          speedchart([ctx.matchup.aTeam.team, ctx.matchup.bTeam.team], level),
-        );
-      });
+      r.get(async (ctx) =>
+        speedchart(
+          [ctx.matchup.aTeam.team, ctx.matchup.bTeam.team],
+          ctx.matchup.format.level,
+        ),
+      );
     });
     r.path("coveragechart")((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json([
-          coveragechart(ctx.matchup.aTeam.team, ctx.matchup.bTeam.team),
-          coveragechart(ctx.matchup.bTeam.team, ctx.matchup.aTeam.team),
-        ]);
-      });
+      r.get(async (ctx) => [
+        coveragechart(ctx.matchup.aTeam.team, ctx.matchup.bTeam.team),
+        coveragechart(ctx.matchup.bTeam.team, ctx.matchup.aTeam.team),
+      ]);
     });
     r.path("movechart")((r) => {
-      r.get(async (req, res, ctx) => {
-        res.json(
+      r.get(
+        async (ctx) =>
           await Promise.all([
             movechart(ctx.matchup.aTeam.team, ctx.ruleset),
             movechart(ctx.matchup.bTeam.team, ctx.ruleset),
           ]),
-        );
-      });
+      );
     });
     r.path("notes")((r) => {
-      r.get(async (req, res, ctx) => {
-        const matchupDoc = ctx.rawMatchup;
-        res.json({ notes: matchupDoc!.notes || "" });
-      });
+      r.get(async (ctx) => ({ notes: ctx.rawMatchup.notes || "" }));
     });
     r.path("update-notes")((r) => {
       r.post.auth().validate({
         body: (data) => z.object({ notes: z.string() }).parse(data),
-      })(async (req, res, ctx) => {
+      })(async (ctx) => {
         const matchupDoc = ctx.rawMatchup;
         const aTeamDraft = await getDraft(matchupDoc.aTeam._id);
-        if (!aTeamDraft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
         const ownerSub = aTeamDraft.owner;
         if (ctx.sub !== ownerSub) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
         const { notes } = ctx.validatedBody;
         matchupDoc.notes = notes;
         await matchupDoc.save();
-        res.json({ success: true });
+        return { success: true };
       });
     });
   });

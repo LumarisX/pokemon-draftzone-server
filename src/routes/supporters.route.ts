@@ -93,7 +93,7 @@ export const SupporterRoutes: RouteOld = {
 };
 
 export const SupporterRoute = createRoute()((r) => {
-  r.get(async (req, res, ctx) => {
+  r.get(async () => {
     const today = new Date();
     const supporters: Supporter[] = await SupporterModel.find().lean();
 
@@ -166,6 +166,6 @@ export const SupporterRoute = createRoute()((r) => {
     supporterData.top.thirty = supporterData.top.thirty
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-    res.json(supporterData);
+    return supporterData;
   });
 });

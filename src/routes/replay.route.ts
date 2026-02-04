@@ -77,12 +77,7 @@ export const ReplayRoutes: RouteOld = {
   },
 };
 
-function URLHandler<T>(
-  req: Request,
-  res: Response,
-  ctx: T,
-  url: string,
-): { url: string } {
+function URLHandler<T>(ctx: T, url: string): { url: string } {
   const decodedUrl = decodeURI(url).replace(/^https?:\/\//, "");
   const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;
   if (!urlPattern.test(decodedUrl))
@@ -98,10 +93,10 @@ export const ReplayRoute = createRoute()((r) => {
       "url",
       URLHandler,
     )((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx) => {
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         const replay = new Replay.Analysis(await replayData.text());
-        res.json(replay.toJson());
+        return replay.toJson();
       });
     });
   });
@@ -110,7 +105,7 @@ export const ReplayRoute = createRoute()((r) => {
       "url",
       URLHandler,
     )((r) => {
-      r.get(async (req, res, ctx) => {
+      r.get(async (ctx, req, res) => {
         const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
         res.send(await replayData.text());
       });

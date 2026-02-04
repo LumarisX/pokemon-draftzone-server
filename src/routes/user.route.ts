@@ -49,22 +49,22 @@ export const UserRoutes: RouteOld = {
 
 export const UserRoute = createRoute()((r) => {
   r.path("settings")((r) => {
-    r.get.auth()(async (req, res, ctx) => {
+    r.get.auth()(async (ctx) => {
       const management = await getManagementToken();
       const user = await management.users.get({ id: ctx.sub });
       const settings =
         (user.data.user_metadata && user.data.user_metadata.settings) || null;
-      return res.status(200).json(settings);
+      return settings;
     });
     r.patch.auth().validate({
       body: (data) => z.record(z.any()).parse(data),
-    })(async (req, res, ctx) => {
+    })(async (ctx, req, res) => {
       const management = await getManagementToken();
       await management.users.update(
         { id: ctx.sub },
         { user_metadata: { settings: ctx.validatedBody } },
       );
-      return res.status(201).json({ settings: ctx.validatedBody });
+      res.status(201).json({ settings: ctx.validatedBody });
     });
   });
 });

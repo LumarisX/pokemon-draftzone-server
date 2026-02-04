@@ -109,7 +109,7 @@ export const ArchiveRoutes: RouteOld = {
 
 export const ArchiveRoute = createRoute()((r) => {
   r.path("teams")((r) => {
-    r.get.auth()(async (req, res, ctx) => {
+    r.get.auth()(async (ctx) => {
       const rawArchives = await ArchiveBaseModel.find({
         owner: ctx.sub,
       }).sort({
@@ -127,13 +127,13 @@ export const ArchiveRoute = createRoute()((r) => {
         };
       });
 
-      res.json(archives);
+      return archives;
     });
   });
 
   r.param("team_id", {
     validate: (team_id) => mongoose.Types.ObjectId.isValid(team_id),
-    loader: async (req, res, ctx, team_id) => {
+    loader: async (ctx, req, res, team_id) => {
       const rawArchive = await ArchiveBaseModel.findById(team_id);
       if (!rawArchive) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
       const archive = rawArchive.toObject() as unknown as
@@ -143,14 +143,14 @@ export const ArchiveRoute = createRoute()((r) => {
       return { rawArchive, archive, ruleset };
     },
   })((r) => {
-    r.delete.auth()(async (req, res, ctx) => {
+    r.delete.auth()(async (ctx, req, res) => {
       await ctx.rawArchive.deleteOne();
       res.status(201).json({ message: "Draft deleted" });
     });
 
     r.path("stats")((r) => {
-      r.get.auth()(async (req, res, ctx) => {
-        res.json(await getStats(ctx.ruleset, ctx.archive));
+      r.get.auth()(async (ctx) => {
+        return await getStats(ctx.ruleset, ctx.archive);
       });
     });
   });
