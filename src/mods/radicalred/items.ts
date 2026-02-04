@@ -957,11 +957,10 @@ export const Items: ModdedItemDataTable = {
   butterfrite: {
     name: "Butterfrite",
     spritenum: 592,
-    megaStone: "Butterfree-Mega",
-    megaEvolves: "Butterfree",
+    megaStone: { Butterfree: "Butterfree-Mega" },
     itemUser: ["Butterfree"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -970,11 +969,10 @@ export const Items: ModdedItemDataTable = {
   machampite: {
     name: "Machampite",
     spritenum: 578,
-    megaStone: "Machamp-Mega",
-    megaEvolves: "Machamp",
+    megaStone: { Machamp: "Machamp-Mega" },
     itemUser: ["Machamp"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -983,11 +981,10 @@ export const Items: ModdedItemDataTable = {
   garbodorite: {
     name: "Garbodorite",
     spritenum: 614,
-    megaStone: "Garbodor-Mega",
-    megaEvolves: "Garbodor",
+    megaStone: { Garbodor: "Garbodor-Mega" },
     itemUser: ["Garbodor"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -996,11 +993,10 @@ export const Items: ModdedItemDataTable = {
   kinglerite: {
     name: "Kinglerite",
     spritenum: 583,
-    megaStone: "Kingler-Mega",
-    megaEvolves: "Kingler",
+    megaStone: { Kingler: "Kingler-Mega" },
     itemUser: ["Kingler"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1009,11 +1005,10 @@ export const Items: ModdedItemDataTable = {
   snorlaxite: {
     name: "Snorlaxite",
     spritenum: 616,
-    megaStone: "Snorlax-Mega",
-    megaEvolves: "Snorlax",
+    megaStone: { Snorlax: "Snorlax-Mega" },
     itemUser: ["Snorlax"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1022,11 +1017,10 @@ export const Items: ModdedItemDataTable = {
   laprasite: {
     name: "Laprasite",
     spritenum: 612,
-    megaStone: "Lapras-Mega",
-    megaEvolves: "Lapras",
+    megaStone: { Lapras: "Lapras-Mega" },
     itemUser: ["Lapras"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1035,11 +1029,10 @@ export const Items: ModdedItemDataTable = {
   drednawite: {
     name: "Drednawite",
     spritenum: 575,
-    megaStone: "Drednaw-Mega",
-    megaEvolves: "Drednaw",
+    megaStone: { Drednaw: "Drednaw-Mega" },
     itemUser: ["Drednaw"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1048,11 +1041,10 @@ export const Items: ModdedItemDataTable = {
   coalossite: {
     name: "Coalossite",
     spritenum: 591,
-    megaStone: "Coalossal-Mega",
-    megaEvolves: "Coalossal",
+    megaStone: { Coalossal: "Coalossal-Mega" },
     itemUser: ["Coalossal"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1061,11 +1053,10 @@ export const Items: ModdedItemDataTable = {
   orbeetlite: {
     name: "Orbeetlite",
     spritenum: 587,
-    megaStone: "Orbeetle-Mega",
-    megaEvolves: "Orbeetle",
+    megaStone: { Orbeetle: "Orbeetle-Mega" },
     itemUser: ["Orbeetle"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1074,11 +1065,10 @@ export const Items: ModdedItemDataTable = {
   toxtricitite: {
     name: "Toxtricitite",
     spritenum: 582,
-    megaStone: "Toxtricity-Mega",
-    megaEvolves: "Toxtricity",
+    megaStone: { Toxtricity: "Toxtricity-Mega" },
     itemUser: ["Toxtricity"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1087,8 +1077,7 @@ export const Items: ModdedItemDataTable = {
   toxtricititelowkey: {
     name: "Toxtricitite Low Key",
     spritenum: 582,
-    megaStone: "Toxtricity-Low-Key-Mega",
-    megaEvolves: "Toxtricity-Low-Key",
+    megaStone: { "Toxtricity-Low-Key": "Toxtricity-Low-Key-Mega" },
     itemUser: ["Toxtricity-Low-Key"],
     onTakeItem(item, source) {
       if (source.baseSpecies.baseSpecies === "Toxtricity") return false;
@@ -1100,11 +1089,10 @@ export const Items: ModdedItemDataTable = {
   duraludonite: {
     name: "Duraludonite",
     spritenum: 577,
-    megaStone: "Duraludon-Mega",
-    megaEvolves: "Duraludon",
+    megaStone: { Duraludon: "Duraludon-Mega" },
     itemUser: ["Duraludon"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1113,11 +1101,10 @@ export const Items: ModdedItemDataTable = {
   copperajite: {
     name: "Copperajite",
     spritenum: 605,
-    megaStone: "Copperajah-Mega",
-    megaEvolves: "Copperajah",
+    megaStone: { Copperajah: "Copperajah-Mega" },
     itemUser: ["Copperajah"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1126,11 +1113,10 @@ export const Items: ModdedItemDataTable = {
   centiskite: {
     name: "Centiskite",
     spritenum: 586,
-    megaStone: "Centiskorch-Mega",
-    megaEvolves: "Centiskorch",
+    megaStone: { Centiskorch: "Centiskorch-Mega" },
     itemUser: ["Centiskorch"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1139,8 +1125,7 @@ export const Items: ModdedItemDataTable = {
   centiskitesevii: {
     name: "Centiskite Sevii",
     spritenum: 586,
-    megaStone: "Centiskorch-Sevii-Mega",
-    megaEvolves: "Centiskorch-Sevii",
+    megaStone: { "Centiskorch-Sevii": "Centiskorch-Sevii-Mega" },
     itemUser: ["Centiskorch-Sevii"],
     onTakeItem(item, source) {
       if (source.baseSpecies.baseSpecies === "Centiskorch") return false;
@@ -1152,11 +1137,10 @@ export const Items: ModdedItemDataTable = {
   sandacondite: {
     name: "Sandacondite",
     spritenum: 626,
-    megaStone: "Sandaconda-Mega",
-    megaEvolves: "Sandaconda",
+    megaStone: { Sandaconda: "Sandaconda-Mega" },
     itemUser: ["Sandaconda"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1165,11 +1149,10 @@ export const Items: ModdedItemDataTable = {
   flapplite: {
     name: "Flapplite",
     spritenum: 608,
-    megaStone: "Flapple-Mega",
-    megaEvolves: "Flapple",
+    megaStone: { Flapple: "Flapple-Mega" },
     itemUser: ["Flapple"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1178,11 +1161,10 @@ export const Items: ModdedItemDataTable = {
   appletunite: {
     name: "Appletunite",
     spritenum: 608,
-    megaStone: "Appletun-Mega",
-    megaEvolves: "Appletun",
+    megaStone: { Appletun: "Appletun-Mega" },
     itemUser: ["Appletun"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,
@@ -1191,11 +1173,10 @@ export const Items: ModdedItemDataTable = {
   alcremite: {
     name: "Alcremite",
     spritenum: 620,
-    megaStone: "Alcremie-Mega",
-    megaEvolves: "Alcremie",
+    megaStone: { Alcremie: "Alcremie-Mega" },
     itemUser: ["Alcremie"],
     onTakeItem(item, source) {
-      if (item.megaEvolves === source.baseSpecies.baseSpecies) return false;
+      if (item.megaStone?.[source.baseSpecies.baseSpecies]) return false;
       return true;
     },
     gen: 8,

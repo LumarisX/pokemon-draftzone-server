@@ -11,8 +11,7 @@ export const Items: ModdedItemDataTable = {
   bisharpite: {
     name: "Bisharpite",
     spritenum: 753,
-    megaStone: "Bisharp-Mega",
-    megaEvolves: "Bisharp",
+    megaStone: { Bisharp: "Bisharp-Mega" },
     num: 992,
     gen: 6,
     isNonstandard: "Past",
@@ -20,8 +19,7 @@ export const Items: ModdedItemDataTable = {
   cacturnite: {
     name: "Cacturnite",
     spritenum: 754,
-    megaStone: "Cacturne-Mega",
-    megaEvolves: "Cacturne",
+    megaStone: { Cacturne: "Cacturne-Mega" },
     num: 938,
     gen: 6,
     isNonstandard: "Past",
@@ -29,8 +27,7 @@ export const Items: ModdedItemDataTable = {
   chatotite: {
     name: "Chatotite",
     spritenum: 755,
-    megaStone: "Chatot-Mega",
-    megaEvolves: "Chatot",
+    megaStone: { Chatot: "Chatot-Mega" },
     num: 939,
     gen: 6,
     isNonstandard: "Past",
@@ -38,8 +35,7 @@ export const Items: ModdedItemDataTable = {
   crawdite: {
     name: "Crawdite",
     spritenum: 756,
-    megaStone: "Crawdaunt-Mega",
-    megaEvolves: "Crawdaunt",
+    megaStone: { Crawdaunt: "Crawdaunt-Mega" },
     num: 940,
     gen: 6,
     isNonstandard: "Past",
@@ -47,8 +43,7 @@ export const Items: ModdedItemDataTable = {
   cryogonite: {
     name: "Cryogonite",
     spritenum: 757,
-    megaStone: "Cryogonal-Mega",
-    megaEvolves: "Cryogonal",
+    megaStone: { Cryogonal: "Cryogonal-Mega" },
     num: 941,
     gen: 6,
     isNonstandard: "Past",
@@ -56,8 +51,7 @@ export const Items: ModdedItemDataTable = {
   crystalfragment: {
     name: "Crystal Fragment",
     spritenum: 758,
-    megaStone: "Metagross-Delta-R-Crystal",
-    megaEvolves: "Metagross-Delta-R",
+    megaStone: { "Metagross-Delta-R": "Metagross-Delta-R-Crystal" },
     num: 993,
     gen: 6,
     isNonstandard: "Past",
@@ -85,8 +79,7 @@ export const Items: ModdedItemDataTable = {
   deltabisharpite: {
     name: "Delta Bisharpite",
     spritenum: 762,
-    megaStone: "Bisharp-Delta-Mega",
-    megaEvolves: "Bisharp-Delta",
+    megaStone: { "Bisharp-Delta": "Bisharp-Delta-Mega" },
     num: 969,
     gen: 6,
     isNonstandard: "Past",
@@ -94,8 +87,7 @@ export const Items: ModdedItemDataTable = {
   deltablastoisinite: {
     name: "Delta Blastoisinite",
     spritenum: 763,
-    megaStone: "Blastoise-Delta-Mega",
-    megaEvolves: "Blastoise-Delta",
+    megaStone: { "Blastoise-Delta": "Blastoise-Delta-Mega" },
     num: 970,
     gen: 6,
     isNonstandard: "Past",
@@ -103,8 +95,7 @@ export const Items: ModdedItemDataTable = {
   deltacameruptite: {
     name: "Delta Cameruptite",
     spritenum: 764,
-    megaStone: "Camerupt-Delta-Mega",
-    megaEvolves: "Camerupt-Delta",
+    megaStone: { "Camerupt-Delta": "Camerupt-Delta-Mega" },
     num: 971,
     gen: 6,
     isNonstandard: "Past",
@@ -112,8 +103,7 @@ export const Items: ModdedItemDataTable = {
   deltacharizardite: {
     name: "Delta Charizardite",
     spritenum: 765,
-    megaStone: "Charizard-Delta-Mega",
-    megaEvolves: "Charizard-Delta",
+    megaStone: { "Charizard-Delta": "Charizard-Delta-Mega" },
     num: 972,
     gen: 6,
     isNonstandard: "Past",
@@ -121,8 +111,7 @@ export const Items: ModdedItemDataTable = {
   deltaetigirafarigite: {
     name: "Delta Etigirafarigite",
     spritenum: 766,
-    megaStone: "Girafarig-Delta-Mega",
-    megaEvolves: "Girafarig-Delta",
+    megaStone: { "Girafarig-Delta": "Girafarig-Delta-Mega" },
     num: 973,
     gen: 6,
     isNonstandard: "Past",
@@ -130,8 +119,7 @@ export const Items: ModdedItemDataTable = {
   deltafroslassite: {
     name: "Delta Froslassite",
     spritenum: 767,
-    megaStone: "Froslass-Delta-Mega",
-    megaEvolves: "Froslass-Delta",
+    megaStone: { "Froslass-Delta": "Froslass-Delta-Mega" },
     num: 974,
     gen: 6,
     isNonstandard: "Past",
@@ -139,8 +127,7 @@ export const Items: ModdedItemDataTable = {
   deltagalladite: {
     name: "Delta Galladite",
     spritenum: 768,
-    megaStone: "Gallade-Delta-Mega",
-    megaEvolves: "Gallade-Delta",
+    megaStone: { "Gallade-Delta": "Gallade-Delta-Mega" },
     num: 975,
     gen: 6,
     isNonstandard: "Past",
@@ -148,8 +135,7 @@ export const Items: ModdedItemDataTable = {
   deltagardevoirite: {
     name: "Delta Gardevoirite",
     spritenum: 769,
-    megaStone: "Gardevoir-Delta-Mega",
-    megaEvolves: "Gardevoir-Delta",
+    megaStone: { "Gardevoir-Delta": "Gardevoir-Delta-Mega" },
     num: 976,
     gen: 6,
     isNonstandard: "Past",
@@ -157,8 +143,7 @@ export const Items: ModdedItemDataTable = {
   deltaglalitite: {
     name: "Delta Glalitite",
     spritenum: 770,
-    megaStone: "Glalie-Delta-Mega",
-    megaEvolves: "Glalie-Delta",
+    megaStone: { "Glalie-Delta": "Glalie-Delta-Mega" },
     num: 977,
     gen: 6,
     isNonstandard: "Past",
@@ -166,8 +151,7 @@ export const Items: ModdedItemDataTable = {
   deltalopunnite: {
     name: "Delta Lopunnite",
     spritenum: 771,
-    megaStone: "Lopunny-Delta-Mega",
-    megaEvolves: "Lopunny-Delta",
+    megaStone: { "Lopunny-Delta": "Lopunny-Delta-Mega" },
     num: 978,
     gen: 6,
     isNonstandard: "Past",
@@ -175,8 +159,7 @@ export const Items: ModdedItemDataTable = {
   deltalucarionite: {
     name: "Delta Lucarionite",
     spritenum: 772,
-    megaStone: "Lucario-Delta-Mega",
-    megaEvolves: "Lucario-Delta",
+    megaStone: { "Lucario-Delta": "Lucario-Delta-Mega" },
     num: 979,
     gen: 6,
     isNonstandard: "Past",
@@ -184,8 +167,7 @@ export const Items: ModdedItemDataTable = {
   deltamawilite: {
     name: "Delta Mawilite",
     spritenum: 773,
-    megaStone: "Mawile-Delta-Mega",
-    megaEvolves: "Mawile-Delta",
+    megaStone: { "Mawile-Delta": "Mawile-Delta-Mega" },
     num: 980,
     gen: 6,
     isNonstandard: "Past",
@@ -193,8 +175,7 @@ export const Items: ModdedItemDataTable = {
   deltamedichamite: {
     name: "Delta Medichamite",
     spritenum: 774,
-    megaStone: "Medicham-Delta-Mega",
-    megaEvolves: "Medicham-Delta",
+    megaStone: { "Medicham-Delta": "Medicham-Delta-Mega" },
     num: 981,
     gen: 6,
     isNonstandard: "Past",
@@ -202,8 +183,7 @@ export const Items: ModdedItemDataTable = {
   deltametagrossiteruin: {
     name: "Delta Metagrossite Ruin",
     spritenum: 775,
-    megaStone: "Metagross-Delta-R-Mega",
-    megaEvolves: "Metagross-Delta-R",
+    megaStone: { "Metagross-Delta-R": "Metagross-Delta-R-Mega" },
     num: 982,
     gen: 6,
     isNonstandard: "Past",
@@ -211,8 +191,7 @@ export const Items: ModdedItemDataTable = {
   deltametagrossitespider: {
     name: "Delta Metagrossite Spider",
     spritenum: 776,
-    megaStone: "Metagross-Delta-S-Mega",
-    megaEvolves: "Metagross-Delta-S",
+    megaStone: { "Metagross-Delta-S": "Metagross-Delta-S-Mega" },
     num: 983,
     gen: 6,
     isNonstandard: "Past",
@@ -220,8 +199,7 @@ export const Items: ModdedItemDataTable = {
   deltamilotite: {
     name: "Delta Milotite",
     spritenum: 777,
-    megaStone: "Milotic-Delta-Mega",
-    megaEvolves: "Milotic-Delta",
+    megaStone: { "Milotic-Delta": "Milotic-Delta-Mega" },
     num: 984,
     gen: 6,
     isNonstandard: "Past",
@@ -229,8 +207,7 @@ export const Items: ModdedItemDataTable = {
   deltapidgeotite: {
     name: "Delta Pidgeotite",
     spritenum: 778,
-    megaStone: "Pidgeot-Delta-Mega",
-    megaEvolves: "Pidgeot-Delta",
+    megaStone: { "Pidgeot-Delta": "Pidgeot-Delta-Mega" },
     num: 985,
     gen: 6,
     isNonstandard: "Past",
@@ -238,8 +215,7 @@ export const Items: ModdedItemDataTable = {
   deltasablenite: {
     name: "Delta Sablenite",
     spritenum: 779,
-    megaStone: "Sableye-Delta-Mega",
-    megaEvolves: "Sableye-Delta",
+    megaStone: { "Sableye-Delta": "Sableye-Delta-Mega" },
     num: 986,
     gen: 6,
     isNonstandard: "Past",
@@ -247,8 +223,7 @@ export const Items: ModdedItemDataTable = {
   deltascizorite: {
     name: "Delta Scizorite",
     spritenum: 780,
-    megaStone: "Scizor-Delta-Mega",
-    megaEvolves: "Scizor-Delta",
+    megaStone: { "Scizor-Delta": "Scizor-Delta-Mega" },
     num: 987,
     gen: 6,
     isNonstandard: "Past",
@@ -256,8 +231,7 @@ export const Items: ModdedItemDataTable = {
   deltasunflorite: {
     name: "Delta Sunflorite",
     spritenum: 781,
-    megaStone: "Sunflora-Delta-Mega",
-    megaEvolves: "Sunflora-Delta",
+    megaStone: { "Sunflora-Delta": "Sunflora-Delta-Mega" },
     num: 988,
     gen: 6,
     isNonstandard: "Past",
@@ -265,8 +239,7 @@ export const Items: ModdedItemDataTable = {
   deltatyphlosionite: {
     name: "Delta Typhlosionite",
     spritenum: 782,
-    megaStone: "Typhlosion-Delta-Mega",
-    megaEvolves: "Typhlosion-Delta",
+    megaStone: { "Typhlosion-Delta": "Typhlosion-Delta-Mega" },
     num: 989,
     gen: 6,
     isNonstandard: "Past",
@@ -274,8 +247,7 @@ export const Items: ModdedItemDataTable = {
   deltavenusaurite: {
     name: "Delta Venusaurite",
     spritenum: 783,
-    megaStone: "Venusaur-Delta-Mega",
-    megaEvolves: "Venusaur-Delta",
+    megaStone: { "Venusaur-Delta": "Venusaur-Delta-Mega" },
     num: 990,
     gen: 6,
     isNonstandard: "Past",
@@ -283,8 +255,7 @@ export const Items: ModdedItemDataTable = {
   donphanite: {
     name: "Donphanite",
     spritenum: 784,
-    megaStone: "Donphan-Mega",
-    megaEvolves: "Donphan",
+    megaStone: { Donphan: "Donphan-Mega" },
     num: 965,
     gen: 6,
     isNonstandard: "Past",
@@ -292,8 +263,7 @@ export const Items: ModdedItemDataTable = {
   eevite: {
     name: "Eevite",
     spritenum: 785,
-    megaStone: "Eevee-Mega-Base",
-    megaEvolves: "Eevee-Pre-Mega",
+    megaStone: { "Eevee-Pre-Mega": "Eevee-Mega-Base" },
     num: 973,
     gen: 6,
     isNonstandard: "Past",
@@ -301,8 +271,7 @@ export const Items: ModdedItemDataTable = {
   etigirafarigite: {
     name: "Etigirafarigite",
     spritenum: 786,
-    megaStone: "Girafarig-Mega",
-    megaEvolves: "Girafarig",
+    megaStone: { Girafarig: "Girafarig-Mega" },
     num: 973,
     gen: 6,
     isNonstandard: "Past",
@@ -310,8 +279,7 @@ export const Items: ModdedItemDataTable = {
   feraligatite: {
     name: "Feraligatite",
     spritenum: 788,
-    megaStone: "Feraligatr-Mega",
-    megaEvolves: "Feraligatr",
+    megaStone: { Feraligatr: "Feraligatr-Mega" },
     num: 945,
     gen: 6,
     isNonstandard: "Past",
@@ -326,8 +294,7 @@ export const Items: ModdedItemDataTable = {
   flygonite: {
     name: "Flygonite",
     spritenum: 790,
-    megaStone: "Flygon-Mega",
-    megaEvolves: "Flygon",
+    megaStone: { Flygon: "Flygon-Mega" },
     num: 946,
     gen: 6,
     isNonstandard: "Past",
@@ -335,8 +302,7 @@ export const Items: ModdedItemDataTable = {
   froslassite: {
     name: "Froslassite",
     spritenum: 791,
-    megaStone: "Froslass-Mega",
-    megaEvolves: "Froslass",
+    megaStone: { Froslass: "Froslass-Mega" },
     num: 947,
     gen: 6,
     isNonstandard: "Past",
@@ -344,8 +310,7 @@ export const Items: ModdedItemDataTable = {
   gothitite: {
     name: "Gothitite",
     spritenum: 792,
-    megaStone: "Gothitelle-Mega",
-    megaEvolves: "Gothitelle",
+    megaStone: { Gothitelle: "Gothitelle-Mega" },
     num: 948,
     gen: 6,
     isNonstandard: "Past",
@@ -353,8 +318,7 @@ export const Items: ModdedItemDataTable = {
   haxorite: {
     name: "Haxorite",
     spritenum: 793,
-    megaStone: "Haxorus-Mega",
-    megaEvolves: "Haxorus",
+    megaStone: { Haxorus: "Haxorus-Mega" },
     num: 949,
     gen: 6,
     isNonstandard: "Past",
@@ -362,8 +326,7 @@ export const Items: ModdedItemDataTable = {
   hydreigonite: {
     name: "Hydreigonite",
     spritenum: 794,
-    megaStone: "Hydreigon-Mega-Five",
-    megaEvolves: "Hydreigon",
+    megaStone: { Hydreigon: "Hydreigon-Mega-Five" },
     num: 950,
     gen: 6,
     isNonstandard: "Past",
@@ -371,8 +334,7 @@ export const Items: ModdedItemDataTable = {
   jirachite: {
     name: "Jirachite",
     spritenum: 795,
-    megaStone: "Jirachi-Mega",
-    megaEvolves: "Jirachi",
+    megaStone: { Jirachi: "Jirachi-Mega" },
     num: 951,
     gen: 6,
     isNonstandard: "Past",
@@ -387,8 +349,7 @@ export const Items: ModdedItemDataTable = {
   magcargonite: {
     name: "Magcargonite",
     spritenum: 797,
-    megaStone: "Magcargo-Mega",
-    megaEvolves: "Magcargo",
+    megaStone: { Magcargo: "Magcargo-Mega" },
     num: 952,
     gen: 6,
     isNonstandard: "Past",
@@ -396,8 +357,7 @@ export const Items: ModdedItemDataTable = {
   marowite: {
     name: "Marowite",
     spritenum: 798,
-    megaStone: "Marowak-Mega",
-    megaEvolves: "Marowak",
+    megaStone: { Marowak: "Marowak-Mega" },
     num: 953,
     gen: 6,
     isNonstandard: "Past",
@@ -405,8 +365,7 @@ export const Items: ModdedItemDataTable = {
   meganiumite: {
     name: "Meganiumite",
     spritenum: 799,
-    megaStone: "Meganium-Mega",
-    megaEvolves: "Meganium",
+    megaStone: { Meganium: "Meganium-Mega" },
     num: 954,
     gen: 6,
     isNonstandard: "Past",
@@ -421,8 +380,7 @@ export const Items: ModdedItemDataTable = {
   milotite: {
     name: "Milotite",
     spritenum: 801,
-    megaStone: "Milotic-Mega",
-    megaEvolves: "Milotic",
+    megaStone: { Milotic: "Milotic-Mega" },
     num: 955,
     gen: 6,
     isNonstandard: "Past",
@@ -430,8 +388,7 @@ export const Items: ModdedItemDataTable = {
   miltankite: {
     name: "Miltankite",
     spritenum: 802,
-    megaStone: "Miltank-Mega",
-    megaEvolves: "Miltank",
+    megaStone: { Miltank: "Miltank-Mega" },
     num: 956,
     gen: 6,
     isNonstandard: "Past",
@@ -452,8 +409,7 @@ export const Items: ModdedItemDataTable = {
   politoedite: {
     name: "Politoedite",
     spritenum: 805,
-    megaStone: "Politoed-Mega",
-    megaEvolves: "Politoed",
+    megaStone: { Politoed: "Politoed-Mega" },
     num: 957,
     gen: 6,
     isNonstandard: "Past",
@@ -461,8 +417,7 @@ export const Items: ModdedItemDataTable = {
   poliwrathite: {
     name: "Poliwrathite",
     spritenum: 806,
-    megaStone: "Poliwrath-Mega",
-    megaEvolves: "Poliwrath",
+    megaStone: { Poliwrath: "Poliwrath-Mega" },
     num: 677,
     gen: 6,
     isNonstandard: "Past",
@@ -470,8 +425,7 @@ export const Items: ModdedItemDataTable = {
   reuniclite: {
     name: "Reuniclite",
     spritenum: 807,
-    megaStone: "Reuniclus-Mega",
-    megaEvolves: "Reuniclus",
+    megaStone: { Reuniclus: "Reuniclus-Mega" },
     num: 959,
     gen: 6,
     isNonstandard: "Past",
@@ -479,8 +433,7 @@ export const Items: ModdedItemDataTable = {
   shadowmewtwonite: {
     name: "Shadow Mewtwonite",
     spritenum: 625,
-    megaStone: "Mewtwo-Shadow-Mega",
-    megaEvolves: "Mewtwo-Shadow",
+    megaStone: { "Mewtwo-Shadow": "Mewtwo-Shadow-Mega" },
     num: 991,
     gen: 6,
     isNonstandard: "Past",
@@ -488,8 +441,7 @@ export const Items: ModdedItemDataTable = {
   shiftrite: {
     name: "Shiftrite",
     spritenum: 808,
-    megaStone: "Shiftry-Mega",
-    megaEvolves: "Shiftry",
+    megaStone: { Shiftry: "Shiftry-Mega" },
     num: 960,
     gen: 6,
     isNonstandard: "Past",
@@ -511,8 +463,7 @@ export const Items: ModdedItemDataTable = {
   spiritombite: {
     name: "Spiritombite",
     spritenum: 811,
-    megaStone: "Spiritomb-Mega",
-    megaEvolves: "Spiritomb",
+    megaStone: { Spiritomb: "Spiritomb-Mega" },
     num: 961,
     gen: 6,
     isNonstandard: "Past",
@@ -520,8 +471,7 @@ export const Items: ModdedItemDataTable = {
   steelixitesteel: {
     name: "Steelixite Steel",
     spritenum: 621,
-    megaStone: "Steelix-Mega-Steel",
-    megaEvolves: "Steelix",
+    megaStone: { Steelix: "Steelix-Mega-Steel" },
     num: 761,
     gen: 6,
     isNonstandard: "Past",
@@ -529,8 +479,7 @@ export const Items: ModdedItemDataTable = {
   steelixitefire: {
     name: "Steelixite Fire",
     spritenum: 812,
-    megaStone: "Steelix-Mega-Fire",
-    megaEvolves: "Steelix",
+    megaStone: { Steelix: "Steelix-Mega-Fire" },
     num: 962,
     gen: 6,
     isNonstandard: "Past",
@@ -538,8 +487,7 @@ export const Items: ModdedItemDataTable = {
   stunfiskite: {
     name: "Stunfiskite",
     spritenum: 813,
-    megaStone: "Stunfisk-Mega",
-    megaEvolves: "Stunfisk",
+    megaStone: { Stunfisk: "Stunfisk-Mega" },
     num: 963,
     gen: 6,
     isNonstandard: "Past",
@@ -547,8 +495,7 @@ export const Items: ModdedItemDataTable = {
   sudowoodite: {
     name: "Sudowoodite",
     spritenum: 814,
-    megaStone: "Sudowoodo-Mega",
-    megaEvolves: "Sudowoodo",
+    megaStone: { Sudowoodo: "Sudowoodo-Mega" },
     num: 964,
     gen: 6,
     isNonstandard: "Past",
@@ -556,8 +503,7 @@ export const Items: ModdedItemDataTable = {
   sunflorite: {
     name: "Sunflorite",
     spritenum: 815,
-    megaStone: "Sunflora-Mega-M",
-    megaEvolves: "Sunflora",
+    megaStone: { Sunflora: "Sunflora-Mega-M" },
     num: 965,
     gen: 6,
     isNonstandard: "Past",
@@ -571,8 +517,7 @@ export const Items: ModdedItemDataTable = {
   typhlosionite: {
     name: "Typhlosionite",
     spritenum: 817,
-    megaStone: "Typhlosion-Mega",
-    megaEvolves: "Typhlosion",
+    megaStone: { Typhlosion: "Typhlosion-Mega" },
     num: 966,
     gen: 6,
     isNonstandard: "Past",
@@ -594,8 +539,7 @@ export const Items: ModdedItemDataTable = {
   zebstrikite: {
     name: "Zebstrikite",
     spritenum: 820,
-    megaStone: "Zebstrika-Mega",
-    megaEvolves: "Zebstrika",
+    megaStone: { Zebstrika: "Zebstrika-Mega" },
     num: 967,
     gen: 6,
     isNonstandard: "Past",
@@ -610,8 +554,7 @@ export const Items: ModdedItemDataTable = {
   zoronite: {
     name: "Zoronite",
     spritenum: 822,
-    megaStone: "Zoroark-Mega",
-    megaEvolves: "Zoroark",
+    megaStone: { Zoroark: "Zoroark-Mega" },
     num: 968,
     gen: 6,
     isNonstandard: "Past",
