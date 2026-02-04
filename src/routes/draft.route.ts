@@ -495,6 +495,7 @@ export const DraftRoute = createRoute().auth()((r) => {
             ctx.matchup_id,
             opponent.toData(),
           );
+          clearMatchupCacheById(req.params.matchup_id);
           if (!updatedMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
           return res
             .status(200)

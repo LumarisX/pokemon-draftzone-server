@@ -1,6 +1,7 @@
 import { Request, RequestHandler, Response, Router } from "express";
 import { logger } from "../app";
-import { isPDZError } from "../errors/pdz-error";
+import { isPDZError, PDZError } from "../errors/pdz-error";
+import { ErrorCodes } from "../errors/error-codes";
 import { jwtCheck } from "../middleware/jwtcheck";
 
 const HTTP_METHODS = ["get", "post", "patch", "delete"] as const;
@@ -72,14 +73,12 @@ export class Route {
     return async (req: Request, res: Response) => {
       try {
         let ctx = parentContext;
-        if (node.authCheck) {
-          await this.executeAuthCheck(req, res);
-          ctx = { ...ctx, sub: req.auth!.payload.sub! };
+        if ((req as any).__pdzAuth) {
+          ctx = { ...ctx, ...(req as any).__pdzAuth };
         }
 
-        if (node.context) {
-          const nodeContext = await node.context(req, res, ctx, "");
-          ctx = Object.assign(Object.create(null), ctx, nodeContext);
+        if ((req as any).__pdzContext) {
+          ctx = { ...ctx, ...(req as any).__pdzContext };
         }
 
         await handler(req, res, ctx);
@@ -96,17 +95,11 @@ export class Route {
           method: req.method,
         });
 
-        const errorMessage =
-          (error as Error)?.message ||
-          (error as any)?.toString() ||
-          "An unknown error occurred";
-
-        return res.status(500).json({
-          error: {
-            code: "ROUTE-ERROR",
-            message: errorMessage,
-          },
+        const routeError = new PDZError(ErrorCodes.SYSTEM.INTERNAL_ERROR, {
+          originalError: (error as Error)?.message,
         });
+
+        return res.status(routeError.status).json(routeError.toJSON());
       }
     };
   }
@@ -120,6 +113,53 @@ export class Route {
       router.use(...node.middleware);
     }
 
+    if (node.authCheck) {
+      router.use(async (req: Request, res: Response, next) => {
+        try {
+          await this.executeAuthCheck(req, res);
+          (req as any).__pdzAuth = { sub: req.auth!.payload.sub! };
+          next();
+        } catch (error) {
+          if (isPDZError(error)) {
+            return res.status(error.status).json(error.toJSON());
+          }
+          logger.error("Auth check error", { error });
+          const authError = new PDZError(ErrorCodes.AUTH.INVALID_TOKEN);
+          return res.status(authError.status).json(authError.toJSON());
+        }
+      });
+    }
+
+    if (node.context) {
+      router.use(async (req: Request, res: Response, next) => {
+        try {
+          let ctx = parentContext;
+          if ((req as any).__pdzAuth) {
+            ctx = { ...ctx, ...(req as any).__pdzAuth };
+          }
+          if ((req as any).__pdzContext) {
+            ctx = { ...ctx, ...(req as any).__pdzContext };
+          }
+          const nodeContext = await node.context!(req, res, ctx, "");
+
+          (req as any).__pdzContext = {
+            ...((req as any).__pdzContext || {}),
+            ...nodeContext,
+          };
+          next();
+        } catch (error) {
+          if (isPDZError(error)) {
+            return res.status(error.status).json(error.toJSON());
+          }
+          logger.error("Context builder error", { error, path: req.path });
+          const contextError = new PDZError(ErrorCodes.SYSTEM.MISSING_CONTEXT, {
+            originalError: (error as Error)?.message,
+          });
+          return res.status(contextError.status).json(contextError.toJSON());
+        }
+      });
+    }
+
     for (const method of HTTP_METHODS) {
       if (node[method]) {
         router[method](
@@ -130,11 +170,9 @@ export class Route {
     }
 
     if (node.paths) {
-      let childContext = parentContext;
-
       for (const [segment, childNode] of Object.entries(node.paths)) {
         const childRouter = Router();
-        this.buildRoute(childNode, childRouter, childContext);
+        this.buildRoute(childNode, childRouter, parentContext);
         router.use(`/${segment}`, childRouter);
       }
     }
@@ -143,6 +181,63 @@ export class Route {
   getRouter(): Router {
     return this.router;
   }
+}
+
+function createMiddlewareWrapper<TCtx>(
+  middleware: RequestHandler[],
+  handler: Handler<TCtx>,
+): Handler<TCtx> {
+  return async (req: Request, res: Response, ctx: TCtx) => {
+    for (const mw of middleware) {
+      if (res.headersSent) return;
+
+      await new Promise<void>((resolve, reject) => {
+        mw(req, res, (err?: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+
+    if (!res.headersSent) return handler(req, res, ctx);
+  };
+}
+
+async function executeAuthCheckStandalone(
+  req: Request,
+  res: Response,
+): Promise<{ sub: string }> {
+  return new Promise((resolve, reject) => {
+    jwtCheck(req, res, (err?: any) => {
+      if (err) reject(err);
+      else resolve({ sub: req.auth!.payload.sub! });
+    });
+  });
+}
+
+function createAuthWrapper<TCtx>(
+  handler: Handler<TCtx & { sub: string }>,
+): Handler<TCtx> {
+  return async (req: Request, res: Response, ctx: TCtx) => {
+    let authData = (req as any).__pdzAuth;
+
+    if (!authData) {
+      try {
+        authData = await executeAuthCheckStandalone(req, res);
+        (req as any).__pdzAuth = authData;
+      } catch (error) {
+        if (isPDZError(error)) {
+          return res.status(error.status).json(error.toJSON());
+        }
+        logger.error("Method-level auth check error", { error });
+        const authError = new PDZError(ErrorCodes.AUTH.INVALID_TOKEN);
+        return res.status(authError.status).json(authError.toJSON());
+      }
+    }
+
+    const authCtx = { ...ctx, ...authData } as TCtx & { sub: string };
+    return handler(req, res, authCtx);
+  };
 }
 
 function createValidationWrapper<TBody, TQuery, TCtx>(
@@ -331,8 +426,7 @@ export class RouteBuilder<TCtx = {}> {
         if (self.node[method]) {
           logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
         }
-        self.node.authCheck = true;
-        self.node[method] = handler as Handler<any>;
+        self.node[method] = createAuthWrapper(handler) as Handler<any>;
       }) as HttpMethodBuilderWithValidate<TCtx & { sub: string }>;
 
       authBuilder.validate = <TBody = undefined, TQuery = undefined>(schema: {
@@ -350,8 +444,8 @@ export class RouteBuilder<TCtx = {}> {
           if (self.node[method]) {
             logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
           }
-          self.node.authCheck = true;
-          self.node[method] = createValidationWrapper(schema, handler);
+          const validatedHandler = createValidationWrapper(schema, handler);
+          self.node[method] = createAuthWrapper(validatedHandler);
         };
       };
 
@@ -363,8 +457,7 @@ export class RouteBuilder<TCtx = {}> {
         if (self.node[method]) {
           logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
         }
-        self.node.middleware = [...(self.node.middleware || []), ...middleware];
-        self.node[method] = handler;
+        self.node[method] = createMiddlewareWrapper(middleware, handler);
       }) as HttpMethodBuilderWithValidate<TCtx>;
 
       useBuilder.validate = <TBody, TQuery>(schema: {
@@ -379,11 +472,11 @@ export class RouteBuilder<TCtx = {}> {
           if (self.node[method]) {
             logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
           }
-          self.node.middleware = [
-            ...(self.node.middleware || []),
-            ...middleware,
-          ];
-          self.node[method] = createValidationWrapper(schema, handler);
+          const validatedHandler = createValidationWrapper(schema, handler);
+          self.node[method] = createMiddlewareWrapper(
+            middleware,
+            validatedHandler,
+          );
         };
       };
 
