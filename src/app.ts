@@ -13,19 +13,22 @@ import { config } from "./config";
 import { errorHandler } from "./errors/error-handler";
 import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
-import { ArchiveRoute } from "./routes/archive.route";
-import { DataRoute } from "./routes/data.route";
-import { DraftRoute } from "./routes/draft.route";
-import { LeagueRoute } from "./routes/league.route";
+import { ArchiveRoute, ArchiveRoutes } from "./routes/archive.route";
+import { DataRoute, DataRoutes } from "./routes/data.route";
+import { DraftRoute, DraftRoutes } from "./routes/draft.route";
+import { LeagueRoute, LeagueRoutes } from "./routes/league.route";
 import { MatchupRoute } from "./routes/matchup.route";
-import { NewsRoute } from "./routes/news.route";
-import { PlannerRoute } from "./routes/planner.route";
-import { ReplayRoute } from "./routes/replay.route";
+import { NewsRoute, NewsRoutes } from "./routes/news.route";
+import { PlannerRoute, PlannerRoutes } from "./routes/planner.route";
+import { ReplayRoute, ReplayRoutes } from "./routes/replay.route";
 import { Route } from "./routes/route-builder";
-import { SupporterRoute } from "./routes/supporters.route";
-import { TeambuilderRoute } from "./routes/teambuilder.route";
-import { UserRoute } from "./routes/user.route";
-import { FileRoute } from "./routes/file.route";
+import { SupporterRoute, SupporterRoutes } from "./routes/supporters.route";
+import {
+  TeambuilderRoute,
+  TeambuilderRoutes,
+} from "./routes/teambuilder.route";
+import { UserRoute, UserRoutes } from "./routes/user.route";
+import { FileRoute, FileRoutes } from "./routes/file.route";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -182,18 +185,18 @@ const routerStream = {
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
 export const ROUTES: { [path: string]: RouteOld | Route } = {
-  "/draft": DraftRoute,
-  "/archive": ArchiveRoute,
+  "/draft": DraftRoutes,
+  "/archive": ArchiveRoutes,
   "/matchup": MatchupRoute,
-  "/data": DataRoute,
-  "/replay": ReplayRoute,
-  "/planner": PlannerRoute,
+  "/data": DataRoutes,
+  "/replay": ReplayRoutes,
+  "/planner": PlannerRoutes,
   "/leagues": LeagueRoute,
-  "/teambuilder": TeambuilderRoute,
-  "/supporters": SupporterRoute,
-  "/user": UserRoute,
-  "/news": NewsRoute,
-  "/file": FileRoute,
+  "/teambuilder": TeambuilderRoutes,
+  "/supporters": SupporterRoutes,
+  "/user": UserRoutes,
+  "/news": NewsRoutes,
+  "/file": FileRoutes,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;

@@ -602,7 +602,7 @@ export async function draftPokemon(
         content: messageContent,
         embed: {
           title: `${coach.teamName} drafted ${pokemon.name}!`,
-          url: `https://pokemondraftzone.com/leagues/${league.tournamentKey}/${division.divisionKey}/draft`,
+          url: `https://pokemondraftzone.com/leagues/pdbl/tournaments/${league.tournamentKey}/divisions/${division.divisionKey}/draft`,
           fields,
           image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
         },

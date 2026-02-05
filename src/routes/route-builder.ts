@@ -82,14 +82,7 @@ export class Route {
     this.buildRoute(config, this.router, {});
   }
 
-  private async executeAuthCheck(req: Request, res: Response): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      jwtCheck(req, res, (err?: any) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-  }
+
 
   private wrapHandler(
     handler: Handler<any>,
@@ -148,7 +141,7 @@ export class Route {
     if (node.authCheck) {
       router.use(async (req: Request, res: Response, next) => {
         try {
-          await this.executeAuthCheck(req, res);
+          await executeAuthCheck(req, res);
           setPdzAuth(req, { sub: req.auth!.payload.sub! });
           next();
         } catch (error) {
@@ -205,7 +198,7 @@ export class Route {
 
     if (node.paths) {
       for (const [segment, childNode] of Object.entries(node.paths)) {
-        const childRouter = Router();
+        const childRouter = Router({ mergeParams: true });
         this.buildRoute(childNode, childRouter, parentContext);
         router.use(`/${segment}`, childRouter);
       }
@@ -237,7 +230,7 @@ function createMiddlewareWrapper<TCtx>(
   };
 }
 
-async function executeAuthCheckStandalone(
+async function executeAuthCheck(
   req: Request,
   res: Response,
 ): Promise<{ sub: string }> {
@@ -265,7 +258,7 @@ function createAuthWrapper<TCtx>(
 
     if (!authData) {
       try {
-        authData = await executeAuthCheckStandalone(req, res);
+        authData = await executeAuthCheck(req, res);
         setPdzAuth(req, authData);
       } catch (error) {
         if (isPDZError(error)) {
@@ -331,6 +324,7 @@ type HttpMethodBuilderWithValidate<TCtx> = {
   }): (
     handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
   ) => void;
+  use(...middleware: RequestHandler[]): HttpMethodBuilderWithValidate<TCtx>;
 };
 
 type HttpMethodBuilder<TCtx> = {
@@ -486,6 +480,47 @@ export class RouteBuilder<TCtx = {}> {
           const validatedHandler = createValidationWrapper(schema, handler);
           self.node[method] = createAuthWrapper(validatedHandler);
         };
+      };
+
+      authBuilder.use = (...middleware: RequestHandler[]) => {
+        const useBuilder = ((handler: Handler<TCtx & { sub: string }>) => {
+          if (self.node[method]) {
+            logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
+          }
+          self.node[method] = createAuthWrapper(
+            createMiddlewareWrapper(middleware, handler),
+          );
+        }) as HttpMethodBuilderWithValidate<TCtx & { sub: string }>;
+
+        useBuilder.validate = <TBody = undefined, TQuery = undefined>(schema: {
+          body?: (data: any) => TBody;
+          query?: (data: any) => TQuery;
+        }) => {
+          return (
+            handler: Handler<
+              TCtx & { sub: string } & {
+                validatedBody: TBody;
+                validatedQuery: TQuery;
+              }
+            >,
+          ) => {
+            if (self.node[method]) {
+              logger.warn(
+                `Overwriting existing ${method.toUpperCase()} handler`,
+              );
+            }
+            const validatedHandler = createValidationWrapper(schema, handler);
+            self.node[method] = createAuthWrapper(
+              createMiddlewareWrapper(middleware, validatedHandler),
+            );
+          };
+        };
+
+        useBuilder.use = (...moreMiddleware: RequestHandler[]) => {
+          return builder.auth().use(...middleware, ...moreMiddleware);
+        };
+
+        return useBuilder;
       };
 
       return authBuilder;

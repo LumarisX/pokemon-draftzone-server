@@ -30,8 +30,8 @@ export type LeagueTournament = {
   seasonEnd?: Date;
   coaches: (Types.ObjectId | LeagueCoachDocument)[];
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
-  owner: Types.ObjectId | LeagueCoachDocument;
-  organizers: (Types.ObjectId | LeagueCoachDocument)[];
+  owner: string;
+  organizers: string[];
   tierList: Types.ObjectId | LeagueTierListDocument;
   rules: LeagueRule[];
   teams: (Types.ObjectId | LeagueTeamDocument)[];
@@ -66,12 +66,8 @@ const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
     divisions: [
       { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
     ],
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_COACH_COLLECTION,
-      required: true,
-    },
-    organizers: [{ type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION }],
+    owner: { type: String, required: true },
+    organizers: [{ type: String }],
     rules: [LeagueRuleSchema],
     tierList: {
       type: Schema.Types.ObjectId,
