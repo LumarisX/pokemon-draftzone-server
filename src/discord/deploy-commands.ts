@@ -22,7 +22,7 @@ export async function deployGuildCommands({ guildId }: DeployCommandsProps) {
       Routes.applicationGuildCommands(config.APPLICATION_ID!, guildId),
       {
         body: commandData,
-      }
+      },
     );
     console.log("Successfully reloaded application (/) commands.");
   } catch (error) {
