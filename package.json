@@ -12,7 +12,8 @@
     "mongoAction": "ts-node src/tests/database/database.functions.ts",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:ci": "test --runInBand"
+    "test:ci": "test --runInBand",
+    "report:users": "ts-node src/scripts/auth0-user-report.ts"
   },
   "engines": {
     "node": "24.12.0"

@@ -9,3 +9,5 @@ coverage/
 src/tests/
 /logs/*
 src/scripts/
+cache/*
+reports/*
