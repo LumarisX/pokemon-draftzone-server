@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { RouteOld } from ".";
 import { getNews } from "../services/news/news-service";
-import { createRoute } from "./route-builder";
 
 export const NewsRoutes: RouteOld = {
   subpaths: {
@@ -21,7 +20,3 @@ export const NewsRoutes: RouteOld = {
   },
   params: {},
 };
-
-export const NewsRoute = createRoute()((r) => {
-  r.get(async (ctx) => await getNews());
-});

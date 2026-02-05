@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import { RouteOld, sendError } from ".";
-import { getManagementToken } from "../services/auth0-services/auth0-service";
 import { jwtCheck } from "../middleware/jwtcheck";
-import { createRoute } from "./route-builder";
-import { z } from "zod";
+import { getManagementToken } from "../services/auth0-services/auth0-service";
 
 export const UserRoutes: RouteOld = {
   middleware: [jwtCheck],
@@ -46,25 +44,3 @@ export const UserRoutes: RouteOld = {
   },
   params: {},
 };
-
-export const UserRoute = createRoute()((r) => {
-  r.path("settings")((r) => {
-    r.get.auth()(async (ctx) => {
-      const management = await getManagementToken();
-      const user = await management.users.get({ id: ctx.sub });
-      const settings =
-        (user.data.user_metadata && user.data.user_metadata.settings) || null;
-      return settings;
-    });
-    r.patch.auth().validate({
-      body: (data) => z.record(z.any()).parse(data),
-    })(async (ctx, req, res) => {
-      const management = await getManagementToken();
-      await management.users.update(
-        { id: ctx.sub },
-        { user_metadata: { settings: ctx.validatedBody } },
-      );
-      res.status(201).json({ settings: ctx.validatedBody });
-    });
-  });
-});

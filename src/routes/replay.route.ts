@@ -5,10 +5,6 @@ import {
   Replay,
   validateUrl,
 } from "../services/replay-services/replay-analyze.service";
-import { PDZError } from "../errors/pdz-error";
-import { ErrorCodes } from "../errors/error-codes";
-import { createRoute } from "./route-builder";
-import z from "zod";
 
 type ReplayResponse = Response & { url?: string };
 
@@ -76,39 +72,3 @@ export const ReplayRoutes: RouteOld = {
     },
   },
 };
-
-function URLHandler<T>(ctx: T, url: string): { url: string } {
-  const decodedUrl = decodeURI(url).replace(/^https?:\/\//, "");
-  const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;
-  if (!urlPattern.test(decodedUrl))
-    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
-  if (!validateUrl(decodedUrl))
-    throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
-  return { url: decodedUrl };
-}
-
-export const ReplayRoute = createRoute()((r) => {
-  r.path("analyze")((r) => {
-    r.param(
-      "url",
-      URLHandler,
-    )((r) => {
-      r.get(async (ctx) => {
-        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
-        const replay = new Replay.Analysis(await replayData.text());
-        return replay.toJson();
-      });
-    });
-  });
-  r.path("log")((r) => {
-    r.param(
-      "url",
-      URLHandler,
-    )((r) => {
-      r.get(async (ctx, req, res) => {
-        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
-        res.send(await replayData.text());
-      });
-    });
-  });
-});

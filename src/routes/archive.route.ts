@@ -3,9 +3,6 @@ import mongoose from "mongoose";
 import { RouteOld } from ".";
 import { getRuleset, Ruleset } from "../data/rulesets";
 import { jwtCheck } from "../middleware/jwtcheck";
-import { MatchupDocument } from "../models/draft/matchup.model";
-import { getName } from "../services/data-services/pokedex.service";
-import { getStats } from "../services/database-services/archive.service";
 import {
   ArchiveBaseModel,
   ArchiveV1Data,
@@ -13,9 +10,9 @@ import {
   ArchiveV2Data,
   ArchiveV2Document,
 } from "../models/draft/archive.model";
-import { createRoute } from "./route-builder";
-import { PDZError } from "../errors/pdz-error";
-import { ErrorCodes } from "../errors/error-codes";
+import { MatchupDocument } from "../models/draft/matchup.model";
+import { getName } from "../services/data-services/pokedex.service";
+import { getStats } from "../services/database-services/archive.service";
 
 export type ArchiveResponse = Response & {
   rawArchive?: ArchiveV1Document | ArchiveV2Document | null;
@@ -106,52 +103,3 @@ export const ArchiveRoutes: RouteOld = {
     },
   },
 };
-
-export const ArchiveRoute = createRoute()((r) => {
-  r.path("teams")((r) => {
-    r.get.auth()(async (ctx) => {
-      const rawArchives = await ArchiveBaseModel.find({
-        owner: ctx.sub,
-      }).sort({
-        createdAt: -1,
-      });
-
-      const archives = rawArchives.map((rawArchive) => {
-        const archive = rawArchive.toObject();
-        return {
-          ...archive,
-          team: archive.team.map((pokemon) => ({
-            ...pokemon,
-            name: getName(pokemon.id),
-          })),
-        };
-      });
-
-      return archives;
-    });
-  });
-
-  r.param("team_id", {
-    validate: (team_id) => mongoose.Types.ObjectId.isValid(team_id),
-    loader: async (ctx, req, res, team_id) => {
-      const rawArchive = await ArchiveBaseModel.findById(team_id);
-      if (!rawArchive) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
-      const archive = rawArchive.toObject() as unknown as
-        | ArchiveV1Data
-        | ArchiveV2Data;
-      const ruleset = getRuleset(archive.ruleset);
-      return { rawArchive, archive, ruleset };
-    },
-  })((r) => {
-    r.delete.auth()(async (ctx, req, res) => {
-      await ctx.rawArchive.deleteOne();
-      res.status(201).json({ message: "Draft deleted" });
-    });
-
-    r.path("stats")((r) => {
-      r.get.auth()(async (ctx) => {
-        return await getStats(ctx.ruleset, ctx.archive);
-      });
-    });
-  });
-});
