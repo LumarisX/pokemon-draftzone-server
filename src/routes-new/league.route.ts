@@ -613,6 +613,48 @@ export const LeagueRoute = createRoute()((r) => {
             try {
               const guild = await client.guilds.fetch("1183936734719922176");
               if (guild) {
+                const roleId = "1469151649070186576";
+                const discordName = ctx.validatedBody.discordName?.trim();
+                if (discordName) {
+                  const target = discordName.toLowerCase();
+                  const targetUsername = discordName.includes("#")
+                    ? discordName.split("#")[0].toLowerCase()
+                    : target;
+                  let member = guild.members.cache.find((m) => {
+                    const username = m.user.username?.toLowerCase();
+                    const display = m.displayName?.toLowerCase();
+                    return (
+                      username === target ||
+                      username === targetUsername ||
+                      display === target ||
+                      display === targetUsername
+                    );
+                  });
+
+                  if (!member && discordName.includes("#")) {
+                    const [username] = discordName.split("#");
+                    const fetched = await guild.members.fetch({
+                      query: username,
+                      limit: 10,
+                    });
+                    member = fetched.find((m) =>
+                      [m.user.username, m.displayName]
+                        .filter(Boolean)
+                        .some(
+                          (name) =>
+                            name.toLowerCase() === target ||
+                            name.toLowerCase() === targetUsername,
+                        ),
+                    );
+                  }
+
+                  if (member) {
+                    const role = guild.roles.cache.get(roleId);
+                    if (role && !member.roles.cache.has(role.id)) {
+                      await member.roles.add(role);
+                    }
+                  }
+                }
                 const channel = guild.channels.cache.get(
                   "1303896194187132978",
                 ) as TextChannel;

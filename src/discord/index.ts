@@ -12,11 +12,13 @@ import OpenAi from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type winston from "winston";
 import { config } from "../config";
+import LeagueCoachModel from "../models/league/coach.model";
 import { routes } from "./commands";
 import { deployGuildCommands } from "./deploy-commands";
 export const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessages,
   ],
@@ -33,13 +35,41 @@ const openai = new OpenAi({
   apiKey: config.OPENAI_API_KEY,
 });
 
+const COACH_ROLE_ID = "1469151649070186576";
+
+const GPT_MODEL = "gpt-4.1-mini";
+const GPT_MAX_TOKENS = 600;
+const GPT_MAX_CONTEXT_CHARS = 6000;
+
+const EMOTION_MAP: Record<string, string> = {
+  angry: "Angry",
+  crying: "Crying",
+  determined: "Determined",
+  dizzy: "Dizzy",
+  happy: "Happy",
+  inspire: "Inspire",
+  joyous: "Joyous",
+  normal: "Normal",
+  pain: "Pain",
+  sad: "Sad",
+  shouting: "Shouting",
+  sigh: "Sigh",
+  stunned: "Stunned",
+  surprised: "Surprised",
+  tearyeyed: "Teary-Eyed",
+  powerup: "Special1",
+};
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /**
  * Starts and initializes the Discord bot.
  * @param logger - The Winston logger instance.
  * @returns The initialized Discord client instance or undefined if disabled/misconfigured.
  */
 export async function startDiscordBot(
-  logger: winston.Logger
+  logger: winston.Logger,
 ): Promise<Client | undefined> {
   if (
     !config.DISCORD_TOKEN ||
@@ -47,7 +77,7 @@ export async function startDiscordBot(
     (config.DISCORD_DISABLED && config.DISCORD_DISABLED === "true")
   ) {
     logger.warn(
-      "Discord bot is disabled or missing necessary configuration (DISCORD_TOKEN, OPENAI_API_KEY)."
+      "Discord bot is disabled or missing necessary configuration (DISCORD_TOKEN, OPENAI_API_KEY).",
     );
     return undefined;
   }
@@ -57,7 +87,7 @@ export async function startDiscordBot(
       logger.info(`Discord bot ready! Logged in as ${client.user.tag}`);
     } else {
       logger.error(
-        "Discord client ready event fired, but client.user is null."
+        "Discord client ready event fired, but client.user is null.",
       );
     }
     try {
@@ -78,12 +108,12 @@ export async function startDiscordBot(
       .find(
         (commandData) =>
           commandData.command.data.name.toLowerCase() ===
-          interaction.commandName.toLowerCase()
+          interaction.commandName.toLowerCase(),
       );
 
     if (!commandData) {
       logger.warn(
-        `Command not found for interaction: ${interaction.commandName}`
+        `Command not found for interaction: ${interaction.commandName}`,
       );
       return;
     }
@@ -94,7 +124,7 @@ export async function startDiscordBot(
       } catch (autoCompleteError) {
         logger.error(
           `Error during autocomplete for ${interaction.commandName}:`,
-          autoCompleteError
+          autoCompleteError,
         );
       }
     } else if (interaction.isChatInputCommand()) {
@@ -103,14 +133,14 @@ export async function startDiscordBot(
           .map((option) => `${option.name}:${option.value}`)
           .join(" ");
         logger.info(
-          `Interaction | User: ${interaction.user.tag} (${interaction.user.id}) | Command: /${interaction.commandName} ${optionsString}`
+          `Interaction | User: ${interaction.user.tag} (${interaction.user.id}) | Command: /${interaction.commandName} ${optionsString}`,
         );
 
         await commandData.command.execute(interaction);
       } catch (error) {
         logger.error(
           `Error executing command /${interaction.commandName} for user ${interaction.user.tag}:`,
-          error
+          error,
         );
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred.";
@@ -129,19 +159,73 @@ export async function startDiscordBot(
     }
   });
 
-  // client.on("messageCreate", async (message: Message) => {
-  //   if (message.author.bot || message.mentions.everyone || !client.user) return;
+  client.on("guildMemberAdd", async (member) => {
+    try {
+      const candidates = new Set<string>();
+      const username = member.user.username?.trim();
+      const displayName = member.displayName?.trim();
+      const tag = member.user.tag?.includes("#")
+        ? member.user.tag.trim()
+        : undefined;
 
-  //   if (
-  //     message.content.toLowerCase().includes("deoxys") ||
-  //     message.mentions.has(client.user.id)
-  //   ) {
-  //     logger.info(
-  //       `Message Mention | Author: ${message.author.tag} (${message.author.id}) | Content: ${message.content}`
-  //     );
-  //     gptRespond(message, logger);
-  //   }
-  // });
+      if (username) candidates.add(username.toLowerCase());
+      if (displayName) candidates.add(displayName.toLowerCase());
+      if (tag) candidates.add(tag.toLowerCase());
+
+      if (candidates.size === 0) return;
+
+      const patterns = Array.from(candidates).map(
+        (value) => new RegExp(`^${escapeRegExp(value)}$`, "i"),
+      );
+
+      const coach = await LeagueCoachModel.findOne({
+        discordName: { $in: patterns },
+      });
+
+      if (!coach) return;
+
+      const role = member.guild.roles.cache.get(COACH_ROLE_ID);
+      if (role && !member.roles.cache.has(role.id)) {
+        await member.roles.add(role);
+      }
+    } catch (error) {
+      logger.warn("Failed to apply coach role on join:", error);
+    }
+  });
+
+  client.on("messageCreate", async (message: Message) => {
+    if (!client.user) return;
+    if (message.author.bot || message.mentions.everyone) return;
+
+    const content = message.content?.trim() ?? "";
+    const hasContent = content.length > 0;
+    const hasAttachments = message.attachments.size > 0;
+    const hasEmbeds = message.embeds.length > 0;
+
+    if (!hasContent && !hasAttachments && !hasEmbeds) return;
+
+    const isMention = message.mentions.has(client.user.id);
+    const mentionsName = content.toLowerCase().includes("deoxys");
+    let isReplyToBot = false;
+
+    if (message.reference?.messageId) {
+      try {
+        const referenced = await message.channel.messages.fetch(
+          message.reference.messageId,
+        );
+        isReplyToBot = referenced.author.id === client.user.id;
+      } catch (fetchError) {
+        logger.warn("Could not fetch referenced message:", fetchError);
+      }
+    }
+
+    if (isMention || mentionsName || isReplyToBot) {
+      logger.info(
+        `Message Mention | Author: ${message.author.tag} (${message.author.id}) | Content: ${content}`,
+      );
+      gptRespond(message, logger);
+    }
+  });
 
   try {
     await client.login(config.DISCORD_TOKEN);
@@ -150,7 +234,7 @@ export async function startDiscordBot(
   } catch (error) {
     logger.error("Failed to connect to Discord:", error);
     throw new Error(
-      `Discord login failed: ${error instanceof Error ? error.message : error}`
+      `Discord login failed: ${error instanceof Error ? error.message : error}`,
     );
   }
 }
@@ -166,28 +250,49 @@ async function gptRespond(message: Message, logger: winston.Logger) {
     return;
   }
   try {
+    if (message.channel?.isTextBased() && "sendTyping" in message.channel) {
+      await message.channel.sendTyping();
+    }
+
     const basePrompt: ChatCompletionMessageParam = {
       role: "system",
       content: `You are the Pokémon Deoxys from outer space... Only user messages are in the form of {User's Name}: {Message}, assistant messages are in the form {Emotion}: {Message}. Emotions are only the following: Angry, Crying, Determined, Dizzy, Happy, Inspire, Joyous, Normal, Pain, Power-Up, Sad, Shouting, Sigh, Stunned, Surprised, Teary-Eyed, and Worried. If you need special characters, use markdown format.`,
     };
 
-    let conversationHistory: ChatCompletionMessageParam[] = [];
+    const formatMessage = (msg: Message) => {
+      const authorLabel = msg.member?.displayName || msg.author.username;
+      const content = msg.content?.trim() ?? "";
+      const attachmentLinks = msg.attachments.map((a) => a.url).join(" ");
+      const embedText = msg.embeds
+        .map((embed) => embed.description || embed.title)
+        .filter(Boolean)
+        .join(" ");
+
+      const combined = [content, embedText, attachmentLinks]
+        .filter((value) => value && value.trim().length > 0)
+        .join(" \n");
+
+      if (msg.author.id === client.user?.id && combined.length > 0) {
+        return combined;
+      }
+
+      return `${authorLabel}: ${combined || "(no message content)"}`;
+    };
+
+    const conversationHistory: ChatCompletionMessageParam[] = [];
     let referencedMessage: Message | null = message;
-    for (let i = 10; i > 0 && referencedMessage; i--) {
+    for (let i = 0; i < 10 && referencedMessage; i += 1) {
+      const role =
+        referencedMessage.author.id === client.user.id ? "assistant" : "user";
       conversationHistory.unshift({
-        role:
-          referencedMessage.author.id === client.user.id ? "assistant" : "user",
-        content:
-          referencedMessage.author.id === client.user.id &&
-          referencedMessage.embeds.length > 0
-            ? `${referencedMessage.embeds[0].description}`
-            : `${referencedMessage.author.displayName}: ${referencedMessage.content}`,
+        role,
+        content: formatMessage(referencedMessage),
       });
 
       if (referencedMessage.reference?.messageId) {
         try {
           referencedMessage = await message.channel.messages.fetch(
-            referencedMessage.reference.messageId
+            referencedMessage.reference.messageId,
           );
         } catch (fetchError) {
           logger.warn("Could not fetch referenced message:", fetchError);
@@ -198,9 +303,26 @@ async function gptRespond(message: Message, logger: winston.Logger) {
       }
     }
 
+    const trimToMaxChars = (messages: ChatCompletionMessageParam[]) => {
+      let total = 0;
+      const trimmed: ChatCompletionMessageParam[] = [];
+      for (let i = messages.length - 1; i >= 0; i -= 1) {
+        const msg = messages[i];
+        const content = msg.content?.toString() ?? "";
+        if (total + content.length > GPT_MAX_CONTEXT_CHARS) break;
+        total += content.length;
+        trimmed.unshift(msg);
+      }
+      return trimmed;
+    };
+
+    const messages = trimToMaxChars([basePrompt, ...conversationHistory]);
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [basePrompt, ...conversationHistory],
+      model: GPT_MODEL,
+      messages,
+      max_tokens: GPT_MAX_TOKENS,
+      temperature: 0.9,
     });
 
     let rawReply = completion.choices[0]?.message?.content;
@@ -212,7 +334,7 @@ async function gptRespond(message: Message, logger: winston.Logger) {
     logger.info(`DeoxysGPT Response | ${rawReply}`);
 
     let emotion = "Normal"; // Default emotion
-    let replyString = rawReply;
+    let replyString = rawReply.trim();
 
     const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
 
@@ -221,34 +343,7 @@ async function gptRespond(message: Message, logger: winston.Logger) {
         .trim()
         .toLowerCase()
         .replace(/\s/g, "");
-      let parsedEmotion: string | undefined;
-
-      switch (potentialEmotion) {
-        case "angry":
-        case "crying":
-        case "determined":
-        case "dizzy":
-        case "happy":
-        case "inspire":
-        case "joyous":
-        case "normal":
-        case "pain":
-        case "sad":
-        case "shouting":
-        case "sigh":
-        case "stunned":
-        case "surprised":
-          parsedEmotion =
-            potentialEmotion.charAt(0).toUpperCase() +
-            potentialEmotion.substring(1);
-          break;
-        case "tearyeyed":
-          parsedEmotion = "Teary-Eyed";
-          break;
-        case "powerup":
-          parsedEmotion = "Special1";
-          break;
-      }
+      const parsedEmotion = EMOTION_MAP[potentialEmotion];
 
       if (parsedEmotion) {
         emotion = parsedEmotion;
@@ -264,14 +359,20 @@ async function gptRespond(message: Message, logger: winston.Logger) {
       FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
     }/${emotion}.png`;
 
+    const safeReply = replyString
+      .replace(/@everyone/g, "@ everyone")
+      .replace(/@here/g, "@ here");
+
     const responseEmbed = new EmbedBuilder()
       .setThumbnail(emotionUrl)
-      .setDescription(replyString);
+      .setDescription(safeReply.slice(0, 4096));
 
-    await message.reply({
+    const replyPayload = {
       allowedMentions: { repliedUser: false },
       embeds: [responseEmbed],
-    });
+    } as const;
+
+    await message.reply(replyPayload);
   } catch (error) {
     logger.error("Error in gptRespond:", error);
     try {
@@ -299,7 +400,7 @@ export async function sendDiscordMessage(
           image?: string;
         };
       }
-    | string
+    | string,
 ) {
   try {
     const channel = await client.channels.fetch(channelId);
