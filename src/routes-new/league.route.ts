@@ -689,10 +689,9 @@ export const LeagueRoute = createRoute()((r) => {
           query: (data) =>
             z
               .object({
-                division: z.union([
-                  z.string().min(1),
-                  z.array(z.string().min(1)),
-                ]),
+                division: z
+                  .union([z.string().min(1), z.array(z.string().min(1))])
+                  .optional(),
               })
               .parse(data),
         })(async (ctx) => {
@@ -706,10 +705,9 @@ export const LeagueRoute = createRoute()((r) => {
             query: (data) =>
               z
                 .object({
-                  division: z.union([
-                    z.string().min(1),
-                    z.array(z.string().min(1)),
-                  ]),
+                  division: z
+                    .union([z.string().min(1), z.array(z.string().min(1))])
+                    .optional(),
                 })
                 .parse(data),
           })(async (ctx) => {
