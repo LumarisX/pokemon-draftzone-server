@@ -482,7 +482,7 @@ export const LeagueRoute = createRoute()((r) => {
       });
       r.post.validate({
         //TODO: Define proper schema
-        body: (data) => z.object({}).parse(data),
+        body: (data) => z.any().parse(data),
       })(async (ctx, req, res) => {
         const leagueAd = LeagueAd.fromForm(ctx.validatedBody, ctx.sub);
         if (!leagueAd.isValid())
@@ -616,11 +616,15 @@ export const LeagueRoute = createRoute()((r) => {
                 const roleId = "1469151649070186576";
                 const discordName = ctx.validatedBody.discordName?.trim();
                 if (discordName) {
-                  const target = discordName.toLowerCase();
-                  const targetUsername = discordName.includes("#")
-                    ? discordName.split("#")[0].toLowerCase()
+                  const normalized = discordName.replace(/^@/, "").trim();
+                  const target = normalized.toLowerCase();
+                  const targetUsername = normalized.includes("#")
+                    ? normalized.split("#")[0].toLowerCase()
                     : target;
-                  let member = guild.members.cache.find((m) => {
+                  const matchesMember = (m: {
+                    user: { username?: string };
+                    displayName?: string;
+                  }) => {
                     const username = m.user.username?.toLowerCase();
                     const display = m.displayName?.toLowerCase();
                     return (
@@ -629,23 +633,24 @@ export const LeagueRoute = createRoute()((r) => {
                       display === target ||
                       display === targetUsername
                     );
-                  });
+                  };
 
-                  if (!member && discordName.includes("#")) {
-                    const [username] = discordName.split("#");
+                  let member = guild.members.cache.find(matchesMember);
+
+                  if (!member) {
                     const fetched = await guild.members.fetch({
-                      query: username,
+                      query: targetUsername,
                       limit: 10,
                     });
-                    member = fetched.find((m) =>
-                      [m.user.username, m.displayName]
-                        .filter(Boolean)
-                        .some(
-                          (name) =>
-                            name.toLowerCase() === target ||
-                            name.toLowerCase() === targetUsername,
-                        ),
-                    );
+                    member = fetched.find(matchesMember);
+                  }
+
+                  if (!member && target !== targetUsername) {
+                    const fetched = await guild.members.fetch({
+                      query: target,
+                      limit: 10,
+                    });
+                    member = fetched.find(matchesMember);
                   }
 
                   if (member) {

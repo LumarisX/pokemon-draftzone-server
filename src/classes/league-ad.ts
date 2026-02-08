@@ -102,10 +102,10 @@ export class LeagueAd {
 
     // Check all platforms for PS/game tags
     const hasPS = this.platforms.some((p) =>
-      ["Pokémon Showdown", "Pokemon Showdown"].includes(p)
+      ["Pokémon Showdown", "Pokemon Showdown"].includes(p),
     );
     const hasGame = this.platforms.some(
-      (p) => !["Pokémon Showdown", "Pokemon Showdown"].includes(p)
+      (p) => !["Pokémon Showdown", "Pokemon Showdown"].includes(p),
     );
     tags.ps = hasPS;
     tags.game = hasGame;
@@ -195,13 +195,17 @@ export class LeagueAd {
   }
 
   static fromForm(formData: any, owner: string) {
-    const cleanString = (str: string) =>
-      str.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]:@#&=%~]/g, "");
-    const cleanMarkdown = (str: string) =>
-      str
+    const cleanString = (value: unknown) => {
+      if (typeof value !== "string") return "";
+      return value.replace(/[^a-zA-Z0-9\s.,!?()\-_+'/\\\[\]:@#&=%~]/g, "");
+    };
+    const cleanMarkdown = (value: unknown) => {
+      if (typeof value !== "string") return "";
+      return value
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
         .replace(/on\w+\s*=/gi, "")
         .replace(/javascript:/gi, "");
+    };
 
     return new LeagueAd({
       leagueName: cleanString(formData.leagueName),
@@ -209,13 +213,20 @@ export class LeagueAd {
       leagueDoc: formData.leagueDoc
         ? cleanString(formData.leagueDoc)
         : undefined,
-      serverLink: formData.serverLink || undefined,
+      serverLink:
+        typeof formData.serverLink === "string" && formData.serverLink.length
+          ? formData.serverLink
+          : undefined,
       owner: owner,
       skillLevelRange: formData.skillLevelRange,
       prizeValue: formData.prizeValue,
-      platforms: formData.platforms,
-      formats: (formData.formats as string[]).map(cleanString),
-      rulesets: (formData.rulesets as string[]).map(cleanString),
+      platforms: Array.isArray(formData.platforms) ? formData.platforms : [],
+      formats: Array.isArray(formData.formats)
+        ? (formData.formats as string[]).map(cleanString)
+        : [],
+      rulesets: Array.isArray(formData.rulesets)
+        ? (formData.rulesets as string[]).map(cleanString)
+        : [],
       signupLink: cleanString(formData.signupLink),
       closesAt: new Date(formData.closesAt),
       seasonStart: formData.seasonStart
