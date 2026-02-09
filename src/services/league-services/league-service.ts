@@ -89,7 +89,7 @@ namespace TierList {
         name: this.specie.name,
         stats: this.specie.baseStats,
         types: this.specie.types,
-        abilities: this.specie.abilities,
+        abilities: Object.values(this.specie.abilities),
         bst: this.bst,
         banned: this.banned,
       };
