@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "npx tsc",
+    "build:server": "node --max-old-space-size=4096 ./node_modules/.bin/tsc",
     "start": "ts-node src/index.ts",
     "monitor": "nodemon src/index.ts",
     "install-dep": "npm i --no-bin-links",
