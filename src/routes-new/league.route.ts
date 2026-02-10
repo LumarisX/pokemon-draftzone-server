@@ -1,4 +1,10 @@
-import { TextChannel } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  TextChannel,
+} from "discord.js";
 import { Types } from "mongoose";
 import { z } from "zod";
 import { logger } from "../app";
@@ -109,6 +115,111 @@ export const LeagueRoute = createRoute()((r) => {
           throw new PDZError(ErrorCodes.LEAGUE_AD.INVALID_AD_DATA);
         const document = await leagueAd.toDocument();
         await document.save();
+        if (client) {
+          try {
+            const guild = await client.guilds.fetch("1183936734719922176");
+            if (!guild) return;
+            const channel = guild.channels.cache.get(
+              "1293333149471871108",
+            ) as TextChannel;
+            if (channel && channel.isTextBased()) {
+              const formatDate = (value?: Date) =>
+                value ? value.toISOString().split("T")[0] : "TBD";
+              const clamp = (value: string, limit: number) =>
+                value.length > limit
+                  ? `${value.slice(0, limit - 3)}...`
+                  : value;
+
+              const embed = new EmbedBuilder()
+                .setTitle(clamp(leagueAd.leagueName, 256))
+                .setDescription(clamp(leagueAd.description, 1024))
+                .setColor("#2F80ED")
+                .setTimestamp(new Date())
+                .addFields(
+                  {
+                    name: "Status",
+                    value: "Pending",
+                    inline: true,
+                  },
+                  {
+                    name: "Skill Range",
+                    value: `${leagueAd.skillLevelRange.from} - ${leagueAd.skillLevelRange.to}`,
+                    inline: true,
+                  },
+                  {
+                    name: "Prize",
+                    value: leagueAd.prizeValue.toString(),
+                    inline: true,
+                  },
+                  {
+                    name: "Platforms",
+                    value: clamp(leagueAd.platforms.join(", "), 1024),
+                    inline: false,
+                  },
+                  {
+                    name: "Formats",
+                    value: clamp(leagueAd.formats.join(", "), 1024),
+                    inline: false,
+                  },
+                  {
+                    name: "Rulesets",
+                    value: clamp(leagueAd.rulesets.join(", "), 1024),
+                    inline: false,
+                  },
+                  {
+                    name: "Signups Close",
+                    value: formatDate(leagueAd.closesAt),
+                    inline: true,
+                  },
+                  {
+                    name: "Season",
+                    value: `${formatDate(leagueAd.seasonStart)} - ${formatDate(leagueAd.seasonEnd)}`,
+                    inline: true,
+                  },
+                  {
+                    name: "Signup Link",
+                    value: clamp(leagueAd.signupLink, 1024),
+                    inline: false,
+                  },
+                  {
+                    name: "Server Link",
+                    value: leagueAd.serverLink
+                      ? clamp(leagueAd.serverLink, 1024)
+                      : "N/A",
+                    inline: false,
+                  },
+                  {
+                    name: "League Doc",
+                    value: leagueAd.leagueDoc
+                      ? clamp(leagueAd.leagueDoc, 1024)
+                      : "N/A",
+                    inline: false,
+                  },
+                );
+
+              const actionRow =
+                new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId(`league-ad:approve:${document._id}`)
+                    .setLabel("Approve")
+                    .setStyle(ButtonStyle.Success),
+                  new ButtonBuilder()
+                    .setCustomId(`league-ad:deny:${document._id}`)
+                    .setLabel("Deny")
+                    .setStyle(ButtonStyle.Danger),
+                );
+
+              channel.send({
+                content: "A new league ad has been submitted.",
+                embeds: [embed],
+                components: [actionRow],
+              });
+            }
+          } catch (discordError) {
+            logger.warn("Failed to send Discord notification:", discordError);
+          }
+        }
+
         invalidateLeagueAdsCache();
         logger.info(`New league ad created: ${document._id}`);
         res.status(201).json({ _id: document._id, status: document.status });

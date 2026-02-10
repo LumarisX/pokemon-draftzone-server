@@ -1,5 +1,8 @@
 import {
+  ActionRowBuilder,
   APIEmbedField,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   Client,
   ColorResolvable,
@@ -13,6 +16,8 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import type winston from "winston";
 import { config } from "../config";
 import LeagueCoachModel from "../models/league/coach.model";
+import { LeagueAdModel } from "../models/league-ad.model";
+import { invalidateLeagueAdsCache } from "../services/league-ad/league-ad-service";
 import { routes } from "./commands";
 import { deployGuildCommands } from "./deploy-commands";
 export const client = new Client({
@@ -99,6 +104,79 @@ export async function startDiscordBot(
   });
 
   client.on("interactionCreate", async (interaction: Interaction) => {
+    if (interaction.isButton()) {
+      try {
+        const [scope, action, adId] = interaction.customId.split(":");
+        if (scope !== "league-ad" || !adId) return;
+        if (action !== "approve" && action !== "deny") return;
+
+        const status = action === "approve" ? "Approved" : "Denied";
+        const updated = await LeagueAdModel.findByIdAndUpdate(
+          adId,
+          { status },
+          { new: true },
+        );
+
+        if (!updated) {
+          await interaction.reply({
+            content: "This league ad no longer exists.",
+            ephemeral: true,
+          });
+          return;
+        }
+
+        invalidateLeagueAdsCache();
+
+        const message = interaction.message;
+        const existingEmbed = message.embeds[0];
+        const embed = existingEmbed
+          ? EmbedBuilder.from(existingEmbed)
+          : new EmbedBuilder().setTitle("League Ad Review");
+
+        const fields = embed.data.fields ? [...embed.data.fields] : [];
+        const statusIndex = fields.findIndex(
+          (field) => field.name === "Status",
+        );
+        const statusField = { name: "Status", value: status, inline: true };
+
+        if (statusIndex >= 0) {
+          fields[statusIndex] = statusField;
+        } else {
+          fields.unshift(statusField);
+        }
+
+        embed.setFields(fields);
+
+        const disabledRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`league-ad:approve:${adId}`)
+            .setLabel("Approve")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(true),
+          new ButtonBuilder()
+            .setCustomId(`league-ad:deny:${adId}`)
+            .setLabel("Deny")
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(true),
+        );
+
+        await interaction.update({
+          embeds: [embed],
+          components: [disabledRow],
+        });
+        return;
+      } catch (error) {
+        logger.warn("Failed to process league ad action:", error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: "Failed to update the league ad.",
+            ephemeral: true,
+          });
+        }
+        return;
+      }
+    }
+
     if (!interaction.isCommand() && !interaction.isAutocomplete()) return;
 
     const commandData = routes

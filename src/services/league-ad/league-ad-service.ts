@@ -20,6 +20,7 @@ export async function getLeagueAds(): Promise<LeagueAd[]> {
   today.setUTCHours(0, 0, 0, 0);
   const documents = await LeagueAdModel.find({
     closesAt: { $gte: today },
+    status: "Approved",
   }).sort({ createdAt: -1 });
   const leagueAds = documents.map((doc) => LeagueAd.fromDocument(doc));
   cache.set(CACHE_KEY, leagueAds);
