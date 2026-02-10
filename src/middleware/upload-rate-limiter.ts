@@ -1,24 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import FileUploadModel from "../models/file-upload.model";
 
-// Rate limit configuration
 const RATE_LIMITS = {
-  perHour: 10, // Max 10 uploads per hour
-  perDay: 50, // Max 50 uploads per day
-  perWeek: 200, // Max 200 uploads per week
+  perHour: 10,
+  perDay: 50,
+  perWeek: 200,
 };
 
-/**
- * Rate limiting middleware for file uploads
- * Checks upload history from database to enforce limits
- */
 export async function uploadRateLimiter(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    // Extract user ID from Auth0 JWT (set by jwtCheck middleware)
     const userId = req.auth?.payload?.sub;
 
     if (!userId) {
@@ -31,7 +25,6 @@ export async function uploadRateLimiter(
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Count uploads in different time windows
     const [hourCount, dayCount, weekCount] = await Promise.all([
       FileUploadModel.countDocuments({
         uploadedBy: userId,
@@ -47,12 +40,13 @@ export async function uploadRateLimiter(
       }),
     ]);
 
-    // Check rate limits
+    //TODO: replace with PDZError with proper error codes and messages
+
     if (hourCount >= RATE_LIMITS.perHour) {
       res.status(429).json({
         error: "Rate limit exceeded",
         message: `Maximum ${RATE_LIMITS.perHour} uploads per hour allowed. Try again later.`,
-        retryAfter: 3600, // seconds
+        retryAfter: 3600,
       });
       return;
     }
@@ -61,7 +55,7 @@ export async function uploadRateLimiter(
       res.status(429).json({
         error: "Rate limit exceeded",
         message: `Maximum ${RATE_LIMITS.perDay} uploads per day allowed. Try again tomorrow.`,
-        retryAfter: 86400, // seconds
+        retryAfter: 86400,
       });
       return;
     }
@@ -70,12 +64,11 @@ export async function uploadRateLimiter(
       res.status(429).json({
         error: "Rate limit exceeded",
         message: `Maximum ${RATE_LIMITS.perWeek} uploads per week allowed.`,
-        retryAfter: 604800, // seconds
+        retryAfter: 604800,
       });
       return;
     }
 
-    // Attach counts to request for logging
     (req as any).uploadCounts = { hourCount, dayCount, weekCount };
 
     next();
@@ -85,9 +78,6 @@ export async function uploadRateLimiter(
   }
 }
 
-/**
- * Check total storage used by user (optional additional check)
- */
 export async function checkUserStorageQuota(
   req: Request,
   res: Response,
@@ -95,14 +85,13 @@ export async function checkUserStorageQuota(
 ): Promise<void> {
   try {
     const userId = req.auth?.payload?.sub;
-    const MAX_STORAGE_PER_USER = 100 * 1024 * 1024; // 100MB per user
+    const MAX_STORAGE_PER_USER = 100 * 1024 * 1024;
 
     if (!userId) {
       res.status(401).json({ error: "Authentication required" });
       return;
     }
 
-    // Calculate total storage used
     const uploads = await FileUploadModel.find({
       uploadedBy: userId,
       status: { $ne: "deleted" },

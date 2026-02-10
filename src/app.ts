@@ -15,10 +15,10 @@ import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
 import { ArchiveRoute } from "./routes-new/archive.route";
 import { DraftRoute } from "./routes-new/draft.route";
+import { FileRoute } from "./routes-new/file.route";
 import { LeagueRoute } from "./routes-new/league.route";
 import { Route } from "./routes-new/route-builder";
 import { DataRoutes } from "./routes/data.route";
-import { FileRoutes } from "./routes/file.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
 import { PlannerRoutes } from "./routes/planner.route";
@@ -193,7 +193,7 @@ export const ROUTES: { [path: string]: RouteOld | Route } = {
   "/supporters": SupporterRoutes,
   "/user": UserRoutes,
   "/news": NewsRoutes,
-  "/file": FileRoutes,
+  "/file": FileRoute,
 };
 
 const METHODS = ["get", "post", "delete", "patch"] as const;
