@@ -10,6 +10,7 @@ import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { rolecheck } from "../middleware/rolecheck";
 import { LeagueAdModel } from "../models/league-ad.model";
+import FileUploadModel from "../models/file-upload.model";
 import LeagueCoachModel, {
   LeagueCoach,
   LeagueCoachDocument,
@@ -86,387 +87,6 @@ export const LeagueRoute = createRoute()((r) => {
   r.get((ctx) => {
     return [];
   });
-  r.path("bracket")((r) => {
-    r.get(async (ctx) => {
-      const teamData: {
-        teamName: string;
-        coach: string;
-        logo: string;
-        seed: number;
-      }[] = [
-        {
-          teamName: `Philadelphia Flygons`,
-          coach: "02ThatOneGuy",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565385237-Philadelphia_Flygons.png",
-          seed: 1,
-        },
-        {
-          teamName: `Mighty Murkrow`,
-          coach: "hsoj",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097094680-Mighty Murkrow.png",
-          seed: 5,
-        },
-        {
-          teamName: `Fitchburg's Sun Chasers`,
-          coach: "Feather",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565484354-Fitchburgs_Sun_Chaser.png",
-          seed: 2,
-        },
-        {
-          teamName: `Chicago White Fox`,
-          coach: "TheNotoriousABS",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565596549-Chicago_Ninetales.png",
-          seed: 8,
-        },
-        {
-          teamName: `Deimos Deoxys`,
-          coach: "Lumaris",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1744422916695-DeimosDeoxys.png",
-          seed: 3,
-        },
-        {
-          teamName: `Alpine Arcanines`,
-          coach: "Lion",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565450693-AlpineArcanines.png",
-          seed: 4,
-        },
-        {
-          teamName: `Victorious Vigoroths`,
-          coach: "Speedy",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097393478-Victorious_Vigoroths.png",
-          seed: 7,
-        },
-        {
-          teamName: `Deep Sea Duskulls`,
-          coach: "Emeglebon",
-          logo: "",
-          seed: 9,
-        },
-        {
-          teamName: `Twinleaf Tatsugiri`,
-          coach: "Penic",
-          logo: "",
-          seed: 10,
-        },
-        {
-          teamName: `I like 'em THICC`,
-          coach: "Kat",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565503663-I_like_em_THICC.png",
-          seed: 6,
-        },
-        {
-          teamName: `London Vespiquens`,
-          coach: "Jake W",
-          logo: "",
-          seed: 11,
-        },
-        {
-          teamName: `Tampa T-Chainz`,
-          coach: "Spite",
-          logo: "",
-          seed: 12,
-        },
-        {
-          teamName: `Kalos Quagsires`,
-          coach: "Caltech_",
-          logo: "",
-          seed: 13,
-        },
-        {
-          teamName: `Montreal Mean Mareanies`,
-          coach: "Qofol",
-          logo: "",
-          seed: 14,
-        },
-        {
-          teamName: `Chicago Sky Attack`,
-          coach: "Quincy",
-          logo: "",
-          seed: 15,
-        },
-        {
-          teamName: `Midnight Teddy's`,
-          coach: "neb5",
-          logo: "",
-          seed: 16,
-        },
-        {
-          teamName: `Moochelin Star Chefs`,
-          coach: "Rai",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565579136-Moochelin_Star_Chefs.png",
-          seed: 17,
-        },
-        {
-          teamName: `Kalamazoo Komalas`,
-          coach: "SuperSpiderPig",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565551389-Kalamazoo_Komalas.png",
-          seed: 18,
-        },
-        {
-          teamName: `Jokic Lokix`,
-          coach: "Dotexe",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565520216-Jokic_Lokix.png",
-          seed: 19,
-        },
-        {
-          teamName: `Jimothy Jirachi Tomfoolery`,
-          coach: "Jimothy J",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565565925-Jimothy_Jirachi.png",
-          seed: 20,
-        },
-        {
-          teamName: `Memphis Bloodmoons`,
-          coach: "Steven",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565465031-Memphis_Bloodmoons.png",
-          seed: 21,
-        },
-        {
-          teamName: `F.C. Monterayquaza`,
-          coach: "ChristianDeputy",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565535075-F.C._Monterrayquaza.png",
-          seed: 22,
-        },
-        {
-          teamName: `Chicago White Sawks`,
-          coach: "BR@D",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565766076-Chicago_White_SawksBrad.png",
-          seed: 23,
-        },
-        {
-          teamName: `Bug Brigade`,
-          coach: "TheNPC420",
-          logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565423936-Bug_Brigade.png",
-          seed: 24,
-        },
-        {
-          teamName: `Minnesota Lycanrocs`,
-          coach: "SpiralBB",
-          logo: "",
-          seed: 25,
-        },
-        {
-          teamName: `Seattle Supersonics`,
-          coach: "AwesomenessGuy",
-          logo: "",
-          seed: 26,
-        },
-        {
-          teamName: `Fairview Floatzels`,
-          coach: "Lupa",
-          logo: "",
-          seed: 27,
-        },
-        {
-          teamName: `McTesuda's`,
-          coach: "Lewis",
-          logo: "",
-          seed: 28,
-        },
-        {
-          teamName: `Pacifidlog Pichus`,
-          coach: "13Luken",
-          logo: "",
-          seed: 29,
-        },
-        {
-          teamName: `Mossdeep City Sharpedos`,
-          coach: "Travis",
-          logo: "",
-          seed: 30,
-        },
-        {
-          teamName: `Texas Thousand`,
-          coach: "CheesyBP",
-          logo: "",
-          seed: 31,
-        },
-        {
-          teamName: `Kommo-o Kommanders`,
-          coach: "AnimaSean",
-          logo: "",
-          seed: 32,
-        },
-      ];
-
-      const normalized24 = {
-        format: "single-elim",
-        teams: teamData
-          .map((t) => ({
-            teamName: t.teamName,
-            coachName: t.coach,
-            seed: t.seed,
-            logo: t.logo,
-          }))
-          .filter((t) => t.seed <= 24)
-          .sort((a, b) => a.seed - b.seed),
-        matches: [
-          {
-            id: "R1M1",
-            round: 1,
-            position: 1,
-            a: { type: "seed", seed: 9 },
-            b: { type: "seed", seed: 24 },
-          },
-          {
-            id: "R1M2",
-            round: 1,
-            position: 2,
-            a: { type: "seed", seed: 16 },
-            b: { type: "seed", seed: 17 },
-          },
-          {
-            id: "R1M3",
-            round: 1,
-            position: 3,
-            a: { type: "seed", seed: 12 },
-            b: { type: "seed", seed: 21 },
-          },
-          {
-            id: "R1M4",
-            round: 1,
-            position: 4,
-            a: { type: "seed", seed: 13 },
-            b: { type: "seed", seed: 20 },
-          },
-          {
-            id: "R1M5",
-            round: 1,
-            position: 5,
-            a: { type: "seed", seed: 10 },
-            b: { type: "seed", seed: 23 },
-          },
-          {
-            id: "R1M6",
-            round: 1,
-            position: 6,
-            a: { type: "seed", seed: 15 },
-            b: { type: "seed", seed: 18 },
-          },
-          {
-            id: "R1M7",
-            round: 1,
-            position: 7,
-            a: { type: "seed", seed: 11 },
-            b: { type: "seed", seed: 22 },
-          },
-          {
-            id: "R1M8",
-            round: 1,
-            position: 8,
-            a: { type: "seed", seed: 14 },
-            b: { type: "seed", seed: 19 },
-          },
-          {
-            id: "R2M1",
-            round: 2,
-            position: 1,
-            a: { type: "seed", seed: 1 },
-            b: { type: "winner", from: "R1M1" },
-          },
-          {
-            id: "R2M2",
-            round: 2,
-            position: 2,
-            a: { type: "seed", seed: 8 },
-            b: { type: "winner", from: "R1M2" },
-          },
-          {
-            id: "R2M3",
-            round: 2,
-            position: 3,
-            a: { type: "seed", seed: 5 },
-            b: { type: "winner", from: "R1M3" },
-          },
-          {
-            id: "R2M4",
-            round: 2,
-            position: 4,
-            a: { type: "seed", seed: 4 },
-            b: { type: "winner", from: "R1M4" },
-          },
-          {
-            id: "R2M5",
-            round: 2,
-            position: 5,
-            a: { type: "seed", seed: 2 },
-            b: { type: "winner", from: "R1M5" },
-          },
-          {
-            id: "R2M6",
-            round: 2,
-            position: 6,
-            a: { type: "seed", seed: 7 },
-            b: { type: "winner", from: "R1M6" },
-          },
-          {
-            id: "R2M7",
-            round: 2,
-            position: 7,
-            a: { type: "seed", seed: 6 },
-            b: { type: "winner", from: "R1M7" },
-          },
-          {
-            id: "R2M8",
-            round: 2,
-            position: 8,
-            a: { type: "seed", seed: 3 },
-            b: { type: "winner", from: "R1M8" },
-          },
-          {
-            id: "R3M1",
-            round: 3,
-            position: 1,
-            a: { type: "winner", from: "R2M1" },
-            b: { type: "winner", from: "R2M2" },
-          },
-          {
-            id: "R3M2",
-            round: 3,
-            position: 2,
-            a: { type: "winner", from: "R2M3" },
-            b: { type: "winner", from: "R2M4" },
-          },
-          {
-            id: "R3M3",
-            round: 3,
-            position: 3,
-            a: { type: "winner", from: "R2M5" },
-            b: { type: "winner", from: "R2M6" },
-          },
-          {
-            id: "R3M4",
-            round: 3,
-            position: 4,
-            a: { type: "winner", from: "R2M7" },
-            b: { type: "winner", from: "R2M8" },
-          },
-          {
-            id: "R4M1",
-            round: 4,
-            position: 1,
-            a: { type: "winner", from: "R3M1" },
-            b: { type: "winner", from: "R3M2" },
-          },
-          {
-            id: "R4M2",
-            round: 4,
-            position: 2,
-            a: { type: "winner", from: "R3M3" },
-            b: { type: "winner", from: "R3M4" },
-          },
-          {
-            id: "R5M1",
-            round: 5,
-            position: 1,
-            a: { type: "winner", from: "R4M1" },
-            b: { type: "winner", from: "R4M2" },
-          },
-        ],
-      };
-
-      return normalized24;
-    });
-  });
   r.path("ad-list")((r) => {
     r.get(async (ctx) => {
       const leagueAds = await getLeagueAds();
@@ -522,6 +142,443 @@ export const LeagueRoute = createRoute()((r) => {
       const ruleset = getRuleset(tournament.tierList.ruleset);
       return { tournament, ruleset };
     })((r) => {
+      r.path("bracket")((r) => {
+        r.get(async (ctx) => {
+          const teamData: {
+            teamName: string;
+            coach: string;
+            logo: string;
+            seed: number;
+          }[] = [
+            {
+              teamName: `Philadelphia Flygons`,
+              coach: "02ThatOneGuy",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565385237-Philadelphia_Flygons.png",
+              seed: 1,
+            },
+            {
+              teamName: `Mighty Murkrow`,
+              coach: "hsoj",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097094680-Mighty Murkrow.png",
+              seed: 5,
+            },
+            {
+              teamName: `Fitchburg's Sun Chasers`,
+              coach: "Feather",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565484354-Fitchburgs_Sun_Chaser.png",
+              seed: 2,
+            },
+            {
+              teamName: `Chicago White Fox`,
+              coach: "TheNotoriousABS",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565596549-Chicago_Ninetales.png",
+              seed: 8,
+            },
+            {
+              teamName: `Deimos Deoxys`,
+              coach: "Lumaris",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1744422916695-DeimosDeoxys.png",
+              seed: 3,
+            },
+            {
+              teamName: `Alpine Arcanines`,
+              coach: "Lion",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565450693-AlpineArcanines.png",
+              seed: 4,
+            },
+            {
+              teamName: `Victorious Vigoroths`,
+              coach: "Speedy",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/user-uploads/1745097393478-Victorious_Vigoroths.png",
+              seed: 7,
+            },
+            {
+              teamName: `Deep Sea Duskulls`,
+              coach: "Emeglebon",
+              logo: "",
+              seed: 9,
+            },
+            {
+              teamName: `Twinleaf Tatsugiri`,
+              coach: "Penic",
+              logo: "",
+              seed: 10,
+            },
+            {
+              teamName: `I like 'em THICC`,
+              coach: "Kat",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565503663-I_like_em_THICC.png",
+              seed: 6,
+            },
+            {
+              teamName: `London Vespiquens`,
+              coach: "Jake W",
+              logo: "",
+              seed: 11,
+            },
+            {
+              teamName: `Tampa T-Chainz`,
+              coach: "Spite",
+              logo: "",
+              seed: 12,
+            },
+            {
+              teamName: `Kalos Quagsires`,
+              coach: "Caltech_",
+              logo: "",
+              seed: 13,
+            },
+            {
+              teamName: `Montreal Mean Mareanies`,
+              coach: "Qofol",
+              logo: "",
+              seed: 14,
+            },
+            {
+              teamName: `Chicago Sky Attack`,
+              coach: "Quincy",
+              logo: "",
+              seed: 15,
+            },
+            {
+              teamName: `Midnight Teddy's`,
+              coach: "neb5",
+              logo: "",
+              seed: 16,
+            },
+            {
+              teamName: `Moochelin Star Chefs`,
+              coach: "Rai",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565579136-Moochelin_Star_Chefs.png",
+              seed: 17,
+            },
+            {
+              teamName: `Kalamazoo Komalas`,
+              coach: "SuperSpiderPig",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565551389-Kalamazoo_Komalas.png",
+              seed: 18,
+            },
+            {
+              teamName: `Jokic Lokix`,
+              coach: "Dotexe",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565520216-Jokic_Lokix.png",
+              seed: 19,
+            },
+            {
+              teamName: `Jimothy Jirachi Tomfoolery`,
+              coach: "Jimothy J",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565565925-Jimothy_Jirachi.png",
+              seed: 20,
+            },
+            {
+              teamName: `Memphis Bloodmoons`,
+              coach: "Steven",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565465031-Memphis_Bloodmoons.png",
+              seed: 21,
+            },
+            {
+              teamName: `F.C. Monterayquaza`,
+              coach: "ChristianDeputy",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565535075-F.C._Monterrayquaza.png",
+              seed: 22,
+            },
+            {
+              teamName: `Chicago White Sawks`,
+              coach: "BR@D",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565766076-Chicago_White_SawksBrad.png",
+              seed: 23,
+            },
+            {
+              teamName: `Bug Brigade`,
+              coach: "TheNPC420",
+              logo: "https://pokemondraftzone-public.s3.us-east-2.amazonaws.com/league-uploads/1746565423936-Bug_Brigade.png",
+              seed: 24,
+            },
+            {
+              teamName: `Minnesota Lycanrocs`,
+              coach: "SpiralBB",
+              logo: "",
+              seed: 25,
+            },
+            {
+              teamName: `Seattle Supersonics`,
+              coach: "AwesomenessGuy",
+              logo: "",
+              seed: 26,
+            },
+            {
+              teamName: `Fairview Floatzels`,
+              coach: "Lupa",
+              logo: "",
+              seed: 27,
+            },
+            {
+              teamName: `McTesuda's`,
+              coach: "Lewis",
+              logo: "",
+              seed: 28,
+            },
+            {
+              teamName: `Pacifidlog Pichus`,
+              coach: "13Luken",
+              logo: "",
+              seed: 29,
+            },
+            {
+              teamName: `Mossdeep City Sharpedos`,
+              coach: "Travis",
+              logo: "",
+              seed: 30,
+            },
+            {
+              teamName: `Texas Thousand`,
+              coach: "CheesyBP",
+              logo: "",
+              seed: 31,
+            },
+            {
+              teamName: `Kommo-o Kommanders`,
+              coach: "AnimaSean",
+              logo: "",
+              seed: 32,
+            },
+          ];
+
+          const normalized24 = {
+            format: "single-elim",
+            teams: teamData
+              .map((t) => ({
+                teamName: t.teamName,
+                coachName: t.coach,
+                seed: t.seed,
+                logo: t.logo,
+              }))
+              .filter((t) => t.seed <= 24)
+              .sort((a, b) => a.seed - b.seed),
+            matches: [
+              {
+                id: "R1M1",
+                round: 1,
+                position: 1,
+                a: { type: "seed", seed: 22 },
+                b: { type: "seed", seed: 27 },
+              },
+              {
+                id: "R1M2",
+                round: 1,
+                position: 2,
+                a: { type: "seed", seed: 19 },
+                b: { type: "seed", seed: 30 },
+              },
+              {
+                id: "R1M3",
+                round: 1,
+                position: 3,
+                a: { type: "seed", seed: 23 },
+                b: { type: "seed", seed: 26 },
+              },
+              {
+                id: "R1M4",
+                round: 1,
+                position: 4,
+                a: { type: "seed", seed: 18 },
+                b: { type: "seed", seed: 31 },
+              },
+              {
+                id: "R1M5",
+                round: 1,
+                position: 5,
+                a: { type: "seed", seed: 24 },
+                b: { type: "seed", seed: 25 },
+              },
+              {
+                id: "R1M6",
+                round: 1,
+                position: 6,
+                a: { type: "seed", seed: 17 },
+                b: { type: "seed", seed: 32 },
+              },
+              {
+                id: "R1M7",
+                round: 1,
+                position: 7,
+                a: { type: "seed", seed: 21 },
+                b: { type: "seed", seed: 28 },
+              },
+              {
+                id: "R1M8",
+                round: 1,
+                position: 8,
+                a: { type: "seed", seed: 20 },
+                b: { type: "seed", seed: 29 },
+              },
+              {
+                id: "R2M1",
+                round: 2,
+                position: 1,
+                a: { type: "seed", seed: 14 },
+                b: { type: "winner", from: "R1M1" },
+              },
+              {
+                id: "R2M2",
+                round: 2,
+                position: 2,
+                a: { type: "seed", seed: 10 },
+                b: { type: "winner", from: "R1M2" },
+              },
+              {
+                id: "R2M3",
+                round: 2,
+                position: 3,
+                a: { type: "seed", seed: 15 },
+                b: { type: "winner", from: "R1M3" },
+              },
+              {
+                id: "R2M4",
+                round: 2,
+                position: 4,
+                a: { type: "seed", seed: 11 },
+                b: { type: "winner", from: "R1M4" },
+              },
+              {
+                id: "R2M5",
+                round: 2,
+                position: 5,
+                a: { type: "seed", seed: 16 },
+                b: { type: "winner", from: "R1M5" },
+              },
+              {
+                id: "R2M6",
+                round: 2,
+                position: 6,
+                a: { type: "seed", seed: 9 },
+                b: { type: "winner", from: "R1M6" },
+              },
+              {
+                id: "R2M7",
+                round: 2,
+                position: 7,
+                a: { type: "seed", seed: 13 },
+                b: { type: "winner", from: "R1M7" },
+              },
+              {
+                id: "R2M8",
+                round: 2,
+                position: 8,
+                a: { type: "seed", seed: 12 },
+                b: { type: "winner", from: "R1M8" },
+              },
+              {
+                id: "R3M1",
+                round: 3,
+                position: 1,
+                a: { type: "seed", seed: 3 },
+                b: { type: "winner", from: "R2M1" },
+              },
+              {
+                id: "R3M2",
+                round: 3,
+                position: 2,
+                a: { type: "seed", seed: 7 },
+                b: { type: "winner", from: "R2M2" },
+              },
+              {
+                id: "R3M3",
+                round: 3,
+                position: 3,
+                a: { type: "seed", seed: 2 },
+                b: { type: "winner", from: "R2M3" },
+              },
+              {
+                id: "R3M4",
+                round: 3,
+                position: 4,
+                a: { type: "seed", seed: 6 },
+                b: { type: "winner", from: "R2M4" },
+              },
+              {
+                id: "R3M5",
+                round: 3,
+                position: 5,
+                a: { type: "seed", seed: 1 },
+                b: { type: "winner", from: "R2M5" },
+              },
+              {
+                id: "R3M6",
+                round: 3,
+                position: 6,
+                a: { type: "seed", seed: 8 },
+                b: { type: "winner", from: "R2M6" },
+              },
+              {
+                id: "R3M7",
+                round: 3,
+                position: 7,
+                a: { type: "seed", seed: 4 },
+                b: { type: "winner", from: "R2M7" },
+              },
+              {
+                id: "R3M8",
+                round: 3,
+                position: 8,
+                a: { type: "seed", seed: 5 },
+                b: { type: "winner", from: "R2M8" },
+              },
+              {
+                id: "R4M1",
+                round: 3,
+                position: 1,
+                a: { type: "winner", from: "R3M1" },
+                b: { type: "winner", from: "R3M2" },
+              },
+              {
+                id: "R4M2",
+                round: 3,
+                position: 2,
+                a: { type: "winner", from: "R3M3" },
+                b: { type: "winner", from: "R3M4" },
+              },
+              {
+                id: "R4M3",
+                round: 4,
+                position: 3,
+                a: { type: "winner", from: "R3M5" },
+                b: { type: "winner", from: "R3M6" },
+              },
+              {
+                id: "R4M4",
+                round: 4,
+                position: 4,
+                a: { type: "winner", from: "R3M7" },
+                b: { type: "winner", from: "R3M8" },
+              },
+              {
+                id: "R5M1",
+                round: 5,
+                position: 1,
+                a: { type: "winner", from: "R4M1" },
+                b: { type: "winner", from: "R4M2" },
+              },
+              {
+                id: "R5M2",
+                round: 5,
+                position: 2,
+                a: { type: "winner", from: "R4M3" },
+                b: { type: "winner", from: "R4M4" },
+              },
+              {
+                id: "R6M1",
+                round: 6,
+                position: 1,
+                a: { type: "winner", from: "R5M1" },
+                b: { type: "winner", from: "R5M2" },
+              },
+            ],
+          };
+
+          return normalized24;
+        });
+      });
       r.path("info")((r) => {
         r.get(async (ctx) => {
           await ctx.tournament.populate<{
@@ -565,6 +622,7 @@ export const LeagueRoute = createRoute()((r) => {
           const coachesWithLogos = users.map((user) => {
             const division = undefined;
             return {
+              id: user._id.toString(),
               name: user.name,
               gameName: user.gameName,
               discordName: user.discordName,
@@ -681,6 +739,67 @@ export const LeagueRoute = createRoute()((r) => {
             message: "Sign up successful.",
             userId: leagueUser._id.toString(),
             tournamentId: ctx.tournament._id.toString(),
+          });
+        });
+      });
+      r.path("coaches")((r) => {
+        r.param("coach_id", async (ctx, coach_id) => {
+          if (!Types.ObjectId.isValid(coach_id))
+            throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+              coachId: coach_id,
+            });
+
+          const coach = await LeagueCoachModel.findOne({
+            _id: coach_id,
+            tournamentId: ctx.tournament._id,
+          });
+
+          if (!coach)
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+              tournamentKey: ctx.tournament.tournamentKey,
+              coachId: coach_id,
+            });
+
+          return { coach };
+        })((r) => {
+          r.path("logo")((r) => {
+            r.patch.auth().validate({
+              body: (data) =>
+                z
+                  .object({
+                    fileKey: z.string().min(1),
+                  })
+                  .parse(data),
+            })(async (ctx) => {
+              const roles = getRoles(ctx.sub);
+              const isOrganizer = roles.includes("organizer");
+              const isSelf = ctx.coach.auth0Id === ctx.sub;
+
+              if (!isOrganizer && !isSelf)
+                throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+
+              const uploadRecord = await FileUploadModel.findOne({
+                key: ctx.validatedBody.fileKey,
+                uploadedBy: ctx.sub,
+                uploadType: "league-logo",
+                status: "confirmed",
+              });
+
+              if (!uploadRecord) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
+
+              ctx.coach.logo = ctx.validatedBody.fileKey;
+              await ctx.coach.save();
+
+              await FileUploadModel.findOneAndUpdate(
+                { key: ctx.validatedBody.fileKey },
+                { relatedEntityId: ctx.coach._id.toString() },
+              );
+
+              return {
+                message: "Logo updated.",
+                logo: ctx.coach.logo,
+              };
+            });
           });
         });
       });
