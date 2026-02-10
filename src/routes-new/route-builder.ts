@@ -79,14 +79,11 @@ export class Route {
 
   constructor(config: RouteNode<any>) {
     this.router = Router();
-    this.buildRoute(config, this.router, {});
+    this.buildRoute(config, this.router, {}, "");
   }
-
-
 
   private wrapHandler(
     handler: Handler<any>,
-    node: RouteNode<any>,
     parentContext: Record<string, any>,
   ) {
     return async (req: Request, res: Response) => {
@@ -133,13 +130,16 @@ export class Route {
     node: RouteNode<any>,
     router: Router,
     parentContext: Record<string, any>,
+    basePath: string,
   ) {
+    const pathPrefix = basePath || "/";
+
     if (node.middleware) {
-      router.use(...node.middleware);
+      router.use(pathPrefix, ...node.middleware);
     }
 
     if (node.authCheck) {
-      router.use(async (req: Request, res: Response, next) => {
+      router.use(pathPrefix, async (req: Request, res: Response, next) => {
         try {
           await executeAuthCheck(req, res);
           setPdzAuth(req, { sub: req.auth!.payload.sub! });
@@ -156,7 +156,7 @@ export class Route {
     }
 
     if (node.context) {
-      router.use(async (req: Request, res: Response, next) => {
+      router.use(pathPrefix, async (req: Request, res: Response, next) => {
         try {
           let ctx = parentContext;
           const pdzAuth = getPdzAuth(req);
@@ -190,17 +190,16 @@ export class Route {
     for (const method of HTTP_METHODS) {
       if (node[method]) {
         router[method](
-          "/",
-          this.wrapHandler(node[method]!, node, parentContext),
+          pathPrefix,
+          this.wrapHandler(node[method]!, parentContext),
         );
       }
     }
 
     if (node.paths) {
       for (const [segment, childNode] of Object.entries(node.paths)) {
-        const childRouter = Router({ mergeParams: true });
-        this.buildRoute(childNode, childRouter, parentContext);
-        router.use(`/${segment}`, childRouter);
+        const childPath = basePath ? `${basePath}/${segment}` : `/${segment}`;
+        this.buildRoute(childNode, router, parentContext, childPath);
       }
     }
   }
