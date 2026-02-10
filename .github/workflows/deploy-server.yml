@@ -57,7 +57,6 @@ jobs:
               "sudo -u ubuntu mkdir -p /home/ubuntu/pokemon-draftzone-server",
               "sudo -u ubuntu aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /home/ubuntu/pokemon-draftzone-server/server-build.tgz",
               "sudo -u ubuntu tar -xzf /home/ubuntu/pokemon-draftzone-server/server-build.tgz -C /home/ubuntu/pokemon-draftzone-server",
-              "cd /home/ubuntu/pokemon-draftzone-server",
-              "sudo -u ubuntu npm install --omit=dev",
-              "sudo -u ubuntu pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz"
+              "sudo -u ubuntu bash -lc 'cd /home/ubuntu/pokemon-draftzone-server && npm install --omit=dev'",
+              "sudo -u ubuntu bash -lc 'pm2 restart pmdz || pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz'"
             ]'
