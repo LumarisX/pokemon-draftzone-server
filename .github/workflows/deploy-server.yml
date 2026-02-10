@@ -3,8 +3,6 @@ name: Deploy Server
 on:
   push:
     branches: ["main"]
-    paths:
-      - "pokemon-draftzone-server/**"
   workflow_dispatch:
 
 jobs:
