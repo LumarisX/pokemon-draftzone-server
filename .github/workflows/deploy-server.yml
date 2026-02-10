@@ -56,10 +56,10 @@ jobs:
             --comment "Deploy pokemon-draftzone-server" \
             --parameters commands='[
               "set -e",
-              "sudo mkdir -p /opt/pokemon-draftzone-server",
-              "sudo aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /opt/pokemon-draftzone-server/server-build.tgz",
-              "sudo tar -xzf /opt/pokemon-draftzone-server/server-build.tgz -C /opt/pokemon-draftzone-server",
-              "cd /opt/pokemon-draftzone-server",
-              "sudo npm install --omit=dev",
-              "sudo -u ubuntu pm2 startOrReload /opt/pokemon-draftzone-server/ecosystem.config.js --only pmdz"
+              "sudo -u ubuntu mkdir -p /home/ubuntu/pokemon-draftzone-server",
+              "sudo -u ubuntu aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /home/ubuntu/pokemon-draftzone-server/server-build.tgz",
+              "sudo -u ubuntu tar -xzf /home/ubuntu/pokemon-draftzone-server/server-build.tgz -C /home/ubuntu/pokemon-draftzone-server",
+              "cd /home/ubuntu/pokemon-draftzone-server",
+              "sudo -u ubuntu npm install --omit=dev",
+              "sudo -u ubuntu pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz"
             ]'
