@@ -1,0 +1,68 @@
+name: Deploy Server
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "pokemon-draftzone-server/**"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions-pdz
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: pokemon-draftzone-server/package-lock.json
+
+      - name: Install deps
+        working-directory: pokemon-draftzone-server
+        run: npm ci
+
+      - name: Build
+        working-directory: pokemon-draftzone-server
+        run: npm run build
+
+      - name: Package build
+        run: |
+          tar -czf server-build.tgz \
+            pokemon-draftzone-server/dist \
+            pokemon-draftzone-server/ecosystem.config.js \
+            pokemon-draftzone-server/package.json \
+            pokemon-draftzone-server/package-lock.json
+
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp server-build.tgz s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz
+
+      - name: Deploy via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "i-0a44924e1ad597b3e" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy pokemon-draftzone-server" \
+            --parameters commands='[
+              "set -e",
+              "sudo mkdir -p /opt/pokemon-draftzone-server",
+              "sudo aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /opt/pokemon-draftzone-server/server-build.tgz",
+              "sudo tar -xzf /opt/pokemon-draftzone-server/server-build.tgz -C /opt/pokemon-draftzone-server",
+              "cd /opt/pokemon-draftzone-server",
+              "sudo npm ci --omit=dev",
+              "sudo pm2 startOrReload ecosystem.config.js --only pmdz"
+            ]'
