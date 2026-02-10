@@ -26,7 +26,7 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24.12.0"
 
       - name: Install deps
         run: npm install
@@ -52,11 +52,11 @@ jobs:
             --instance-ids "i-0a44924e1ad597b3e" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy pokemon-draftzone-server" \
-            --parameters commands='[
+            --parameters 'commands=[
               "set -e",
               "sudo -u ubuntu mkdir -p /home/ubuntu/pokemon-draftzone-server",
               "sudo -u ubuntu aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /home/ubuntu/pokemon-draftzone-server/server-build.tgz",
               "sudo -u ubuntu tar -xzf /home/ubuntu/pokemon-draftzone-server/server-build.tgz -C /home/ubuntu/pokemon-draftzone-server",
-              "sudo -u ubuntu bash -lc 'cd /home/ubuntu/pokemon-draftzone-server && npm install --omit=dev'",
-              "sudo -u ubuntu bash -lc 'pm2 restart pmdz || pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz'"
+              "sudo -u ubuntu bash -lc \"cd /home/ubuntu/pokemon-draftzone-server && npm install --omit=dev\"",
+              "sudo -u ubuntu bash -lc \"pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz\""
             ]'
