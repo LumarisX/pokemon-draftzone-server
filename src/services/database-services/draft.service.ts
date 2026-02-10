@@ -1,6 +1,6 @@
 import { ID, toID } from "@pkmn/data";
 import { LRUCache } from "lru-cache";
-import { Types } from "mongoose";
+import { ClientSession, Types } from "mongoose";
 import { Ruleset } from "../../data/rulesets";
 import {
   DraftData,
@@ -80,8 +80,11 @@ export async function updateDraft(
   return updatedDraft;
 }
 
-export async function deleteDraft(draft: DraftDocument) {
-  const result = await draft.deleteOne();
+export async function deleteDraft(
+  draft: DraftDocument,
+  session?: ClientSession,
+) {
+  const result = await draft.deleteOne({ session });
   $drafts.delete(draft._id.toString());
   if (draft.owner && draft.leagueId) {
     const key = `${draft.owner}:${draft.leagueId}`;

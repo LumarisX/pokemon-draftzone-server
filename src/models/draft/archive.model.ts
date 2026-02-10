@@ -236,7 +236,7 @@ export const ArchiveV1Model = ArchiveBaseModel.discriminator<ArchiveV1Document>(
 export const ArchiveV2Model = ArchiveBaseModel.discriminator<ArchiveV2Document>(
   "ArchiveV2",
   new Schema({
-    tournamentId: { type: String, required: true },
+    leagueId: { type: String, required: true },
     doc: { type: String },
     stats: { type: Map, of: statsSchema, default: {} },
     score: { type: scoreSchema, required: true },

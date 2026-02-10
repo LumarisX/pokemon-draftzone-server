@@ -13,11 +13,11 @@ import { config } from "./config";
 import { errorHandler } from "./errors/error-handler";
 import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
+import { ArchiveRoute } from "./routes-new/archive.route";
+import { DraftRoute } from "./routes-new/draft.route";
 import { LeagueRoute } from "./routes-new/league.route";
 import { Route } from "./routes-new/route-builder";
-import { ArchiveRoutes } from "./routes/archive.route";
 import { DataRoutes } from "./routes/data.route";
-import { DraftRoutes } from "./routes/draft.route";
 import { FileRoutes } from "./routes/file.route";
 import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
@@ -182,8 +182,8 @@ const routerStream = {
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
 export const ROUTES: { [path: string]: RouteOld | Route } = {
-  "/draft": DraftRoutes,
-  "/archive": ArchiveRoutes,
+  "/draft": DraftRoute,
+  "/archive": ArchiveRoute,
   "/matchup": MatchupRoutes,
   "/data": DataRoutes,
   "/replay": ReplayRoutes,

@@ -103,16 +103,21 @@ export const DraftRoute = createRoute().auth()((r) => {
     r.path("archive")((r) => {
       r.delete(async (ctx, req, res) => {
         const session = await startSession();
-        session.startTransaction();
         try {
-          const archive = new Archive(ctx.rawDraft.toObject<DraftData>());
-          const archiveData = await archive.createArchive();
-          await deleteDraft(ctx.rawDraft);
-          archiveData.save({ session });
-          await session.commitTransaction();
+          await session.withTransaction(
+            async () => {
+              const archive = new Archive(ctx.rawDraft.toObject<DraftData>());
+              console.log("Creating archive for draft:", ctx.team_id);
+              const archiveData = await archive.createArchive();
+              await archiveData.validate();
+              await archiveData.save({ session });
+              await deleteDraft(ctx.rawDraft, session);
+            },
+            { writeConcern: { w: "majority" } },
+          );
           res.status(201).json({ message: "Archive added" });
         } catch (error) {
-          await session.abortTransaction();
+          console.log("Error creating archive:", error);
           throw error;
         } finally {
           session.endSession();

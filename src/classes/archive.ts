@@ -24,6 +24,8 @@ export class Archive {
   }
 
   private async prepareData(): Promise<ArchiveV2Data> {
+    const normalizeWinner = (winner?: string) =>
+      winner === "a" || winner === "b" ? winner : undefined;
     const data: ArchiveV2Data = {
       archiveType: "ArchiveV2",
       leagueName: this.draft.leagueName,
@@ -32,6 +34,7 @@ export class Archive {
       teamName: this.draft.teamName,
       ruleset: this.draft.ruleset as RulesetId,
       owner: this.draft.owner,
+      doc: this.draft.doc,
       team: this.draft.team.map((pokemon) => ({ id: pokemon.id })),
       matchups: [],
       stats: new Map<string, StatData>(),
@@ -41,7 +44,12 @@ export class Archive {
     data.matchups = matchups.map((matchup) => ({
       teamName: matchup.bTeam.teamName,
       stage: matchup.stage,
-      matches: matchup.matches,
+      matches: matchup.matches.map((match) => ({
+        aTeam: match.aTeam,
+        bTeam: match.bTeam,
+        replay: match.replay,
+        winner: normalizeWinner(match.winner),
+      })),
       team: matchup.bTeam.team,
       coach: matchup.bTeam.coach,
       pastes: { aTeam: matchup.aTeam.paste, bTeam: matchup.bTeam.paste },

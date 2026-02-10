@@ -37,7 +37,7 @@ export const ArchiveRoute = createRoute()((r) => {
 
   r.param("team_id", {
     validate: (team_id) => mongoose.Types.ObjectId.isValid(team_id),
-    loader: async (ctx, req, res, team_id) => {
+    loader: async (ctx, team_id) => {
       const rawArchive = await ArchiveBaseModel.findById(team_id);
       if (!rawArchive) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
       const archive = rawArchive.toObject() as unknown as

@@ -688,6 +688,28 @@ export const LeagueRoute = createRoute()((r) => {
         r.get(async (ctx) => {
           return ctx.tournament.rules;
         });
+        r.post
+          .auth()
+          .use(rolecheck("organizer"))
+          .validate({
+            body: (data) =>
+              z
+                .object({
+                  ruleSections: z.array(
+                    z.object({
+                      title: z.string(),
+                      body: z.string(),
+                    }),
+                  ),
+                })
+                .parse(data),
+          })(async (ctx, req, res) => {
+          ctx.tournament.rules = ctx.validatedBody.ruleSections;
+          await ctx.tournament.save();
+          return res.status(201).json({
+            message: "Rules updated successfully",
+          });
+        });
       });
       r.path("tier-list")((r) => {
         r.get.validate({
