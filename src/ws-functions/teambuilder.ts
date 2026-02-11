@@ -40,14 +40,14 @@ function isStab(move: Move, pokemon: PokemonSet): boolean {
 function strength(
   move: Move,
   pokemon: PokemonSet,
-  specie: DraftSpecie
+  specie: DraftSpecie,
 ): number {
   const stat =
     move.category === "Physical"
       ? specie.baseStats.atk
       : move.category === "Special"
-      ? specie.baseStats.spa
-      : 1;
+        ? specie.baseStats.spa
+        : 1;
   let value =
     getEffectivePower(move) *
     stat *
@@ -67,7 +67,7 @@ export const shouldHighlightMove: WSRoute =
       ability: string;
       move: Move;
       pokemon?: PokemonSet;
-    }>
+    }>,
   ) => {
     try {
       const { ability, move, pokemon } = request.params;
@@ -118,7 +118,7 @@ export const getModifiedMove: WSRoute =
       ability: string;
       move: Move;
       pokemon?: PokemonSet;
-    }>
+    }>,
   ) => {
     try {
       const { ability, move, pokemon } = request.params;
@@ -202,10 +202,10 @@ function pdzCalculateStrength(pokemon: DraftSpecie, move: Move): number {
   const attackStat = move.overrideOffensiveStat
     ? pokemon.baseStats[move.overrideOffensiveStat]
     : move.category === "Physical"
-    ? pokemon.baseStats.atk
-    : move.category === "Special"
-    ? pokemon.baseStats.spa
-    : 0;
+      ? pokemon.baseStats.atk
+      : move.category === "Special"
+        ? pokemon.baseStats.spa
+        : 0;
   const baseDamage = move.basePower * attackStat;
   const stabMod = 0x1800;
   let damageAmount = baseDamage;
@@ -221,7 +221,7 @@ export const getProcessedLearnset: WSRoute =
     request: JsonRpcRequest<{
       pokemon: PokemonSet & Partial<PokemonOptions>;
       ruleset: string;
-    }>
+    }>,
   ) => {
     try {
       const { pokemon, ruleset: rulesetId } = request.params;
@@ -230,7 +230,7 @@ export const getProcessedLearnset: WSRoute =
       if (!pokemon || !pokemon.id || !rulesetId) {
         console.error(
           "Invalid parameters for getProcessedLearnset:",
-          request.params
+          request.params,
         );
         sendResponse(socket, [], request.id);
         return;

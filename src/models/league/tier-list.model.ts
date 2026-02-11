@@ -3,19 +3,23 @@ import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
 
 export const LEAGUE_TIER_LIST_COLLECTION = "LeagueTierList";
 
+export type TierListPokemonAddon = {
+  name: string;
+  cost: number;
+  notes?: string;
+};
+
 export type LeagueTierListPokemon = {
   name: string;
-  notes?: string;
   tier: string;
-  teraTier?: string;
-  customData?: Record<string, any>;
+  notes?: string;
+  addons?: TierListPokemonAddon[];
 };
 
 export type LeagueTier = {
   name: string;
-  label?: string;
+  cost: number;
   color?: string;
-  description?: string;
 };
 
 export type DraftCount = {
@@ -27,7 +31,7 @@ export type LeagueTierList = {
   name: string;
   description?: string;
   createdBy: Types.ObjectId | LeagueCoachDocument;
-  pokemon: Map<string, LeagueTierListPokemon>;
+  pokemon: { [key: string]: LeagueTierListPokemon };
   tiers: LeagueTier[];
   bannedMoves: string[];
   bannedAbilities: string[];
@@ -40,23 +44,30 @@ export type LeagueTierList = {
 export type LeagueTierListDocument = Document &
   LeagueTierList & { _id: Types.ObjectId };
 
-export const LeagueTierListPokemonSchema: Schema = new Schema(
+const TierListPokemonAddonSchema: Schema<TierListPokemonAddon> = new Schema(
   {
     name: { type: String, required: true },
+    cost: { type: Number, required: true },
     notes: { type: String },
-    tier: { type: String, required: true },
-    teraTier: { type: String },
-    customData: { type: Schema.Types.Mixed },
   },
   { _id: false },
 );
 
+export const LeagueTierListPokemonSchema: Schema<LeagueTierListPokemon> =
+  new Schema(
+    {
+      name: { type: String, required: true },
+      tier: { type: String, required: true },
+      notes: { type: String },
+      addons: [TierListPokemonAddonSchema],
+    },
+    { _id: false },
+  );
+
 export const LeagueTierSchema: Schema<LeagueTier> = new Schema(
   {
     name: { type: String, required: true },
-    label: { type: String },
-    color: { type: String },
-    description: { type: String },
+    cost: { type: Number, required: true },
   },
   { _id: false },
 );

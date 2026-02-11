@@ -47,19 +47,19 @@ import {
   setDivsionState,
   skipCurrentPick,
 } from "../services/league-services/draft-service";
-import {
-  getDrafted,
-  getRoles,
-  getTierList,
-  updateTierList,
-} from "../services/league-services/league-service";
+import { getRoles } from "../services/league-services/league-service";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
   calculateResultScore,
   calculateTeamMatchupScoreAndWinner,
 } from "../services/league-services/standings-service";
-import { getPokemonTier } from "../services/league-services/tier-list-service";
+import {
+  getDrafted,
+  getPokemonTier,
+  getTierList,
+  updateTierList,
+} from "../services/league-services/tier-list-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
@@ -980,6 +980,7 @@ export const LeagueRoute = createRoute()((r) => {
                   tiers: z.array(
                     z.object({
                       name: z.string(),
+                      cost: z.number(),
                       pokemon: z.array(
                         z.object({
                           id: z.string(),

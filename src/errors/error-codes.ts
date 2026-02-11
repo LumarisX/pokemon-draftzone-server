@@ -172,13 +172,18 @@ export const ErrorCodes = {
     },
   },
   TIER_LIST: {
-    INVALID_DATA: {
+    NOT_FOUND: {
       code: "LR-TIER-001",
+      status: 404,
+      message: "Tier list not found",
+    },
+    INVALID_DATA: {
+      code: "LR-TIER-002",
       status: 400,
       message: "Invalid tier list data",
     },
     UPDATE_FAILED: {
-      code: "LR-TIER-002",
+      code: "LR-TIER-003",
       status: 500,
       message: "Failed to update tier list",
     },

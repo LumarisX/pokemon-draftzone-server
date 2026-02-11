@@ -23,7 +23,7 @@ export class SummaryClass {
   constructor(
     private readonly team: DraftSpecie[],
     private readonly teamName?: string,
-    private readonly coach?: string
+    private readonly coach?: string,
   ) {
     if (!team?.length) {
       throw new Error("Team must contain at least one Pokemon");
@@ -54,7 +54,7 @@ export class SummaryClass {
 
         return stats;
       },
-      { mean: {}, median: {}, min: {}, max: {} } as TeamStatistics
+      { mean: {}, median: {}, min: {}, max: {} } as TeamStatistics,
     );
   }
 

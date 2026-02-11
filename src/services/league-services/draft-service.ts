@@ -50,7 +50,7 @@ function createPokemonTierMap(
 ): Map<string, string> {
   const tierMap = new Map<string, string>();
   const tierList = league.tierList as LeagueTierListDocument;
-  tierList.pokemon.forEach((data, pokemonId) => {
+  Object.entries(tierList.pokemon).forEach(([pokemonId, data]) => {
     tierMap.set(pokemonId, data.tier);
   });
   return tierMap;

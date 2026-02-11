@@ -1,13 +1,11 @@
 import { ID } from "@pkmn/data";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 
-export type Coveragechart = (
-  | PokemonFormData & {
-      coverage: {
-        [key: string]: CoverageMove[];
-      };
-    }
-)[];
+export type Coveragechart = (PokemonFormData & {
+  coverage: {
+    [key: string]: CoverageMove[];
+  };
+})[];
 
 export type CoverageMove = {
   ePower: number;
@@ -34,7 +32,7 @@ export type FullCoverageMove = {
 
 export async function coveragechart(
   team: DraftSpecie[],
-  oppTeam: DraftSpecie[]
+  oppTeam: DraftSpecie[],
 ): Promise<Coveragechart> {
   let result: Coveragechart = [];
   for (let pokemon of team) {
@@ -50,7 +48,7 @@ export async function coveragechart(
     for (let category in data.coverage) {
       data.coverage[category as keyof typeof data.coverage].sort(function (
         x: { stab?: true; ePower: number },
-        y: { stab?: true; ePower: number }
+        y: { stab?: true; ePower: number },
       ) {
         if (x.stab != y.stab) {
           if (x.stab) return -1;
@@ -75,7 +73,7 @@ export async function plannerCoverage(team: DraftSpecie[]) {
       id: pokemon.id,
       coverage: await pokemon.coverage(),
       fullcoverage: await pokemon.fullcoverage(),
-    }))
+    })),
   );
 
   const physicalCoverage: Record<string, number> = {};
@@ -96,7 +94,7 @@ export async function plannerCoverage(team: DraftSpecie[]) {
       type,
       category: "physical",
       value,
-    })
+    }),
   );
 
   const specialArray = Object.entries(specialCoverage).map(([type, value]) => ({

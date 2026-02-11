@@ -59,7 +59,7 @@ namespace TierList {
         moves?: string[];
         abilities?: string[];
         tera?: true;
-      }
+      },
     ) {
       this.specie = specie;
       this.bst = getBST(this.specie);
@@ -90,7 +90,7 @@ namespace TierList {
         moves?: string[];
         abilities?: string[];
         tera?: true;
-      }
+      },
     ) {
       super(specie, banned);
       this.drafted = drafted;
@@ -204,7 +204,7 @@ function _processDetails(sourceDetails: DraftDetails) {
         specie,
         tier,
         pokemon.drafted,
-        pokemon.banned
+        pokemon.banned,
       );
       tier.addPokemon(tierPokemon);
       pokemons.push(tierPokemon);
@@ -218,7 +218,7 @@ function _processDetails(sourceDetails: DraftDetails) {
     if (refMon) {
       const specie = getRuleset("Gen9 NatDex").species.get(pokemon.name)!;
       refMon.addSubPokemon(
-        new (TierList as any).SubPokemon(specie, pokemon.banned)
+        new (TierList as any).SubPokemon(specie, pokemon.banned),
       );
     }
   });
@@ -251,20 +251,20 @@ function writeDetails(details: DraftDetails) {
 export function setDrafted(
   pokemonId: string,
   division: string | null,
-  setDrafted: boolean
+  setDrafted: boolean,
 ) {
   const currentDetails = getDetails();
   if (!division) throw new Error(`${division} is null.`);
   if (!currentDetails.divisions.includes(division))
     throw new Error(`${division} is an invalid division.`);
   const foundMon = currentDetails.pokemons.find(
-    (mon) => mon.specie.id === pokemonId
+    (mon) => mon.specie.id === pokemonId,
   );
   if (!foundMon) throw new Error(`${pokemonId} not found.`);
   if (setDrafted) {
     if (foundMon.drafted.includes(division))
       throw new Error(
-        `${foundMon.specie.name} already drafted in ${division}.`
+        `${foundMon.specie.name} already drafted in ${division}.`,
       );
     foundMon.drafted.push(division);
   } else {

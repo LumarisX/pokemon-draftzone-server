@@ -17,18 +17,18 @@ export const DraftModPickCommand: Command = {
           getDivisions().map((division) => ({
             name: division,
             value: division,
-          }))
-        )
+          })),
+        ),
     )
     .addStringOption((option) =>
       option
         .setName("pokemon")
         .setDescription("Pokemon")
         .setRequired(true)
-        .setAutocomplete(true)
+        .setAutocomplete(true),
     )
     .addBooleanOption((option) =>
-      option.setName("drafted").setDescription("Mark as drafted?")
+      option.setName("drafted").setDescription("Mark as drafted?"),
     ),
   execute: async (interaction) => {
     if (!guildCheck(interaction.guildId))
@@ -66,7 +66,7 @@ export const DraftModPickCommand: Command = {
 
     const filtered = choices
       .filter((mon) =>
-        mon.name.toLowerCase().replace(/\s-/g, "").includes(focusedValue)
+        mon.name.toLowerCase().replace(/\s-/g, "").includes(focusedValue),
       )
       .slice(0, 25);
     await interaction.respond(filtered);
