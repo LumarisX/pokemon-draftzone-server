@@ -11,8 +11,6 @@ import {
   Interaction,
   type Message,
 } from "discord.js";
-import OpenAi from "openai";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type winston from "winston";
 import { config } from "../config";
 import LeagueCoachModel from "../models/league/coach.model";
@@ -20,6 +18,7 @@ import { LeagueAdModel } from "../models/league-ad.model";
 import { invalidateLeagueAdsCache } from "../services/league-ad/league-ad-service";
 import { routes } from "./commands";
 import { deployGuildCommands } from "./deploy-commands";
+import { geminiRespond, initializeGemini } from "./gemini";
 export const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -28,64 +27,27 @@ export const client = new Client({
     GatewayIntentBits.GuildMessages,
   ],
 });
-type Forme = "Normal" | "Attack" | "Defense" | "Speed";
-const FORMES: Record<Forme, number> = {
-  Normal: 0,
-  Attack: 1,
-  Defense: 2,
-  Speed: 3,
-};
-const forme: Forme = "Attack";
-const openai = new OpenAi({
-  apiKey: config.OPENAI_API_KEY,
-});
 
 const COACH_ROLE_ID = "1469151649070186576";
-
-const GPT_MODEL = "gpt-4.1-mini";
-const GPT_MAX_TOKENS = 600;
-const GPT_MAX_CONTEXT_CHARS = 6000;
-
-const EMOTION_MAP: Record<string, string> = {
-  angry: "Angry",
-  crying: "Crying",
-  determined: "Determined",
-  dizzy: "Dizzy",
-  happy: "Happy",
-  inspire: "Inspire",
-  joyous: "Joyous",
-  normal: "Normal",
-  pain: "Pain",
-  sad: "Sad",
-  shouting: "Shouting",
-  sigh: "Sigh",
-  stunned: "Stunned",
-  surprised: "Surprised",
-  tearyeyed: "Teary-Eyed",
-  powerup: "Special1",
-};
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/**
- * Starts and initializes the Discord bot.
- * @param logger - The Winston logger instance.
- * @returns The initialized Discord client instance or undefined if disabled/misconfigured.
- */
 export async function startDiscordBot(
   logger: winston.Logger,
 ): Promise<Client | undefined> {
   if (
     !config.DISCORD_TOKEN ||
-    !config.OPENAI_API_KEY ||
+    !config.GEMINI_API_KEY ||
     (config.DISCORD_DISABLED && config.DISCORD_DISABLED === "true")
   ) {
     logger.warn(
-      "Discord bot is disabled or missing necessary configuration (DISCORD_TOKEN, OPENAI_API_KEY).",
+      "Discord bot is disabled or missing necessary configuration (DISCORD_TOKEN, GEMINI_API_KEY).",
     );
     return undefined;
   }
+
+  initializeGemini();
 
   client.once("clientReady", () => {
     if (client.user) {
@@ -301,7 +263,7 @@ export async function startDiscordBot(
       logger.info(
         `Message Mention | Author: ${message.author.tag} (${message.author.id}) | Content: ${content}`,
       );
-      gptRespond(message, logger);
+      geminiRespond(message, logger);
     }
   });
 
@@ -314,153 +276,6 @@ export async function startDiscordBot(
     throw new Error(
       `Discord login failed: ${error instanceof Error ? error.message : error}`,
     );
-  }
-}
-
-/**
- * Generates a response using OpenAI based on message context.
- * @param message - The Discord message object.
- * @param logger - The Winston logger instance.
- */
-async function gptRespond(message: Message, logger: winston.Logger) {
-  if (!client.user) {
-    logger.error("gptRespond called but client.user is null.");
-    return;
-  }
-  try {
-    if (message.channel?.isTextBased() && "sendTyping" in message.channel) {
-      await message.channel.sendTyping();
-    }
-
-    const basePrompt: ChatCompletionMessageParam = {
-      role: "system",
-      content: `You are the Pokémon Deoxys from outer space... Only user messages are in the form of {User's Name}: {Message}, assistant messages are in the form {Emotion}: {Message}. Emotions are only the following: Angry, Crying, Determined, Dizzy, Happy, Inspire, Joyous, Normal, Pain, Power-Up, Sad, Shouting, Sigh, Stunned, Surprised, Teary-Eyed, and Worried. If you need special characters, use markdown format.`,
-    };
-
-    const formatMessage = (msg: Message) => {
-      const authorLabel = msg.member?.displayName || msg.author.username;
-      const content = msg.content?.trim() ?? "";
-      const attachmentLinks = msg.attachments.map((a) => a.url).join(" ");
-      const embedText = msg.embeds
-        .map((embed) => embed.description || embed.title)
-        .filter(Boolean)
-        .join(" ");
-
-      const combined = [content, embedText, attachmentLinks]
-        .filter((value) => value && value.trim().length > 0)
-        .join(" \n");
-
-      if (msg.author.id === client.user?.id && combined.length > 0) {
-        return combined;
-      }
-
-      return `${authorLabel}: ${combined || "(no message content)"}`;
-    };
-
-    const conversationHistory: ChatCompletionMessageParam[] = [];
-    let referencedMessage: Message | null = message;
-    for (let i = 0; i < 10 && referencedMessage; i += 1) {
-      const role =
-        referencedMessage.author.id === client.user.id ? "assistant" : "user";
-      conversationHistory.unshift({
-        role,
-        content: formatMessage(referencedMessage),
-      });
-
-      if (referencedMessage.reference?.messageId) {
-        try {
-          referencedMessage = await message.channel.messages.fetch(
-            referencedMessage.reference.messageId,
-          );
-        } catch (fetchError) {
-          logger.warn("Could not fetch referenced message:", fetchError);
-          referencedMessage = null;
-        }
-      } else {
-        referencedMessage = null;
-      }
-    }
-
-    const trimToMaxChars = (messages: ChatCompletionMessageParam[]) => {
-      let total = 0;
-      const trimmed: ChatCompletionMessageParam[] = [];
-      for (let i = messages.length - 1; i >= 0; i -= 1) {
-        const msg = messages[i];
-        const content = msg.content?.toString() ?? "";
-        if (total + content.length > GPT_MAX_CONTEXT_CHARS) break;
-        total += content.length;
-        trimmed.unshift(msg);
-      }
-      return trimmed;
-    };
-
-    const messages = trimToMaxChars([basePrompt, ...conversationHistory]);
-
-    const completion = await openai.chat.completions.create({
-      model: GPT_MODEL,
-      messages,
-      max_tokens: GPT_MAX_TOKENS,
-      temperature: 0.9,
-    });
-
-    let rawReply = completion.choices[0]?.message?.content;
-    if (!rawReply) {
-      logger.warn("OpenAI completion returned empty content.");
-      rawReply = "Normal: I have nothing to say to that.";
-    }
-
-    logger.info(`DeoxysGPT Response | ${rawReply}`);
-
-    let emotion = "Normal"; // Default emotion
-    let replyString = rawReply.trim();
-
-    const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
-
-    if (emotionMatch) {
-      const potentialEmotion = emotionMatch[1]
-        .trim()
-        .toLowerCase()
-        .replace(/\s/g, "");
-      const parsedEmotion = EMOTION_MAP[potentialEmotion];
-
-      if (parsedEmotion) {
-        emotion = parsedEmotion;
-        replyString = emotionMatch[2].trim();
-      }
-    }
-
-    if (!replyString?.trim()) {
-      replyString = "I am unsure how to respond.";
-    }
-
-    const emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
-      FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
-    }/${emotion}.png`;
-
-    const safeReply = replyString
-      .replace(/@everyone/g, "@ everyone")
-      .replace(/@here/g, "@ here");
-
-    const responseEmbed = new EmbedBuilder()
-      .setThumbnail(emotionUrl)
-      .setDescription(safeReply.slice(0, 4096));
-
-    const replyPayload = {
-      allowedMentions: { repliedUser: false },
-      embeds: [responseEmbed],
-    } as const;
-
-    await message.reply(replyPayload);
-  } catch (error) {
-    logger.error("Error in gptRespond:", error);
-    try {
-      await message.reply({
-        content: "Sorry, I encountered an error trying to process that.",
-        allowedMentions: { repliedUser: false },
-      });
-    } catch (replyError) {
-      logger.error("Failed to send error reply to user:", replyError);
-    }
   }
 }
 

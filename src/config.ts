@@ -16,7 +16,7 @@ const requiredEnvVars = [
 
 const optionalEnvVars = [
   "DISCORD_TOKEN",
-  "OPENAI_API_KEY",
+  "GEMINI_API_KEY",
   "APPLICATION_ID",
   "DISCORD_DISABLED",
   "AWS_ACCESS_KEY_ID",

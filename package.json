@@ -22,6 +22,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.709.0",
     "@aws-sdk/s3-request-presigner": "^3.709.0",
+    "@google/generative-ai": "^0.24.1",
     "@pkmn/data": "^0.10.4",
     "@pkmn/dex": "^0.10.4",
     "@pkmn/mods": "^0.10.4",
@@ -45,7 +46,6 @@
     "mongoose": "^8.5.3",
     "morgan": "^1.9.1",
     "node-cache": "^5.1.2",
-    "openai": "^4.67.3",
     "pug": "^3.0.2",
     "socket.io": "^4.8.1",
     "web-push": "^3.6.7",
