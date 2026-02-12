@@ -4,7 +4,7 @@ import type winston from "winston";
 import { config } from "../config";
 import { client } from "./index";
 
-const GEMINI_MODEL = "gemini-2.0-flash-exp";
+const GEMINI_MODEL = "gemini-1.5-flash";
 const GEMINI_MAX_TOKENS = 600;
 const GEMINI_MAX_CONTEXT_CHARS = 6000;
 
