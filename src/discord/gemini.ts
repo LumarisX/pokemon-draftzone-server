@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import type { Message } from "discord.js";
 import type winston from "winston";
 import { config } from "../config";
 import { client } from "./index";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_MAX_TOKENS = 600;
 const GEMINI_MAX_CONTEXT_CHARS = 6000;
 
@@ -36,11 +36,11 @@ const FORMES: Record<Forme, number> = {
 };
 const forme: Forme = "Attack";
 
-let genAI: GoogleGenerativeAI | null = null;
+let genAI: GoogleGenAI | null = null;
 
 export function initializeGemini() {
   if (config.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+    genAI = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
   }
 }
 
@@ -118,17 +118,12 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     const trimmedHistory = trimToMaxChars(conversationHistory);
     const fullPrompt = `${basePrompt}\n\n${trimmedHistory.join("\n")}`;
 
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-    const result = await model.generateContent({
+    const response = await genAI.models.generateContent({
+      model: GEMINI_MODEL,
       contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
-      generationConfig: {
-        maxOutputTokens: GEMINI_MAX_TOKENS,
-        temperature: 0.9,
-      },
     });
 
-    const response = await result.response;
-    let rawReply = response.text();
+    let rawReply = response.text;
 
     if (!rawReply) {
       logger.warn("Gemini completion returned empty content.");
