@@ -47,7 +47,7 @@ export async function startDiscordBot(
     return undefined;
   }
 
-  initializeGemini();
+  await initializeGemini(logger);
 
   client.once("clientReady", () => {
     if (client.user) {

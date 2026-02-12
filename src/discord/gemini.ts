@@ -1,11 +1,10 @@
-import { GoogleGenAI } from "@google/genai";
 import type { Message } from "discord.js";
 import type winston from "winston";
 import { config } from "../config";
 import { client } from "./index";
+import type { GoogleGenAI } from "@google/genai";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
-const GEMINI_MAX_TOKENS = 600;
 const GEMINI_MAX_CONTEXT_CHARS = 6000;
 
 const EMOTION_MAP: Record<string, string> = {
@@ -25,6 +24,7 @@ const EMOTION_MAP: Record<string, string> = {
   surprised: "Surprised",
   tearyeyed: "Teary-Eyed",
   powerup: "Special1",
+  worried: "Worried",
 };
 
 type Forme = "Normal" | "Attack" | "Defense" | "Speed";
@@ -37,10 +37,27 @@ const FORMES: Record<Forme, number> = {
 const forme: Forme = "Attack";
 
 let genAI: GoogleGenAI | null = null;
+let geminiInitError: unknown | null = null;
+const dynamicImport = new Function("specifier", "return import(specifier)") as (
+  specifier: string,
+) => Promise<{
+  GoogleGenAI: typeof import("@google/genai").GoogleGenAI;
+}>;
+const normalizeEmotionKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-export function initializeGemini() {
-  if (config.GEMINI_API_KEY) {
+export async function initializeGemini(logger?: winston.Logger) {
+  if (!config.GEMINI_API_KEY || genAI) {
+    return;
+  }
+
+  try {
+    const { GoogleGenAI } = await dynamicImport("@google/genai");
     genAI = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
+    geminiInitError = null;
+  } catch (error) {
+    geminiInitError = error;
+    logger?.error("Failed to initialize Gemini AI:", error);
   }
 }
 
@@ -51,7 +68,14 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
   }
 
   if (!genAI) {
-    logger.error("Gemini AI not initialized. Missing GEMINI_API_KEY.");
+    if (geminiInitError) {
+      logger.error(
+        "Gemini AI not initialized due to prior error:",
+        geminiInitError,
+      );
+    } else {
+      logger.error("Gemini AI not initialized. Missing GEMINI_API_KEY.");
+    }
     return;
   }
 
@@ -85,8 +109,6 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     const conversationHistory: string[] = [];
     let referencedMessage: Message | null = message;
     for (let i = 0; i < 10 && referencedMessage; i += 1) {
-      const role =
-        referencedMessage.author.id === client.user.id ? "assistant" : "user";
       conversationHistory.unshift(formatMessage(referencedMessage));
 
       if (referencedMessage.reference?.messageId) {
@@ -138,11 +160,9 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
 
     if (emotionMatch) {
-      const potentialEmotion = emotionMatch[1]
-        .trim()
-        .toLowerCase()
-        .replace(/\s/g, "");
-      const parsedEmotion = EMOTION_MAP[potentialEmotion];
+      const potentialEmotion = emotionMatch[1].trim();
+      const normalizedEmotion = normalizeEmotionKey(potentialEmotion);
+      const parsedEmotion = EMOTION_MAP[normalizedEmotion];
 
       if (parsedEmotion) {
         emotion = parsedEmotion;
