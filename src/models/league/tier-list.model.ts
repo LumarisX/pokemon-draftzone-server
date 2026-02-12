@@ -31,7 +31,7 @@ export type LeagueTierList = {
   name: string;
   description?: string;
   createdBy: Types.ObjectId | LeagueCoachDocument;
-  pokemon: { [key: string]: LeagueTierListPokemon };
+  pokemon: Map<string, LeagueTierListPokemon>;
   tiers: LeagueTier[];
   bannedMoves: string[];
   bannedAbilities: string[];
