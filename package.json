@@ -22,7 +22,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.709.0",
     "@aws-sdk/s3-request-presigner": "^3.709.0",
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^1.41.0",
     "@pkmn/data": "^0.10.4",
     "@pkmn/dex": "^0.10.4",
     "@pkmn/mods": "^0.10.4",
