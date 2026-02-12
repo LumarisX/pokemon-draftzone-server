@@ -141,8 +141,8 @@ export const DraftRoute = createRoute().auth()((r) => {
                 teamName: z.string().min(1),
                 coach: z.string().min(1).optional(),
                 team: z.array(z.any()),
-                matches: z.array(z.any()),
-                _id: z.string().min(1),
+                matches: z.array(z.any()).optional(),
+                _id: z.string().min(1).optional(),
               })
               .parse(data),
         })(async (ctx) => {

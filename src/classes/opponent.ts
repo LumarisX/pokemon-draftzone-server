@@ -32,7 +32,7 @@ export class Opponent {
       teamName: string;
       coach?: string;
       team: PokemonFormData[];
-      matches: MatchData[];
+      matches?: MatchData[];
       _id?: string;
     },
     ruleset: Ruleset,
@@ -44,7 +44,7 @@ export class Opponent {
         .filter((pokemonData) => pokemonData.id)
         .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
       data.teamName,
-      data.matches,
+      data.matches || [],
       data.stage,
       data.coach,
     );
