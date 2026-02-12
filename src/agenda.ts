@@ -23,7 +23,7 @@ agenda.define("skip-draft-pick", async (job: Job) => {
       populate: {
         path: "teams",
         populate: {
-          path: "coaches",
+          path: "coach",
         },
       },
     },

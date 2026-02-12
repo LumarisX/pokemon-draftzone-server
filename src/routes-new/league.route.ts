@@ -1523,7 +1523,7 @@ export const LeagueRoute = createRoute()((r) => {
                   z.object({ state: z.string().min(1) }).parse(data),
               })(async (ctx) => {
                 const { state } = ctx.validatedBody;
-                setDivsionState(ctx.tournament, ctx.division, state);
+                await setDivsionState(ctx.tournament, ctx.division, state);
                 return { message: "Timer set successfully." };
               });
             });

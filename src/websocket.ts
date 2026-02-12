@@ -1,28 +1,8 @@
 import { Server as HttpServer } from "http";
-import { Server, Socket } from "socket.io";
+import { Server } from "socket.io";
 import { Logger } from "winston";
-import eventEmitter from "./event-emitter";
-import {
-  JsonRpcRequest,
-  sendError,
-  sendLeagueNotification,
-} from "./services/websocket.service";
-import { getTiers as getTiersRequest } from "./ws-functions/league";
-import {
-  subscribeLeague,
-  unsubscribeLeague,
-} from "./ws-functions/league-subscription";
-import { TeamDraft } from "./models/league/team.model";
-import {
-  shouldHighlightMove,
-  shouldHighlightItem,
-  getModifiedMove,
-  getModifiedType,
-  getProcessedLearnset,
-} from "./ws-functions/teambuilder";
-
-export type SocketListener = (request: JsonRpcRequest) => void;
-export type WSRoute = (io: Server, socket: Socket) => SocketListener;
+import { JsonRpcRequest, sendError } from "./services/websocket.service";
+import { registerWsEvents, wsRoutes } from "./ws-routes";
 
 export function startWebSocket(logger: Logger, server: HttpServer) {
   const io = new Server(server, {
@@ -30,103 +10,26 @@ export function startWebSocket(logger: Logger, server: HttpServer) {
       origin: ["http://localhost:4200", "https://pokemondraftzone.com"],
       methods: ["GET", "POST"],
     },
-    path: "/battlezone/",
+    path: "/ws/",
   });
 
-  eventEmitter.on(
-    "draft.added",
-    (data: {
-      tournamentId: string;
-      divisionId: string;
-      pick: {
-        pokemon: { id: string; name: string; tier: string };
-        team: { name: string; id: string };
-      };
-      team: {
-        id: string;
-        name: string;
-        draft: TeamDraft[];
-      };
-      canDraftTeams: string[];
-    }) => {
-      sendLeagueNotification(io, data.tournamentId, "league.draft.added", {
-        divisionId: data.divisionId,
-        pick: data.pick,
-        canDraftTeams: data.canDraftTeams,
-        team: data.team,
-      });
-    },
-  );
-
-  eventEmitter.on(
-    "draft.counter",
-    (data: {
-      tournamentId: string;
-      divisionId: string;
-      currentPick: { round: number; position: number; skipTime?: Date };
-      nextTeam: string;
-      canDraftTeams: string[];
-    }) => {
-      sendLeagueNotification(io, data.tournamentId, "league.draft.counter", {
-        divisionId: data.divisionId,
-        currentPick: data.currentPick,
-        nextTeam: data.nextTeam,
-        canDraftTeams: data.canDraftTeams,
-      });
-    },
-  );
-
-  eventEmitter.on(
-    "draft.status",
-    (data: {
-      tournamentId: string;
-      divisionId: string;
-      status: string;
-      currentPick: { round: number; position: number; skipTime?: Date };
-    }) => {
-      sendLeagueNotification(io, data.tournamentId, "league.draft.status", {
-        divisionId: data.divisionId,
-        status: data.status,
-        currentPick: data.currentPick,
-      });
-    },
-  );
-  eventEmitter.on(
-    "league.draft.skip",
-    (data: { tournamentId: string; divisionId: string; teamName: string }) => {
-      sendLeagueNotification(io, data.tournamentId, "league.draft.skip", {
-        divisionId: data.divisionId,
-        teamName: data.teamName,
-      });
-    },
-  );
+  registerWsEvents(io);
 
   io.on("connection", (socket) => {
     logger.info(`New WebSocket client connected: ${socket.id}`);
 
-    const routes: { [key: string]: WSRoute } = {
-      getTiers: getTiersRequest,
-      "league.subscribe": subscribeLeague,
-      "league.unsubscribe": unsubscribeLeague,
-      "teambuilder.shouldHighlightMove": shouldHighlightMove,
-      "teambuilder.shouldHighlightItem": shouldHighlightItem,
-      "teambuilder.getModifiedMove": getModifiedMove,
-      "teambuilder.getModifiedType": getModifiedType,
-      "teambuilder.getProcessedLearnset": getProcessedLearnset,
-    };
+    const routes = wsRoutes;
 
     socket.on("message", async (message: any) => {
       try {
-        if (message.jsonrpc !== "2.0" || !message.method) {
+        if (message.jsonrpc !== "2.0" || !message.method)
           return sendError(socket, -32600, "Invalid Request", message.id);
-        }
 
         const request: JsonRpcRequest = message;
         const handler = routes[request.method];
 
-        if (!handler) {
+        if (!handler)
           return sendError(socket, -32601, "Method not found", request.id);
-        }
 
         await handler(io, socket)(request);
       } catch (error: any) {

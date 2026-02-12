@@ -4,6 +4,7 @@ import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "../../models/league/tournament.model";
 import tierListModel, {
+  LeagueTier,
   LeagueTierListDocument,
   LeagueTierListPokemon,
   TierListPokemonAddon,
@@ -19,7 +20,7 @@ import { LeagueTeamDocument } from "../../models/league/team.model";
 export async function getPokemonTier(
   tournamentId: Types.ObjectId | LeagueTournamentDocument,
   pokemonId: string,
-): Promise<string | undefined> {
+): Promise<LeagueTier | undefined> {
   try {
     const league =
       "tierList" in tournamentId
@@ -36,8 +37,8 @@ export async function getPokemonTier(
 
     const tierList = league.tierList as LeagueTierListDocument;
     const pokemonData = tierList.pokemon.get(pokemonId);
-
-    return pokemonData?.tier;
+    const tier = tierList.tiers.find((t) => t.name === pokemonData?.tier);
+    return tier;
   } catch (error) {
     console.error(
       `Error getting pokemon tier for ${pokemonId} in league ${tournamentId}:`,

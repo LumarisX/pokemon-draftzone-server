@@ -50,7 +50,7 @@ function createPokemonTierMap(
 ): Map<string, string> {
   const tierMap = new Map<string, string>();
   const tierList = league.tierList as LeagueTierListDocument;
-  Object.entries(tierList.pokemon).forEach(([pokemonId, data]) => {
+  Array.from(tierList.pokemon.entries()).forEach(([pokemonId, data]) => {
     tierMap.set(pokemonId, data.tier);
   });
   return tierMap;
@@ -150,6 +150,12 @@ export async function getTeamsWithCoachStatus(
   numberOfRounds: number,
 ): Promise<TeamWithCoachStatus[]> {
   const pokemonTierMap = createPokemonTierMap(league);
+  const tierCostMap = new Map(
+    (league.tierList as LeagueTierListDocument).tiers.map((tier) => [
+      tier.name,
+      tier.cost,
+    ]),
+  );
 
   const teams = await Promise.all(
     (
@@ -187,7 +193,10 @@ export async function getTeamsWithCoachStatus(
 
       const pointTotal = draft
         .filter((pokemon) => pokemon.tier)
-        .reduce((total, pokemon) => total + Number(pokemon.tier), 0);
+        .reduce(
+          (total, pokemon) => total + (tierCostMap.get(pokemon.tier!) || 0),
+          0,
+        );
 
       const coach = team.coach as LeagueCoachDocument;
 
@@ -309,6 +318,10 @@ export async function canTeamDraft(
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
 ): Promise<boolean> {
+  if (division.status !== "IN_PROGRESS") {
+    return false;
+  }
+
   const teams = division.teams as LeagueTeamDocument[];
   const teamsCount = teams.length;
   const currentRound = Math.floor(
@@ -340,8 +353,9 @@ export function isAlreadyDrafted(
   division: LeagueDivisionDocument,
   pokemonId: string,
 ) {
+  const normalizedPokemonId = toID(pokemonId);
   return (division.teams as LeagueTeamDocument[]).some((t) =>
-    t.draft.some((p) => getPokemonIdFromDraft(p) === pokemonId),
+    t.draft.some((p) => toID(getPokemonIdFromDraft(p)) === normalizedPokemonId),
   );
 }
 
@@ -352,7 +366,7 @@ export async function getTeamPoints(
   const tiers = await Promise.all(
     team.draft.map(async (pick) => {
       const tier = await getPokemonTier(league, getPokemonIdFromDraft(pick));
-      return Number(tier) || 0;
+      return tier?.cost || 0;
     }),
   );
   const teamPoints = tiers.reduce((total, tier) => total + tier, 0);
@@ -372,7 +386,7 @@ export async function teamHasEnoughPoints(
   if (!maxPoints) return true;
 
   const currentTeamPoints = await getTeamPoints(league, team);
-  const projectedPoints = currentTeamPoints + Number(tier);
+  const projectedPoints = currentTeamPoints + tier.cost;
   const picksAfterThis = team.draft.length + 1;
   const minPicksRequired = Math.max(tierList.draftCount.min, picksAfterThis);
   const pickCeiling = maxPoints + picksAfterThis - minPicksRequired;
@@ -387,9 +401,10 @@ export async function canBeDrafted(
   pokemonId: string,
 ): Promise<boolean> {
   if (!pokemonId || pokemonId.trim() === "") return false;
+  const normalizedPokemonId = toID(pokemonId);
   return (
-    !isAlreadyDrafted(division, pokemonId) &&
-    (await teamHasEnoughPoints(league, division, team, pokemonId))
+    !isAlreadyDrafted(division, normalizedPokemonId) &&
+    (await teamHasEnoughPoints(league, division, team, normalizedPokemonId))
   );
 }
 
@@ -403,14 +418,18 @@ export async function canBeDraftedWithReason(
     return { canDraft: false, reason: "Invalid Pokemon ID" };
   }
 
-  if (isAlreadyDrafted(division, pokemonId)) {
+  const normalizedPokemonId = toID(pokemonId);
+
+  if (isAlreadyDrafted(division, normalizedPokemonId)) {
     return {
       canDraft: false,
       reason: "Pokemon has already been drafted by another team",
     };
   }
 
-  if (!(await teamHasEnoughPoints(league, division, team, pokemonId))) {
+  if (
+    !(await teamHasEnoughPoints(league, division, team, normalizedPokemonId))
+  ) {
     return {
       canDraft: false,
       reason: "Team does not have enough points to draft this Pokemon",
@@ -456,6 +475,7 @@ export async function draftPokemon(
   session?: ClientSession,
 ) {
   let newSession = false;
+  const normalizedPokemonId = toID(pokemonId);
   if (!session) {
     session = await mongoose.startSession();
     session.startTransaction();
@@ -470,17 +490,21 @@ export async function draftPokemon(
       league,
       division,
       team,
-      pokemonId,
+      normalizedPokemonId,
     );
     if (!draftCheck.canDraft) {
       throw new Error(draftCheck.reason || "Pokemon cannot be drafted.");
     }
 
+    const picker =
+      (team.coach as LeagueCoachDocument)?._id ||
+      (team.coach as LeagueTeamDocument["coach"]);
+
     team.draft.push({
       pokemon: {
-        id: toID(pokemonId),
+        id: normalizedPokemonId,
       },
-      picker: team.coach._id,
+      picker,
       timestamp: new Date(),
     });
 
@@ -489,7 +513,7 @@ export async function draftPokemon(
     }
 
     team.picks = team.picks.map((round) =>
-      round.filter((p) => p !== pokemonId),
+      round.filter((p) => toID(p) !== normalizedPokemonId),
     );
 
     await team.save({ session });
@@ -505,11 +529,11 @@ export async function draftPokemon(
       (division.teams as LeagueTeamDocument[])[teamIndex] = team;
     }
 
-    const tier = await getPokemonTier(league._id, pokemonId);
+    const tier = await getPokemonTier(league._id, normalizedPokemonId);
 
     const snipeCount = await removePokemonFromPicks(
       division,
-      pokemonId,
+      normalizedPokemonId,
       session,
       team.id,
     );
@@ -524,7 +548,7 @@ export async function draftPokemon(
       division.draftStyle,
     );
     const canDraftTeams = calculateCanDraft(division, pickOrder);
-    const pokemonName = getName(pokemonId);
+    const pokemonName = getName(normalizedPokemonId);
 
     const pokemonTierMap = createPokemonTierMap(league);
 
@@ -540,9 +564,9 @@ export async function draftPokemon(
       divisionId: division.divisionKey,
       pick: {
         pokemon: {
-          id: pokemonId,
+          id: normalizedPokemonId,
           name: pokemonName,
-          tier,
+          tier: tier?.name,
         },
         team: {
           id: team.id,
@@ -562,7 +586,7 @@ export async function draftPokemon(
     if (division.channelId) {
       const pokemon = {
         name: pokemonName,
-        id: pokemonId,
+        id: normalizedPokemonId,
       };
 
       await team.populate<{
@@ -679,6 +703,9 @@ export async function increaseCounter(
       numberOfRounds,
       division.draftStyle,
     );
+    if (division.status !== "IN_PROGRESS") {
+      return;
+    }
 
     if (isDraftComplete(league, division)) {
       await completeDraft(league, division, session);
@@ -694,7 +721,7 @@ export async function increaseCounter(
 
     await cancelSkipPick(division);
 
-    const nextTeam = getCurrentPickingTeam(division);
+    let nextTeam = getCurrentPickingTeam(division);
     if (!nextTeam) {
       await completeDraft(league, division, session);
       return;
@@ -718,6 +745,7 @@ export async function increaseCounter(
         await completeDraft(league, division, session);
         return;
       }
+      nextTeam = newNextTeam;
     }
 
     await scheduleSkipPick(league, division);
@@ -880,6 +908,10 @@ export async function skipCurrentPick(
   league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
+  if (division.status !== "IN_PROGRESS") {
+    return;
+  }
+
   const team = getCurrentPickingTeam(division);
   if (!team) {
     return;
@@ -918,7 +950,6 @@ export async function skipCurrentPick(
 
   await division.save();
 
-  console.log({ division, team });
   eventEmitter.emit("league.draft.skip", {
     tournamentId: league.tournamentKey,
     divisionId: division.divisionKey,
@@ -981,20 +1012,23 @@ async function removePokemonFromPicks(
   session?: ClientSession,
   skipTeamId?: string,
 ) {
+  const normalizedPokemonId = toID(pokemonId);
   let teamsToProcess = division.teams as LeagueTeamDocument[];
   if (skipTeamId) {
     teamsToProcess = teamsToProcess.filter((team) => team.id !== skipTeamId);
   }
 
   const teamsWithPick = teamsToProcess.filter((team) =>
-    team.picks.some((round) => round.includes(pokemonId)),
+    team.picks.some((round) =>
+      round.some((pick) => toID(pick) === normalizedPokemonId),
+    ),
   );
 
   if (teamsWithPick.length > 0) {
     await Promise.all(
       teamsWithPick.map((team) => {
         team.picks = team.picks.map((round) =>
-          round.filter((p) => p !== pokemonId),
+          round.filter((p) => toID(p) !== normalizedPokemonId),
         );
         return team.save({ session });
       }),
