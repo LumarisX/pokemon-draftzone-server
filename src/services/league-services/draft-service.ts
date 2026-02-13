@@ -171,11 +171,19 @@ export async function getTeamsWithCoachStatus(
         const processedPicks = await Promise.all(
           team.picks.slice(0, maxPicks).map(async (round) =>
             Promise.all(
-              round.map(async (pick) => ({
-                id: pick,
-                name: getName(pick.pokemonId),
-                tier: pokemonTierMap.get(pick.pokemonId),
-              })),
+              round.map(async (pick) => {
+                const cost = pick.addons?.length
+                  ? (league.tierList as LeagueTierListDocument).pokemon.get(
+                      pick.pokemonId,
+                    )!.addons![0].cost
+                  : pokemonTierMap.get(pick.pokemonId);
+                return {
+                  id: pick.pokemonId,
+                  name: getName(pick.pokemonId),
+                  tier: pokemonTierMap.get(pick.pokemonId),
+                  cost,
+                };
+              }),
             ),
           ),
         );
@@ -185,11 +193,16 @@ export async function getTeamsWithCoachStatus(
         }
       }
       const draft = await Promise.all(
-        team.draft.map(async (pick) => ({
-          id: getPokemonIdFromDraft(pick),
-          name: getName(getPokemonIdFromDraft(pick)),
-          tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
-        })),
+        team.draft.map(async (pick) => {
+          return {
+            id: getPokemonIdFromDraft(pick),
+            name: getName(getPokemonIdFromDraft(pick)),
+            tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
+            cost: tierCostMap.get(
+              pokemonTierMap.get(getPokemonIdFromDraft(pick)) || "",
+            ),
+          };
+        }),
       );
 
       const pointTotal = draft
@@ -872,8 +885,6 @@ export async function getDivisionDetails(
       model: "LeagueCoaches",
     },
   });
-
-  console.log(division.toJSON());
 
   const teams = await getTeamsWithCoachStatus(
     division,

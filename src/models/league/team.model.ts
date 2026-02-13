@@ -53,6 +53,7 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
 const TeamPicksSchema: Schema<TeamPick> = new Schema(
   {
     pokemonId: { type: String, required: true },
+    addons: [{ type: String }],
   },
   { _id: false },
 );
