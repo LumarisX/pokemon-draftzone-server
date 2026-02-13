@@ -340,3 +340,64 @@ export async function sendDiscordMessage(
     console.error("Failed to send Discord message with embed:", error);
   }
 }
+
+export async function resolveDiscordMention(
+  channelId: string,
+  discordName?: string,
+): Promise<string | null> {
+  const trimmed = discordName?.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("<@") && trimmed.endsWith(">")) {
+    return trimmed;
+  }
+
+  const numericId = trimmed.replace(/^@/, "");
+  if (/^\d{17,20}$/.test(numericId)) {
+    return `<@${numericId}>`;
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !("guild" in channel) || !channel.guild) {
+      return `@${trimmed.replace(/^@/, "")}`;
+    }
+
+    const normalized = trimmed.replace(/^@/, "").trim();
+    const target = normalized.toLowerCase();
+    const targetUsername = normalized.includes("#")
+      ? normalized.split("#")[0].toLowerCase()
+      : target;
+
+    const matchesMember = (m: {
+      user: { username?: string; tag?: string; id: string };
+      displayName?: string;
+      id: string;
+    }) => {
+      const username = m.user.username?.toLowerCase();
+      const display = m.displayName?.toLowerCase();
+      const tag = m.user.tag?.toLowerCase();
+      return (
+        username === target ||
+        username === targetUsername ||
+        display === target ||
+        display === targetUsername ||
+        tag === target
+      );
+    };
+
+    let member = channel.guild.members.cache.find(matchesMember);
+    if (!member) {
+      const fetched = await channel.guild.members.fetch({
+        query: targetUsername,
+        limit: 10,
+      });
+      member = fetched.find(matchesMember);
+    }
+
+    return member ? `<@${member.id}>` : `@${normalized}`;
+  } catch (error) {
+    console.warn("Failed to resolve Discord mention:", error);
+    return `@${trimmed.replace(/^@/, "")}`;
+  }
+}

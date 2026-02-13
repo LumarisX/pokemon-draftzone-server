@@ -1,6 +1,6 @@
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
-import { sendDiscordMessage } from "../../discord";
+import { resolveDiscordMention, sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
@@ -609,9 +609,13 @@ export async function draftPokemon(
         model: "LeagueCoaches",
       });
 
-      const messageContent = `${pokemon.name} was drafted by <@${
-        (team.coach as LeagueCoachDocument)?.discordName
-      }>.`;
+      const coachMention = await resolveDiscordMention(
+        division.channelId,
+        (team.coach as LeagueCoachDocument)?.discordName,
+      );
+      const messageContent = `${pokemon.name} was drafted by ${
+        coachMention ?? "a coach"
+      }.`;
 
       const currentRound = getCurrentRound(division);
       const currentPositionInRound = getCurrentPositionInRound(division);
@@ -788,12 +792,14 @@ export async function increaseCounter(
       });
 
       if (division.channelId) {
-        sendDiscordMessage(
+        const nextCoachMention = await resolveDiscordMention(
           division.channelId,
-          `<@${
-            (nextTeam.coach as LeagueCoachDocument).discordName
-          }>, it is now your turn!`,
+          (nextTeam.coach as LeagueCoachDocument).discordName,
         );
+        const mentionText = nextCoachMention
+          ? `${nextCoachMention}, it is now your turn!`
+          : "It is now your turn!";
+        sendDiscordMessage(division.channelId, mentionText);
       }
     }
 
