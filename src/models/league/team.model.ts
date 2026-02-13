@@ -8,6 +8,7 @@ export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 export type TeamDraft = {
   timestamp: Date;
   pokemon: PokemonData;
+  addons?: string[];
   picker: Types.ObjectId | LeagueCoachDocument;
   capt?: {
     tera?: TypeName[];
@@ -37,6 +38,7 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
       type: pokemonSchema,
       required: true,
     },
+    addons: [{ type: String }],
     timestamp: { type: Date, default: Date.now },
     picker: {
       type: Schema.Types.ObjectId,

@@ -194,13 +194,16 @@ export async function getTeamsWithCoachStatus(
       }
       const draft = await Promise.all(
         team.draft.map(async (pick) => {
+          const cost = pick.addons?.length
+            ? (league.tierList as LeagueTierListDocument).pokemon.get(
+                getPokemonIdFromDraft(pick),
+              )!.addons![0].cost
+            : pokemonTierMap.get(getPokemonIdFromDraft(pick));
           return {
             id: getPokemonIdFromDraft(pick),
             name: getName(getPokemonIdFromDraft(pick)),
             tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
-            cost: tierCostMap.get(
-              pokemonTierMap.get(getPokemonIdFromDraft(pick)) || "",
-            ),
+            cost,
           };
         }),
       );
@@ -505,9 +508,8 @@ export async function draftPokemon(
       team,
       normalizedPokemonId,
     );
-    if (!draftCheck.canDraft) {
+    if (!draftCheck.canDraft)
       throw new Error(draftCheck.reason || "Pokemon cannot be drafted.");
-    }
 
     const picker =
       (team.coach as LeagueCoachDocument)?._id ||
@@ -518,6 +520,7 @@ export async function draftPokemon(
         id: normalizedPokemonId,
       },
       picker,
+      addons: pick.addons,
       timestamp: new Date(),
     });
 
@@ -645,7 +648,7 @@ export async function draftPokemon(
           title: `${coach.teamName} drafted ${pokemon.name}!`,
           url: `https://pokemondraftzone.com/leagues/pdbl/tournaments/${league.tournamentKey}/divisions/${division.divisionKey}/draft`,
           fields,
-          image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.name.toLowerCase()}.png`,
+          image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.id}.png`,
         },
       });
     }
