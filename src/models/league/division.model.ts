@@ -26,6 +26,7 @@ export type LeagueDivision = {
   draftStyle: "snake" | "linear";
   draftCounter: number;
   status: "PRE_DRAFT" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
+  public: boolean;
   eventLog: DraftEventLog[];
 };
 
@@ -43,11 +44,13 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
     skipTimerPenalty: { type: Number, default: 30 },
     remainingTime: { type: Number },
     draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
+    public: { type: Boolean, default: false },
     status: {
       type: String,
       enum: ["PRE_DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED"],
       default: "PRE_DRAFT",
     },
+
     draftCounter: { type: Number, default: 0 },
     eventLog: [
       {

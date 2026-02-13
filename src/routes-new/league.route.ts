@@ -698,10 +698,12 @@ export const LeagueRoute = createRoute()((r) => {
 
           const divisions = (
             ctx.tournament.divisions as LeagueDivisionDocument[]
-          ).map((div) => ({
-            divisionKey: div.divisionKey,
-            name: div.name,
-          }));
+          )
+            .filter((division) => division.public)
+            .map((div) => ({
+              divisionKey: div.divisionKey,
+              name: div.name,
+            }));
 
           return {
             name: ctx.tournament.name,
@@ -721,12 +723,10 @@ export const LeagueRoute = createRoute()((r) => {
         });
       });
       r.path("roles").auth()((r) => {
-        r.get(async (ctx) => {
-          return getRoles(ctx.sub);
-        });
+        r.get(async (ctx) => getRoles(ctx.sub));
       });
-      r.path("signup")((r) => {
-        r.get.auth().use(rolecheck("organizer"))(async (ctx) => {
+      r.path("signup").auth()((r) => {
+        r.get.use(rolecheck("organizer"))(async (ctx) => {
           const users = await LeagueCoachModel.find({
             tournamentId: ctx.tournament._id,
           });
@@ -749,7 +749,7 @@ export const LeagueRoute = createRoute()((r) => {
           });
           return coachesWithLogos;
         });
-        r.post.auth().validate({
+        r.post.validate({
           body: (data) => signUpSchema.parse(data),
         })(async (ctx, req, res) => {
           if (
@@ -1475,11 +1475,13 @@ export const LeagueRoute = createRoute()((r) => {
                   body: (data) =>
                     z
                       .object({
-                        pokemonId: z.string().min(1),
+                        pick: z.object({
+                          pokemonId: z.string().min(1),
+                          addons: z.array(z.string()).optional(),
+                        }),
                       })
                       .parse(data),
                 })(async (ctx) => {
-                  const { pokemonId } = ctx.validatedBody;
                   if (!(await isCoach(ctx.team, ctx.sub)))
                     throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
                       reason: "User is not a coach on this team",
@@ -1488,7 +1490,7 @@ export const LeagueRoute = createRoute()((r) => {
                     ctx.tournament,
                     ctx.division,
                     ctx.team,
-                    pokemonId,
+                    ctx.validatedBody.pick,
                   );
                   return { message: "Drafted successfully." };
                 });
@@ -1498,7 +1500,14 @@ export const LeagueRoute = createRoute()((r) => {
                   body: (data) =>
                     z
                       .object({
-                        picks: z.array(z.array(z.string().min(1))),
+                        picks: z.array(
+                          z.array(
+                            z.object({
+                              pokemonId: z.string().min(1),
+                              addons: z.array(z.string()).optional(),
+                            }),
+                          ),
+                        ),
                       })
                       .parse(data),
                 })(async (ctx) => {
@@ -1538,12 +1547,15 @@ export const LeagueRoute = createRoute()((r) => {
                 body: (data) =>
                   z
                     .object({
-                      pokemonId: z.string().min(1),
                       teamId: z.string().min(1),
+                      pick: z.object({
+                        pokemonId: z.string().min(1),
+                        addons: z.array(z.string()).optional(),
+                      }),
                     })
                     .parse(data),
               })(async (ctx) => {
-                const { pokemonId, teamId } = ctx.validatedBody;
+                const { pick, teamId } = ctx.validatedBody;
                 const team = ctx.division.teams.find((team) =>
                   team._id.equals(teamId),
                 ) as LeagueTeamDocument | undefined;
@@ -1551,12 +1563,7 @@ export const LeagueRoute = createRoute()((r) => {
                   throw new PDZError(ErrorCodes.TEAM.NOT_IN_DIVISION, {
                     teamId,
                   });
-                await draftPokemon(
-                  ctx.tournament,
-                  ctx.division,
-                  team,
-                  pokemonId,
-                );
+                await draftPokemon(ctx.tournament, ctx.division, team, pick);
                 return { message: "Draft pick set successfully." };
               });
             });

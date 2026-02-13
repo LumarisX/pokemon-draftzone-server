@@ -1,7 +1,7 @@
-import mongoose, { Types, Schema, Document } from "mongoose";
-import { LeagueCoachDocument, LEAGUE_COACH_COLLECTION } from "./coach.model";
-import { captSchema, pokemonSchema, PokemonData } from "../pokemon.schema";
 import { TypeName } from "@pkmn/data";
+import mongoose, { Document, Schema, Types } from "mongoose";
+import { captSchema, PokemonData, pokemonSchema } from "../pokemon.schema";
+import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
 
 export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
 
@@ -16,9 +16,14 @@ export type TeamDraft = {
   };
 };
 
+export type TeamPick = {
+  pokemonId: string;
+  addons?: string[];
+};
+
 export type LeagueTeam = {
   coach: Types.ObjectId | LeagueCoachDocument;
-  picks: string[][];
+  picks: TeamPick[][];
   draft: TeamDraft[];
   skipCount: number;
 };
@@ -45,13 +50,20 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
   { _id: false },
 );
 
+const TeamPicksSchema: Schema<TeamPick> = new Schema(
+  {
+    pokemonId: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const LeagueTeamSchema: Schema<LeagueTeamDocument> = new Schema({
   coach: {
     type: Schema.Types.ObjectId,
     ref: LEAGUE_COACH_COLLECTION,
     required: true,
   },
-  picks: [[{ type: String }]],
+  picks: [[TeamPicksSchema]],
   draft: [TeamDraftSchema],
   skipCount: { type: Number, default: 0 },
 });

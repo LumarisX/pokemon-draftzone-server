@@ -7,6 +7,7 @@ import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
+  TeamPick,
 } from "../../models/league/team.model";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { getName } from "../data-services/pokedex.service";
@@ -172,8 +173,8 @@ export async function getTeamsWithCoachStatus(
             Promise.all(
               round.map(async (pick) => ({
                 id: pick,
-                name: getName(pick),
-                tier: pokemonTierMap.get(pick),
+                name: getName(pick.pokemonId),
+                tier: pokemonTierMap.get(pick.pokemonId),
               })),
             ),
           ),
@@ -444,14 +445,13 @@ export async function currentTeamPicks(
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
   session?: ClientSession,
-): Promise<string[] | null> {
+): Promise<TeamPick[] | null> {
   if (!team.picks.length || !team.picks[0].length) return null;
 
   const validationResults = await Promise.all(
     team.picks[0].map(async (pick) => ({
       pick,
-      isValid:
-        pick.trim() && (await canBeDrafted(league, division, team, pick)),
+      isValid: await canBeDrafted(league, division, team, pick.pokemonId),
     })),
   );
 
@@ -471,11 +471,11 @@ export async function draftPokemon(
   league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
-  pokemonId: string,
+  pick: TeamPick,
   session?: ClientSession,
 ) {
   let newSession = false;
-  const normalizedPokemonId = toID(pokemonId);
+  const normalizedPokemonId = toID(pick.pokemonId);
   if (!session) {
     session = await mongoose.startSession();
     session.startTransaction();
@@ -869,9 +869,11 @@ export async function getDivisionDetails(
     path: "teams",
     populate: {
       path: "coach",
-      model: "LeagueUser",
+      model: "LeagueCoaches",
     },
   });
+
+  console.log(division.toJSON());
 
   const teams = await getTeamsWithCoachStatus(
     division,
