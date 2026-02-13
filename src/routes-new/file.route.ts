@@ -3,17 +3,18 @@ import { logger } from "../app";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { validateUploadRequest } from "../middleware/file-validation";
-import { checkUserStorageQuota } from "../middleware/upload-rate-limiter";
 import FileUploadModel from "../models/file-upload.model";
 import LeagueCoachesModel from "../models/league/coach.model";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
 
-export const FileRoute = createRoute().auth().use(
+export const FileRoute = createRoute()
+  .auth()
+  .use
   // Disable due to issues with blocking TOs
   // uploadRateLimiter,
-  checkUserStorageQuota,
-)((r) => {
+  // checkUserStorageQuota,
+  ()((r) => {
   r.path("league-upload").use(validateUploadRequest)((r) => {
     r.get.validate({
       query: (data) =>
