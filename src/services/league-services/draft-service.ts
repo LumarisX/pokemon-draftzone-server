@@ -167,16 +167,19 @@ export async function getTeamsWithCoachStatus(
       const isCoach = (team.coach as LeagueCoachDocument).auth0Id === userId;
       const maxPicks = numberOfRounds - team.draft.length;
       let picks: any[] = [];
+      const tierList = league.tierList as LeagueTierListDocument;
       if (isCoach) {
         const processedPicks = await Promise.all(
           team.picks.slice(0, maxPicks).map(async (round) =>
             Promise.all(
               round.map(async (pick) => {
                 const cost = pick.addons?.length
-                  ? (league.tierList as LeagueTierListDocument).pokemon.get(
-                      pick.pokemonId,
-                    )!.addons![0].cost
-                  : pokemonTierMap.get(pick.pokemonId);
+                  ? tierList.pokemon.get(pick.pokemonId)!.addons![0].cost
+                  : tierList.tiers.find(
+                      (tier) =>
+                        tierList.pokemon.get(pick.pokemonId)?.tier ===
+                        tier.name,
+                    )?.cost || 0;
                 return {
                   id: pick.pokemonId,
                   name: getName(pick.pokemonId),
@@ -195,10 +198,11 @@ export async function getTeamsWithCoachStatus(
       const draft = await Promise.all(
         team.draft.map(async (pick) => {
           const cost = pick.addons?.length
-            ? (league.tierList as LeagueTierListDocument).pokemon.get(
-                getPokemonIdFromDraft(pick),
-              )!.addons![0].cost
-            : pokemonTierMap.get(getPokemonIdFromDraft(pick));
+            ? tierList.pokemon.get(pick.pokemon.id)!.addons![0].cost
+            : tierList.tiers.find(
+                (tier) =>
+                  tierList.pokemon.get(pick.pokemon.id)?.tier === tier.name,
+              )?.cost || 0;
           return {
             id: getPokemonIdFromDraft(pick),
             name: getName(getPokemonIdFromDraft(pick)),
@@ -210,10 +214,7 @@ export async function getTeamsWithCoachStatus(
 
       const pointTotal = draft
         .filter((pokemon) => pokemon.tier)
-        .reduce(
-          (total, pokemon) => total + (tierCostMap.get(pokemon.tier!) || 0),
-          0,
-        );
+        .reduce((total, pokemon) => total + (pokemon.cost || 0), 0);
 
       const coach = team.coach as LeagueCoachDocument;
 
