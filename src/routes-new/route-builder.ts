@@ -134,10 +134,6 @@ export class Route {
   ) {
     const pathPrefix = basePath || "/";
 
-    if (node.middleware) {
-      router.use(pathPrefix, ...node.middleware);
-    }
-
     if (node.authCheck) {
       router.use(pathPrefix, async (req: Request, res: Response, next) => {
         try {
@@ -153,6 +149,10 @@ export class Route {
           return res.status(authError.status).json(authError.toJSON());
         }
       });
+    }
+
+    if (node.middleware) {
+      router.use(pathPrefix, ...node.middleware);
     }
 
     if (node.context) {
