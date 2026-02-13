@@ -100,7 +100,7 @@ export async function buildDraftBoards(
     path: "teams",
     populate: {
       path: "coach",
-      model: "LeagueUser",
+      model: "LeagueCoaches",
     },
   });
 
@@ -606,7 +606,7 @@ export async function draftPokemon(
         coach: LeagueCoachDocument;
       }>({
         path: "coach",
-        model: "LeagueUser",
+        model: "LeagueCoaches",
       });
 
       const messageContent = `${pokemon.name} was drafted by <@${
@@ -767,7 +767,7 @@ export async function increaseCounter(
       coach: LeagueCoachDocument;
     }>({
       path: "coach",
-      model: "LeagueUser",
+      model: "LeagueCoaches",
     });
 
     const nextTeamPicks = await currentTeamPicks(

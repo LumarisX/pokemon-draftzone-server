@@ -762,7 +762,7 @@ export const LeagueRoute = createRoute()((r) => {
               tournamentId: ctx.tournament._id.toString(),
             });
 
-          const leagueUser = new LeagueCoachModel({
+          const leagueCoach = new LeagueCoachModel({
             auth0Id: ctx.sub,
             name: ctx.validatedBody.name,
             gameName: ctx.validatedBody.gameName,
@@ -777,7 +777,7 @@ export const LeagueRoute = createRoute()((r) => {
             status: "pending",
             signedUpAt: new Date(),
           });
-          await leagueUser.save();
+          await leagueCoach.save();
           if (client) {
             try {
               const guild = await client.guilds.fetch("1183936734719922176");
@@ -848,7 +848,7 @@ export const LeagueRoute = createRoute()((r) => {
 
           return res.status(201).json({
             message: "Sign up successful.",
-            userId: leagueUser._id.toString(),
+            userId: leagueCoach._id.toString(),
             tournamentId: ctx.tournament._id.toString(),
           });
         });

@@ -5,7 +5,7 @@ import { PDZError } from "../errors/pdz-error";
 import { validateUploadRequest } from "../middleware/file-validation";
 import { checkUserStorageQuota } from "../middleware/upload-rate-limiter";
 import FileUploadModel from "../models/file-upload.model";
-import LeagueUserModel from "../models/league/coach.model";
+import LeagueCoachesModel from "../models/league/coach.model";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
 
@@ -130,21 +130,21 @@ export const FileRoute = createRoute().auth().use(
         tournamentId
       ) {
         try {
-          const user = await LeagueUserModel.findById(relatedEntityId);
+          const user = await LeagueCoachesModel.findById(relatedEntityId);
           if (user) {
             user.logo = fileKey;
             await user.save();
             logger.info(
-              `Updated LeagueUser ${relatedEntityId} signup for league ${tournamentId} with logo: ${fileKey}`,
+              `Updated LeagueCoaches ${relatedEntityId} signup for league ${tournamentId} with logo: ${fileKey}`,
             );
           } else {
             logger.warn(
-              `Signup not found for league ${tournamentId} in LeagueUser ${relatedEntityId}`,
+              `Signup not found for league ${tournamentId} in LeagueCoaches ${relatedEntityId}`,
             );
           }
         } catch (updateError) {
           logger.warn(
-            `Failed to update LeagueUser signup with logo: ${updateError}`,
+            `Failed to update LeagueCoaches signup with logo: ${updateError}`,
           );
         }
       }
