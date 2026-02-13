@@ -977,6 +977,18 @@ export async function skipCurrentPick(
     newTimerLength: division.timerLength,
   });
 
+  if (division.channelId) {
+    const coachMention = await resolveDiscordMention(
+      division.channelId,
+      (fullTeam?.coach as LeagueCoachDocument | undefined)?.discordName,
+    );
+    const coachLabel = coachMention ?? "coach";
+    sendDiscordMessage(
+      division.channelId,
+      `${teamName} (${coachLabel}) was skipped!`,
+    );
+  }
+
   await increaseCounter(league, division);
 }
 
