@@ -370,9 +370,8 @@ export function isAlreadyDrafted(
   division: LeagueDivisionDocument,
   pokemonId: string,
 ) {
-  const normalizedPokemonId = toID(pokemonId);
   return (division.teams as LeagueTeamDocument[]).some((t) =>
-    t.draft.some((p) => toID(getPokemonIdFromDraft(p)) === normalizedPokemonId),
+    t.draft.some((p) => getPokemonIdFromDraft(p) === pokemonId),
   );
 }
 
@@ -418,10 +417,9 @@ export async function canBeDrafted(
   pokemonId: string,
 ): Promise<boolean> {
   if (!pokemonId || pokemonId.trim() === "") return false;
-  const normalizedPokemonId = toID(pokemonId);
   return (
-    !isAlreadyDrafted(division, normalizedPokemonId) &&
-    (await teamHasEnoughPoints(league, division, team, normalizedPokemonId))
+    !isAlreadyDrafted(division, pokemonId) &&
+    (await teamHasEnoughPoints(league, division, team, pokemonId))
   );
 }
 
@@ -435,18 +433,14 @@ export async function canBeDraftedWithReason(
     return { canDraft: false, reason: "Invalid Pokemon ID" };
   }
 
-  const normalizedPokemonId = toID(pokemonId);
-
-  if (isAlreadyDrafted(division, normalizedPokemonId)) {
+  if (isAlreadyDrafted(division, pokemonId)) {
     return {
       canDraft: false,
       reason: "Pokemon has already been drafted by another team",
     };
   }
 
-  if (
-    !(await teamHasEnoughPoints(league, division, team, normalizedPokemonId))
-  ) {
+  if (!(await teamHasEnoughPoints(league, division, team, pokemonId))) {
     return {
       canDraft: false,
       reason: "Team does not have enough points to draft this Pokemon",
@@ -491,7 +485,6 @@ export async function draftPokemon(
   session?: ClientSession,
 ) {
   let newSession = false;
-  const normalizedPokemonId = toID(pick.pokemonId);
   if (!session) {
     session = await mongoose.startSession();
     session.startTransaction();
@@ -506,7 +499,7 @@ export async function draftPokemon(
       league,
       division,
       team,
-      normalizedPokemonId,
+      pick.pokemonId,
     );
     if (!draftCheck.canDraft)
       throw new Error(draftCheck.reason || "Pokemon cannot be drafted.");
@@ -517,7 +510,7 @@ export async function draftPokemon(
 
     team.draft.push({
       pokemon: {
-        id: normalizedPokemonId,
+        id: toID(pick.pokemonId),
       },
       picker,
       addons: pick.addons,
@@ -529,7 +522,7 @@ export async function draftPokemon(
     }
 
     team.picks = team.picks.map((round) =>
-      round.filter((p) => toID(p) !== normalizedPokemonId),
+      round.filter((p) => p.pokemonId !== pick.pokemonId),
     );
 
     await team.save({ session });
@@ -545,11 +538,11 @@ export async function draftPokemon(
       (division.teams as LeagueTeamDocument[])[teamIndex] = team;
     }
 
-    const tier = await getPokemonTier(league._id, normalizedPokemonId);
+    const tier = await getPokemonTier(league._id, pick.pokemonId);
 
     const snipeCount = await removePokemonFromPicks(
       division,
-      normalizedPokemonId,
+      pick.pokemonId,
       session,
       team.id,
     );
@@ -564,7 +557,7 @@ export async function draftPokemon(
       division.draftStyle,
     );
     const canDraftTeams = calculateCanDraft(division, pickOrder);
-    const pokemonName = getName(normalizedPokemonId);
+    const pokemonName = getName(pick.pokemonId);
 
     const pokemonTierMap = createPokemonTierMap(league);
 
@@ -580,7 +573,7 @@ export async function draftPokemon(
       divisionId: division.divisionKey,
       pick: {
         pokemon: {
-          id: normalizedPokemonId,
+          id: pick.pokemonId,
           name: pokemonName,
           tier: tier?.name,
         },
@@ -602,7 +595,7 @@ export async function draftPokemon(
     if (division.channelId) {
       const pokemon = {
         name: pokemonName,
-        id: normalizedPokemonId,
+        id: pick.pokemonId,
       };
 
       await team.populate<{
@@ -1046,7 +1039,6 @@ async function removePokemonFromPicks(
   session?: ClientSession,
   skipTeamId?: string,
 ) {
-  const normalizedPokemonId = toID(pokemonId);
   let teamsToProcess = division.teams as LeagueTeamDocument[];
   if (skipTeamId) {
     teamsToProcess = teamsToProcess.filter((team) => team.id !== skipTeamId);
@@ -1054,7 +1046,7 @@ async function removePokemonFromPicks(
 
   const teamsWithPick = teamsToProcess.filter((team) =>
     team.picks.some((round) =>
-      round.some((pick) => toID(pick) === normalizedPokemonId),
+      round.some((pick) => pick.pokemonId === pokemonId),
     ),
   );
 
@@ -1062,7 +1054,7 @@ async function removePokemonFromPicks(
     await Promise.all(
       teamsWithPick.map((team) => {
         team.picks = team.picks.map((round) =>
-          round.filter((p) => toID(p) !== normalizedPokemonId),
+          round.filter((p) => p.pokemonId !== pokemonId),
         );
         return team.save({ session });
       }),
