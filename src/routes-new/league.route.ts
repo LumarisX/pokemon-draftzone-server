@@ -954,7 +954,13 @@ export const LeagueRoute = createRoute()((r) => {
         })(async (ctx) => {
           const { division } = ctx.validatedQuery;
           const tierList = await getTierList(ctx.tournament);
-          const divisions = await getDrafted(ctx.tournament, division);
+
+          let divisions: {
+            [key: string]: {
+              pokemonId: string;
+            }[];
+          } = {};
+          if (division) divisions = await getDrafted(ctx.tournament, division);
           return { tierList, divisions };
         });
         r.path("edit").auth()((r) => {

@@ -15,6 +15,7 @@ import { getPokemonTier } from "./tier-list-service";
 import { APIEmbedField } from "discord.js";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { toID } from "@pkmn/data";
+import { LEAGUE_COACH_COLLECTION } from "../../models/league";
 
 /**
  * Extracts the Pokemon ID from a draft pick.
@@ -100,7 +101,7 @@ export async function buildDraftBoards(
     path: "teams",
     populate: {
       path: "coach",
-      model: "LeagueCoaches",
+      model: LEAGUE_COACH_COLLECTION,
     },
   });
 
@@ -603,7 +604,7 @@ export async function draftPokemon(
         coach: LeagueCoachDocument;
       }>({
         path: "coach",
-        model: "LeagueCoaches",
+        model: LEAGUE_COACH_COLLECTION,
       });
 
       const coachMention = await resolveDiscordMention(
@@ -768,7 +769,7 @@ export async function increaseCounter(
       coach: LeagueCoachDocument;
     }>({
       path: "coach",
-      model: "LeagueCoaches",
+      model: LEAGUE_COACH_COLLECTION,
     });
 
     const nextTeamPicks = await currentTeamPicks(
@@ -885,7 +886,7 @@ export async function getDivisionDetails(
     path: "teams",
     populate: {
       path: "coach",
-      model: "LeagueCoaches",
+      model: LEAGUE_COACH_COLLECTION,
     },
   });
 

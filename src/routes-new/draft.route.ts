@@ -23,14 +23,17 @@ import {
   updateMatchup,
 } from "../services/database-services/matchup.service";
 import { createRoute } from "./route-builder";
+import { getTournamentsByOwner } from "../services/league-services/league-service";
 
 export const DraftRoute = createRoute().auth()((r) => {
   r.path("teams")((r) => {
     r.get(async (ctx) => {
-      const drafts = await getDraftsByOwner(ctx.sub);
-      return await Promise.all(
-        drafts.map(async (draft) => await Draft.fromData(draft).toClient()),
+      const draftDocs = await getDraftsByOwner(ctx.sub);
+      const drafts = await Promise.all(
+        draftDocs.map(async (draft) => await Draft.fromData(draft).toClient()),
       );
+      const tournaments = await getTournamentsByOwner(ctx.sub);
+      return { drafts, tournaments };
     });
     r.post.validate({
       //TODO: refine this schema
@@ -47,9 +50,7 @@ export const DraftRoute = createRoute().auth()((r) => {
     const draft = Draft.fromData(rawDraft, ruleset);
     return { rawDraft, ruleset, draft, team_id };
   })((r) => {
-    r.get(async (ctx) => {
-      return await ctx.draft.toClient();
-    });
+    r.get(async (ctx) => await ctx.draft.toClient());
     r.patch.validate({
       body: (data) =>
         //TODO: refine this schema
@@ -72,9 +73,9 @@ export const DraftRoute = createRoute().auth()((r) => {
       );
       return { message: "Draft Updated", draft: updatedDraft };
     });
-    r.delete(async (ctx, req, res) => {
+    r.delete(async (ctx) => {
       await deleteDraft(ctx.rawDraft);
-      res.status(201).json({ message: "Draft deleted" });
+      return { message: "Draft deleted" };
     });
     r.path("matchups")((r) => {
       r.get(async (ctx) => {
