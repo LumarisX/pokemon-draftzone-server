@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 import z from "zod";
-
-export const LEAGUE_COACH_COLLECTION = "LeagueCoaches";
+import { LEAGUE_COACH_COLLECTION } from ".";
 
 export const signUpSchema = z
   .object({

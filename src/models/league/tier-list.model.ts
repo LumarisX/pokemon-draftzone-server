@@ -1,7 +1,6 @@
 import mongoose, { Schema, Types, Document } from "mongoose";
-import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
-
-export const LEAGUE_TIER_LIST_COLLECTION = "LeagueTierList";
+import { LeagueCoachDocument } from "./coach.model";
+import { LEAGUE_COACH_COLLECTION, LEAGUE_TIER_LIST_COLLECTION } from ".";
 
 export type TierListPokemonAddon = {
   name: string;

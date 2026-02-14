@@ -1,9 +1,8 @@
 import { TypeName } from "@pkmn/data";
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { captSchema, PokemonData, pokemonSchema } from "../pokemon.schema";
-import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
-
-export const LEAGUE_TEAM_COLLECTION = "LeagueTeam";
+import { LeagueCoachDocument } from "./coach.model";
+import { LEAGUE_COACH_COLLECTION, LEAGUE_TEAM_COLLECTION } from ".";
 
 export type TeamDraft = {
   timestamp: Date;

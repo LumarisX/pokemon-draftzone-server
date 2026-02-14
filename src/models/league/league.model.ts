@@ -1,11 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
-import {
-  LEAGUE_TOURNAMENT_COLLECTION,
-  LeagueTournamentDocument,
-} from "./tournament.model";
-
-export const LEAGUE_COLLECTION = "Leagues";
+import { LEAGUE_COACH_COLLECTION, LEAGUE_COLLECTION } from ".";
+import { LeagueCoachDocument } from "./coach.model";
 
 export type LeagueRule = {
   title: string;
@@ -17,7 +12,6 @@ export type League = {
   leagueKey: string;
   description?: string;
   owner: Types.ObjectId | LeagueCoachDocument;
-  tournaments: (Types.ObjectId | LeagueTournamentDocument)[];
   logo?: string;
 };
 
@@ -33,9 +27,7 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
       ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
-    tournaments: [
-      { type: Schema.Types.ObjectId, ref: LEAGUE_TOURNAMENT_COLLECTION },
-    ],
+
     logo: { type: String },
   },
   { timestamps: true },

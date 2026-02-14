@@ -1,8 +1,9 @@
 import { Document, model, Schema, Types } from "mongoose";
-import { LEAGUE_TEAM_COLLECTION } from "./team.model";
-import { LEAGUE_STAGE_COLLECTION } from "./stage.model";
-
-export const LEAGUE_MATCHUP_COLLECTION = "LeagueMatchup";
+import {
+  LEAGUE_STAGE_COLLECTION,
+  LEAGUE_TEAM_COLLECTION,
+  LEAGUE_MATCHUP_COLLECTION,
+} from ".";
 
 export type MatchResult = {
   replay: string;
@@ -116,10 +117,10 @@ export const leagueMatchupSchema = new Schema<LeagueMatchupData>(
       },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const LeagueMatchupModel = model<LeagueMatchupData>(
   LEAGUE_MATCHUP_COLLECTION,
-  leagueMatchupSchema
+  leagueMatchupSchema,
 );

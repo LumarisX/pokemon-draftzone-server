@@ -1,16 +1,17 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
+import { LeagueDivisionDocument } from "./division.model";
+import { LeagueTeamDocument } from "./team.model";
+import { LeagueTierListDocument } from "./tier-list.model";
+import { LeagueCoachDocument } from "./coach.model";
 import {
+  LEAGUE_COACH_COLLECTION,
+  LEAGUE_COLLECTION,
   LEAGUE_DIVISION_COLLECTION,
-  LeagueDivisionDocument,
-} from "./division.model";
-import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
-import {
+  LEAGUE_TEAM_COLLECTION,
   LEAGUE_TIER_LIST_COLLECTION,
-  LeagueTierListDocument,
-} from "./tier-list.model";
-import { LEAGUE_COACH_COLLECTION, LeagueCoachDocument } from "./coach.model";
-
-export const LEAGUE_TOURNAMENT_COLLECTION = "LeagueTournaments";
+  LEAGUE_TOURNAMENT_COLLECTION,
+} from ".";
+import { LeagueDocument } from "./league.model";
 
 export type LeagueRule = {
   title: string;
@@ -28,15 +29,15 @@ export type LeagueTournament = {
   draftEnd?: Date;
   seasonStart?: Date;
   seasonEnd?: Date;
-  coaches: (Types.ObjectId | LeagueCoachDocument)[];
+  //TODO: Delete eventually
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
   owner: string;
   organizers: string[];
   tierList: Types.ObjectId | LeagueTierListDocument;
   rules: LeagueRule[];
-  teams: (Types.ObjectId | LeagueTeamDocument)[];
   logo?: string;
   discord?: string;
+  league: Types.ObjectId | LeagueDocument;
 };
 
 export type LeagueTournamentDocument = Document &
@@ -62,7 +63,6 @@ const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
     draftEnd: { type: Date },
     seasonStart: { type: Date },
     seasonEnd: { type: Date },
-    coaches: [{ type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION }],
     divisions: [
       { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
     ],
@@ -73,9 +73,13 @@ const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TIER_LIST_COLLECTION,
     },
-    teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     logo: { type: String },
     discord: { type: String },
+    league: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_COLLECTION,
+      required: true,
+    },
   },
   { timestamps: true },
 );

@@ -1,8 +1,9 @@
 import { Document, model, Schema, Types } from "mongoose";
-import { LEAGUE_DIVISION_COLLECTION } from "./division.model";
-import { LEAGUE_TOURNAMENT_COLLECTION } from "./tournament.model";
-
-export const LEAGUE_STAGE_COLLECTION = "LeagueStage";
+import {
+  LEAGUE_TOURNAMENT_COLLECTION,
+  LEAGUE_DIVISION_COLLECTION,
+  LEAGUE_STAGE_COLLECTION,
+} from ".";
 
 export type LeagueStageData = {
   tournamentId: Types.ObjectId;

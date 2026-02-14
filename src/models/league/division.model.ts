@@ -1,7 +1,11 @@
 import mongoose, { Schema, Types, Document } from "mongoose";
-import { LEAGUE_TEAM_COLLECTION, LeagueTeamDocument } from "./team.model";
-
-export const LEAGUE_DIVISION_COLLECTION = "LeagueDivision";
+import { LeagueTeamDocument } from "./team.model";
+import {
+  LEAGUE_DIVISION_COLLECTION,
+  LEAGUE_TEAM_COLLECTION,
+  LEAGUE_TOURNAMENT_COLLECTION,
+} from ".";
+import { LeagueTournamentDocument } from "./tournament.model";
 
 export type DraftRule = {
   header: string;
@@ -28,6 +32,7 @@ export type LeagueDivision = {
   status: "PRE_DRAFT" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
   public: boolean;
   eventLog: DraftEventLog[];
+  tournament: Types.ObjectId | LeagueTournamentDocument;
 };
 
 export type LeagueDivisionDocument = Document &
@@ -62,6 +67,11 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
         timestamp: { type: Date, default: Date.now },
       },
     ],
+    tournament: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_TOURNAMENT_COLLECTION,
+      required: true,
+    },
   },
   { timestamps: true },
 );
