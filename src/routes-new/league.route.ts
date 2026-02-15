@@ -11,7 +11,12 @@ import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
-import { client } from "../discord";
+import {
+  client,
+  findDiscordMemberInIndex,
+  getDiscordMemberInGuild,
+  getDiscordMemberIndex,
+} from "../discord";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { rolecheck } from "../middleware/rolecheck";
@@ -89,6 +94,10 @@ const DivisionHandler = async (
 
   return { division };
 };
+
+const DISCORD_GUILD_ID = "1183936734719922176";
+const DISCORD_ROLE_IDS = ["1469151649070186576"];
+
 export const LeagueRoute = createRoute()((r) => {
   r.get((ctx) => {
     return [];
@@ -730,23 +739,39 @@ export const LeagueRoute = createRoute()((r) => {
           const users = await LeagueCoachModel.find({
             tournamentId: ctx.tournament._id,
           });
-          const coachesWithLogos = users.map((user) => {
-            const division = undefined;
-            return {
-              id: user._id.toString(),
-              name: user.name,
-              gameName: user.gameName,
-              discordName: user.discordName,
-              timezone: user.timezone,
-              experience: user.experience,
-              dropped: user.droppedBefore ? user.droppedWhy : undefined,
-              status: user.status,
-              teamName: user.teamName,
-              signedUpAt: user.signedUpAt,
-              logo: user.logo ? s3Service.getPublicUrl(user.logo) : undefined,
-              division,
-            };
-          });
+          const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
+          const coachesWithLogos = await Promise.all(
+            users.map(async (user) => {
+              const division = undefined;
+              const member = memberIndex
+                ? findDiscordMemberInIndex(memberIndex, user.discordName)
+                : await getDiscordMemberInGuild(
+                    DISCORD_GUILD_ID,
+                    user.discordName,
+                  );
+              const inDiscordServer = Boolean(member);
+              const hasDiscordRole = Boolean(
+                member &&
+                DISCORD_ROLE_IDS.some((id) => member.roles.cache.has(id)),
+              );
+              return {
+                id: user._id.toString(),
+                name: user.name,
+                gameName: user.gameName,
+                discordName: user.discordName,
+                timezone: user.timezone,
+                experience: user.experience,
+                dropped: user.droppedBefore ? user.droppedWhy : undefined,
+                status: user.status,
+                teamName: user.teamName,
+                signedUpAt: user.signedUpAt,
+                logo: user.logo ? s3Service.getPublicUrl(user.logo) : undefined,
+                division,
+                inDiscordServer,
+                hasDiscordRole,
+              };
+            }),
+          );
           return coachesWithLogos;
         });
         r.post.validate({

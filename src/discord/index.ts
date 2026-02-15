@@ -8,6 +8,7 @@ import {
   ColorResolvable,
   EmbedBuilder,
   GatewayIntentBits,
+  GuildMember,
   Interaction,
   type Message,
 } from "discord.js";
@@ -338,6 +339,173 @@ export async function sendDiscordMessage(
     }
   } catch (error) {
     console.error("Failed to send Discord message with embed:", error);
+  }
+}
+
+type DiscordMemberIndex = Map<string, GuildMember[]>;
+
+const memberIndexCache = new Map<
+  string,
+  {
+    expiresAt: number;
+    index: DiscordMemberIndex;
+  }
+>();
+
+const normalizeDiscordKey = (value: string) => value.trim().toLowerCase();
+
+const addMemberIndexKey = (
+  index: DiscordMemberIndex,
+  key: string | undefined | null,
+  member: GuildMember,
+) => {
+  if (!key) return;
+  const normalized = normalizeDiscordKey(key);
+  if (!normalized) return;
+  const existing = index.get(normalized);
+  if (existing) {
+    existing.push(member);
+  } else {
+    index.set(normalized, [member]);
+  }
+};
+
+export async function getDiscordMemberIndex(
+  guildId: string,
+  ttlMs = 60000,
+): Promise<DiscordMemberIndex | null> {
+  if (!client.isReady()) return null;
+
+  const cached = memberIndexCache.get(guildId);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.index;
+  }
+
+  try {
+    const guild =
+      client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId));
+    if (!guild) return null;
+
+    const members = await guild.members.fetch();
+    const index: DiscordMemberIndex = new Map();
+
+    for (const member of members.values()) {
+      addMemberIndexKey(index, member.id, member);
+      addMemberIndexKey(index, member.user.username, member);
+      addMemberIndexKey(index, member.user.globalName ?? undefined, member);
+      addMemberIndexKey(index, member.displayName, member);
+      addMemberIndexKey(index, member.user.tag, member);
+
+      if (member.user.tag?.includes("#")) {
+        addMemberIndexKey(index, member.user.tag.split("#")[0], member);
+      }
+    }
+
+    memberIndexCache.set(guildId, {
+      expiresAt: now + ttlMs,
+      index,
+    });
+
+    return index;
+  } catch (error) {
+    console.warn("Failed to build Discord member index:", error);
+    return null;
+  }
+}
+
+export function findDiscordMemberInIndex(
+  index: DiscordMemberIndex,
+  discordName?: string,
+): GuildMember | null {
+  const trimmed = discordName?.trim();
+  if (!trimmed) return null;
+
+  const mentionMatch = trimmed.match(/^<@!?([0-9]{17,20})>$/);
+  if (mentionMatch) {
+    return index.get(mentionMatch[1])?.[0] ?? null;
+  }
+
+  const numericId = trimmed.replace(/^@/, "");
+  if (/^\d{17,20}$/.test(numericId)) {
+    return index.get(numericId)?.[0] ?? null;
+  }
+
+  const normalized = trimmed.replace(/^@/, "").trim();
+  const target = normalizeDiscordKey(normalized);
+  const targetUsername = normalized.includes("#")
+    ? normalizeDiscordKey(normalized.split("#")[0])
+    : target;
+
+  return index.get(target)?.[0] ?? index.get(targetUsername)?.[0] ?? null;
+}
+
+export async function getDiscordMemberInGuild(
+  guildId: string,
+  discordName?: string,
+): Promise<GuildMember | null> {
+  const trimmed = discordName?.trim();
+  if (!trimmed) return null;
+  if (!client.isReady()) return null;
+
+  try {
+    const guild =
+      client.guilds.cache.get(guildId) ?? (await client.guilds.fetch(guildId));
+    if (!guild) return null;
+
+    const mentionMatch = trimmed.match(/^<@!?([0-9]{17,20})>$/);
+    if (mentionMatch) {
+      return guild.members.fetch(mentionMatch[1]).catch(() => null);
+    }
+
+    const numericId = trimmed.replace(/^@/, "");
+    if (/^\d{17,20}$/.test(numericId)) {
+      return guild.members.fetch(numericId).catch(() => null);
+    }
+
+    const normalized = trimmed.replace(/^@/, "").trim();
+    const target = normalized.toLowerCase();
+    const targetUsername = normalized.includes("#")
+      ? normalized.split("#")[0].toLowerCase()
+      : target;
+
+    const matchesMember = (m: {
+      user: { username?: string; tag?: string; globalName?: string | null };
+      displayName?: string;
+    }) => {
+      const username = m.user.username?.toLowerCase();
+      const display = m.displayName?.toLowerCase();
+      const tag = m.user.tag?.toLowerCase();
+      const globalName = m.user.globalName?.toLowerCase();
+      return (
+        username === target ||
+        username === targetUsername ||
+        display === target ||
+        display === targetUsername ||
+        globalName === target ||
+        globalName === targetUsername ||
+        tag === target
+      );
+    };
+
+    let member = guild.members.cache.find(matchesMember);
+    if (!member) {
+      const fetched = await guild.members.fetch({
+        query: targetUsername,
+        limit: 10,
+      });
+      member = fetched.find(matchesMember);
+    }
+
+    if (!member && target !== targetUsername) {
+      const fetched = await guild.members.fetch({ query: target, limit: 10 });
+      member = fetched.find(matchesMember);
+    }
+
+    return member ?? null;
+  } catch (error) {
+    console.warn("Failed to check Discord member in guild:", error);
+    return null;
   }
 }
 
