@@ -1,5 +1,7 @@
-import { LeagueTeamDocument } from "../../models/league/team.model";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
+import { LeagueMatchupDocument } from "../../models/league/matchup.model";
+import { LeagueStageDocument } from "../../models/league/stage.model";
+import { LeagueTeamDocument } from "../../models/league/team.model";
 
 // Helper function to calculate score for a result
 export function calculateResultScore(team: {
@@ -201,8 +203,8 @@ export async function calculateDivisionPokemonStandings(
 
 // Calculate coach standings for a division
 export async function calculateDivisionCoachStandings(
-  matchups: any[],
-  stages: any[],
+  matchups: LeagueMatchupDocument[],
+  stages: LeagueStageDocument[],
   divisionTeams: LeagueTeamDocument[],
 ) {
   const coachStandingsMap = new Map<
@@ -219,7 +221,6 @@ export async function calculateDivisionCoachStandings(
     }
   >();
 
-  // Initialize standings for all teams with base 0-0 records
   for (const team of divisionTeams) {
     const teamKey = team._id.toString();
     const coach = team.coach as LeagueCoachDocument;
@@ -227,18 +228,15 @@ export async function calculateDivisionCoachStandings(
     coachStandingsMap.set(teamKey, {
       name: coach.teamName,
       results: Array(stages.length).fill(0),
-      coach: team.coach.toString(),
+      coach: coach.name,
+      logo: coach.logo,
       wins: 0,
       losses: 0,
       diff: 0,
-      // logo: team.logo,  TODO:
-      //  Fix this to be team.coach.logo
-      logo: undefined,
       teamId: teamKey,
     });
   }
 
-  // Process each matchup
   for (const matchup of matchups) {
     const team1Doc = matchup.team1Id as any;
     const team2Doc = matchup.team2Id as any;
@@ -248,10 +246,8 @@ export async function calculateDivisionCoachStandings(
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
 
-    // Find the stage index for this matchup
     const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stageId));
 
-    // Ensure both teams have standings entries
     if (!coachStandingsMap.has(team1Key)) {
       coachStandingsMap.set(team1Key, {
         name: team1Doc.name,
@@ -277,7 +273,6 @@ export async function calculateDivisionCoachStandings(
       });
     }
 
-    // Update win/loss records
     const team1Standing = coachStandingsMap.get(team1Key)!;
     const team2Standing = coachStandingsMap.get(team2Key)!;
 
@@ -299,7 +294,6 @@ export async function calculateDivisionCoachStandings(
     team2Standing.diff += team2StageDiff;
   }
 
-  // Convert to array and calculate streaks
   return Array.from(coachStandingsMap.values())
     .map((team) => {
       let streak = 0;
@@ -332,7 +326,6 @@ export async function calculateDivisionCoachStandings(
       };
     })
     .sort((a, b) => {
-      // Sort by wins descending, then by diff descending
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.diff - a.diff;
     });

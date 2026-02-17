@@ -33,6 +33,7 @@ export type LeagueDivision = {
   public: boolean;
   eventLog: DraftEventLog[];
   tournament: Types.ObjectId | LeagueTournamentDocument;
+  useRandomDraftOrder?: boolean;
 };
 
 export type LeagueDivisionDocument = Document &
@@ -72,6 +73,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
       ref: LEAGUE_TOURNAMENT_COLLECTION,
       required: true,
     },
+    useRandomDraftOrder: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

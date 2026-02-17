@@ -1,21 +1,21 @@
+import { toID } from "@pkmn/data";
+import { APIEmbedField } from "discord.js";
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
 import { resolveDiscordMention, sendDiscordMessage } from "../../discord";
 import eventEmitter from "../../event-emitter";
+import { LEAGUE_COACH_COLLECTION } from "../../models/league";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { LeagueDivisionDocument } from "../../models/league/division.model";
-import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
   TeamPick,
 } from "../../models/league/team.model";
-import { LeagueCoachDocument } from "../../models/league/coach.model";
+import { LeagueTierListDocument } from "../../models/league/tier-list.model";
+import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-list-service";
-import { APIEmbedField } from "discord.js";
-import { LeagueTierListDocument } from "../../models/league/tier-list.model";
-import { toID } from "@pkmn/data";
-import { LEAGUE_COACH_COLLECTION } from "../../models/league";
 
 /**
  * Extracts the Pokemon ID from a draft pick.
@@ -58,6 +58,32 @@ function createPokemonTierMap(
   return tierMap;
 }
 
+export function getDraftOrder(
+  division: LeagueDivisionDocument,
+): LeagueTeamDocument[] {
+  if (division.teams.length <= 1 || !division.useRandomDraftOrder)
+    return division.teams as LeagueTeamDocument[];
+
+  let seed = 0;
+  const divisionId = division.id.toString();
+  for (let i = 0; i < divisionId.length; i++) {
+    seed = (seed << 5) - seed + divisionId.charCodeAt(i);
+    seed = seed & seed;
+  }
+  const seededRandom = (index: number) => {
+    const x = Math.sin((seed + index) * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
+  const shuffled = [...division.teams] as LeagueTeamDocument[];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(i) * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
 /**
  * Generates the full pick order for a draft.
  * @param initialTeamOrder - The initial order of teams.
@@ -91,7 +117,7 @@ export async function buildDraftBoards(
   division: LeagueDivisionDocument,
   pickOrder: LeagueTeamDocument[],
 ): Promise<{ flatDraftBoard: DraftPick[]; draftRounds: DraftRound[] }> {
-  const initialTeamOrder = division.teams as LeagueTeamDocument[];
+  const initialTeamOrder = getDraftOrder(division);
   const teamDraftCursors = new Map<string, number>();
   initialTeamOrder.forEach((t) => teamDraftCursors.set(t.id, 0));
 
@@ -252,7 +278,7 @@ export function calculateCanDraft(
     return canDraft;
   }
 
-  const initialTeamOrder = division.teams as LeagueTeamDocument[];
+  const initialTeamOrder = getDraftOrder(division);
   if (!initialTeamOrder || initialTeamOrder.length === 0) {
     return canDraft;
   }
@@ -315,7 +341,7 @@ export function getCurrentPositionInRound(division: LeagueDivisionDocument) {
 export function getCurrentPickingTeam(
   division: LeagueDivisionDocument,
 ): LeagueTeamDocument | null {
-  const teams = division.teams as LeagueTeamDocument[];
+  const teams = getDraftOrder(division);
   if (!teams || teams.length === 0) return null;
 
   const currentRound = getCurrentRound(division);
@@ -341,7 +367,7 @@ export async function canTeamDraft(
     return false;
   }
 
-  const teams = division.teams as LeagueTeamDocument[];
+  const teams = getDraftOrder(division);
   const teamsCount = teams.length;
   const currentRound = Math.floor(
     division.draftCounter / division.teams.length,
@@ -551,7 +577,7 @@ export async function draftPokemon(
 
     const numberOfRounds = (league.tierList as LeagueTierListDocument)
       .draftCount.max;
-    const initialTeamOrder = division.teams as LeagueTeamDocument[];
+    const initialTeamOrder = getDraftOrder(division);
 
     const pickOrder = generatePickOrder(
       initialTeamOrder,
@@ -872,7 +898,7 @@ export async function getDivisionDetails(
 ) {
   const numberOfRounds = (league.tierList as LeagueTierListDocument).draftCount
     .max;
-  const initialTeamOrder = division.teams as LeagueTeamDocument[];
+  const initialTeamOrder = getDraftOrder(division);
 
   const pickOrder = generatePickOrder(
     initialTeamOrder,

@@ -20,8 +20,8 @@ import {
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { rolecheck } from "../middleware/rolecheck";
-import { LeagueAdModel } from "../models/league-ad.model";
 import FileUploadModel from "../models/file-upload.model";
+import { LeagueAdModel } from "../models/league-ad.model";
 import LeagueCoachModel, {
   LeagueCoach,
   LeagueCoachDocument,
@@ -48,6 +48,7 @@ import {
 import {
   draftPokemon,
   getDivisionDetails,
+  getDraftOrder,
   isCoach,
   setDivsionState,
   skipCurrentPick,
@@ -76,21 +77,18 @@ const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
   division_id: string,
 ) => {
-  await ctx.tournament.populate<{ divisions: LeagueDivisionDocument[] }>(
-    "divisions",
-  );
-  const division = (ctx.tournament.divisions as LeagueDivisionDocument[]).find(
-    (d) => d.divisionKey === division_id,
-  );
+  const division = await LeagueDivisionModel.findOne({
+    tournament: ctx.tournament.id,
+    divisionKey: division_id,
+  }).populate<{
+    teams: LeagueTeamDocument[];
+  }>("teams");
+
   if (!division)
     throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
       divisionKey: division_id,
       tournamentKey: ctx.tournament.tournamentKey,
     });
-
-  await division.populate<{
-    teams: LeagueTeamDocument[];
-  }>("teams");
 
   return { division };
 };
@@ -902,7 +900,7 @@ export const LeagueRoute = createRoute()((r) => {
                   signups: z.array(
                     z.object({
                       id: z.string(),
-                      division: z.string().optional(),
+                      division: z.string().nullish(),
                     }),
                   ),
                 })
@@ -919,28 +917,13 @@ export const LeagueRoute = createRoute()((r) => {
               divisions.map((division) => [division.divisionKey, division]),
             );
 
-            logger.info(
-              `Signup manage update: ${ctx.validatedBody.signups.length} signups for ${ctx.tournament.tournamentKey}`,
-            );
-            logger.info(
-              `Signup manage: division keys = ${divisions.map((division) => division.divisionKey).join(", ")}`,
-            );
-
             for (const signup of ctx.validatedBody.signups) {
               const coach = users.find(
                 (user) => user._id.toString() === signup.id,
               );
               if (!coach) {
-                logger.warn(
-                  `Signup manage: coach not found for id ${signup.id}`,
-                );
                 continue;
               }
-
-              logger.info(
-                `Signup manage: processing coach ${signup.id} (${coach.name}) with target division ${signup.division ?? "<none>"}`,
-              );
-
               const currentDivision = divisions.find((division) =>
                 division.teams.some(
                   (team) => team.coach.toString() === signup.id,
@@ -953,90 +936,51 @@ export const LeagueRoute = createRoute()((r) => {
                 currentTeam ||
                 (await LeagueTeamModel.findOne({ coach: coach._id }));
 
-              logger.info(
-                `Signup manage: current division = ${currentDivision?.divisionKey ?? "<none>"}, existing team = ${existingTeam?._id.toString() ?? "<none>"}`,
-              );
-
               if (!signup.division) {
                 if (existingTeam) {
-                  logger.info(
-                    `Signup manage: removing team ${existingTeam._id.toString()} for coach ${signup.id}`,
-                  );
                   const removeResult = await LeagueDivisionModel.updateMany(
                     { tournament: ctx.tournament._id },
                     { $pull: { teams: existingTeam._id } },
                   );
-                  logger.info(
-                    `Signup manage: removed team ${existingTeam._id.toString()} from ${removeResult.modifiedCount} divisions`,
-                  );
+
                   await LeagueTeamModel.findByIdAndDelete(existingTeam._id);
-                } else {
-                  logger.info(
-                    `Signup manage: no team to remove for coach ${signup.id}`,
-                  );
                 }
                 continue;
               }
 
               const targetDivision = divisionsByKey.get(signup.division);
               if (!targetDivision) {
-                logger.warn(
-                  `Signup manage: target division ${signup.division} not found for coach ${signup.id}`,
-                );
                 throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
                   divisionKey: signup.division,
                   tournamentKey: ctx.tournament.tournamentKey,
                 });
               }
 
-              logger.info(
-                `Signup manage: target division resolved = ${targetDivision.divisionKey} (${targetDivision._id.toString()})`,
-              );
-
               if (existingTeam) {
                 if (
                   currentDivision &&
                   !currentDivision._id.equals(targetDivision._id)
                 ) {
-                  logger.info(
-                    `Signup manage: moving team ${existingTeam._id.toString()} from ${currentDivision.divisionKey} to ${targetDivision.divisionKey}`,
-                  );
                   currentDivision.teams = currentDivision.teams.filter(
                     (team) => !team._id.equals(existingTeam._id),
                   );
                   await currentDivision.save();
                 } else if (!currentDivision) {
-                  const cleanupResult = await LeagueDivisionModel.updateMany(
+                  await LeagueDivisionModel.updateMany(
                     {
                       tournament: ctx.tournament._id,
                       _id: { $ne: targetDivision._id },
                     },
                     { $pull: { teams: existingTeam._id } },
                   );
-                  if (cleanupResult.modifiedCount > 0) {
-                    logger.info(
-                      `Signup manage: cleaned team ${existingTeam._id.toString()} from ${cleanupResult.modifiedCount} divisions before add`,
-                    );
-                  }
                 }
 
                 const alreadyInDivision = targetDivision.teams.some((team) =>
                   team._id.equals(existingTeam._id),
                 );
                 if (!alreadyInDivision) {
-                  logger.info(
-                    `Signup manage: adding team ${existingTeam._id.toString()} to division ${targetDivision.divisionKey}`,
-                  );
-                  const beforeCount = targetDivision.teams.length;
                   targetDivision.teams.push(existingTeam);
                   await targetDivision.save();
-                  logger.info(
-                    `Signup manage: division ${targetDivision.divisionKey} teams ${beforeCount} -> ${targetDivision.teams.length}`,
-                  );
-                } else {
-                  logger.info(
-                    `Signup manage: team ${existingTeam._id.toString()} already in division ${targetDivision.divisionKey}`,
-                  );
                 }
                 continue;
               }
@@ -1047,15 +991,8 @@ export const LeagueRoute = createRoute()((r) => {
                 draft: [],
               });
               await newTeam.save();
-              logger.info(
-                `Signup manage: created new team ${newTeam._id.toString()} for coach ${signup.id} in division ${targetDivision.divisionKey}`,
-              );
-              const beforeCount = targetDivision.teams.length;
               targetDivision.teams.push(newTeam);
               await targetDivision.save();
-              logger.info(
-                `Signup manage: division ${targetDivision.divisionKey} teams ${beforeCount} -> ${targetDivision.teams.length}`,
-              );
             }
 
             return { message: "Update successful." };
@@ -1320,7 +1257,9 @@ export const LeagueRoute = createRoute()((r) => {
       });
       r.path("teams")((r) => {
         r.param("team_id", async (ctx, team_id) => {
-          const team = await LeagueTeamModel.findById(team_id);
+          const team = await LeagueTeamModel.findById(team_id).populate({
+            path: "coach",
+          });
           if (!team)
             throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
               teamId: team_id,
@@ -1364,9 +1303,11 @@ export const LeagueRoute = createRoute()((r) => {
             return {
               name: coach.teamName,
               timezone: coach.timezone,
+              coach: coach.name,
               logo: coach.logo,
               draft,
               pokemonStandings,
+              matchups: teamMatchups,
             };
           });
         });
@@ -1377,6 +1318,35 @@ export const LeagueRoute = createRoute()((r) => {
             async (ctx) =>
               await getDivisionDetails(ctx.tournament, ctx.division, ctx.sub),
           );
+          r.path("teams")((r) => {
+            r.get(async (ctx) => {
+              await ctx.division.populate<{
+                teams: (LeagueTeamDocument & {
+                  coach: LeagueCoachDocument;
+                })[];
+              }>({
+                path: "teams",
+                populate: {
+                  path: "coach",
+                },
+              });
+              const teams = (
+                getDraftOrder(ctx.division) as (LeagueTeamDocument & {
+                  coach: LeagueCoachDocument;
+                })[]
+              ).map((team) => ({
+                id: team._id.toString(),
+                coach: team.coach.name,
+                logo: team.coach.logo,
+                draft: team.draft,
+                name: team.coach.teamName,
+                isCoach: team.coach.auth0Id === ctx.sub,
+                timezone: team.coach.timezone,
+              }));
+
+              return { teams };
+            });
+          });
           r.path("picks")((r) => {
             r.get(async (ctx) => {
               const division = await LeagueDivisionModel.findById(
@@ -1538,19 +1508,19 @@ export const LeagueRoute = createRoute()((r) => {
               }).populate([
                 {
                   path: "team1Id",
-                  select: "logo coach",
-                  populate: { path: "coach", select: "teamName" },
+                  select: "coach",
+                  populate: { path: "coach" },
                 },
                 {
                   path: "team2Id",
-                  select: "logo coach",
-                  populate: { path: "coach", select: "teamName" },
+                  select: "coach",
+                  populate: { path: "coach" },
                 },
               ]);
 
               const divisionTeams = await LeagueTeamModel.find({
                 _id: { $in: ctx.division.teams },
-              }).populate({ path: "coach", select: "teamName" });
+              }).populate({ path: "coach" });
 
               const coachStandings = await calculateDivisionCoachStandings(
                 allMatchups,

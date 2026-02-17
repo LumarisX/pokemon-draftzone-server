@@ -1,7 +1,7 @@
-import LeagueCoachModel from "../../models/league/coach.model";
 import { LEAGUE_TOURNAMENT_COLLECTION } from "../../models/league";
-import { LeagueTournamentDocument } from "../../models/league/tournament.model";
+import LeagueCoachModel from "../../models/league/coach.model";
 import LeagueModel, { LeagueDocument } from "../../models/league/league.model";
+import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
