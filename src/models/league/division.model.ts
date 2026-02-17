@@ -40,7 +40,7 @@ export type LeagueDivisionDocument = Document &
 
 const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   {
-    divisionKey: { type: String, required: true, unique: true },
+    divisionKey: { type: String, required: true },
     name: { type: String, required: true },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
     skipTime: { type: Date },
@@ -75,6 +75,8 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
   },
   { timestamps: true },
 );
+
+LeagueDivisionSchema.index({ tournament: 1, divisionKey: 1 }, { unique: true });
 
 export default mongoose.model<LeagueDivisionDocument>(
   LEAGUE_DIVISION_COLLECTION,

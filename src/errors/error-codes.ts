@@ -119,6 +119,11 @@ export const ErrorCodes = {
       status: 400,
       message: "Bad request",
     },
+    NOT_FOUND: {
+      code: "SYS-005",
+      status: 404,
+      message: "API path not found",
+    },
   },
   VALIDATION: {
     INVALID_BODY: {

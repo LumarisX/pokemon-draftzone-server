@@ -4,13 +4,14 @@ import express, { NextFunction, Request, Response } from "express";
 import mongoSanitize from "express-mongo-sanitize";
 import fs from "fs";
 import helmet from "helmet";
-import createError from "http-errors";
 import morgan from "morgan";
 import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import { config } from "./config";
 import { errorHandler } from "./errors/error-handler";
+import { ErrorCodes } from "./errors/error-codes";
+import { PDZError } from "./errors/pdz-error";
 import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
 import { ArchiveRoute } from "./routes-new/archive.route";
@@ -224,7 +225,7 @@ for (const path in ROUTES) {
 }
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  next(createError(404));
+  next(new PDZError(ErrorCodes.SYSTEM.NOT_FOUND));
 });
 
 app.use(errorHandler);

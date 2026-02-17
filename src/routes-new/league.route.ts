@@ -735,45 +735,6 @@ export const LeagueRoute = createRoute()((r) => {
         r.get(async (ctx) => getRoles(ctx.sub));
       });
       r.path("signup").auth()((r) => {
-        r.get.use(rolecheck("organizer"))(async (ctx) => {
-          const users = await LeagueCoachModel.find({
-            tournamentId: ctx.tournament._id,
-          });
-          const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
-          const coachesWithLogos = await Promise.all(
-            users.map(async (user) => {
-              const division = undefined;
-              const member = memberIndex
-                ? findDiscordMemberInIndex(memberIndex, user.discordName)
-                : await getDiscordMemberInGuild(
-                    DISCORD_GUILD_ID,
-                    user.discordName,
-                  );
-              const inDiscordServer = Boolean(member);
-              const hasDiscordRole = Boolean(
-                member &&
-                DISCORD_ROLE_IDS.some((id) => member.roles.cache.has(id)),
-              );
-              return {
-                id: user._id.toString(),
-                name: user.name,
-                gameName: user.gameName,
-                discordName: user.discordName,
-                timezone: user.timezone,
-                experience: user.experience,
-                dropped: user.droppedBefore ? user.droppedWhy : undefined,
-                status: user.status,
-                teamName: user.teamName,
-                signedUpAt: user.signedUpAt,
-                logo: user.logo ? s3Service.getPublicUrl(user.logo) : undefined,
-                division,
-                inDiscordServer,
-                hasDiscordRole,
-              };
-            }),
-          );
-          return coachesWithLogos;
-        });
         r.post.validate({
           body: (data) => signUpSchema.parse(data),
         })(async (ctx, req, res) => {
@@ -875,6 +836,229 @@ export const LeagueRoute = createRoute()((r) => {
             message: "Sign up successful.",
             userId: leagueCoach._id.toString(),
             tournamentId: ctx.tournament._id.toString(),
+          });
+        });
+        r.path("manage").auth().use(rolecheck("organizer"))((r) => {
+          r.get(async (ctx) => {
+            const divisions = await LeagueDivisionModel.find({
+              tournament: ctx.tournament._id,
+            }).populate<{ teams: LeagueTeamDocument[] }>("teams", ["coach"]);
+            const users = await LeagueCoachModel.find({
+              tournamentId: ctx.tournament._id,
+            });
+
+            const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
+            const coachesWithLogos = await Promise.all(
+              users.map(async (user) => {
+                const division = divisions.find((division) =>
+                  division.teams.some(
+                    (team) => team.coach.toString() === user._id.toString(),
+                  ),
+                )?.divisionKey;
+                const member = memberIndex
+                  ? findDiscordMemberInIndex(memberIndex, user.discordName)
+                  : await getDiscordMemberInGuild(
+                      DISCORD_GUILD_ID,
+                      user.discordName,
+                    );
+                const inDiscordServer = Boolean(member);
+                const hasDiscordRole = Boolean(
+                  member &&
+                  DISCORD_ROLE_IDS.some((id) => member.roles.cache.has(id)),
+                );
+                return {
+                  id: user._id.toString(),
+                  name: user.name,
+                  gameName: user.gameName,
+                  discordName: user.discordName,
+                  timezone: user.timezone,
+                  experience: user.experience,
+                  dropped: user.droppedBefore ? user.droppedWhy : undefined,
+                  status: user.status,
+                  teamName: user.teamName,
+                  signedUpAt: user.signedUpAt,
+                  logo: user.logo
+                    ? s3Service.getPublicUrl(user.logo)
+                    : undefined,
+                  division,
+                  inDiscordServer,
+                  hasDiscordRole,
+                };
+              }),
+            );
+
+            return {
+              signups: coachesWithLogos,
+              divisions: divisions.map((d) => ({
+                divisionKey: d.divisionKey,
+                name: d.name,
+              })),
+            };
+          });
+          r.post.validate({
+            body: (data) =>
+              z
+                .object({
+                  signups: z.array(
+                    z.object({
+                      id: z.string(),
+                      division: z.string().optional(),
+                    }),
+                  ),
+                })
+                .parse(data),
+          })(async (ctx) => {
+            const divisions = await LeagueDivisionModel.find({
+              tournament: ctx.tournament._id,
+            }).populate<{ teams: LeagueTeamDocument[] }>("teams", ["coach"]);
+            const users = await LeagueCoachModel.find({
+              tournamentId: ctx.tournament._id,
+            });
+
+            const divisionsByKey = new Map(
+              divisions.map((division) => [division.divisionKey, division]),
+            );
+
+            logger.info(
+              `Signup manage update: ${ctx.validatedBody.signups.length} signups for ${ctx.tournament.tournamentKey}`,
+            );
+            logger.info(
+              `Signup manage: division keys = ${divisions.map((division) => division.divisionKey).join(", ")}`,
+            );
+
+            for (const signup of ctx.validatedBody.signups) {
+              const coach = users.find(
+                (user) => user._id.toString() === signup.id,
+              );
+              if (!coach) {
+                logger.warn(
+                  `Signup manage: coach not found for id ${signup.id}`,
+                );
+                continue;
+              }
+
+              logger.info(
+                `Signup manage: processing coach ${signup.id} (${coach.name}) with target division ${signup.division ?? "<none>"}`,
+              );
+
+              const currentDivision = divisions.find((division) =>
+                division.teams.some(
+                  (team) => team.coach.toString() === signup.id,
+                ),
+              );
+              const currentTeam = currentDivision?.teams.find(
+                (team) => team.coach.toString() === signup.id,
+              );
+              const existingTeam =
+                currentTeam ||
+                (await LeagueTeamModel.findOne({ coach: coach._id }));
+
+              logger.info(
+                `Signup manage: current division = ${currentDivision?.divisionKey ?? "<none>"}, existing team = ${existingTeam?._id.toString() ?? "<none>"}`,
+              );
+
+              if (!signup.division) {
+                if (existingTeam) {
+                  logger.info(
+                    `Signup manage: removing team ${existingTeam._id.toString()} for coach ${signup.id}`,
+                  );
+                  const removeResult = await LeagueDivisionModel.updateMany(
+                    { tournament: ctx.tournament._id },
+                    { $pull: { teams: existingTeam._id } },
+                  );
+                  logger.info(
+                    `Signup manage: removed team ${existingTeam._id.toString()} from ${removeResult.modifiedCount} divisions`,
+                  );
+                  await LeagueTeamModel.findByIdAndDelete(existingTeam._id);
+                } else {
+                  logger.info(
+                    `Signup manage: no team to remove for coach ${signup.id}`,
+                  );
+                }
+                continue;
+              }
+
+              const targetDivision = divisionsByKey.get(signup.division);
+              if (!targetDivision) {
+                logger.warn(
+                  `Signup manage: target division ${signup.division} not found for coach ${signup.id}`,
+                );
+                throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
+                  divisionKey: signup.division,
+                  tournamentKey: ctx.tournament.tournamentKey,
+                });
+              }
+
+              logger.info(
+                `Signup manage: target division resolved = ${targetDivision.divisionKey} (${targetDivision._id.toString()})`,
+              );
+
+              if (existingTeam) {
+                if (
+                  currentDivision &&
+                  !currentDivision._id.equals(targetDivision._id)
+                ) {
+                  logger.info(
+                    `Signup manage: moving team ${existingTeam._id.toString()} from ${currentDivision.divisionKey} to ${targetDivision.divisionKey}`,
+                  );
+                  currentDivision.teams = currentDivision.teams.filter(
+                    (team) => !team._id.equals(existingTeam._id),
+                  );
+                  await currentDivision.save();
+                } else if (!currentDivision) {
+                  const cleanupResult = await LeagueDivisionModel.updateMany(
+                    {
+                      tournament: ctx.tournament._id,
+                      _id: { $ne: targetDivision._id },
+                    },
+                    { $pull: { teams: existingTeam._id } },
+                  );
+                  if (cleanupResult.modifiedCount > 0) {
+                    logger.info(
+                      `Signup manage: cleaned team ${existingTeam._id.toString()} from ${cleanupResult.modifiedCount} divisions before add`,
+                    );
+                  }
+                }
+
+                const alreadyInDivision = targetDivision.teams.some((team) =>
+                  team._id.equals(existingTeam._id),
+                );
+                if (!alreadyInDivision) {
+                  logger.info(
+                    `Signup manage: adding team ${existingTeam._id.toString()} to division ${targetDivision.divisionKey}`,
+                  );
+                  const beforeCount = targetDivision.teams.length;
+                  targetDivision.teams.push(existingTeam);
+                  await targetDivision.save();
+                  logger.info(
+                    `Signup manage: division ${targetDivision.divisionKey} teams ${beforeCount} -> ${targetDivision.teams.length}`,
+                  );
+                } else {
+                  logger.info(
+                    `Signup manage: team ${existingTeam._id.toString()} already in division ${targetDivision.divisionKey}`,
+                  );
+                }
+                continue;
+              }
+
+              const newTeam = new LeagueTeamModel({
+                coach: coach._id,
+                picks: [],
+                draft: [],
+              });
+              await newTeam.save();
+              logger.info(
+                `Signup manage: created new team ${newTeam._id.toString()} for coach ${signup.id} in division ${targetDivision.divisionKey}`,
+              );
+              const beforeCount = targetDivision.teams.length;
+              targetDivision.teams.push(newTeam);
+              await targetDivision.save();
+              logger.info(
+                `Signup manage: division ${targetDivision.divisionKey} teams ${beforeCount} -> ${targetDivision.teams.length}`,
+              );
+            }
+
+            return { message: "Update successful." };
           });
         });
       });
