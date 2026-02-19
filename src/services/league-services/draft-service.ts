@@ -652,6 +652,15 @@ export async function draftPokemon(
     }
 
     currentDivision = dbDivision;
+
+    // The caller may have already set division.status = "IN_PROGRESS" and saved it,
+    // but draftPokemon opens a new transaction whose snapshot can precede that write
+    // (e.g. setDivsionState.play starting the draft for the first time).
+    // Trust the caller's status when it explicitly says IN_PROGRESS.
+    if (division.status === "IN_PROGRESS") {
+      currentDivision.status = "IN_PROGRESS";
+    }
+
     const dbTeam = (currentDivision.teams as LeagueTeamDocument[]).find((t) =>
       t._id.equals(team._id),
     );
@@ -1227,39 +1236,26 @@ export async function setDivsionState(
       division.skipTime = newSkipTime;
       division.remainingTime = undefined;
 
+      // Save status to DB before calling draftPokemon, which re-fetches the
+      // division and checks status !== "IN_PROGRESS" via canTeamDraft.
       await division.save();
 
-      const freshDivision = await LeagueDivisionModel.findById(
-        division._id,
-      ).populate<{ teams: LeagueTeamDocument[] }>("teams");
-      if (!freshDivision) {
-        return;
-      }
-
-      const currentTeam = getCurrentPickingTeam(freshDivision);
+      const currentTeam = getCurrentPickingTeam(division);
       if (!currentTeam) {
-        division.set(freshDivision.toObject());
         return;
       }
 
       const queuedPicks = await currentTeamPicks(
         tournament,
-        freshDivision,
+        division,
         currentTeam,
       );
       if (queuedPicks?.length) {
-        await draftPokemon(
-          tournament,
-          freshDivision,
-          currentTeam,
-          queuedPicks[0],
-        );
-        division.set(freshDivision.toObject());
+        await draftPokemon(tournament, division, currentTeam, queuedPicks[0]);
         return;
       }
 
-      await resumeSkipPick(tournament, freshDivision);
-      division.set(freshDivision.toObject());
+      await resumeSkipPick(tournament, division);
     },
     pause: async () => {
       division.status = "PAUSED";
