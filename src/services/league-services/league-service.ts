@@ -78,6 +78,9 @@ export async function getTournamentsByOwner(auth0Id: string) {
           tournamentKey: division.tournament.tournamentKey,
           leagueName: division.tournament.league.name,
           leagueKey: division.tournament.league.leagueKey,
+          draft: userTeam.draft.map((e) => ({
+            id: e.id,
+          })),
         });
       }
     }

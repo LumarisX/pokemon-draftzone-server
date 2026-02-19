@@ -451,6 +451,21 @@ export function getCurrentPickingTeam(
   return pickingOrder[currentPositionInRound];
 }
 
+/**
+ * Calculates the timer length for a team based on their skip count.
+ * Timer is halved for each skip: baseTimer / (2^skipCount)
+ * @param baseTimerLength - The base timer length in seconds
+ * @param skipCount - The number of times this team has been skipped
+ * @returns The calculated timer length in seconds (minimum 30 seconds)
+ */
+function calculateTeamTimer(
+  baseTimerLength: number,
+  skipCount: number,
+): number {
+  const calculatedTimer = baseTimerLength / Math.pow(2, skipCount);
+  return Math.max(30, calculatedTimer);
+}
+
 export async function canTeamDraft(
   division: LeagueDivisionDocument,
   team: LeagueTeamDocument,
@@ -972,7 +987,11 @@ export async function increaseCounter(
 
     if (session) {
       const newSkipTime = new Date();
-      newSkipTime.setSeconds(newSkipTime.getSeconds() + division.timerLength);
+      const teamTimer = calculateTeamTimer(
+        division.timerLength,
+        nextTeam.skipCount || 0,
+      );
+      newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
       division.skipTime = newSkipTime;
       queueSideEffect(session, () => resumeSkipPick(tournament, division));
     } else {
@@ -1180,13 +1199,6 @@ export async function skipCurrentPick(
     }
   }
 
-  if (division.timerLength && division.skipTimerPenalty) {
-    division.timerLength = Math.max(
-      30,
-      division.timerLength - division.skipTimerPenalty,
-    );
-  }
-
   division.eventLog.push({
     eventType: "SKIP",
     details: `${teamName} was skipped`,
@@ -1195,12 +1207,16 @@ export async function skipCurrentPick(
 
   await division.save();
 
+  const newTimerLength = fullTeam
+    ? calculateTeamTimer(division.timerLength, fullTeam.skipCount)
+    : division.timerLength;
+
   eventEmitter.emit("league.draft.skip", {
     tournamentId: tournament.tournamentKey,
     divisionId: division.divisionKey,
     teamName,
     skipCount: fullTeam?.skipCount || 1,
-    newTimerLength: division.timerLength,
+    newTimerLength,
   });
 
   if (division.channelId) {
@@ -1235,7 +1251,11 @@ export async function setDivsionState(
     play: async () => {
       division.status = "IN_PROGRESS";
       const newSkipTime = new Date();
-      const secondsToAdd = division.remainingTime ?? division.timerLength;
+      const currentTeam = getCurrentPickingTeam(division);
+      const teamTimer = currentTeam
+        ? calculateTeamTimer(division.timerLength, currentTeam.skipCount || 0)
+        : division.timerLength;
+      const secondsToAdd = division.remainingTime ?? teamTimer;
       newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
       division.skipTime = newSkipTime;
       division.remainingTime = undefined;
