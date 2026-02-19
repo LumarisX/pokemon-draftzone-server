@@ -1281,6 +1281,9 @@ export const LeagueRoute = createRoute()((r) => {
                   id: draftItem.pokemon.id,
                   name: pokemonName,
                   tier,
+                  capt: {
+                    tera: draftItem.addons?.includes("Tera Captain"),
+                  },
                 };
               }),
             );
@@ -1340,7 +1343,14 @@ export const LeagueRoute = createRoute()((r) => {
                 id: team._id.toString(),
                 coach: team.coach.name,
                 logo: team.coach.logo,
-                draft: team.draft,
+                draft: team.draft.map((e) => ({
+                  id: e.pokemon.id,
+                  name: getName(e.pokemon.id),
+                  capt: {
+                    tera: e.addons?.includes("Tera Captain"),
+                  },
+                  tier: getPokemonTier(ctx.tournament, e.pokemon.id),
+                })),
                 name: team.coach.teamName,
                 isCoach: team.coach.auth0Id === ctx.sub,
                 timezone: team.coach.timezone,
@@ -1378,6 +1388,9 @@ export const LeagueRoute = createRoute()((r) => {
                           ctx.tournament,
                           draftItem.pokemon.id,
                         ),
+                        capt: {
+                          tera: draftItem.addons?.includes("Tera Captain"),
+                        },
                       },
                       timestamp: draftItem.timestamp,
                       picker: (draftItem.picker as LeagueCoach)?.auth0Id,
@@ -1626,9 +1639,8 @@ export const LeagueRoute = createRoute()((r) => {
                     coach: LeagueCoachDocument;
                   })[]
                 ).map(async (team, index) => {
-                  const teamRaw = team.draft.map((pick) => ({
-                    id: pick.pokemon.id,
-                    capt: pick.capt,
+                  const teamRaw = team.draft.map((draftItem) => ({
+                    id: draftItem.pokemon.id,
                   }));
                   const draft = DraftSpecie.getTeam(teamRaw, ruleset);
                   const typechart = new Typechart(draft);
