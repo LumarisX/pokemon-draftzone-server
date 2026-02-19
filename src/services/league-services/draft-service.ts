@@ -780,6 +780,21 @@ export async function increaseCounter(
         await completeDraft(league, division, session);
         return;
       }
+
+      const fullTeam = (await LeagueTeamModel.findById(nextTeam._id).populate(
+        "coach",
+      )) as (LeagueTeamDocument & { coach: LeagueCoachDocument }) | null;
+      if (fullTeam) {
+        fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
+        await fullTeam.save({ session });
+        const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex(
+          (t) => t._id.equals(fullTeam._id),
+        );
+        if (teamIndex !== -1) {
+          (division.teams as LeagueTeamDocument[])[teamIndex] = fullTeam;
+        }
+      }
+
       division.draftCounter++;
       const newNextTeam = getCurrentPickingTeam(division);
       if (!newNextTeam) {
@@ -1058,6 +1073,10 @@ export async function setDivsionState(
       status: division.status,
       currentPick: calculateCurrentPick(division),
     });
+    sendDiscordMessage(
+      division.channelId,
+      `The Draft is now ${division.status}`,
+    );
   }
 }
 

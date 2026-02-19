@@ -34,7 +34,16 @@ export type LeagueDivision = {
   eventLog: DraftEventLog[];
   tournament: Types.ObjectId | LeagueTournamentDocument;
   useRandomDraftOrder?: boolean;
+  trades: DraftTrade[];
 };
+
+export type DraftTrade = {
+  trades: {}[];
+};
+
+const TradeSchema: Schema<DraftTrade> = new Schema({
+  trades: [],
+});
 
 export type LeagueDivisionDocument = Document &
   LeagueDivision & { _id: Types.ObjectId };
@@ -74,6 +83,7 @@ const LeagueDivisionSchema: Schema<LeagueDivisionDocument> = new Schema(
       required: true,
     },
     useRandomDraftOrder: { type: Boolean, default: true },
+    trades: { type: [TradeSchema], default: [] },
   },
   { timestamps: true },
 );

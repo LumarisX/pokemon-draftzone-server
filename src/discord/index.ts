@@ -281,7 +281,7 @@ export async function startDiscordBot(
 }
 
 export async function sendDiscordMessage(
-  channelId: string,
+  channelId?: string,
   options?:
     | {
         content?: string;
@@ -297,6 +297,7 @@ export async function sendDiscordMessage(
     | string,
 ) {
   try {
+    if (!channelId) return;
     const channel = await client.channels.fetch(channelId);
     if (typeof options === "string") options = { content: options };
     if (
