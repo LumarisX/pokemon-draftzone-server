@@ -993,6 +993,10 @@ export async function increaseCounter(
       session,
     );
     if (nextTeamPicks) {
+      // Save updated draftCounter before calling draftPokemon so that the
+      // re-fetch inside draftPokemon (same session) reads the correct counter
+      // and canTeamDraft passes for the next team.
+      await division.save({ session });
       await draftPokemon(
         tournament,
         division,
@@ -1021,9 +1025,9 @@ export async function increaseCounter(
           await sendDiscordMessage(division.channelId, mentionText);
         }
       });
-    }
 
-    await division.save({ session });
+      await division.save({ session });
+    }
   } catch (error) {
     console.error("Error in increaseCounter:", error);
     throw error;
