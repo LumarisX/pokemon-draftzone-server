@@ -822,8 +822,18 @@ export async function draftPokemon(
           value: `${currentPositionInRound + 1}`,
           inline: true,
         },
+        {
+          name: "Cost",
+          value: tier ? tier.cost.toString() : "Banned",
+          inline: true,
+        },
       ];
-
+      if (pick.addons?.length)
+        fields.push({
+          name: "Captain",
+          value: "Tera",
+          inline: true,
+        });
       if (snipeCount)
         fields.push({
           name: "Sniped Teams",
