@@ -1335,26 +1335,34 @@ export const LeagueRoute = createRoute()((r) => {
                   path: "coach",
                 },
               });
-              const teams = (
-                getDraftOrder(ctx.division) as (LeagueTeamDocument & {
-                  coach: LeagueCoachDocument;
-                })[]
-              ).map((team) => ({
-                id: team._id.toString(),
-                coach: team.coach.name,
-                logo: team.coach.logo,
-                draft: team.draft.map((e) => ({
-                  id: e.pokemon.id,
-                  name: getName(e.pokemon.id),
-                  capt: {
-                    tera: e.addons?.includes("Tera Captain"),
-                  },
-                  tier: getPokemonTier(ctx.tournament, e.pokemon.id),
-                })),
-                name: team.coach.teamName,
-                isCoach: team.coach.auth0Id === ctx.sub,
-                timezone: team.coach.timezone,
-              }));
+              const teams = Promise.all(
+                (
+                  getDraftOrder(ctx.division) as (LeagueTeamDocument & {
+                    coach: LeagueCoachDocument;
+                  })[]
+                ).map(async (team) => {
+                  return {
+                    id: team._id.toString(),
+                    coach: team.coach.name,
+                    logo: team.coach.logo,
+                    draft: await Promise.all(
+                      team.draft.map(async (e) => ({
+                        id: e.pokemon.id,
+                        name: getName(e.pokemon.id),
+                        capt: {
+                          tera: e.addons?.includes("Tera Captain"),
+                        },
+                        tier: (
+                          await getPokemonTier(ctx.tournament, e.pokemon.id)
+                        )?.cost,
+                      })),
+                    ),
+                    name: team.coach.teamName,
+                    isCoach: team.coach.auth0Id === ctx.sub,
+                    timezone: team.coach.timezone,
+                  };
+                }),
+              );
 
               return { teams };
             });
