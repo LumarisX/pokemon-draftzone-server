@@ -1229,22 +1229,37 @@ export async function setDivsionState(
 
       await division.save();
 
-      const currentTeam = getCurrentPickingTeam(division);
+      const freshDivision = await LeagueDivisionModel.findById(
+        division._id,
+      ).populate<{ teams: LeagueTeamDocument[] }>("teams");
+      if (!freshDivision) {
+        return;
+      }
+
+      const currentTeam = getCurrentPickingTeam(freshDivision);
       if (!currentTeam) {
+        division.set(freshDivision.toObject());
         return;
       }
 
       const queuedPicks = await currentTeamPicks(
         tournament,
-        division,
+        freshDivision,
         currentTeam,
       );
       if (queuedPicks?.length) {
-        await draftPokemon(tournament, division, currentTeam, queuedPicks[0]);
+        await draftPokemon(
+          tournament,
+          freshDivision,
+          currentTeam,
+          queuedPicks[0],
+        );
+        division.set(freshDivision.toObject());
         return;
       }
 
-      await resumeSkipPick(tournament, division);
+      await resumeSkipPick(tournament, freshDivision);
+      division.set(freshDivision.toObject());
     },
     pause: async () => {
       division.status = "PAUSED";
