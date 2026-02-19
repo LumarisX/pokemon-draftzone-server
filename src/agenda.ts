@@ -25,6 +25,8 @@ const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
   const { tournamentId, divisionId } = job.attrs.data;
+  logger.info(`[skip-draft-pick] Job triggered — tournamentId=${tournamentId} divisionId=${divisionId} jobId=${job.attrs._id}`);
+
   const league = await League.findById(tournamentId).populate([
     {
       path: "divisions",
@@ -40,20 +42,38 @@ agenda.define("skip-draft-pick", async (job: Job) => {
     },
   ]);
   if (!league) {
-    console.error(`League not found: ${tournamentId}`);
+    logger.error(`[skip-draft-pick] League not found: ${tournamentId}`);
     return;
   }
+  logger.info(`[skip-draft-pick] League found: ${league.tournamentKey}`);
+
   const division = league.divisions.find((d) =>
     d._id.equals(divisionId),
   ) as LeagueDivisionDocument;
   if (!division) {
-    console.error(
-      `Division not found: ${divisionId} in league ${tournamentId}`,
+    logger.error(
+      `[skip-draft-pick] Division not found: ${divisionId} in league ${tournamentId}`,
     );
     return;
   }
+  logger.info(
+    `[skip-draft-pick] Division found: key=${division.divisionKey} status=${division.status} draftCounter=${division.draftCounter} skipTime=${division.skipTime?.toISOString() ?? "none"} teams=${division.teams.length}`,
+  );
 
-  await skipCurrentPick(league, division);
+  const currentTeam = getCurrentPickingTeam(division);
+  logger.info(
+    `[skip-draft-pick] Current picking team: ${
+      currentTeam ? (currentTeam as any)._id?.toString() : "null (no team)"
+    }`,
+  );
+
+  logger.info(`[skip-draft-pick] Calling skipCurrentPick...`);
+  try {
+    await skipCurrentPick(league, division);
+    logger.info(`[skip-draft-pick] skipCurrentPick completed successfully`);
+  } catch (err) {
+    logger.error(`[skip-draft-pick] skipCurrentPick threw an error:`, err);
+  }
 });
 
 agenda.define("skip-draft-reminder", async (job: Job) => {

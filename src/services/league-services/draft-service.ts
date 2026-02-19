@@ -959,26 +959,49 @@ export async function increaseCounter(
       numberOfRounds,
       division.draftStyle,
     );
+    console.log(
+      `[increaseCounter] division=${division.divisionKey} status=${division.status} draftCounter=${division.draftCounter} pickOrder.length=${pickOrder.length} numberOfRounds=${numberOfRounds} teams=${initialTeamOrder.length}`,
+    );
+
     if (division.status !== "IN_PROGRESS") {
+      console.log(
+        `[increaseCounter] Aborting — division status is "${division.status}"`,
+      );
       return;
     }
 
     if (isDraftComplete(tournament, division)) {
+      console.log(`[increaseCounter] isDraftComplete=true — completing draft`);
       await completeDraft(tournament, division, session);
       return;
     }
 
     division.draftCounter++;
+    console.log(
+      `[increaseCounter] draftCounter incremented to ${division.draftCounter}`,
+    );
 
     if (division.draftCounter >= pickOrder.length) {
+      console.log(
+        `[increaseCounter] draftCounter (${division.draftCounter}) >= pickOrder.length (${pickOrder.length}) — completing draft`,
+      );
       await completeDraft(tournament, division, session);
       return;
     }
 
-    queueSideEffect(session, () => cancelSkipPick(division));
+    if (session) {
+      queueSideEffect(session, () => cancelSkipPick(division));
+    }
+    // When there is no session (e.g. fired from the agenda job), cancelSkipPick
+    // must be awaited here. If it runs fire-and-forget it races with
+    // scheduleSkipPick below and can cancel the newly created job before it fires.
 
     let nextTeam = getCurrentPickingTeam(division);
+    console.log(
+      `[increaseCounter] next picking team after increment: ${nextTeam ? `id=${nextTeam._id}` : "null"}`,
+    );
     if (!nextTeam) {
+      console.log(`[increaseCounter] No next team found — completing draft`);
       await completeDraft(tournament, division, session);
       return;
     }
@@ -988,10 +1011,16 @@ export async function increaseCounter(
 
     while (await isTeamDoneDrafting(tournament, division, nextTeam)) {
       skippedTeams++;
+      console.log(
+        `[increaseCounter] Team ${nextTeam._id} is done drafting — auto-skipping (skippedTeams=${skippedTeams}/${maxSkips}) draftCounter=${division.draftCounter}`,
+      );
       if (
         skippedTeams > maxSkips ||
         division.draftCounter >= pickOrder.length - 1
       ) {
+        console.log(
+          `[increaseCounter] Max skips reached or end of pick order — completing draft`,
+        );
         await completeDraft(tournament, division, session);
         return;
       }
@@ -1011,8 +1040,17 @@ export async function increaseCounter(
       }
 
       division.draftCounter++;
+      console.log(
+        `[increaseCounter] draftCounter incremented to ${division.draftCounter} after done-drafting skip`,
+      );
       const newNextTeam = getCurrentPickingTeam(division);
+      console.log(
+        `[increaseCounter] new next team: ${newNextTeam ? `id=${newNextTeam._id}` : "null"}`,
+      );
       if (!newNextTeam) {
+        console.log(
+          `[increaseCounter] No next team after skip — completing draft`,
+        );
         await completeDraft(tournament, division, session);
         return;
       }
@@ -1027,9 +1065,29 @@ export async function increaseCounter(
       );
       newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
       division.skipTime = newSkipTime;
+      console.log(
+        `[increaseCounter] (session) Queued resumeSkipPick for ${newSkipTime.toISOString()} teamTimer=${teamTimer}`,
+      );
       queueSideEffect(session, () => resumeSkipPick(tournament, division));
     } else {
-      await scheduleSkipPick(tournament, division);
+      const newSkipTime = new Date();
+      const teamTimer = calculateTeamTimer(
+        division.timerLength,
+        nextTeam.skipCount || 0,
+      );
+      newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
+      division.skipTime = newSkipTime;
+      console.log(
+        `[increaseCounter] Cancelling existing skip job before scheduling new one...`,
+      );
+      await cancelSkipPick(division);
+      console.log(
+        `[increaseCounter] Scheduling skip pick for next team (id=${nextTeam._id} skipCount=${nextTeam.skipCount ?? 0} teamTimer=${teamTimer})...`,
+      );
+      await resumeSkipPick(tournament, division);
+      console.log(
+        `[increaseCounter] resumeSkipPick completed, new skipTime=${division.skipTime?.toISOString() ?? "none"}`,
+      );
     }
 
     await nextTeam.populate<{
@@ -1044,6 +1102,9 @@ export async function increaseCounter(
       division,
       nextTeam,
       session,
+    );
+    console.log(
+      `[increaseCounter] nextTeamPicks for team "${(nextTeam.coach as LeagueCoachDocument)?.teamName ?? nextTeam._id}": ${nextTeamPicks ? nextTeamPicks.length : "null"} queued picks`,
     );
     if (nextTeamPicks) {
       // Save updated draftCounter before calling draftPokemon so that the
@@ -1206,12 +1267,25 @@ export async function skipCurrentPick(
   tournament: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
+  console.log(
+    `[skipCurrentPick] division=${division.divisionKey} status=${division.status} draftCounter=${division.draftCounter}`,
+  );
+
   if (division.status !== "IN_PROGRESS") {
+    console.log(
+      `[skipCurrentPick] Aborting — division status is "${division.status}", expected "IN_PROGRESS"`,
+    );
     return;
   }
 
   const team = getCurrentPickingTeam(division);
+  console.log(
+    `[skipCurrentPick] getCurrentPickingTeam returned: ${team ? team._id?.toString() : "null"}`,
+  );
   if (!team) {
+    console.log(
+      `[skipCurrentPick] Aborting — no current picking team found (draftCounter=${division.draftCounter}, teams=${(division.teams as LeagueTeamDocument[]).length})`,
+    );
     return;
   }
 
@@ -1220,14 +1294,22 @@ export async function skipCurrentPick(
   )) as (LeagueTeamDocument & { coach: LeagueCoachDocument }) | null;
   const teamName =
     (fullTeam?.coach as LeagueCoachDocument)?.teamName || "Unknown Team";
+  console.log(
+    `[skipCurrentPick] Skipping team: "${teamName}" (id=${team._id}) fullTeamFound=${!!fullTeam} currentSkipCount=${fullTeam?.skipCount ?? 0}`,
+  );
 
   if (fullTeam) {
     fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
+    console.log(
+      `[skipCurrentPick] Saving fullTeam with skipCount=${fullTeam.skipCount}`,
+    );
     await fullTeam.save();
+    console.log(`[skipCurrentPick] fullTeam saved`);
 
     const teamIndex = (division.teams as LeagueTeamDocument[]).findIndex((t) =>
       t._id.equals(fullTeam._id),
     );
+    console.log(`[skipCurrentPick] teamIndex in division.teams: ${teamIndex}`);
     if (teamIndex !== -1) {
       (division.teams as LeagueTeamDocument[])[teamIndex] = fullTeam;
     }
@@ -1239,11 +1321,16 @@ export async function skipCurrentPick(
     timestamp: new Date(),
   });
 
+  console.log(`[skipCurrentPick] Saving division...`);
   await division.save();
+  console.log(`[skipCurrentPick] Division saved`);
 
   const newTimerLength = fullTeam
     ? calculateTeamTimer(division.timerLength, fullTeam.skipCount)
     : division.timerLength;
+  console.log(
+    `[skipCurrentPick] newTimerLength=${newTimerLength} (baseTimer=${division.timerLength} skipCount=${fullTeam?.skipCount ?? 0})`,
+  );
 
   eventEmitter.emit("league.draft.skip", {
     tournamentId: tournament.tournamentKey,
@@ -1265,7 +1352,9 @@ export async function skipCurrentPick(
     );
   }
 
+  console.log(`[skipCurrentPick] Calling increaseCounter...`);
   await increaseCounter(tournament, division);
+  console.log(`[skipCurrentPick] increaseCounter completed`);
 }
 
 export function cancelSkipTime(division: LeagueDivisionDocument) {
