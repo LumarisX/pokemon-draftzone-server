@@ -1335,7 +1335,7 @@ export const LeagueRoute = createRoute()((r) => {
                   path: "coach",
                 },
               });
-              const teams = Promise.all(
+              const teams = await Promise.all(
                 (
                   getDraftOrder(ctx.division) as (LeagueTeamDocument & {
                     coach: LeagueCoachDocument;
