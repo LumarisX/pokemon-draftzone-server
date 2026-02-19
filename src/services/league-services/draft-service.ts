@@ -1260,11 +1260,8 @@ export async function setDivsionState(
       division.skipTime = newSkipTime;
       division.remainingTime = undefined;
 
-      // Save status to DB before calling draftPokemon, which re-fetches the
-      // division and checks status !== "IN_PROGRESS" via canTeamDraft.
       await division.save();
 
-      const currentTeam = getCurrentPickingTeam(division);
       if (!currentTeam) {
         return;
       }
