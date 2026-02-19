@@ -20,8 +20,8 @@ export const agenda = new Agenda({
   db: { address: mongoConnectionString, collection: "jobs" },
 });
 
-const SKIP_REMINDER_THRESHOLD_SECONDS = 3601;
 const ONE_HOUR_MS = 60 * 60 * 1000;
+const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
   const { tournamentId, divisionId } = job.attrs.data;

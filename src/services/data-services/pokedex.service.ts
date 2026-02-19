@@ -1,9 +1,13 @@
-import { Specie, SpeciesName, TypeName } from "@pkmn/data";
+import { Specie, Species, SpeciesName, TypeName } from "@pkmn/data";
 import { Format } from "../../data/formats";
 import { getRuleset, Ruleset } from "../../data/rulesets";
 
+export function getSpecies(pokemonID: string): Specie | undefined {
+  return getRuleset("Gen9 NatDex").species.get(pokemonID);
+}
+
 export function getName(pokemonID: string): SpeciesName | "" {
-  return getRuleset("Gen9 NatDex").species.get(pokemonID)?.name ?? "";
+  return getSpecies(pokemonID)?.name ?? "";
 }
 
 export function getRandom(
@@ -20,13 +24,13 @@ export function getRandom(
     banned: string[];
   }> = {
     nfe: true,
-  }
+  },
 ) {
   const tierLabel: "tier" | "natDexTier" | "doublesTier" = ruleset.isNatDex
     ? "natDexTier"
     : format.layout === "2"
-    ? "doublesTier"
-    : "tier";
+      ? "doublesTier"
+      : "tier";
 
   const eligibleSpecies = Object.entries(
     Array.from(ruleset.species)
@@ -49,14 +53,17 @@ export function getRandom(
           return false;
         return true;
       })
-      .reduce((formGroups, specie) => {
-        const id = specie.changesFrom
-          ? ruleset.species.get(specie.changesFrom)!.id
-          : specie.id;
-        if (!(id in formGroups)) formGroups[id] = [];
-        formGroups[id].push(specie);
-        return formGroups;
-      }, {} as { [key: string]: Specie[] })
+      .reduce(
+        (formGroups, specie) => {
+          const id = specie.changesFrom
+            ? ruleset.species.get(specie.changesFrom)!.id
+            : specie.id;
+          if (!(id in formGroups)) formGroups[id] = [];
+          formGroups[id].push(specie);
+          return formGroups;
+        },
+        {} as { [key: string]: Specie[] },
+      ),
   );
 
   const selectedPokemon: Specie[] = [];

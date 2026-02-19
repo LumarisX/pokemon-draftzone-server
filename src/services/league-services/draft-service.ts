@@ -1,5 +1,5 @@
-import { toID } from "@pkmn/data";
-import { APIEmbedField } from "discord.js";
+import { toID, TypeName } from "@pkmn/data";
+import { APIEmbedField, ColorResolvable } from "discord.js";
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick, scheduleSkipPick } from "../../agenda";
 import { resolveDiscordMention, sendDiscordMessage } from "../../discord";
@@ -16,11 +16,32 @@ import LeagueTeamModel, {
 } from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
-import { getName } from "../data-services/pokedex.service";
+import { getName, getSpecies } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-list-service";
 
 type DeferredSideEffect = () => void | Promise<void>;
 const sessionSideEffects = new WeakMap<ClientSession, DeferredSideEffect[]>();
+
+const typeColorMap = new Map<TypeName, number>([
+  ["Bug", 0x91a119],
+  ["Dark", 0x50413f],
+  ["Dragon", 0x5060e1],
+  ["Electric", 0xfac000],
+  ["Fairy", 0xef70ef],
+  ["Fighting", 0xff8000],
+  ["Fire", 0xe62829],
+  ["Flying", 0x81b9ef],
+  ["Ghost", 0x704170],
+  ["Grass", 0x3fa129],
+  ["Ground", 0x915121],
+  ["Ice", 0x3fd8ff],
+  ["Normal", 0x9fa19f],
+  ["Poison", 0x9141cb],
+  ["Psychic", 0xef4179],
+  ["Rock", 0xafa981],
+  ["Steel", 0x60a1b8],
+  ["Water", 0x2980ef],
+]);
 
 function queueSideEffect(
   session: ClientSession | undefined,
@@ -750,7 +771,7 @@ export async function draftPokemon(
       currentDivision.draftStyle,
     );
     const canDraftTeams = calculateCanDraft(currentDivision, pickOrder);
-    const pokemonName = getName(pick.pokemonId);
+    const pokemonSpecie = getSpecies(pick.pokemonId)!;
 
     const pokemonTierMap = createPokemonTierMap(tournament);
 
@@ -768,7 +789,7 @@ export async function draftPokemon(
         pick: {
           pokemon: {
             id: pick.pokemonId,
-            name: pokemonName,
+            name: pokemonSpecie.name,
             tier: tier?.name,
           },
           team: {
@@ -789,7 +810,7 @@ export async function draftPokemon(
 
     if (currentDivision.channelId) {
       const pokemon = {
-        name: pokemonName,
+        name: pokemonSpecie.name,
         id: pick.pokemonId,
       };
 
@@ -810,6 +831,8 @@ export async function draftPokemon(
 
       const currentRound = getCurrentRound(currentDivision);
       const currentPositionInRound = getCurrentPositionInRound(currentDivision);
+
+      const color = typeColorMap.get(pokemonSpecie.types[0]);
 
       const fields: APIEmbedField[] = [
         {
@@ -845,6 +868,7 @@ export async function draftPokemon(
           content: messageContent,
           embed: {
             title: `${coach.teamName} drafted ${pokemon.name}!`,
+            color,
             url: `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/divisions/${currentDivision.divisionKey}/draft`,
             fields,
             image: `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.id}.png`,
