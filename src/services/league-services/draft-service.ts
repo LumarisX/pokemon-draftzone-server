@@ -129,10 +129,11 @@ function getPickCost(
   tierList: LeagueTierListDocument,
   pick: { pokemonId: string; addons?: string[] },
 ): number {
-  return (
-    getBaseTierCost(tierList, pick.pokemonId) +
-    getAddonCost(tierList, pick.pokemonId, pick.addons)
-  );
+  if (pick.addons?.length) {
+    return getAddonCost(tierList, pick.pokemonId, pick.addons);
+  }
+
+  return getBaseTierCost(tierList, pick.pokemonId);
 }
 
 function areAddonsValid(
@@ -1225,6 +1226,22 @@ export async function setDivsionState(
       newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
       division.skipTime = newSkipTime;
       division.remainingTime = undefined;
+
+      const currentTeam = getCurrentPickingTeam(division);
+      if (!currentTeam) {
+        return;
+      }
+
+      const queuedPicks = await currentTeamPicks(
+        tournament,
+        division,
+        currentTeam,
+      );
+      if (queuedPicks?.length) {
+        await draftPokemon(tournament, division, currentTeam, queuedPicks[0]);
+        return;
+      }
+
       await resumeSkipPick(tournament, division);
     },
     pause: async () => {
@@ -1246,10 +1263,15 @@ export async function setDivsionState(
       status: division.status,
       currentPick: calculateCurrentPick(division),
     });
-    sendDiscordMessage(
-      division.channelId,
-      `The Draft is now ${division.status}`,
-    );
+
+    const statusLabel =
+      division.status === "IN_PROGRESS"
+        ? "started"
+        : division.status === "PAUSED"
+          ? "paused"
+          : division.status.toLowerCase();
+
+    sendDiscordMessage(division.channelId, `The draft is now ${statusLabel}.`);
   }
 }
 
