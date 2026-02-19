@@ -1227,6 +1227,8 @@ export async function setDivsionState(
       division.skipTime = newSkipTime;
       division.remainingTime = undefined;
 
+      await division.save();
+
       const currentTeam = getCurrentPickingTeam(division);
       if (!currentTeam) {
         return;
