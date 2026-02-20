@@ -29,7 +29,7 @@ export type LeagueTournament = {
   draftEnd?: Date;
   seasonStart?: Date;
   seasonEnd?: Date;
-  //TODO: Delete eventually
+  //TODO: Stop using, no longer populated
   divisions: (Types.ObjectId | LeagueDivisionDocument)[];
   owner: string;
   organizers: string[];
@@ -63,6 +63,7 @@ const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
     draftEnd: { type: Date },
     seasonStart: { type: Date },
     seasonEnd: { type: Date },
+    //TODO: Stop using, no longer populated
     divisions: [
       { type: Schema.Types.ObjectId, ref: LEAGUE_DIVISION_COLLECTION },
     ],

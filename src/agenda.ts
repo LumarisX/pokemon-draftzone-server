@@ -1,18 +1,20 @@
 import Agenda, { Job } from "agenda";
+import { logger } from "./app";
 import { config } from "./config";
+import { resolveDiscordMention, sendDiscordMessage } from "./discord";
+import FileUploadModel from "./models/file-upload.model";
+import { LeagueCoachDocument } from "./models/league/coach.model";
+import LeagueDivisionModel, {
+  LeagueDivisionDocument,
+} from "./models/league/division.model";
+import LeagueTournamentModel, {
+  LeagueTournamentDocument,
+} from "./models/league/tournament.model";
 import {
   getCurrentPickingTeam,
   skipCurrentPick,
 } from "./services/league-services/draft-service";
-import { LeagueDivisionDocument } from "./models/league/division.model";
-import { LeagueCoachDocument } from "./models/league/coach.model";
-import League, {
-  LeagueTournamentDocument,
-} from "./models/league/tournament.model";
-import FileUploadModel from "./models/file-upload.model";
 import { s3Service } from "./services/s3.service";
-import { logger } from "./app";
-import { resolveDiscordMention, sendDiscordMessage } from "./discord";
 
 const mongoConnectionString = `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`;
 
@@ -25,40 +27,32 @@ const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
   const { tournamentId, divisionId } = job.attrs.data;
-  logger.info(`[skip-draft-pick] Job triggered — tournamentId=${tournamentId} divisionId=${divisionId} jobId=${job.attrs._id}`);
+  logger.info(
+    `[skip-draft-pick] Job triggered — tournamentId=${tournamentId} divisionId=${divisionId} jobId=${job.attrs._id}`,
+  );
 
-  const league = await League.findById(tournamentId).populate([
-    {
-      path: "divisions",
-      populate: {
-        path: "teams",
-        populate: {
-          path: "coach",
-        },
-      },
-    },
-    {
-      path: "tierList",
-    },
-  ]);
-  if (!league) {
+  const tournament = await LeagueTournamentModel.findById(tournamentId);
+  if (!tournament) {
     logger.error(`[skip-draft-pick] League not found: ${tournamentId}`);
     return;
   }
-  logger.info(`[skip-draft-pick] League found: ${league.tournamentKey}`);
+  logger.info(`[skip-draft-pick] League found: ${tournament.tournamentKey}`);
 
-  const division = league.divisions.find((d) =>
-    d._id.equals(divisionId),
-  ) as LeagueDivisionDocument;
+  const division = await LeagueDivisionModel.findById(divisionId).populate([
+    {
+      path: "teams",
+      populate: {
+        path: "coach",
+      },
+    },
+  ]);
+
   if (!division) {
     logger.error(
       `[skip-draft-pick] Division not found: ${divisionId} in league ${tournamentId}`,
     );
     return;
   }
-  logger.info(
-    `[skip-draft-pick] Division found: key=${division.divisionKey} status=${division.status} draftCounter=${division.draftCounter} skipTime=${division.skipTime?.toISOString() ?? "none"} teams=${division.teams.length}`,
-  );
 
   const currentTeam = getCurrentPickingTeam(division);
   logger.info(
@@ -69,7 +63,7 @@ agenda.define("skip-draft-pick", async (job: Job) => {
 
   logger.info(`[skip-draft-pick] Calling skipCurrentPick...`);
   try {
-    await skipCurrentPick(league, division);
+    await skipCurrentPick(tournament, division);
     logger.info(`[skip-draft-pick] skipCurrentPick completed successfully`);
   } catch (err) {
     logger.error(`[skip-draft-pick] skipCurrentPick threw an error:`, err);
@@ -82,7 +76,7 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     divisionId: string;
     skipTime?: string | Date;
   };
-  const league = await League.findById(tournamentId).populate([
+  const league = await LeagueTournamentModel.findById(tournamentId).populate([
     {
       path: "divisions",
       populate: {
