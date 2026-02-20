@@ -1,17 +1,11 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
-import { LeagueDivisionDocument } from "./division.model";
-import { LeagueTeamDocument } from "./team.model";
-import { LeagueTierListDocument } from "./tier-list.model";
-import { LeagueCoachDocument } from "./coach.model";
 import {
-  LEAGUE_COACH_COLLECTION,
   LEAGUE_COLLECTION,
-  LEAGUE_DIVISION_COLLECTION,
-  LEAGUE_TEAM_COLLECTION,
   LEAGUE_TIER_LIST_COLLECTION,
   LEAGUE_TOURNAMENT_COLLECTION,
 } from ".";
 import { LeagueDocument } from "./league.model";
+import { LeagueTierListDocument } from "./tier-list.model";
 
 export type LeagueRule = {
   title: string;

@@ -1280,9 +1280,10 @@ export const LeagueRoute = createRoute()((r) => {
                 return {
                   id: draftItem.pokemon.id,
                   name: pokemonName,
-                  tier,
+                  tier: tier?.cost ?? "Banned",
                   capt: {
-                    tera: draftItem.addons?.includes("Tera Captain"),
+                    tera:
+                      draftItem.addons?.includes("Tera Captain") || undefined,
                   },
                 };
               }),

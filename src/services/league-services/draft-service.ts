@@ -348,6 +348,7 @@ export async function getTeamsWithCoachStatus(
             name: getName(getPokemonIdFromDraft(pick)),
             tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
             cost,
+            addons: pick.addons,
           };
         }),
       );
