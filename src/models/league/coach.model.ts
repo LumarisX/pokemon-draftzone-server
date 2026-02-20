@@ -1,4 +1,10 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, {
+  Document,
+  Model,
+  QueryWithHelpers,
+  Schema,
+  Types,
+} from "mongoose";
 import z from "zod";
 import { LEAGUE_COACH_COLLECTION } from ".";
 
@@ -78,7 +84,29 @@ export type LeagueCoach = {
 export type LeagueCoachDocument = Document &
   LeagueCoach & { _id: Types.ObjectId };
 
-const LeagueCoachSchema: Schema<LeagueCoachDocument> = new Schema(
+type CoachQueryHelpers = {
+  approved(
+    this: QueryWithHelpers<any, LeagueCoachDocument, CoachQueryHelpers>,
+  ): QueryWithHelpers<any, LeagueCoachDocument, CoachQueryHelpers>;
+};
+
+type LeagueCoachModel = Model<LeagueCoachDocument, CoachQueryHelpers> & {
+  findByAuth0Id(auth0Id: string): Promise<LeagueCoachDocument[]>;
+  findIdsByAuth0Id(auth0Id: string): Promise<Types.ObjectId[]>;
+  findByIdMapForAuth0Id(
+    auth0Id: string,
+  ): Promise<Map<string, LeagueCoachDocument>>;
+  findByIdsMap(
+    ids: (Types.ObjectId | string)[],
+  ): Promise<Map<string, LeagueCoachDocument>>;
+};
+
+const LeagueCoachSchema: Schema<
+  LeagueCoachDocument,
+  LeagueCoachModel,
+  {},
+  CoachQueryHelpers
+> = new Schema(
   {
     auth0Id: { type: String, required: true },
     timezone: { type: String, required: true },
@@ -106,7 +134,34 @@ const LeagueCoachSchema: Schema<LeagueCoachDocument> = new Schema(
   { timestamps: true },
 );
 
-export default mongoose.model<LeagueCoachDocument>(
+LeagueCoachSchema.query.approved = function () {
+  return this.where({ status: "approved" });
+};
+
+LeagueCoachSchema.statics.findIdsByAuth0Id = async function (auth0Id: string) {
+  const coaches = await this.find({ auth0Id }).select("_id");
+  return coaches.map((coach) => coach._id as Types.ObjectId);
+};
+
+LeagueCoachSchema.statics.findByAuth0Id = async function (auth0Id: string) {
+  return this.find({ auth0Id });
+};
+
+LeagueCoachSchema.statics.findByIdMapForAuth0Id = async function (
+  auth0Id: string,
+) {
+  const coaches = await this.find({ auth0Id });
+  return new Map(coaches.map((coach) => [coach._id.toString(), coach]));
+};
+
+LeagueCoachSchema.statics.findByIdsMap = async function (
+  ids: (Types.ObjectId | string)[],
+) {
+  const coaches = await this.find({ _id: { $in: ids } });
+  return new Map(coaches.map((coach) => [coach._id.toString(), coach]));
+};
+
+export default mongoose.model<LeagueCoachDocument, LeagueCoachModel>(
   LEAGUE_COACH_COLLECTION,
   LeagueCoachSchema,
 );

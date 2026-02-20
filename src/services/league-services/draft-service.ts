@@ -1123,7 +1123,7 @@ async function completeDraft(
         content: `🎉 The draft for ${division.name} has been completed!`,
         embed: {
           title: `${division.name} Draft Complete`,
-          url: `https://pokemondraftzone.com/leagues/${tournament.tournamentKey}/${division.divisionKey}/draft`,
+          url: `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/divisions/${division.divisionKey}/draft`,
           description:
             "All teams have finished drafting. Good luck in your matches!",
           color: 0x00ff00,

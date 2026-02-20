@@ -1,4 +1,10 @@
-import mongoose, { Document, Schema, Types } from "mongoose";
+import mongoose, {
+  Document,
+  Model,
+  QueryWithHelpers,
+  Schema,
+  Types,
+} from "mongoose";
 import {
   LEAGUE_COLLECTION,
   LEAGUE_TIER_LIST_COLLECTION,
@@ -35,6 +41,23 @@ export type LeagueTournament = {
 export type LeagueTournamentDocument = Document &
   LeagueTournament & { _id: Types.ObjectId };
 
+type TournamentQueryHelpers = {
+  withTierList(
+    this: QueryWithHelpers<
+      any,
+      LeagueTournamentDocument,
+      TournamentQueryHelpers
+    >,
+  ): QueryWithHelpers<any, LeagueTournamentDocument, TournamentQueryHelpers>;
+};
+
+type LeagueTournamentModel = Model<
+  LeagueTournamentDocument,
+  TournamentQueryHelpers
+> & {
+  findByKeyOrThrow(key: string): Promise<LeagueTournamentDocument>;
+};
+
 const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   {
     title: { type: String, required: true },
@@ -43,7 +66,12 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   { _id: false },
 );
 
-const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
+const LeagueTournamentSchema: Schema<
+  LeagueTournamentDocument,
+  LeagueTournamentModel,
+  {},
+  TournamentQueryHelpers
+> = new Schema(
   {
     name: { type: String, required: true },
     tournamentKey: { type: String, required: true, unique: true, index: true },
@@ -73,7 +101,19 @@ const LeagueTournamentSchema: Schema<LeagueTournamentDocument> = new Schema(
   { timestamps: true },
 );
 
-export default mongoose.model<LeagueTournamentDocument>(
+LeagueTournamentSchema.query.withTierList = function () {
+  return this.populate("tierList");
+};
+
+LeagueTournamentSchema.statics.findByKeyOrThrow = async function (key: string) {
+  const tournament = await this.findOne({ tournamentKey: key });
+  if (!tournament) {
+    throw new Error(`LeagueTournament not found for key: ${key}`);
+  }
+  return tournament;
+};
+
+export default mongoose.model<LeagueTournamentDocument, LeagueTournamentModel>(
   LEAGUE_TOURNAMENT_COLLECTION,
   LeagueTournamentSchema,
 );
