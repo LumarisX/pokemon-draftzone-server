@@ -33,7 +33,12 @@ agenda.define("skip-draft-pick", async (job: Job) => {
   ).populate({
     path: "tierList",
   });
-  if (!tournament) return;
+  if (!tournament) {
+    logger.error(
+      `Tournament not found for skip-draft-pick job: ${tournamentId}`,
+    );
+    return;
+  }
   const division = await LeagueDivisionModel.findById(divisionId).populate([
     {
       path: "teams",
@@ -42,7 +47,13 @@ agenda.define("skip-draft-pick", async (job: Job) => {
       },
     },
   ]);
-  if (!division) return;
+  if (!division) {
+    logger.error(`Division not found for skip-draft-pick job: ${divisionId}`);
+    return;
+  }
+  logger.info(
+    `Executing skip-draft-pick for tournament ${tournament.name}, division ${division.name}`,
+  );
   await skipCurrentPick(tournament, division);
 });
 
