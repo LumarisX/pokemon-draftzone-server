@@ -27,17 +27,12 @@ const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
   const { tournamentId, divisionId } = job.attrs.data;
-  logger.info(
-    `[skip-draft-pick] Job triggered — tournamentId=${tournamentId} divisionId=${divisionId} jobId=${job.attrs._id}`,
-  );
-
-  const tournament = await LeagueTournamentModel.findById(tournamentId);
-  if (!tournament) {
-    logger.error(`[skip-draft-pick] League not found: ${tournamentId}`);
-    return;
-  }
-  logger.info(`[skip-draft-pick] League found: ${tournament.tournamentKey}`);
-
+  const tournament = await LeagueTournamentModel.findById(
+    tournamentId,
+  ).populate({
+    path: "tierList",
+  });
+  if (!tournament) return;
   const division = await LeagueDivisionModel.findById(divisionId).populate([
     {
       path: "teams",
@@ -46,28 +41,8 @@ agenda.define("skip-draft-pick", async (job: Job) => {
       },
     },
   ]);
-
-  if (!division) {
-    logger.error(
-      `[skip-draft-pick] Division not found: ${divisionId} in league ${tournamentId}`,
-    );
-    return;
-  }
-
-  const currentTeam = getCurrentPickingTeam(division);
-  logger.info(
-    `[skip-draft-pick] Current picking team: ${
-      currentTeam ? (currentTeam as any)._id?.toString() : "null (no team)"
-    }`,
-  );
-
-  logger.info(`[skip-draft-pick] Calling skipCurrentPick...`);
-  try {
-    await skipCurrentPick(tournament, division);
-    logger.info(`[skip-draft-pick] skipCurrentPick completed successfully`);
-  } catch (err) {
-    logger.error(`[skip-draft-pick] skipCurrentPick threw an error:`, err);
-  }
+  if (!division) return;
+  await skipCurrentPick(tournament, division);
 });
 
 agenda.define("skip-draft-reminder", async (job: Job) => {
@@ -76,27 +51,19 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     divisionId: string;
     skipTime?: string | Date;
   };
-  const league = await LeagueTournamentModel.findById(tournamentId).populate([
-    {
-      path: "divisions",
-      populate: {
-        path: "teams",
-        populate: {
-          path: "coach",
-        },
-      },
-    },
-    {
-      path: "tierList",
-    },
-  ]);
+  const league = await LeagueTournamentModel.findById(tournamentId).populate({
+    path: "tierList",
+  });
   if (!league) {
     console.error(`League not found: ${tournamentId}`);
     return;
   }
-  const division = league.divisions.find((d) =>
-    d._id.equals(divisionId),
-  ) as LeagueDivisionDocument;
+  const division = await LeagueDivisionModel.findById(divisionId).populate({
+    path: "teams",
+    populate: {
+      path: "coach",
+    },
+  });
   if (!division) {
     console.error(
       `Division not found: ${divisionId} in league ${tournamentId}`,
