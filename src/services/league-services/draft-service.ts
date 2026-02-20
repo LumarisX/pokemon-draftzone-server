@@ -795,6 +795,7 @@ export async function draftPokemon(
             id: pick.pokemonId,
             name: pokemonSpecie.name,
             tier: tier?.name,
+            cost: tier?.cost,
           },
           team: {
             id: currentTeam.id,
