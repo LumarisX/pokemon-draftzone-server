@@ -1216,11 +1216,11 @@ export async function skipCurrentPick(
   tournament: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
-  if (division.status !== "IN_PROGRESS") return;
+  if (division.status !== "IN_PROGRESS") return false;
 
   const team = getCurrentPickingTeam(division);
 
-  if (!team) return;
+  if (!team) return false;
 
   const fullTeam = (await LeagueTeamModel.findById(team._id).populate(
     "coach",
@@ -1274,6 +1274,8 @@ export async function skipCurrentPick(
   }
 
   await increaseCounter(tournament, division);
+
+  return true;
 }
 
 export function cancelSkipTime(division: LeagueDivisionDocument) {

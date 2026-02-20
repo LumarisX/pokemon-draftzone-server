@@ -24,10 +24,20 @@ export const agenda = new Agenda({
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
+const SKIP_RETRY_DELAY_MS = 60 * 1000;
+const SKIP_MAX_RETRIES = 10;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
   if (isDev) return;
-  const { tournamentId, divisionId } = job.attrs.data;
+  const {
+    tournamentId,
+    divisionId,
+    retryCount = 0,
+  } = job.attrs.data as {
+    tournamentId: string;
+    divisionId: string;
+    retryCount?: number;
+  };
   const tournament = await LeagueTournamentModel.findById(
     tournamentId,
   ).populate({
@@ -54,7 +64,42 @@ agenda.define("skip-draft-pick", async (job: Job) => {
   logger.info(
     `Executing skip-draft-pick for tournament ${tournament.name}, division ${division.name}`,
   );
-  await skipCurrentPick(tournament, division);
+  const skipped = await skipCurrentPick(tournament, division);
+  if (skipped) {
+    return;
+  }
+
+  const latestDivision = await LeagueDivisionModel.findById(divisionId);
+  if (
+    !latestDivision ||
+    latestDivision.status !== "IN_PROGRESS" ||
+    !latestDivision.skipTime
+  ) {
+    return;
+  }
+
+  const retryTime = new Date(Date.now() + SKIP_RETRY_DELAY_MS);
+  if (latestDivision.skipTime.getTime() > retryTime.getTime()) {
+    return;
+  }
+
+  if (retryCount >= SKIP_MAX_RETRIES) {
+    logger.warn(
+      `skip-draft-pick reached max retries for tournament ${tournament.name}, division ${division.name}`,
+    );
+    return;
+  }
+
+  logger.warn(
+    `skip-draft-pick no-op for tournament ${tournament.name}, division ${division.name}; retrying in 1 minute (${retryCount + 1}/${SKIP_MAX_RETRIES})`,
+  );
+  job.schedule(retryTime);
+  job.attrs.data = {
+    tournamentId,
+    divisionId,
+    retryCount: retryCount + 1,
+  };
+  await job.save();
 });
 
 agenda.define("skip-draft-reminder", async (job: Job) => {
