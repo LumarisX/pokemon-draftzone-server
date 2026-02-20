@@ -50,7 +50,9 @@ type LeagueTeamModel = Model<LeagueTeamDocument, {}, TeamMethods> & {
   findByCoachIds(
     coachIds: (Types.ObjectId | string)[],
   ): Query<LeagueTeamDocument[], LeagueTeamDocument>;
-  findIdsByCoachIds(coachIds: (Types.ObjectId | string)[]): Promise<Types.ObjectId[]>;
+  findIdsByCoachIds(
+    coachIds: (Types.ObjectId | string)[],
+  ): Promise<Types.ObjectId[]>;
   findByIdWithCoach(
     id: Types.ObjectId | string,
   ): Promise<(LeagueTeamDocument & { coach: LeagueCoachDocument }) | null>;
@@ -84,17 +86,20 @@ const TeamPicksSchema: Schema<TeamPick> = new Schema(
   { _id: false },
 );
 
-const LeagueTeamSchema: Schema<LeagueTeamDocument, LeagueTeamModel, TeamMethods> =
-  new Schema({
-    coach: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_COACH_COLLECTION,
-      required: true,
-    },
-    picks: [[TeamPicksSchema]],
-    draft: [TeamDraftSchema],
-    skipCount: { type: Number, default: 0 },
-  });
+const LeagueTeamSchema: Schema<
+  LeagueTeamDocument,
+  LeagueTeamModel,
+  TeamMethods
+> = new Schema({
+  coach: {
+    type: Schema.Types.ObjectId,
+    ref: LEAGUE_COACH_COLLECTION,
+    required: true,
+  },
+  picks: [[TeamPicksSchema]],
+  draft: [TeamDraftSchema],
+  skipCount: { type: Number, default: 0 },
+});
 
 LeagueTeamSchema.methods.incrementSkipCount = async function (
   session?: ClientSession,

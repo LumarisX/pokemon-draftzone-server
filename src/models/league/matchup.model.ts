@@ -179,7 +179,9 @@ leagueMatchupSchema.method(
   },
 );
 
-leagueMatchupSchema.virtual("winner").get(function (this: LeagueMatchupDocument) {
+leagueMatchupSchema.virtual("winner").get(function (
+  this: LeagueMatchupDocument,
+) {
   if (this.scoreOverride) {
     return this.scoreOverride.winner;
   }

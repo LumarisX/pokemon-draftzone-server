@@ -232,11 +232,10 @@ LeagueDivisionSchema.statics.findPublicByTeamIds = function (
   return this.find().withTeamIds(teamIds).isPublic().sort({ createdAt: -1 });
 };
 
-LeagueDivisionSchema.statics.findPublicByTeamIdsWithTournament = async function (
-  teamIds: (Types.ObjectId | string)[],
-) {
-  return this.findPublicByTeamIds(teamIds).withTournamentLeagueTierList();
-};
+LeagueDivisionSchema.statics.findPublicByTeamIdsWithTournament =
+  async function (teamIds: (Types.ObjectId | string)[]) {
+    return this.findPublicByTeamIds(teamIds).withTournamentLeagueTierList();
+  };
 
 export default model<LeagueDivisionDocument, LeagueDivisionModel>(
   LEAGUE_DIVISION_COLLECTION,
