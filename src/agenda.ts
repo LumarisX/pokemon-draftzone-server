@@ -26,6 +26,7 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 
 agenda.define("skip-draft-pick", async (job: Job) => {
+  if (isDev) return;
   const { tournamentId, divisionId } = job.attrs.data;
   const tournament = await LeagueTournamentModel.findById(
     tournamentId,
@@ -46,6 +47,7 @@ agenda.define("skip-draft-pick", async (job: Job) => {
 });
 
 agenda.define("skip-draft-reminder", async (job: Job) => {
+  if (isDev) return;
   const { tournamentId, divisionId, skipTime } = job.attrs.data as {
     tournamentId: string;
     divisionId: string;
@@ -95,6 +97,7 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
 });
 
 agenda.define("cleanup-file-uploads", async (job: Job) => {
+  if (isDev) return;
   try {
     const orphanedUploads = await FileUploadModel.find({
       status: "pending",
@@ -128,6 +131,8 @@ agenda.define("cleanup-file-uploads", async (job: Job) => {
     logger.error("File upload cleanup error:", error);
   }
 });
+
+const isDev = config.NODE_ENV === "development";
 
 export async function scheduleSkipPick(
   league: LeagueTournamentDocument,
@@ -205,6 +210,10 @@ process.on("SIGINT", graceful);
 
 // Schedule recurring cleanup job (runs daily at 3 AM)
 export async function startRecurringJobs() {
+  if (isDev) {
+    logger.info("Skipping recurring jobs in development mode");
+    return;
+  }
   await agenda.start();
   await agenda.every("0 3 * * *", "cleanup-file-uploads");
   logger.info("Scheduled recurring file upload cleanup job");
