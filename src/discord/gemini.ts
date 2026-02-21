@@ -85,6 +85,45 @@ const nextErrorFallback = () => {
   return fallback;
 };
 
+async function replyWithEmotionEmbed(message: Message, rawReply: string) {
+  let emotion = "Normal";
+  let replyString = rawReply.trim();
+
+  const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
+  if (emotionMatch) {
+    const potentialEmotion = emotionMatch[1].trim();
+    const normalizedEmotion = normalizeEmotionKey(potentialEmotion);
+    const parsedEmotion = EMOTION_MAP[normalizedEmotion];
+
+    if (parsedEmotion) {
+      emotion = parsedEmotion;
+      replyString = emotionMatch[2].trim();
+    }
+  }
+
+  if (!replyString?.trim()) {
+    replyString = "I am unsure how to respond.";
+  }
+
+  const emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
+    FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
+  }/${emotion}.png`;
+
+  const safeReply = replyString
+    .replace(/@everyone/g, "@ everyone")
+    .replace(/@here/g, "@ here");
+
+  const { EmbedBuilder } = await import("discord.js");
+  const responseEmbed = new EmbedBuilder()
+    .setThumbnail(emotionUrl)
+    .setDescription(safeReply.slice(0, 4096));
+
+  await message.reply({
+    allowedMentions: { repliedUser: false },
+    embeds: [responseEmbed],
+  });
+}
+
 const is429Error = (message: string) => {
   const normalized = message.toLowerCase();
   return (
@@ -224,46 +263,8 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
 
     logger.info(`DeoxysGemini Response | ${rawReply}`);
 
-    let emotion = "Normal"; // Default emotion
-    let replyString = rawReply.trim();
-
-    const emotionMatch = rawReply.match(/^([\w -]+):\s*(.*)$/s);
-
-    if (emotionMatch) {
-      const potentialEmotion = emotionMatch[1].trim();
-      const normalizedEmotion = normalizeEmotionKey(potentialEmotion);
-      const parsedEmotion = EMOTION_MAP[normalizedEmotion];
-
-      if (parsedEmotion) {
-        emotion = parsedEmotion;
-        replyString = emotionMatch[2].trim();
-      }
-    }
-
-    if (!replyString?.trim()) {
-      replyString = "I am unsure how to respond.";
-    }
-
-    const emotionUrl = `https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/0386${
-      FORMES[forme] > 0 ? "/000" + FORMES[forme] : ""
-    }/${emotion}.png`;
-
-    const safeReply = replyString
-      .replace(/@everyone/g, "@ everyone")
-      .replace(/@here/g, "@ here");
-
-    const { EmbedBuilder } = await import("discord.js");
-    const responseEmbed = new EmbedBuilder()
-      .setThumbnail(emotionUrl)
-      .setDescription(safeReply.slice(0, 4096));
-
-    const replyPayload = {
-      allowedMentions: { repliedUser: false },
-      embeds: [responseEmbed],
-    } as const;
-
     pipelineStep = "sending-reply";
-    await message.reply(replyPayload);
+    await replyWithEmotionEmbed(message, rawReply);
   } catch (error) {
     const errorMessage = formatError(error);
     const isRate429 = is429Error(errorMessage);
@@ -275,10 +276,10 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
       );
     }
     try {
-      await message.reply({
-        content: isRate429 ? rechargeFallback : nextErrorFallback(),
-        allowedMentions: { repliedUser: false },
-      });
+      await replyWithEmotionEmbed(
+        message,
+        isRate429 ? rechargeFallback : nextErrorFallback(),
+      );
     } catch (replyError) {
       logger.error(
         `Failed to send error reply to user: ${formatError(replyError)}`,
