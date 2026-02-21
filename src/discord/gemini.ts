@@ -206,7 +206,8 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     logger.error("Error in geminiRespond:", error);
     try {
       await message.reply({
-        content: "Sorry, I encountered an error trying to process that.",
+        content:
+          "Sigh: My cosmic processors just misfired. Ask again in a moment, and I’ll make this look easy.",
         allowedMentions: { repliedUser: false },
       });
     } catch (replyError) {
