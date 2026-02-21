@@ -85,6 +85,18 @@ const nextErrorFallback = () => {
   return fallback;
 };
 
+const is429Error = (message: string) => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('code":429') ||
+    normalized.includes("code: 429") ||
+    normalized.includes(" 429")
+  );
+};
+
+const rechargeFallback =
+  "Sigh: My energy has been exhausted and I need to recharge. Leave me to rest.";
+
 export async function initializeGemini(logger?: winston.Logger) {
   if (!config.GEMINI_API_KEY || genAI) {
     return;
@@ -253,12 +265,18 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     pipelineStep = "sending-reply";
     await message.reply(replyPayload);
   } catch (error) {
-    logger.error(
-      `Error in geminiRespond at ${pipelineStep}: ${formatError(error)}`,
-    );
+    const errorMessage = formatError(error);
+    const isRate429 = is429Error(errorMessage);
+    if (isRate429) {
+      logger.warn(`Gemini 429 at ${pipelineStep}: ${errorMessage}`);
+    } else {
+      logger.error(
+        `Error in geminiRespond at ${pipelineStep}: ${errorMessage}`,
+      );
+    }
     try {
       await message.reply({
-        content: nextErrorFallback(),
+        content: isRate429 ? rechargeFallback : nextErrorFallback(),
         allowedMentions: { repliedUser: false },
       });
     } catch (replyError) {
