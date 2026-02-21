@@ -259,28 +259,34 @@ export async function buildPokemonDraftContext(
   }
 
   for (const pokemon of species) {
-    const learnset = await pokemon.learnset();
-    const coverage = await pokemon.coverage();
+    try {
+      const learnset = await pokemon.learnset();
+      const coverage = await pokemon.coverage();
 
-    lines.push(
-      `- ${pokemon.name} [${pokemon.id}] | Types: ${pokemon.types.join("/")} | Tier: ${pokemon.tier} | Doubles: ${pokemon.doublesTier}`,
-    );
-    lines.push(
-      `  Stats: HP ${pokemon.baseStats.hp}, Atk ${pokemon.baseStats.atk}, Def ${pokemon.baseStats.def}, SpA ${pokemon.baseStats.spa}, SpD ${pokemon.baseStats.spd}, Spe ${pokemon.baseStats.spe} | BST ${pokemon.bst} | CST ${pokemon.cst}`,
-    );
-    lines.push(
-      `  Abilities: ${pokemon.getAbilities().filter(Boolean).join(", ")}`,
-    );
-    lines.push(`  Weak: ${pokemon.getWeak().join(", ") || "None"}`);
-    lines.push(`  Resist: ${pokemon.getResists().join(", ") || "None"}`);
-    lines.push(`  Immune: ${pokemon.getImmune().join(", ") || "None"}`);
-    lines.push(`  Learnset Size: ${learnset.length}`);
-    lines.push(
-      `  Top Physical Coverage: ${formatCoverage(coverage.physical as { name: string; type: string; cPower: number }[])}`,
-    );
-    lines.push(
-      `  Top Special Coverage: ${formatCoverage(coverage.special as { name: string; type: string; cPower: number }[])}`,
-    );
+      lines.push(
+        `- ${pokemon.name} [${pokemon.id}] | Types: ${pokemon.types.join("/")} | Tier: ${pokemon.tier} | Doubles: ${pokemon.doublesTier}`,
+      );
+      lines.push(
+        `  Stats: HP ${pokemon.baseStats.hp}, Atk ${pokemon.baseStats.atk}, Def ${pokemon.baseStats.def}, SpA ${pokemon.baseStats.spa}, SpD ${pokemon.baseStats.spd}, Spe ${pokemon.baseStats.spe} | BST ${pokemon.bst} | CST ${pokemon.cst}`,
+      );
+      lines.push(
+        `  Abilities: ${pokemon.getAbilities().filter(Boolean).join(", ")}`,
+      );
+      lines.push(`  Weak: ${pokemon.getWeak().join(", ") || "None"}`);
+      lines.push(`  Resist: ${pokemon.getResists().join(", ") || "None"}`);
+      lines.push(`  Immune: ${pokemon.getImmune().join(", ") || "None"}`);
+      lines.push(`  Learnset Size: ${learnset.length}`);
+      lines.push(
+        `  Top Physical Coverage: ${formatCoverage(coverage.physical as { name: string; type: string; cPower: number }[])}`,
+      );
+      lines.push(
+        `  Top Special Coverage: ${formatCoverage(coverage.special as { name: string; type: string; cPower: number }[])}`,
+      );
+    } catch {
+      lines.push(
+        `- ${pokemon.name} [${pokemon.id}] | Context unavailable due to a temporary analysis issue.`,
+      );
+    }
   }
 
   const context = lines.join("\n");

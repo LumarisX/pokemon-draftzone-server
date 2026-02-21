@@ -10,6 +10,12 @@ import {
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_MAX_CONTEXT_CHARS = 6000;
+const ERROR_FALLBACKS = [
+  "Sigh: My cosmic processors just tripped over a meteor. Ask again in a moment.",
+  "Worried: The signal from deep space got scrambled. Give me one more try.",
+  "Determined: Minor systems hiccup. Re-issuing the command matrix now—ask again.",
+  "Stunned: Even I hit turbulence sometimes. Ping me again and I’ll recover fast.",
+];
 
 const EMOTION_MAP: Record<string, string> = {
   angry: "Angry",
@@ -42,6 +48,7 @@ const forme: Forme = "Attack";
 
 let genAI: GoogleGenAI | null = null;
 let geminiInitError: unknown | null = null;
+let errorFallbackIndex = 0;
 const dynamicImport = new Function("specifier", "return import(specifier)") as (
   specifier: string,
 ) => Promise<{
@@ -49,6 +56,34 @@ const dynamicImport = new Function("specifier", "return import(specifier)") as (
 }>;
 const normalizeEmotionKey = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const formatError = (error: unknown): string => {
+  if (error instanceof Error) {
+    const stack = error.stack ? `\n${error.stack}` : "";
+    return `${error.name}: ${error.message}${stack}`;
+  }
+
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
+  return String(error);
+};
+
+const nextErrorFallback = () => {
+  const fallback = ERROR_FALLBACKS[errorFallbackIndex % ERROR_FALLBACKS.length];
+  errorFallbackIndex += 1;
+  return fallback;
+};
 
 export async function initializeGemini(logger?: winston.Logger) {
   if (!config.GEMINI_API_KEY || genAI) {
@@ -61,7 +96,7 @@ export async function initializeGemini(logger?: winston.Logger) {
     geminiInitError = null;
   } catch (error) {
     geminiInitError = error;
-    logger?.error("Failed to initialize Gemini AI:", error);
+    logger?.error(`Failed to initialize Gemini AI: ${formatError(error)}`);
   }
 }
 
@@ -74,8 +109,7 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
   if (!genAI) {
     if (geminiInitError) {
       logger.error(
-        "Gemini AI not initialized due to prior error:",
-        geminiInitError,
+        `Gemini AI not initialized due to prior error: ${formatError(geminiInitError)}`,
       );
     } else {
       logger.error("Gemini AI not initialized. Missing GEMINI_API_KEY.");
@@ -83,7 +117,9 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     return;
   }
 
+  let pipelineStep = "initializing";
   try {
+    pipelineStep = "typing-indicator";
     if (message.channel?.isTextBased() && "sendTyping" in message.channel) {
       await message.channel.sendTyping();
     }
@@ -112,6 +148,7 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
 
     const conversationHistory: string[] = [];
     let referencedMessage: Message | null = message;
+    pipelineStep = "building-conversation-history";
     for (let i = 0; i < 10 && referencedMessage; i += 1) {
       conversationHistory.unshift(formatMessage(referencedMessage));
 
@@ -121,7 +158,9 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
             referencedMessage.reference.messageId,
           );
         } catch (fetchError) {
-          logger.warn("Could not fetch referenced message:", fetchError);
+          logger.warn(
+            `Could not fetch referenced message: ${formatError(fetchError)}`,
+          );
           referencedMessage = null;
         }
       } else {
@@ -144,11 +183,21 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
     const trimmedHistory = trimToMaxChars(conversationHistory);
     const conversationText = trimmedHistory.join("\n");
     const selectedRulesetId = resolveRulesetIdFromText(conversationText);
-    const pokemonContext = await buildPokemonDraftContext(conversationText, {
-      rulesetId: selectedRulesetId,
-    });
+    let pokemonContext =
+      "Pokemon Draft Knowledge Context:\nUnavailable due to a context builder issue.";
+    pipelineStep = "building-pokemon-context";
+    try {
+      pokemonContext = await buildPokemonDraftContext(conversationText, {
+        rulesetId: selectedRulesetId,
+      });
+    } catch (contextError) {
+      logger.warn(
+        `Failed to build pokemon context for ruleset ${selectedRulesetId}: ${formatError(contextError)}`,
+      );
+    }
     const fullPrompt = `${basePrompt}\n\n${pokemonContext}\n\nConversation:\n${conversationText}`;
 
+    pipelineStep = "calling-gemini";
     const response = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
@@ -201,17 +250,21 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
       embeds: [responseEmbed],
     } as const;
 
+    pipelineStep = "sending-reply";
     await message.reply(replyPayload);
   } catch (error) {
-    logger.error("Error in geminiRespond:", error);
+    logger.error(
+      `Error in geminiRespond at ${pipelineStep}: ${formatError(error)}`,
+    );
     try {
       await message.reply({
-        content:
-          "Sigh: My cosmic processors just misfired. Ask again in a moment, and I’ll make this look easy.",
+        content: nextErrorFallback(),
         allowedMentions: { repliedUser: false },
       });
     } catch (replyError) {
-      logger.error("Failed to send error reply to user:", replyError);
+      logger.error(
+        `Failed to send error reply to user: ${formatError(replyError)}`,
+      );
     }
   }
 }
