@@ -54,6 +54,14 @@ export const logger = winston.createLogger({
       maxSize: "20m",
       maxFiles: "14d",
     }),
+    new winston.transports.DailyRotateFile({
+      filename: path.join(logDir, "app-error-%DATE%.log"),
+      datePattern: "YYYY-MM-DD",
+      zippedArchive: true,
+      maxSize: "20m",
+      maxFiles: "30d",
+      level: "error",
+    }),
   ],
 });
 
@@ -91,6 +99,18 @@ if (config.NODE_ENV !== "production") {
             }`,
         ),
       ),
+    }),
+  );
+} else {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.splat(),
+        winston.format.json(),
+      ),
+      stderrLevels: ["error"],
     }),
   );
 }
