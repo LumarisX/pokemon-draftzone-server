@@ -16,6 +16,9 @@ import LeagueTournamentModel, {
   LeagueTournament,
   LeagueTournamentDocument,
 } from "../../models/league/tournament.model";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
+import { get } from "http";
+import { getName } from "../data-services/pokedex.service";
 
 export async function getPokemonTier(
   tournamentId: Types.ObjectId | LeagueTournamentDocument,
@@ -179,6 +182,59 @@ export async function getDrafted(
       return acc;
     },
     {} as { [key: string]: { pokemonId: string }[] },
+  );
+}
+
+export async function getDraftedByTeam(
+  tournament: LeagueTournamentDocument,
+  divisionKey: string,
+): Promise<
+  {
+    pokemon: {
+      id: string;
+      name: string;
+      cost?: number;
+    }[];
+    team: {
+      name: string;
+      coachName: string;
+      id: string;
+    };
+  }[]
+> {
+  const division = await LeagueDivisionModel.findOne({
+    tournament: tournament._id,
+    divisionKey: divisionKey,
+  }).populate({
+    path: "teams",
+    populate: {
+      path: "coach",
+    },
+  });
+
+  if (!division) return [];
+
+  return await Promise.all(
+    (
+      division.teams as (LeagueTeamDocument & {
+        coach: LeagueCoachDocument;
+      })[]
+    ).map(async (team) => ({
+      team: {
+        name: team.coach.teamName,
+        coachName: team.coach.name,
+        id: team._id.toString(),
+      },
+      pokemon: await Promise.all(
+        team.draft.map(async (draft) => ({
+          id: draft.pokemon.id,
+          name: getName(draft.pokemon.id),
+          cost: await getPokemonTier(tournament, draft.pokemon.id).then(
+            (tier) => tier?.cost,
+          ),
+        })),
+      ),
+    })),
   );
 }
 

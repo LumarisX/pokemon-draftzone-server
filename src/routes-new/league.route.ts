@@ -5,7 +5,7 @@ import {
   EmbedBuilder,
   TextChannel,
 } from "discord.js";
-import { Types } from "mongoose";
+import { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
@@ -51,6 +51,7 @@ import {
   getDivisionDetails,
   getDraftOrder,
   isCoach,
+  makeTrade,
   setDivsionState,
   skipCurrentPick,
 } from "../services/league-services/draft-service";
@@ -63,6 +64,7 @@ import {
 } from "../services/league-services/standings-service";
 import {
   getDrafted,
+  getDraftedByTeam,
   getPokemonTier,
   getTierList,
   updateTierList,
@@ -1085,6 +1087,94 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
+      r.path("pokemon-list")((r) => {
+        r.get.validate({
+          query: (data) =>
+            z
+              .object({
+                division: z.string().min(1),
+              })
+              .parse(data),
+        })(async (ctx) => {
+          const { division: divisionKey } = ctx.validatedQuery;
+          const tierList = await getTierList(ctx.tournament);
+
+          const drafted = await getDraftedByTeam(ctx.tournament, divisionKey);
+
+          const undrafted = {
+            pokemon: tierList
+              .filter((tier) => tier.cost)
+              .flatMap((tier) =>
+                tier.pokemon
+                  .filter(
+                    (pokemon) =>
+                      !drafted.some((d) =>
+                        d.pokemon.some((p) => p.id === pokemon.id),
+                      ),
+                  )
+                  .map((p) => ({ id: p.id, name: p.name, cost: tier.cost })),
+              ),
+          };
+          const groups: {
+            pokemon: {
+              id: string;
+              name: string;
+            }[];
+            team?: {
+              name: string;
+              coachName: string;
+              id: string;
+            };
+          }[] = [...drafted, undrafted];
+          return { groups };
+        });
+        r.path("edit").auth()((r) => {
+          r.get.validate({
+            query: (data) =>
+              z
+                .object({
+                  division: z
+                    .union([z.string().min(1), z.array(z.string().min(1))])
+                    .optional(),
+                })
+                .parse(data),
+          })(async (ctx) => {
+            const { division } = ctx.validatedQuery;
+            const tierList = await getTierList(ctx.tournament, true);
+            const divisions = await getDrafted(ctx.tournament, division);
+            return { tierList, divisions };
+          });
+          r.post.validate({
+            body: (data) =>
+              z
+                .object({
+                  tiers: z.array(
+                    z.object({
+                      name: z.string(),
+                      cost: z.number(),
+                      pokemon: z.array(
+                        z.object({
+                          id: z.string(),
+                          name: z.string(),
+                        }),
+                      ),
+                    }),
+                  ),
+                })
+                .parse(data),
+          })(async (ctx) => {
+            const { tiers } = ctx.validatedBody;
+            await updateTierList(ctx.tournament, tiers);
+            logger.info(
+              `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
+            );
+            return {
+              success: true,
+              message: "Tier list updated successfully",
+            };
+          });
+        });
+      });
       r.path("tier-list")((r) => {
         r.get.validate({
           query: (data) =>
@@ -1782,6 +1872,96 @@ export const LeagueRoute = createRoute()((r) => {
                   });
                 await draftPokemon(ctx.tournament, ctx.division, team, pick);
                 return { message: "Draft pick set successfully." };
+              });
+            });
+            r.path("trades")((r) => {
+              r.get(async (ctx) => {
+                return await Promise.all(
+                  ctx.division.trades.map(async (trade) => {
+                    const side1Team = await LeagueTeamModel.findById(
+                      trade.side1.team,
+                    ).populate<
+                      LeagueTeamDocument & { coach: LeagueCoachDocument }
+                    >("coach");
+                    const side2Team = await LeagueTeamModel.findById(
+                      trade.side2.team,
+                    ).populate<
+                      LeagueTeamDocument & { coach: LeagueCoachDocument }
+                    >("coach");
+                    return {
+                      side1: {
+                        team: side1Team
+                          ? {
+                              name: side1Team.coach.teamName,
+                              coach: side1Team.coach.name,
+                              logo: side1Team.coach.logo,
+                            }
+                          : undefined,
+                        pokemon: trade.side1.pokemon,
+                      },
+                      side2: {
+                        team: side2Team
+                          ? {
+                              name: side2Team.coach.teamName,
+                              coach: side2Team.coach.name,
+                              logo: side2Team.coach.logo,
+                            }
+                          : undefined,
+                        pokemon: trade.side2.pokemon,
+                      },
+                      activeStage: trade.activeStage,
+                    };
+                  }),
+                );
+              });
+              r.post.validate({
+                body: (data) =>
+                  z
+                    .object({
+                      side1: z.object({
+                        team: z.string().min(1).optional(),
+                        pokemon: z.array(
+                          z.object({
+                            id: z.string(),
+                          }),
+                        ),
+                      }),
+                      side2: z.object({
+                        team: z.string().min(1).optional(),
+                        pokemon: z.array(
+                          z.object({
+                            id: z.string(),
+                          }),
+                        ),
+                      }),
+                      stage: z.number(),
+                    })
+                    .parse(data),
+              })(async (ctx) => {
+                const { side1, side2, stage } = ctx.validatedBody;
+
+                if (side1.team && !isValidObjectId(side1.team))
+                  throw new PDZError(ErrorCodes.DIVISION.INVALID_TRADE, {
+                    reason: "Invalid team ID for side1",
+                  });
+                if (side2.team && !isValidObjectId(side2.team))
+                  throw new PDZError(ErrorCodes.DIVISION.INVALID_TRADE, {
+                    reason: "Invalid team ID for side2",
+                  });
+
+                const side1Trade = {
+                  team: side1.team ? new Types.ObjectId(side1.team) : undefined,
+                  pokemon: side1.pokemon,
+                };
+                const side2Trade = {
+                  team: side2.team ? new Types.ObjectId(side2.team) : undefined,
+                  pokemon: side2.pokemon,
+                };
+
+                await makeTrade(ctx.division, side1Trade, side2Trade, stage);
+                return {
+                  message: "Trade processed successfully.",
+                };
               });
             });
           });

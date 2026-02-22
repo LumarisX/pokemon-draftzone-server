@@ -44,21 +44,30 @@ export type LeagueDivision = {
   trades: DraftTrade[];
 };
 
-type TradeSide = {
+export type TradeSide = {
   team?: Types.ObjectId | LeagueTeamDocument;
-  pokemon: string;
+  pokemon: { id: string }[];
 };
 
 export type DraftTrade = {
   side1: TradeSide;
   side2: TradeSide;
   timestamp: Date;
+  activeStage: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
 };
 
 const TradeSideSchema = new Schema<TradeSide>(
   {
     team: { type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION },
-    pokemon: { type: String, required: true },
+    pokemon: {
+      type: [
+        {
+          id: { type: String, required: true },
+        },
+      ],
+      required: true,
+    },
   },
   { _id: false },
 );
@@ -68,6 +77,12 @@ const TradeSchema: Schema<DraftTrade> = new Schema(
     side1: { type: TradeSideSchema, required: true },
     side2: { type: TradeSideSchema, required: true },
     timestamp: { type: Date, default: Date.now, required: true },
+    activeStage: { type: Number, default: -1 },
+    status: {
+      type: String,
+      enum: ["PENDING", "APPROVED", "REJECTED"],
+      default: "APPROVED",
+    },
   },
   { _id: false },
 );

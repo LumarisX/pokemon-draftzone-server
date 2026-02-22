@@ -8,6 +8,7 @@ import { LEAGUE_COACH_COLLECTION } from "../../models/league";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import LeagueDivisionModel, {
   LeagueDivisionDocument,
+  TradeSide,
 } from "../../models/league/division.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
@@ -18,6 +19,8 @@ import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName, getSpecies } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-list-service";
+import { PDZError } from "../../errors/pdz-error";
+import { ErrorCodes } from "../../errors/error-codes";
 
 type DeferredSideEffect = () => void | Promise<void>;
 const sessionSideEffects = new WeakMap<ClientSession, DeferredSideEffect[]>();
@@ -1383,4 +1386,97 @@ async function removePokemonFromPicks(
   }
 
   return teamsWithPick.length;
+}
+
+export async function makeTrade(
+  division: LeagueDivisionDocument,
+  side1: TradeSide,
+  side2: TradeSide,
+  activeStageNumber: number,
+) {
+  if (side1.team === side2.team) return;
+
+  const team1 = side1.team ? await LeagueTeamModel.findById(side1.team) : null;
+  if (side1.team && !team1)
+    throw new PDZError(
+      ErrorCodes.TEAM.NOT_FOUND,
+      `Team with ID ${side1.team} not found`,
+    );
+
+  const team2 = side2.team ? await LeagueTeamModel.findById(side2.team) : null;
+  if (side2.team && !team2)
+    throw new PDZError(
+      ErrorCodes.TEAM.NOT_FOUND,
+      `Team with ID ${side2.team} not found`,
+    );
+
+  if (team1) {
+    const draftedPokemonIds = new Set(
+      team1.draft.map((d) => getPokemonIdFromDraft(d)),
+    );
+    for (const pokemon of side1.pokemon) {
+      if (!draftedPokemonIds.has(pokemon.id)) {
+        throw new PDZError(
+          ErrorCodes.SPECIES.NOT_FOUND,
+          `Pokemon ${pokemon.id} not found in ${team1.id} draft`,
+        );
+      }
+    }
+  }
+
+  if (team2) {
+    const draftedPokemonIds = new Set(
+      team2.draft.map((d) => getPokemonIdFromDraft(d)),
+    );
+    for (const pokemon of side2.pokemon) {
+      if (!draftedPokemonIds.has(pokemon.id)) {
+        throw new PDZError(
+          ErrorCodes.SPECIES.NOT_FOUND,
+          `Pokemon ${pokemon.id} not found in ${team2.id} draft`,
+        );
+      }
+    }
+  }
+
+  if (team1) {
+    const pokemonIdsToRemove = new Set(side1.pokemon.map((p) => p.id));
+    team1.draft = team1.draft.filter(
+      (d) => !pokemonIdsToRemove.has(getPokemonIdFromDraft(d)),
+    );
+    for (const pokemon of side2.pokemon) {
+      team1.draft.push({
+        pokemon: { id: pokemon.id },
+        picker: team1.coach as LeagueTeamDocument["coach"],
+        timestamp: new Date(),
+      } as TeamDraft);
+    }
+
+    await team1.save();
+  }
+
+  if (team2) {
+    const pokemonIdsToRemove = new Set(side2.pokemon.map((p) => p.id));
+    team2.draft = team2.draft.filter(
+      (d) => !pokemonIdsToRemove.has(getPokemonIdFromDraft(d)),
+    );
+    for (const pokemon of side1.pokemon) {
+      team2.draft.push({
+        pokemon: { id: pokemon.id },
+        picker: team2.coach as LeagueTeamDocument["coach"],
+        timestamp: new Date(),
+      } as TeamDraft);
+    }
+
+    await team2.save();
+  }
+
+  division.trades.push({
+    side1,
+    side2,
+    timestamp: new Date(),
+    activeStage: activeStageNumber,
+    status: "APPROVED",
+  });
+
+  await division.save();
 }

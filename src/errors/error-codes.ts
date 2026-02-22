@@ -48,6 +48,11 @@ export const ErrorCodes = {
       status: 400,
       message: "Invalid division state",
     },
+    INVALID_TRADE: {
+      code: "LR-DIV-004",
+      status: 400,
+      message: "Invalid trade data",
+    },
   },
   TEAM: {
     NOT_FOUND: {
