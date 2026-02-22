@@ -37,7 +37,10 @@ import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
-import { LeagueTierListDocument } from "../models/league/tier-list.model";
+import {
+  LeagueTierListDocument,
+  TierListPokemonAddon,
+} from "../models/league/tier-list.model";
 import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "../models/league/tournament.model";
@@ -1097,9 +1100,28 @@ export const LeagueRoute = createRoute()((r) => {
               .parse(data),
         })(async (ctx) => {
           const { division: divisionKey } = ctx.validatedQuery;
+          await ctx.tournament.populate("tierList");
+          const rawTierList = ctx.tournament.tierList as LeagueTierListDocument;
           const tierList = await getTierList(ctx.tournament);
 
-          const drafted = await getDraftedByTeam(ctx.tournament, divisionKey);
+          const drafted = (
+            await getDraftedByTeam(ctx.tournament, divisionKey)
+          ).map((e) => ({
+            team: e.team,
+            pokemon: e.pokemon.map((p) => {
+              const pokemonTier = rawTierList.pokemon.get(p.id);
+              const tier = rawTierList.tiers.find(
+                (t) => t.name === pokemonTier?.tier,
+              );
+              return {
+                id: p.id,
+                name: p.name,
+                addons: pokemonTier?.addons,
+                cost: tier?.cost,
+                setAddons: p.addons,
+              };
+            }),
+          }));
 
           const undrafted = {
             pokemon: tierList
@@ -1112,20 +1134,28 @@ export const LeagueRoute = createRoute()((r) => {
                         d.pokemon.some((p) => p.id === pokemon.id),
                       ),
                   )
-                  .map((p) => ({ id: p.id, name: p.name, cost: tier.cost })),
+                  .map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    cost: tier.cost,
+                    addons: p.addons,
+                  })),
               ),
           };
           const groups: {
             pokemon: {
               id: string;
               name: string;
+              cost?: number;
+              addons?: TierListPokemonAddon[];
+              setAddons?: string[];
             }[];
             team?: {
               name: string;
               coachName: string;
               id: string;
             };
-          }[] = [...drafted, undrafted];
+          }[] = [undrafted, ...drafted];
           return { groups };
         });
         r.path("edit").auth()((r) => {

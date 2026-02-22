@@ -188,20 +188,7 @@ export async function getDrafted(
 export async function getDraftedByTeam(
   tournament: LeagueTournamentDocument,
   divisionKey: string,
-): Promise<
-  {
-    pokemon: {
-      id: string;
-      name: string;
-      cost?: number;
-    }[];
-    team: {
-      name: string;
-      coachName: string;
-      id: string;
-    };
-  }[]
-> {
+) {
   const division = await LeagueDivisionModel.findOne({
     tournament: tournament._id,
     divisionKey: divisionKey,
@@ -214,28 +201,22 @@ export async function getDraftedByTeam(
 
   if (!division) return [];
 
-  return await Promise.all(
-    (
-      division.teams as (LeagueTeamDocument & {
-        coach: LeagueCoachDocument;
-      })[]
-    ).map(async (team) => ({
-      team: {
-        name: team.coach.teamName,
-        coachName: team.coach.name,
-        id: team._id.toString(),
-      },
-      pokemon: await Promise.all(
-        team.draft.map(async (draft) => ({
-          id: draft.pokemon.id,
-          name: getName(draft.pokemon.id),
-          cost: await getPokemonTier(tournament, draft.pokemon.id).then(
-            (tier) => tier?.cost,
-          ),
-        })),
-      ),
+  return (
+    division.teams as (LeagueTeamDocument & {
+      coach: LeagueCoachDocument;
+    })[]
+  ).map((team) => ({
+    team: {
+      name: team.coach.teamName,
+      coachName: team.coach.name,
+      id: team._id.toString(),
+    },
+    pokemon: team.draft.map((draft) => ({
+      id: draft.pokemon.id,
+      name: getName(draft.pokemon.id),
+      addons: draft.addons,
     })),
-  );
+  }));
 }
 
 export async function updateTierList(
