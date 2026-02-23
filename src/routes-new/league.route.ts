@@ -14,8 +14,8 @@ import { getRuleset } from "../data/rulesets";
 import {
   client,
   findDiscordMemberInIndex,
-  getDiscordMemberInGuild,
   getDiscordMemberIndex,
+  getDiscordMemberInGuild,
 } from "../discord";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
@@ -1282,27 +1282,27 @@ export const LeagueRoute = createRoute()((r) => {
           const stagesWithMatchups = await Promise.all(
             stages.map(async (stage) => {
               const matchups = await LeagueMatchupModel.find({
-                stageId: stage._id,
+                stage: stage._id,
               }).populate<{
-                team1Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
-                team2Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
               }>([
                 {
-                  path: "team1Id",
+                  path: "team1",
                   populate: {
                     path: "coach",
                   },
                 },
                 {
-                  path: "team2Id",
+                  path: "team2",
                   populate: {
                     path: "coach",
                   },
                 },
               ]);
               const transformedMatchups = matchups.map((matchup) => {
-                const team1Doc = matchup.team1Id;
-                const team2Doc = matchup.team2Id;
+                const team1Doc = matchup.team1;
+                const team2Doc = matchup.team2;
                 const { team1Score, team2Score, winner } =
                   calculateTeamMatchupScoreAndWinner(matchup);
 
@@ -1410,13 +1410,13 @@ export const LeagueRoute = createRoute()((r) => {
             );
 
             const teamMatchups = await LeagueMatchupModel.find({
-              $or: [{ team1Id: ctx.team._id }, { team2Id: ctx.team._id }],
+              $or: [{ team1: ctx.team._id }, { team2: ctx.team._id }],
             }).populate<{
-              team1Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
-              team2Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
+              team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+              team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
             }>([
-              { path: "team1Id", select: "coach", populate: "coach" },
-              { path: "team2Id", select: "coach", populate: "coach" },
+              { path: "team1", select: "coach", populate: "coach" },
+              { path: "team2", select: "coach", populate: "coach" },
             ]);
 
             const pokemonStandings = await calculateDivisionPokemonStandings(
@@ -1550,29 +1550,29 @@ export const LeagueRoute = createRoute()((r) => {
           r.path("schedule")((r) => {
             r.get(async (ctx) => {
               const stages = await LeagueStageModel.find({
-                divisionIds: ctx.division._id,
+                division: ctx.division._id,
               });
 
               const stagesWithMatchups = await Promise.all(
                 stages.map(async (stage) => {
                   const matchups = await LeagueMatchupModel.find({
-                    stageId: stage._id,
+                    stage: stage._id,
                   }).populate<{
-                    team1Id: LeagueTeamDocument & {
+                    team1: LeagueTeamDocument & {
                       coach: LeagueCoachDocument;
                     };
-                    team2Id: LeagueTeamDocument & {
+                    team2: LeagueTeamDocument & {
                       coach: LeagueCoachDocument;
                     };
                   }>([
                     {
-                      path: "team1Id",
+                      path: "team1",
                       populate: {
                         path: "coach",
                       },
                     },
                     {
-                      path: "team2Id",
+                      path: "team2",
                       populate: {
                         path: "coach",
                       },
@@ -1580,12 +1580,13 @@ export const LeagueRoute = createRoute()((r) => {
                   ]);
 
                   const transformedMatchups = matchups.map((matchup) => {
-                    const team1Doc = matchup.team1Id;
-                    const team2Doc = matchup.team2Id;
+                    const team1Doc = matchup.team1;
+                    const team2Doc = matchup.team2;
                     const { team1Score, team2Score, winner } =
                       calculateTeamMatchupScoreAndWinner(matchup);
 
                     return {
+                      id: matchup._id.toString(),
                       team1: {
                         teamName: team1Doc.coach.teamName,
                         coach: team1Doc.coach.name,
@@ -1658,22 +1659,22 @@ export const LeagueRoute = createRoute()((r) => {
           r.path("standings")((r) => {
             r.get(async (ctx) => {
               const stages = await LeagueStageModel.find({
-                divisionIds: ctx.division._id,
+                division: ctx.division._id,
               });
 
               const allMatchups = await LeagueMatchupModel.find({
-                stageId: { $in: stages.map((s) => s._id) },
+                stage: { $in: stages.map((s) => s._id) },
               }).populate<{
-                team1Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
-                team2Id: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
               }>([
                 {
-                  path: "team1Id",
+                  path: "team1",
                   select: "coach",
                   populate: { path: "coach" },
                 },
                 {
-                  path: "team2Id",
+                  path: "team2",
                   select: "coach",
                   populate: { path: "coach" },
                 },

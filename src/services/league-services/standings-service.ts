@@ -107,8 +107,8 @@ export async function calculateDivisionPokemonStandings(
   >();
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1Id as any;
-    const team2Doc = matchup.team2Id as any;
+    const team1Doc = matchup.team1 as any;
+    const team2Doc = matchup.team2 as any;
     const team1Coach = team1Doc.coach?.teamName || "Unknown Coach";
     const team2Coach = team2Doc.coach?.teamName || "Unknown Coach";
     const team1Key = team1Doc._id.toString();
@@ -238,15 +238,15 @@ export async function calculateDivisionCoachStandings(
   }
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1Id as any;
-    const team2Doc = matchup.team2Id as any;
+    const team1Doc = matchup.team1 as any;
+    const team2Doc = matchup.team2 as any;
     const { team1Score, team2Score, winner } =
       calculateTeamMatchupScoreAndWinner(matchup);
 
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
 
-    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stageId));
+    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
 
     if (!coachStandingsMap.has(team1Key)) {
       coachStandingsMap.set(team1Key, {

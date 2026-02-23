@@ -21,6 +21,12 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { LeagueMatchupDocument } from "../models/league/matchup.model";
+import { LeagueTeamDocument } from "../models/league/team.model";
+import { LeagueCoach, LeagueCoachDocument } from "../models/league/coach.model";
+import { LeagueDivision } from "../models/league/division.model";
+import { LeagueTournamentDocument } from "../models/league/tournament.model";
+import { LeagueStageDocument } from "../models/league/stage.model";
 
 export type MatchupTeam = {
   teamName: string;
@@ -37,7 +43,7 @@ export class Matchup {
     public ruleset: Ruleset,
     public format: Format,
     public leagueName: string,
-    public tournamentId: string,
+    public leagueId: string,
     public stage: string,
     public matches: MatchData[],
     public notes?: string,
@@ -77,6 +83,42 @@ export class Matchup {
       data.notes,
       data.gameTime,
       data.reminder,
+    );
+  }
+
+  static fromLeagueMatchup(
+    leagueMatchupDoc: LeagueMatchupDocument & {
+      team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+      team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
+      stage: LeagueStageDocument & {
+        division: LeagueDivision & { tournament: LeagueTournamentDocument };
+      };
+    },
+  ): Matchup {
+    const ruleset = getRuleset(
+      leagueMatchupDoc.stage.division.tournament.ruleset,
+    );
+    return new Matchup(
+      {
+        teamName: leagueMatchupDoc.team1.coach.teamName,
+        coach: leagueMatchupDoc.team1.coach.name,
+        team: leagueMatchupDoc.team1.draft.map(
+          (e) => new DraftSpecie(e.pokemon.id, ruleset),
+        ),
+      },
+      {
+        teamName: leagueMatchupDoc.team2.coach.teamName,
+        coach: leagueMatchupDoc.team2.coach.name,
+        team: leagueMatchupDoc.team2.draft.map(
+          (e) => new DraftSpecie(e.pokemon.id, ruleset),
+        ),
+      },
+      ruleset,
+      getFormat(leagueMatchupDoc.stage.division.tournament.format),
+      leagueMatchupDoc.stage.division.tournament.name,
+      leagueMatchupDoc.stage.division.tournament.id.toString(),
+      leagueMatchupDoc.stage.name,
+      [],
     );
   }
 

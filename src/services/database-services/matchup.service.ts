@@ -30,6 +30,15 @@ export async function getMatchupById(id: string): Promise<MatchupDocument> {
   return matchup;
 }
 
+export async function getMatchupByIdNew(
+  id: string,
+): Promise<MatchupDocument | null> {
+  if ($matchups.has(id)) return $matchups.get(id)!;
+  const matchup = await MatchupModel.findById(id);
+  if (matchup) $matchups.set(id, matchup);
+  return matchup;
+}
+
 export async function getMatchupsByDraftId(
   draftId: Types.ObjectId,
 ): Promise<MatchupDocument[]> {

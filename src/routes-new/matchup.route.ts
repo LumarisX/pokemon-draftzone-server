@@ -1,13 +1,18 @@
 import mongoose from "mongoose";
 import z from "zod";
 import { Matchup } from "../classes/matchup";
-import { getRuleset } from "../data/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
+import { LeagueCoachDocument } from "../models/league/coach.model";
+import { LeagueDivision } from "../models/league/division.model";
+import { LeagueMatchupModel } from "../models/league/matchup.model";
+import { LeagueStageDocument } from "../models/league/stage.model";
+import { LeagueTeamDocument } from "../models/league/team.model";
+import { LeagueTournamentDocument } from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
   deleteMatchup,
-  getMatchupById,
+  getMatchupByIdNew,
 } from "../services/database-services/matchup.service";
 import { coveragechart } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
@@ -29,11 +34,44 @@ export const MatchupRoute = createRoute()((r) => {
   r.param("matchup_id", {
     validate: (matchup_id) => mongoose.Types.ObjectId.isValid(matchup_id),
     loader: async (ctx, matchup_id) => {
-      const rawMatchup = await getMatchupById(matchup_id);
-      const matchup = await Matchup.fromData(rawMatchup);
-      const aTeam = await getDraft(rawMatchup.aTeam._id);
-      const ruleset = getRuleset(aTeam.ruleset);
-      return { rawMatchup, matchup, ruleset, matchup_id };
+      const rawMatchup = await getMatchupByIdNew(matchup_id);
+      let matchup: Matchup | null = null;
+      if (rawMatchup) {
+        matchup = await Matchup.fromData(rawMatchup);
+      } else {
+        const leagueMatchup = await LeagueMatchupModel.findById(
+          matchup_id,
+        ).populate<{
+          team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+          team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
+          stage: LeagueStageDocument & {
+            division: LeagueDivision & { tournament: LeagueTournamentDocument };
+          };
+        }>([
+          {
+            path: "team1",
+            populate: { path: "coach" },
+          },
+          {
+            path: "team2",
+            populate: { path: "coach" },
+          },
+          {
+            path: "stage",
+            populate: {
+              path: "division",
+              populate: {
+                path: "tournament",
+              },
+            },
+          },
+        ]);
+
+        if (!leagueMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+        matchup = Matchup.fromLeagueMatchup(leagueMatchup);
+      }
+
+      return { rawMatchup, matchup, matchup_id };
     },
   })((r) => {
     r.get(async (ctx) => await ctx.matchup.analyze());
@@ -78,19 +116,20 @@ export const MatchupRoute = createRoute()((r) => {
       r.get(
         async (ctx) =>
           await Promise.all([
-            movechart(ctx.matchup.aTeam.team, ctx.ruleset),
-            movechart(ctx.matchup.bTeam.team, ctx.ruleset),
+            movechart(ctx.matchup.aTeam.team, ctx.matchup.ruleset),
+            movechart(ctx.matchup.bTeam.team, ctx.matchup.ruleset),
           ]),
       );
     });
     r.path("notes")((r) => {
-      r.get(async (ctx) => ({ notes: ctx.rawMatchup.notes || "" }));
+      r.get(async (ctx) => ({ notes: ctx.rawMatchup?.notes || "" }));
     });
     r.path("update-notes")((r) => {
       r.post.auth().validate({
         body: (data) => z.object({ notes: z.string() }).parse(data),
       })(async (ctx) => {
-        const matchupDoc = ctx.rawMatchup;
+        //TODO: remove !
+        const matchupDoc = ctx.rawMatchup!;
         const aTeamDraft = await getDraft(matchupDoc.aTeam._id);
         const ownerSub = aTeamDraft.owner;
         if (ctx.sub !== ownerSub) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);

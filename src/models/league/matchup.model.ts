@@ -1,9 +1,11 @@
-import { Document, model, Schema, Types } from "mongoose";
+import { Document, Model, model, Schema, Types } from "mongoose";
 import {
+  LEAGUE_MATCHUP_COLLECTION,
   LEAGUE_STAGE_COLLECTION,
   LEAGUE_TEAM_COLLECTION,
-  LEAGUE_MATCHUP_COLLECTION,
 } from ".";
+import { LeagueStageDocument } from "./stage.model";
+import { LeagueTeamDocument } from "./team.model";
 
 export type MatchResult = {
   replay: string;
@@ -37,9 +39,9 @@ export type MatchResult = {
 };
 
 export type LeagueMatchupData = {
-  stageId: Types.ObjectId;
-  team1Id: Types.ObjectId;
-  team2Id: Types.ObjectId;
+  stage: LeagueStageDocument | Types.ObjectId;
+  team1: LeagueTeamDocument | Types.ObjectId;
+  team2: LeagueTeamDocument | Types.ObjectId;
   results: MatchResult[];
   notes?: string;
   scheduledDate?: Date;
@@ -63,20 +65,28 @@ type MatchupVirtuals = {
   winner?: "team1" | "team2";
 };
 
-export const leagueMatchupSchema = new Schema<LeagueMatchupData>(
+type LeagueMatchupModel = Model<LeagueMatchupDocument, {}, MatchupMethods>;
+
+export const leagueMatchupSchema: Schema<
+  LeagueMatchupDocument,
+  LeagueMatchupModel,
+  MatchupMethods,
+  {},
+  MatchupVirtuals
+> = new Schema(
   {
-    stageId: {
+    stage: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_STAGE_COLLECTION,
       required: true,
       index: true,
     },
-    team1Id: {
+    team1: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TEAM_COLLECTION,
       required: true,
     },
-    team2Id: {
+    team2: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TEAM_COLLECTION,
       required: true,
@@ -200,7 +210,7 @@ leagueMatchupSchema.virtual("winner").get(function (
   return undefined;
 });
 
-export const LeagueMatchupModel = model<LeagueMatchupData>(
-  LEAGUE_MATCHUP_COLLECTION,
-  leagueMatchupSchema,
-);
+export const LeagueMatchupModel = model<
+  LeagueMatchupDocument,
+  LeagueMatchupModel
+>(LEAGUE_MATCHUP_COLLECTION, leagueMatchupSchema);

@@ -9,8 +9,8 @@ import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import { config } from "./config";
-import { errorHandler } from "./errors/error-handler";
 import { ErrorCodes } from "./errors/error-codes";
+import { errorHandler } from "./errors/error-handler";
 import { PDZError } from "./errors/pdz-error";
 import { loggingContext } from "./middleware/loggingContext";
 import { RouteOld } from "./routes";
@@ -18,9 +18,9 @@ import { ArchiveRoute } from "./routes-new/archive.route";
 import { DraftRoute } from "./routes-new/draft.route";
 import { FileRoute } from "./routes-new/file.route";
 import { LeagueRoute } from "./routes-new/league.route";
+import { MatchupRoute } from "./routes-new/matchup.route";
 import { Route } from "./routes-new/route-builder";
 import { DataRoutes } from "./routes/data.route";
-import { MatchupRoutes } from "./routes/matchup.route";
 import { NewsRoutes } from "./routes/news.route";
 import { PlannerRoutes } from "./routes/planner.route";
 import { ReplayRoutes } from "./routes/replay.route";
@@ -205,7 +205,7 @@ app.use(morgan(morganJSONFormat, { stream: routerStream }));
 export const ROUTES: { [path: string]: RouteOld | Route } = {
   "/draft": DraftRoute,
   "/archive": ArchiveRoute,
-  "/matchup": MatchupRoutes,
+  "/matchup": MatchupRoute,
   "/data": DataRoutes,
   "/replay": ReplayRoutes,
   "/planner": PlannerRoutes,
