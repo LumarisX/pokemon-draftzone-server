@@ -103,14 +103,36 @@ export class Matchup {
         teamName: leagueMatchupDoc.team1.coach.teamName,
         coach: leagueMatchupDoc.team1.coach.name,
         team: leagueMatchupDoc.team1.draft.map(
-          (e) => new DraftSpecie(e.pokemon.id, ruleset),
+          (e) =>
+            new DraftSpecie(
+              {
+                id: e.pokemon.id,
+                capt: e.addons?.includes("Tera Captain")
+                  ? {
+                      tera: [],
+                    }
+                  : undefined,
+              },
+              ruleset,
+            ),
         ),
       },
       {
         teamName: leagueMatchupDoc.team2.coach.teamName,
         coach: leagueMatchupDoc.team2.coach.name,
         team: leagueMatchupDoc.team2.draft.map(
-          (e) => new DraftSpecie(e.pokemon.id, ruleset),
+          (e) =>
+            new DraftSpecie(
+              {
+                id: e.pokemon.id,
+                capt: e.addons?.includes("Tera Captain")
+                  ? {
+                      tera: [],
+                    }
+                  : undefined,
+              },
+              ruleset,
+            ),
         ),
       },
       ruleset,
