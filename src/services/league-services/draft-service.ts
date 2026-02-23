@@ -1394,7 +1394,7 @@ export async function makeTrade(
   side2: TradeSide,
   activeStageNumber: number,
 ) {
-  if (side1.team === side2.team) return;
+  if (side1.team === undefined && side2.team == undefined) return;
 
   const team1 = side1.team ? await LeagueTeamModel.findById(side1.team) : null;
   if (side1.team && !team1)

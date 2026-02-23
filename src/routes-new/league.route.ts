@@ -1446,44 +1446,53 @@ export const LeagueRoute = createRoute()((r) => {
           );
           r.path("teams")((r) => {
             r.get(async (ctx) => {
-              await ctx.division.populate<{
+              const division = await ctx.division.populate<{
                 teams: (LeagueTeamDocument & {
                   coach: LeagueCoachDocument;
                 })[];
-              }>({
-                path: "teams",
-                populate: {
-                  path: "coach",
+                tournament: LeagueTournamentDocument & {
+                  tierList: LeagueTierListDocument;
+                };
+              }>([
+                {
+                  path: "teams",
+                  populate: {
+                    path: "coach",
+                  },
                 },
-              });
-              const teams = await Promise.all(
-                (
-                  getDraftOrder(ctx.division) as (LeagueTeamDocument & {
-                    coach: LeagueCoachDocument;
-                  })[]
-                ).map(async (team) => {
-                  return {
-                    id: team._id.toString(),
-                    coach: team.coach.name,
-                    logo: team.coach.logo,
-                    draft: await Promise.all(
-                      team.draft.map(async (e) => ({
-                        id: e.pokemon.id,
-                        name: getName(e.pokemon.id),
-                        capt: {
-                          tera: e.addons?.includes("Tera Captain"),
-                        },
-                        tier: (
-                          await getPokemonTier(ctx.tournament, e.pokemon.id)
-                        )?.cost,
-                      })),
+                {
+                  path: "tournament",
+                  populate: {
+                    path: "tierList",
+                  },
+                },
+              ]);
+
+              const teams = (
+                getDraftOrder(ctx.division) as (LeagueTeamDocument & {
+                  coach: LeagueCoachDocument;
+                })[]
+              ).map((team) => {
+                return {
+                  id: team._id.toString(),
+                  coach: team.coach.name,
+                  logo: team.coach.logo,
+                  draft: team.draft.map((e) => ({
+                    id: e.pokemon.id,
+                    name: getName(e.pokemon.id),
+                    capt: {
+                      tera: e.addons?.includes("Tera Captain"),
+                    },
+                    cost: division.tournament.tierList.getPokemonCost(
+                      e.pokemon.id,
+                      e.addons,
                     ),
-                    name: team.coach.teamName,
-                    isCoach: team.coach.auth0Id === ctx.sub,
-                    timezone: team.coach.timezone,
-                  };
-                }),
-              );
+                  })),
+                  name: team.coach.teamName,
+                  isCoach: team.coach.auth0Id === ctx.sub,
+                  timezone: team.coach.timezone,
+                };
+              });
 
               return { teams };
             });

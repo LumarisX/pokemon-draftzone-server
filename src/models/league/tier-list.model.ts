@@ -41,7 +41,12 @@ export type LeagueTierList = {
 };
 
 export type LeagueTierListDocument = Document &
-  LeagueTierList & { _id: Types.ObjectId };
+  LeagueTierList & {
+    _id: Types.ObjectId;
+    getPokemonCost(pokemonId: string, addonName?: string[]): number | undefined;
+    getTierByName(tierName: string): LeagueTier | undefined;
+    getPokemonIds(): string[];
+  };
 
 const TierListPokemonAddonSchema: Schema<TierListPokemonAddon> = new Schema(
   {
@@ -102,16 +107,23 @@ const LeagueTierListSchema: Schema<LeagueTierListDocument> = new Schema(
   { timestamps: true },
 );
 
-LeagueTierListSchema.methods.getPokemonByTier = function (
-  tierName: string,
-): Array<{ id: string; data: LeagueTierListPokemon }> {
-  const result: Array<{ id: string; data: LeagueTierListPokemon }> = [];
-  (this.pokemon as Map<string, LeagueTierListPokemon>).forEach((data, id) => {
-    if (data.tier === tierName) {
-      result.push({ id, data });
-    }
-  });
-  return result;
+LeagueTierListSchema.methods.getPokemonCost = function (
+  pokemonId: string,
+  addons?: string[],
+): number | undefined {
+  const pokemon = (this.pokemon as Map<string, LeagueTierListPokemon>).get(
+    pokemonId,
+  );
+
+  if (!pokemon) return undefined;
+
+  if (addons && addons.length && pokemon.addons) {
+    const addon = pokemon.addons.find((a) => a.name === addons[0]);
+    if (addon) return addon.cost;
+  }
+
+  const tier = this.tiers.find((t: LeagueTier) => t.name === pokemon.tier);
+  return tier ? tier.cost : undefined;
 };
 
 LeagueTierListSchema.methods.getTierByName = function (

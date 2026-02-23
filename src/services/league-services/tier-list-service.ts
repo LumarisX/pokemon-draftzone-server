@@ -4,6 +4,7 @@ import { DraftSpecie } from "../../classes/pokemon";
 import { getRuleset } from "../../data/rulesets";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
+import { LeagueCoachDocument } from "../../models/league/coach.model";
 import LeagueDivisionModel from "../../models/league/division.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
 import tierListModel, {
@@ -16,10 +17,13 @@ import LeagueTournamentModel, {
   LeagueTournament,
   LeagueTournamentDocument,
 } from "../../models/league/tournament.model";
-import { LeagueCoachDocument } from "../../models/league/coach.model";
-import { get } from "http";
 import { getName } from "../data-services/pokedex.service";
 
+/**
+ * @deprecated getPokemonTier is deprecated and will be removed in a future release.
+ * Prefer using `getTierList()` and inspecting the returned tiers, or access the
+ * tournament's `tierList` document directly via `tierListModel`.
+ */
 export async function getPokemonTier(
   tournamentId: Types.ObjectId | LeagueTournamentDocument,
   pokemonId: string,
