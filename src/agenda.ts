@@ -15,6 +15,8 @@ import {
   skipCurrentPick,
 } from "./services/league-services/draft-service";
 import { s3Service } from "./services/s3.service";
+import { LeagueTeamDocument } from "./models/league/team.model";
+import { LeagueTierListDocument } from "./models/league/tier-list.model";
 
 const mongoConnectionString = `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`;
 
@@ -40,7 +42,7 @@ agenda.define("skip-draft-pick", async (job: Job) => {
   };
   const tournament = await LeagueTournamentModel.findById(
     tournamentId,
-  ).populate({
+  ).populate<{ tierList: LeagueTierListDocument }>({
     path: "tierList",
   });
   if (!tournament) {
@@ -49,7 +51,9 @@ agenda.define("skip-draft-pick", async (job: Job) => {
     );
     return;
   }
-  const division = await LeagueDivisionModel.findById(divisionId).populate([
+  const division = await LeagueDivisionModel.findById(divisionId).populate<{
+    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+  }>([
     {
       path: "teams",
       populate: {
@@ -116,7 +120,9 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     console.error(`League not found: ${tournamentId}`);
     return;
   }
-  const division = await LeagueDivisionModel.findById(divisionId).populate({
+  const division = await LeagueDivisionModel.findById(divisionId).populate<{
+    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+  }>({
     path: "teams",
     populate: {
       path: "coach",
