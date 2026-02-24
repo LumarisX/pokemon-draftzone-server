@@ -1274,104 +1274,6 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      // r.path("schedule")((r) => {
-      //   r.get(async (ctx) => {
-
-      //     const stagesWithMatchups = await Promise.all(
-      //       ctx.division.stages.map(async (stage) => {
-      //         const matchups = await LeagueMatchupModel.find({
-      //           stage: stage._id,
-      //         }).populate<{
-      //           team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-      //           team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-      //         }>([
-      //           {
-      //             path: "team1",
-      //             populate: {
-      //               path: "coach",
-      //             },
-      //           },
-      //           {
-      //             path: "team2",
-      //             populate: {
-      //               path: "coach",
-      //             },
-      //           },
-      //         ]);
-      //         const transformedMatchups = matchups.map((matchup) => {
-      //           const team1Doc = matchup.team1;
-      //           const team2Doc = matchup.team2;
-      //           const { team1Score, team2Score, winner } =
-      //             calculateTeamMatchupScoreAndWinner(matchup);
-
-      //           return {
-      //             team1: {
-      //               teamName: team1Doc.coach.teamName,
-      //               coach: team1Doc.coach.name,
-      //               score: team1Score,
-      //               logo: team1Doc.coach.logo,
-      //               id: team1Doc._id.toString(),
-      //               winner:
-      //                 winner === "team1"
-      //                   ? true
-      //                   : winner === "team2"
-      //                     ? false
-      //                     : undefined,
-      //             },
-      //             team2: {
-      //               teamName: team2Doc.coach.teamName,
-      //               coach: team2Doc.coach.name,
-      //               score: team2Score,
-      //               logo: team2Doc.coach.logo,
-      //               id: team2Doc._id.toString(),
-      //               winner:
-      //                 winner === "team2"
-      //                   ? true
-      //                   : winner === "team1"
-      //                     ? false
-      //                     : undefined,
-      //             },
-      //             matches: matchup.results.map((result) => ({
-      //               link: result.replay || "",
-      //               team1: {
-      //                 team: result.team1.pokemon.map((pokemon) => ({
-      //                   id: pokemon.id,
-      //                   name: pokemon.name,
-      //                   status: pokemon.stats?.deaths
-      //                     ? "fainted"
-      //                     : pokemon.stats?.brought
-      //                       ? "brought"
-      //                       : undefined,
-      //                 })),
-      //                 score: calculateResultScore(result.team1),
-      //                 winner: result.winner === "team1",
-      //               },
-      //               team2: {
-      //                 team: result.team2.pokemon.map((pokemon) => ({
-      //                   id: pokemon.id,
-      //                   name: pokemon.name,
-      //                   status: pokemon.stats?.deaths
-      //                     ? "fainted"
-      //                     : pokemon.stats?.brought
-      //                       ? "brought"
-      //                       : undefined,
-      //                 })),
-      //                 score: calculateResultScore(result.team2),
-      //                 winner: result.winner === "team2",
-      //               },
-      //             })),
-      //           };
-      //         });
-      //         return {
-      //           _id: stage._id,
-      //           name: stage.name,
-      //           matchups: transformedMatchups,
-      //         };
-      //       }),
-      //     );
-      //     return stagesWithMatchups;
-      //   });
-      // });
       r.path("teams")((r) => {
         r.param("team_id", async (ctx, team_id) => {
           const team = await LeagueTeamModel.findById(team_id).populate<{
@@ -1550,13 +1452,14 @@ export const LeagueRoute = createRoute()((r) => {
                     teamId: z
                       .union([z.string(), z.array(z.string())])
                       .optional(),
-                    currentStage: z.boolean().optional(),
+                    stage: z.string().optional(),
                   })
                   .optional()
                   .parse(data),
             })(async (ctx) => {
               const teamId = ctx.validatedQuery?.teamId;
-              const currentStageOnly = ctx.validatedQuery?.currentStage;
+              const currentStageOnly =
+                ctx.validatedQuery?.stage?.toLowerCase() === "current";
               const hasTeamFilter = teamId !== undefined;
               const teamIds = (Array.isArray(teamId) ? teamId : [teamId])
                 .filter((id): id is string => Boolean(id))
@@ -1564,7 +1467,17 @@ export const LeagueRoute = createRoute()((r) => {
                 .map((id) => new Types.ObjectId(id));
 
               const allMatchups = await LeagueMatchupModel.find({
-                stage: { $in: ctx.division.stages.map((stage) => stage._id) },
+                stage: {
+                  $in: ctx.division.stages
+                    .filter(
+                      (stage) =>
+                        !currentStageOnly ||
+                        stage._id.equals(
+                          ctx.division.stages[ctx.division.currentStage]._id,
+                        ),
+                    )
+                    .map((stage) => stage._id),
+                },
                 ...(hasTeamFilter
                   ? {
                       $or: [
@@ -1606,83 +1519,91 @@ export const LeagueRoute = createRoute()((r) => {
                 }
               }
 
-              const stagesWithMatchups = ctx.division.stages.map((stage) => {
-                const matchups =
-                  matchupsByStage.get(stage._id.toString()) ?? [];
-                const transformedMatchups = matchups.map((matchup) => {
-                  const team1Doc = matchup.team1;
-                  const team2Doc = matchup.team2;
-                  const { team1Score, team2Score, winner } =
-                    calculateTeamMatchupScoreAndWinner(matchup);
+              const stages = ctx.division.stages
+                .filter(
+                  (stage) =>
+                    !currentStageOnly ||
+                    stage._id.equals(
+                      ctx.division.stages[ctx.division.currentStage]._id,
+                    ),
+                )
+                .map((stage) => {
+                  const matchups =
+                    matchupsByStage.get(stage._id.toString()) ?? [];
+                  const transformedMatchups = matchups.map((matchup) => {
+                    const team1Doc = matchup.team1;
+                    const team2Doc = matchup.team2;
+                    const { team1Score, team2Score, winner } =
+                      calculateTeamMatchupScoreAndWinner(matchup);
 
-                  return {
-                    id: matchup._id.toString(),
-                    team1: {
-                      teamName: team1Doc.coach.teamName,
-                      coach: team1Doc.coach.name,
-                      score: team1Score,
-                      logo: team1Doc.coach.logo,
-                      id: team1Doc._id.toString(),
-                      winner:
-                        winner === "team1"
-                          ? true
-                          : winner === "team2"
-                            ? false
-                            : undefined,
-                    },
-                    team2: {
-                      teamName: team2Doc.coach.teamName,
-                      coach: team2Doc.coach.name,
-                      score: team2Score,
-                      logo: team2Doc.coach.logo,
-                      id: team2Doc._id.toString(),
-                      winner:
-                        winner === "team2"
-                          ? true
-                          : winner === "team1"
-                            ? false
-                            : undefined,
-                    },
-                    matches: matchup.results.map((result) => ({
-                      link: result.replay || "",
+                    return {
+                      id: matchup._id.toString(),
                       team1: {
-                        team: result.team1.pokemon.map((pokemon) => ({
-                          id: pokemon.id,
-                          name: pokemon.name,
-                          status: pokemon.stats?.deaths
-                            ? "fainted"
-                            : pokemon.stats?.brought
-                              ? "brought"
+                        teamName: team1Doc.coach.teamName,
+                        coach: team1Doc.coach.name,
+                        score: team1Score,
+                        logo: team1Doc.coach.logo,
+                        id: team1Doc._id.toString(),
+                        winner:
+                          winner === "team1"
+                            ? true
+                            : winner === "team2"
+                              ? false
                               : undefined,
-                        })),
-                        score: calculateResultScore(result.team1),
-                        winner: result.winner === "team1",
                       },
                       team2: {
-                        team: result.team2.pokemon.map((pokemon) => ({
-                          id: pokemon.id,
-                          name: pokemon.name,
-                          status: pokemon.stats?.deaths
-                            ? "fainted"
-                            : pokemon.stats?.brought
-                              ? "brought"
+                        teamName: team2Doc.coach.teamName,
+                        coach: team2Doc.coach.name,
+                        score: team2Score,
+                        logo: team2Doc.coach.logo,
+                        id: team2Doc._id.toString(),
+                        winner:
+                          winner === "team2"
+                            ? true
+                            : winner === "team1"
+                              ? false
                               : undefined,
-                        })),
-                        score: calculateResultScore(result.team2),
-                        winner: result.winner === "team2",
                       },
-                    })),
+                      matches: matchup.results.map((result) => ({
+                        link: result.replay || "",
+                        team1: {
+                          team: result.team1.pokemon.map((pokemon) => ({
+                            id: pokemon.id,
+                            name: pokemon.name,
+                            status: pokemon.stats?.deaths
+                              ? "fainted"
+                              : pokemon.stats?.brought
+                                ? "brought"
+                                : undefined,
+                          })),
+                          score: calculateResultScore(result.team1),
+                          winner: result.winner === "team1",
+                        },
+                        team2: {
+                          team: result.team2.pokemon.map((pokemon) => ({
+                            id: pokemon.id,
+                            name: pokemon.name,
+                            status: pokemon.stats?.deaths
+                              ? "fainted"
+                              : pokemon.stats?.brought
+                                ? "brought"
+                                : undefined,
+                          })),
+                          score: calculateResultScore(result.team2),
+                          winner: result.winner === "team2",
+                        },
+                      })),
+                    };
+                  });
+
+                  return {
+                    _id: stage._id,
+                    name: stage.name,
+                    matchups: transformedMatchups,
                   };
                 });
 
-                return {
-                  _id: stage._id,
-                  name: stage.name,
-                  matchups: transformedMatchups,
-                };
-              });
-
-              return stagesWithMatchups;
+              return stages;
             });
           });
           r.path("standings")((r) => {
