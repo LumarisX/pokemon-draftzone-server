@@ -3,6 +3,14 @@ import { Types } from "mongoose";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { MatchData, MatchupData } from "../models/draft/matchup.model";
+import { LeagueCoachDocument } from "../models/league/coach.model";
+import {
+  LeagueDivision,
+  LeagueStageDocument,
+} from "../models/league/division.model";
+import { LeagueMatchupDocument } from "../models/league/matchup.model";
+import { LeagueTeamDocument } from "../models/league/team.model";
+import { LeagueTournamentDocument } from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
   Coveragechart,
@@ -21,12 +29,6 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { LeagueMatchupDocument } from "../models/league/matchup.model";
-import { LeagueTeamDocument } from "../models/league/team.model";
-import { LeagueCoach, LeagueCoachDocument } from "../models/league/coach.model";
-import { LeagueDivision } from "../models/league/division.model";
-import { LeagueTournamentDocument } from "../models/league/tournament.model";
-import { LeagueStageDocument } from "../models/league/stage.model";
 
 export type MatchupTeam = {
   teamName: string;
@@ -90,14 +92,11 @@ export class Matchup {
     leagueMatchupDoc: LeagueMatchupDocument & {
       team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
       team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-      stage: LeagueStageDocument & {
-        division: LeagueDivision & { tournament: LeagueTournamentDocument };
-      };
+      stage: LeagueStageDocument;
+      division: LeagueDivision & { tournament: LeagueTournamentDocument };
     },
   ): Matchup {
-    const ruleset = getRuleset(
-      leagueMatchupDoc.stage.division.tournament.ruleset,
-    );
+    const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
     return new Matchup(
       {
         teamName: leagueMatchupDoc.team1.coach.teamName,
@@ -136,9 +135,9 @@ export class Matchup {
         ),
       },
       ruleset,
-      getFormat(leagueMatchupDoc.stage.division.tournament.format),
-      leagueMatchupDoc.stage.division.tournament.name,
-      leagueMatchupDoc.stage.division.tournament.id.toString(),
+      getFormat(leagueMatchupDoc.division.tournament.format),
+      leagueMatchupDoc.division.tournament.name,
+      leagueMatchupDoc.division.tournament.id.toString(),
       leagueMatchupDoc.stage.name,
       [],
     );

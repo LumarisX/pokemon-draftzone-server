@@ -1,11 +1,12 @@
 import { Document, Model, model, Schema, Types } from "mongoose";
 import {
+  LEAGUE_DIVISION_COLLECTION,
   LEAGUE_MATCHUP_COLLECTION,
   LEAGUE_STAGE_COLLECTION,
   LEAGUE_TEAM_COLLECTION,
 } from ".";
-import { LeagueStageDocument } from "./stage.model";
 import { LeagueTeamDocument } from "./team.model";
+import { LeagueDivisionDocument, LeagueStageDocument } from "./division.model";
 
 export type MatchResult = {
   replay: string;
@@ -40,6 +41,7 @@ export type MatchResult = {
 
 export type LeagueMatchupData = {
   stage: LeagueStageDocument | Types.ObjectId;
+  division: LeagueDivisionDocument | Types.ObjectId;
   team1: LeagueTeamDocument | Types.ObjectId;
   team2: LeagueTeamDocument | Types.ObjectId;
   results: MatchResult[];
@@ -77,9 +79,13 @@ export const leagueMatchupSchema: Schema<
   {
     stage: {
       type: Schema.Types.ObjectId,
-      ref: LEAGUE_STAGE_COLLECTION,
+      // ref: LEAGUE_STAGE_COLLECTION,
       required: true,
-      index: true,
+    },
+    division: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_DIVISION_COLLECTION,
+      required: true,
     },
     team1: {
       type: Schema.Types.ObjectId,

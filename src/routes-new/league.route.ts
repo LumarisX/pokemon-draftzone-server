@@ -28,7 +28,6 @@ import LeagueCoachModel, {
 } from "../models/league/coach.model";
 import LeagueDivisionModel from "../models/league/division.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
-import { LeagueStageModel } from "../models/league/stage.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
@@ -1275,106 +1274,104 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      r.path("schedule")((r) => {
-        r.get(async (ctx) => {
-          const stages = await LeagueStageModel.find({
-            tournamentId: ctx.tournament._id,
-          });
-          const stagesWithMatchups = await Promise.all(
-            stages.map(async (stage) => {
-              const matchups = await LeagueMatchupModel.find({
-                stage: stage._id,
-              }).populate<{
-                team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-                team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-              }>([
-                {
-                  path: "team1",
-                  populate: {
-                    path: "coach",
-                  },
-                },
-                {
-                  path: "team2",
-                  populate: {
-                    path: "coach",
-                  },
-                },
-              ]);
-              const transformedMatchups = matchups.map((matchup) => {
-                const team1Doc = matchup.team1;
-                const team2Doc = matchup.team2;
-                const { team1Score, team2Score, winner } =
-                  calculateTeamMatchupScoreAndWinner(matchup);
+      // r.path("schedule")((r) => {
+      //   r.get(async (ctx) => {
 
-                return {
-                  team1: {
-                    teamName: team1Doc.coach.teamName,
-                    coach: team1Doc.coach.name,
-                    score: team1Score,
-                    logo: team1Doc.coach.logo,
-                    id: team1Doc._id.toString(),
-                    winner:
-                      winner === "team1"
-                        ? true
-                        : winner === "team2"
-                          ? false
-                          : undefined,
-                  },
-                  team2: {
-                    teamName: team2Doc.coach.teamName,
-                    coach: team2Doc.coach.name,
-                    score: team2Score,
-                    logo: team2Doc.coach.logo,
-                    id: team2Doc._id.toString(),
-                    winner:
-                      winner === "team2"
-                        ? true
-                        : winner === "team1"
-                          ? false
-                          : undefined,
-                  },
-                  matches: matchup.results.map((result) => ({
-                    link: result.replay || "",
-                    team1: {
-                      team: result.team1.pokemon.map((pokemon) => ({
-                        id: pokemon.id,
-                        name: pokemon.name,
-                        status: pokemon.stats?.deaths
-                          ? "fainted"
-                          : pokemon.stats?.brought
-                            ? "brought"
-                            : undefined,
-                      })),
-                      score: calculateResultScore(result.team1),
-                      winner: result.winner === "team1",
-                    },
-                    team2: {
-                      team: result.team2.pokemon.map((pokemon) => ({
-                        id: pokemon.id,
-                        name: pokemon.name,
-                        status: pokemon.stats?.deaths
-                          ? "fainted"
-                          : pokemon.stats?.brought
-                            ? "brought"
-                            : undefined,
-                      })),
-                      score: calculateResultScore(result.team2),
-                      winner: result.winner === "team2",
-                    },
-                  })),
-                };
-              });
-              return {
-                _id: stage._id,
-                name: stage.name,
-                matchups: transformedMatchups,
-              };
-            }),
-          );
-          return stagesWithMatchups;
-        });
-      });
+      //     const stagesWithMatchups = await Promise.all(
+      //       ctx.division.stages.map(async (stage) => {
+      //         const matchups = await LeagueMatchupModel.find({
+      //           stage: stage._id,
+      //         }).populate<{
+      //           team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+      //           team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
+      //         }>([
+      //           {
+      //             path: "team1",
+      //             populate: {
+      //               path: "coach",
+      //             },
+      //           },
+      //           {
+      //             path: "team2",
+      //             populate: {
+      //               path: "coach",
+      //             },
+      //           },
+      //         ]);
+      //         const transformedMatchups = matchups.map((matchup) => {
+      //           const team1Doc = matchup.team1;
+      //           const team2Doc = matchup.team2;
+      //           const { team1Score, team2Score, winner } =
+      //             calculateTeamMatchupScoreAndWinner(matchup);
+
+      //           return {
+      //             team1: {
+      //               teamName: team1Doc.coach.teamName,
+      //               coach: team1Doc.coach.name,
+      //               score: team1Score,
+      //               logo: team1Doc.coach.logo,
+      //               id: team1Doc._id.toString(),
+      //               winner:
+      //                 winner === "team1"
+      //                   ? true
+      //                   : winner === "team2"
+      //                     ? false
+      //                     : undefined,
+      //             },
+      //             team2: {
+      //               teamName: team2Doc.coach.teamName,
+      //               coach: team2Doc.coach.name,
+      //               score: team2Score,
+      //               logo: team2Doc.coach.logo,
+      //               id: team2Doc._id.toString(),
+      //               winner:
+      //                 winner === "team2"
+      //                   ? true
+      //                   : winner === "team1"
+      //                     ? false
+      //                     : undefined,
+      //             },
+      //             matches: matchup.results.map((result) => ({
+      //               link: result.replay || "",
+      //               team1: {
+      //                 team: result.team1.pokemon.map((pokemon) => ({
+      //                   id: pokemon.id,
+      //                   name: pokemon.name,
+      //                   status: pokemon.stats?.deaths
+      //                     ? "fainted"
+      //                     : pokemon.stats?.brought
+      //                       ? "brought"
+      //                       : undefined,
+      //                 })),
+      //                 score: calculateResultScore(result.team1),
+      //                 winner: result.winner === "team1",
+      //               },
+      //               team2: {
+      //                 team: result.team2.pokemon.map((pokemon) => ({
+      //                   id: pokemon.id,
+      //                   name: pokemon.name,
+      //                   status: pokemon.stats?.deaths
+      //                     ? "fainted"
+      //                     : pokemon.stats?.brought
+      //                       ? "brought"
+      //                       : undefined,
+      //                 })),
+      //                 score: calculateResultScore(result.team2),
+      //                 winner: result.winner === "team2",
+      //               },
+      //             })),
+      //           };
+      //         });
+      //         return {
+      //           _id: stage._id,
+      //           name: stage.name,
+      //           matchups: transformedMatchups,
+      //         };
+      //       }),
+      //     );
+      //     return stagesWithMatchups;
+      //   });
+      // });
       r.path("teams")((r) => {
         r.param("team_id", async (ctx, team_id) => {
           const team = await LeagueTeamModel.findById(team_id).populate<{
@@ -1566,11 +1563,8 @@ export const LeagueRoute = createRoute()((r) => {
                 .filter((id) => isValidObjectId(id))
                 .map((id) => new Types.ObjectId(id));
 
-              const stages = await LeagueStageModel.find({
-                division: ctx.division._id,
-              });
               const allMatchups = await LeagueMatchupModel.find({
-                stage: { $in: stages.map((stage) => stage._id) },
+                stage: { $in: ctx.division.stages.map((stage) => stage._id) },
                 ...(hasTeamFilter
                   ? {
                       $or: [
@@ -1612,7 +1606,7 @@ export const LeagueRoute = createRoute()((r) => {
                 }
               }
 
-              const stagesWithMatchups = stages.map((stage) => {
+              const stagesWithMatchups = ctx.division.stages.map((stage) => {
                 const matchups =
                   matchupsByStage.get(stage._id.toString()) ?? [];
                 const transformedMatchups = matchups.map((matchup) => {
@@ -1693,12 +1687,8 @@ export const LeagueRoute = createRoute()((r) => {
           });
           r.path("standings")((r) => {
             r.get(async (ctx) => {
-              const stages = await LeagueStageModel.find({
-                division: ctx.division._id,
-              });
-
               const allMatchups = await LeagueMatchupModel.find({
-                stage: { $in: stages.map((s) => s._id) },
+                stage: { $in: ctx.division.stages.map((s) => s._id) },
               }).populate<{
                 team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
                 team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
@@ -1721,7 +1711,7 @@ export const LeagueRoute = createRoute()((r) => {
 
               const coachStandings = await calculateDivisionCoachStandings(
                 allMatchups,
-                stages,
+                ctx.division.stages,
                 divisionTeams,
               );
 
@@ -1732,7 +1722,7 @@ export const LeagueRoute = createRoute()((r) => {
                 coachStandings: {
                   //TODO: make dynamic
                   cutoff: 8,
-                  weeks: stages.length,
+                  weeks: ctx.division.stages.length,
                   teams: coachStandings,
                 },
                 pokemonStandings,

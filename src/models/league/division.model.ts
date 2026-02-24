@@ -42,6 +42,8 @@ export type LeagueDivision = {
   tournament: Types.ObjectId | LeagueTournamentDocument;
   useRandomDraftOrder?: boolean;
   trades: DraftTrade[];
+  currentStage: number;
+  stages: LeagueStageDocument[];
 };
 
 export type TradeSide = {
@@ -56,6 +58,25 @@ export type DraftTrade = {
   activeStage: number;
   status: "PENDING" | "APPROVED" | "REJECTED";
 };
+
+export type LeagueStageData = {
+  division: LeagueDivisionDocument | Types.ObjectId;
+  name: string;
+};
+
+export type LeagueStageDocument = Document<Types.ObjectId> & LeagueStageData;
+
+const LeagueStageSchema = new Schema<LeagueStageData>(
+  {
+    division: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_DIVISION_COLLECTION,
+      required: true,
+    },
+    name: { type: String, required: true },
+  },
+  { timestamps: true },
+);
 
 const TradeSideSchema = new Schema<TradeSide>(
   {
@@ -172,6 +193,8 @@ const LeagueDivisionSchema: Schema<
     },
     useRandomDraftOrder: { type: Boolean, default: true },
     trades: { type: [TradeSchema], default: [] },
+    currentStage: { type: Number, default: -1 },
+    stages: { type: [LeagueStageSchema], default: [] },
   },
   { timestamps: true },
 );

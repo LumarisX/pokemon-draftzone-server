@@ -1,6 +1,6 @@
 import { LeagueCoachDocument } from "../../models/league/coach.model";
+import { LeagueStageDocument } from "../../models/league/division.model";
 import { LeagueMatchupDocument } from "../../models/league/matchup.model";
-import { LeagueStageDocument } from "../../models/league/stage.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
 
 // Helper function to calculate score for a result

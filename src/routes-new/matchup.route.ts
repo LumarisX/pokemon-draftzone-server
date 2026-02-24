@@ -4,9 +4,12 @@ import { Matchup } from "../classes/matchup";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { LeagueCoachDocument } from "../models/league/coach.model";
-import { LeagueDivision } from "../models/league/division.model";
+import {
+  LeagueDivision,
+  LeagueDivisionDocument,
+  LeagueStageDocument,
+} from "../models/league/division.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
-import { LeagueStageDocument } from "../models/league/stage.model";
 import { LeagueTeamDocument } from "../models/league/team.model";
 import { LeagueTournamentDocument } from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
@@ -44,8 +47,9 @@ export const MatchupRoute = createRoute()((r) => {
         ).populate<{
           team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
           team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-          stage: LeagueStageDocument & {
-            division: LeagueDivision & { tournament: LeagueTournamentDocument };
+          stage: LeagueStageDocument;
+          division: LeagueDivisionDocument & {
+            tournament: LeagueTournamentDocument;
           };
         }>([
           {
@@ -57,14 +61,13 @@ export const MatchupRoute = createRoute()((r) => {
             populate: { path: "coach" },
           },
           {
-            path: "stage",
+            path: "division",
+
             populate: {
-              path: "division",
-              populate: {
-                path: "tournament",
-              },
+              path: "tournament",
             },
           },
+          { path: "stage" },
         ]);
 
         if (!leagueMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
