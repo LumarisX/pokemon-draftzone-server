@@ -73,6 +73,7 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
+import { name } from "agenda/dist/agenda/name";
 
 const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
@@ -1739,7 +1740,119 @@ export const LeagueRoute = createRoute()((r) => {
               return teams;
             });
           });
+          r.path("trades")((r) => {
+            r.get.validate({
+              query: (data) =>
+                z
+                  .object({
+                    teamId: z
+                      .union([z.string(), z.array(z.string())])
+                      .optional(),
+                  })
+                  .optional()
+                  .parse(data),
+            })(async (ctx) => {
+              //TODO: Absolutely need to optimize this at some point, but it should be fine for now since trades are unlikely to be a bottleneck
+              const tournament = await ctx.tournament.populate<{
+                tierList: LeagueTierListDocument;
+              }>("tierList");
+              const teamId = ctx.validatedQuery?.teamId;
+              const teamIds = (Array.isArray(teamId) ? teamId : [teamId])
+                .filter((id): id is string => Boolean(id))
+                .filter((id) => isValidObjectId(id));
+              const trades = await Promise.all(
+                ctx.division.trades
+                  .filter(
+                    (trade) =>
+                      !teamId ||
+                      teamIds.includes(
+                        trade.side1.team?._id.toString() ?? "",
+                      ) ||
+                      teamIds.includes(trade.side2.team?._id.toString() ?? ""),
+                  )
+                  .map(async (trade) => {
+                    const side1Team = await LeagueTeamModel.findById(
+                      trade.side1.team,
+                    ).populate<
+                      LeagueTeamDocument & { coach: LeagueCoachDocument }
+                    >("coach");
+                    const side2Team = await LeagueTeamModel.findById(
+                      trade.side2.team,
+                    ).populate<
+                      LeagueTeamDocument & { coach: LeagueCoachDocument }
+                    >("coach");
+                    return {
+                      side1: {
+                        team: side1Team
+                          ? {
+                              name: side1Team.coach.teamName,
+                              coach: side1Team.coach.name,
+                              logo: side1Team.coach.logo,
+                            }
+                          : undefined,
+                        pokemon: trade.side1.pokemon.map((p) => ({
+                          id: p.id,
+                          name: getName(p.id),
+                          cost: tournament.tierList.getPokemonCost(p.id),
+                        })),
+                      },
+                      side2: {
+                        team: side2Team
+                          ? {
+                              name: side2Team.coach.teamName,
+                              coach: side2Team.coach.name,
+                              logo: side2Team.coach.logo,
+                            }
+                          : undefined,
+                        pokemon: trade.side2.pokemon.map((p) => ({
+                          id: p.id,
+                          name: getName(p.id),
+                          cost: tournament.tierList.getPokemonCost(p.id),
+                        })),
+                      },
+                      activeStage: trade.activeStage,
+                    };
+                  }),
+              );
+              const stages: {
+                name: string;
+                trades: {
+                  side1: {
+                    team?: {
+                      name: string;
+                      coach: string;
+                      logo?: string;
+                    };
+                    pokemon: {
+                      id: string;
+                    }[];
+                  };
+                  side2: {
+                    team?: {
+                      name: string;
+                      coach: string;
+                      logo?: string;
+                    };
+                    pokemon: {
+                      id: string;
+                    }[];
+                  };
+                  activeStage: number;
+                }[];
+              }[] = [
+                // { name: "Pre-Season", trades: [] },
+                ...ctx.division.stages.map((stage) => ({
+                  name: stage.name,
+                  trades: [],
+                })),
+              ];
 
+              trades.forEach((trade) => {
+                stages[trade.activeStage - 1].trades.push(trade);
+              });
+              return { stages };
+            });
+          });
           r.path("teams")((r) => {
             r.param("team_id", async (ctx, team_id) => {
               const team = await LeagueTeamModel.findById(team_id).populate<{
@@ -1855,45 +1968,6 @@ export const LeagueRoute = createRoute()((r) => {
               });
             });
             r.path("trades")((r) => {
-              r.get(async (ctx) => {
-                return await Promise.all(
-                  ctx.division.trades.map(async (trade) => {
-                    const side1Team = await LeagueTeamModel.findById(
-                      trade.side1.team,
-                    ).populate<
-                      LeagueTeamDocument & { coach: LeagueCoachDocument }
-                    >("coach");
-                    const side2Team = await LeagueTeamModel.findById(
-                      trade.side2.team,
-                    ).populate<
-                      LeagueTeamDocument & { coach: LeagueCoachDocument }
-                    >("coach");
-                    return {
-                      side1: {
-                        team: side1Team
-                          ? {
-                              name: side1Team.coach.teamName,
-                              coach: side1Team.coach.name,
-                              logo: side1Team.coach.logo,
-                            }
-                          : undefined,
-                        pokemon: trade.side1.pokemon,
-                      },
-                      side2: {
-                        team: side2Team
-                          ? {
-                              name: side2Team.coach.teamName,
-                              coach: side2Team.coach.name,
-                              logo: side2Team.coach.logo,
-                            }
-                          : undefined,
-                        pokemon: trade.side2.pokemon,
-                      },
-                      activeStage: trade.activeStage,
-                    };
-                  }),
-                );
-              });
               r.post.validate({
                 body: (data) =>
                   z
