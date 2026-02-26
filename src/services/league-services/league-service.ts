@@ -1,8 +1,12 @@
-import LeagueCoachModel from "../../models/league/coach.model";
+import LeagueCoachModel, {
+  LeagueCoachDocument,
+} from "../../models/league/coach.model";
 import LeagueDivisionModel from "../../models/league/division.model";
 import LeagueModel from "../../models/league/league.model";
 import { LeagueDocument } from "../../models/league/league.model";
-import LeagueTeamModel from "../../models/league/team.model";
+import LeagueTeamModel, {
+  LeagueTeamDocument,
+} from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 
@@ -95,4 +99,15 @@ export async function getTournamentsByOwner(auth0Id: string) {
   }
 
   return Array.from(tournamentMap.values());
+}
+
+export function getTeamClient(
+  team: LeagueTeamDocument & { coach: LeagueCoachDocument },
+) {
+  return {
+    id: team._id,
+    name: team.coach.teamName,
+    coach: team.coach.name,
+    logo: team.coach.logo,
+  };
 }

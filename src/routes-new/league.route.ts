@@ -1464,8 +1464,6 @@ export const LeagueRoute = createRoute()((r) => {
                 .filter((id) => isValidObjectId(id))
                 .map((id) => new Types.ObjectId(id));
 
-              console.log(ctx.division.currentStage);
-
               const includedStages = ctx.division.stages.filter(
                 (stage, index) =>
                   !ctx.validatedQuery?.stage ||
@@ -1541,52 +1539,54 @@ export const LeagueRoute = createRoute()((r) => {
                   const transformedMatchups = matchups.map((matchup) => ({
                     id: matchup._id.toString(),
                     team1: {
-                      teamName: matchup.team1.coach.teamName,
+                      name: matchup.team1.coach.teamName,
                       coach: matchup.team1.coach.name,
                       score: matchup.score?.team1,
                       logo: matchup.team1.coach.logo,
                       id: matchup.team1._id.toString(),
-                      winner: matchup.winner && matchup.winner === "team1",
+                      draft: matchup.team1.draft.map((draftItem) => ({
+                        id: draftItem.pokemon.id,
+                        capt: {
+                          ...(draftItem.addons?.includes("Tera Captain")
+                            ? { tera: true }
+                            : undefined),
+                        },
+                      })),
                     },
                     team2: {
-                      teamName: matchup.team2.coach.teamName,
+                      name: matchup.team2.coach.teamName,
                       coach: matchup.team2.coach.name,
                       score: matchup.score?.team2,
                       logo: matchup.team2.coach.logo,
                       id: matchup.team2._id.toString(),
-                      winner: matchup.winner && matchup.winner === "team2",
+                      draft: matchup.team2.draft.map((draftItem) => ({
+                        id: draftItem.pokemon.id,
+                        capt: {
+                          ...(draftItem.addons?.includes("Tera Captain")
+                            ? { tera: true }
+                            : undefined),
+                        },
+                      })),
                     },
                     matches: matchup.results.map((result) => ({
                       link: result.replay,
                       team1: {
-                        team: Array.from(result.team1.pokemon.entries()).map(
-                          ([id, stats]) => ({
-                            id,
-                            status: stats?.deaths
-                              ? "fainted"
-                              : stats?.brought
-                                ? "brought"
-                                : undefined,
-                          }),
+                        team: Object.fromEntries(
+                          result.team1.pokemon.entries(),
                         ),
                         score: result.team1.score,
                         winner: result.winner === "team1",
                       },
                       team2: {
-                        team: Array.from(result.team2.pokemon.entries()).map(
-                          ([id, stats]) => ({
-                            id,
-                            status: stats?.deaths
-                              ? "fainted"
-                              : stats?.brought
-                                ? "brought"
-                                : undefined,
-                          }),
+                        team: Object.fromEntries(
+                          result.team2.pokemon.entries(),
                         ),
                         score: result.team2.score,
                         winner: result.winner === "team2",
                       },
                     })),
+                    score: matchup.score,
+                    winner: matchup.winner,
                   }));
                   return {
                     _id: stage._id,
@@ -1968,6 +1968,100 @@ export const LeagueRoute = createRoute()((r) => {
                   });
                 await draftPokemon(ctx.tournament, ctx.division, team, pick);
                 return { message: "Draft pick set successfully." };
+              });
+            });
+            r.path("schedule")((r) => {
+              r.param("matchup_id", (ctx, matchup_id) => {
+                if (!isValidObjectId(matchup_id))
+                  throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+                    reason: "Invalid matchup ID",
+                  });
+                return { matchup_id };
+              })((r) => {
+                r.post.validate({
+                  body: (data) =>
+                    z
+                      .object({
+                        score: z
+                          .object({
+                            team1: z.number(),
+                            team2: z.number(),
+                          })
+                          .optional(),
+                        winner: z.enum(["team1", "team2"]).optional(),
+                        matches: z.array(
+                          z.object({
+                            link: z.string().optional(),
+                            winner: z.enum(["team1", "team2"]),
+                            team1: z.object({
+                              score: z.number(),
+                              pokemon: z.record(
+                                z.object({
+                                  kills: z.number().optional(),
+                                  indirect: z.number().optional(),
+                                  deaths: z.number().optional(),
+                                  brought: z.number().optional(),
+                                }),
+                              ),
+                            }),
+                            team2: z.object({
+                              score: z.number(),
+                              pokemon: z.record(
+                                z.object({
+                                  kills: z.number().optional(),
+                                  indirect: z.number().optional(),
+                                  deaths: z.number().optional(),
+                                  brought: z.number().optional(),
+                                }),
+                              ),
+                            }),
+                          }),
+                        ),
+                      })
+                      .parse(data),
+                })(async (ctx) => {
+                  const matchup = await LeagueMatchupModel.findOne({
+                    _id: ctx.matchup_id,
+                    division: ctx.division._id,
+                  });
+
+                  if (!matchup)
+                    throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
+                      matchupId: ctx.matchup_id,
+                    });
+
+                  matchup.results = ctx.validatedBody.matches.map((match) => ({
+                    replay: match.link?.trim() || undefined,
+                    winner: match.winner,
+                    team1: {
+                      score: match.team1.score,
+                      pokemon: new Map(
+                        Object.entries(match.team1.pokemon).filter(
+                          ([id, stats]) => stats.brought,
+                        ),
+                      ),
+                    },
+                    team2: {
+                      score: match.team2.score,
+                      pokemon: new Map(
+                        Object.entries(match.team2.pokemon).filter(
+                          ([id, stats]) => stats.brought,
+                        ),
+                      ),
+                    },
+                  }));
+
+                  if (ctx.validatedBody.score) {
+                    matchup.score = ctx.validatedBody.score;
+                  }
+
+                  if (ctx.validatedBody.winner) {
+                    matchup.winner = ctx.validatedBody.winner;
+                  }
+
+                  await matchup.save();
+                  return { message: "Schedule updated." };
+                });
               });
             });
             r.path("trades")((r) => {

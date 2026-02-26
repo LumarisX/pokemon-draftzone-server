@@ -47,11 +47,11 @@ export type LeagueMatchupDocument = Document<Types.ObjectId> &
   MatchupVirtuals;
 
 type MatchupMethods = {
-  getScore(team: "team1" | "team2"): number;
+  // getScore(team: "team1" | "team2"): number;
 };
 
 type MatchupVirtuals = {
-  winner?: "team1" | "team2";
+  // winner?: "team1" | "team2";
 };
 
 type LeagueMatchupModel = Model<LeagueMatchupDocument, {}, MatchupMethods>;
@@ -125,7 +125,7 @@ export const leagueMatchupSchema: Schema<
         team2: { type: Number, required: true },
       },
     },
-    winner: { type: String, enum: ["team1", "team2"], required: true },
+    winner: { type: String, enum: ["team1", "team2"] },
   },
   { timestamps: true },
 );
