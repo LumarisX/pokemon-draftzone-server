@@ -62,6 +62,8 @@ export type DraftTrade = {
 export type LeagueStageData = {
   division: LeagueDivisionDocument | Types.ObjectId;
   name: string;
+  matchDeadline?: Date;
+  tradeDeadline?: Date;
 };
 
 export type LeagueStageDocument = Document<Types.ObjectId> & LeagueStageData;
