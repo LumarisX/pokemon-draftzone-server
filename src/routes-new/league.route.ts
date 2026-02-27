@@ -27,7 +27,10 @@ import LeagueCoachModel, {
   signUpSchema,
 } from "../models/league/coach.model";
 import LeagueDivisionModel from "../models/league/division.model";
-import { LeagueMatchupModel } from "../models/league/matchup.model";
+import {
+  LeagueMatchupModel,
+  PokemonStats,
+} from "../models/league/matchup.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   TeamDraft,
@@ -1997,10 +2000,14 @@ export const LeagueRoute = createRoute()((r) => {
                               score: z.number(),
                               pokemon: z.record(
                                 z.object({
-                                  kills: z.number().optional(),
-                                  indirect: z.number().optional(),
-                                  deaths: z.number().optional(),
-                                  brought: z.number().optional(),
+                                  kills: z.object({
+                                    direct: z.number().optional(),
+                                    indirect: z.number().optional(),
+                                    teammate: z.number().optional(),
+                                  }),
+                                  status: z
+                                    .enum(["brought", "used", "fainted"])
+                                    .nullable(),
                                 }),
                               ),
                             }),
@@ -2008,10 +2015,14 @@ export const LeagueRoute = createRoute()((r) => {
                               score: z.number(),
                               pokemon: z.record(
                                 z.object({
-                                  kills: z.number().optional(),
-                                  indirect: z.number().optional(),
-                                  deaths: z.number().optional(),
-                                  brought: z.number().optional(),
+                                  kills: z.object({
+                                    direct: z.number().optional(),
+                                    indirect: z.number().optional(),
+                                    teammate: z.number().optional(),
+                                  }),
+                                  status: z
+                                    .enum(["brought", "used", "fainted"])
+                                    .nullable(),
                                 }),
                               ),
                             }),
@@ -2037,16 +2048,16 @@ export const LeagueRoute = createRoute()((r) => {
                       score: match.team1.score,
                       pokemon: new Map(
                         Object.entries(match.team1.pokemon).filter(
-                          ([id, stats]) => stats.brought,
-                        ),
+                          ([id, stats]) => stats.status !== null && stats.status !== undefined,
+                        ) as [string, PokemonStats][],
                       ),
                     },
                     team2: {
                       score: match.team2.score,
                       pokemon: new Map(
                         Object.entries(match.team2.pokemon).filter(
-                          ([id, stats]) => stats.brought,
-                        ),
+                          ([id, stats]) => stats.status !== null && stats.status !== undefined,
+                        ) as [string, PokemonStats][],
                       ),
                     },
                   }));

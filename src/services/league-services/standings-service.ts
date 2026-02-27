@@ -90,62 +90,81 @@ export async function calculateDivisionPokemonStandings(
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
 
-    for (const pokemon of matchup.results[0]?.team1?.pokemon || []) {
-      const pokemonId = pokemon.id;
+    // Process all results (matches) in the matchup
+    for (const result of matchup.results || []) {
+      // Process team1 pokemon
+      if (result.team1?.pokemon) {
+        for (const [pokemonId, stats] of result.team1.pokemon.entries()) {
+          if (filterTeamId && team1Key !== filterTeamId) {
+            continue;
+          }
 
-      if (filterTeamId && team1Key !== filterTeamId) {
-        continue;
+          const pokemonKey = `${pokemonId}-${team1Key}`;
+
+          if (!pokemonStandingsMap.has(pokemonKey)) {
+            const pokemonNameFromDraft = team1Doc.draft?.find(
+              (d: any) => d.pokemon.id === pokemonId,
+            )?.pokemon?.id;
+            pokemonStandingsMap.set(pokemonKey, {
+              id: pokemonId,
+              name: pokemonNameFromDraft || pokemonId,
+              coach: team1Coach,
+              teamName: team1Doc.coach?.teamName,
+              teamId: team1Key,
+              brought: 0,
+              kills: 0,
+              deaths: 0,
+            });
+          }
+
+          const pokemonStandings = pokemonStandingsMap.get(pokemonKey)!;
+          if (stats.status) {
+            pokemonStandings.brought += 1;
+          }
+          pokemonStandings.kills +=
+            (stats.kills?.direct ?? 0) + (stats.kills?.indirect ?? 0);
+          if (stats.status === "fainted") {
+            pokemonStandings.deaths += 1;
+          }
+        }
       }
 
-      const pokemonKey = `${pokemonId}-${team1Key}`;
+      // Process team2 pokemon
+      if (result.team2?.pokemon) {
+        for (const [pokemonId, stats] of result.team2.pokemon.entries()) {
+          if (filterTeamId && team2Key !== filterTeamId) {
+            continue;
+          }
 
-      if (!pokemonStandingsMap.has(pokemonKey)) {
-        pokemonStandingsMap.set(pokemonKey, {
-          id: pokemonId,
-          name: pokemon.name,
-          coach: team1Coach,
-          teamName: team1Doc.coach?.teamName,
-          teamId: team1Key,
-          brought: 0,
-          kills: 0,
-          deaths: 0,
-        });
+          const pokemonKey = `${pokemonId}-${team2Key}`;
+
+          if (!pokemonStandingsMap.has(pokemonKey)) {
+            const pokemonNameFromDraft = team2Doc.draft?.find(
+              (d: any) => d.pokemon.id === pokemonId,
+            )?.pokemon?.id;
+            pokemonStandingsMap.set(pokemonKey, {
+              id: pokemonId,
+              name: pokemonNameFromDraft || pokemonId,
+              coach: team2Coach,
+              teamName: team2Doc.coach?.teamName,
+              teamId: team2Key,
+              brought: 0,
+              kills: 0,
+              deaths: 0,
+            });
+          }
+
+          const pokemonStandings = pokemonStandingsMap.get(pokemonKey)!;
+          if (stats.status) {
+            pokemonStandings.brought += 1;
+          }
+          pokemonStandings.kills +=
+            (stats.kills?.direct ?? 0) + (stats.kills?.indirect ?? 0);
+          if (stats.status === "fainted") {
+            pokemonStandings.deaths += 1;
+          }
+        }
       }
-
-      const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
-      pokemonStats.brought += pokemon.stats?.brought ?? 0;
-      pokemonStats.kills +=
-        (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
-      pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
-    }
-
-    for (const pokemon of matchup.results[0]?.team2?.pokemon || []) {
-      const pokemonId = pokemon.id;
-
-      if (filterTeamId && team2Key !== filterTeamId) {
-        continue;
-      }
-
-      const pokemonKey = `${pokemonId}-${team2Key}`;
-
-      if (!pokemonStandingsMap.has(pokemonKey)) {
-        pokemonStandingsMap.set(pokemonKey, {
-          id: pokemonId,
-          name: pokemon.name,
-          coach: team2Coach,
-          teamName: team2Doc.coach?.teamName,
-          teamId: team2Key,
-          brought: 0,
-          kills: 0,
-          deaths: 0,
-        });
-      }
-
-      const pokemonStats = pokemonStandingsMap.get(pokemonKey)!;
-      pokemonStats.brought += pokemon.stats?.brought ?? 0;
-      pokemonStats.kills +=
-        (pokemon.stats?.kills ?? 0) + (pokemon.stats?.indirect ?? 0);
-      pokemonStats.deaths += pokemon.stats?.deaths ?? 0;
     }
   }
 

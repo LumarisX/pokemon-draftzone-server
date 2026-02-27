@@ -7,11 +7,20 @@ import {
 import { LeagueDivisionDocument, LeagueStageDocument } from "./division.model";
 import { LeagueTeamDocument } from "./team.model";
 
-export type PokemonStats = {
+export type PokemonStatsOld = {
   kills?: number;
   indirect?: number;
   deaths?: number;
   brought?: number;
+};
+
+export type PokemonStats = {
+  kills?: {
+    direct?: number;
+    indirect?: number;
+    teammate?: number;
+  };
+  status: "brought" | "used" | "fainted";
 };
 
 export type MatchTeam = {
@@ -56,12 +65,23 @@ type MatchupVirtuals = {
 
 type LeagueMatchupModel = Model<LeagueMatchupDocument, {}, MatchupMethods>;
 
-const pokemonStatsSchema = new Schema(
+const killsSchema = new Schema(
   {
-    kills: { type: Number },
+    direct: { type: Number },
     indirect: { type: Number },
-    deaths: { type: Number },
-    brought: { type: Number },
+    teammate: { type: Number },
+  },
+  { _id: false },
+);
+
+const pokemonStatsSchema = new Schema<PokemonStats>(
+  {
+    kills: { type: killsSchema },
+    status: {
+      type: String,
+      enum: ["brought", "used", "fainted"],
+      required: true,
+    },
   },
   { _id: false },
 );

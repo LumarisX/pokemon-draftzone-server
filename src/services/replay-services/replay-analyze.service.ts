@@ -72,7 +72,7 @@ export namespace Replay {
               damageTarget,
               this.getHPP(line.data[2]),
               line.data.slice(3),
-              line
+              line,
             );
           }
           break;
@@ -87,7 +87,7 @@ export namespace Replay {
           let moveAttacker = this.getMonByString(line.data[1]);
           if (moveAttacker) {
             let move = [...moveAttacker.moveset].find(
-              (move) => move.name === line.data[2]
+              (move) => move.name === line.data[2],
             );
             if (!move) {
               move = gens.dex.moves.get(line.data[2]);
@@ -121,7 +121,7 @@ export namespace Replay {
           this.upkeep(line.turn);
           this.updateChart(line.turn?.number ?? 0);
           let winPlayer = this.playerData.findIndex(
-            (player) => player.username == line.data[1]
+            (player) => player.username == line.data[1],
           );
           if (winPlayer >= 0) {
             this.playerData[winPlayer].win = true;
@@ -145,15 +145,15 @@ export namespace Replay {
             (pokemon) => {
               if (!pokemon.brought) {
                 return new RegExp(
-                  String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`
+                  String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`,
                 ).test(line.data[2] as string);
               } else {
                 let detailSet = new Set(line.data[2]!.split(", "));
                 return pokemon.formes.some((forme) =>
-                  forme.detail.split(", ").every((e) => detailSet.has(e))
+                  forme.detail.split(", ").every((e) => detailSet.has(e)),
                 );
               }
-            }
+            },
           );
 
           let tempReplaceMon = this.tempMons[line.data[1].substring(0, 3)];
@@ -170,13 +170,13 @@ export namespace Replay {
               moveset: new Set(),
               hpRestored: 0,
               lastDamage: undefined,
-              damageDealt: [0, 0],
+              damageDealt: [0, 0, 0],
               calcLog: {
                 damageTaken: [],
                 damageDealt: [],
               },
-              damageTaken: [0, 0],
-              kills: [0, 0],
+              damageTaken: [0, 0, 0],
+              kills: [0, 0, 0],
               player: this.playerData[illusionPlayer],
               status: { status: "healthy" },
               statuses: [],
@@ -195,21 +195,24 @@ export namespace Replay {
           illusionMon.damageDealt = [
             replaceMon.damageDealt[0] - tempReplaceMon.damageDealt[0],
             replaceMon.damageDealt[1] - tempReplaceMon.damageDealt[1],
+            replaceMon.damageDealt[2] - tempReplaceMon.damageDealt[2],
           ];
           illusionMon.lastDamage = replaceMon.lastDamage;
           illusionMon.damageTaken = [
             replaceMon.damageTaken[0] - tempReplaceMon.damageTaken[0],
             replaceMon.damageTaken[1] - tempReplaceMon.damageTaken[1],
+            replaceMon.damageTaken[2] - tempReplaceMon.damageTaken[2],
           ];
           // illusionMon.calcLog
           illusionMon.status = replaceMon.status;
           illusionMon.statuses = replaceMon.statuses.filter(
             (status) =>
-              !tempReplaceMon.statuses.find((s) => s.name === status.name)
+              !tempReplaceMon.statuses.find((s) => s.name === status.name),
           );
           illusionMon.kills = [
             replaceMon.kills[0] - tempReplaceMon.kills[0],
             replaceMon.kills[1] - tempReplaceMon.kills[1],
+            replaceMon.kills[2] - tempReplaceMon.kills[2],
           ];
           illusionMon.fainted = replaceMon.fainted;
           this.killStrings.forEach((ks) => {
@@ -229,15 +232,15 @@ export namespace Replay {
             (pokemon) => {
               if (!pokemon.brought) {
                 return new RegExp(
-                  String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`
+                  String.raw`^${pokemon.formes[0].detail.replace("-*", ".*")}`,
                 ).test(line.data[2] as string);
               } else {
                 let detailSet = new Set(line.data[2]!.split(", "));
                 return pokemon.formes.some((forme) =>
-                  forme.detail.split(", ").every((e) => detailSet.has(e))
+                  forme.detail.split(", ").every((e) => detailSet.has(e)),
                 );
               }
-            }
+            },
           );
           if (switchedMon) {
             if (!switchedMon.brought) {
@@ -254,15 +257,15 @@ export namespace Replay {
                 line.data[2],
                 this.playerData[switchPlayer],
                 line.data[1],
-                { brought: true }
-              )
+                { brought: true },
+              ),
             );
           }
           const switchInMon = this.playerData[switchPlayer].team.find(
             (pokemon) =>
               pokemon.formes.some((forme) =>
-                line.data[2]!.startsWith(forme.detail)
-              )
+                line.data[2]!.startsWith(forme.detail),
+              ),
           );
           this.field.sides[switchPlayer][
             line.data[1].charAt(2) as PPosition
@@ -308,8 +311,8 @@ export namespace Replay {
                   [side.a.pokemon, side.b.pokemon, side.c.pokemon].find(
                     (pokemon) =>
                       pokemon &&
-                      this.searchStatuses(pokemon, "move: Destiny Bond")
-                  )
+                      this.searchStatuses(pokemon, "move: Destiny Bond"),
+                  ),
                 )
                 .filter((pokemon) => pokemon);
               if (
@@ -317,7 +320,8 @@ export namespace Replay {
               ) {
                 let destinyBondMon = destinyBondMonList.find(
                   (pokemon) =>
-                    pokemon?.fainted && pokemon.lastDamage?.damager === faintMon
+                    pokemon?.fainted &&
+                    pokemon.lastDamage?.damager === faintMon,
                 );
                 if (destinyBondMon) {
                   destinyBondMon.kills[1]++;
@@ -334,17 +338,19 @@ export namespace Replay {
                       faintMon.lastDamage.line.parent?.data
                     ) {
                       let faintAttacker = this.getMonByString(
-                        this.lastMove.data[1]
+                        this.lastMove.data[1],
                       );
                       killString.reason = this.lastMove.data[2];
                       if (faintAttacker) {
                         let faintOwnKill = this.checkOwnKill(
                           faintAttacker,
-                          faintMon
+                          faintMon,
                         );
                         killString.attacker = faintAttacker;
-                        if ((faintOwnKill = "opp")) {
+                        if (faintOwnKill === "opp") {
                           faintAttacker.kills[0]++;
+                        } else if (faintOwnKill === "ff") {
+                          faintAttacker.kills[2]++;
                         }
                       } else {
                         console.log("ks error", line.data);
@@ -360,7 +366,6 @@ export namespace Replay {
                       if (faintMon.lastDamage.status.setter) {
                         faintMon.lastDamage.status.setter.kills[0]++;
                       }
-                    } else {
                     }
                   }
                 } //Fainted from indirect damage
@@ -369,12 +374,14 @@ export namespace Replay {
                   if (faintMon.lastDamage.damager) {
                     let faintFromOwnKill = this.checkOwnKill(
                       faintMon.lastDamage.damager,
-                      faintMon
+                      faintMon,
                     );
                     killString.attacker = faintMon.lastDamage.damager;
                     killString.reason = faintMon.lastDamage.from;
                     if (faintFromOwnKill === "opp") {
                       faintMon.lastDamage.damager.kills[1]++;
+                    } else if (faintFromOwnKill === "ff") {
+                      faintMon.lastDamage.damager.kills[2]++;
                     }
                   }
                 }
@@ -432,7 +439,7 @@ export namespace Replay {
             let activateSetter = undefined;
             if (line.data[3] && line.data[3].startsWith("[of] ")) {
               activateSetter = this.getMonByString(
-                this.ofP2P(line.data[3] as OFPOKEMON)
+                this.ofP2P(line.data[3] as OFPOKEMON),
               );
             }
             activateMon.statuses.push({
@@ -473,7 +480,7 @@ export namespace Replay {
                 statusStart.setter = this.getMonByString(this.lastMove.data[1]);
               } else if (line.data[4] && line.data[4].startsWith("[of] ")) {
                 statusStart.setter = this.getMonByString(
-                  this.ofP2P(line.data[4] as OFPOKEMON)
+                  this.ofP2P(line.data[4] as OFPOKEMON),
                 );
               }
             } else if (line.parent) {
@@ -488,20 +495,20 @@ export namespace Replay {
                 ].statuses.find(
                   (status) =>
                     status.status === "move: Toxic Spikes" ||
-                    status.status === "Toxic Spikes"
+                    status.status === "Toxic Spikes",
                 )?.setter;
               } else if (line.parent.data[0] === "move") {
                 let statusOnProtect = line.parent.children.find(
                   (child) =>
                     child.data[0] === "-activate" &&
-                    child.data[2] === "move: Protect"
+                    child.data[2] === "move: Protect",
                 );
                 if (
                   statusOnProtect &&
                   statusOnProtect.data[0] === "-activate"
                 ) {
                   statusStart.setter = this.getMonByString(
-                    statusOnProtect.data[1]
+                    statusOnProtect.data[1],
                   );
                 } else {
                   statusStart.setter = this.getMonByString(line.parent.data[1]);
@@ -517,13 +524,13 @@ export namespace Replay {
             let weatherStatus: Status = { status: line.data[1] };
             if (line.data.length > 3 && line.data[3].startsWith("[of] ")) {
               let weatherPosition = this.getMonByString(
-                this.ofP2P(line.data[3] as OFPOKEMON)
+                this.ofP2P(line.data[3] as OFPOKEMON),
               );
               weatherStatus.setter = weatherPosition;
             } else {
               if (this.lastMove) {
                 let weatherPosition = this.getMonByString(
-                  this.lastMove.data[1]
+                  this.lastMove.data[1],
                 );
                 weatherStatus.setter = weatherPosition;
               }
@@ -737,8 +744,8 @@ export namespace Replay {
               (status) =>
                 status.status === line.data[2] ||
                 status.status.startsWith(
-                  line.data[2].toLowerCase().replace(" ", "")
-                )
+                  line.data[2].toLowerCase().replace(" ", ""),
+                ),
             );
             if (endStatus) {
               endStatus.ended = true;
@@ -763,9 +770,9 @@ export namespace Replay {
         case "-sideend":
           this.field.sides[+line.data[1].charAt(1) - 1].statuses.splice(
             this.field.sides[+line.data[1].charAt(1) - 1].statuses.findIndex(
-              (s) => s.status === line.data[2]
+              (s) => s.status === line.data[2],
             ),
-            1
+            1,
           );
 
           break;
@@ -793,7 +800,7 @@ export namespace Replay {
           let fieldStartStatus: Status = { status: line.data[1] };
           if (line.data[3] && line.data[3].startsWith("[of] ")) {
             let fieldStartSetter = this.getMonByString(
-              this.ofP2P(line.data[3] as OFPOKEMON)
+              this.ofP2P(line.data[3] as OFPOKEMON),
             );
             if (fieldStartSetter) {
               fieldStartStatus.setter = fieldStartSetter;
@@ -804,9 +811,9 @@ export namespace Replay {
         case "-fieldend":
           this.field.statuses.splice(
             this.field.statuses.findIndex(
-              (status) => status.status === line.data[1]
+              (status) => status.status === line.data[1],
             ),
-            1
+            1,
           );
           break;
         case "n":
@@ -831,21 +838,21 @@ export namespace Replay {
           total: {
             kills: player.team.reduce(
               (sum, pokemon) => sum + pokemon.kills[0] + pokemon.kills[1],
-              0
+              0,
             ),
             deaths: player.team.reduce(
               (sum, pokemon) => sum + (pokemon.fainted ? 1 : 0),
-              0
+              0,
             ),
             damageDealt: player.team.reduce(
               (sum, pokemon) =>
                 sum + pokemon.damageDealt[0] + pokemon.damageDealt[1],
-              0
+              0,
             ),
             damageTaken: player.team.reduce(
               (sum, pokemon) =>
                 sum + pokemon.damageTaken[0] + pokemon.damageTaken[1],
-              0
+              0,
             ),
           },
           turnChart: player.turnChart,
@@ -874,8 +881,11 @@ export namespace Replay {
         player.team.forEach((pokemon) => {
           playerStat.team.push({
             kills: pokemon.kills,
-            brought: pokemon.brought || this.preview >= player.team.length,
-            fainted: pokemon.fainted,
+            status: pokemon.fainted
+              ? "fainted"
+              : pokemon.brought
+                ? "used"
+                : "brought",
             moveset: [...pokemon.moveset].map((move) => move.name),
             damageDealt: pokemon.damageDealt,
             damageTaken: pokemon.damageTaken,
@@ -933,7 +943,7 @@ export namespace Replay {
           .pokemon;
       } else {
         return this.playerData[+pos.charAt(1) - 1].team.find(
-          (pokemon) => pokemon.nickname === pos.substring(4)
+          (pokemon) => pokemon.nickname === pos.substring(4),
         );
       }
     }
@@ -944,19 +954,19 @@ export namespace Replay {
           turn: turnNumber,
           damage: player.team.reduce(
             (sum, pokemon) => (sum += 100 - pokemon.hpp),
-            0
+            0,
           ),
           remaining: player.team.reduce(
             (sum, pokemon) => (sum += pokemon.fainted ? 0 : 1),
-            0
+            0,
           ),
-        })
+        }),
       );
     }
 
     private searchStatuses(
       pokemon: Pokemon,
-      status: string
+      status: string,
     ): Status | undefined {
       if (status === "Recoil") {
         return { status: status, setter: pokemon, name: "Recoil" };
@@ -969,7 +979,7 @@ export namespace Replay {
         if (monStatus) return monStatus;
       }
       let sideStatus = pokemon.player.side.statuses.find(
-        (s) => s.status === status
+        (s) => s.status === status,
       );
       if (sideStatus) {
         return sideStatus;
@@ -989,7 +999,7 @@ export namespace Replay {
 
     private cleanStatuses() {
       this.field.statuses = this.field.statuses.filter(
-        (status) => !status.ended
+        (status) => !status.ended,
       );
       this.field.sides.forEach((side) => {
         side.statuses = side.statuses.filter((status) => !status.ended);
@@ -1003,26 +1013,26 @@ export namespace Replay {
             ? { status: "healthy" }
             : pokemon.status;
           pokemon.statuses = pokemon.statuses.filter((status) => !status.ended);
-        })
+        }),
       );
       return;
     }
 
     private checkOwnKill(
       attacker: Pokemon | undefined,
-      fainter: Pokemon | undefined
+      fainter: Pokemon | undefined,
     ): "self" | "ff" | "opp" {
-      if (attacker === fainter) {
-        return "self";
-      }
-      return this.playerData.find(
-        (player) => attacker && player.team.includes(attacker)
-      ) ===
+      if (attacker === fainter) return "self";
+      if (
         this.playerData.find(
-          (player) => fainter && player.team.includes(fainter)
+          (player) => attacker && player.team.includes(attacker),
+        ) ===
+        this.playerData.find(
+          (player) => fainter && player.team.includes(fainter),
         )
-        ? "ff"
-        : "opp";
+      )
+        return "ff";
+      return "opp";
     }
 
     private getHPP(hpString: HPSTATUS | HP): number {
@@ -1034,7 +1044,7 @@ export namespace Replay {
     private heal(
       healed: Pokemon,
       newHp: number,
-      action: MARJORACTION | undefined
+      action: MARJORACTION | undefined,
     ) {
       let hpDiff = newHp - healed.hpp;
       healed.hpp = newHp;
@@ -1046,7 +1056,7 @@ export namespace Replay {
       target: Pokemon,
       newHpp: number,
       actions: MARJORACTION[] | undefined,
-      line: Line
+      line: Line,
     ) {
       let hppDiff = target.hpp - newHpp;
       target.hpp = newHpp;
@@ -1063,6 +1073,7 @@ export namespace Replay {
           of = this.ofP2P(action as OFPOKEMON);
         }
       }
+
       //Indirect Damage
       if (from && from !== toID(lastDamage.line.parent?.data[2])) {
         if (of) {
@@ -1115,13 +1126,13 @@ export namespace Replay {
         } else {
           target.damageTaken[1] += hppDiff;
           let endSub = lastDamage.line.parent?.children.find(
-            (child) => child.data[0] === "-end"
+            (child) => child.data[0] === "-end",
           );
           if (endSub) {
             let endMon = this.getMonByString(endSub.data[1] as POKEMON);
             if (endMon) {
               let endStatus = endMon.statuses.find(
-                (status) => status.status === endSub.data[2]
+                (status) => status.status === endSub.data[2],
               );
               if (endStatus) {
                 lastDamage.status = endStatus;
@@ -1166,7 +1177,7 @@ export namespace Replay {
           }
           s += ` by ${ks.attacker.player.username}'s ${
             ks.attacker.formes[ks.attacker.formes.length - 1].detail.split(
-              ","
+              ",",
             )[0]
           }`;
         }
@@ -1182,7 +1193,7 @@ export namespace Replay {
           player: this.field.sides.indexOf(ks.target.player.side) + 1,
           turn: turn.number,
           message: `${this.makeKillString(ks)}.`,
-        })
+        }),
       );
       this.killStrings = [];
     }
@@ -1205,9 +1216,8 @@ export namespace Replay {
           switches: number;
         };
         team: {
-          kills: [number, number];
-          brought: boolean;
-          fainted: boolean;
+          kills: [number, number, number];
+          status: "brought" | "used" | "fainted";
           damageDealt: [number, number];
           damageTaken: [number, number];
           hpRestored: number;
@@ -1231,8 +1241,7 @@ export namespace Replay {
           stats: stat.stats,
           team: stat.team.map((pokemon) => ({
             kills: pokemon.kills,
-            brought: pokemon.brought,
-            fainted: pokemon.fainted,
+            status: pokemon.status,
             damageDealt: [
               Math.round(pokemon.damageDealt[0] * 10) / 10,
               Math.round(pokemon.damageDealt[1] * 10) / 10,
@@ -1290,12 +1299,11 @@ export namespace Replay {
       };
     };
     team: {
-      kills: [number, number];
-      brought: boolean;
-      fainted: boolean;
+      kills: [number, number, number];
+      status: "brought" | "used" | "fainted";
       moveset: string[];
-      damageDealt: [number, number];
-      damageTaken: [number, number];
+      damageDealt: [number, number, number];
+      damageTaken: [number, number, number];
       calcLog: {
         damageTaken: { attacker: string; move: string; hpDiff: number }[];
         damageDealt: { target: string; move: string; hpDiff: number }[];
@@ -1532,9 +1540,9 @@ export namespace Replay {
     nickname: string;
     hpp: number;
     moveset: Set<Move>;
-    kills: [number, number] = [0, 0];
-    damageDealt: [number, number] = [0, 0];
-    damageTaken: [number, number] = [0, 0];
+    kills: [number, number, number] = [0, 0, 0];
+    damageDealt: [number, number, number] = [0, 0, 0];
+    damageTaken: [number, number, number] = [0, 0, 0];
     calcLog: {
       damageTaken: { attacker: Pokemon; move: Move; hpDiff: number }[];
       damageDealt: { target: Pokemon; move: Move; hpDiff: number }[];
@@ -1556,7 +1564,7 @@ export namespace Replay {
       pString?: POKEMON,
       options: {
         brought?: boolean;
-      } = {}
+      } = {},
     ) {
       this.formes = [
         {
