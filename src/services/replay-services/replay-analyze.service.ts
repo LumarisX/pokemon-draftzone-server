@@ -883,7 +883,7 @@ export namespace Replay {
             kills: pokemon.kills,
             status: pokemon.fainted
               ? "fainted"
-              : pokemon.brought
+              : pokemon.brought || player.team.length >= player.teamSize
                 ? "used"
                 : "brought",
             moveset: [...pokemon.moveset].map((move) => move.name),
