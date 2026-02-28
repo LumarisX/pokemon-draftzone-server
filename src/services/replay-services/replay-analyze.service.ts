@@ -315,14 +315,17 @@ export namespace Replay {
         const [pokemonStr, effect] = line.args as [POKEMON, EFFECT];
         const startMon = this.getPokemon(pokemonStr);
         if (!startMon || !line.parent) return;
+        const isMoveStart = line.parent.raw[0] === "move";
+        const startSetter = isMoveStart
+          ? this.getPokemon(line.parent.raw[1] as POKEMON)
+          : startMon;
         const startMonTarget =
-          line.parent.raw[0] === "move"
+          isMoveStart && line.parent.raw[3]
             ? this.getPokemon(line.parent.raw[3] as POKEMON)
             : startMon;
-        if (!startMonTarget) return;
         startMonTarget.statuses.push({
           status: effect,
-          setter: startMon,
+          setter: startSetter,
         });
       },
       "-status": (line) => {
