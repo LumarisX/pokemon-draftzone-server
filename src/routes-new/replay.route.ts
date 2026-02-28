@@ -5,6 +5,7 @@ import {
   Replay,
   validateUrl,
 } from "../services/replay-services/replay-analyze.service";
+
 import { createRoute } from "./route-builder";
 
 function URLHandler<T>(ctx: T, url: string): { url: string } {
@@ -24,9 +25,9 @@ export const ReplayRoute = createRoute()((r) => {
       URLHandler,
     )((r) => {
       r.get(async (ctx) => {
-        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
-        const replay = new Replay.Analysis(await replayData.text());
-        return replay.toJson();
+        const replay = await Replay.Analysis.fromReplayUrl(ctx.url);
+
+        return replay?.toJson();
       });
     });
   });

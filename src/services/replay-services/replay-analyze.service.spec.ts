@@ -1,5 +1,47 @@
 import { formatUrl, Replay, validateUrl } from "./replay-analyze.service";
 
+type ExpectedStatBreakdown =
+  | [number, number]
+  | [number, number, number]
+  | { direct: number; indirect: number; teammate: number };
+
+type ActualStatBreakdown =
+  | [number, number]
+  | [number, number, number]
+  | { direct: number; indirect: number; teammate: number };
+
+function normalizeExpectedBreakdown(value: ExpectedStatBreakdown): {
+  direct: number;
+  indirect: number;
+  teammate: number;
+} {
+  if (Array.isArray(value)) {
+    return {
+      direct: value[0] ?? 0,
+      indirect: value[1] ?? 0,
+      teammate: value[2] ?? 0,
+    };
+  }
+
+  return value;
+}
+
+function normalizeActualBreakdown(value: ActualStatBreakdown): {
+  direct: number;
+  indirect: number;
+  teammate: number;
+} {
+  if (Array.isArray(value)) {
+    return {
+      direct: value[0] ?? 0,
+      indirect: value[1] ?? 0,
+      teammate: value[2] ?? 0,
+    };
+  }
+
+  return value;
+}
+
 const replays: {
   url: string;
   expected: {
@@ -20,11 +62,10 @@ const replays: {
         switches: number;
       };
       team: {
-        kills: [number, number];
-        brought: boolean;
-        fainted: boolean;
-        damageDealt: [number, number];
-        damageTaken: [number, number];
+        kills: ExpectedStatBreakdown;
+        status: "fainted" | "brought" | "used";
+        damageDealt: ExpectedStatBreakdown;
+        damageTaken: ExpectedStatBreakdown;
         hpRestored: number;
         formes: {
           id: string;
@@ -196,8 +237,7 @@ const replays: {
           team: [
             {
               kills: [0, 1],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [28, 30],
               damageTaken: [138, 0],
               hpRestored: 38,
@@ -205,8 +245,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [164, 0],
               damageTaken: [26, 74],
               hpRestored: 0,
@@ -214,8 +253,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [28, 0],
               damageTaken: [101, 24],
               hpRestored: 25,
@@ -223,8 +261,7 @@ const replays: {
             },
             {
               kills: [2, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [188, 0],
               damageTaken: [85, 15],
               hpRestored: 0,
@@ -232,8 +269,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [8, 16],
               damageTaken: [76, 24],
               hpRestored: 0,
@@ -241,8 +277,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [0, 0],
               damageTaken: [76, 24],
               hpRestored: 0,
@@ -261,8 +296,7 @@ const replays: {
           team: [
             {
               kills: [0, 0],
-              brought: true,
-              fainted: false,
+              status: "used",
               damageDealt: [0, 0],
               damageTaken: [0, 0],
               hpRestored: 0,
@@ -270,8 +304,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [100, 0],
               damageTaken: [82, 18],
               hpRestored: 0,
@@ -279,8 +312,7 @@ const replays: {
             },
             {
               kills: [4, 0],
-              brought: true,
-              fainted: false,
+              status: "used",
               damageDealt: [232, 0],
               damageTaken: [62, 0],
               hpRestored: 50,
@@ -288,8 +320,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [0, 89],
               damageTaken: [127, 0],
               hpRestored: 27,
@@ -297,8 +328,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [92, 72],
               damageTaken: [72, 28],
               hpRestored: 0,
@@ -306,8 +336,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: false,
+              status: "used",
               damageDealt: [0, 0],
               damageTaken: [73, 0],
               hpRestored: 0,
@@ -335,8 +364,7 @@ const replays: {
           team: [
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [168, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -344,8 +372,7 @@ const replays: {
             },
             {
               kills: [2, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [248, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -353,8 +380,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [76, 0],
               damageTaken: [91, 21],
               hpRestored: 12,
@@ -362,8 +388,7 @@ const replays: {
             },
             {
               kills: [3, 0],
-              brought: true,
-              fainted: false,
+              status: "used",
               damageDealt: [138, 0],
               damageTaken: [0, 0],
               hpRestored: 0,
@@ -379,8 +404,7 @@ const replays: {
           team: [
             {
               kills: [0, 1],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [0, 21],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -388,8 +412,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [86, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -397,8 +420,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [99, 0],
               damageTaken: [130, 0],
               hpRestored: 30,
@@ -406,8 +428,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [1, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -415,8 +436,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [0, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -424,8 +444,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [81, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -453,8 +472,7 @@ const replays: {
           team: [
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [215, 0],
               damageTaken: [94, 6],
               hpRestored: 0,
@@ -462,8 +480,7 @@ const replays: {
             },
             {
               kills: [2, 0],
-              brought: true,
-              fainted: false,
+              status: "used",
               damageDealt: [188, 0],
               damageTaken: [104, 13],
               hpRestored: 60,
@@ -471,8 +488,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [102, 0],
               damageTaken: [87, 13],
               hpRestored: 0,
@@ -480,8 +496,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [1, 0],
               damageTaken: [106, 12],
               hpRestored: 18,
@@ -489,8 +504,7 @@ const replays: {
             },
             {
               kills: [2, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [197, 0],
               damageTaken: [88, 12],
               hpRestored: 0,
@@ -498,8 +512,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [25, 0],
               damageTaken: [64, 36],
               hpRestored: 0,
@@ -515,8 +528,7 @@ const replays: {
           team: [
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [69, 12],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -524,8 +536,7 @@ const replays: {
             },
             {
               kills: [2, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [211, 0],
               damageTaken: [99, 1],
               hpRestored: 0,
@@ -533,8 +544,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [106, 56],
               damageTaken: [170, 0],
               hpRestored: 70,
@@ -542,8 +552,7 @@ const replays: {
             },
             {
               kills: [0, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [26, 24],
               damageTaken: [158, 0],
               hpRestored: 58,
@@ -551,8 +560,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [23, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -560,8 +568,7 @@ const replays: {
             },
             {
               kills: [1, 0],
-              brought: true,
-              fainted: true,
+              status: "fainted",
               damageDealt: [108, 0],
               damageTaken: [100, 0],
               hpRestored: 0,
@@ -601,8 +608,9 @@ describe("Replay Analyzer", () => {
       beforeAll(async () => {
         const response = await fetch(replay.url);
         const text = await response.text();
-        replayData = new Replay.Analysis(text);
-        analysis = replayData.toJson();
+        replayData = await Replay.Analysis.fromReplayUrl(replay.url);
+        if (!replayData) throw new Error("Failed to analyze replay");
+        analysis = replayData?.toJson();
       });
 
       test("correct number of turns", () => {
@@ -674,6 +682,27 @@ describe("Replay Analyzer", () => {
 
               replay.expected.stats[i].team.forEach((pokemon, index) => {
                 describe(`Pokemon ${index + 1}`, () => {
+                  const expectedKills = normalizeExpectedBreakdown(
+                    replay.expected.stats[i].team[index].kills,
+                  );
+                  const expectedDamageTaken = normalizeExpectedBreakdown(
+                    replay.expected.stats[i].team[index].damageTaken,
+                  );
+                  const expectedDamageDealt = normalizeExpectedBreakdown(
+                    replay.expected.stats[i].team[index].damageDealt,
+                  );
+                  const actualKills = normalizeActualBreakdown(
+                    analysis.stats[i].team[index].kills as ActualStatBreakdown,
+                  );
+                  const actualDamageTaken = normalizeActualBreakdown(
+                    analysis.stats[i].team[index]
+                      .damageTaken as ActualStatBreakdown,
+                  );
+                  const actualDamageDealt = normalizeActualBreakdown(
+                    analysis.stats[i].team[index]
+                      .damageDealt as ActualStatBreakdown,
+                  );
+
                   test("name matches", () => {
                     expect(
                       analysis.stats[i].team[index].formes[0],
@@ -682,17 +711,11 @@ describe("Replay Analyzer", () => {
                       pokemon.formes[0].id,
                     );
                   });
-                  // test("brought", () => {
-                  //   expect(analysis.stats[i].team[index].brought).toBe(
-                  //     replay.expected.stats[i].team[index].brought
-                  //   );
-                  // });
-                  // test("fainted", () => {
-                  //   expect(analysis.stats[i].team[index].fainted).toBe(
-                  //     replay.expected.stats[i].team[index].fainted
-                  //   );
-                  // });
-
+                  test("status", () => {
+                    expect(analysis.stats[i].team[index].status).toBe(
+                      replay.expected.stats[i].team[index].status,
+                    );
+                  });
                   test("hp restored", () => {
                     expect(
                       analysis.stats[i].team[index].hpRestored,
@@ -706,66 +729,52 @@ describe("Replay Analyzer", () => {
                   });
                   describe("Kills", () => {
                     test("direct", () => {
-                      expect(
-                        analysis.stats[i].team[index].kills[0],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(analysis.stats[i].team[index].kills[0]).toEqual(
-                        replay.expected.stats[i].team[index].kills[0],
-                      );
+                      expect(actualKills.direct).toBeGreaterThanOrEqual(0);
+                      expect(actualKills.direct).toEqual(expectedKills.direct);
                     });
                     test("indirect", () => {
-                      expect(
-                        analysis.stats[i].team[index].kills[1],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(analysis.stats[i].team[index].kills[1]).toEqual(
-                        replay.expected.stats[i].team[index].kills[1],
+                      expect(actualKills.indirect).toBeGreaterThanOrEqual(0);
+                      expect(actualKills.indirect).toEqual(
+                        expectedKills.indirect,
                       );
                     });
                   });
                   describe("Damage Taken", () => {
                     test("direct", () => {
-                      expect(
-                        analysis.stats[i].team[index].damageTaken[0],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(
-                        analysis.stats[i].team[index].damageTaken[0],
-                      ).toBeCloseTo(
-                        replay.expected.stats[i].team[index].damageTaken[0],
+                      expect(actualDamageTaken.direct).toBeGreaterThanOrEqual(
+                        0,
+                      );
+                      expect(actualDamageTaken.direct).toBeCloseTo(
+                        expectedDamageTaken.direct,
                         0,
                       );
                     });
                     test("indirect", () => {
-                      expect(
-                        analysis.stats[i].team[index].damageTaken[1],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(
-                        analysis.stats[i].team[index].damageTaken[1],
-                      ).toBeCloseTo(
-                        replay.expected.stats[i].team[index].damageTaken[1],
+                      expect(actualDamageTaken.indirect).toBeGreaterThanOrEqual(
+                        0,
+                      );
+                      expect(actualDamageTaken.indirect).toBeCloseTo(
+                        expectedDamageTaken.indirect,
                         0,
                       );
                     });
                   });
                   describe("Damage Dealt", () => {
                     test("direct", () => {
-                      expect(
-                        analysis.stats[i].team[index].damageDealt[0],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(
-                        analysis.stats[i].team[index].damageDealt[0],
-                      ).toBeCloseTo(
-                        replay.expected.stats[i].team[index].damageDealt[0],
+                      expect(actualDamageDealt.direct).toBeGreaterThanOrEqual(
+                        0,
+                      );
+                      expect(actualDamageDealt.direct).toBeCloseTo(
+                        expectedDamageDealt.direct,
                         0,
                       );
                     });
                     test("indirect", () => {
-                      expect(
-                        analysis.stats[i].team[index].damageDealt[1],
-                      ).toBeGreaterThanOrEqual(0);
-                      expect(
-                        analysis.stats[i].team[index].damageDealt[1],
-                      ).toBeCloseTo(
-                        replay.expected.stats[i].team[index].damageDealt[1],
+                      expect(actualDamageDealt.indirect).toBeGreaterThanOrEqual(
+                        0,
+                      );
+                      expect(actualDamageDealt.indirect).toBeCloseTo(
+                        expectedDamageDealt.indirect,
                         0,
                       );
                     });
