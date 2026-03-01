@@ -26,17 +26,6 @@ export const ReplayRoute = createRoute()((r) => {
     )((r) => {
       r.get(async (ctx) => {
         const replay = await Replay.Analysis.fromReplayUrl(ctx.url);
-        return replay?.toJson();
-      });
-    });
-  });
-  r.path("analyze-test")((r) => {
-    r.param(
-      "url",
-      URLHandler,
-    )((r) => {
-      r.get(async (ctx) => {
-        const replay = await Replay.Analysis.fromReplayUrl(ctx.url);
         return replay?.toClient();
       });
     });

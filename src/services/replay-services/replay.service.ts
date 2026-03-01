@@ -32,8 +32,7 @@ export namespace Replay {
     tempMons: { [key: string]: TempMonSnapshot } = {};
     events: { player: number; turn: number; message: string }[] = [];
     killStrings: KillString[] = [];
-    gametype: undefined | GAMETYPE = undefined;
-    genNum: number = 9;
+    gametype!: GAMETYPE;
     preview: number = 6;
     gen!: Generation;
 
@@ -496,7 +495,6 @@ export namespace Replay {
       gen: (line) => {
         const [genNum] = line.args as [GENNUM];
         this.gen = gens.get(genNum);
-        this.genNum = +genNum;
       },
       html: (line) => {
         const [] = line.args as [];
@@ -1188,9 +1186,23 @@ export namespace Replay {
     }
 
     private calculateHPPercent(hpString: HPSTATUS | HP): number {
-      let hp = hpString.split(": ")[0].split("/");
-      let hpp = +hp[0] > 0 ? +hp[0] / (+hp[1] / 100) : 0;
-      return hpp;
+      const hpToken = hpString.split(": ")[0].split(" ")[0];
+      const hpMatch = hpToken.match(/^(\d+)\/(\d+)$/);
+      if (!hpMatch) {
+        return hpToken.startsWith("0") ? 0 : 100;
+      }
+
+      const currentHp = Number(hpMatch[1]);
+      const maxHp = Number(hpMatch[2]);
+      if (
+        !Number.isFinite(currentHp) ||
+        !Number.isFinite(maxHp) ||
+        maxHp <= 0
+      ) {
+        return currentHp <= 0 ? 0 : 100;
+      }
+
+      return currentHp > 0 ? currentHp / (maxHp / 100) : 0;
     }
 
     private upkeep(turn: Turn | undefined) {
@@ -1298,7 +1310,7 @@ export namespace Replay {
     toClient() {
       const analysis = {
         gametype: this.gametype,
-        genNum: this.genNum,
+        genNum: this.gen.num,
         turns: Math.max(
           ...this.players
             .flatMap((player) => player.turnChart.map((entry) => entry.turn))
@@ -1310,138 +1322,6 @@ export namespace Replay {
       };
       const warnings = [] as {}[];
       return { analysis, warnings };
-    }
-
-    toJson() {
-      const stats: Stats[] = this.players.map((player) => {
-        const playerStat: Stats = {
-          username: player.username,
-          win: player.win,
-          stats: player.stats,
-          total: {
-            kills: player.team.reduce(
-              (sum, pokemon) =>
-                sum + pokemon.kills.direct + pokemon.kills.indirect,
-              0,
-            ),
-            deaths: player.team.reduce(
-              (sum, pokemon) => sum + (pokemon.fainted ? 1 : 0),
-              0,
-            ),
-            damageDealt: player.team.reduce(
-              (sum, pokemon) =>
-                sum + pokemon.damageDealt.direct + pokemon.damageDealt.indirect,
-              0,
-            ),
-            damageTaken: player.team.reduce(
-              (sum, pokemon) =>
-                sum + pokemon.damageTaken.direct + pokemon.damageTaken.indirect,
-              0,
-            ),
-          },
-          turnChart: player.turnChart,
-          luck: {
-            moves: {
-              total: player.luck.moves.total,
-              hits: player.luck.moves.hits,
-              expected: player.luck.moves.expected,
-              actual: 0,
-            },
-            crits: {
-              total: player.luck.crits.total,
-              hits: player.luck.crits.hits,
-              expected: player.luck.crits.expected,
-              actual: 0,
-            },
-            status: {
-              total: player.luck.status.total,
-              full: player.luck.status.full,
-              expected: player.luck.status.expected,
-              actual: 0,
-            },
-          },
-          team: player.team.map((pokemon) => {
-            return {
-              kills: [
-                pokemon.kills.direct,
-                pokemon.kills.indirect,
-                pokemon.kills.teammate,
-              ],
-              status: pokemon.fainted
-                ? "fainted"
-                : pokemon.brought || player.team.length >= player.teamSize
-                  ? "used"
-                  : "brought",
-              moveset: [...pokemon.moveset].map((move) => move.name),
-              damageDealt: [
-                pokemon.damageDealt.direct,
-                pokemon.damageDealt.indirect,
-                pokemon.damageDealt.teammate,
-              ],
-              damageTaken: [
-                pokemon.damageTaken.direct,
-                pokemon.damageTaken.indirect,
-                pokemon.damageTaken.teammate,
-              ],
-              calcLog: {
-                damageDealt: pokemon.calcLog.damageDealt.map((log) => ({
-                  target: log.target.formes[0].detail,
-                  hpDiff: log.hpDiff,
-                  move: log.move.name,
-                })),
-                damageTaken: pokemon.calcLog.damageTaken.map((log) => ({
-                  attacker: log.attacker.formes[0].detail,
-                  hpDiff: log.hpDiff,
-                  move: log.move.name,
-                })),
-              },
-              hpRestored: pokemon.hpRestored,
-              formes: pokemon.formes.map((forme) => ({
-                detail: forme.detail,
-                id: forme.specie.id,
-              })),
-              baseSpecies: {
-                name: pokemon.formes[0].specie.isCosmeticForme
-                  ? pokemon.baseSpecie.name
-                  : pokemon.formes[0].specie.name,
-                id: pokemon.formes[0].specie.isCosmeticForme
-                  ? pokemon.baseSpecie.id
-                  : pokemon.formes[0].specie.id,
-                formes: pokemon.formes[0].specie.formes?.map((forme) =>
-                  toID(forme),
-                ),
-                shiny:
-                  pokemon.formes[0].detail.includes(", shiny") || undefined,
-              },
-            };
-          }),
-        };
-
-        playerStat.luck.moves.expected /= playerStat.luck.moves.total;
-        playerStat.luck.moves.actual =
-          playerStat.luck.moves.hits / playerStat.luck.moves.total;
-        playerStat.luck.crits.expected /= playerStat.luck.crits.total;
-        playerStat.luck.crits.actual =
-          playerStat.luck.crits.hits / playerStat.luck.crits.total;
-        playerStat.luck.status.expected /= playerStat.luck.status.total;
-        playerStat.luck.status.actual =
-          playerStat.luck.status.full / playerStat.luck.status.total;
-        return playerStat;
-      });
-      return {
-        gametype: this.gametype
-          ? this.gametype.charAt(0).toUpperCase() + this.gametype.slice(1)
-          : "",
-        genNum: this.genNum,
-        turns: Math.max(
-          ...this.players
-            .flatMap((player) => player.turnChart.map((entry) => entry.turn))
-            .concat(0),
-        ),
-        gameTime: this.tf - this.t0,
-        stats: stats,
-        events: this.events,
-      };
     }
 
     static async fromReplayUrl(url: string) {
