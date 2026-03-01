@@ -1,0 +1,356 @@
+|j|☆rootsgaming
+|j|☆LigerLordX
+|t:|1772323584
+|gametype|singles
+|player|p1|rootsgaming|rocketgrunt|
+|player|p2|LigerLordX|alder|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Iron Bundle|
+|poke|p1|Galvantula, F|
+|poke|p1|Landorus, M|
+|poke|p1|Politoed, F|
+|poke|p1|Thundurus, M|
+|poke|p1|Tornadus, M|
+|poke|p2|Meowscarada, F|
+|poke|p2|Primarina, F|
+|poke|p2|Iron Treads|
+|poke|p2|Salamence, M|
+|poke|p2|Rotom-Heat|
+|poke|p2|Muk, M|
+|raw|rootsgaming's Tera Types:<br /><psicon pokemon="ironbundle" /><psicon type="Ice" /> / <psicon pokemon="galvantula" /><psicon type="Bug" /> / <psicon pokemon="landorus" /><psicon type="Ground" /> / <psicon pokemon="politoed" /><psicon type="Water" /> / <psicon pokemon="thundurus" /><psicon type="Electric" /> / <psicon pokemon="tornadus" /><psicon type="Stellar" />
+|raw|LigerLordX's Tera Types:<br /><psicon pokemon="meowscarada" /><psicon type="Grass" /> / <psicon pokemon="primarina" /><psicon type="Water" /> / <psicon pokemon="irontreads" /><psicon type="Ground" /> / <psicon pokemon="salamence" /><psicon type="Steel" /> / <psicon pokemon="rotomheat" /><psicon type="Electric" /> / <psicon pokemon="muk" /><psicon type="Poison" />
+|teampreview
+|c|☆LigerLordX|glhf
+|c|☆rootsgaming|can you send the live battle link?
+|c|☆rootsgaming|glhf
+|c|☆LigerLordX|sure
+|
+|t:|1772323658
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Politoed|Politoed, F|100/100
+|switch|p2a: Rotom|Rotom-Heat|100/100
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Politoed
+|turn|1
+|j| Luxxion
+|
+|t:|1772323670
+|move|p2a: Rotom|Volt Switch|p1a: Politoed
+|-supereffective|p1a: Politoed
+|-damage|p1a: Politoed|67/100
+|
+|t:|1772323688
+|switch|p2a: Primarina|Primarina, F|100/100|[from] Volt Switch
+|move|p1a: Politoed|Weather Ball|p2a: Primarina
+|-resisted|p2a: Primarina
+|-damage|p2a: Primarina|85/100
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|2
+|j| Mr.Twang
+|
+|t:|1772323734
+|switch|p1a: Galvantula|Galvantula, F|100/100
+|move|p2a: Primarina|Moonblast|p1a: Galvantula
+|-enditem|p1a: Galvantula|Focus Sash
+|-damage|p1a: Galvantula|1/100
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|3
+|
+|t:|1772323768
+|switch|p2a: Iron Treads|Iron Treads|100/100
+|move|p1a: Galvantula|Sticky Web|p2a: Iron Treads
+|-sidestart|p2: LigerLordX|move: Sticky Web
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|4
+|
+|t:|1772323788
+|switch|p1a: Iron Bundle|Iron Bundle|100/100
+|-enditem|p1a: Iron Bundle|Booster Energy
+|-activate|p1a: Iron Bundle|ability: Quark Drive|[fromitem]
+|-start|p1a: Iron Bundle|quarkdrivespa
+|move|p2a: Iron Treads|Rapid Spin|p1a: Iron Bundle
+|-crit|p1a: Iron Bundle
+|-damage|p1a: Iron Bundle|76/100
+|-boost|p2a: Iron Treads|spe|1
+|-sideend|p2: LigerLordX|Sticky Web|[from] move: Rapid Spin|[of] p2a: Iron Treads
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|5
+|l| Luxxion
+|j| Luxxion
+|j| DJRean
+|
+|t:|1772323844
+|move|p2a: Iron Treads|Volt Switch|p1a: Iron Bundle
+|-supereffective|p1a: Iron Bundle
+|-damage|p1a: Iron Bundle|29/100
+|inactive|Battle timer is ON: inactive players will automatically lose when time's up. (requested by rootsgaming)
+|
+|t:|1772323853
+|-end|p2a: Iron Treads|Quark Drive|[silent]
+|switch|p2a: Muk|Muk, M|100/100|[from] Volt Switch
+|move|p1a: Iron Bundle|Freeze-Dry|p2a: Muk
+|-damage|p2a: Muk|72/100
+|
+|-weather|none
+|upkeep
+|turn|6
+|inactive|LigerLordX has 270 seconds left.
+|
+|t:|1772323891
+|move|p1a: Iron Bundle|Taunt|p2a: Muk
+|-start|p2a: Muk|move: Taunt
+|move|p2a: Muk|Poison Jab|p1a: Iron Bundle
+|-damage|p1a: Iron Bundle|0 fnt
+|faint|p1a: Iron Bundle
+|-end|p1a: Iron Bundle|Quark Drive|[silent]
+|
+|upkeep
+|
+|t:|1772323899
+|switch|p1a: Landorus|Landorus, M|100/100
+|turn|7
+|c| Mr.Twang|please turn the timer off unless agreed to by both players to turn it on
+|inactive|LigerLordX has 270 seconds left.
+|
+|t:|1772323914
+|switch|p2a: Rotom|Rotom-Heat|100/100
+|move|p1a: Landorus|Stone Edge|p2a: Rotom
+|-supereffective|p2a: Rotom
+|-damage|p2a: Rotom|13/100
+|-damage|p1a: Landorus|91/100|[from] item: Life Orb
+|
+|upkeep
+|turn|8
+|inactive|LigerLordX has 270 seconds left.
+|inactiveoff|Battle timer is now OFF.
+|
+|t:|1772323931
+|switch|p2a: Muk|Muk, M|72/100
+|move|p1a: Landorus|Stone Edge|p2a: Muk
+|-damage|p2a: Muk|23/100
+|-enditem|p2a: Muk|Sitrus Berry|[eat]
+|-heal|p2a: Muk|48/100|[from] item: Sitrus Berry
+|-damage|p1a: Landorus|81/100|[from] item: Life Orb
+|
+|upkeep
+|turn|9
+|c| Mr.Twang|thank you :)
+|
+|t:|1772323943
+|move|p1a: Landorus|Stone Edge|p2a: Muk
+|-damage|p2a: Muk|0 fnt
+|faint|p2a: Muk
+|-damage|p1a: Landorus|71/100|[from] item: Life Orb
+|
+|upkeep
+|l| DJRean
+|
+|t:|1772323980
+|switch|p2a: Primarina|Primarina, F|85/100
+|turn|10
+|
+|t:|1772323989
+|move|p1a: Landorus|U-turn|p2a: Primarina
+|-resisted|p2a: Primarina
+|-damage|p2a: Primarina|65/100
+|-damage|p1a: Landorus|62/100|[from] item: Life Orb
+|
+|t:|1772323993
+|switch|p1a: Politoed|Politoed, F|67/100|[from] U-turn
+|-weather|RainDance|[from] ability: Drizzle|[of] p1a: Politoed
+|move|p2a: Primarina|Ice Beam|p1a: Politoed
+|-resisted|p1a: Politoed
+|-damage|p1a: Politoed|56/100
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|11
+|
+|t:|1772324008
+|move|p2a: Primarina|Energy Ball|p1a: Politoed
+|-supereffective|p1a: Politoed
+|-damage|p1a: Politoed|10/100
+|-unboost|p1a: Politoed|spd|1
+|move|p1a: Politoed|Weather Ball|p2a: Primarina
+|-resisted|p2a: Primarina
+|-damage|p2a: Primarina|50/100
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|12
+|
+|t:|1772324027
+|move|p2a: Primarina|Ice Beam|p1a: Politoed
+|-resisted|p1a: Politoed
+|-damage|p1a: Politoed|0 fnt
+|faint|p1a: Politoed
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|
+|t:|1772324032
+|switch|p1a: Thundurus|Thundurus, M|100/100
+|turn|13
+|l| Luxxion
+|
+|t:|1772324042
+|switch|p2a: Rotom|Rotom-Heat|13/100
+|move|p1a: Thundurus|Thunder|p2a: Rotom
+|-resisted|p2a: Rotom
+|-damage|p2a: Rotom|0 fnt
+|faint|p2a: Rotom
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|
+|t:|1772324053
+|switch|p2a: Meowscarada|Meowscarada, F|100/100
+|turn|14
+|
+|t:|1772324059
+|move|p2a: Meowscarada|Triple Axel|p1a: Thundurus
+|-start|p2a: Meowscarada|typechange|Ice|[from] ability: Protean
+|-supereffective|p1a: Thundurus
+|-damage|p1a: Thundurus|75/100
+|-supereffective|p1a: Thundurus
+|-damage|p1a: Thundurus|30/100
+|-supereffective|p1a: Thundurus
+|-damage|p1a: Thundurus|0 fnt
+|faint|p1a: Thundurus
+|-hitcount|p1: Thundurus|3
+|
+|-weather|none
+|upkeep
+|
+|t:|1772324063
+|switch|p1a: Galvantula|Galvantula, F|1/100
+|turn|15
+|
+|t:|1772324080
+|switch|p2a: Iron Treads|Iron Treads|100/100
+|move|p1a: Galvantula|Sticky Web|p2a: Iron Treads
+|-sidestart|p2: LigerLordX|move: Sticky Web
+|
+|upkeep
+|turn|16
+|
+|t:|1772324089
+|switch|p1a: Tornadus|Tornadus, M|100/100
+|move|p2a: Iron Treads|Rapid Spin|p1a: Tornadus
+|-damage|p1a: Tornadus|80/100
+|-boost|p2a: Iron Treads|spe|1
+|-sideend|p2: LigerLordX|Sticky Web|[from] move: Rapid Spin|[of] p2a: Iron Treads
+|
+|upkeep
+|turn|17
+|
+|t:|1772324110
+|move|p1a: Tornadus|Tailwind|p1a: Tornadus
+|-sidestart|p1: rootsgaming|move: Tailwind
+|move|p2a: Iron Treads|Stealth Rock|p1a: Tornadus
+|-sidestart|p1: rootsgaming|move: Stealth Rock
+|
+|upkeep
+|turn|18
+|
+|t:|1772324119
+|move|p1a: Tornadus|Rain Dance|p1a: Tornadus
+|-weather|RainDance
+|move|p2a: Iron Treads|Knock Off|p1a: Tornadus
+|-damage|p1a: Tornadus|41/100
+|-enditem|p1a: Tornadus|Heavy-Duty Boots|[from] move: Knock Off|[of] p2a: Iron Treads
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|turn|19
+|
+|t:|1772324137
+|-terastallize|p1a: Tornadus|Stellar
+|move|p1a: Tornadus|Weather Ball|p2a: Iron Treads
+|-supereffective|p2a: Iron Treads
+|-damage|p2a: Iron Treads|0 fnt
+|faint|p2a: Iron Treads
+|-end|p2a: Iron Treads|Quark Drive|[silent]
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|
+|t:|1772324147
+|switch|p2a: Primarina|Primarina, F|50/100
+|turn|20
+|
+|t:|1772324161
+|move|p1a: Tornadus|Bleakwind Storm|p2a: Primarina
+|-damage|p2a: Primarina|7/100
+|move|p2a: Primarina|Moonblast|p1a: Tornadus
+|-damage|p1a: Tornadus|0 fnt
+|faint|p1a: Tornadus
+|
+|-weather|RainDance|[upkeep]
+|-sideend|p1: rootsgaming|move: Tailwind
+|upkeep
+|
+|t:|1772324164
+|switch|p1a: Galvantula|Galvantula, F|1/100
+|-damage|p1a: Galvantula|0 fnt|[from] Stealth Rock
+|faint|p1a: Galvantula
+|
+|t:|1772324166
+|switch|p1a: Landorus|Landorus, M|62/100
+|-damage|p1a: Landorus|49/100|[from] Stealth Rock
+|turn|21
+|
+|t:|1772324177
+|move|p1a: Landorus|Earthquake|p2a: Primarina
+|-damage|p2a: Primarina|0 fnt
+|faint|p2a: Primarina
+|-damage|p1a: Landorus|40/100|[from] item: Life Orb
+|
+|-weather|RainDance|[upkeep]
+|upkeep
+|
+|t:|1772324190
+|switch|p2a: Meowscarada|Meowscarada, F|100/100
+|turn|22
+|
+|t:|1772324194
+|move|p2a: Meowscarada|Flower Trick|p1a: Landorus
+|-start|p2a: Meowscarada|typechange|Grass|[from] ability: Protean
+|-crit|p1a: Landorus
+|-damage|p1a: Landorus|0 fnt
+|faint|p1a: Landorus
+|
+|win|LigerLordX
+|c|☆rootsgaming|gg
+|c|☆LigerLordX|gg
+|l| Mr.Twang
+|c|☆rootsgaming|well played
+|c|☆rootsgaming|i built my bundle wrong btw i didnt have a water move on it lol
+|c|☆LigerLordX|oh no lol
+|c|☆rootsgaming|yeah, freeze dry and ice beam
+|c|☆rootsgaming|whoops
+|c|☆LigerLordX|muk was just there to switch into hydro lol
+|j| TurtleCode
+|l| TurtleCode
+|j| TurtleCode

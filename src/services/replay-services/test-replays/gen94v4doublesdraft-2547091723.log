@@ -1,0 +1,189 @@
+|j|☆Ogerpons Swamp10
+|j|☆hariyamamomma
+|html|<table width="100%"><tr><td align="left">Ogerpons Swamp10</td><td align="right">hariyamamomma</tr><tr><td align="left"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </td><td align="right"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </tr></table>
+|uhtml|bestof|<h2><strong>Game 1</strong> of <a href="/game-bestof3-gen94v4doublesdraft-2547091722">a best-of-3</a></h2>
+|t:|1772045804
+|gametype|doubles
+|player|p1|Ogerpons Swamp10|burglar|
+|player|p2|hariyamamomma|burgh|
+|gen|9
+|tier|[Gen 9] 4v4 Doubles Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|rule|Item Clause: Limit 1 of each item
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>2 custom rules:</strong></summary> Best of = 3, Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Dondozo, L50, M|
+|poke|p1|Tatsugiri, L50, F|
+|poke|p1|Gothitelle, L50, M|
+|poke|p1|Emboar, L50, F|
+|poke|p1|Bellibolt, L50, F|
+|poke|p1|Morgrem, L50, M|
+|poke|p2|Vivillon-Jungle, L50, F|
+|poke|p2|Sneasel, L50, F|
+|poke|p2|Chandelure, L50, F|
+|poke|p2|Garchomp, L50, M|
+|poke|p2|Gardevoir, L50, F|
+|poke|p2|Hariyama, L50, M|
+|raw|Ogerpons Swamp10's Tera Types:<br /><psicon pokemon="dondozo" /><psicon type="Fairy" /> / <psicon pokemon="tatsugiri" /><psicon type="Electric" /> / <psicon pokemon="gothitelle" /><psicon type="Dark" /> / <psicon pokemon="emboar" /><psicon type="Ground" /> / <psicon pokemon="bellibolt" /><psicon type="Water" /> / <psicon pokemon="morgrem" /><psicon type="Steel" />
+|raw|hariyamamomma's Tera Types:<br /><psicon pokemon="vivillonjungle" /><psicon type="Grass" /> / <psicon pokemon="sneasel" /><psicon type="Ghost" /> / <psicon pokemon="chandelure" /><psicon type="Grass" /> / <psicon pokemon="garchomp" /><psicon type="Ghost" /> / <psicon pokemon="gardevoir" /><psicon type="Ghost" /> / <psicon pokemon="hariyama" /><psicon type="Steel" />
+|teampreview|4
+|c|☆Ogerpons Swamp10|did i do the chall correctly?
+|c|☆hariyamamomma|Looks good to me!
+|c|☆hariyamamomma|Glhf :)
+|c|☆Ogerpons Swamp10|glhf mate!
+|j| VinihBlaze
+|
+|t:|1772045935
+|teamsize|p1|4
+|teamsize|p2|4
+|start
+|switch|p1a: Dondozo|Dondozo, L50, M, shiny|100/100
+|switch|p1b: Gothitelle|Gothitelle, L50, M, shiny|100/100
+|switch|p2a: Butter Fly|Vivillon-Jungle, L50, F, shiny|100/100
+|switch|p2b: Land Shark|Garchomp, L50, M|100/100
+|-item|p2a: Butter Fly|Focus Sash|[from] ability: Frisk|[of] p1b: Gothitelle
+|-item|p2b: Land Shark|Clear Amulet|[from] ability: Frisk|[of] p1b: Gothitelle
+|turn|1
+|
+|t:|1772045984
+|switch|p1b: Tatsugiri|Tatsugiri, L50, F|100/100
+|-activate|p1b: Tatsugiri|ability: Commander|[of] p1a: Dondozo
+|-boost|p1a: Dondozo|atk|2
+|-boost|p1a: Dondozo|spa|2
+|-boost|p1a: Dondozo|spe|2
+|-boost|p1a: Dondozo|def|2
+|-boost|p1a: Dondozo|spd|2
+|-terastallize|p1a: Dondozo|Fairy
+|move|p2a: Butter Fly|Protect|p2a: Butter Fly
+|-singleturn|p2a: Butter Fly|Protect
+|move|p2b: Land Shark|Dragon Claw|p1a: Dondozo
+|-immune|p1a: Dondozo
+|move|p1a: Dondozo|Tera Blast|p2b: Land Shark|[anim] Tera Blast Fairy
+|-supereffective|p2b: Land Shark
+|-damage|p2b: Land Shark|0 fnt
+|faint|p2b: Land Shark
+|
+|upkeep
+|
+|t:|1772046003
+|switch|p2b: Hot Lamp|Chandelure, L50, F, shiny|100/100
+|turn|2
+|
+|t:|1772046025
+|move|p2a: Butter Fly|Rage Powder|p2a: Butter Fly
+|-singleturn|p2a: Butter Fly|move: Rage Powder
+|move|p1a: Dondozo|Order Up|p2a: Butter Fly
+|-enditem|p2a: Butter Fly|Focus Sash
+|-damage|p2a: Butter Fly|1/100
+|-boost|p1a: Dondozo|atk|1
+|move|p2b: Hot Lamp|Haze|p2b: Hot Lamp
+|-clearallboost
+|
+|upkeep
+|turn|3
+|
+|t:|1772046059
+|move|p2a: Butter Fly|Air Slash|p1a: Dondozo
+|-damage|p1a: Dondozo|78/100
+|move|p2b: Hot Lamp|Heat Wave|p1b: Tatsugiri|[spread] p1a
+|-miss|p2b: Hot Lamp|p1b: Tatsugiri
+|-damage|p1a: Dondozo|49/100
+|move|p1a: Dondozo|Surf|p2b: Hot Lamp|[spread] p2a,p2b
+|-miss|p1a: Dondozo|p1b: Tatsugiri
+|-supereffective|p2b: Hot Lamp
+|-damage|p2a: Butter Fly|0 fnt
+|-damage|p2b: Hot Lamp|67/100
+|faint|p2a: Butter Fly
+|
+|upkeep
+|
+|t:|1772046068
+|switch|p2a: Yo Momma|Hariyama, L50, M|100/100
+|turn|4
+|
+|t:|1772046096
+|move|p2b: Hot Lamp|Shadow Ball|p1a: Dondozo
+|-damage|p1a: Dondozo|18/100
+|move|p1a: Dondozo|Tera Blast|p2a: Yo Momma|[anim] Tera Blast Fairy
+|-supereffective|p2a: Yo Momma
+|-damage|p2a: Yo Momma|47/100
+|move|p2a: Yo Momma|Throat Chop|p1a: Dondozo
+|-resisted|p1a: Dondozo
+|-damage|p1a: Dondozo|4/100
+|
+|upkeep
+|turn|5
+|
+|t:|1772046114
+|move|p2b: Hot Lamp|Shadow Ball|p1a: Dondozo
+|-damage|p1a: Dondozo|0 fnt
+|faint|p1a: Dondozo
+|move|p2a: Yo Momma|Ice Punch|p1b: Tatsugiri
+|-damage|p1b: Tatsugiri|28/100
+|
+|upkeep
+|
+|t:|1772046121
+|switch|p1a: Gothitelle|Gothitelle, L50, M, shiny|100/100
+|-item|p2a: Yo Momma|Life Orb|[from] ability: Frisk|[of] p1a: Gothitelle
+|-item|p2b: Hot Lamp|Expert Belt|[from] ability: Frisk|[of] p1a: Gothitelle
+|turn|6
+|
+|t:|1772046136
+|-terastallize|p2b: Hot Lamp|Grass
+|move|p1a: Gothitelle|Fake Out|p2a: Yo Momma
+|-damage|p2a: Yo Momma|43/100
+|move|p1b: Tatsugiri|Muddy Water|p2b: Hot Lamp|[spread] p2a
+|-miss|p1b: Tatsugiri|p2b: Hot Lamp
+|-damage|p2a: Yo Momma|10/100
+|move|p2b: Hot Lamp|Heat Wave|p1a: Gothitelle|[spread] p1a,p1b
+|-resisted|p1b: Tatsugiri
+|-damage|p1a: Gothitelle|62/100
+|-damage|p1b: Tatsugiri|14/100
+|cant|p2a: Yo Momma|flinch
+|
+|upkeep
+|turn|7
+|
+|t:|1772046180
+|move|p1a: Gothitelle|Helping Hand|p1b: Tatsugiri
+|-singleturn|p1b: Tatsugiri|Helping Hand|[of] p1a: Gothitelle
+|move|p1b: Tatsugiri|Muddy Water|p2a: Yo Momma|[spread] p2a,p2b
+|-resisted|p2b: Hot Lamp
+|-damage|p2a: Yo Momma|0 fnt
+|-damage|p2b: Hot Lamp|38/100
+|faint|p2a: Yo Momma
+|move|p2b: Hot Lamp|Shadow Ball|p1b: Tatsugiri
+|-damage|p1b: Tatsugiri|0 fnt
+|faint|p1b: Tatsugiri
+|
+|upkeep
+|
+|t:|1772046190
+|switch|p1b: Bellibolt|Bellibolt, L50, F, shiny|100/100
+|turn|8
+|
+|t:|1772046235
+|move|p1a: Gothitelle|Helping Hand|p1b: Bellibolt
+|-singleturn|p1b: Bellibolt|Helping Hand|[of] p1a: Gothitelle
+|move|p2b: Hot Lamp|Shadow Ball|p1a: Gothitelle
+|-supereffective|p1a: Gothitelle
+|-damage|p1a: Gothitelle|0 fnt
+|faint|p1a: Gothitelle
+|move|p1b: Bellibolt|Volt Switch|p2b: Hot Lamp
+|-resisted|p2b: Hot Lamp
+|-damage|p2b: Hot Lamp|0 fnt
+|faint|p2b: Hot Lamp
+|
+|win|Ogerpons Swamp10
+|c|☆hariyamamomma|gg!
+||hariyamamomma is ready for game 2.
+|inactive|Ogerpons Swamp10 has 30 seconds to confirm battle start!
+|c|☆Ogerpons Swamp10|ggs fella
+||Ogerpons Swamp10 is ready for game 2.
+|uhtml|next|Next: <a href="/battle-gen94v4doublesdraft-2547096629"><strong>Game 2 of 3</strong></a>
+|j| Mr.Twang
+|j| DJRean
+|l| DJRean

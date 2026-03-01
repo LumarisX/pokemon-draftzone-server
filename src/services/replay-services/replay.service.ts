@@ -1,15 +1,23 @@
-import { Generations, ID, Move, Specie, toID } from "@pkmn/data";
+import { Generation, Generations, ID, Move, Specie, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
-import { getRuleset } from "../../data/rulesets";
-import { Team } from "discord.js";
+import { pokemonSchema } from "../../models/pokemon.schema";
 
-const gen = getRuleset("Gen9 NatDex");
+const gens = new Generations(Dex);
+
 const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
 
 type StatBreakdown = {
   direct: number;
   indirect: number;
   teammate: number;
+};
+
+type TempMonSnapshot = {
+  hpRestored: number;
+  damageDealt: StatBreakdown;
+  damageTaken: StatBreakdown;
+  statuses: { name?: string }[];
+  kills: StatBreakdown;
 };
 
 function emptyStatBreakdown(): StatBreakdown {
@@ -22,12 +30,13 @@ export namespace Replay {
     tf: number = 0;
     field: Field = new Field();
     lastMove: { data: MoveData; move: Move } | undefined;
-    tempMons: { [key: string]: Pokemon } = {};
+    tempMons: { [key: string]: TempMonSnapshot } = {};
     events: { player: number; turn: number; message: string }[] = [];
     killStrings: KillString[] = [];
     gametype: undefined | GAMETYPE = undefined;
     genNum: number = 9;
     preview: number = 6;
+    gen!: Generation;
 
     constructor(log: string) {
       const replayLines = log.split("\n|").reduce((lines, log) => {
@@ -180,12 +189,7 @@ export namespace Replay {
       },
       "-fieldend": (line) => {
         const [condition] = line.args as [CONDITION];
-        this.field.statuses.splice(
-          this.field.statuses.findIndex(
-            (status) => status.status === condition,
-          ),
-          1,
-        );
+        this.removeStatusByCondition(this.field.statuses, condition);
       },
       "-fieldstart": (line) => {
         const [condition, majoraction] = line.args as [
@@ -283,10 +287,7 @@ export namespace Replay {
       "-sideend": (line) => {
         const [side, condition] = line.args as [SIDE, CONDITION];
         const sideState = this.field.getSide(side);
-        sideState.statuses.splice(
-          sideState.statuses.findIndex((s) => s.status === condition),
-          1,
-        );
+        this.removeStatusByCondition(sideState.statuses, condition);
       },
       "-sidestart": (line) => {
         const [side, condition] = line.args as [SIDE, CONDITION];
@@ -428,13 +429,15 @@ export namespace Replay {
             switchedMon.brought = true;
             switchedMon.formes[0] = {
               detail: details,
-              specie: getSpecie(getSpeciesName(details)),
+              specie: getSpecie(this.gen, getSpeciesName(details)),
             };
             switchedMon.nickname = pokemonStr.split(": ")[1];
           }
         } else {
           switchPlayer.team.push(
-            new Pokemon(details, switchPlayer, pokemonStr, { brought: true }),
+            new Pokemon(this.gen, details, switchPlayer, pokemonStr, {
+              brought: true,
+            }),
           );
         }
         const switchInMon = switchPlayer.team.find((pokemon) =>
@@ -445,7 +448,7 @@ export namespace Replay {
         position.pokemon = switchInMon;
         if (switchInMon)
           this.tempMons[pokemonStr.substring(0, 3)] =
-            structuredClone(switchInMon);
+            this.createTempMonSnapshot(switchInMon);
       },
       "-formechange": (line) => {
         const [pokemonStr, details, hpstatus] = line.args as [
@@ -493,6 +496,7 @@ export namespace Replay {
       },
       gen: (line) => {
         const [genNum] = line.args as [GENNUM];
+        this.gen = gens.get(genNum);
         this.genNum = +genNum;
       },
       html: (line) => {
@@ -549,7 +553,7 @@ export namespace Replay {
       poke: (line) => {
         const [playerStr, details, item] = line.args as [PLAYER, DETAILS, ITEM];
         const pokePlayer = this.getPlayer(playerStr);
-        pokePlayer.team.push(new Pokemon(details, pokePlayer));
+        pokePlayer.team.push(new Pokemon(this.gen, details, pokePlayer));
       },
       rated: (line) => {
         const [message] = line.args as [MESSAGE];
@@ -601,11 +605,19 @@ export namespace Replay {
           details,
         );
 
-        const tempReplaceMon = this.tempMons[pokemonStr.substring(0, 3)];
+        const tempReplaceMon =
+          this.tempMons[pokemonStr.substring(0, 3)] ??
+          this.createTempMonSnapshot(replaceMon);
         if (!illusionMon) {
-          illusionMon = new Pokemon(details, illusionPlayer, pokemonStr, {
-            brought: true,
-          });
+          illusionMon = new Pokemon(
+            this.gen,
+            details,
+            illusionPlayer,
+            pokemonStr,
+            {
+              brought: true,
+            },
+          );
         }
         illusionMon.brought = replaceMon.brought;
         illusionMon.hpp = replaceMon.hpp;
@@ -655,7 +667,6 @@ export namespace Replay {
         const position = this.field.getPosition(pokemonStr);
         if (!position) return;
         position.pokemon = illusionMon;
-        replaceMon = tempReplaceMon;
       },
       "t:": (line) => {
         const [timestamp] = line.args as [TIMESTAMP];
@@ -721,8 +732,18 @@ export namespace Replay {
       if (!detailMon) return;
       detailMon.formes.push({
         detail: details,
-        specie: getSpecie(getSpeciesName(details)),
+        specie: getSpecie(this.gen, getSpeciesName(details)),
       });
+    }
+
+    private createTempMonSnapshot(pokemon: Pokemon): TempMonSnapshot {
+      return {
+        hpRestored: pokemon.hpRestored,
+        damageDealt: { ...pokemon.damageDealt },
+        damageTaken: { ...pokemon.damageTaken },
+        statuses: pokemon.statuses.map((status) => ({ name: status.name })),
+        kills: { ...pokemon.kills },
+      };
     }
 
     private recordMoveUsageLuck(attacker: Pokemon, move: Move) {
@@ -750,7 +771,7 @@ export namespace Replay {
       const hitAttacker = this.getPokemon(this.lastMove.data[1]);
       if (!hitAttacker) return;
 
-      const hitMove = gen.moves.get(this.lastMove.data[2]);
+      const hitMove = this.gen.moves.get(this.lastMove.data[2]);
       if (
         !hitMove ||
         hitMove.exists !== true ||
@@ -962,7 +983,7 @@ export namespace Replay {
       faintMon: Pokemon,
     ) {
       if (!this.lastMove) return;
-      const faintMove = gen.moves.get(this.lastMove.data[2]);
+      const faintMove = this.gen.moves.get(this.lastMove.data[2]);
       if (!(faintMove?.id === "selfdestruct")) return;
       killString.attacker = faintMon;
       killString.reason = faintMove.name;
@@ -1126,6 +1147,30 @@ export namespace Replay {
       return;
     }
 
+    private statusVariants(condition: string): string[] {
+      const variants = new Set<string>([condition]);
+      const splitCondition = condition.split(": ");
+      if (splitCondition.length === 2) {
+        variants.add(splitCondition[1]);
+      }
+      return [...variants];
+    }
+
+    private removeStatusByCondition(
+      statuses: Status[],
+      condition: string,
+    ): void {
+      const variants = this.statusVariants(condition);
+      const index = statuses.findIndex(
+        (status) =>
+          variants.includes(status.status) ||
+          variants.some((variant) => status.status.split(": ")[1] === variant),
+      );
+      if (index >= 0) {
+        statuses.splice(index, 1);
+      }
+    }
+
     private fromEffectToEffect(fromEffect: FROMEFFECT): EFFECT {
       return fromEffect.substring(7);
     }
@@ -1252,13 +1297,25 @@ export namespace Replay {
     }
 
     toClient() {
-      return {};
+      const analysis = {
+        gametype: this.gametype,
+        genNum: this.genNum,
+        turns: Math.max(
+          ...this.players
+            .flatMap((player) => player.turnChart.map((entry) => entry.turn))
+            .concat(0),
+        ),
+        gameTime: this.tf - this.t0,
+        players: this.players.map((player) => player.toClient()),
+        events: this.events,
+      };
+      const warnings = [] as {}[];
+      return { analysis, warnings };
     }
 
     toJson() {
-      let stats: Stats[] = [];
-      this.players.forEach((player) => {
-        let playerStat: Stats = {
+      const stats: Stats[] = this.players.map((player) => {
+        const playerStat: Stats = {
           username: player.username,
           win: player.win,
           stats: player.stats,
@@ -1304,56 +1361,63 @@ export namespace Replay {
               actual: 0,
             },
           },
-          team: [] as Stats["team"],
+          team: player.team.map((pokemon) => {
+            return {
+              kills: [
+                pokemon.kills.direct,
+                pokemon.kills.indirect,
+                pokemon.kills.teammate,
+              ],
+              status: pokemon.fainted
+                ? "fainted"
+                : pokemon.brought || player.team.length >= player.teamSize
+                  ? "used"
+                  : "brought",
+              moveset: [...pokemon.moveset].map((move) => move.name),
+              damageDealt: [
+                pokemon.damageDealt.direct,
+                pokemon.damageDealt.indirect,
+                pokemon.damageDealt.teammate,
+              ],
+              damageTaken: [
+                pokemon.damageTaken.direct,
+                pokemon.damageTaken.indirect,
+                pokemon.damageTaken.teammate,
+              ],
+              calcLog: {
+                damageDealt: pokemon.calcLog.damageDealt.map((log) => ({
+                  target: log.target.formes[0].detail,
+                  hpDiff: log.hpDiff,
+                  move: log.move.name,
+                })),
+                damageTaken: pokemon.calcLog.damageTaken.map((log) => ({
+                  attacker: log.attacker.formes[0].detail,
+                  hpDiff: log.hpDiff,
+                  move: log.move.name,
+                })),
+              },
+              hpRestored: pokemon.hpRestored,
+              formes: pokemon.formes.map((forme) => ({
+                detail: forme.detail,
+                id: forme.specie.id,
+              })),
+              baseSpecies: {
+                name: pokemon.formes[0].specie.isCosmeticForme
+                  ? pokemon.baseSpecie.name
+                  : pokemon.formes[0].specie.name,
+                id: pokemon.formes[0].specie.isCosmeticForme
+                  ? pokemon.baseSpecie.id
+                  : pokemon.formes[0].specie.id,
+                formes: pokemon.formes[0].specie.formes?.map((forme) =>
+                  toID(forme),
+                ),
+                shiny:
+                  pokemon.formes[0].detail.includes(", shiny") || undefined,
+              },
+            };
+          }),
         };
-        player.team.forEach((pokemon) => {
-          playerStat.team.push({
-            kills: [
-              pokemon.kills.direct,
-              pokemon.kills.indirect,
-              pokemon.kills.teammate,
-            ],
-            status: pokemon.fainted
-              ? "fainted"
-              : pokemon.brought || player.team.length >= player.teamSize
-                ? "used"
-                : "brought",
-            moveset: [...pokemon.moveset].map((move) => move.name),
-            damageDealt: [
-              pokemon.damageDealt.direct,
-              pokemon.damageDealt.indirect,
-              pokemon.damageDealt.teammate,
-            ],
-            damageTaken: [
-              pokemon.damageTaken.direct,
-              pokemon.damageTaken.indirect,
-              pokemon.damageTaken.teammate,
-            ],
-            calcLog: {
-              damageDealt: pokemon.calcLog.damageDealt.map((log) => ({
-                target: log.target.formes[0].detail,
-                hpDiff: log.hpDiff,
-                move: log.move.name,
-              })),
-              damageTaken: pokemon.calcLog.damageTaken.map((log) => ({
-                attacker: log.attacker.formes[0].detail,
-                hpDiff: log.hpDiff,
-                move: log.move.name,
-              })),
-            },
-            hpRestored: pokemon.hpRestored,
-            formes: pokemon.formes.map((forme) => ({
-              detail: forme.detail,
-              id: forme.specie.id,
-            })),
-            baseSpecies: {
-              name: pokemon.formes[0].specie.name,
-              id: pokemon.formes[0].specie.id,
-              otherFormes: pokemon.formes[0].specie.otherFormes,
-              shiny: pokemon.formes[0].detail.includes(", shiny") || undefined,
-            },
-          });
-        });
+
         playerStat.luck.moves.expected /= playerStat.luck.moves.total;
         playerStat.luck.moves.actual =
           playerStat.luck.moves.hits / playerStat.luck.moves.total;
@@ -1363,7 +1427,7 @@ export namespace Replay {
         playerStat.luck.status.expected /= playerStat.luck.status.total;
         playerStat.luck.status.actual =
           playerStat.luck.status.full / playerStat.luck.status.total;
-        stats.push(playerStat);
+        return playerStat;
       });
       return {
         gametype: this.gametype
@@ -1399,6 +1463,7 @@ export namespace Replay {
 
   class ReplayLine {
     parent?: ReplayLine;
+    //TODO: Turn is not being set currently
     turn?: Turn;
     raw: ReplayData;
     children: ReplayLine[] = [];
@@ -1537,8 +1602,11 @@ export namespace Replay {
     player: Player;
     statuses: Status[] = [];
     baseSpecie: Specie;
+    gen: Generation;
+    item?: string;
 
     constructor(
+      gen: Generation,
       dString: DETAILS,
       player: Player,
       pString?: POKEMON,
@@ -1546,10 +1614,11 @@ export namespace Replay {
         brought?: boolean;
       } = {},
     ) {
+      this.gen = gen;
       this.formes = [
         {
           detail: dString,
-          specie: getSpecie(getSpeciesName(dString)),
+          specie: getSpecie(this.gen, getSpeciesName(dString)),
         },
       ];
       this.nickname = pString?.split(": ")[1] ?? "";
@@ -1557,16 +1626,51 @@ export namespace Replay {
       this.hpp = 100;
       this.player = player;
       this.brought = options.brought ?? false;
-      this.baseSpecie = getSpecie(this.formes[0].specie.baseSpecies);
+      this.baseSpecie = getSpecie(this.gen, this.formes[0].specie.baseSpecies);
     }
 
     getMove(moveName: MOVE): Move {
       let move = [...this.moveset].find((move) => move.name === moveName);
       if (!move) {
-        move = gen.dex.moves.get(moveName);
+        move = this.gen.dex.moves.get(moveName);
         this.moveset.add(move);
       }
       return move;
+    }
+
+    toClient() {
+      const specie = this.formes[0].specie.isCosmeticForme
+        ? this.baseSpecie
+        : this.formes[0].specie;
+      return {
+        kills: this.kills,
+        status: this.fainted
+          ? "fainted"
+          : this.brought || this.player.team.length >= this.player.teamSize
+            ? "used"
+            : "brought",
+        moveset: [...this.moveset].map((move) => move.name),
+        damageDealt: this.damageDealt,
+        damageTaken: this.damageTaken,
+        hpRestored: this.hpRestored,
+        calcLog: {
+          damageDealt: this.calcLog.damageDealt.map((log) => ({
+            target: log.target.formes[0].detail,
+            hpDiff: log.hpDiff,
+            move: log.move.name,
+          })),
+          damageTaken: this.calcLog.damageTaken.map((log) => ({
+            attacker: log.attacker.formes[0].detail,
+            hpDiff: log.hpDiff,
+            move: log.move.name,
+          })),
+        },
+        id: specie.id,
+        name: specie.name,
+        shiny: this.formes[0].detail.includes(", shiny") || undefined,
+        formes: this.baseSpecie.formes?.map((forme) => toID(forme)),
+        item: this.item,
+      };
     }
   }
 
@@ -1603,6 +1707,57 @@ export namespace Replay {
 
     constructor(username: PLAYER) {
       this.username = username;
+    }
+
+    toClient() {
+      return {
+        username: this.username,
+        win: this.win,
+        stats: this.stats,
+        total: {
+          kills: this.team.reduce(
+            (sum, pokemon) =>
+              sum + pokemon.kills.direct + pokemon.kills.indirect,
+            0,
+          ),
+          deaths: this.team.reduce(
+            (sum, pokemon) => sum + (pokemon.fainted ? 1 : 0),
+            0,
+          ),
+          damageDealt: this.team.reduce(
+            (sum, pokemon) =>
+              sum + pokemon.damageDealt.direct + pokemon.damageDealt.indirect,
+            0,
+          ),
+          damageTaken: this.team.reduce(
+            (sum, pokemon) =>
+              sum + pokemon.damageTaken.direct + pokemon.damageTaken.indirect,
+            0,
+          ),
+        },
+        turnChart: this.turnChart,
+        luck: {
+          moves: {
+            total: this.luck.moves.total,
+            hits: this.luck.moves.hits,
+            expected: this.luck.moves.expected / this.luck.moves.total,
+            actual: this.luck.moves.hits / this.luck.moves.total,
+          },
+          crits: {
+            total: this.luck.crits.total,
+            hits: this.luck.crits.hits,
+            expected: this.luck.crits.expected / this.luck.crits.total,
+            actual: this.luck.crits.hits / this.luck.crits.total,
+          },
+          status: {
+            total: this.luck.status.total,
+            full: this.luck.status.full,
+            expected: this.luck.status.expected / this.luck.status.total,
+            actual: this.luck.status.full / this.luck.status.total,
+          },
+        },
+        team: this.team.map((pokemon) => pokemon.toClient()),
+      };
     }
   }
 
@@ -1743,14 +1898,14 @@ export namespace Replay {
       baseSpecies: {
         name: string;
         id: string;
-        otherFormes?: string[];
+        formes?: string[];
         shiny?: boolean;
       };
     }[];
   };
 }
 
-function getSpecie(pokemonName: string): Specie {
+function getSpecie(gen: Generation, pokemonName: string): Specie {
   const specie = gen.species.get(pokemonName);
   if (!specie) throw new Error(`Species not found for details: ${pokemonName}`);
   return specie;
