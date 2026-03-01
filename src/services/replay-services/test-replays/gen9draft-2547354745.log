@@ -1,0 +1,392 @@
+|j|☆superspiderpigg
+|j|☆redboy128
+|t:|1772075137
+|gametype|singles
+|player|p1|superspiderpigg|pokemaniac|
+|player|p2|redboy128|red|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Ogerpon-Hearthflame, F|
+|poke|p1|Tornadus, M|
+|poke|p1|Terapagos, M|
+|poke|p1|Sylveon, F|
+|poke|p1|Orthworm, F|
+|poke|p1|Garchomp, M|
+|poke|p2|Chi-Yu|
+|poke|p2|Gliscor, F|
+|poke|p2|Ribombee, F|
+|poke|p2|Tentacruel, F|
+|poke|p2|Dusknoir, F|
+|poke|p2|Feraligatr, F|
+|raw|superspiderpigg's Tera Types:<br /><psicon pokemon="ogerponhearthflame" /><psicon type="Fire" /> / <psicon pokemon="tornadus" /><psicon type="Flying" /> / <psicon pokemon="terapagos" /><psicon type="Stellar" /> / <psicon pokemon="sylveon" /><psicon type="Fairy" /> / <psicon pokemon="orthworm" /><psicon type="Steel" /> / <psicon pokemon="garchomp" /><psicon type="Dragon" />
+|raw|redboy128's Tera Types:<br /><psicon pokemon="chiyu" /><psicon type="Stellar" /> / <psicon pokemon="gliscor" /><psicon type="Fire" /> / <psicon pokemon="ribombee" /><psicon type="Stellar" /> / <psicon pokemon="tentacruel" /><psicon type="Stellar" /> / <psicon pokemon="dusknoir" /><psicon type="Stellar" /> / <psicon pokemon="feraligatr" /><psicon type="Stellar" />
+|teampreview
+|c|☆superspiderpigg|glhf!
+|c|☆redboy128|you too!
+|j| Mr.Twang
+|j| iamstupiditstrue
+|
+|t:|1772075172
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Tornadus|Tornadus, M|100/100
+|switch|p2a: bzzzzzzzzzzzz|Ribombee, F|100/100
+|turn|1
+|
+|t:|1772075183
+|move|p1a: Tornadus|Taunt|p2a: bzzzzzzzzzzzz
+|-start|p2a: bzzzzzzzzzzzz|move: Taunt
+|cant|p2a: bzzzzzzzzzzzz|move: Taunt|Sticky Web
+|
+|upkeep
+|turn|2
+|
+|t:|1772075188
+|move|p2a: bzzzzzzzzzzzz|U-turn|p1a: Tornadus
+|-resisted|p1a: Tornadus
+|-damage|p1a: Tornadus|89/100
+|
+|t:|1772075195
+|switch|p2a: tentacrles|Tentacruel, F|100/100|[from] U-turn
+|move|p1a: Tornadus|Knock Off|p2a: tentacrles
+|-damage|p2a: tentacrles|66/100
+|-enditem|p2a: tentacrles|Black Sludge|[from] move: Knock Off|[of] p1a: Tornadus
+|
+|upkeep
+|turn|3
+|j| DJRean
+|
+|t:|1772075205
+|move|p1a: Tornadus|Taunt|p2a: tentacrles
+|-start|p2a: tentacrles|move: Taunt
+|move|p2a: tentacrles|Ice Beam|p1a: Tornadus
+|-supereffective|p1a: Tornadus
+|-damage|p1a: Tornadus|47/100
+|
+|upkeep
+|turn|4
+|
+|t:|1772075240
+|move|p1a: Tornadus|U-turn|p2a: tentacrles
+|-resisted|p2a: tentacrles
+|-damage|p2a: tentacrles|55/100
+|
+|t:|1772075241
+|switch|p1a: Orthworm|Orthworm, F|100/100|[from] U-turn
+|move|p2a: tentacrles|Surf|p1a: Orthworm
+|-crit|p1a: Orthworm
+|-damage|p1a: Orthworm|42/100
+|
+|upkeep
+|turn|5
+|
+|t:|1772075294
+|switch|p2a: still cant hm02|Gliscor, F|100/100
+|move|p1a: Orthworm|Bulldoze|p2a: still cant hm02
+|-immune|p2a: still cant hm02
+|
+|-status|p2a: still cant hm02|tox|[from] item: Toxic Orb
+|upkeep
+|turn|6
+|
+|t:|1772075302
+|move|p2a: still cant hm02|Swords Dance|p2a: still cant hm02
+|-boost|p2a: still cant hm02|atk|2
+|move|p1a: Orthworm|Stealth Rock|p2a: still cant hm02
+|-sidestart|p2: redboy128|move: Stealth Rock
+|
+|upkeep
+|turn|7
+|
+|t:|1772075308
+|move|p2a: still cant hm02|Swords Dance|p2a: still cant hm02
+|-boost|p2a: still cant hm02|atk|2
+|move|p1a: Orthworm|Bulldoze|p2a: still cant hm02
+|-immune|p2a: still cant hm02
+|
+|upkeep
+|turn|8
+|
+|t:|1772075314
+|move|p2a: still cant hm02|Swords Dance|p2a: still cant hm02
+|-boost|p2a: still cant hm02|atk|2
+|move|p1a: Orthworm|Heavy Slam|p2a: still cant hm02
+|-damage|p2a: still cant hm02|78/100 tox
+|
+|-heal|p2a: still cant hm02|90/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|9
+|
+|t:|1772075321
+|-terastallize|p2a: still cant hm02|Fire
+|move|p2a: still cant hm02|Tera Blast|p1a: Orthworm|[anim] Tera Blast Fire
+|-supereffective|p1a: Orthworm
+|-damage|p1a: Orthworm|0 fnt
+|faint|p1a: Orthworm
+|
+|-heal|p2a: still cant hm02|100/100 tox|[from] ability: Poison Heal
+|upkeep
+|
+|t:|1772075342
+|switch|p1a: Garchomp|Garchomp, M|100/100
+|turn|10
+|
+|t:|1772075352
+|switch|p2a: tentacrles|Tentacruel, F|55/100
+|-damage|p2a: tentacrles|42/100|[from] Stealth Rock
+|move|p1a: Garchomp|Earthquake|p2a: tentacrles
+|-supereffective|p2a: tentacrles
+|-damage|p2a: tentacrles|0 fnt
+|faint|p2a: tentacrles
+|
+|upkeep
+|
+|t:|1772075356
+|switch|p2a: bzzzzzzzzzzzz|Ribombee, F|100/100
+|-damage|p2a: bzzzzzzzzzzzz|75/100|[from] Stealth Rock
+|turn|11
+|
+|t:|1772075365
+|switch|p1a: Terapagos|Terapagos, M|100/100
+|-activate|p1a: Terapagos|ability: Tera Shift
+|detailschange|p1a: Terapagos|Terapagos-Terastal, M
+|-heal|p1a: Terapagos|100/100|[silent]
+|move|p2a: bzzzzzzzzzzzz|Reflect|p2a: bzzzzzzzzzzzz
+|-sidestart|p2: redboy128|Reflect
+|
+|upkeep
+|turn|12
+|
+|t:|1772075371
+|move|p2a: bzzzzzzzzzzzz|U-turn|p1a: Terapagos
+|-activate|p1a: Terapagos|ability: Tera Shell
+|-resisted|p1a: Terapagos
+|-damage|p1a: Terapagos|94/100
+|
+|t:|1772075376
+|switch|p2a: fergalicious|Feraligatr, F|100/100|[from] U-turn
+|-damage|p2a: fergalicious|88/100|[from] Stealth Rock
+|move|p1a: Terapagos|Rapid Spin|p2a: fergalicious
+|-damage|p2a: fergalicious|80/100
+|-boost|p1a: Terapagos|spe|1
+|
+|upkeep
+|turn|13
+|
+|t:|1772075380
+|move|p1a: Terapagos|Tera Starstorm|p2a: fergalicious
+|-damage|p2a: fergalicious|18/100
+|move|p2a: fergalicious|Swords Dance|p2a: fergalicious
+|-boost|p2a: fergalicious|atk|2
+|
+|upkeep
+|turn|14
+|
+|t:|1772075383
+|move|p2a: fergalicious|Aqua Jet|p1a: Terapagos
+|-damage|p1a: Terapagos|52/100
+|-damage|p2a: fergalicious|8/100|[from] item: Life Orb
+|move|p1a: Terapagos|Tera Starstorm|p2a: fergalicious
+|-damage|p2a: fergalicious|0 fnt
+|faint|p2a: fergalicious
+|
+|upkeep
+|
+|t:|1772075397
+|switch|p2a: beer belly man|Dusknoir, F|100/100
+|-damage|p2a: beer belly man|88/100|[from] Stealth Rock
+|-item|p1a: Terapagos|Heavy-Duty Boots|[from] ability: Frisk|[of] p2a: beer belly man
+|turn|15
+|
+|t:|1772075415
+|move|p1a: Terapagos|Dark Pulse|p2a: beer belly man
+|-supereffective|p2a: beer belly man
+|-damage|p2a: beer belly man|47/100
+|move|p2a: beer belly man|Skitter Smack|p1a: Terapagos|[miss]
+|-miss|p2a: beer belly man|p1a: Terapagos
+|
+|-heal|p2a: beer belly man|54/100|[from] item: Leftovers
+|upkeep
+|turn|16
+|j| Lumaris
+|
+|t:|1772075448
+|switch|p2a: chi yu later|Chi-Yu|100/100
+|-damage|p2a: chi yu later|76/100|[from] Stealth Rock
+|-ability|p2a: chi yu later|Beads of Ruin
+|move|p1a: Terapagos|Dark Pulse|p2a: chi yu later
+|-resisted|p2a: chi yu later
+|-damage|p2a: chi yu later|66/100
+|
+|upkeep
+|turn|17
+|
+|t:|1772075461
+|move|p1a: Terapagos|Earth Power|p2a: chi yu later
+|-supereffective|p2a: chi yu later
+|-damage|p2a: chi yu later|17/100
+|move|p2a: chi yu later|Flamethrower|p1a: Terapagos
+|-damage|p1a: Terapagos|0 fnt
+|faint|p1a: Terapagos
+|
+|upkeep
+|
+|t:|1772075475
+|switch|p1a: Tornadus|Tornadus, M|47/100
+|turn|18
+|
+|t:|1772075494
+|move|p2a: chi yu later|Flamethrower|p1a: Tornadus
+|-damage|p1a: Tornadus|0 fnt
+|faint|p1a: Tornadus
+|
+|-sideend|p2: redboy128|Reflect
+|upkeep
+|
+|t:|1772075501
+|switch|p1a: Sylveon|Sylveon, F|100/100
+|turn|19
+|l| Lumaris
+|j| rockyl223
+|
+|t:|1772075555
+|move|p2a: chi yu later|Flamethrower|p1a: Sylveon
+|-damage|p1a: Sylveon|61/100
+|move|p1a: Sylveon|Hyper Voice|p2a: chi yu later
+|-damage|p2a: chi yu later|0 fnt
+|faint|p2a: chi yu later
+|
+|-heal|p1a: Sylveon|68/100|[from] item: Leftovers
+|upkeep
+|
+|t:|1772075560
+|switch|p2a: bzzzzzzzzzzzz|Ribombee, F|75/100
+|-damage|p2a: bzzzzzzzzzzzz|50/100|[from] Stealth Rock
+|turn|20
+|
+|t:|1772075571
+|switch|p1a: Ogerpon|Ogerpon-Hearthflame, F|100/100
+|-ability|p1a: Ogerpon|Mold Breaker
+|move|p2a: bzzzzzzzzzzzz|Sticky Web|p1a: Ogerpon
+|-sidestart|p1: superspiderpigg|move: Sticky Web
+|
+|upkeep
+|turn|21
+|
+|t:|1772075578
+|-terastallize|p1a: Ogerpon|Fire
+|detailschange|p1a: Ogerpon|Ogerpon-Hearthflame-Tera, F, tera:Fire
+|-ability|p1a: Ogerpon|Embody Aspect (Hearthflame)|boost
+|-boost|p1a: Ogerpon|atk|1
+|move|p2a: bzzzzzzzzzzzz|Reflect|p2a: bzzzzzzzzzzzz
+|-sidestart|p2: redboy128|Reflect
+|move|p1a: Ogerpon|Ivy Cudgel|p2a: bzzzzzzzzzzzz|[anim] Ivy Cudgel Fire
+|-supereffective|p2a: bzzzzzzzzzzzz
+|-damage|p2a: bzzzzzzzzzzzz|0 fnt
+|faint|p2a: bzzzzzzzzzzzz
+|
+|upkeep
+|
+|t:|1772075582
+|switch|p2a: still cant hm02|Gliscor, F, tera:Fire|100/100 tox
+|-damage|p2a: still cant hm02|76/100 tox|[from] Stealth Rock
+|turn|22
+|
+|t:|1772075604
+|move|p1a: Ogerpon|Ivy Cudgel|p2a: still cant hm02|[anim] Ivy Cudgel Fire
+|-resisted|p2a: still cant hm02
+|-damage|p2a: still cant hm02|55/100 tox
+|move|p2a: still cant hm02|Swords Dance|p2a: still cant hm02
+|-boost|p2a: still cant hm02|atk|2
+|
+|-heal|p2a: still cant hm02|67/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|23
+|
+|t:|1772075613
+|switch|p1a: Sylveon|Sylveon, F|68/100
+|-activate|p1a: Sylveon|move: Sticky Web
+|-unboost|p1a: Sylveon|spe|1
+|move|p2a: still cant hm02|Earthquake|p1a: Sylveon
+|-damage|p1a: Sylveon|0 fnt
+|faint|p1a: Sylveon
+|
+|-heal|p2a: still cant hm02|80/100 tox|[from] ability: Poison Heal
+|upkeep
+|
+|t:|1772075616
+|switch|p1a: Garchomp|Garchomp, M|100/100
+|-activate|p1a: Garchomp|move: Sticky Web
+|-unboost|p1a: Garchomp|spe|1
+|turn|24
+|
+|t:|1772075638
+|move|p2a: still cant hm02|Protect|p2a: still cant hm02
+|-singleturn|p2a: still cant hm02|Protect
+|move|p1a: Garchomp|Scale Shot|p2a: still cant hm02
+|-activate|p2a: still cant hm02|move: Protect
+|
+|-heal|p2a: still cant hm02|92/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|25
+|
+|t:|1772075643
+|move|p2a: still cant hm02|Earthquake|p1a: Garchomp
+|-damage|p1a: Garchomp|29/100
+|move|p1a: Garchomp|Scale Shot|p2a: still cant hm02
+|-damage|p2a: still cant hm02|88/100 tox
+|-damage|p2a: still cant hm02|83/100 tox
+|-damage|p2a: still cant hm02|78/100 tox
+|-damage|p2a: still cant hm02|74/100 tox
+|-hitcount|p2a: still cant hm02|4
+|-unboost|p1a: Garchomp|def|1
+|-boost|p1a: Garchomp|spe|1
+|
+|-heal|p2a: still cant hm02|87/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|26
+|
+|t:|1772075648
+|move|p1a: Garchomp|Earthquake|p2a: still cant hm02
+|-supereffective|p2a: still cant hm02
+|-damage|p2a: still cant hm02|49/100 tox
+|move|p2a: still cant hm02|Earthquake|p1a: Garchomp
+|-damage|p1a: Garchomp|0 fnt
+|faint|p1a: Garchomp
+|
+|-heal|p2a: still cant hm02|61/100 tox|[from] ability: Poison Heal
+|upkeep
+|
+|t:|1772075650
+|switch|p1a: Ogerpon|Ogerpon-Hearthflame-Tera, F, tera:Fire|100/100
+|-activate|p1a: Ogerpon|move: Sticky Web
+|-unboost|p1a: Ogerpon|spe|1
+|-ability|p1a: Ogerpon|Embody Aspect (Hearthflame)|boost
+|-boost|p1a: Ogerpon|atk|1
+|turn|27
+|
+|t:|1772075653
+|move|p2a: still cant hm02|Earthquake|p1a: Ogerpon
+|-supereffective|p1a: Ogerpon
+|-damage|p1a: Ogerpon|0 fnt
+|faint|p1a: Ogerpon
+|detailschange|p1: Ogerpon|Ogerpon-Hearthflame, F|[silent]
+|
+|win|redboy128
+|c|☆superspiderpigg|ggs
+|c|☆redboy128|gg
+|l|☆superspiderpigg
+|player|p1|
+|l| iamstupiditstrue

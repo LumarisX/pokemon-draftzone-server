@@ -1,7 +1,9 @@
-import { Generations, Move, toID } from "@pkmn/data";
+import { Generations, ID, Move, Specie, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
+import { getRuleset } from "../../data/rulesets";
+import { Team } from "discord.js";
 
-const gens = new Generations(Dex);
+const gen = getRuleset("Gen9 NatDex");
 const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
 
 type StatBreakdown = {
@@ -19,7 +21,6 @@ export namespace Replay {
     t0: number = 0;
     tf: number = 0;
     field: Field = new Field();
-    playerData: Player[] = [];
     lastMove: { data: MoveData; move: Move } | undefined;
     tempMons: { [key: string]: Pokemon } = {};
     events: { player: number; turn: number; message: string }[] = [];
@@ -50,6 +51,10 @@ export namespace Replay {
         this.updateChart(turn.number);
         turn.lines.forEach((line) => this.executeLine(line));
       });
+    }
+
+    private get players(): Player[] {
+      return this.field.sides.map((side) => side.player);
     }
 
     actionFns: { [key: string]: (line: ReplayLine) => void } = {
@@ -277,10 +282,9 @@ export namespace Replay {
       },
       "-sideend": (line) => {
         const [side, condition] = line.args as [SIDE, CONDITION];
-        this.field.sides[this.getSide(side)].statuses.splice(
-          this.field.sides[this.getSide(side)].statuses.findIndex(
-            (s) => s.status === condition,
-          ),
+        const sideState = this.field.getSide(side);
+        sideState.statuses.splice(
+          sideState.statuses.findIndex((s) => s.status === condition),
           1,
         );
       },
@@ -290,7 +294,7 @@ export namespace Replay {
         const sideMon = this.getPokemon(line.parent.raw[1] as POKEMON);
         if (!sideMon) return;
         const sideStartStatus = condition.split(": ");
-        this.field.sides[this.getSide(side)].statuses.push({
+        this.field.getSide(side).statuses.push({
           status:
             sideStartStatus.length === 2
               ? sideStartStatus[1]
@@ -350,7 +354,7 @@ export namespace Replay {
         if (!teraMon) return;
         teraMon.formes = teraMon.formes.map((forme) => ({
           detail: `${forme.detail}, tera:${type}`,
-          id: forme.id,
+          specie: forme.specie,
         }));
       },
       "-transform": (line) => {
@@ -424,9 +428,9 @@ export namespace Replay {
             switchedMon.brought = true;
             switchedMon.formes[0] = {
               detail: details,
-              id: gens.dex.species.get(getSpeciesName(details))?.id,
+              specie: getSpecie(getSpeciesName(details)),
             };
-            switchedMon.nickname = pokemonStr.split(" ")[1];
+            switchedMon.nickname = pokemonStr.split(": ")[1];
           }
         } else {
           switchPlayer.team.push(
@@ -436,9 +440,9 @@ export namespace Replay {
         const switchInMon = switchPlayer.team.find((pokemon) =>
           pokemon.formes.some((forme) => details.startsWith(forme.detail)),
         );
-        this.field.sides[this.getSide(pokemonStr)][
-          this.getPosition(pokemonStr)
-        ].pokemon = switchInMon;
+        const position = this.field.getPosition(pokemonStr);
+        if (!position) return;
+        position.pokemon = switchInMon;
         if (switchInMon)
           this.tempMons[pokemonStr.substring(0, 3)] =
             structuredClone(switchInMon);
@@ -539,14 +543,8 @@ export namespace Replay {
           AVATAR,
           RATING,
         ];
-        if (
-          username &&
-          !this.playerData.find((player) => player.username === username)
-        ) {
-          const side = new Side();
-          this.playerData.push(new Player(side, username));
-          this.field.sides.push(side);
-        }
+        if (!username || this.field.getPlayerByUsername(username)) return;
+        this.field.sides.push(new Side(new Player(username)));
       },
       poke: (line) => {
         const [playerStr, details, item] = line.args as [PLAYER, DETAILS, ITEM];
@@ -570,13 +568,13 @@ export namespace Replay {
       },
       swap: (line) => {
         const [pokemonStr, position] = line.args as [POKEMON, POSITION];
-        let swapSide = this.field.sides[this.getSide(pokemonStr)];
+        let swapSide = this.field.getSide(pokemonStr);
         [
-          swapSide[this.getPosition(pokemonStr)],
-          swapSide[["a", "b", "c"][+position] as PPosition],
+          swapSide.positions[this.getPosition(pokemonStr)],
+          swapSide.positions[["a", "b", "c"][+position] as PPosition],
         ] = [
-          swapSide[["a", "b", "c"][+position] as PPosition],
-          swapSide[this.getPosition(pokemonStr)],
+          swapSide.positions[["a", "b", "c"][+position] as PPosition],
+          swapSide.positions[this.getPosition(pokemonStr)],
         ];
       },
       switch: (line) => {
@@ -585,7 +583,7 @@ export namespace Replay {
           DETAILS,
           HPSTATUS,
         ];
-        this.playerData[this.getSide(pokemonStr)].stats.switches++;
+        this.getPlayer(pokemonStr).stats.switches++;
         this.actionFns.drag(line);
       },
 
@@ -654,9 +652,9 @@ export namespace Replay {
           if (ks.attacker === replaceMon) ks.attacker = illusionMon;
           if (ks.target === replaceMon) ks.target = illusionMon;
         });
-        this.field.sides[this.getSide(pokemonStr)][
-          this.getPosition(pokemonStr)
-        ].pokemon = illusionMon;
+        const position = this.field.getPosition(pokemonStr);
+        if (!position) return;
+        position.pokemon = illusionMon;
         replaceMon = tempReplaceMon;
       },
       "t:": (line) => {
@@ -692,11 +690,11 @@ export namespace Replay {
         const [user] = line.args as [USER];
         this.upkeep(line.turn);
         this.updateChart(line.turn?.number ?? 0);
-        const winPlayer = this.playerData.findIndex(
+        const winPlayer = this.players.findIndex(
           (player) => player.username == user,
         );
         if (winPlayer < 0) return;
-        this.playerData[winPlayer].win = true;
+        this.players[winPlayer].win = true;
         this.events.push({
           turn: line.turn?.number ?? 0,
           player: winPlayer + 1,
@@ -723,7 +721,7 @@ export namespace Replay {
       if (!detailMon) return;
       detailMon.formes.push({
         detail: details,
-        id: gens.dex.species.get(getSpeciesName(details))?.id,
+        specie: getSpecie(getSpeciesName(details)),
       });
     }
 
@@ -752,8 +750,9 @@ export namespace Replay {
       const hitAttacker = this.getPokemon(this.lastMove.data[1]);
       if (!hitAttacker) return;
 
-      const hitMove = gens.dex.moves.get(this.lastMove.data[2]);
+      const hitMove = gen.moves.get(this.lastMove.data[2]);
       if (
+        !hitMove ||
         hitMove.exists !== true ||
         !hitMove.target ||
         hitMove.target === "self"
@@ -796,10 +795,12 @@ export namespace Replay {
           line.parent.raw[0] === "replace") &&
         statusStart.status === "psn"
       ) {
-        return this.field.sides[this.getSide(pokemonStr)].statuses.find(
-          (s) =>
-            s.status === "move: Toxic Spikes" || s.status === "Toxic Spikes",
-        )?.setter;
+        return this.field
+          .getSide(pokemonStr)
+          .statuses.find(
+            (s) =>
+              s.status === "move: Toxic Spikes" || s.status === "Toxic Spikes",
+          )?.setter;
       }
 
       if (line.parent.raw[0] !== "move") return undefined;
@@ -870,7 +871,11 @@ export namespace Replay {
     private findDestinyBondFainter(faintMon: Pokemon): Pokemon | undefined {
       const destinyBondMonList = this.field.sides
         .map((side) =>
-          [side.a.pokemon, side.b.pokemon, side.c.pokemon].find(
+          [
+            side.positions.a.pokemon,
+            side.positions.b.pokemon,
+            side.positions.c.pokemon,
+          ].find(
             (pokemon) =>
               pokemon && this.searchStatuses(pokemon, "move: Destiny Bond"),
           ),
@@ -957,8 +962,8 @@ export namespace Replay {
       faintMon: Pokemon,
     ) {
       if (!this.lastMove) return;
-      const faintMove = gens.dex.moves.get(this.lastMove.data[2]);
-      if (!("selfdestruct" in faintMove)) return;
+      const faintMove = gen.moves.get(this.lastMove.data[2]);
+      if (!(faintMove?.id === "selfdestruct")) return;
       killString.attacker = faintMon;
       killString.reason = faintMove.name;
     }
@@ -978,13 +983,7 @@ export namespace Replay {
     }
 
     private getPokemon(pokemonStr: POKEMON): Pokemon {
-      const pokemon =
-        this.field.sides[this.getSide(pokemonStr)][this.getPosition(pokemonStr)]
-          .pokemon;
-      if (!pokemon)
-        throw new Error(`Pokemon not found for string: ${pokemonStr}`);
-
-      return pokemon;
+      return this.field.getPokemon(pokemonStr);
     }
 
     private heal(
@@ -1108,9 +1107,9 @@ export namespace Replay {
         let monStatus = pokemon.statuses.find((s) => s.status === status);
         if (monStatus) return monStatus;
       }
-      let sideStatus = pokemon.player.side.statuses.find(
-        (s) => s.status === status,
-      );
+      let sideStatus = this.field
+        .getSideByPlayer(pokemon.player)
+        ?.statuses.find((s) => s.status === status);
       if (sideStatus) {
         return sideStatus;
       }
@@ -1119,9 +1118,9 @@ export namespace Replay {
         return this.field.weather;
       }
       if (pokemon.lastDamage && pokemon.lastDamage.line.raw[1]) {
-        let sideStatus = this.field.sides[
-          this.getSide(pokemon.lastDamage.line.raw[1] as POKEMON)
-        ].statuses.find((s) => s.status.split(": ")[1] === status);
+        let sideStatus = this.field
+          .getSide(pokemon.lastDamage.line.raw[1] as POKEMON)
+          .statuses.find((s) => s.status.split(": ")[1] === status);
         if (sideStatus) return sideStatus;
       }
       return;
@@ -1137,11 +1136,7 @@ export namespace Replay {
     }
 
     private getPlayer(str: POKEMON | PLAYER): Player {
-      return this.playerData[this.getSide(str)];
-    }
-
-    private getSide(str: POKEMON | PLAYER): number {
-      return +str.charAt(1) - 1;
+      return this.field.getSide(str).player;
     }
 
     private getPosition(pokemon: POKEMON): PPosition {
@@ -1149,7 +1144,7 @@ export namespace Replay {
     }
 
     private calculateHPPercent(hpString: HPSTATUS | HP): number {
-      let hp = hpString.split(" ")[0].split("/");
+      let hp = hpString.split(": ")[0].split("/");
       let hpp = +hp[0] > 0 ? +hp[0] / (+hp[1] / 100) : 0;
       return hpp;
     }
@@ -1159,7 +1154,7 @@ export namespace Replay {
       this.cleanStatuses();
       this.killStrings.forEach((ks) =>
         this.events.push({
-          player: this.field.sides.indexOf(ks.target.player.side) + 1,
+          player: this.field.getPlayerIndex(ks.target.player) + 1,
           turn: turn.number,
           message: `${this.makeKillString(ks)}.`,
         }),
@@ -1173,11 +1168,17 @@ export namespace Replay {
       );
       this.field.sides.forEach((side) => {
         side.statuses = side.statuses.filter((status) => !status.ended);
-        side.a.statuses = side.a.statuses.filter((status) => !status.ended);
-        side.b.statuses = side.b.statuses.filter((status) => !status.ended);
-        side.c.statuses = side.c.statuses.filter((status) => !status.ended);
+        side.positions.a.statuses = side.positions.a.statuses.filter(
+          (status) => !status.ended,
+        );
+        side.positions.b.statuses = side.positions.b.statuses.filter(
+          (status) => !status.ended,
+        );
+        side.positions.c.statuses = side.positions.c.statuses.filter(
+          (status) => !status.ended,
+        );
       });
-      this.playerData.forEach((player) =>
+      this.players.forEach((player) =>
         player.team.forEach((pokemon) => {
           pokemon.status = pokemon.status.ended
             ? { status: "healthy" }
@@ -1189,7 +1190,7 @@ export namespace Replay {
     }
 
     private updateChart(turnNumber: number) {
-      this.playerData.forEach((player) =>
+      this.players.forEach((player) =>
         player.turnChart.push({
           turn: turnNumber,
           damage: player.team.reduce(
@@ -1210,12 +1211,10 @@ export namespace Replay {
     ): "self" | "ff" | "opp" {
       if (attacker === fainter) return "self";
       if (
-        this.playerData.find(
+        this.players.find(
           (player) => attacker && player.team.includes(attacker),
         ) ===
-        this.playerData.find(
-          (player) => fainter && player.team.includes(fainter),
-        )
+        this.players.find((player) => fainter && player.team.includes(fainter))
       )
         return "ff";
       return "opp";
@@ -1258,7 +1257,7 @@ export namespace Replay {
 
     toJson() {
       let stats: Stats[] = [];
-      this.playerData.forEach((player) => {
+      this.players.forEach((player) => {
         let playerStat: Stats = {
           username: player.username,
           win: player.win,
@@ -1305,7 +1304,7 @@ export namespace Replay {
               actual: 0,
             },
           },
-          team: [] as any[],
+          team: [] as Stats["team"],
         };
         player.team.forEach((pokemon) => {
           playerStat.team.push({
@@ -1343,7 +1342,16 @@ export namespace Replay {
               })),
             },
             hpRestored: pokemon.hpRestored,
-            formes: pokemon.formes,
+            formes: pokemon.formes.map((forme) => ({
+              detail: forme.detail,
+              id: forme.specie.id,
+            })),
+            baseSpecies: {
+              name: pokemon.formes[0].specie.name,
+              id: pokemon.formes[0].specie.id,
+              otherFormes: pokemon.formes[0].specie.otherFormes,
+              shiny: pokemon.formes[0].detail.includes(", shiny") || undefined,
+            },
           });
         });
         playerStat.luck.moves.expected /= playerStat.luck.moves.total;
@@ -1363,7 +1371,7 @@ export namespace Replay {
           : "",
         genNum: this.genNum,
         turns: Math.max(
-          ...this.playerData
+          ...this.players
             .flatMap((player) => player.turnChart.map((entry) => entry.turn))
             .concat(0),
         ),
@@ -1507,7 +1515,7 @@ export namespace Replay {
   }
 
   class Pokemon {
-    formes: { detail: string; id?: string }[];
+    formes: { detail: string; specie: Specie }[];
     nickname: string;
     hpp: number;
     moveset: Set<Move>;
@@ -1528,6 +1536,7 @@ export namespace Replay {
     status: Status = { status: "healthy" };
     player: Player;
     statuses: Status[] = [];
+    baseSpecie: Specie;
 
     constructor(
       dString: DETAILS,
@@ -1540,20 +1549,21 @@ export namespace Replay {
       this.formes = [
         {
           detail: dString,
-          id: gens.dex.species.get(getSpeciesName(dString))?.id,
+          specie: getSpecie(getSpeciesName(dString)),
         },
       ];
-      this.nickname = pString?.split(" ")[1] ?? "";
+      this.nickname = pString?.split(": ")[1] ?? "";
       this.moveset = new Set<Move>();
       this.hpp = 100;
       this.player = player;
       this.brought = options.brought ?? false;
+      this.baseSpecie = getSpecie(this.formes[0].specie.baseSpecies);
     }
 
     getMove(moveName: MOVE): Move {
       let move = [...this.moveset].find((move) => move.name === moveName);
       if (!move) {
-        move = gens.dex.moves.get(moveName);
+        move = gen.dex.moves.get(moveName);
         this.moveset.add(move);
       }
       return move;
@@ -1564,7 +1574,6 @@ export namespace Replay {
     username: PLAYER;
     teamSize: number = 0;
     team: Pokemon[] = [];
-    side: Side;
     turnChart: { turn: number; damage: number; remaining: number }[] = [];
     win: boolean = false;
     stats: {
@@ -1592,32 +1601,86 @@ export namespace Replay {
       status: { total: 0, full: 0, expected: 0 },
     };
 
-    constructor(side: Side, username: PLAYER) {
-      this.side = side;
+    constructor(username: PLAYER) {
       this.username = username;
     }
   }
 
-  class Side {
-    a: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    } = { pokemon: undefined, statuses: [] };
-    b: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    } = { pokemon: undefined, statuses: [] };
-    c: {
-      pokemon: undefined | Pokemon;
-      statuses: Status[];
-    } = { pokemon: undefined, statuses: [] };
+  class Position {
+    pokemon?: Pokemon;
     statuses: Status[] = [];
+  }
+
+  class Side {
+    positions: {
+      [key in PPosition]: Position;
+    };
+    statuses: Status[] = [];
+    player: Player;
+
+    constructor(player: Player) {
+      this.player = player;
+      this.positions = {
+        a: new Position(),
+        b: new Position(),
+        c: new Position(),
+      };
+    }
+
+    getPosition(pokemonStr: POKEMON): Position | undefined {
+      const char = pokemonStr.charAt(2);
+      if (char === "a" || char === "b" || char === "c")
+        return this.positions[char];
+      return undefined;
+    }
+
+    getPokemon(pokemonStr: POKEMON) {
+      const position = this.getPosition(pokemonStr);
+      if (position) return position.pokemon;
+      const teamPokemon = this.player.team.find(
+        (pokemon) => pokemon.nickname === pokemonStr.split(": ")[1],
+      );
+      if (teamPokemon) return teamPokemon;
+      return undefined;
+    }
   }
 
   class Field {
     sides: Side[] = [];
     statuses: Status[] = [];
     weather: Status = { status: "none" };
+
+    getSide(pokemonStr: POKEMON | PLAYER): Side {
+      const sideIndex = +pokemonStr.charAt(1) - 1;
+      if (sideIndex < 0 || sideIndex >= this.sides.length)
+        throw new Error(`Invalid side index: ${sideIndex}`);
+      return this.sides[sideIndex];
+    }
+
+    getPosition(pokemonStr: POKEMON) {
+      return this.getSide(pokemonStr).getPosition(pokemonStr);
+    }
+
+    getSideByPlayer(player: Player): Side | undefined {
+      return this.sides.find((side) => side.player === player);
+    }
+
+    getPlayerIndex(player: Player): number {
+      return this.sides.findIndex((side) => side.player === player);
+    }
+
+    getPlayerByUsername(username: USERNAME): Player | undefined {
+      const side = this.sides.find((side) => side.player.username === username);
+      return side?.player;
+    }
+
+    getPokemon(pokemonStr: POKEMON): Pokemon {
+      const side = this.getSide(pokemonStr);
+      const pokemon = side.getPokemon(pokemonStr);
+      if (!pokemon)
+        throw new Error(`Pokemon not found for string: ${pokemonStr}`);
+      return pokemon;
+    }
   }
 
   // TODO: See if this can be replace/removed
@@ -1676,9 +1739,21 @@ export namespace Replay {
         damageDealt: { target: string; move: string; hpDiff: number }[];
       };
       hpRestored: number;
-      formes: { detail: string; id?: string }[];
+      formes: { detail: string; id: ID }[];
+      baseSpecies: {
+        name: string;
+        id: string;
+        otherFormes?: string[];
+        shiny?: boolean;
+      };
     }[];
   };
+}
+
+function getSpecie(pokemonName: string): Specie {
+  const specie = gen.species.get(pokemonName);
+  if (!specie) throw new Error(`Species not found for details: ${pokemonName}`);
+  return specie;
 }
 
 export function validateUrl(url: string): boolean {

@@ -1,0 +1,261 @@
+|j|☆Dddddsf
+|j|☆McHoss
+|html|<table width="100%"><tr><td align="left">Dddddsf</td><td align="right">McHoss</tr><tr><td align="left"><i class="fa fa-circle"></i> <i class="fa fa-circle-o"></i> </td><td align="right"><i class="fa fa-circle-o"></i> <i class="fa fa-circle-o"></i> </tr></table>
+|uhtml|bestof|<h2><strong>Game 2</strong> of <a href="/game-bestof3-gen94v4doublesdraft-2548603339">a best-of-3</a></h2>
+|t:|1772232485
+|gametype|doubles
+|player|p1|Dddddsf|red-masters3|
+|player|p2|McHoss|backpacker|
+|gen|9
+|tier|[Gen 9] 4v4 Doubles Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|rule|Item Clause: Limit 1 of each item
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>2 custom rules:</strong></summary> Best of = 3, Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Bruxish, L50, F|
+|poke|p1|Spiritomb, L50, M|
+|poke|p1|Rotom-Wash, L50|
+|poke|p1|Clefable, L50, F|
+|poke|p1|Ursaluna, L50, M|
+|poke|p1|Oinkologne-F, L50, F|
+|poke|p2|Whimsicott, L50, F|
+|poke|p2|Blastoise, L50, M|
+|poke|p2|Girafarig, L50, M|
+|poke|p2|Goodra-Hisui, L50, F|
+|poke|p2|Charizard, L50, M|
+|poke|p2|Mudsdale, L50, M|
+|raw|Dddddsf's Tera Types:<br /><psicon pokemon="bruxish" /><psicon type="Fire" /> / <psicon pokemon="spiritomb" /><psicon type="Steel" /> / <psicon pokemon="rotomwash" /><psicon type="Dragon" /> / <psicon pokemon="clefable" /><psicon type="Fire" /> / <psicon pokemon="ursaluna" /><psicon type="Ghost" /> / <psicon pokemon="oinkolognef" /><psicon type="Ghost" />
+|raw|McHoss's Tera Types:<br /><psicon pokemon="whimsicott" /><psicon type="Ghost" /> / <psicon pokemon="blastoise" /><psicon type="Dark" /> / <psicon pokemon="girafarig" /><psicon type="Water" /> / <psicon pokemon="goodrahisui" /><psicon type="Water" /> / <psicon pokemon="charizard" /><psicon type="Grass" /> / <psicon pokemon="mudsdale" /><psicon type="Fighting" />
+|teampreview|4
+|j| penicillinlol
+|
+|t:|1772232534
+|teamsize|p1|4
+|teamsize|p2|4
+|start
+|switch|p1a: Slim Shady|Spiritomb, L50, M|100/100
+|switch|p1b: Tinker Bell|Clefable, L50, F, shiny|100/100
+|switch|p2a: Cecilia Cottolli|Whimsicott, L50, F|100/100
+|switch|p2b: Ceremony Blaster|Blastoise, L50, M|100/100
+|turn|1
+|
+|t:|1772232549
+|switch|p2b: One-Trick|Mudsdale, L50, M|100/100
+|move|p1b: Tinker Bell|Follow Me|p1b: Tinker Bell
+|-singleturn|p1b: Tinker Bell|move: Follow Me
+|move|p2a: Cecilia Cottolli|Beat Up|p1b: Tinker Bell
+|-resisted|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|99/100
+|-resisted|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|99/100
+|-resisted|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|99/100
+|-resisted|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|98/100
+|-hitcount|p1b: Tinker Bell|4
+|move|p1a: Slim Shady|Trick Room|p1a: Slim Shady
+|-fieldstart|move: Trick Room|[of] p1a: Slim Shady
+|
+|upkeep
+|turn|2
+|
+|t:|1772232571
+|move|p2b: One-Trick|Substitute|p2b: One-Trick
+|-start|p2b: One-Trick|Substitute
+|-damage|p2b: One-Trick|76/100
+|move|p1a: Slim Shady|Shadow Ball|p2a: Cecilia Cottolli
+|-damage|p2a: Cecilia Cottolli|75/100
+|move|p1b: Tinker Bell|Ice Beam|p2b: One-Trick
+|-supereffective|p2b: One-Trick
+|-end|p2b: One-Trick|Substitute
+|move|p2a: Cecilia Cottolli|Taunt|p1b: Tinker Bell
+|-start|p1b: Tinker Bell|move: Taunt
+|
+|-heal|p2b: One-Trick|82/100|[from] item: Leftovers
+|upkeep
+|turn|3
+|
+|t:|1772232600
+|move|p2b: One-Trick|Rock Slide|p1a: Slim Shady|[spread] p1a,p1b
+|-damage|p1a: Slim Shady|83/100
+|-damage|p1b: Tinker Bell|85/100
+|cant|p1a: Slim Shady|flinch
+|cant|p1b: Tinker Bell|flinch
+|move|p2a: Cecilia Cottolli|Beat Up|p2b: One-Trick
+|-damage|p2b: One-Trick|81/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|-damage|p2b: One-Trick|80/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|-damage|p2b: One-Trick|79/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|-damage|p2b: One-Trick|78/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|-hitcount|p2b: One-Trick|4
+|
+|-heal|p2b: One-Trick|84/100|[from] item: Leftovers
+|-heal|p1a: Slim Shady|89/100|[from] item: Leftovers
+|upkeep
+|turn|4
+|c|☆Dddddsf|lol
+|
+|t:|1772232657
+|switch|p2a: Ceremony Blaster|Blastoise, L50, M|100/100
+|-terastallize|p2b: One-Trick|Fighting
+|move|p2b: One-Trick|Body Press|p1b: Tinker Bell
+|-resisted|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|37/100
+|-damage|p2b: One-Trick|68/100|[from] item: Rocky Helmet|[of] p1b: Tinker Bell
+|move|p1a: Slim Shady|Shadow Ball|p2b: One-Trick
+|-damage|p2b: One-Trick|41/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|move|p1b: Tinker Bell|Ice Beam|p2b: One-Trick
+|-damage|p2b: One-Trick|18/100
+|-ability|p2b: One-Trick|Stamina|boost
+|-boost|p2b: One-Trick|def|1
+|
+|-heal|p2b: One-Trick|24/100|[from] item: Leftovers
+|-heal|p1a: Slim Shady|95/100|[from] item: Leftovers
+|upkeep
+|turn|5
+|l| penicillinlol
+|
+|t:|1772232679
+|move|p2a: Ceremony Blaster|Fake Out|p1b: Tinker Bell
+|-damage|p1b: Tinker Bell|31/100
+|-damage|p2a: Ceremony Blaster|84/100|[from] item: Rocky Helmet|[of] p1b: Tinker Bell
+|move|p2b: One-Trick|Rock Slide|p1a: Slim Shady|[spread] p1a,p1b
+|-damage|p1a: Slim Shady|77/100
+|-damage|p1b: Tinker Bell|19/100
+|move|p1a: Slim Shady|Shadow Ball|p2b: One-Trick
+|-damage|p2b: One-Trick|0 fnt
+|faint|p2b: One-Trick
+|cant|p1b: Tinker Bell|flinch
+|
+|-heal|p1a: Slim Shady|83/100|[from] item: Leftovers
+|-end|p1b: Tinker Bell|move: Taunt
+|-fieldend|move: Trick Room
+|upkeep
+|
+|t:|1772232694
+|switch|p2b: Stunt Man|Charizard, L50, M, shiny|100/100
+|turn|6
+|
+|t:|1772232712
+|move|p2b: Stunt Man|Protect|p2b: Stunt Man
+|-singleturn|p2b: Stunt Man|Protect
+|move|p1b: Tinker Bell|Follow Me|p1b: Tinker Bell
+|-singleturn|p1b: Tinker Bell|move: Follow Me
+|move|p2a: Ceremony Blaster|Muddy Water|p1a: Slim Shady|[spread] p1a,p1b
+|-damage|p1a: Slim Shady|65/100
+|-damage|p1b: Tinker Bell|0 fnt
+|faint|p1b: Tinker Bell
+|move|p1a: Slim Shady|Trick Room|p1a: Slim Shady
+|-fieldstart|move: Trick Room|[of] p1a: Slim Shady
+|
+|-heal|p1a: Slim Shady|71/100|[from] item: Leftovers
+|upkeep
+|
+|t:|1772232722
+|switch|p1b: Washing Machine|Rotom-Wash, L50, shiny|100/100
+|turn|7
+|
+|t:|1772232752
+|switch|p2b: Cecilia Cottolli|Whimsicott, L50, F|75/100
+|move|p1a: Slim Shady|Dark Pulse|p2b: Cecilia Cottolli
+|-resisted|p2b: Cecilia Cottolli
+|-damage|p2b: Cecilia Cottolli|62/100
+|move|p1b: Washing Machine|Thunderbolt|p2a: Ceremony Blaster
+|-supereffective|p2a: Ceremony Blaster
+|-damage|p2a: Ceremony Blaster|42/100
+|move|p2a: Ceremony Blaster|Dark Pulse|p1b: Washing Machine
+|-damage|p1b: Washing Machine|85/100
+|
+|-heal|p1a: Slim Shady|76/100|[from] item: Leftovers
+|upkeep
+|turn|8
+|
+|t:|1772232781
+|move|p1a: Slim Shady|Shadow Ball|p2b: Cecilia Cottolli
+|-damage|p2b: Cecilia Cottolli|35/100
+|move|p1b: Washing Machine|Thunderbolt|p2a: Ceremony Blaster
+|-supereffective|p2a: Ceremony Blaster
+|-damage|p2a: Ceremony Blaster|0 fnt
+|faint|p2a: Ceremony Blaster
+|move|p2b: Cecilia Cottolli|Sunny Day|p2b: Cecilia Cottolli
+|-weather|SunnyDay
+|
+|-weather|SunnyDay|[upkeep]
+|-heal|p1a: Slim Shady|82/100|[from] item: Leftovers
+|upkeep
+|
+|t:|1772232791
+|switch|p2a: Stunt Man|Charizard, L50, M, shiny|100/100
+|turn|9
+|
+|t:|1772232805
+|-terastallize|p1b: Washing Machine|Dragon
+|move|p2a: Stunt Man|Protect|p2a: Stunt Man
+|-singleturn|p2a: Stunt Man|Protect
+|move|p1a: Slim Shady|Dark Pulse|p2b: Cecilia Cottolli
+|-resisted|p2b: Cecilia Cottolli
+|-damage|p2b: Cecilia Cottolli|21/100
+|move|p1b: Washing Machine|Thunderbolt|p2a: Stunt Man
+|-activate|p2a: Stunt Man|move: Protect
+|move|p2b: Cecilia Cottolli|Tailwind|p2b: Cecilia Cottolli
+|-sidestart|p2: McHoss|move: Tailwind
+|
+|-weather|SunnyDay|[upkeep]
+|-damage|p2a: Stunt Man|88/100|[from] ability: Solar Power|[of] p2a: Stunt Man
+|-heal|p1a: Slim Shady|88/100|[from] item: Leftovers
+|upkeep
+|turn|10
+|
+|t:|1772232832
+|move|p1a: Slim Shady|Dark Pulse|p2b: Cecilia Cottolli
+|-resisted|p2b: Cecilia Cottolli
+|-damage|p2b: Cecilia Cottolli|6/100
+|move|p1b: Washing Machine|Thunderbolt|p2a: Stunt Man
+|-supereffective|p2a: Stunt Man
+|-damage|p2a: Stunt Man|12/100
+|-enditem|p2a: Stunt Man|Weakness Policy
+|-boost|p2a: Stunt Man|atk|2|[from] item: Weakness Policy
+|-boost|p2a: Stunt Man|spa|2|[from] item: Weakness Policy
+|move|p2a: Stunt Man|Weather Ball|p1a: Slim Shady
+|-damage|p1a: Slim Shady|0 fnt
+|faint|p1a: Slim Shady
+|move|p2b: Cecilia Cottolli|Beat Up|p1b: Washing Machine
+|-damage|p1b: Washing Machine|83/100
+|-damage|p1b: Washing Machine|81/100
+|-hitcount|p1b: Washing Machine|2
+|
+|-weather|SunnyDay|[upkeep]
+|-damage|p2a: Stunt Man|0 fnt|[from] ability: Solar Power|[of] p2a: Stunt Man
+|faint|p2a: Stunt Man
+|-fieldend|move: Trick Room
+|upkeep
+|
+|t:|1772232844
+|switch|p1a: Cocaine Bear|Ursaluna, L50, M, shiny|100/100
+|turn|11
+|c|☆McHoss|rip gg wp
+|c|☆Dddddsf|ggs!
+|
+|t:|1772232858
+|move|p2b: Cecilia Cottolli|Beat Up|p1a: Cocaine Bear
+|-damage|p1a: Cocaine Bear|99/100
+|-hitcount|p1a: Cocaine Bear|1
+|move|p1b: Washing Machine|Thunderbolt|p2b: Cecilia Cottolli
+|-resisted|p2b: Cecilia Cottolli
+|-damage|p2b: Cecilia Cottolli|0 fnt
+|faint|p2b: Cecilia Cottolli
+|
+|win|Dddddsf
+|l|☆McHoss
+|player|p2|

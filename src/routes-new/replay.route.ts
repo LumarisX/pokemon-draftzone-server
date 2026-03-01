@@ -4,7 +4,7 @@ import {
   formatUrl,
   Replay,
   validateUrl,
-} from "../services/replay-services/replay-analyze.service";
+} from "../services/replay-services/replay.service";
 
 import { createRoute } from "./route-builder";
 
