@@ -1,6 +1,5 @@
 import { Generation, Generations, ID, Move, Specie, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
-import { pokemonSchema } from "../../models/pokemon.schema";
 
 const gens = new Generations(Dex);
 
