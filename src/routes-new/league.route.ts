@@ -1845,7 +1845,7 @@ export const LeagueRoute = createRoute()((r) => {
                 ];
 
                 trades.forEach((trade) => {
-                  stages[trade.activeStage - 1].trades.push(trade);
+                  stages[trade.activeStage].trades.push(trade);
                 });
                 return { stages };
               } catch (error) {
@@ -2048,7 +2048,8 @@ export const LeagueRoute = createRoute()((r) => {
                       score: match.team1.score,
                       pokemon: new Map(
                         Object.entries(match.team1.pokemon).filter(
-                          ([id, stats]) => stats.status !== null && stats.status !== undefined,
+                          ([id, stats]) =>
+                            stats.status !== null && stats.status !== undefined,
                         ) as [string, PokemonStats][],
                       ),
                     },
@@ -2056,7 +2057,8 @@ export const LeagueRoute = createRoute()((r) => {
                       score: match.team2.score,
                       pokemon: new Map(
                         Object.entries(match.team2.pokemon).filter(
-                          ([id, stats]) => stats.status !== null && stats.status !== undefined,
+                          ([id, stats]) =>
+                            stats.status !== null && stats.status !== undefined,
                         ) as [string, PokemonStats][],
                       ),
                     },
@@ -2085,6 +2087,7 @@ export const LeagueRoute = createRoute()((r) => {
                         pokemon: z.array(
                           z.object({
                             id: z.string(),
+                            tera: z.boolean(),
                           }),
                         ),
                       }),
@@ -2093,6 +2096,7 @@ export const LeagueRoute = createRoute()((r) => {
                         pokemon: z.array(
                           z.object({
                             id: z.string(),
+                            tera: z.boolean(),
                           }),
                         ),
                       }),
