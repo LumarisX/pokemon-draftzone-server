@@ -1,7 +1,17 @@
-import { Generation, Generations, ID, Move, Specie, toID } from "@pkmn/data";
+import {
+  Data,
+  Generation,
+  Generations,
+  ID,
+  Move,
+  Specie,
+  toID,
+} from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
 
-const gens = new Generations(Dex);
+const replayExists: (d: Data) => boolean = (d) => d.exists === true;
+
+const gens = new Generations(Dex, replayExists);
 
 const critChances = [0, 0.041667, 0.125, 0.5, 1, 1];
 
