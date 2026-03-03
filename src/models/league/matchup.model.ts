@@ -20,7 +20,7 @@ export type PokemonStats = {
     indirect?: number;
     teammate?: number;
   };
-  status: "brought" | "used" | "fainted";
+  status: "brought" | "survived" | "fainted";
 };
 
 export type MatchTeam = {
@@ -79,7 +79,7 @@ const pokemonStatsSchema = new Schema<PokemonStats>(
     kills: { type: killsSchema },
     status: {
       type: String,
-      enum: ["brought", "used", "fainted"],
+      enum: ["brought", "survived", "fainted"],
       required: true,
     },
   },

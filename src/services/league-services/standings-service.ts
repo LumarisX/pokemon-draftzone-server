@@ -178,25 +178,21 @@ function getOrCreateCoachStanding(
   return newStanding;
 }
 
-function countTeamSurvivors(teamResult?: MatchTeam): number {
-  if (!teamResult?.pokemon) {
-    return 0;
-  }
-
+function countTeamFainted(teamResult?: MatchTeam): number {
+  if (!teamResult?.pokemon) return 0;
   return Array.from(teamResult.pokemon.values()).reduce((pokemonSum, stats) => {
-    const survived =
-      stats.status !== undefined && stats.status !== "fainted" ? 1 : 0;
+    const survived = stats.status === "fainted" ? 1 : 0;
     return pokemonSum + survived;
   }, 0);
 }
 
-function calculateMatchupSurvivors(
+function calculateMatchupFainted(
   matchup: DivisionCoachMatchup,
   teamSide: "team1" | "team2",
 ): number {
   return (
     matchup.results?.reduce((sum, result) => {
-      return sum + countTeamSurvivors(result[teamSide]);
+      return sum + countTeamFainted(result[teamSide]);
     }, 0) ?? 0
   );
 }
@@ -235,7 +231,7 @@ export async function calculateDivisionCoachStandings(
     if (matchup.results.length > 1) diffMode = "game";
     const team1Data = {
       score: matchup.score?.team1 ?? 0,
-      pokemonScore: calculateMatchupSurvivors(matchup, "team1"),
+      pokemonFainted: calculateMatchupFainted(matchup, "team1"),
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team1Doc,
@@ -244,7 +240,7 @@ export async function calculateDivisionCoachStandings(
     };
     const team2Data = {
       score: matchup.score?.team2 ?? 0,
-      pokemonScore: calculateMatchupSurvivors(matchup, "team2"),
+      pokemonFainted: calculateMatchupFainted(matchup, "team2"),
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team2Doc,
@@ -256,8 +252,10 @@ export async function calculateDivisionCoachStandings(
 
     const team1StageDiff = team1Data.score - team2Data.score;
     const team2StageDiff = team2Data.score - team1Data.score;
-    const team1PokemonDiff = team1Data.pokemonScore - team2Data.pokemonScore;
-    const team2PokemonDiff = team2Data.pokemonScore - team1Data.pokemonScore;
+    const team1PokemonDiff =
+      team2Data.pokemonFainted - team1Data.pokemonFainted;
+    const team2PokemonDiff =
+      team1Data.pokemonFainted - team2Data.pokemonFainted;
 
     const winner = matchup.winner;
 

@@ -2007,7 +2007,7 @@ export const LeagueRoute = createRoute()((r) => {
                                     teammate: z.number().optional(),
                                   }),
                                   status: z
-                                    .enum(["brought", "used", "fainted"])
+                                    .enum(["brought", "survived", "fainted"])
                                     .nullable(),
                                 }),
                               ),
@@ -2022,7 +2022,7 @@ export const LeagueRoute = createRoute()((r) => {
                                     teammate: z.number().optional(),
                                   }),
                                   status: z
-                                    .enum(["brought", "used", "fainted"])
+                                    .enum(["brought", "survived", "fainted"])
                                     .nullable(),
                                 }),
                               ),

@@ -1609,7 +1609,7 @@ export namespace Replay {
         status: this.fainted
           ? "fainted"
           : this.brought || this.player.team.length >= this.player.teamSize
-            ? "used"
+            ? "survived"
             : "brought",
         moveset: [...this.moveset].map((move) => move.name),
         damageDealt: this.damageDealt,
