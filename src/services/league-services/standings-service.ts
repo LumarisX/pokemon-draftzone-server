@@ -5,67 +5,13 @@ import {
   MatchTeam,
 } from "../../models/league/matchup.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
-
-// export function getResultScore(team: MatchTeam): number {
-//   if (team.score !== undefined) return team.score;
-//   return Array.from(team.pokemon.values()).reduce((sum, pokemon) => {
-//     const deaths = pokemon.deaths ?? 0;
-//     if (deaths < 1) return sum + (pokemon.brought ?? 0);
-//     return sum;
-//   }, 0);
-// }
-
-// export function calculateTeamMatchupScore(
-//   matchup: LeagueMatchupDocument,
-//   teamNumber: "team1" | "team2",
-// ): number {
-//   if (matchup.score) {
-//     return teamNumber === "team1" ? matchup.score.team1 : matchup.score.team2;
-//   }
-
-//   if (!matchup.results || matchup.results.length === 0) {
-//     return 0;
-//   }
-
-//   if (matchup.results.length === 1) {
-//     return teamNumber === "team1"
-//       ? getResultScore(matchup.results[0].team1)
-//       : getResultScore(matchup.results[0].team2);
-//   }
-
-//   return matchup.results.reduce((wins: number, result: any) => {
-//     if (teamNumber === "team1" && result.winner === "team1") {
-//       return wins + 1;
-//     }
-//     if (teamNumber === "team2" && result.winner === "team2") {
-//       return wins + 1;
-//     }
-//     return wins;
-//   }, 0);
-// }
-
-// export function calculateTeamMatchupScoreAndWinner(matchup: any): {
-//   team1Score: number;
-//   team2Score: number;
-//   winner: "team1" | "team2" | undefined;
-// } {
-//   const team1Score = calculateTeamMatchupScore(matchup, "team1");
-//   const team2Score = calculateTeamMatchupScore(matchup, "team2");
-//   if (matchup.scoreOverride)
-//     return {
-//       team1Score,
-//       team2Score,
-//       winner: matchup.scoreOverride.winner,
-//     };
-//   if (team1Score > team2Score)
-//     return { team1Score, team2Score, winner: "team1" };
-//   if (team2Score > team1Score)
-//     return { team1Score, team2Score, winner: "team2" };
-//   return { team1Score, team2Score, winner: undefined };
-// }
+import { getName } from "../data-services/pokedex.service";
 
 export async function calculateDivisionPokemonStandings(
-  matchups: any[],
+  matchups: (LeagueMatchupDocument & {
+    team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+    team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
+  })[],
   filterTeamId?: string,
 ) {
   const pokemonStandingsMap = new Map<
@@ -83,31 +29,23 @@ export async function calculateDivisionPokemonStandings(
   >();
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1 as any;
-    const team2Doc = matchup.team2 as any;
+    const team1Doc = matchup.team1;
+    const team2Doc = matchup.team2;
     const team1Coach = team1Doc.coach?.teamName || "Unknown Coach";
     const team2Coach = team2Doc.coach?.teamName || "Unknown Coach";
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
-
-    // Process all results (matches) in the matchup
-    for (const result of matchup.results || []) {
-      // Process team1 pokemon
+    if (!matchup.results) continue;
+    for (const result of matchup.results) {
       if (result.team1?.pokemon) {
         for (const [pokemonId, stats] of result.team1.pokemon.entries()) {
-          if (filterTeamId && team1Key !== filterTeamId) {
-            continue;
-          }
-
+          if (filterTeamId && team1Key !== filterTeamId) continue;
           const pokemonKey = `${pokemonId}-${team1Key}`;
 
           if (!pokemonStandingsMap.has(pokemonKey)) {
-            const pokemonNameFromDraft = team1Doc.draft?.find(
-              (d: any) => d.pokemon.id === pokemonId,
-            )?.pokemon?.id;
             pokemonStandingsMap.set(pokemonKey, {
               id: pokemonId,
-              name: pokemonNameFromDraft || pokemonId,
+              name: getName(pokemonId),
               coach: team1Coach,
               teamName: team1Doc.coach?.teamName,
               teamId: team1Key,
@@ -139,12 +77,9 @@ export async function calculateDivisionPokemonStandings(
           const pokemonKey = `${pokemonId}-${team2Key}`;
 
           if (!pokemonStandingsMap.has(pokemonKey)) {
-            const pokemonNameFromDraft = team2Doc.draft?.find(
-              (d: any) => d.pokemon.id === pokemonId,
-            )?.pokemon?.id;
             pokemonStandingsMap.set(pokemonKey, {
               id: pokemonId,
-              name: pokemonNameFromDraft || pokemonId,
+              name: getName(pokemonId),
               coach: team2Coach,
               teamName: team2Doc.coach?.teamName,
               teamId: team2Key,
