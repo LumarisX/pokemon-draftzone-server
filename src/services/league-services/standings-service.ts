@@ -190,139 +190,207 @@ export async function calculateDivisionPokemonStandings(
     });
 }
 
+type DivisionCoachMatchup = LeagueMatchupDocument & {
+  team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
+  team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
+};
+
+type CoachStanding = {
+  name: string;
+  results: number[];
+  coach: string;
+  wins: number;
+  losses: number;
+  pokemonDiff: number;
+  gameDiff: number;
+  logo?: string;
+  teamId: string;
+};
+
+function createCoachStanding(
+  team: LeagueTeamDocument,
+  stageCount: number,
+): CoachStanding {
+  const teamKey = team._id.toString();
+  const coach = team.coach as LeagueCoachDocument;
+
+  return {
+    name: coach.teamName,
+    results: Array(stageCount).fill(0),
+    coach: coach.name,
+    logo: coach.logo,
+    wins: 0,
+    losses: 0,
+    pokemonDiff: 0,
+    gameDiff: 0,
+    teamId: teamKey,
+  };
+}
+
+function getOrCreateCoachStanding(
+  coachStandingsMap: Map<string, CoachStanding>,
+  team: LeagueTeamDocument,
+  stageCount: number,
+): CoachStanding {
+  const teamKey = team._id.toString();
+  const existingStanding = coachStandingsMap.get(teamKey);
+  if (existingStanding) {
+    return existingStanding;
+  }
+
+  const newStanding = createCoachStanding(team, stageCount);
+  coachStandingsMap.set(teamKey, newStanding);
+  return newStanding;
+}
+
+function countTeamSurvivors(teamResult?: MatchTeam): number {
+  if (!teamResult?.pokemon) {
+    return 0;
+  }
+
+  return Array.from(teamResult.pokemon.values()).reduce((pokemonSum, stats) => {
+    const survived =
+      stats.status !== undefined && stats.status !== "fainted" ? 1 : 0;
+    return pokemonSum + survived;
+  }, 0);
+}
+
+function calculateMatchupSurvivors(
+  matchup: DivisionCoachMatchup,
+  teamSide: "team1" | "team2",
+): number {
+  return (
+    matchup.results?.reduce((sum, result) => {
+      return sum + countTeamSurvivors(result[teamSide]);
+    }, 0) ?? 0
+  );
+}
+
+function applyMatchupDiffs(
+  standing: CoachStanding,
+  stageIndex: number,
+  stageDiff: number,
+  pokemonDiff: number,
+  diffMode: "game" | "pokemon",
+) {
+  if (stageIndex >= 0) {
+    standing.results[stageIndex] =
+      diffMode === "game" ? stageDiff : pokemonDiff;
+  }
+  standing.gameDiff += stageDiff;
+  standing.pokemonDiff += pokemonDiff;
+}
+
 export async function calculateDivisionCoachStandings(
-  matchups: (LeagueMatchupDocument & {
-    team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-    team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-  })[],
+  matchups: DivisionCoachMatchup[],
   stages: LeagueStageDocument[],
   divisionTeams: LeagueTeamDocument[],
 ) {
-  const coachStandingsMap = new Map<
-    string,
-    {
-      name: string;
-      results: number[];
-      coach: string;
-      wins: number;
-      losses: number;
-      diff: number;
-      logo?: string;
-      teamId: string;
-    }
-  >();
+  const coachStandingsMap = new Map<string, CoachStanding>();
+  let diffMode: "pokemon" | "game" = "pokemon";
 
   for (const team of divisionTeams) {
-    const teamKey = team._id.toString();
-    const coach = team.coach as LeagueCoachDocument;
-
-    coachStandingsMap.set(teamKey, {
-      name: coach.teamName,
-      results: Array(stages.length).fill(0),
-      coach: coach.name,
-      logo: coach.logo,
-      wins: 0,
-      losses: 0,
-      diff: 0,
-      teamId: teamKey,
-    });
+    const teamStanding = createCoachStanding(team, stages.length);
+    coachStandingsMap.set(teamStanding.teamId, teamStanding);
   }
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1 as LeagueTeamDocument & {
-      coach: LeagueCoachDocument;
+    const team1Doc = matchup.team1;
+    const team2Doc = matchup.team2;
+    if (matchup.results.length > 1) diffMode = "game";
+    const team1Data = {
+      score: matchup.score?.team1 ?? 0,
+      pokemonScore: calculateMatchupSurvivors(matchup, "team1"),
+      standing: getOrCreateCoachStanding(
+        coachStandingsMap,
+        team1Doc,
+        stages.length,
+      ),
     };
-    const team2Doc = matchup.team2 as LeagueTeamDocument & {
-      coach: LeagueCoachDocument;
+    const team2Data = {
+      score: matchup.score?.team2 ?? 0,
+      pokemonScore: calculateMatchupSurvivors(matchup, "team2"),
+      standing: getOrCreateCoachStanding(
+        coachStandingsMap,
+        team2Doc,
+        stages.length,
+      ),
     };
-    const team1Score = matchup.score?.team1 ?? 0;
-    const team2Score = matchup.score?.team2 ?? 0;
-    const winner = matchup.winner;
-
-    const team1Key = team1Doc._id.toString();
-    const team2Key = team2Doc._id.toString();
 
     const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
 
-    if (!coachStandingsMap.has(team1Key)) {
-      coachStandingsMap.set(team1Key, {
-        name: team1Doc.coach.teamName,
-        results: Array(stages.length).fill(0),
-        coach: team1Doc.coach.name,
-        wins: 0,
-        losses: 0,
-        diff: 0,
-        logo: team1Doc.coach.logo,
-        teamId: team1Key,
-      });
-    }
-    if (!coachStandingsMap.has(team2Key)) {
-      coachStandingsMap.set(team2Key, {
-        name: team2Doc.coach.teamName,
-        results: Array(stages.length).fill(0),
-        coach: team2Doc.coach.name,
-        wins: 0,
-        losses: 0,
-        diff: 0,
-        logo: team2Doc.coach.logo,
-        teamId: team2Key,
-      });
-    }
+    const team1StageDiff = team1Data.score - team2Data.score;
+    const team2StageDiff = team2Data.score - team1Data.score;
+    const team1PokemonDiff = team1Data.pokemonScore - team2Data.pokemonScore;
+    const team2PokemonDiff = team2Data.pokemonScore - team1Data.pokemonScore;
 
-    const team1Standing = coachStandingsMap.get(team1Key)!;
-    const team2Standing = coachStandingsMap.get(team2Key)!;
-
-    const team1StageDiff = team1Score - team2Score;
-    const team2StageDiff = team2Score - team1Score;
+    const winner = matchup.winner;
 
     if (winner === "team1") {
-      team1Standing.wins += 1;
-      team2Standing.losses += 1;
+      team1Data.standing.wins += 1;
+      team2Data.standing.losses += 1;
     } else if (winner === "team2") {
-      team2Standing.wins += 1;
-      team1Standing.losses += 1;
+      team2Data.standing.wins += 1;
+      team1Data.standing.losses += 1;
     }
 
-    team1Standing.results[stageIndex] = team1StageDiff;
-    team2Standing.results[stageIndex] = team2StageDiff;
-
-    team1Standing.diff += team1StageDiff;
-    team2Standing.diff += team2StageDiff;
+    applyMatchupDiffs(
+      team1Data.standing,
+      stageIndex,
+      team1StageDiff,
+      team1PokemonDiff,
+      diffMode,
+    );
+    applyMatchupDiffs(
+      team2Data.standing,
+      stageIndex,
+      team2StageDiff,
+      team2PokemonDiff,
+      diffMode,
+    );
   }
 
-  return Array.from(coachStandingsMap.values())
-    .map((team) => {
-      let streak = 0;
+  return {
+    coachStandings: Array.from(coachStandingsMap.values())
+      .map((team) => {
+        let streak = 0;
 
-      for (const result of team.results) {
-        if (result > 0) {
-          if (streak >= 0) {
-            streak += 1;
-          } else {
-            streak = 1;
-          }
-        } else if (result < 0) {
-          if (streak <= 0) {
-            streak -= 1;
-          } else {
-            streak = -1;
+        for (const result of team.results) {
+          if (result > 0) {
+            if (streak >= 0) {
+              streak += 1;
+            } else {
+              streak = 1;
+            }
+          } else if (result < 0) {
+            if (streak <= 0) {
+              streak -= 1;
+            } else {
+              streak = -1;
+            }
           }
         }
-      }
 
-      return {
-        name: team.name,
-        results: team.results,
-        coach: team.coach,
-        streak,
-        wins: team.wins,
-        loses: team.losses,
-        diff: team.diff,
-        logo: team.logo,
-      };
-    })
-    .sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.diff - a.diff;
-    });
+        return {
+          name: team.name,
+          results: team.results,
+          coach: team.coach,
+          streak,
+          wins: team.wins,
+          loses: team.losses,
+          gameDiff: team.gameDiff,
+          pokemonDiff: team.pokemonDiff,
+          logo: team.logo,
+          diffMode,
+        };
+      })
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.gameDiff !== a.gameDiff) return b.gameDiff - a.gameDiff;
+        if (b.pokemonDiff !== a.pokemonDiff)
+          return b.pokemonDiff - a.pokemonDiff;
+        return 0;
+      }),
+    diffMode,
+  };
 }
