@@ -48,7 +48,7 @@ export type LeagueDivision = {
 
 export type TradeSide = {
   team?: Types.ObjectId | LeagueTeamDocument;
-  pokemon: { id: string }[];
+  pokemon: { id: string; addons?: string[] }[];
 };
 
 export type DraftTrade = {
@@ -87,6 +87,7 @@ const TradeSideSchema = new Schema<TradeSide>(
       type: [
         {
           id: { type: String, required: true },
+          addons: { type: [String] },
         },
       ],
       required: true,
