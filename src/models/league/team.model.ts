@@ -1,4 +1,3 @@
-import { TypeName } from "@pkmn/data";
 import mongoose, {
   ClientSession,
   Document,
@@ -7,20 +6,15 @@ import mongoose, {
   Schema,
   Types,
 } from "mongoose";
-import { captSchema, PokemonData, pokemonSchema } from "../pokemon.schema";
-import { LeagueCoachDocument } from "./coach.model";
 import { LEAGUE_COACH_COLLECTION, LEAGUE_TEAM_COLLECTION } from ".";
+import { PokemonData, pokemonSchema } from "../pokemon.schema";
+import { LeagueCoachDocument } from "./coach.model";
 
 export type TeamDraft = {
   timestamp: Date;
   pokemon: PokemonData;
   addons?: string[];
   picker: Types.ObjectId | LeagueCoachDocument;
-  capt?: {
-    tera?: TypeName[];
-    z?: TypeName[];
-    dmax?: boolean;
-  };
 };
 
 export type TeamPick = {
@@ -70,9 +64,6 @@ const TeamDraftSchema: Schema<TeamDraft> = new Schema(
       type: Schema.Types.ObjectId,
       ref: LEAGUE_COACH_COLLECTION,
       required: true,
-    },
-    capt: {
-      type: captSchema,
     },
   },
   { _id: false },

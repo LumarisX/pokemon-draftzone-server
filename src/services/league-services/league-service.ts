@@ -1,11 +1,16 @@
+import { ID } from "@pkmn/data";
 import LeagueCoachModel, {
   LeagueCoachDocument,
 } from "../../models/league/coach.model";
-import LeagueDivisionModel from "../../models/league/division.model";
+import LeagueDivisionModel, {
+  DraftTrade,
+  LeagueDivisionDocument,
+} from "../../models/league/division.model";
 import LeagueModel from "../../models/league/league.model";
 import { LeagueDocument } from "../../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
+  TeamDraft,
 } from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
@@ -110,4 +115,48 @@ export function getTeamClient(
     coach: team.coach.name,
     logo: team.coach.logo,
   };
+}
+
+export function getRosterByStage(
+  team: LeagueTeamDocument,
+  division: LeagueDivisionDocument,
+  stage?: number,
+) {
+  const currentStage = division.currentStage;
+  const stageTrades = division.trades
+    .filter(
+      (t) =>
+        t.side1.team?._id.toString() === team._id.toString() ||
+        t.side2.team?._id.toString() === team._id.toString(),
+    )
+    .reduce((map, t) => {
+      const existing = map.get(t.activeStage);
+      map.set(t.activeStage, existing ? [...existing, t] : [t]);
+      return map;
+    }, new Map<number, DraftTrade[]>());
+  let roster: {
+    id: string;
+    addons?: string[];
+  }[] = team.draft.map((p) => ({
+    id: p.pokemon.id,
+    addons: p.addons,
+  }));
+  for (let s = 0; s < (stage ?? currentStage); s++) {
+    const trades = stageTrades.get(s) || [];
+    for (let trade of trades) {
+      const side =
+        trade.side1.team?._id.toString() === team._id.toString()
+          ? trade.side1
+          : trade.side2;
+      const otherSide =
+        trade.side1.team?._id.toString() === team._id.toString()
+          ? trade.side2
+          : trade.side1;
+      roster = roster.filter((pokemon) =>
+        side.pokemon.some((p) => p.id === pokemon.id),
+      );
+      roster = [...roster, ...otherSide.pokemon];
+    }
+  }
+  return roster;
 }
