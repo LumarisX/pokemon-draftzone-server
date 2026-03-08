@@ -1,0 +1,920 @@
+|j|☆Drew0723
+|j|☆notagreatrainer
+|t:|1758297489
+|gametype|singles
+|player|p1|Drew0723|169|
+|player|p2|notagreatrainer|cheren-masters|
+|gen|8
+|tier|[Gen 8] Draft
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|rule|Dynamax Clause: You cannot dynamax
+|clearpoke
+|poke|p1|Cinderace, F|
+|poke|p1|Celesteela|
+|poke|p1|Kyurem|
+|poke|p1|Sylveon, M|
+|poke|p1|Vaporeon, F|
+|poke|p1|Toxapex, M|
+|poke|p2|Tapu Koko|
+|poke|p2|Heatran, M|
+|poke|p2|Weezing-Galar, M|
+|poke|p2|Mew|
+|poke|p2|Urshifu-*, M|
+|poke|p2|Snorlax, M|
+|teampreview
+|c|☆Drew0723|No mamo, I'm saved!
+|c|☆Drew0723|Good luck, have fun!
+|l|☆notagreatrainer
+|player|p2|
+|j|☆notagreatrainer
+|player|p2|notagreatrainer|cheren-masters|
+|c|☆notagreatrainer|glhf
+|
+|t:|1758297574
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Kyurem|Kyurem|100/100
+|switch|p2a: Urshifu|Urshifu-Rapid-Strike, M|100/100
+|-ability|p1a: Kyurem|Pressure
+|turn|1
+|c|☆Drew0723|Also, so much Golduck prep for it to not come.
+|
+|t:|1758297580
+|switch|p1a: Toxapex|Toxapex, M|100/100
+|switch|p2a: Snorlax|Snorlax, M|100/100
+|
+|upkeep
+|turn|2
+|
+|t:|1758297614
+|switch|p2a: Heatran|Heatran, M|100/100
+|-item|p2a: Heatran|Air Balloon
+|move|p1a: Toxapex|Toxic|p2a: Heatran
+|-immune|p2a: Heatran
+|
+|upkeep
+|turn|3
+|
+|t:|1758297625
+|switch|p1a: Vaporeon|Vaporeon, F|100/100
+|move|p2a: Heatran|Stealth Rock|p1a: Vaporeon
+|-sidestart|p1: Drew0723|move: Stealth Rock
+|
+|upkeep
+|turn|4
+|
+|t:|1758297647
+|switch|p2a: Tapu Koko|Tapu Koko|100/100
+|-fieldstart|move: Electric Terrain|[from] ability: Electric Surge|[of] p2a: Tapu Koko
+|move|p1a: Vaporeon|Scald|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|56/100
+|
+|upkeep
+|turn|5
+|
+|t:|1758297660
+|move|p2a: Tapu Koko|Thunderbolt|p1a: Vaporeon
+|-supereffective|p1a: Vaporeon
+|-damage|p1a: Vaporeon|44/100
+|move|p1a: Vaporeon|Scald|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|9/100
+|
+|-heal|p1a: Vaporeon|50/100|[from] item: Leftovers
+|upkeep
+|turn|6
+|
+|t:|1758297670
+|move|p1a: Vaporeon|Protect|p1a: Vaporeon
+|-singleturn|p1a: Vaporeon|Protect
+|move|p2a: Tapu Koko|Thunderbolt|p1a: Vaporeon
+|-activate|p1a: Vaporeon|move: Protect
+|
+|-heal|p1a: Vaporeon|56/100|[from] item: Leftovers
+|upkeep
+|turn|7
+|
+|t:|1758297693
+|switch|p1a: Sylveon|Sylveon, M|100/100
+|-damage|p1a: Sylveon|88/100|[from] Stealth Rock
+|move|p2a: Tapu Koko|Thunderbolt|p1a: Sylveon
+|-damage|p1a: Sylveon|61/100
+|
+|-heal|p1a: Sylveon|67/100|[from] item: Leftovers
+|upkeep
+|turn|8
+|
+|t:|1758297712
+|switch|p2a: Mew|Mew|100/100
+|move|p1a: Sylveon|Wish|p1a: Sylveon
+|
+|-heal|p1a: Sylveon|73/100|[from] item: Leftovers
+|upkeep
+|turn|9
+|
+|t:|1758297722
+|switch|p1a: Vaporeon|Vaporeon, F|56/100
+|-damage|p1a: Vaporeon|44/100|[from] Stealth Rock
+|move|p2a: Mew|Rising Voltage|p1a: Vaporeon
+|-hint|Rising Voltage's BP doubled on grounded target.
+|-supereffective|p1a: Vaporeon
+|-damage|p1a: Vaporeon|0 fnt
+|faint|p1a: Vaporeon
+|
+|upkeep
+|
+|t:|1758297733
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|turn|10
+|
+|t:|1758297747
+|move|p1a: Cinderace|Court Change|p1a: Cinderace
+|-start|p1a: Cinderace|typechange|Normal|[from] ability: Libero
+|-swapsideconditions
+|-activate|p1a: Cinderace|move: Court Change
+|move|p2a: Mew|Future Sight|p1a: Cinderace
+|-start|p2a: Mew|move: Future Sight
+|
+|upkeep
+|turn|11
+|
+|t:|1758297755
+|move|p1a: Cinderace|U-turn|p2a: Mew
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-supereffective|p2a: Mew
+|-damage|p2a: Mew|40/100
+|
+|t:|1758297762
+|switch|p1a: Sylveon|Sylveon, M|73/100|[from] U-turn
+|move|p2a: Mew|Rising Voltage|p1a: Sylveon
+|-hint|Rising Voltage's BP doubled on grounded target.
+|-damage|p1a: Sylveon|41/100
+|
+|-heal|p2a: Mew|46/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|47/100|[from] item: Leftovers
+|-fieldend|move: Electric Terrain
+|upkeep
+|turn|12
+|
+|t:|1758297769
+|move|p2a: Mew|Taunt|p1a: Sylveon
+|-start|p1a: Sylveon|move: Taunt
+|cant|p1a: Sylveon|move: Taunt|Wish
+|
+|-end|p1a: Sylveon|move: Future Sight
+|-damage|p1a: Sylveon|19/100
+|-heal|p2a: Mew|52/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|25/100|[from] item: Leftovers
+|upkeep
+|turn|13
+|
+|t:|1758297791
+|switch|p2a: Weezing|Weezing-Galar, M|100/100
+|-damage|p2a: Weezing|88/100|[from] Stealth Rock
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|
+|-heal|p2a: Weezing|94/100|[from] item: Black Sludge
+|upkeep
+|turn|14
+|
+|t:|1758297824
+|move|p1a: Cinderace|Pyro Ball|p2a: Weezing|[miss]
+|-miss|p1a: Cinderace|p2a: Weezing
+|move|p2a: Weezing|Defog|p1a: Cinderace
+|-unboost|p1a: Cinderace|evasion|1
+|-sideend|p2: notagreatrainer|Stealth Rock|[from] move: Defog|[of] p2a: Weezing
+|
+|-heal|p2a: Weezing|99/100|[from] item: Black Sludge
+|upkeep
+|turn|15
+|
+|t:|1758297862
+|switch|p2a: Urshifu|Urshifu-Rapid-Strike, M|100/100
+|move|p1a: Cinderace|U-turn|p2a: Urshifu
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-resisted|p2a: Urshifu
+|-damage|p2a: Urshifu|83/100
+|
+|t:|1758297873
+|switch|p1a: Celesteela|Celesteela|100/100|[from] U-turn
+|
+|upkeep
+|turn|16
+|l|☆Drew0723
+|player|p1|
+|j|☆Drew0723
+|player|p1|Drew0723|169|
+|
+|t:|1758297924
+|move|p2a: Urshifu|Surging Strikes|p1a: Celesteela
+|-crit|p1a: Celesteela
+|-damage|p1a: Celesteela|88/100
+|-crit|p1a: Celesteela
+|-damage|p1a: Celesteela|75/100
+|-crit|p1a: Celesteela
+|-damage|p1a: Celesteela|62/100
+|-hitcount|p1a: Celesteela|3
+|move|p1a: Celesteela|Leech Seed|p2a: Urshifu
+|-start|p2a: Urshifu|move: Leech Seed
+|
+|-heal|p1a: Celesteela|68/100|[from] item: Leftovers
+|-damage|p2a: Urshifu|71/100|[from] Leech Seed|[of] p1a: Celesteela
+|-heal|p1a: Celesteela|79/100|[silent]
+|upkeep
+|turn|17
+|
+|t:|1758297943
+|switch|p2a: Heatran|Heatran, M|100/100
+|-item|p2a: Heatran|Air Balloon
+|move|p1a: Celesteela|Air Slash|p2a: Heatran
+|-resisted|p2a: Heatran
+|-damage|p2a: Heatran|91/100
+|-enditem|p2a: Heatran|Air Balloon
+|
+|-heal|p1a: Celesteela|85/100|[from] item: Leftovers
+|upkeep
+|turn|18
+|
+|t:|1758297950
+|move|p2a: Heatran|Lava Plume|p1a: Celesteela
+|-supereffective|p1a: Celesteela
+|-damage|p1a: Celesteela|25/100
+|move|p1a: Celesteela|Earthquake|p2a: Heatran
+|-supereffective|p2a: Heatran
+|-damage|p2a: Heatran|13/100
+|
+|-heal|p1a: Celesteela|31/100|[from] item: Leftovers
+|upkeep
+|turn|19
+|
+|t:|1758297963
+|move|p2a: Heatran|Lava Plume|p1a: Celesteela
+|-supereffective|p1a: Celesteela
+|-damage|p1a: Celesteela|0 fnt
+|faint|p1a: Celesteela
+|
+|upkeep
+|
+|t:|1758297970
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|turn|20
+|
+|t:|1758297979
+|move|p1a: Cinderace|High Jump Kick|p2a: Heatran
+|-start|p1a: Cinderace|typechange|Fighting|[from] ability: Libero
+|-supereffective|p2a: Heatran
+|-damage|p2a: Heatran|0 fnt
+|faint|p2a: Heatran
+|
+|upkeep
+|
+|t:|1758298022
+|switch|p2a: Weezing|Weezing-Galar, M|99/100
+|turn|21
+|
+|t:|1758298037
+|move|p1a: Cinderace|U-turn|p2a: Weezing
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-resisted|p2a: Weezing
+|-damage|p2a: Weezing|95/100
+|
+|t:|1758298039
+|switch|p1a: Toxapex|Toxapex, M|100/100|[from] U-turn
+|move|p2a: Weezing|Strange Steam|p1a: Toxapex|[miss]
+|-miss|p2a: Weezing|p1a: Toxapex
+|
+|-heal|p2a: Weezing|100/100|[from] item: Black Sludge
+|upkeep
+|turn|22
+|
+|t:|1758298057
+|move|p2a: Weezing|Taunt|p1a: Toxapex
+|-start|p1a: Toxapex|move: Taunt
+|move|p1a: Toxapex|Scald|p2a: Weezing
+|-crit|p2a: Weezing
+|-damage|p2a: Weezing|68/100
+|-status|p2a: Weezing|brn
+|
+|-heal|p2a: Weezing|74/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|68/100 brn|[from] brn
+|upkeep
+|turn|23
+|
+|t:|1758298082
+|switch|p2a: Mew|Mew|52/100
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|
+|-heal|p2a: Mew|58/100|[from] item: Leftovers
+|upkeep
+|turn|24
+|
+|t:|1758298118
+|switch|p2a: Urshifu|Urshifu-Rapid-Strike, M|71/100
+|move|p1a: Cinderace|U-turn|p2a: Urshifu
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-resisted|p2a: Urshifu
+|-damage|p2a: Urshifu|53/100
+|
+|t:|1758298124
+|switch|p1a: Toxapex|Toxapex, M|100/100|[from] U-turn
+|
+|upkeep
+|turn|25
+|
+|t:|1758298135
+|move|p2a: Urshifu|Bulk Up|p2a: Urshifu
+|-boost|p2a: Urshifu|atk|1
+|-boost|p2a: Urshifu|def|1
+|move|p1a: Toxapex|Toxic|p2a: Urshifu
+|-status|p2a: Urshifu|tox
+|
+|-damage|p2a: Urshifu|47/100 tox|[from] psn
+|upkeep
+|turn|26
+|
+|t:|1758298138
+|move|p2a: Urshifu|Zen Headbutt|p1a: Toxapex
+|-supereffective|p1a: Toxapex
+|-damage|p1a: Toxapex|48/100
+|move|p1a: Toxapex|Haze|p1a: Toxapex
+|-clearallboost
+|
+|-damage|p2a: Urshifu|34/100 tox|[from] psn
+|upkeep
+|turn|27
+|
+|t:|1758298146
+|move|p2a: Urshifu|Zen Headbutt|p1a: Toxapex
+|-supereffective|p1a: Toxapex
+|-damage|p1a: Toxapex|12/100
+|move|p1a: Toxapex|Recover|p1a: Toxapex
+|-heal|p1a: Toxapex|62/100
+|
+|-damage|p2a: Urshifu|16/100 tox|[from] psn
+|upkeep
+|turn|28
+|
+|t:|1758298157
+|switch|p2a: Tapu Koko|Tapu Koko|9/100
+|-fieldstart|move: Electric Terrain|[from] ability: Electric Surge|[of] p2a: Tapu Koko
+|move|p1a: Toxapex|Recover|p1a: Toxapex
+|-heal|p1a: Toxapex|100/100
+|
+|upkeep
+|turn|29
+|
+|t:|1758298183
+|switch|p1a: Sylveon|Sylveon, M|25/100
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|59/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|
+|-heal|p1a: Sylveon|31/100|[from] item: Leftovers
+|upkeep
+|turn|30
+|
+|t:|1758298196
+|move|p2a: Tapu Koko|Calm Mind|p2a: Tapu Koko
+|-boost|p2a: Tapu Koko|spa|1
+|-boost|p2a: Tapu Koko|spd|1
+|move|p1a: Sylveon|Wish|p1a: Sylveon
+|
+|-heal|p1a: Sylveon|37/100|[from] item: Leftovers
+|upkeep
+|turn|31
+|
+|t:|1758298213
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|100/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|62/100
+|
+|-heal|p1a: Sylveon|87/100|[from] move: Wish|[wisher] Sylveon
+|-heal|p1a: Sylveon|93/100|[from] item: Leftovers
+|upkeep
+|turn|32
+|
+|t:|1758298219
+|move|p2a: Tapu Koko|Calm Mind|p2a: Tapu Koko
+|-boost|p2a: Tapu Koko|spa|1
+|-boost|p2a: Tapu Koko|spd|1
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|29/100
+|
+|-heal|p1a: Sylveon|99/100|[from] item: Leftovers
+|upkeep
+|turn|33
+|
+|t:|1758298226
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|80/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|48/100
+|
+|-heal|p1a: Sylveon|100/100|[from] item: Leftovers
+|upkeep
+|turn|34
+|
+|t:|1758298233
+|move|p2a: Tapu Koko|Thunderbolt|p1a: Sylveon
+|-damage|p1a: Sylveon|52/100
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|18/100
+|
+|-heal|p1a: Sylveon|58/100|[from] item: Leftovers
+|upkeep
+|turn|35
+|
+|t:|1758298237
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|68/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|39/100
+|
+|-heal|p1a: Sylveon|64/100|[from] item: Leftovers
+|-fieldend|move: Electric Terrain
+|upkeep
+|turn|36
+|
+|t:|1758298240
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|89/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Yawn|p2a: Tapu Koko
+|-start|p2a: Tapu Koko|move: Yawn|[of] p1a: Sylveon
+|
+|-heal|p1a: Sylveon|70/100|[from] item: Leftovers
+|upkeep
+|turn|37
+|
+|t:|1758298257
+|switch|p2a: Weezing|Weezing-Galar, M|68/100 brn
+|move|p1a: Sylveon|Wish|p1a: Sylveon
+|
+|-heal|p1a: Sylveon|76/100|[from] item: Leftovers
+|-heal|p2a: Weezing|74/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|68/100 brn|[from] brn
+|upkeep
+|turn|38
+|
+|t:|1758298277
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|move|p2a: Weezing|Taunt|p1a: Cinderace
+|-start|p1a: Cinderace|move: Taunt
+|
+|-heal|p2a: Weezing|74/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|68/100 brn|[from] brn
+|upkeep
+|turn|39
+|
+|t:|1758298288
+|move|p1a: Cinderace|Pyro Ball|p2a: Weezing
+|-damage|p2a: Weezing|28/100 brn
+|move|p2a: Weezing|Pain Split|p1a: Cinderace
+|-sethp|p1a: Cinderace|65/100|[from] move: Pain Split|[silent]
+|-sethp|p2a: Weezing|62/100 brn|[from] move: Pain Split
+|
+|-heal|p2a: Weezing|68/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|62/100 brn|[from] brn
+|upkeep
+|turn|40
+|
+|t:|1758298304
+|move|p1a: Cinderace|U-turn|p2a: Weezing
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-resisted|p2a: Weezing
+|-damage|p2a: Weezing|56/100 brn
+|
+|t:|1758298306
+|switch|p1a: Toxapex|Toxapex, M|100/100|[from] U-turn
+|move|p2a: Weezing|Pain Split|p1a: Toxapex
+|-sethp|p1a: Toxapex|81/100|[from] move: Pain Split|[silent]
+|-sethp|p2a: Weezing|74/100 brn|[from] move: Pain Split
+|
+|-heal|p2a: Weezing|80/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|74/100 brn|[from] brn
+|upkeep
+|turn|41
+|
+|t:|1758298315
+|move|p2a: Weezing|Taunt|p1a: Toxapex
+|-start|p1a: Toxapex|move: Taunt
+|move|p1a: Toxapex|Scald|p2a: Weezing
+|-damage|p2a: Weezing|52/100 brn
+|
+|-heal|p2a: Weezing|58/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|52/100 brn|[from] brn
+|upkeep
+|turn|42
+|
+|t:|1758298318
+|switch|p2a: Urshifu|Urshifu-Rapid-Strike, M|16/100 tox
+|move|p1a: Toxapex|Scald|p2a: Urshifu
+|-resisted|p2a: Urshifu
+|-damage|p2a: Urshifu|3/100 tox
+|
+|-damage|p2a: Urshifu|0 fnt|[from] psn
+|faint|p2a: Urshifu
+|upkeep
+|
+|t:|1758298322
+|switch|p2a: Tapu Koko|Tapu Koko|89/100
+|-fieldstart|move: Electric Terrain|[from] ability: Electric Surge|[of] p2a: Tapu Koko
+|turn|43
+|
+|t:|1758298337
+|switch|p1a: Kyurem|Kyurem|100/100
+|-ability|p1a: Kyurem|Pressure
+|move|p2a: Tapu Koko|Calm Mind|p2a: Tapu Koko
+|-boost|p2a: Tapu Koko|spa|1
+|-boost|p2a: Tapu Koko|spd|1
+|
+|upkeep
+|turn|44
+|
+|t:|1758298344
+|move|p1a: Kyurem|Earth Power|p2a: Tapu Koko
+|-supereffective|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|21/100
+|move|p2a: Tapu Koko|Dazzling Gleam|p1a: Kyurem
+|-supereffective|p1a: Kyurem
+|-damage|p1a: Kyurem|0 fnt
+|faint|p1a: Kyurem
+|
+|upkeep
+|
+|t:|1758298354
+|switch|p1a: Sylveon|Sylveon, M|76/100
+|turn|45
+|
+|t:|1758298388
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|71/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|29/100
+|
+|-heal|p1a: Sylveon|82/100|[from] item: Leftovers
+|upkeep
+|turn|46
+|
+|t:|1758298402
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|80/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|35/100
+|
+|-heal|p1a: Sylveon|88/100|[from] item: Leftovers
+|upkeep
+|turn|47
+|
+|t:|1758298413
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|85/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|43/100
+|
+|-heal|p1a: Sylveon|94/100|[from] item: Leftovers
+|upkeep
+|turn|48
+|
+|t:|1758298421
+|move|p2a: Tapu Koko|Calm Mind|p2a: Tapu Koko
+|-boost|p2a: Tapu Koko|spa|1
+|-boost|p2a: Tapu Koko|spd|1
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|9/100
+|
+|-heal|p1a: Sylveon|100/100|[from] item: Leftovers
+|upkeep
+|turn|49
+|
+|t:|1758298435
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|60/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|30/100
+|
+|upkeep
+|turn|50
+|
+|t:|1758298443
+|move|p2a: Tapu Koko|Roost|p2a: Tapu Koko
+|-heal|p2a: Tapu Koko|81/100
+|-singleturn|p2a: Tapu Koko|move: Roost
+|move|p1a: Sylveon|Hyper Voice|p2a: Tapu Koko
+|-crit|p2a: Tapu Koko
+|-damage|p2a: Tapu Koko|0 fnt
+|faint|p2a: Tapu Koko
+|
+|-fieldend|move: Electric Terrain
+|upkeep
+|c|☆notagreatrainer|Damn
+|c|☆Drew0723|Took long enough
+|
+|t:|1758298454
+|switch|p2a: Weezing|Weezing-Galar, M|52/100 brn
+|turn|51
+|c|☆notagreatrainer|I should've switched
+|
+|t:|1758298469
+|move|p1a: Sylveon|Hyper Voice|p2a: Weezing
+|-resisted|p2a: Weezing
+|-damage|p2a: Weezing|27/100 brn
+|move|p2a: Weezing|Pain Split|p1a: Sylveon
+|-sethp|p1a: Sylveon|62/100|[from] move: Pain Split|[silent]
+|-sethp|p2a: Weezing|73/100 brn|[from] move: Pain Split
+|
+|-heal|p2a: Weezing|79/100 brn|[from] item: Black Sludge
+|-heal|p1a: Sylveon|68/100|[from] item: Leftovers
+|-damage|p2a: Weezing|73/100 brn|[from] brn
+|upkeep
+|turn|52
+|c|☆notagreatrainer|I got greedy
+|
+|t:|1758298487
+|move|p1a: Sylveon|Wish|p1a: Sylveon
+|move|p2a: Weezing|Strange Steam|p1a: Sylveon
+|-damage|p1a: Sylveon|54/100
+|
+|-heal|p2a: Weezing|79/100 brn|[from] item: Black Sludge
+|-heal|p1a: Sylveon|60/100|[from] item: Leftovers
+|-damage|p2a: Weezing|73/100 brn|[from] brn
+|upkeep
+|turn|53
+|
+|t:|1758298500
+|switch|p1a: Cinderace|Cinderace, F|65/100
+|move|p2a: Weezing|Strange Steam|p1a: Cinderace
+|-resisted|p1a: Cinderace
+|-damage|p1a: Cinderace|46/100
+|-start|p1a: Cinderace|confusion
+|
+|-heal|p1a: Cinderace|100/100|[from] move: Wish|[wisher] Sylveon
+|-heal|p2a: Weezing|79/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|73/100 brn|[from] brn
+|upkeep
+|turn|54
+|
+|t:|1758298521
+|-activate|p1a: Cinderace|confusion
+|move|p1a: Cinderace|U-turn|p2a: Weezing
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-resisted|p2a: Weezing
+|-damage|p2a: Weezing|67/100 brn
+|
+|t:|1758298524
+|switch|p1a: Toxapex|Toxapex, M|100/100|[from] U-turn
+|move|p2a: Weezing|Pain Split|p1a: Toxapex
+|-sethp|p1a: Toxapex|87/100|[from] move: Pain Split|[silent]
+|-sethp|p2a: Weezing|79/100 brn|[from] move: Pain Split
+|
+|-heal|p2a: Weezing|85/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|79/100 brn|[from] brn
+|upkeep
+|turn|55
+|
+|t:|1758298532
+|move|p2a: Weezing|Taunt|p1a: Toxapex
+|-start|p1a: Toxapex|move: Taunt
+|move|p1a: Toxapex|Scald|p2a: Weezing
+|-damage|p2a: Weezing|58/100 brn
+|
+|-heal|p2a: Weezing|64/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|58/100 brn|[from] brn
+|upkeep
+|turn|56
+|
+|t:|1758298535
+|switch|p2a: Mew|Mew|58/100
+|move|p1a: Toxapex|Scald|p2a: Mew
+|-damage|p2a: Mew|43/100
+|
+|-heal|p2a: Mew|49/100|[from] item: Leftovers
+|upkeep
+|turn|57
+|
+|t:|1758298544
+|switch|p1a: Sylveon|Sylveon, M|60/100
+|move|p2a: Mew|Future Sight|p1a: Sylveon
+|-start|p2a: Mew|move: Future Sight
+|
+|-heal|p2a: Mew|55/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|66/100|[from] item: Leftovers
+|upkeep
+|turn|58
+|
+|t:|1758298551
+|switch|p2a: Snorlax|Snorlax, M|100/100
+|move|p1a: Sylveon|Hyper Voice|p2a: Snorlax
+|-damage|p2a: Snorlax|83/100
+|
+|-heal|p1a: Sylveon|73/100|[from] item: Leftovers
+|-heal|p2a: Snorlax|89/100|[from] item: Leftovers
+|upkeep
+|turn|59
+|
+|t:|1758298562
+|switch|p1a: Toxapex|Toxapex, M|100/100
+|move|p2a: Snorlax|Toxic|p1a: Toxapex
+|-immune|p1a: Toxapex
+|
+|-end|p1a: Toxapex|move: Future Sight
+|-supereffective|p1a: Toxapex
+|-damage|p1a: Toxapex|0 fnt
+|faint|p1a: Toxapex
+|-heal|p2a: Snorlax|96/100|[from] item: Leftovers
+|upkeep
+|
+|t:|1758298571
+|switch|p1a: Cinderace|Cinderace, F|100/100
+|turn|60
+|
+|t:|1758298598
+|move|p2a: Snorlax|Protect|p2a: Snorlax
+|-singleturn|p2a: Snorlax|Protect
+|move|p1a: Cinderace|Pyro Ball|p2a: Snorlax
+|-activate|p2a: Snorlax|move: Protect
+|
+|-heal|p2a: Snorlax|100/100|[from] item: Leftovers
+|upkeep
+|turn|61
+|
+|t:|1758298629
+|switch|p2a: Weezing|Weezing-Galar, M|58/100 brn
+|move|p1a: Cinderace|High Jump Kick|p2a: Weezing
+|-start|p1a: Cinderace|typechange|Fighting|[from] ability: Libero
+|-resisted|p2a: Weezing
+|-damage|p2a: Weezing|48/100 brn
+|
+|-heal|p2a: Weezing|54/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|48/100 brn|[from] brn
+|upkeep
+|turn|62
+|
+|t:|1758298637
+|move|p1a: Cinderace|Pyro Ball|p2a: Weezing
+|-start|p1a: Cinderace|typechange|Fire|[from] ability: Libero
+|-damage|p2a: Weezing|8/100 brn
+|move|p2a: Weezing|Pain Split|p1a: Cinderace
+|-sethp|p1a: Cinderace|54/100|[from] move: Pain Split|[silent]
+|-sethp|p2a: Weezing|52/100 brn|[from] move: Pain Split
+|
+|-heal|p2a: Weezing|58/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|52/100 brn|[from] brn
+|upkeep
+|turn|63
+|
+|t:|1758298670
+|move|p1a: Cinderace|Pyro Ball|p2a: Weezing
+|-damage|p2a: Weezing|12/100 brn
+|move|p2a: Weezing|Strange Steam|p1a: Cinderace
+|-resisted|p1a: Cinderace
+|-damage|p1a: Cinderace|37/100
+|
+|-heal|p2a: Weezing|18/100 brn|[from] item: Black Sludge
+|-damage|p2a: Weezing|12/100 brn|[from] brn
+|upkeep
+|turn|64
+|
+|t:|1758298684
+|move|p1a: Cinderace|Pyro Ball|p2a: Weezing
+|-damage|p2a: Weezing|0 fnt
+|faint|p2a: Weezing
+|
+|upkeep
+|
+|t:|1758298700
+|switch|p2a: Snorlax|Snorlax, M|100/100
+|turn|65
+|
+|t:|1758298721
+|move|p1a: Cinderace|U-turn|p2a: Snorlax
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-damage|p2a: Snorlax|67/100
+|
+|t:|1758298724
+|switch|p1a: Sylveon|Sylveon, M|73/100|[from] U-turn
+|move|p2a: Snorlax|Body Slam|p1a: Sylveon
+|-damage|p1a: Sylveon|36/100
+|
+|-heal|p1a: Sylveon|42/100|[from] item: Leftovers
+|-heal|p2a: Snorlax|73/100|[from] item: Leftovers
+|upkeep
+|turn|66
+|
+|t:|1758298744
+|move|p1a: Sylveon|Yawn|p2a: Snorlax
+|-start|p2a: Snorlax|move: Yawn|[of] p1a: Sylveon
+|move|p2a: Snorlax|Toxic|p1a: Sylveon
+|-status|p1a: Sylveon|tox
+|
+|-heal|p1a: Sylveon|48/100 tox|[from] item: Leftovers
+|-heal|p2a: Snorlax|79/100|[from] item: Leftovers
+|-damage|p1a: Sylveon|42/100 tox|[from] psn
+|upkeep
+|turn|67
+|
+|t:|1758298759
+|switch|p2a: Mew|Mew|55/100
+|move|p1a: Sylveon|Hyper Voice|p2a: Mew
+|-damage|p2a: Mew|20/100
+|
+|-heal|p2a: Mew|26/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|48/100 tox|[from] item: Leftovers
+|-damage|p1a: Sylveon|36/100 tox|[from] psn
+|upkeep
+|turn|68
+|
+|t:|1758298768
+|move|p2a: Mew|Future Sight|p1a: Sylveon
+|-start|p2a: Mew|move: Future Sight
+|move|p1a: Sylveon|Wish|p1a: Sylveon
+|
+|-heal|p2a: Mew|32/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|42/100 tox|[from] item: Leftovers
+|-damage|p1a: Sylveon|23/100 tox|[from] psn
+|upkeep
+|turn|69
+|
+|t:|1758298784
+|move|p2a: Mew|Soft-Boiled|p2a: Mew
+|-heal|p2a: Mew|82/100
+|move|p1a: Sylveon|Hyper Voice|p2a: Mew
+|-damage|p2a: Mew|47/100
+|
+|-heal|p1a: Sylveon|73/100 tox|[from] move: Wish|[wisher] Sylveon
+|-heal|p2a: Mew|53/100|[from] item: Leftovers
+|-heal|p1a: Sylveon|79/100 tox|[from] item: Leftovers
+|-damage|p1a: Sylveon|55/100 tox|[from] psn
+|upkeep
+|turn|70
+|
+|t:|1758298792
+|move|p2a: Mew|Soft-Boiled|p2a: Mew
+|-heal|p2a: Mew|100/100
+|move|p1a: Sylveon|Yawn|p2a: Mew
+|-start|p2a: Mew|move: Yawn|[of] p1a: Sylveon
+|
+|-end|p1a: Sylveon|move: Future Sight
+|-damage|p1a: Sylveon|25/100 tox
+|-heal|p1a: Sylveon|31/100 tox|[from] item: Leftovers
+|-damage|p1a: Sylveon|0 fnt|[from] psn
+|faint|p1a: Sylveon
+|upkeep
+|
+|t:|1758298796
+|switch|p1a: Cinderace|Cinderace, F|37/100
+|turn|71
+|
+|t:|1758298813
+|move|p1a: Cinderace|U-turn|p2a: Mew
+|-start|p1a: Cinderace|typechange|Bug|[from] ability: Libero
+|-supereffective|p2a: Mew
+|-damage|p2a: Mew|44/100
+|move|p2a: Mew|Future Sight|p1a: Cinderace
+|-start|p2a: Mew|move: Future Sight
+|
+|-heal|p2a: Mew|50/100|[from] item: Leftovers
+|-end|p2a: Mew|move: Yawn|[silent]
+|-status|p2a: Mew|slp
+|upkeep
+|turn|72
+|
+|t:|1758298823
+|move|p1a: Cinderace|U-turn|p2a: Mew
+|-supereffective|p2a: Mew
+|-damage|p2a: Mew|0 fnt
+|faint|p2a: Mew
+|
+|upkeep
+|
+|t:|1758298825
+|switch|p2a: Snorlax|Snorlax, M|79/100
+|turn|73
+|
+|t:|1758298828
+|move|p2a: Snorlax|Protect|p2a: Snorlax
+|-singleturn|p2a: Snorlax|Protect
+|move|p1a: Cinderace|High Jump Kick|p2a: Snorlax
+|-start|p1a: Cinderace|typechange|Fighting|[from] ability: Libero
+|-activate|p2a: Snorlax|move: Protect
+|-damage|p1a: Cinderace|0 fnt|[from] highjumpkick
+|faint|p1a: Cinderace
+|
+|win|notagreatrainer
+|c|☆notagreatrainer|ggwp
+|c|☆Drew0723|GG

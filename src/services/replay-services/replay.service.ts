@@ -8,6 +8,7 @@ import {
   toID,
 } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
+import { deprecate } from "util";
 
 const replayExists: (d: Data) => boolean = (d) => d.exists === true;
 
@@ -38,7 +39,21 @@ export namespace Replay {
     t0: number = 0;
     tf: number = 0;
     field: Field = new Field();
-    lastMove: { data: MoveData; move: Move } | undefined;
+
+    lastMove:
+      | {
+          line: ReplayLine;
+          attacker: Pokemon;
+          target: Pokemon;
+          move: Move;
+          /** @deprecated use attacker instead */
+          attackerStr: POKEMON;
+          /** @deprecated use target instead */
+          targetStr: POKEMON;
+          /** @deprecated use move instead */
+          moveStr: MOVE;
+        }
+      | undefined;
     tempMons: { [key: string]: TempMonSnapshot } = {};
     events: { player: number; turn: number; message: string }[] = [];
     killStrings: KillString[] = [];
@@ -173,15 +188,39 @@ export namespace Replay {
       },
       "-end": (line) => {
         const [pokemonStr, effect] = line.args as [POKEMON, EFFECT];
-        const endMon = this.getPokemon(pokemonStr);
-        if (!endMon) return;
-        const endStatus = endMon.statuses.find(
-          (status) =>
-            status.status === effect ||
-            status.status.startsWith(effect.toLowerCase().replace(" ", "")),
-        );
-        if (!endStatus) return;
-        endStatus.ended = true;
+        const position = this.field.getPosition(pokemonStr);
+        if (!position) return;
+        const status =
+          position.statuses.find(
+            (status) =>
+              status.status === effect ||
+              status.status.startsWith(effect.toLowerCase().replace(" ", "")),
+          ) ??
+          this.field
+            .getSide(pokemonStr)
+            .statuses.find(
+              (status) =>
+                status.status === effect ||
+                status.status.startsWith(effect.toLowerCase().replace(" ", "")),
+            );
+        if (!status) return;
+        status.ended = true;
+
+        if (!status.setter) return;
+        if (effect.startsWith("move: ")) {
+          const moveStr = effect.slice(6);
+          this.setLastMove(
+            this.isDelayedDamageMove(effect) && line.parent
+              ? line.parent
+              : line,
+            status.setter.nickname as POKEMON,
+            status.setter,
+            moveStr,
+            status.setter.getMove(moveStr),
+            pokemonStr,
+            this.getPokemon(pokemonStr),
+          );
+        }
       },
       "-endability": (line) => {
         const [pokemonStr] = line.args as [POKEMON];
@@ -211,15 +250,11 @@ export namespace Replay {
         this.field.statuses.push(fieldStartStatus);
       },
       "-heal": (line) => {
-        const [pokemonStr, hpstatus, ...majoractions] = line.args as [
-          POKEMON,
-          HPSTATUS,
-          ...MARJORACTION[],
-        ];
+        const [pokemonStr, hpstatus] = line.args as [POKEMON, HPSTATUS];
         const healPosition = this.getPokemon(pokemonStr);
         if (!healPosition) return;
         const newHp = this.calculateHPPercent(hpstatus);
-        this.heal(healPosition, newHp, majoractions);
+        this.heal(healPosition, newHp);
       },
       "-hint": (line) => {
         const [message] = line.args as [MESSAGE];
@@ -289,7 +324,7 @@ export namespace Replay {
           return;
         }
         if (hpDiff < 0) {
-          this.heal(hpTarget, newHpp, majoractions);
+          this.heal(hpTarget, newHpp);
         }
       },
       "-sideend": (line) => {
@@ -328,17 +363,29 @@ export namespace Replay {
         const [pokemonStr, effect] = line.args as [POKEMON, EFFECT];
         const startMon = this.getPokemon(pokemonStr);
         if (!startMon || !line.parent) return;
-        const isMoveStart = line.parent.raw[0] === "move";
-        const startSetter = isMoveStart
-          ? this.getPokemon(line.parent.raw[1] as POKEMON)
+        const isMoveStart = line.parent.action === "move";
+        const statusSetter = isMoveStart
+          ? this.getPokemon(line.parent.args[0] as POKEMON)
           : startMon;
-        const startMonTarget =
-          isMoveStart && line.parent.raw[3]
-            ? this.getPokemon(line.parent.raw[3] as POKEMON)
-            : startMon;
-        startMonTarget.statuses.push({
+        if (!statusSetter) return;
+
+        if (this.isDelayedDamageMove(effect)) {
+          const delayedTarget = line.parent.args[2] as POKEMON | undefined;
+          const delayedTargetSide = delayedTarget
+            ? this.field.getSide(delayedTarget)
+            : this.field.getSide(pokemonStr);
+          delayedTargetSide.statuses.push({
+            status: effect,
+            setter: statusSetter,
+          });
+          return;
+        }
+
+        const position = this.field.getPosition(line.parent.args[2] as POKEMON);
+        if (!position) return;
+        position.statuses.push({
           status: effect,
-          setter: startSetter,
+          setter: statusSetter,
         });
       },
       "-status": (line) => {
@@ -381,7 +428,7 @@ export namespace Replay {
         const weatherStatus: Status = { status: weather };
         weatherStatus.setter =
           this.getPokemonFromOfArg(line.args[2]) ??
-          (this.lastMove ? this.getPokemon(this.lastMove.data[1]) : undefined);
+          (this.lastMove ? this.lastMove.attacker : undefined);
         this.field.weather = weatherStatus;
       },
       "-zbroken": (line) => {
@@ -473,19 +520,18 @@ export namespace Replay {
       },
       faint: (line) => {
         const [pokemonStr] = line.args as [POKEMON];
-        const faintMon = this.getPokemon(pokemonStr);
-        if (!faintMon) return;
+        const pokemon = this.getPokemon(pokemonStr);
+        if (!pokemon) return;
+        pokemon.fainted = true;
+        const killString: KillString = { target: pokemon };
 
-        faintMon.fainted = true;
-        const killString: KillString = { target: faintMon };
-
-        if (!faintMon.lastDamage) {
-          this.applyFaintWithoutLastDamage(killString, faintMon);
+        if (!pokemon.lastDamage) {
+          this.applyFaintWithoutLastDamage(killString, pokemon);
           this.killStrings.push(killString);
           return;
         }
 
-        const destinyBondMon = this.findDestinyBondFainter(faintMon);
+        const destinyBondMon = this.findDestinyBondFainter(pokemon);
         if (destinyBondMon) {
           destinyBondMon.kills.indirect++;
           killString.reason = "Destiny Bond";
@@ -495,7 +541,7 @@ export namespace Replay {
           return;
         }
 
-        this.applyFaintFromLastDamage(killString, faintMon, line);
+        this.applyFaintFromLastDamage(killString, pokemon, line);
         this.killStrings.push(killString);
       },
       gametype: (line) => {
@@ -534,15 +580,15 @@ export namespace Replay {
         const attacker = this.getPokemon(pokemonStr);
         if (!attacker) return;
         const move = attacker.getMove(moveName);
-        if (move.exists !== true) return;
-        this.lastMove = {
-          data: line.raw as MoveData,
-          move: move,
-        };
-        this.recordMoveUsageLuck(attacker, move);
-        if (attacker.status.status !== "par") return;
-        attacker.player.luck.status.total++;
-        attacker.player.luck.status.expected += 0.25;
+        this.setLastMove(
+          line,
+          pokemonStr,
+          attacker,
+          moveName,
+          move,
+          target,
+          this.getPokemon(target),
+        );
       },
       n: (line) => {
         const [] = line.args as [];
@@ -775,10 +821,10 @@ export namespace Replay {
 
     private handleHitCount(hitCount: number) {
       if (!this.lastMove || hitCount <= 1) return;
-      const hitAttacker = this.getPokemon(this.lastMove.data[1]);
+      const hitAttacker = this.lastMove.attacker;
       if (!hitAttacker) return;
 
-      const hitMove = this.gen.moves.get(this.lastMove.data[2]);
+      const hitMove = this.lastMove.move;
       if (
         !hitMove ||
         hitMove.exists !== true ||
@@ -859,8 +905,8 @@ export namespace Replay {
           statusStart.setter = statusPosition;
           return statusStart;
         }
-        if (this.lastMove && this.lastMove.data[3] === pokemonStr) {
-          statusStart.setter = this.getPokemon(this.lastMove.data[1]);
+        if (this.lastMove && this.lastMove.targetStr === pokemonStr) {
+          statusStart.setter = this.lastMove.attacker;
           return statusStart;
         }
         if (majoractions[0] && this.isOfPokemon(majoractions[0])) {
@@ -918,6 +964,10 @@ export namespace Replay {
       );
     }
 
+    private isDelayedDamageMove(effect: EFFECT): boolean {
+      return effect === "move: Future Sight" || effect === "move: Doom Desire";
+    }
+
     private applyFaintFromLastDamage(
       killString: KillString,
       faintMon: Pokemon,
@@ -940,9 +990,11 @@ export namespace Replay {
     ) {
       if (!this.lastMove) return;
 
-      if (this.lastMove.data === faintMon.lastDamage?.line.parent?.raw) {
-        const faintAttacker = this.getPokemon(this.lastMove.data[1]);
-        killString.reason = this.lastMove.data[2];
+      // if (faintMon.baseSpecie.id === "toxapex")
+      //   console.log("Fainting mon:", faintMon.lastDamage);
+      if (this.lastMove.line.raw === faintMon.lastDamage?.line.parent?.raw) {
+        const faintAttacker = this.lastMove.attacker;
+        killString.reason = this.lastMove.moveStr;
         if (!faintAttacker) {
           console.log("ks error", line.args);
           return;
@@ -990,7 +1042,7 @@ export namespace Replay {
       faintMon: Pokemon,
     ) {
       if (!this.lastMove) return;
-      const faintMove = this.gen.moves.get(this.lastMove.data[2]);
+      const faintMove = this.gen.moves.get(this.lastMove.moveStr);
       if (!(faintMove?.id === "selfdestruct")) return;
       killString.attacker = faintMon;
       killString.reason = faintMove.name;
@@ -1014,11 +1066,32 @@ export namespace Replay {
       return this.field.getPokemon(pokemonStr);
     }
 
-    private heal(
-      healed: Pokemon,
-      newHp: number,
-      action: MARJORACTION[] | undefined,
-    ) {
+    private setLastMove(
+      line: ReplayLine,
+      attackerStr: POKEMON,
+      attacker: Pokemon,
+      moveStr: MOVE,
+      move: Move,
+      targetStr: POKEMON,
+      target: Pokemon,
+    ): void {
+      if (move.exists !== true) return;
+      this.lastMove = {
+        line,
+        attackerStr,
+        attacker,
+        moveStr,
+        move,
+        targetStr,
+        target,
+      };
+      this.recordMoveUsageLuck(attacker, move);
+      if (attacker.status.status !== "par") return;
+      attacker.player.luck.status.total++;
+      attacker.player.luck.status.expected += 0.25;
+    }
+
+    private heal(healed: Pokemon, newHp: number) {
       let hpDiff = newHp - healed.hpp;
       healed.hpp = newHp;
       healed.fainted = false;
@@ -1031,9 +1104,9 @@ export namespace Replay {
       actions: MARJORACTION[] | undefined,
       line: ReplayLine,
     ) {
-      let hppDiff = target.hpp - newHpp;
+      const hppDiff = target.hpp - newHpp;
       target.hpp = newHpp;
-      let lastDamage: LastDamage = {
+      const lastDamage: LastDamage = {
         line: line,
         type: "indirect",
       };
@@ -1078,10 +1151,10 @@ export namespace Replay {
         lastDamage.type = "direct";
         if (
           this.lastMove &&
-          lastDamage.line.parent?.raw === this.lastMove.data
+          lastDamage.line.parent?.raw === this.lastMove.line.raw
         ) {
           target.damageTaken.direct += hppDiff;
-          let moveDamageAttacker = this.getPokemon(this.lastMove.data[1]);
+          const moveDamageAttacker = this.lastMove.attacker;
           if (moveDamageAttacker && moveDamageAttacker != target) {
             lastDamage.damager = moveDamageAttacker;
             moveDamageAttacker.damageDealt.direct += hppDiff;
@@ -1102,9 +1175,9 @@ export namespace Replay {
             (child) => child.raw[0] === "-end",
           );
           if (endSub) {
-            let endMon = this.getPokemon(endSub.raw[1] as POKEMON);
-            if (endMon) {
-              let endStatus = endMon.statuses.find(
+            let endPosition = this.field.getPosition(endSub.raw[1] as POKEMON);
+            if (endPosition) {
+              let endStatus = endPosition.statuses.find(
                 (status) => status.status === endSub.raw[2],
               );
               if (endStatus) {
@@ -1536,7 +1609,7 @@ export namespace Replay {
         status: this.fainted
           ? "fainted"
           : this.brought || this.player.team.length >= this.player.teamSize
-            ? "used"
+            ? "survived"
             : "brought",
         moveset: [...this.moveset].map((move) => move.name),
         damageDealt: this.damageDealt,

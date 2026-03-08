@@ -1625,11 +1625,12 @@ export const LeagueRoute = createRoute()((r) => {
                 _id: { $in: ctx.division.teams },
               }).populate({ path: "coach" });
 
-              const coachStandings = await calculateDivisionCoachStandings(
-                allMatchups,
-                ctx.division.stages,
-                divisionTeams,
-              );
+              const { coachStandings, diffMode } =
+                await calculateDivisionCoachStandings(
+                  allMatchups,
+                  ctx.division.stages,
+                  divisionTeams,
+                );
 
               const pokemonStandings =
                 await calculateDivisionPokemonStandings(allMatchups);
@@ -1640,6 +1641,7 @@ export const LeagueRoute = createRoute()((r) => {
                   cutoff: 8,
                   weeks: ctx.division.stages.length,
                   teams: coachStandings,
+                  diffMode,
                 },
                 pokemonStandings,
               };
@@ -2005,7 +2007,7 @@ export const LeagueRoute = createRoute()((r) => {
                                     teammate: z.number().optional(),
                                   }),
                                   status: z
-                                    .enum(["brought", "used", "fainted"])
+                                    .enum(["brought", "survived", "fainted"])
                                     .nullable(),
                                 }),
                               ),
@@ -2020,7 +2022,7 @@ export const LeagueRoute = createRoute()((r) => {
                                     teammate: z.number().optional(),
                                   }),
                                   status: z
-                                    .enum(["brought", "used", "fainted"])
+                                    .enum(["brought", "survived", "fainted"])
                                     .nullable(),
                                 }),
                               ),
