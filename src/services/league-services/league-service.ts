@@ -1,4 +1,4 @@
-import { ID } from "@pkmn/data";
+import { Types } from "mongoose";
 import LeagueCoachModel, {
   LeagueCoachDocument,
 } from "../../models/league/coach.model";
@@ -6,11 +6,9 @@ import LeagueDivisionModel, {
   DraftTrade,
   LeagueDivisionDocument,
 } from "../../models/league/division.model";
-import LeagueModel from "../../models/league/league.model";
-import { LeagueDocument } from "../../models/league/league.model";
+import LeagueModel, { LeagueDocument } from "../../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
-  TeamDraft,
 } from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
@@ -117,6 +115,62 @@ export function getTeamClient(
   };
 }
 
+function updateRosterWithTrades(
+  teamId: Types.ObjectId,
+  roster: { id: string; addons?: string[] }[],
+  trades: DraftTrade[],
+) {
+  for (let trade of trades) {
+    const side =
+      trade.side1.team?._id.toString() === teamId.toString()
+        ? trade.side1
+        : trade.side2;
+    const otherSide =
+      trade.side1.team?._id.toString() === teamId.toString()
+        ? trade.side2
+        : trade.side1;
+    roster = [
+      ...roster.filter((pokemon) =>
+        side.pokemon.some((p) => p.id === pokemon.id),
+      ),
+      ...otherSide.pokemon,
+    ];
+  }
+  return roster;
+}
+
+export function getRostersBeforeStage(
+  team: LeagueTeamDocument,
+  division: LeagueDivisionDocument,
+  stage?: number,
+) {
+  const stageTrades = division.trades
+    .filter(
+      (t) =>
+        t.side1.team?._id.toString() === team._id.toString() ||
+        t.side2.team?._id.toString() === team._id.toString(),
+    )
+    .reduce((map, t) => {
+      const existing = map.get(t.activeStage);
+      map.set(t.activeStage, existing ? [...existing, t] : [t]);
+      return map;
+    }, new Map<number, DraftTrade[]>());
+  let roster: {
+    id: string;
+    addons?: string[];
+  }[] = team.draft.map((p) => ({
+    id: p.pokemon.id,
+    addons: p.addons,
+  }));
+  const rosters = [[...roster]];
+  for (let s = 0; s < (stage ?? division.stages.length); s++) {
+    const trades = stageTrades.get(s);
+    if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
+    rosters.push([...roster]);
+  }
+  return rosters;
+}
+
 export function getRosterByStage(
   team: LeagueTeamDocument,
   division: LeagueDivisionDocument,
@@ -142,21 +196,8 @@ export function getRosterByStage(
     addons: p.addons,
   }));
   for (let s = 0; s < (stage ?? currentStage); s++) {
-    const trades = stageTrades.get(s) || [];
-    for (let trade of trades) {
-      const side =
-        trade.side1.team?._id.toString() === team._id.toString()
-          ? trade.side1
-          : trade.side2;
-      const otherSide =
-        trade.side1.team?._id.toString() === team._id.toString()
-          ? trade.side2
-          : trade.side1;
-      roster = roster.filter((pokemon) =>
-        side.pokemon.some((p) => p.id === pokemon.id),
-      );
-      roster = [...roster, ...otherSide.pokemon];
-    }
+    const trades = stageTrades.get(s);
+    if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
   }
   return roster;
 }
