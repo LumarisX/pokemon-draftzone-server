@@ -170,7 +170,7 @@ describe("Matchup", () => {
       tiers: [],
     });
 
-    const analysis = await matchup.analyze(false);
+    const analysis = await matchup.analyze();
 
     expect(analysis.details.format).toBe("Singles");
     expect(analysis.details.ruleset).toBe("Gen9 NatDex");

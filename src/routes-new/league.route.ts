@@ -56,7 +56,10 @@ import {
   setDivsionState,
   skipCurrentPick,
 } from "../services/league-services/draft-service";
-import { getRoles } from "../services/league-services/league-service";
+import {
+  getRoles,
+  getRosterByStage,
+} from "../services/league-services/league-service";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -1276,68 +1279,6 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      r.path("teams")((r) => {
-        r.param("team_id", async (ctx, team_id) => {
-          const team = await LeagueTeamModel.findById(team_id).populate<{
-            coach: LeagueCoachDocument;
-          }>({
-            path: "coach",
-          });
-          if (!team)
-            throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
-              teamId: team_id,
-            });
-          return { team };
-        })((r) => {
-          r.get(async (ctx) => {
-            const tournament = await ctx.tournament.populate<{
-              tierList: LeagueTierListDocument;
-            }>("tierList");
-
-            const draft = ctx.team.draft.map((draftItem) => {
-              const pokemonName = getName(draftItem.pokemon.id);
-              return {
-                id: draftItem.pokemon.id,
-                name: pokemonName,
-                cost: tournament.tierList.getPokemonCost(
-                  draftItem.pokemon.id,
-                  draftItem.addons,
-                ),
-                capt: {
-                  tera: draftItem.addons?.includes("Tera Captain") || undefined,
-                },
-              };
-            });
-
-            const teamMatchups = await LeagueMatchupModel.find({
-              $or: [
-                { "side1.team": ctx.team._id },
-                { "side2.team": ctx.team._id },
-              ],
-            }).populate<PopulatedLeagueMatchup>([
-              { path: "side1.team", populate: "coach" },
-              { path: "side2.team", populate: "coach" },
-            ]);
-
-            const pokemonStandings = await calculateDivisionPokemonStandings(
-              teamMatchups,
-              ctx.team._id.toString(),
-            );
-
-            const coach = ctx.team.coach;
-
-            return {
-              name: coach.teamName,
-              timezone: coach.timezone,
-              coach: coach.name,
-              logo: coach.logo,
-              draft,
-              pokemonStandings,
-              matchups: teamMatchups,
-            };
-          });
-        });
-      });
       r.path("divisions")((r) => {
         r.param("division_id", DivisionHandler).auth()((r) => {
           r.get(
@@ -1391,6 +1332,70 @@ export const LeagueRoute = createRoute()((r) => {
               });
 
               return { teams };
+            });
+            r.param("team_id", async (ctx, team_id) => {
+              const team = await LeagueTeamModel.findById(team_id).populate<{
+                coach: LeagueCoachDocument;
+              }>({
+                path: "coach",
+              });
+              if (!team)
+                throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+                  teamId: team_id,
+                });
+              return { team };
+            })((r) => {
+              r.get(async (ctx) => {
+                const tournament = await ctx.tournament.populate<{
+                  tierList: LeagueTierListDocument;
+                }>("tierList");
+
+                const draft = getRosterByStage(ctx.team, ctx.division).map(
+                  (pokemon) => {
+                    const pokemonName = getName(pokemon.id);
+                    return {
+                      id: pokemon.id,
+                      name: pokemonName,
+                      cost: tournament.tierList.getPokemonCost(
+                        pokemon.id,
+                        pokemon.addons,
+                      ),
+                      capt: {
+                        tera:
+                          pokemon.addons?.includes("Tera Captain") || undefined,
+                      },
+                    };
+                  },
+                );
+
+                const teamMatchups = await LeagueMatchupModel.find({
+                  $or: [
+                    { "side1.team": ctx.team._id },
+                    { "side2.team": ctx.team._id },
+                  ],
+                }).populate<PopulatedLeagueMatchup>([
+                  { path: "side1.team", populate: "coach" },
+                  { path: "side2.team", populate: "coach" },
+                ]);
+
+                const pokemonStandings =
+                  await calculateDivisionPokemonStandings(
+                    teamMatchups,
+                    ctx.team._id.toString(),
+                  );
+
+                const coach = ctx.team.coach;
+
+                return {
+                  name: coach.teamName,
+                  timezone: coach.timezone,
+                  coach: coach.name,
+                  logo: coach.logo,
+                  draft,
+                  pokemonStandings,
+                  matchups: teamMatchups,
+                };
+              });
             });
           });
           r.path("picks")((r) => {

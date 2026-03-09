@@ -86,6 +86,7 @@ export async function getTournamentsByOwner(auth0Id: string) {
           leagueName: division.tournament.league.name,
           leagueKey: division.tournament.league.leagueKey,
           divisionKey: division.divisionKey,
+          teamId: userTeam._id.toString(),
           format: division.tournament.format,
           ruleset: division.tournament.ruleset,
           draft: userTeam.draft.map((e) => ({
@@ -115,23 +116,35 @@ export function getTeamClient(
   };
 }
 
+function getTradeTeamId(team?: Types.ObjectId | LeagueTeamDocument) {
+  if (!team) return undefined;
+  if (team instanceof Types.ObjectId) {
+    return team.toString();
+  }
+  return team._id.toString();
+}
+
 function updateRosterWithTrades(
   teamId: Types.ObjectId,
   roster: { id: string; addons?: string[] }[],
   trades: DraftTrade[],
 ) {
-  for (let trade of trades) {
-    const side =
-      trade.side1.team?._id.toString() === teamId.toString()
-        ? trade.side1
-        : trade.side2;
-    const otherSide =
-      trade.side1.team?._id.toString() === teamId.toString()
-        ? trade.side2
-        : trade.side1;
+  const teamIdString = teamId.toString();
+  for (const trade of trades) {
+    const side1TeamId = getTradeTeamId(trade.side1.team);
+    const side2TeamId = getTradeTeamId(trade.side2.team);
+    if (side1TeamId !== teamIdString && side2TeamId !== teamIdString) continue;
+    const side = side1TeamId === teamIdString ? trade.side1 : trade.side2;
+    const otherSide = side1TeamId === teamIdString ? trade.side2 : trade.side1;
+
+    const sentPokemonIds = new Set(side.pokemon.map((p) => p.id));
+    const receivedPokemonIds = new Set(otherSide.pokemon.map((p) => p.id));
+
     roster = [
-      ...roster.filter((pokemon) =>
-        side.pokemon.some((p) => p.id === pokemon.id),
+      ...roster.filter(
+        (pokemon) =>
+          !sentPokemonIds.has(pokemon.id) &&
+          !receivedPokemonIds.has(pokemon.id),
       ),
       ...otherSide.pokemon,
     ];
@@ -144,11 +157,13 @@ export function getRostersBeforeStage(
   division: LeagueDivisionDocument,
   stage?: number,
 ) {
+  const teamIdString = team._id.toString();
   const stageTrades = division.trades
     .filter(
       (t) =>
-        t.side1.team?._id.toString() === team._id.toString() ||
-        t.side2.team?._id.toString() === team._id.toString(),
+        t.status === "APPROVED" &&
+        (getTradeTeamId(t.side1.team) === teamIdString ||
+          getTradeTeamId(t.side2.team) === teamIdString),
     )
     .reduce((map, t) => {
       const existing = map.get(t.activeStage);
@@ -177,11 +192,13 @@ export function getRosterByStage(
   stage?: number,
 ) {
   const currentStage = division.currentStage;
+  const teamIdString = team._id.toString();
   const stageTrades = division.trades
     .filter(
       (t) =>
-        t.side1.team?._id.toString() === team._id.toString() ||
-        t.side2.team?._id.toString() === team._id.toString(),
+        t.status === "APPROVED" &&
+        (getTradeTeamId(t.side1.team) === teamIdString ||
+          getTradeTeamId(t.side2.team) === teamIdString),
     )
     .reduce((map, t) => {
       const existing = map.get(t.activeStage);
@@ -195,7 +212,7 @@ export function getRosterByStage(
     id: p.pokemon.id,
     addons: p.addons,
   }));
-  for (let s = 0; s < (stage ?? currentStage); s++) {
+  for (let s = 0; s <= (stage ?? currentStage); s++) {
     const trades = stageTrades.get(s);
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
   }

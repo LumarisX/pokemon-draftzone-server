@@ -37,6 +37,7 @@ export type MatchupTeam = {
   paste?: string;
   _id?: Types.ObjectId;
   owner?: string;
+  notes?: string;
 };
 
 export type PopulatedLeagueMatchup = LeagueMatchupDocument & {
@@ -63,7 +64,6 @@ export class Matchup {
     public leagueId: string,
     public stage: string,
     public matches: MatchData[],
-    public notes?: string,
     public gameTime?: string,
     public reminder?: number,
   ) {}
@@ -83,6 +83,7 @@ export class Matchup {
         paste: data.aTeam.paste,
         team: draft.team,
         owner: draft.owner,
+        notes: data.notes,
         // coach:
       },
       {
@@ -98,7 +99,6 @@ export class Matchup {
       draft.tournamentId,
       data.stage,
       data.matches,
-      data.notes ?? "",
       data.gameTime,
       data.reminder,
     );
@@ -109,20 +109,7 @@ export class Matchup {
     sub?: string,
   ): Matchup {
     const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
-    let team1 = leagueMatchupDoc.side1.team;
-    let team2 = leagueMatchupDoc.side2.team;
     let notes: string | undefined = undefined;
-    if (sub) {
-      if (sub === leagueMatchupDoc.side1.team.coach._id.toString()) {
-        team1 = leagueMatchupDoc.side1.team;
-        team2 = leagueMatchupDoc.side2.team;
-        notes = leagueMatchupDoc.side1.notes ?? undefined;
-      } else if (sub === leagueMatchupDoc.side2.team.coach._id.toString()) {
-        team1 = leagueMatchupDoc.side2.team;
-        team2 = leagueMatchupDoc.side1.team;
-        notes = leagueMatchupDoc.side2.notes ?? undefined;
-      }
-    }
     const stageName = leagueMatchupDoc.division.stages.find(
       (stage) => stage._id.toString() === leagueMatchupDoc.stage._id.toString(),
     )?.name;
@@ -221,7 +208,6 @@ export class Matchup {
       },
       stage: this.stage,
       matches: this.matches,
-      notes: this.notes,
       gameTime: this.gameTime,
       reminder: this.reminder,
     };
@@ -249,7 +235,9 @@ export class Matchup {
     };
   }
 
-  async analyze(shared: boolean) {
+  async analyze(sub?: string) {
+    const aTeam = this.aTeam.owner === sub ? this.aTeam : this.bTeam;
+    const bTeam = this.aTeam.owner === sub ? this.bTeam : this.aTeam;
     const data: {
       details: {
         level: number;
@@ -317,34 +305,28 @@ export class Matchup {
         stage: this.stage,
       },
       summary: [
-        new SummaryClass(
-          this.aTeam.team,
-          this.aTeam.teamName,
-          this.aTeam.coach,
-        ).toJson(),
-        new SummaryClass(
-          this.bTeam.team,
-          this.bTeam.teamName,
-          this.bTeam.coach,
-        ).toJson(),
+        new SummaryClass(aTeam.team, aTeam.teamName, aTeam.coach).toJson(),
+        new SummaryClass(bTeam.team, bTeam.teamName, bTeam.coach).toJson(),
       ],
-      speedchart: speedchart(
-        [this.aTeam.team, this.bTeam.team],
-        this.format.level,
-      ),
+      speedchart: speedchart([aTeam.team, bTeam.team], this.format.level),
       coveragechart: [
-        await coveragechart(this.aTeam.team, this.bTeam.team),
-        await coveragechart(this.bTeam.team, this.aTeam.team),
+        await coveragechart(aTeam.team, bTeam.team),
+        await coveragechart(bTeam.team, aTeam.team),
       ],
       typechart: [
-        new Typechart(this.aTeam.team).toJson(),
-        new Typechart(this.bTeam.team).toJson(),
+        new Typechart(aTeam.team).toJson(),
+        new Typechart(bTeam.team).toJson(),
       ],
       movechart: [
-        await movechart(this.aTeam.team, this.aTeam.team[0].ruleset),
-        await movechart(this.bTeam.team, this.bTeam.team[0].ruleset),
+        await movechart(aTeam.team, aTeam.team[0].ruleset),
+        await movechart(bTeam.team, bTeam.team[0].ruleset),
       ],
-      notes: shared ? undefined : this.notes,
+      notes:
+        sub && sub === aTeam.owner
+          ? aTeam.notes
+          : sub && sub === bTeam.owner
+            ? bTeam.notes
+            : undefined,
     };
     return data;
   }

@@ -23,7 +23,7 @@ export const MatchupRoute = createRoute()((r) => {
       body: (data) => z.any().parse(data),
     })(
       async (ctx) =>
-        await (await Matchup.fromQuickData(ctx.validatedBody)).analyze(true),
+        await (await Matchup.fromQuickData(ctx.validatedBody)).analyze(),
     );
   });
   r.param("matchup_id", {
@@ -66,14 +66,14 @@ export const MatchupRoute = createRoute()((r) => {
         ctx.sub !== ctx.matchup.bTeam.owner
       )
         throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-      return await ctx.matchup.analyze(false);
+      return await ctx.matchup.analyze(ctx.sub);
     });
     r.delete(async (ctx) => {
       await deleteMatchup(ctx.matchup_id);
       return { message: "Matchup deleted" };
     });
     r.path("shared")((r) => {
-      r.get(async (ctx) => await ctx.matchup.analyze(true));
+      r.get(async (ctx) => await ctx.matchup.analyze());
     });
     r.path("summary")((r) => {
       r.get(async (ctx) => {
