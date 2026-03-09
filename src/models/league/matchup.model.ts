@@ -35,11 +35,16 @@ export type MatchResult = {
   team2: MatchTeam;
 };
 
+export type MatchSide = {
+  team: Types.ObjectId;
+  notes?: string;
+};
+
 export type LeagueMatchupData = {
   stage: LeagueStageDocument | Types.ObjectId;
   division: LeagueDivisionDocument | Types.ObjectId;
-  team1: LeagueTeamDocument | Types.ObjectId;
-  team2: LeagueTeamDocument | Types.ObjectId;
+  side1: MatchSide;
+  side2: MatchSide;
   results: MatchResult[];
   notes?: string;
   scheduledDate?: Date;
@@ -86,6 +91,15 @@ const pokemonStatsSchema = new Schema<PokemonStats>(
   { _id: false },
 );
 
+export const leagueMatchupSideSchema = new Schema<MatchSide>({
+  team: {
+    type: Schema.Types.ObjectId,
+    ref: LEAGUE_TEAM_COLLECTION,
+    required: true,
+  },
+  notes: { type: String },
+});
+
 export const leagueMatchupSchema: Schema<
   LeagueMatchupDocument,
   LeagueMatchupModel,
@@ -103,14 +117,12 @@ export const leagueMatchupSchema: Schema<
       ref: LEAGUE_DIVISION_COLLECTION,
       required: true,
     },
-    team1: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_TEAM_COLLECTION,
+    side1: {
+      type: leagueMatchupSideSchema,
       required: true,
     },
-    team2: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_TEAM_COLLECTION,
+    side2: {
+      type: leagueMatchupSideSchema,
       required: true,
     },
     results: [

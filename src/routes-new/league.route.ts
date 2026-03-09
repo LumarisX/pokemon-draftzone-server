@@ -74,6 +74,7 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
+import { PopulatedLeagueMatchup } from "../classes/matchup";
 
 const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
@@ -1309,13 +1310,13 @@ export const LeagueRoute = createRoute()((r) => {
             });
 
             const teamMatchups = await LeagueMatchupModel.find({
-              $or: [{ team1: ctx.team._id }, { team2: ctx.team._id }],
-            }).populate<{
-              team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-              team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-            }>([
-              { path: "team1", populate: "coach" },
-              { path: "team2", populate: "coach" },
+              $or: [
+                { "side1.team": ctx.team._id },
+                { "side2.team": ctx.team._id },
+              ],
+            }).populate<PopulatedLeagueMatchup>([
+              { path: "side1.team", populate: "coach" },
+              { path: "side2.team", populate: "coach" },
             ]);
 
             const pokemonStandings = await calculateDivisionPokemonStandings(
@@ -1490,27 +1491,20 @@ export const LeagueRoute = createRoute()((r) => {
                 ...(hasTeamFilter
                   ? {
                       $or: [
-                        { team1: { $in: teamIds } },
-                        { team2: { $in: teamIds } },
+                        { "side1.team": { $in: teamIds } },
+                        { "side2.team": { $in: teamIds } },
                       ],
                     }
                   : undefined),
-              }).populate<{
-                team1: LeagueTeamDocument & {
-                  coach: LeagueCoachDocument;
-                };
-                team2: LeagueTeamDocument & {
-                  coach: LeagueCoachDocument;
-                };
-              }>([
+              }).populate<PopulatedLeagueMatchup>([
                 {
-                  path: "team1",
+                  path: "side1.team",
                   populate: {
                     path: "coach",
                   },
                 },
                 {
-                  path: "team2",
+                  path: "side2.team",
                   populate: {
                     path: "coach",
                   },
@@ -1542,12 +1536,12 @@ export const LeagueRoute = createRoute()((r) => {
                   const transformedMatchups = matchups.map((matchup) => ({
                     id: matchup._id.toString(),
                     team1: {
-                      name: matchup.team1.coach.teamName,
-                      coach: matchup.team1.coach.name,
+                      name: matchup.side1.team.coach.teamName,
+                      coach: matchup.side1.team.coach.name,
                       score: matchup.score?.team1,
-                      logo: matchup.team1.coach.logo,
-                      id: matchup.team1._id.toString(),
-                      draft: matchup.team1.draft.map((draftItem) => ({
+                      logo: matchup.side1.team.coach.logo,
+                      id: matchup.side1.team._id.toString(),
+                      draft: matchup.side1.team.draft.map((draftItem) => ({
                         id: draftItem.pokemon.id,
                         capt: {
                           ...(draftItem.addons?.includes("Tera Captain")
@@ -1557,12 +1551,12 @@ export const LeagueRoute = createRoute()((r) => {
                       })),
                     },
                     team2: {
-                      name: matchup.team2.coach.teamName,
-                      coach: matchup.team2.coach.name,
+                      name: matchup.side2.team.coach.teamName,
+                      coach: matchup.side2.team.coach.name,
                       score: matchup.score?.team2,
-                      logo: matchup.team2.coach.logo,
-                      id: matchup.team2._id.toString(),
-                      draft: matchup.team2.draft.map((draftItem) => ({
+                      logo: matchup.side2.team.coach.logo,
+                      id: matchup.side2.team._id.toString(),
+                      draft: matchup.side2.team.draft.map((draftItem) => ({
                         id: draftItem.pokemon.id,
                         capt: {
                           ...(draftItem.addons?.includes("Tera Captain")
@@ -1605,17 +1599,14 @@ export const LeagueRoute = createRoute()((r) => {
             r.get(async (ctx) => {
               const allMatchups = await LeagueMatchupModel.find({
                 stage: { $in: ctx.division.stages.map((s) => s._id) },
-              }).populate<{
-                team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-                team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-              }>([
+              }).populate<PopulatedLeagueMatchup>([
                 {
-                  path: "team1",
+                  path: "side1.team",
                   select: "coach",
                   populate: { path: "coach" },
                 },
                 {
-                  path: "team2",
+                  path: "side2.team",
                   select: "coach",
                   populate: { path: "coach" },
                 },

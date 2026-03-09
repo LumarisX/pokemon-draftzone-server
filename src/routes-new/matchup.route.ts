@@ -1,17 +1,9 @@
 import mongoose from "mongoose";
 import z from "zod";
-import { Matchup } from "../classes/matchup";
+import { Matchup, type PopulatedLeagueMatchup } from "../classes/matchup";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
-import { LeagueCoachDocument } from "../models/league/coach.model";
-import {
-  LeagueDivision,
-  LeagueDivisionDocument,
-  LeagueStageDocument,
-} from "../models/league/division.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
-import { LeagueTeamDocument } from "../models/league/team.model";
-import { LeagueTournamentDocument } from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
   deleteMatchup,
@@ -31,7 +23,7 @@ export const MatchupRoute = createRoute()((r) => {
       body: (data) => z.any().parse(data),
     })(
       async (ctx) =>
-        await (await Matchup.fromQuickData(ctx.validatedBody)).analyze(),
+        await (await Matchup.fromQuickData(ctx.validatedBody)).analyze(true),
     );
   });
   r.param("matchup_id", {
@@ -44,25 +36,17 @@ export const MatchupRoute = createRoute()((r) => {
       } else {
         const leagueMatchup = await LeagueMatchupModel.findById(
           matchup_id,
-        ).populate<{
-          team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-          team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-          stage: LeagueStageDocument;
-          division: LeagueDivisionDocument & {
-            tournament: LeagueTournamentDocument;
-          };
-        }>([
+        ).populate<PopulatedLeagueMatchup>([
           {
-            path: "team1",
+            path: "side1.team",
             populate: { path: "coach" },
           },
           {
-            path: "team2",
+            path: "side2.team",
             populate: { path: "coach" },
           },
           {
             path: "division",
-
             populate: {
               path: "tournament",
             },
@@ -77,10 +61,20 @@ export const MatchupRoute = createRoute()((r) => {
       return { rawMatchup, matchup, matchup_id };
     },
   })((r) => {
-    r.get(async (ctx) => await ctx.matchup.analyze());
+    r.get.auth()(async (ctx) => {
+      if (
+        ctx.sub !== ctx.matchup.aTeam.owner &&
+        ctx.sub !== ctx.matchup.bTeam.owner
+      )
+        throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+      return await ctx.matchup.analyze(false);
+    });
     r.delete(async (ctx) => {
       await deleteMatchup(ctx.matchup_id);
       return { message: "Matchup deleted" };
+    });
+    r.path("shared")((r) => {
+      r.get(async (ctx) => await ctx.matchup.analyze(true));
     });
     r.path("summary")((r) => {
       r.get(async (ctx) => {

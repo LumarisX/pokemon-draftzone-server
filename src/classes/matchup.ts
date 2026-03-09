@@ -5,7 +5,7 @@ import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { MatchData, MatchupData } from "../models/draft/matchup.model";
 import { LeagueCoachDocument } from "../models/league/coach.model";
 import {
-  LeagueDivision,
+  LeagueDivisionDocument,
   LeagueStageDocument,
 } from "../models/league/division.model";
 import { LeagueMatchupDocument } from "../models/league/matchup.model";
@@ -36,6 +36,22 @@ export type MatchupTeam = {
   coach?: string;
   paste?: string;
   _id?: Types.ObjectId;
+  owner?: string;
+};
+
+export type PopulatedLeagueMatchup = LeagueMatchupDocument & {
+  side1: {
+    team: LeagueTeamDocument & { coach: LeagueCoachDocument };
+    notes?: string;
+  };
+  side2: {
+    team: LeagueTeamDocument & { coach: LeagueCoachDocument };
+    notes?: string;
+  };
+  stage: LeagueStageDocument;
+  division: LeagueDivisionDocument & {
+    tournament: LeagueTournamentDocument;
+  };
 };
 
 export class Matchup {
@@ -67,14 +83,15 @@ export class Matchup {
         _id: data.aTeam._id,
         paste: data.aTeam.paste,
         team: draft.team,
+        owner: draft.owner,
         // coach:
       },
       {
         teamName: data.bTeam.teamName,
-        coach: data.bTeam.coach,
-        team: DraftSpecie.getTeam(data.bTeam.team, draft.ruleset),
         _id: data._id,
         paste: data.bTeam.paste,
+        team: DraftSpecie.getTeam(data.bTeam.team, draft.ruleset),
+        coach: data.bTeam.coach,
       },
       draft.ruleset,
       draft.format,
@@ -82,26 +99,36 @@ export class Matchup {
       draft.tournamentId,
       data.stage,
       data.matches,
-      data.notes,
+      data.notes ?? "",
       data.gameTime,
       data.reminder,
     );
   }
 
   static fromLeagueMatchup(
-    leagueMatchupDoc: LeagueMatchupDocument & {
-      team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-      team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-      stage: LeagueStageDocument;
-      division: LeagueDivision & { tournament: LeagueTournamentDocument };
-    },
+    leagueMatchupDoc: PopulatedLeagueMatchup,
+    sub?: string,
   ): Matchup {
     const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
+    let team1 = leagueMatchupDoc.side1.team;
+    let team2 = leagueMatchupDoc.side2.team;
+    let notes: string | undefined = undefined;
+    if (sub) {
+      if (sub === leagueMatchupDoc.side1.team.coach._id.toString()) {
+        team1 = leagueMatchupDoc.side1.team;
+        team2 = leagueMatchupDoc.side2.team;
+        notes = leagueMatchupDoc.side1.notes ?? undefined;
+      } else if (sub === leagueMatchupDoc.side2.team.coach._id.toString()) {
+        team1 = leagueMatchupDoc.side2.team;
+        team2 = leagueMatchupDoc.side1.team;
+        notes = leagueMatchupDoc.side2.notes ?? undefined;
+      }
+    }
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.team1.coach.teamName,
-        coach: leagueMatchupDoc.team1.coach.name,
-        team: leagueMatchupDoc.team1.draft.map(
+        teamName: leagueMatchupDoc.side1.team.coach.teamName,
+        coach: leagueMatchupDoc.side1.team.coach.name,
+        team: leagueMatchupDoc.side1.team.draft.map(
           (e) =>
             new DraftSpecie(
               {
@@ -115,11 +142,12 @@ export class Matchup {
               ruleset,
             ),
         ),
+        owner: leagueMatchupDoc.side1.team.coach.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.team2.coach.teamName,
-        coach: leagueMatchupDoc.team2.coach.name,
-        team: leagueMatchupDoc.team2.draft.map(
+        teamName: leagueMatchupDoc.side2.team.coach.teamName,
+        coach: leagueMatchupDoc.side2.team.coach.name,
+        team: leagueMatchupDoc.side2.team.draft.map(
           (e) =>
             new DraftSpecie(
               {
@@ -133,6 +161,7 @@ export class Matchup {
               ruleset,
             ),
         ),
+        owner: leagueMatchupDoc.side2.team.coach.auth0Id,
       },
       ruleset,
       getFormat(leagueMatchupDoc.division.tournament.format),
@@ -140,6 +169,7 @@ export class Matchup {
       leagueMatchupDoc.division.tournament.id.toString(),
       leagueMatchupDoc.stage.name,
       [],
+      notes,
     );
   }
 
@@ -217,7 +247,7 @@ export class Matchup {
     };
   }
 
-  async analyze() {
+  async analyze(shared: boolean) {
     const data: {
       details: {
         level: number;
@@ -274,6 +304,7 @@ export class Matchup {
         };
       }[];
       movechart: Movechart[];
+      notes?: string;
     } = {
       details: {
         level: this.format.level,
@@ -311,6 +342,7 @@ export class Matchup {
         await movechart(this.aTeam.team, this.aTeam.team[0].ruleset),
         await movechart(this.bTeam.team, this.bTeam.team[0].ruleset),
       ],
+      notes: shared ? undefined : this.notes,
     };
     return data;
   }

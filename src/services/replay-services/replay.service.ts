@@ -1847,7 +1847,7 @@ export namespace Replay {
     };
     team: {
       kills: [number, number, number];
-      status: "brought" | "used" | "fainted";
+      status: "brought" | "survived" | "fainted";
       moveset: string[];
       damageDealt: [number, number, number];
       damageTaken: [number, number, number];

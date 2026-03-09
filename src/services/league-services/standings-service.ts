@@ -1,3 +1,4 @@
+import { PopulatedLeagueMatchup } from "../../classes/matchup";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import { LeagueStageDocument } from "../../models/league/division.model";
 import {
@@ -8,10 +9,7 @@ import { LeagueTeamDocument } from "../../models/league/team.model";
 import { getName } from "../data-services/pokedex.service";
 
 export async function calculateDivisionPokemonStandings(
-  matchups: (LeagueMatchupDocument & {
-    team1: LeagueTeamDocument & { coach: LeagueCoachDocument };
-    team2: LeagueTeamDocument & { coach: LeagueCoachDocument };
-  })[],
+  matchups: PopulatedLeagueMatchup[],
   filterTeamId?: string,
 ) {
   const pokemonStandingsMap = new Map<
@@ -29,8 +27,8 @@ export async function calculateDivisionPokemonStandings(
   >();
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1;
-    const team2Doc = matchup.team2;
+    const team1Doc = matchup.side1.team;
+    const team2Doc = matchup.side2.team;
     const team1Coach = team1Doc.coach?.teamName || "Unknown Coach";
     const team2Coach = team2Doc.coach?.teamName || "Unknown Coach";
     const team1Key = team1Doc._id.toString();
@@ -187,7 +185,7 @@ function countTeamFainted(teamResult?: MatchTeam): number {
 }
 
 function calculateMatchupFainted(
-  matchup: DivisionCoachMatchup,
+  matchup: PopulatedLeagueMatchup,
   teamSide: "team1" | "team2",
 ): number {
   return (
@@ -213,7 +211,7 @@ function applyMatchupDiffs(
 }
 
 export async function calculateDivisionCoachStandings(
-  matchups: DivisionCoachMatchup[],
+  matchups: PopulatedLeagueMatchup[],
   stages: LeagueStageDocument[],
   divisionTeams: LeagueTeamDocument[],
 ) {
@@ -226,8 +224,8 @@ export async function calculateDivisionCoachStandings(
   }
 
   for (const matchup of matchups) {
-    const team1Doc = matchup.team1;
-    const team2Doc = matchup.team2;
+    const team1Doc = matchup.side1.team;
+    const team2Doc = matchup.side2.team;
     if (matchup.results.length > 1) diffMode = "game";
     const team1Data = {
       score: matchup.score?.team1 ?? 0,
