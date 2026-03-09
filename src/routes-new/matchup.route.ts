@@ -51,7 +51,6 @@ export const MatchupRoute = createRoute()((r) => {
               path: "tournament",
             },
           },
-          { path: "stage" },
         ]);
 
         if (!leagueMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);

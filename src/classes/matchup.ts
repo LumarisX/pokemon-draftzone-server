@@ -48,7 +48,6 @@ export type PopulatedLeagueMatchup = LeagueMatchupDocument & {
     team: LeagueTeamDocument & { coach: LeagueCoachDocument };
     notes?: string;
   };
-  stage: LeagueStageDocument;
   division: LeagueDivisionDocument & {
     tournament: LeagueTournamentDocument;
   };
@@ -124,6 +123,9 @@ export class Matchup {
         notes = leagueMatchupDoc.side2.notes ?? undefined;
       }
     }
+    const stageName = leagueMatchupDoc.division.stages.find(
+      (stage) => stage._id.toString() === leagueMatchupDoc.stage._id.toString(),
+    )?.name;
     return new Matchup(
       {
         teamName: leagueMatchupDoc.side1.team.coach.teamName,
@@ -167,7 +169,7 @@ export class Matchup {
       getFormat(leagueMatchupDoc.division.tournament.format),
       leagueMatchupDoc.division.tournament.name,
       leagueMatchupDoc.division.tournament.id.toString(),
-      leagueMatchupDoc.stage.name,
+      stageName ?? "",
       [],
       notes,
     );
