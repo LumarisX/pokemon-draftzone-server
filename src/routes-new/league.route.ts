@@ -26,13 +26,17 @@ import LeagueCoachModel, {
   LeagueCoachDocument,
   signUpSchema,
 } from "../models/league/coach.model";
-import LeagueDivisionModel from "../models/league/division.model";
+import LeagueDivisionModel, {
+  LeagueDivisionDocument,
+} from "../models/league/division.model";
 import {
+  LeagueMatchupDocument,
   LeagueMatchupModel,
   PokemonStats,
 } from "../models/league/matchup.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
+  PopulatedLeagueTeamDocument,
   TeamDraft,
 } from "../models/league/team.model";
 import {
@@ -1957,6 +1961,114 @@ export const LeagueRoute = createRoute()((r) => {
               });
             });
             r.path("schedule")((r) => {
+              r.get(async (ctx) => {
+                const matchups = await LeagueMatchupModel.find({
+                  division: ctx.division._id,
+                }).populate<
+                  LeagueMatchupDocument & {
+                    side1: { team: PopulatedLeagueTeamDocument };
+                    side2: { team: PopulatedLeagueTeamDocument };
+                    division: LeagueDivisionDocument;
+                  }
+                >([
+                  {
+                    path: "side1.team",
+                    populate: {
+                      path: "coach",
+                    },
+                  },
+                  {
+                    path: "side2.team",
+                    populate: {
+                      path: "coach",
+                    },
+                  },
+                  "division",
+                ]);
+
+                const matchupsByStage = new Map<string, typeof matchups>();
+                for (const matchup of matchups) {
+                  const stageKey = matchup.stage.toString();
+                  const bucket = matchupsByStage.get(stageKey);
+                  if (bucket) {
+                    bucket.push(matchup);
+                  } else {
+                    matchupsByStage.set(stageKey, [matchup]);
+                  }
+                }
+
+                const stages = ctx.division.stages.map((stage, index) => {
+                  const matchups =
+                    matchupsByStage.get(stage._id.toString()) ?? [];
+                  const transformedMatchups = matchups.map((matchup) => ({
+                    id: matchup._id.toString(),
+                    team1: {
+                      name: matchup.side1.team.coach.teamName,
+                      coach: matchup.side1.team.coach.name,
+                      score: matchup.score?.team1,
+                      logo: matchup.side1.team.coach.logo,
+                      id: matchup.side1.team._id.toString(),
+                      draft: getRosterByStage(
+                        matchup.side1.team,
+                        matchup.division,
+                        index,
+                      ).map((pokemon) => ({
+                        id: pokemon.id,
+                        capt: {
+                          ...(pokemon.addons?.includes("Tera Captain")
+                            ? { tera: true }
+                            : undefined),
+                        },
+                      })),
+                    },
+                    team2: {
+                      name: matchup.side2.team.coach.teamName,
+                      coach: matchup.side2.team.coach.name,
+                      score: matchup.score?.team2,
+                      logo: matchup.side2.team.coach.logo,
+                      id: matchup.side2.team._id.toString(),
+                      draft: getRosterByStage(
+                        matchup.side2.team,
+                        matchup.division,
+                        index,
+                      ).map((pokemon) => ({
+                        id: pokemon.id,
+                        capt: {
+                          ...(pokemon.addons?.includes("Tera Captain")
+                            ? { tera: true }
+                            : undefined),
+                        },
+                      })),
+                    },
+                    matches: matchup.results.map((result) => ({
+                      link: result.replay,
+                      team1: {
+                        team: Object.fromEntries(
+                          result.team1.pokemon.entries(),
+                        ),
+                        score: result.team1.score,
+                        winner: result.winner === "team1",
+                      },
+                      team2: {
+                        team: Object.fromEntries(
+                          result.team2.pokemon.entries(),
+                        ),
+                        score: result.team2.score,
+                        winner: result.winner === "team2",
+                      },
+                    })),
+                    score: matchup.score,
+                    winner: matchup.winner,
+                  }));
+                  return {
+                    _id: stage._id,
+                    name: stage.name,
+                    matchups: transformedMatchups,
+                  };
+                });
+
+                return stages;
+              });
               r.param("matchup_id", (ctx, matchup_id) => {
                 if (!isValidObjectId(matchup_id))
                   throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {

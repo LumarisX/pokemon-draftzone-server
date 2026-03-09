@@ -105,8 +105,6 @@ export async function getTournamentsByOwner(auth0Id: string) {
         userTeam,
       );
 
-      console.log(teamScore);
-
       if (coach && !tournamentMap.has(division.tournament._id.toString())) {
         tournamentMap.set(division.tournament._id.toString(), {
           name: coach.name,
