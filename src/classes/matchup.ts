@@ -1,4 +1,4 @@
-import { StatsTable, TypeName } from "@pkmn/data";
+import { ID, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { Format, FormatId, getFormat } from "../data/formats";
 import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
@@ -29,6 +29,7 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { getRosterByStage } from "../services/league-services/league-service";
 
 export type MatchupTeam = {
   teamName: string;
@@ -110,19 +111,23 @@ export class Matchup {
   ): Matchup {
     const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
     let notes: string | undefined = undefined;
-    const stageName = leagueMatchupDoc.division.stages.find(
+    const stageIndex = leagueMatchupDoc.division.stages.findIndex(
       (stage) => stage._id.toString() === leagueMatchupDoc.stage._id.toString(),
-    )?.name;
+    );
     return new Matchup(
       {
         teamName: leagueMatchupDoc.side1.team.coach.teamName,
         coach: leagueMatchupDoc.side1.team.coach.name,
-        team: leagueMatchupDoc.side1.team.draft.map(
-          (e) =>
+        team: getRosterByStage(
+          leagueMatchupDoc.side1.team,
+          leagueMatchupDoc.division,
+          stageIndex,
+        ).map(
+          (pokemon) =>
             new DraftSpecie(
               {
-                id: e.pokemon.id,
-                capt: e.addons?.includes("Tera Captain")
+                id: pokemon.id as ID,
+                capt: pokemon.addons?.includes("Tera Captain")
                   ? {
                       tera: [],
                     }
@@ -136,12 +141,16 @@ export class Matchup {
       {
         teamName: leagueMatchupDoc.side2.team.coach.teamName,
         coach: leagueMatchupDoc.side2.team.coach.name,
-        team: leagueMatchupDoc.side2.team.draft.map(
-          (e) =>
+        team: getRosterByStage(
+          leagueMatchupDoc.side2.team,
+          leagueMatchupDoc.division,
+          stageIndex,
+        ).map(
+          (pokemon) =>
             new DraftSpecie(
               {
-                id: e.pokemon.id,
-                capt: e.addons?.includes("Tera Captain")
+                id: pokemon.id as ID,
+                capt: pokemon.addons?.includes("Tera Captain")
                   ? {
                       tera: [],
                     }
@@ -156,7 +165,7 @@ export class Matchup {
       getFormat(leagueMatchupDoc.division.tournament.format),
       leagueMatchupDoc.division.tournament.name,
       leagueMatchupDoc.division.tournament.id.toString(),
-      stageName ?? "",
+      leagueMatchupDoc.division.stages[stageIndex].name ?? "",
       [],
       notes,
     );

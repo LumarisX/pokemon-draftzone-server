@@ -1386,11 +1386,6 @@ export async function makeTrade(
 ) {
   if (side1.team === undefined && side2.team == undefined) return;
 
-  const side1TeamId = side1.team?.toString();
-  const side2TeamId = side2.team?.toString();
-  const isSameTeamTrade =
-    !!side1TeamId && !!side2TeamId && side1TeamId === side2TeamId;
-
   const team1 = side1.team ? await LeagueTeamModel.findById(side1.team) : null;
   if (side1.team && !team1)
     throw new PDZError(
@@ -1431,85 +1426,6 @@ export async function makeTrade(
         );
       }
     }
-  }
-
-  if (isSameTeamTrade && team1) {
-    const requestedTeraByPokemon = new Map<string, string[] | undefined>();
-
-    side1.pokemon.forEach((pokemon) => {
-      requestedTeraByPokemon.set(pokemon.id, pokemon.addons);
-    });
-
-    side2.pokemon.forEach((pokemon) => {
-      requestedTeraByPokemon.set(pokemon.id, pokemon.addons);
-    });
-
-    team1.draft = team1.draft.map((draftItem) => {
-      const pokemonId = getPokemonIdFromDraft(draftItem);
-      if (!requestedTeraByPokemon.has(pokemonId)) {
-        return draftItem;
-      }
-
-      const teraEnabled = requestedTeraByPokemon.get(pokemonId) ?? false;
-      const existingAddons = draftItem.addons || [];
-      const nonTeraAddons = existingAddons.filter(
-        (addon) => addon !== "Tera Captain",
-      );
-
-      return {
-        ...draftItem,
-        addons: teraEnabled
-          ? [...nonTeraAddons, "Tera Captain"]
-          : nonTeraAddons,
-      } as TeamDraft;
-    });
-
-    await team1.save();
-
-    division.trades.push({
-      side1,
-      side2,
-      timestamp: new Date(),
-      activeStage: activeStageNumber,
-      status: "APPROVED",
-    });
-
-    await division.save();
-    return;
-  }
-
-  if (team1) {
-    const pokemonIdsToRemove = new Set(side1.pokemon.map((p) => p.id));
-    team1.draft = team1.draft.filter(
-      (d) => !pokemonIdsToRemove.has(getPokemonIdFromDraft(d)),
-    );
-    for (const pokemon of side2.pokemon) {
-      team1.draft.push({
-        pokemon: { id: pokemon.id },
-        addons: pokemon.addons,
-        picker: team1.coach,
-        timestamp: new Date(),
-      } as TeamDraft);
-    }
-
-    await team1.save();
-  }
-
-  if (team2) {
-    const pokemonIdsToRemove = new Set(side2.pokemon.map((p) => p.id));
-    team2.draft = team2.draft.filter(
-      (d) => !pokemonIdsToRemove.has(getPokemonIdFromDraft(d)),
-    );
-    for (const pokemon of side1.pokemon) {
-      team2.draft.push({
-        pokemon: { id: pokemon.id },
-        addons: pokemon.addons,
-        picker: team2.coach,
-        timestamp: new Date(),
-      } as TeamDraft);
-    }
-
-    await team2.save();
   }
 
   division.trades.push({

@@ -6,12 +6,16 @@ import LeagueDivisionModel, {
   DraftTrade,
   LeagueDivisionDocument,
 } from "../../models/league/division.model";
-import LeagueModel, { LeagueDocument } from "../../models/league/league.model";
+import LeagueModel, {
+  League,
+  LeagueDocument,
+} from "../../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
 } from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
+import { getName } from "../data-services/pokedex.service";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
@@ -217,4 +221,22 @@ export function getRosterByStage(
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
   }
   return roster;
+}
+
+export function getTeamDraft(
+  team: LeagueTeamDocument,
+  division: LeagueDivisionDocument,
+  tournament: LeagueTournamentDocument & { tierList: LeagueTierListDocument },
+) {
+  return getRosterByStage(team, division).map((pokemon) => {
+    const pokemonName = getName(pokemon.id);
+    return {
+      id: pokemon.id,
+      name: pokemonName,
+      cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+      capt: {
+        tera: pokemon.addons?.includes("Tera Captain") || undefined,
+      },
+    };
+  });
 }

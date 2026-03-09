@@ -59,6 +59,7 @@ import {
 import {
   getRoles,
   getRosterByStage,
+  getTeamDraft,
 } from "../services/league-services/league-service";
 import {
   calculateDivisionCoachStandings,
@@ -1314,15 +1315,15 @@ export const LeagueRoute = createRoute()((r) => {
                   id: team._id.toString(),
                   coach: team.coach.name,
                   logo: team.coach.logo,
-                  draft: team.draft.map((e) => ({
-                    id: e.pokemon.id,
-                    name: getName(e.pokemon.id),
+                  draft: getRosterByStage(team, division).map((pokemon) => ({
+                    id: pokemon.id,
+                    name: getName(pokemon.id),
                     capt: {
-                      tera: e.addons?.includes("Tera Captain"),
+                      tera: pokemon.addons?.includes("Tera Captain"),
                     },
                     cost: division.tournament.tierList.getPokemonCost(
-                      e.pokemon.id,
-                      e.addons,
+                      pokemon.id,
+                      pokemon.addons,
                     ),
                   })),
                   name: team.coach.teamName,
@@ -1350,23 +1351,7 @@ export const LeagueRoute = createRoute()((r) => {
                   tierList: LeagueTierListDocument;
                 }>("tierList");
 
-                const draft = getRosterByStage(ctx.team, ctx.division).map(
-                  (pokemon) => {
-                    const pokemonName = getName(pokemon.id);
-                    return {
-                      id: pokemon.id,
-                      name: pokemonName,
-                      cost: tournament.tierList.getPokemonCost(
-                        pokemon.id,
-                        pokemon.addons,
-                      ),
-                      capt: {
-                        tera:
-                          pokemon.addons?.includes("Tera Captain") || undefined,
-                      },
-                    };
-                  },
-                );
+                const draft = getTeamDraft(ctx.team, ctx.division, tournament);
 
                 const teamMatchups = await LeagueMatchupModel.find({
                   $or: [
