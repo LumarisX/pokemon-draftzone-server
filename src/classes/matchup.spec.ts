@@ -170,7 +170,7 @@ describe("Matchup", () => {
       tiers: [],
     });
 
-    const analysis = await matchup.analyze();
+    const analysis = await matchup.analyze(false);
 
     expect(analysis.details.format).toBe("Singles");
     expect(analysis.details.ruleset).toBe("Gen9 NatDex");
@@ -235,14 +235,14 @@ describe("Score", () => {
     const processedScore = await score.processScore();
 
     expect(processedScore.aTeamPaste).toBe(
-      "https://pokepast.es/1234567890abcdef"
+      "https://pokepast.es/1234567890abcdef",
     );
     expect(processedScore.bTeamPaste).toBe(
-      "https://pokepast.es/fedcba0987654321"
+      "https://pokepast.es/fedcba0987654321",
     );
     expect(processedScore.matches.length).toBe(1);
     expect(processedScore.matches[0].replay).toBe(
-      "https://replay.pokemonshowdown.com/gen9vgc2023-1234567890"
+      "https://replay.pokemonshowdown.com/gen9vgc2023-1234567890",
     );
     expect(processedScore.matches[0].winner).toBe("a");
     expect(processedScore.matches[0].aTeam.stats.length).toBe(2);
