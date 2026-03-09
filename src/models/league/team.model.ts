@@ -33,6 +33,10 @@ export type LeagueTeamDocument = Document &
   LeagueTeam &
   TeamMethods & { _id: Types.ObjectId };
 
+export type PopulatedLeagueTeamDocument = LeagueTeamDocument & {
+  coach: LeagueCoachDocument;
+};
+
 type TeamMethods = {
   incrementSkipCount(session?: ClientSession): Promise<void>;
   draftedPokemonIds(): string[];

@@ -41,7 +41,7 @@ export type MatchSide = {
 };
 
 export type LeagueMatchupData = {
-  stage: LeagueStageDocument | Types.ObjectId;
+  stage: Types.ObjectId;
   division: LeagueDivisionDocument | Types.ObjectId;
   side1: MatchSide;
   side2: MatchSide;

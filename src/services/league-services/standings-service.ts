@@ -5,7 +5,10 @@ import {
   LeagueMatchupDocument,
   MatchTeam,
 } from "../../models/league/matchup.model";
-import { LeagueTeamDocument } from "../../models/league/team.model";
+import {
+  LeagueTeamDocument,
+  PopulatedLeagueTeamDocument,
+} from "../../models/league/team.model";
 import { getName } from "../data-services/pokedex.service";
 
 export async function calculateDivisionPokemonStandings(
@@ -140,6 +143,20 @@ type CoachStanding = {
   teamId: string;
 };
 
+export type TeamScore = {
+  teamId: string;
+  wins: number;
+  losses: number;
+  ties: number;
+  played: number;
+  unplayed: number;
+  streak: number;
+  gameDiff: number;
+  pokemonDiff: number;
+  results: number[];
+  diffMode: "pokemon" | "game";
+};
+
 function createCoachStanding(
   team: LeagueTeamDocument,
   stageCount: number,
@@ -185,7 +202,10 @@ function countTeamFainted(teamResult?: MatchTeam): number {
 }
 
 function calculateMatchupFainted(
-  matchup: PopulatedLeagueMatchup,
+  matchup: LeagueMatchupDocument & {
+    side1: { team: PopulatedLeagueTeamDocument };
+    side2: { team: PopulatedLeagueTeamDocument };
+  },
   teamSide: "team1" | "team2",
 ): number {
   return (
@@ -208,6 +228,28 @@ function applyMatchupDiffs(
   }
   standing.gameDiff += stageDiff;
   standing.pokemonDiff += pokemonDiff;
+}
+
+function calculateStreak(results: number[]): number {
+  let streak = 0;
+
+  for (const result of results) {
+    if (result > 0) {
+      if (streak >= 0) {
+        streak += 1;
+      } else {
+        streak = 1;
+      }
+    } else if (result < 0) {
+      if (streak <= 0) {
+        streak -= 1;
+      } else {
+        streak = -1;
+      }
+    }
+  }
+
+  return streak;
 }
 
 export async function calculateDivisionCoachStandings(
@@ -284,31 +326,13 @@ export async function calculateDivisionCoachStandings(
   return {
     coachStandings: Array.from(coachStandingsMap.values())
       .map((team) => {
-        let streak = 0;
-
-        for (const result of team.results) {
-          if (result > 0) {
-            if (streak >= 0) {
-              streak += 1;
-            } else {
-              streak = 1;
-            }
-          } else if (result < 0) {
-            if (streak <= 0) {
-              streak -= 1;
-            } else {
-              streak = -1;
-            }
-          }
-        }
-
         return {
           name: team.name,
           results: team.results,
           coach: team.coach,
-          streak,
+          streak: calculateStreak(team.results),
           wins: team.wins,
-          loses: team.losses,
+          losses: team.losses,
           gameDiff: team.gameDiff,
           pokemonDiff: team.pokemonDiff,
           logo: team.logo,
@@ -322,6 +346,73 @@ export async function calculateDivisionCoachStandings(
           return b.pokemonDiff - a.pokemonDiff;
         return 0;
       }),
+    diffMode,
+  };
+}
+
+export async function calculateTeamScore(
+  matchups: (LeagueMatchupDocument & {
+    side1: { team: PopulatedLeagueTeamDocument };
+    side2: { team: PopulatedLeagueTeamDocument };
+  })[],
+  stages: LeagueStageDocument[],
+  team: LeagueTeamDocument,
+): Promise<TeamScore> {
+  const teamStanding = createCoachStanding(team, stages.length);
+  const teamId = team._id.toString();
+  let diffMode: "pokemon" | "game" = "pokemon";
+  let ties = 0;
+  let unplayed = 0;
+
+  for (const matchup of matchups) {
+    const team1Id = matchup.side1.team._id.toString();
+    const team2Id = matchup.side2.team._id.toString();
+    const teamSide =
+      team1Id === teamId ? "team1" : team2Id === teamId ? "team2" : null;
+
+    if (!teamSide) continue;
+    if (matchup.results.length > 1) diffMode = "game";
+
+    const opponentSide = teamSide === "team1" ? "team2" : "team1";
+    const teamScore = matchup.score?.[teamSide] ?? 0;
+    const opponentScore = matchup.score?.[opponentSide] ?? 0;
+    const teamPokemonFainted = calculateMatchupFainted(matchup, teamSide);
+    const opponentPokemonFainted = calculateMatchupFainted(
+      matchup,
+      opponentSide,
+    );
+    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
+
+    if (matchup.winner === teamSide) {
+      teamStanding.wins += 1;
+    } else if (matchup.winner === opponentSide) {
+      teamStanding.losses += 1;
+    } else if (matchup.score && teamScore === opponentScore) {
+      ties += 1;
+    } else {
+      unplayed += 1;
+    }
+
+    applyMatchupDiffs(
+      teamStanding,
+      stageIndex,
+      teamScore - opponentScore,
+      opponentPokemonFainted - teamPokemonFainted,
+      diffMode,
+    );
+  }
+
+  return {
+    teamId,
+    wins: teamStanding.wins,
+    losses: teamStanding.losses,
+    ties,
+    played: teamStanding.wins + teamStanding.losses + ties,
+    unplayed,
+    streak: calculateStreak(teamStanding.results),
+    gameDiff: teamStanding.gameDiff,
+    pokemonDiff: teamStanding.pokemonDiff,
+    results: teamStanding.results,
     diffMode,
   };
 }

@@ -39,7 +39,7 @@ const draftSchema = new Schema<DraftData>(
     },
     score: {
       wins: { type: Number, required: true, default: 0 },
-      loses: { type: Number, required: true, default: 0 },
+      losses: { type: Number, required: true, default: 0 },
       diff: { type: String, required: true, default: "0" },
     },
   },
@@ -55,7 +55,7 @@ export type DraftData = {
   doc?: string;
   score: {
     wins: number;
-    loses: number;
+    losses: number;
     diff: string;
   };
   owner: string;

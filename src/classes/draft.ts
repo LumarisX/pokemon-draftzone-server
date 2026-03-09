@@ -13,7 +13,7 @@ export class Draft {
     public leagueName: string,
     public teamName: string,
     public tournamentId: string,
-    public score: { wins: number; loses: number; diff: string },
+    public score: { wins: number; losses: number; diff: string },
     public owner: string,
     public team: DraftSpecie[],
     public doc?: string | undefined,
@@ -43,7 +43,7 @@ export class Draft {
       formData.leagueName.toLowerCase().trim().replace(/\W/gi, ""),
       {
         wins: 0,
-        loses: 0,
+        losses: 0,
         diff: "0",
       },
       user_id,
@@ -109,7 +109,7 @@ export class Draft {
 
   async getScore() {
     const matchups = await this.getMatchups();
-    const score = { wins: 0, loses: 0, diff: "+0" };
+    const score = { wins: 0, losses: 0, diff: "+0" };
     let numDiff = 0;
     const gameDiff = matchups.some((matchup) => matchup.matches.length > 1);
     if (gameDiff) {
@@ -126,7 +126,7 @@ export class Draft {
         if (matchupWins > matchupLoses) {
           score.wins++;
         } else if (matchupLoses > matchupWins) {
-          score.loses++;
+          score.losses++;
         }
         numDiff += matchupWins - matchupLoses;
       });
@@ -138,7 +138,7 @@ export class Draft {
           } else if (
             matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
           ) {
-            score.loses++;
+            score.losses++;
           }
           numDiff +=
             matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;

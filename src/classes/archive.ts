@@ -38,7 +38,7 @@ export class Archive {
       team: this.draft.team.map((pokemon) => ({ id: pokemon.id })),
       matchups: [],
       stats: new Map<string, StatData>(),
-      score: { wins: 0, loses: 0, diff: "0" },
+      score: { wins: 0, losses: 0, diff: "0" },
     };
     const matchups = await getMatchupsByDraftId(this.draft._id);
     data.matchups = matchups.map((matchup) => ({
@@ -197,6 +197,6 @@ export class Archive {
       diff +=
         matchup.stats.aTeam.differential - matchup.stats.bTeam.differential;
     }
-    return { wins, loses: losses, diff: diff.toString() };
+    return { wins, losses: losses, diff: diff.toString() };
   }
 }

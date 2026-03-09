@@ -1354,6 +1354,7 @@ export const LeagueRoute = createRoute()((r) => {
                 const draft = getTeamDraft(ctx.team, ctx.division, tournament);
 
                 const teamMatchups = await LeagueMatchupModel.find({
+                  division: ctx.division._id,
                   $or: [
                     { "side1.team": ctx.team._id },
                     { "side2.team": ctx.team._id },

@@ -95,7 +95,7 @@ export async function deleteDraft(
 
 export async function getScore(draftId: Types.ObjectId) {
   let matchups = await getMatchupsByDraftId(draftId);
-  let score = { wins: 0, loses: 0, diff: "+0" };
+  let score = { wins: 0, losses: 0, diff: "+0" };
   let numDiff = 0;
   let gameDiff = matchups.some((matchup) => matchup.matches.length > 1);
   if (gameDiff) {
@@ -112,7 +112,7 @@ export async function getScore(draftId: Types.ObjectId) {
       if (matchupWins > matchupLoses) {
         score.wins++;
       } else if (matchupLoses > matchupWins) {
-        score.loses++;
+        score.losses++;
       }
       numDiff += matchupWins - matchupLoses;
     });
@@ -124,7 +124,7 @@ export async function getScore(draftId: Types.ObjectId) {
         } else if (
           matchup.matches[0].aTeam.score < matchup.matches[0].bTeam.score
         ) {
-          score.loses++;
+          score.losses++;
         }
         numDiff +=
           matchup.matches[0].aTeam.score - matchup.matches[0].bTeam.score;

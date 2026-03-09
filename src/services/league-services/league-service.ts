@@ -12,10 +12,17 @@ import LeagueModel, {
 } from "../../models/league/league.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
+  PopulatedLeagueTeamDocument,
 } from "../../models/league/team.model";
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
+import { calculateTeamScore } from "./standings-service";
+import {
+  LeagueMatchupDocument,
+  LeagueMatchupModel,
+} from "../../models/league/matchup.model";
+import { PopulatedLeagueMatchup } from "../../classes/matchup";
 
 export function getRoles(sub: string | undefined) {
   if (!sub) return [];
@@ -79,6 +86,27 @@ export async function getTournamentsByOwner(auth0Id: string) {
         (c) => c._id.toString() === userTeam.coach.toString(),
       );
 
+      const matchups = await LeagueMatchupModel.find({
+        division: division._id,
+        $or: [{ "side1.team": userTeam._id }, { "side2.team": userTeam._id }],
+      }).populate<
+        LeagueMatchupDocument & {
+          side1: { team: PopulatedLeagueTeamDocument };
+          side2: { team: PopulatedLeagueTeamDocument };
+        }
+      >([
+        { path: "side1.team", populate: "coach" },
+        { path: "side2.team", populate: "coach" },
+      ]);
+
+      const teamScore = await calculateTeamScore(
+        matchups,
+        division.stages,
+        userTeam,
+      );
+
+      console.log(teamScore);
+
       if (coach && !tournamentMap.has(division.tournament._id.toString())) {
         tournamentMap.set(division.tournament._id.toString(), {
           name: coach.name,
@@ -97,9 +125,12 @@ export async function getTournamentsByOwner(auth0Id: string) {
             id: e.pokemon.id,
           })),
           score: {
-            wins: 0,
-            loses: 0,
-            diff: 0,
+            wins: teamScore.wins,
+            losses: teamScore.losses,
+            diff:
+              teamScore.diffMode === "game"
+                ? teamScore.gameDiff
+                : teamScore.pokemonDiff,
           },
         });
       }
