@@ -1,213 +1,292 @@
-// import path from "path";
-// import { formatUrl, Replay, validateUrl } from "./replay.service";
+import fs from "fs";
+import path from "path";
 
-// type FixtureExpectation = {
-//   fileName: string;
-//   expected: {
-//     gametype: string;
-//     genNum: number;
-//     turns: number;
-//     gameTime: number;
-//     events: number;
-//     players: {
-//       username: string | undefined;
-//       win: boolean;
-//       kills: number;
-//       deaths: number;
-//       switches: number;
-//       damageDealt?: number;
-//       damageTaken?: number;
-//       featuredPokemon?: {
-//         id: string;
-//         status: "fainted" | "brought" | "used";
-//       };
-//     }[];
-//   };
-// };
+import { formatUrl, Replay, validateUrl } from "./replay.service";
 
-// const fixtures: FixtureExpectation[] = [
-//   {
-//     fileName: "gen9draft-2547354745.log",
-//     expected: {
-//       gametype: "Singles",
-//       genNum: 9,
-//       turns: 27,
-//       gameTime: 516,
-//       events: 11,
-//       players: [
-//         {
-//           username: "superspiderpigg",
-//           win: false,
-//           kills: 4,
-//           deaths: 6,
-//           switches: 10,
-//           damageTaken: 607,
-//           featuredPokemon: {
-//             id: "ogerponhearthflame",
-//             status: "fainted",
-//           },
-//         },
-//         {
-//           username: "redboy128",
-//           win: true,
-//           kills: 6,
-//           deaths: 4,
-//           switches: 10,
-//           damageDealt: 607,
-//           featuredPokemon: {
-//             id: "gliscor",
-//             status: "used",
-//           },
-//         },
-//       ],
-//     },
-//   },
-//   {
-//     fileName: "gen94v4doublesdraft-2548605967.log",
-//     expected: {
-//       gametype: "Doubles",
-//       genNum: 9,
-//       turns: 11,
-//       gameTime: 373,
-//       events: 7,
-//       players: [
-//         {
-//           username: "Dddddsf",
-//           win: true,
-//           kills: 3,
-//           deaths: 2,
-//           switches: 4,
-//           damageDealt: 366,
-//           damageTaken: 261,
-//           featuredPokemon: {
-//             id: "rotomwash",
-//             status: "used",
-//           },
-//         },
-//         {
-//           username: "McHoss",
-//           win: false,
-//           kills: 2,
-//           deaths: 4,
-//           switches: 7,
-//           damageDealt: 289,
-//           damageTaken: 418,
-//           featuredPokemon: {
-//             id: "charizard",
-//             status: "fainted",
-//           },
-//         },
-//       ],
-//     },
-//   },
-// ];
+type Analysis = ReturnType<Replay.Analysis["toClient"]>["analysis"];
 
-// describe("Replay Service", () => {
-//   describe.each(fixtures)("$fileName", ({ fileName, expected }) => {
-//     let analysis: {
-//       gametype: string;
-//       genNum: number;
-//       turns: number;
-//       gameTime: number;
-//       player: Replay.Analysis[];
-//       events: { player: number; turn: number; message: string }[];
-//     };
+type PlayerSummaryExpectation = {
+  username: string;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  switches: number;
+  teamSize: number;
+};
 
-//     beforeAll(async () => {
-//       const replayPath = path.join(__dirname, "test-replays", fileName);
-//       const replay = await Replay.Analysis.fromReplayFile(replayPath);
-//       analysis = replay.toClient().analysis;
-//     });
+type ReplayFixtureCase = {
+  fileName: string;
+  expected: {
+    gametype: "singles" | "doubles";
+    genNum: number;
+    turns: number;
+    eventCount: number;
+    winner: string;
+    players: PlayerSummaryExpectation[];
+    eventIncludes: string[];
+  };
+};
 
-//     test("matches top-level metadata", () => {
-//       expect(analysis.gametype).toBe(expected.gametype);
-//       expect(analysis.genNum).toBe(expected.genNum);
-//       expect(analysis.turns).toBe(expected.turns);
-//       expect(analysis.gameTime).toBe(expected.gameTime);
-//       expect(analysis.events).toHaveLength(expected.events);
-//       expect(analysis.stats).toHaveLength(2);
-//     });
+const FIXTURE_DIR = path.join(__dirname, "test-replays");
 
-//     test("matches expected player summary", () => {
-//       expected.players.forEach((playerExpected, index) => {
-//         const actual = analysis.stats[index];
-//         expect(actual.username).toBe(playerExpected.username);
-//         expect(actual.win).toBe(playerExpected.win);
-//         expect(actual.total.kills).toBe(playerExpected.kills);
-//         expect(actual.total.deaths).toBe(playerExpected.deaths);
-//         expect(actual.stats.switches).toBe(playerExpected.switches);
+const replayCases: ReplayFixtureCase[] = [
+  {
+    fileName: "gen8draft-2445027050.log",
+    expected: {
+      gametype: "singles",
+      genNum: 8,
+      turns: 73,
+      eventCount: 12,
+      winner: "notagreatrainer",
+      players: [
+        {
+          username: "Drew0723",
+          win: false,
+          kills: 5,
+          deaths: 6,
+          switches: 25,
+          teamSize: 6,
+        },
+        {
+          username: "notagreatrainer",
+          win: true,
+          kills: 5,
+          deaths: 5,
+          switches: 22,
+          teamSize: 6,
+        },
+      ],
+      eventIncludes: ["Rising Voltage", "wins."],
+    },
+  },
+  {
+    fileName: "gen94v4doublesdraft-2547091723.log",
+    expected: {
+      gametype: "doubles",
+      genNum: 9,
+      turns: 8,
+      eventCount: 8,
+      winner: "Ogerpons Swamp10",
+      players: [
+        {
+          username: "Ogerpons Swamp10",
+          win: true,
+          kills: 4,
+          deaths: 3,
+          switches: 5,
+          teamSize: 6,
+        },
+        {
+          username: "hariyamamomma",
+          win: false,
+          kills: 3,
+          deaths: 4,
+          switches: 4,
+          teamSize: 6,
+        },
+      ],
+      eventIncludes: ["Tera Blast", "wins."],
+    },
+  },
+  {
+    fileName: "gen94v4doublesdraft-2548605967.log",
+    expected: {
+      gametype: "doubles",
+      genNum: 9,
+      turns: 11,
+      eventCount: 7,
+      winner: "Dddddsf",
+      players: [
+        {
+          username: "Dddddsf",
+          win: true,
+          kills: 3,
+          deaths: 2,
+          switches: 4,
+          teamSize: 6,
+        },
+        {
+          username: "McHoss",
+          win: false,
+          kills: 2,
+          deaths: 4,
+          switches: 7,
+          teamSize: 6,
+        },
+      ],
+      eventIncludes: ["Muddy Water", "wins."],
+    },
+  },
+  {
+    fileName: "gen9draft-2547354745.log",
+    expected: {
+      gametype: "singles",
+      genNum: 9,
+      turns: 27,
+      eventCount: 11,
+      winner: "redboy128",
+      players: [
+        {
+          username: "superspiderpigg",
+          win: false,
+          kills: 4,
+          deaths: 6,
+          switches: 10,
+          teamSize: 6,
+        },
+        {
+          username: "redboy128",
+          win: true,
+          kills: 6,
+          deaths: 4,
+          switches: 10,
+          teamSize: 6,
+        },
+      ],
+      eventIncludes: ["Tera Starstorm", "wins."],
+    },
+  },
+  {
+    fileName: "gen9draft-2549171673.log",
+    expected: {
+      gametype: "singles",
+      genNum: 9,
+      turns: 22,
+      eventCount: 11,
+      winner: "LigerLordX",
+      players: [
+        {
+          username: "rootsgaming",
+          win: false,
+          kills: 4,
+          deaths: 6,
+          switches: 10,
+          teamSize: 6,
+        },
+        {
+          username: "LigerLordX",
+          win: true,
+          kills: 6,
+          deaths: 4,
+          switches: 12,
+          teamSize: 6,
+        },
+      ],
+      eventIncludes: ["Poison Jab", "wins."],
+    },
+  },
+];
 
-//         if (playerExpected.damageDealt !== undefined) {
-//           expect(actual.total.damageDealt).toBeCloseTo(
-//             playerExpected.damageDealt,
-//             0,
-//           );
-//         }
-//         if (playerExpected.damageTaken !== undefined) {
-//           expect(actual.total.damageTaken).toBeCloseTo(
-//             playerExpected.damageTaken,
-//             0,
-//           );
-//         }
+function getReplayFixtureFiles(): string[] {
+  return fs
+    .readdirSync(FIXTURE_DIR)
+    .filter((file) => file.endsWith(".log"))
+    .sort();
+}
 
-//         if (playerExpected.featuredPokemon) {
-//           const featuredPokemon = actual.team.find(
-//             (pokemon) =>
-//               pokemon.formes[0]?.id === playerExpected.featuredPokemon?.id,
-//           );
-//           expect(featuredPokemon).toBeDefined();
-//           expect(featuredPokemon?.status).toBe(
-//             playerExpected.featuredPokemon.status,
-//           );
-//         }
-//       });
-//     });
+function normalizeReplayCaseFileNames(): string[] {
+  return replayCases.map((fixture) => fixture.fileName).sort();
+}
 
-//     test("team entries include at least one identified forme", () => {
-//       analysis.stats.forEach((player) => {
-//         expect(player.team.length).toBeGreaterThan(0);
-//         player.team.forEach((pokemon) => {
-//           expect(pokemon.formes.length).toBeGreaterThan(0);
-//           expect(pokemon.formes[0]).toBeDefined();
-//           expect(pokemon.formes[0].id).toBeTruthy();
-//         });
-//       });
-//     });
-//   });
-// });
+describe("Replay service fixtures", () => {
+  test("fixture definitions cover every replay file", () => {
+    expect(normalizeReplayCaseFileNames()).toEqual(getReplayFixtureFiles());
+  });
 
-// describe("Validate URL", () => {
-//   test("valid https URL", () => {
-//     expect(
-//       validateUrl("https://replay.pokemonshowdown.com/gen9customgame-123456"),
-//     ).toBe(true);
-//   });
+  describe.each(replayCases)("$fileName", ({ fileName, expected }) => {
+    let analysis: Analysis;
 
-//   test("valid short URL", () => {
-//     expect(
-//       validateUrl("replay.pokemonshowdown.com/gen9customgame-123456"),
-//     ).toBe(true);
-//   });
+    beforeAll(async () => {
+      const replayPath = path.join(FIXTURE_DIR, fileName);
+      const replay = await Replay.Analysis.fromReplayFile(replayPath);
+      analysis = replay.toClient().analysis;
+    });
 
-//   test("room URL is invalid", () => {
-//     expect(
-//       validateUrl(
-//         "https://play.pokemonshowdown.com/battle-gen9randombattle-123456",
-//       ),
-//     ).toBe(false);
-//   });
-// });
+    test("matches fixture summary", () => {
+      expect(analysis.gametype).toBe(expected.gametype);
+      expect(analysis.genNum).toBe(expected.genNum);
+      expect(analysis.turns).toBe(expected.turns);
+      expect(analysis.events).toHaveLength(expected.eventCount);
 
-// describe("Format URL", () => {
-//   test("formats short URL", () => {
-//     expect(formatUrl("replay.pokemonshowdown.com/gen9customgame-123456")).toBe(
-//       "https://replay.pokemonshowdown.com/gen9customgame-123456",
-//     );
-//   });
+      const winner = analysis.players.find((player) => player.win);
+      expect(winner?.username).toBe(expected.winner);
 
-//   test("returns full URL unchanged", () => {
-//     expect(
-//       formatUrl("https://replay.pokemonshowdown.com/gen9customgame-123456"),
-//     ).toBe("https://replay.pokemonshowdown.com/gen9customgame-123456");
-//   });
-// });
+      expected.players.forEach((expectedPlayer, playerIndex) => {
+        const actualPlayer = analysis.players[playerIndex];
+        expect(actualPlayer.username).toBe(expectedPlayer.username);
+        expect(actualPlayer.win).toBe(expectedPlayer.win);
+        expect(actualPlayer.total.kills).toBe(expectedPlayer.kills);
+        expect(actualPlayer.total.deaths).toBe(expectedPlayer.deaths);
+        expect(actualPlayer.stats.switches).toBe(expectedPlayer.switches);
+        expect(actualPlayer.team).toHaveLength(expectedPlayer.teamSize);
+      });
+    });
+
+    test("satisfies common replay invariants", () => {
+      expect(analysis.players).toHaveLength(2);
+      expect(analysis.players.filter((player) => player.win)).toHaveLength(1);
+
+      analysis.players.forEach((player) => {
+        expect(player.username).toBeTruthy();
+        expect(player.team.length).toBeGreaterThan(0);
+
+        player.team.forEach((pokemon) => {
+          expect(pokemon.id).toBeTruthy();
+          expect(pokemon.name).toBeTruthy();
+          expect(pokemon.status).toMatch(/^(brought|survived|fainted)$/);
+        });
+      });
+
+      analysis.events.forEach((event) => {
+        expect(event.turn).toBeGreaterThanOrEqual(0);
+        expect(event.turn).toBeLessThanOrEqual(analysis.turns);
+        expect(event.message).toBeTruthy();
+      });
+    });
+
+    test("contains expected edge-case signals", () => {
+      const eventText = analysis.events
+        .map((event) => event.message)
+        .join("\n");
+      expected.eventIncludes.forEach((messageFragment) => {
+        expect(eventText).toContain(messageFragment);
+      });
+    });
+  });
+});
+
+describe("validateUrl", () => {
+  test("accepts full replay URL", () => {
+    expect(
+      validateUrl("https://replay.pokemonshowdown.com/gen9customgame-123456"),
+    ).toBe(true);
+  });
+
+  test("accepts replay host without protocol", () => {
+    expect(
+      validateUrl("replay.pokemonshowdown.com/gen9customgame-123456"),
+    ).toBe(true);
+  });
+
+  test("rejects non-replay URL", () => {
+    expect(
+      validateUrl("https://play.pokemonshowdown.com/battle-gen9randombattle-1"),
+    ).toBe(false);
+  });
+});
+
+describe("formatUrl", () => {
+  test("adds protocol when missing", () => {
+    expect(formatUrl("replay.pokemonshowdown.com/gen9customgame-123456")).toBe(
+      "https://replay.pokemonshowdown.com/gen9customgame-123456",
+    );
+  });
+
+  test("strips query and hash", () => {
+    expect(
+      formatUrl(
+        "https://replay.pokemonshowdown.com/gen9customgame-123456?foo=1#bar",
+      ),
+    ).toBe("https://replay.pokemonshowdown.com/gen9customgame-123456");
+  });
+});

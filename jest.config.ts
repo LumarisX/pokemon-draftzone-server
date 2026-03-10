@@ -180,7 +180,6 @@ const config: Config = {
       "ts-jest",
       {
         tsconfig: "tsconfig.json",
-        babelConfig: true,
       },
     ],
   },

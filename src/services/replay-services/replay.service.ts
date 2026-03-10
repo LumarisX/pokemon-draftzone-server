@@ -1608,7 +1608,7 @@ export namespace Replay {
         kills: this.kills,
         status: this.fainted
           ? "fainted"
-          : this.brought || this.player.team.length >= this.player.teamSize
+          : this.brought || this.player.team.length <= this.player.teamSize
             ? "survived"
             : "brought",
         moveset: [...this.moveset].map((move) => move.name),
