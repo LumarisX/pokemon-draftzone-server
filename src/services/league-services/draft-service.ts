@@ -21,6 +21,7 @@ import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName, getSpecies } from "../data-services/pokedex.service";
 import { getPokemonTier } from "./tier-list-service";
+import { getRosterByStage } from "./league-service";
 
 type DeferredSideEffect = () => void | Promise<void>;
 const sessionSideEffects = new WeakMap<ClientSession, DeferredSideEffect[]>();
@@ -1402,7 +1403,7 @@ export async function makeTrade(
 
   if (team1) {
     const draftedPokemonIds = new Set(
-      team1.draft.map((d) => getPokemonIdFromDraft(d)),
+      getRosterByStage(team1, division).map((pokemon) => pokemon.id),
     );
     for (const pokemon of side1.pokemon) {
       if (!draftedPokemonIds.has(pokemon.id)) {
@@ -1416,7 +1417,7 @@ export async function makeTrade(
 
   if (team2) {
     const draftedPokemonIds = new Set(
-      team2.draft.map((d) => getPokemonIdFromDraft(d)),
+      getRosterByStage(team2, division).map((pokemon) => pokemon.id),
     );
     for (const pokemon of side2.pokemon) {
       if (!draftedPokemonIds.has(pokemon.id)) {
