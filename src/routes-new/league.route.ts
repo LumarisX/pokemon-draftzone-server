@@ -1100,121 +1100,6 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      r.path("pokemon-list")((r) => {
-        r.get.validate({
-          query: (data) =>
-            z
-              .object({
-                division: z.string().min(1),
-              })
-              .parse(data),
-        })(async (ctx) => {
-          const { division: divisionKey } = ctx.validatedQuery;
-          await ctx.tournament.populate("tierList");
-          const rawTierList = ctx.tournament.tierList;
-          const tierList = await getTierList(ctx.tournament);
-
-          const drafted = (
-            await getDraftedByTeam(ctx.tournament, divisionKey)
-          ).map((e) => ({
-            team: e.team,
-            pokemon: e.pokemon.map((p) => {
-              const pokemonTier = rawTierList.pokemon.get(p.id);
-              const tier = rawTierList.tiers.find(
-                (t) => t.name === pokemonTier?.tier,
-              );
-              return {
-                id: p.id,
-                name: p.name,
-                addons: pokemonTier?.addons,
-                cost: tier?.cost,
-                setAddons: p.addons,
-              };
-            }),
-          }));
-
-          const undrafted = {
-            pokemon: tierList
-              .filter((tier) => tier.cost)
-              .flatMap((tier) =>
-                tier.pokemon
-                  .filter(
-                    (pokemon) =>
-                      !drafted.some((d) =>
-                        d.pokemon.some((p) => p.id === pokemon.id),
-                      ),
-                  )
-                  .map((p) => ({
-                    id: p.id,
-                    name: p.name,
-                    cost: tier.cost,
-                    addons: p.addons,
-                  })),
-              ),
-          };
-          const groups: {
-            pokemon: {
-              id: string;
-              name: string;
-              cost?: number;
-              addons?: TierListPokemonAddon[];
-              setAddons?: string[];
-            }[];
-            team?: {
-              name: string;
-              coachName: string;
-              id: string;
-            };
-          }[] = [undrafted, ...drafted];
-          return { groups };
-        });
-        r.path("edit").auth()((r) => {
-          r.get.validate({
-            query: (data) =>
-              z
-                .object({
-                  division: z
-                    .union([z.string().min(1), z.array(z.string().min(1))])
-                    .optional(),
-                })
-                .parse(data),
-          })(async (ctx) => {
-            const { division } = ctx.validatedQuery;
-            const tierList = await getTierList(ctx.tournament, true);
-            const divisions = await getDrafted(ctx.tournament, division);
-            return { tierList, divisions };
-          });
-          r.post.validate({
-            body: (data) =>
-              z
-                .object({
-                  tiers: z.array(
-                    z.object({
-                      name: z.string(),
-                      cost: z.number(),
-                      pokemon: z.array(
-                        z.object({
-                          id: z.string(),
-                          name: z.string(),
-                        }),
-                      ),
-                    }),
-                  ),
-                })
-                .parse(data),
-          })(async (ctx) => {
-            const { tiers } = ctx.validatedBody;
-            await updateTierList(ctx.tournament, tiers);
-            logger.info(
-              `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
-            );
-            return {
-              success: true,
-              message: "Tier list updated successfully",
-            };
-          });
-        });
-      });
       r.path("tier-list")((r) => {
         r.get.validate({
           query: (data) =>
@@ -2229,6 +2114,134 @@ export const LeagueRoute = createRoute()((r) => {
                 return {
                   message: "Trade processed successfully.",
                 };
+              });
+            });
+            r.path("pokemon-list")((r) => {
+              r.get(async (ctx) => {
+                await ctx.tournament.populate("tierList");
+                const rawTierList = ctx.tournament.tierList;
+                const tierList = await getTierList(ctx.tournament);
+                const division = await ctx.division.populate<{
+                  teams: (LeagueTeamDocument & {
+                    coach: LeagueCoachDocument;
+                  })[];
+                }>({
+                  path: "teams",
+                  populate: {
+                    path: "coach",
+                  },
+                });
+
+                const drafted = division.teams
+                  .map((team) => ({
+                    team: {
+                      name: team.coach.teamName,
+                      coachName: team.coach.name,
+                      id: team._id.toString(),
+                    },
+                    roster: getRosterByStage(
+                      team,
+                      ctx.division,
+                      ctx.division.currentStage,
+                    ).map((pokemon) => {
+                      const pokemonTier = rawTierList.pokemon.get(pokemon.id);
+                      const tier = rawTierList.tiers.find(
+                        (t) => t.name === pokemonTier?.tier,
+                      );
+                      return {
+                        id: pokemon.id,
+                        name: getName(pokemon.id),
+                        setAddons: pokemon.addons,
+                        addons: pokemonTier?.addons,
+                        cost: tier?.cost,
+                      };
+                    }),
+                  }))
+                  .filter((team) => team.roster.length > 0);
+
+                const undrafted = {
+                  roster: tierList
+                    .filter((tier) => tier.cost)
+                    .flatMap((tier) =>
+                      tier.pokemon
+                        .filter(
+                          (pokemon) =>
+                            !drafted.some((team) =>
+                              team.roster.some((p) => p.id === pokemon.id),
+                            ),
+                        )
+                        .map((p) => ({
+                          id: p.id,
+                          name: p.name,
+                          cost: tier.cost,
+                          addons: p.addons,
+                        })),
+                    ),
+                };
+                const groups: {
+                  roster: {
+                    id: string;
+                    name: string;
+                    cost?: number;
+                    addons?: TierListPokemonAddon[];
+                    setAddons?: string[];
+                  }[];
+                  team?: {
+                    name: string;
+                    coachName: string;
+                    id: string;
+                  };
+                }[] = [undrafted, ...drafted];
+                return { groups };
+              });
+              r.path("edit").auth()((r) => {
+                r.get.validate({
+                  query: (data) =>
+                    z
+                      .object({
+                        division: z
+                          .union([
+                            z.string().min(1),
+                            z.array(z.string().min(1)),
+                          ])
+                          .optional(),
+                      })
+                      .parse(data),
+                })(async (ctx) => {
+                  const { division } = ctx.validatedQuery;
+                  const tierList = await getTierList(ctx.tournament, true);
+                  const divisions = await getDrafted(ctx.tournament, division);
+                  return { tierList, divisions };
+                });
+                r.post.validate({
+                  body: (data) =>
+                    z
+                      .object({
+                        tiers: z.array(
+                          z.object({
+                            name: z.string(),
+                            cost: z.number(),
+                            pokemon: z.array(
+                              z.object({
+                                id: z.string(),
+                                name: z.string(),
+                              }),
+                            ),
+                          }),
+                        ),
+                      })
+                      .parse(data),
+                })(async (ctx) => {
+                  const { tiers } = ctx.validatedBody;
+                  await updateTierList(ctx.tournament, tiers);
+                  logger.info(
+                    `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
+                  );
+                  return {
+                    success: true,
+                    message: "Tier list updated successfully",
+                  };
+                });
               });
             });
           });
