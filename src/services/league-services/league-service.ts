@@ -119,8 +119,8 @@ export async function getTournamentsByOwner(auth0Id: string) {
           teamId: userTeam._id.toString(),
           format: division.tournament.format,
           ruleset: division.tournament.ruleset,
-          draft: userTeam.draft.map((e) => ({
-            id: e.pokemon.id,
+          draft: getRosterByStage(userTeam, division).map((pokemon) => ({
+            id: pokemon.id,
           })),
           score: {
             wins: teamScore.wins,
