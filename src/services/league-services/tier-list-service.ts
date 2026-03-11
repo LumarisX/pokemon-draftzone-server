@@ -18,6 +18,7 @@ import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
+import { getRosterByStage } from "./league-service";
 
 /**
  * @deprecated getPokemonTier is deprecated and will be removed in a future release.
@@ -175,8 +176,12 @@ export async function getDrafted(
     (acc, division) => {
       acc[division.name] = (division.teams as LeagueTeamDocument[]).reduce(
         (teamAcc, team) => {
-          const teamDrafts = team.draft.map((draft) => ({
-            pokemonId: draft.pokemon.id,
+          const teamDrafts = getRosterByStage(
+            team,
+            division,
+            division.stages.length,
+          ).map((pokemon) => ({
+            pokemonId: pokemon.id,
           }));
           return [...teamAcc, ...teamDrafts];
         },
