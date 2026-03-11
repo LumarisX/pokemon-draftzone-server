@@ -6,7 +6,7 @@ import {
   TextChannel,
 } from "discord.js";
 import { isValidObjectId, Types } from "mongoose";
-import { z } from "zod";
+import { record, z } from "zod";
 import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
 import { DraftSpecie } from "../classes/pokemon";
@@ -68,6 +68,7 @@ import {
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
+  calculateTeamScore,
 } from "../services/league-services/standings-service";
 import {
   getDrafted,
@@ -83,6 +84,7 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
 import { PopulatedLeagueMatchup } from "../classes/matchup";
+import { SpeciesName } from "@pkmn/data";
 
 const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
@@ -1199,7 +1201,35 @@ export const LeagueRoute = createRoute()((r) => {
                 },
               ]);
 
+              const allMatchups = await LeagueMatchupModel.find({
+                division: ctx.division._id,
+              }).populate<PopulatedLeagueMatchup>([
+                { path: "side1.team", populate: "coach" },
+                { path: "side2.team", populate: "coach" },
+              ]);
+
+              const pokemonStandings =
+                await calculateDivisionPokemonStandings(allMatchups);
+
+              const { coachStandings, diffMode } =
+                await calculateDivisionCoachStandings(
+                  allMatchups,
+                  ctx.division.stages,
+                  division.teams,
+                );
+
               const teams = getDraftOrder(ctx.division).map((team) => {
+                const standings = coachStandings.find(
+                  (c) => c.id === team._id.toString(),
+                );
+                const record = standings
+                  ? {
+                      wins: standings.wins,
+                      losses: standings.losses,
+                      pokemonDiff: standings.pokemonDiff,
+                      gameDiff: standings.gameDiff,
+                    }
+                  : undefined;
                 return {
                   id: team._id.toString(),
                   coach: team.coach.name,
@@ -1214,10 +1244,14 @@ export const LeagueRoute = createRoute()((r) => {
                       pokemon.id,
                       pokemon.addons,
                     ),
+                    record: pokemonStandings.find((p) => p.id === pokemon.id)
+                      ?.record,
                   })),
                   name: team.coach.teamName,
                   isCoach: team.coach.auth0Id === ctx.sub,
                   timezone: team.coach.timezone,
+                  record,
+                  diffMode,
                 };
               });
 
@@ -1240,7 +1274,20 @@ export const LeagueRoute = createRoute()((r) => {
                   tierList: LeagueTierListDocument;
                 }>("tierList");
 
-                const draft = getTeamDraft(ctx.team, ctx.division, tournament);
+                const draft: {
+                  id: string;
+                  name: "" | SpeciesName;
+                  cost: number | undefined;
+                  capt: {
+                    tera: true | undefined;
+                  };
+                  record?: {
+                    kills: number;
+                    deaths: number;
+                    brought: number;
+                    diff: number;
+                  };
+                }[] = getTeamDraft(ctx.team, ctx.division, tournament);
 
                 const teamMatchups = await LeagueMatchupModel.find({
                   division: ctx.division._id,
@@ -1259,7 +1306,18 @@ export const LeagueRoute = createRoute()((r) => {
                     ctx.team._id.toString(),
                   );
 
+                pokemonStandings.forEach((pokemon) => {
+                  const draftPokemon = draft.find((p) => p.id === pokemon.id);
+                  if (draftPokemon) draftPokemon.record = pokemon.record;
+                });
+
                 const coach = ctx.team.coach;
+
+                const teamRecord = await calculateTeamScore(
+                  teamMatchups,
+                  ctx.division.stages,
+                  ctx.team,
+                );
 
                 return {
                   name: coach.teamName,
@@ -1267,8 +1325,13 @@ export const LeagueRoute = createRoute()((r) => {
                   coach: coach.name,
                   logo: coach.logo,
                   draft,
-                  pokemonStandings,
                   matchups: teamMatchups,
+                  record: {
+                    wins: teamRecord.wins,
+                    losses: teamRecord.losses,
+                    pokemonDiff: teamRecord.pokemonDiff,
+                    gameDiff: teamRecord.gameDiff,
+                  },
                 };
               });
             });

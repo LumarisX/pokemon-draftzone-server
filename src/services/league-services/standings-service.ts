@@ -337,6 +337,7 @@ export async function calculateDivisionCoachStandings(
           pokemonDiff: team.pokemonDiff,
           logo: team.logo,
           diffMode,
+          id: team.teamId,
         };
       })
       .sort((a, b) => {
