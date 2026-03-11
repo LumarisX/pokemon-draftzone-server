@@ -1,3 +1,4 @@
+import { SpeciesName } from "@pkmn/data";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -6,9 +7,10 @@ import {
   TextChannel,
 } from "discord.js";
 import { isValidObjectId, Types } from "mongoose";
-import { record, z } from "zod";
+import { z } from "zod";
 import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
+import { PopulatedLeagueMatchup } from "../classes/matchup";
 import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import {
@@ -27,6 +29,7 @@ import LeagueCoachModel, {
   signUpSchema,
 } from "../models/league/coach.model";
 import LeagueDivisionModel, {
+  DraftTrade,
   LeagueDivisionDocument,
 } from "../models/league/division.model";
 import {
@@ -72,7 +75,6 @@ import {
 } from "../services/league-services/standings-service";
 import {
   getDrafted,
-  getDraftedByTeam,
   getPokemonTier,
   getTierList,
   updateTierList,
@@ -83,8 +85,6 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
-import { PopulatedLeagueMatchup } from "../classes/matchup";
-import { SpeciesName } from "@pkmn/data";
 
 const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
@@ -2121,6 +2121,128 @@ export const LeagueRoute = createRoute()((r) => {
               });
             });
             r.path("trades")((r) => {
+              r.get(async (ctx) => {
+                const tournament = await ctx.tournament.populate<{
+                  tierList: LeagueTierListDocument;
+                }>("tierList");
+                const division = await ctx.division.populate<{
+                  trades: {
+                    side1: {
+                      team: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                      pokemon: DraftTrade["side1"]["pokemon"];
+                    };
+                    side2: {
+                      team: LeagueTeamDocument & { coach: LeagueCoachDocument };
+                      pokemon: DraftTrade["side2"]["pokemon"];
+                    };
+                    activeStage: number;
+                    timestamp: Date;
+                    status: "PENDING" | "APPROVED" | "REJECTED";
+                  }[];
+                }>([
+                  {
+                    path: "trades.side1.team",
+                    populate: {
+                      path: "coach",
+                    },
+                  },
+                  {
+                    path: "trades.side2.team",
+                    populate: {
+                      path: "coach",
+                    },
+                  },
+                ]);
+                const stages = division.stages.map((stage) => ({
+                  name: stage.name,
+                  trades: [] as {
+                    side1: {
+                      team?: {
+                        id: string;
+                        name: string;
+                        coach: string;
+                        logo?: string;
+                      };
+                      pokemon: {
+                        name: string;
+                        id: string;
+                        cost: number;
+                        tera?: boolean | undefined;
+                      }[];
+                    };
+                    side2: {
+                      team?: {
+                        id: string;
+                        name: string;
+                        coach: string;
+                        logo?: string;
+                      };
+                      pokemon: {
+                        name: string;
+                        id: string;
+                        cost: number;
+                        tera?: boolean | undefined;
+                      }[];
+                    };
+                    activeStage: number;
+                    timestamp: Date;
+                    status: "PENDING" | "APPROVED" | "REJECTED";
+                  }[],
+                }));
+
+                for (const trade of division.trades) {
+                  if (
+                    trade.activeStage < 0 ||
+                    trade.activeStage >= stages.length
+                  )
+                    continue;
+                  stages[trade.activeStage].trades.push({
+                    side1: {
+                      team: trade.side1.team
+                        ? {
+                            id: trade.side1.team._id.toString(),
+                            name: trade.side1.team.coach.teamName,
+                            coach: trade.side1.team.coach.name,
+                            logo: trade.side1.team.coach.logo,
+                          }
+                        : undefined,
+                      pokemon: trade.side1.pokemon.map((p) => {
+                        const cost = tournament.tierList.getPokemonCost(p.id);
+                        return {
+                          id: p.id,
+                          name: getName(p.id),
+                          cost: cost || 0,
+                          tera: p.addons?.includes("Tera Captain") || false,
+                        };
+                      }),
+                    },
+                    side2: {
+                      team: trade.side2.team
+                        ? {
+                            id: trade.side2.team._id.toString(),
+                            name: trade.side2.team.coach.teamName,
+                            coach: trade.side2.team.coach.name,
+                            logo: trade.side2.team.coach.logo,
+                          }
+                        : undefined,
+                      pokemon: trade.side2.pokemon.map((p) => {
+                        const cost = tournament.tierList.getPokemonCost(p.id);
+                        return {
+                          id: p.id,
+                          name: getName(p.id),
+                          cost: cost || 0,
+                          tera: p.addons?.includes("Tera Captain") || false,
+                        };
+                      }),
+                    },
+                    activeStage: trade.activeStage,
+                    timestamp: trade.timestamp,
+                    status: trade.status,
+                  });
+                }
+
+                return { stages };
+              });
               r.post.validate({
                 body: (data) =>
                   z
