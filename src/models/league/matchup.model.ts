@@ -38,6 +38,7 @@ export type MatchResult = {
 export type MatchSide = {
   team: Types.ObjectId;
   notes?: string;
+  forfiet?: boolean;
 };
 
 export type LeagueMatchupData = {
@@ -98,6 +99,7 @@ export const leagueMatchupSideSchema = new Schema<MatchSide>({
     required: true,
   },
   notes: { type: String },
+  forfiet: { type: Boolean },
 });
 
 export const leagueMatchupSchema: Schema<
