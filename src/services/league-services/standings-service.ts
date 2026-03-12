@@ -291,11 +291,19 @@ export async function calculateDivisionCoachStandings(
     const team1StageDiff = team1Data.score - team2Data.score;
     const team2StageDiff = team2Data.score - team1Data.score;
     const team1PokemonDiff = matchup.results.reduce(
-      (sum, result) => sum + (result.team1.score ?? 0),
+      (sum, result) =>
+        sum +
+        (result.winner === "team1" && result.team1.score
+          ? result.team1.score || 0
+          : -1 * (result.team2.score || 0)),
       0,
     );
     const team2PokemonDiff = matchup.results.reduce(
-      (sum, result) => sum + (result.team2.score ?? 0),
+      (sum, result) =>
+        sum +
+        (result.winner === "team2"
+          ? result.team2.score || 0
+          : -1 * (result.team1.score || 0)),
       0,
     );
 
