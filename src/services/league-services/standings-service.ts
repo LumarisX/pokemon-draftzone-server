@@ -271,7 +271,6 @@ export async function calculateDivisionCoachStandings(
     if (matchup.results.length > 1) diffMode = "game";
     const team1Data = {
       score: matchup.score?.team1 ?? 0,
-      pokemonFainted: calculateMatchupFainted(matchup, "team1"),
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team1Doc,
@@ -280,7 +279,6 @@ export async function calculateDivisionCoachStandings(
     };
     const team2Data = {
       score: matchup.score?.team2 ?? 0,
-      pokemonFainted: calculateMatchupFainted(matchup, "team2"),
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team2Doc,
@@ -292,10 +290,14 @@ export async function calculateDivisionCoachStandings(
 
     const team1StageDiff = team1Data.score - team2Data.score;
     const team2StageDiff = team2Data.score - team1Data.score;
-    const team1PokemonDiff =
-      team2Data.pokemonFainted - team1Data.pokemonFainted;
-    const team2PokemonDiff =
-      team1Data.pokemonFainted - team2Data.pokemonFainted;
+    const team1PokemonDiff = matchup.results.reduce(
+      (sum, result) => sum + (result.team1.score ?? 0),
+      0,
+    );
+    const team2PokemonDiff = matchup.results.reduce(
+      (sum, result) => sum + (result.team2.score ?? 0),
+      0,
+    );
 
     const winner = matchup.winner;
 
