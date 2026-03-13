@@ -42,6 +42,7 @@ export type LeagueTournament = {
   discord?: string;
   league: Types.ObjectId | LeagueDocument;
   forfeit: LeagueTournamentForfeit;
+  diffMode: "pokemon" | "game";
 };
 
 export type LeagueTournamentDocument = Document &
@@ -113,6 +114,11 @@ const LeagueTournamentSchema: Schema<
     },
     forfeit: {
       type: LeagueTournamentForfeitSchema,
+      required: true,
+    },
+    diffMode: {
+      type: String,
+      enum: ["pokemon", "game"],
       required: true,
     },
   },

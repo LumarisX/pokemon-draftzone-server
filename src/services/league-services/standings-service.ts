@@ -1,6 +1,9 @@
 import { PopulatedLeagueMatchup } from "../../classes/matchup";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
-import { LeagueStageDocument } from "../../models/league/division.model";
+import {
+  LeagueDivisionDocument,
+  LeagueStageDocument,
+} from "../../models/league/division.model";
 import {
   LeagueMatchupDocument,
   MatchTeam,
@@ -9,6 +12,7 @@ import {
   LeagueTeamDocument,
   PopulatedLeagueTeamDocument,
 } from "../../models/league/team.model";
+import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
 
 export async function calculateDivisionPokemonStandings(
@@ -133,7 +137,10 @@ type DivisionCoachMatchup = LeagueMatchupDocument & {
 
 type CoachStanding = {
   name: string;
-  results: number[];
+  results: ({
+    outcome: "w" | "l" | "t" | "ff";
+    score: number;
+  } | null)[];
   coach: string;
   wins: number;
   losses: number;
@@ -151,7 +158,10 @@ export type TeamScore = {
   streak: number;
   gameDiff: number;
   pokemonDiff: number;
-  results: number[];
+  results: ({
+    outcome: "w" | "l" | "t" | "ff";
+    score: number;
+  } | null)[];
   diffMode: "pokemon" | "game";
 };
 
@@ -164,7 +174,7 @@ function createCoachStanding(
 
   return {
     name: coach.teamName,
-    results: Array(stageCount).fill(0),
+    results: Array(stageCount).fill(null),
     coach: coach.name,
     logo: coach.logo,
     wins: 0,
@@ -219,26 +229,34 @@ function applyMatchupDiffs(
   stageDiff: number,
   pokemonDiff: number,
   diffMode: "game" | "pokemon",
+  outcome: "w" | "l" | "t" | "ff",
 ) {
-  if (stageIndex >= 0) {
-    standing.results[stageIndex] =
-      diffMode === "game" ? stageDiff : pokemonDiff;
+  if (stageIndex >= 0 && stageIndex < standing.results.length) {
+    standing.results[stageIndex] = {
+      outcome,
+      score: diffMode === "game" ? stageDiff : pokemonDiff,
+    };
   }
   standing.gameDiff += stageDiff;
   standing.pokemonDiff += pokemonDiff;
 }
 
-function calculateStreak(results: number[]): number {
+function calculateStreak(
+  results: ({
+    score: number;
+  } | null)[],
+): number {
   let streak = 0;
 
   for (const result of results) {
-    if (result > 0) {
+    if (!result) continue;
+    if (result.score > 0) {
       if (streak >= 0) {
         streak += 1;
       } else {
         streak = 1;
       }
-    } else if (result < 0) {
+    } else if (result.score < 0) {
       if (streak <= 0) {
         streak -= 1;
       } else {
@@ -252,69 +270,87 @@ function calculateStreak(results: number[]): number {
 
 export async function calculateDivisionCoachStandings(
   matchups: PopulatedLeagueMatchup[],
-  stages: LeagueStageDocument[],
-  divisionTeams: LeagueTeamDocument[],
+  division: LeagueDivisionDocument & {
+    teams: LeagueTeamDocument[];
+  },
+  tournament: LeagueTournamentDocument,
 ) {
   const coachStandingsMap = new Map<string, CoachStanding>();
-  let diffMode: "pokemon" | "game" = "pokemon";
-
-  for (const team of divisionTeams) {
-    const teamStanding = createCoachStanding(team, stages.length);
+  const diffMode = tournament.diffMode;
+  for (const team of division.teams) {
+    const teamStanding = createCoachStanding(team, division.stages.length);
     coachStandingsMap.set(teamStanding.teamId, teamStanding);
   }
 
   for (const matchup of matchups) {
     const team1Doc = matchup.side1.team;
     const team2Doc = matchup.side2.team;
-    if (matchup.results.length > 1) diffMode = "game";
     const team1Data = {
       score: matchup.side1.score ?? 0,
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team1Doc,
-        stages.length,
+        division.stages.length,
       ),
     };
+
+    const stageIndex = division.stages.findIndex((s) =>
+      s._id.equals(matchup.stage._id),
+    );
     const team2Data = {
       score: matchup.side2.score ?? 0,
       standing: getOrCreateCoachStanding(
         coachStandingsMap,
         team2Doc,
-        stages.length,
+        division.stages.length,
       ),
     };
 
     if (matchup.forfeit) {
       if (matchup.winner === "side1") {
         team1Data.standing.wins += 1;
-        team1Data.standing.gameDiff +=
-          matchup.division.tournament.forfeit.gameDiff;
-        team1Data.standing.pokemonDiff +=
-          matchup.division.tournament.forfeit.pokemonDiff;
+        applyMatchupDiffs(
+          team1Data.standing,
+          stageIndex,
+          matchup.division.tournament.forfeit.gameDiff,
+          matchup.division.tournament.forfeit.pokemonDiff,
+          diffMode,
+          "w",
+        );
       } else if (matchup.winner === "side2") {
         team2Data.standing.wins += 1;
-        team2Data.standing.gameDiff +=
-          matchup.division.tournament.forfeit.gameDiff;
-        team2Data.standing.pokemonDiff +=
-          matchup.division.tournament.forfeit.pokemonDiff;
+        applyMatchupDiffs(
+          team2Data.standing,
+          stageIndex,
+          matchup.division.tournament.forfeit.gameDiff,
+          matchup.division.tournament.forfeit.pokemonDiff,
+          diffMode,
+          "w",
+        );
       }
       if (matchup.winner === "side1" || matchup.winner === "draw") {
         team2Data.standing.losses += 1;
-        team2Data.standing.gameDiff -=
-          matchup.division.tournament.forfeit.gameDiff;
-        team2Data.standing.pokemonDiff -=
-          matchup.division.tournament.forfeit.pokemonDiff;
+        applyMatchupDiffs(
+          team2Data.standing,
+          stageIndex,
+          -matchup.division.tournament.forfeit.gameDiff,
+          -matchup.division.tournament.forfeit.pokemonDiff,
+          diffMode,
+          "ff",
+        );
       } else if (matchup.winner === "side2" || matchup.winner === "draw") {
         team1Data.standing.losses += 1;
-        team1Data.standing.gameDiff -=
-          matchup.division.tournament.forfeit.gameDiff;
-        team1Data.standing.pokemonDiff -=
-          matchup.division.tournament.forfeit.pokemonDiff;
+        applyMatchupDiffs(
+          team1Data.standing,
+          stageIndex,
+          -matchup.division.tournament.forfeit.gameDiff,
+          -matchup.division.tournament.forfeit.pokemonDiff,
+          diffMode,
+          "ff",
+        );
       }
       continue;
     }
-
-    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
 
     const team1StageDiff = team1Data.score - team2Data.score;
     const team1PokemonDiff = matchup.results.reduce(
@@ -324,14 +360,6 @@ export async function calculateDivisionCoachStandings(
           ? result.side1.score || 0
           : -1 * (result.side2.score || 0)),
       0,
-    );
-
-    applyMatchupDiffs(
-      team1Data.standing,
-      stageIndex,
-      team1StageDiff,
-      team1PokemonDiff,
-      diffMode,
     );
 
     const team2StageDiff = team2Data.score - team1Data.score;
@@ -344,14 +372,6 @@ export async function calculateDivisionCoachStandings(
       0,
     );
 
-    applyMatchupDiffs(
-      team2Data.standing,
-      stageIndex,
-      team2StageDiff,
-      team2PokemonDiff,
-      diffMode,
-    );
-
     if (matchup.winner === "side1") {
       team1Data.standing.wins += 1;
       team2Data.standing.losses += 1;
@@ -359,6 +379,36 @@ export async function calculateDivisionCoachStandings(
       team1Data.standing.losses += 1;
       team2Data.standing.wins += 1;
     }
+
+    applyMatchupDiffs(
+      team2Data.standing,
+      stageIndex,
+      team2StageDiff,
+      team2PokemonDiff,
+      diffMode,
+      matchup.winner === "side2"
+        ? "w"
+        : matchup.winner === "side1"
+          ? matchup.forfeit
+            ? "ff"
+            : "l"
+          : "t",
+    );
+
+    applyMatchupDiffs(
+      team1Data.standing,
+      stageIndex,
+      team1StageDiff,
+      team1PokemonDiff,
+      diffMode,
+      matchup.winner === "side1"
+        ? "w"
+        : matchup.winner === "side2"
+          ? matchup.forfeit
+            ? "ff"
+            : "l"
+          : "t",
+    );
   }
 
   return {
@@ -435,6 +485,13 @@ export async function calculateTeamScore(
       teamScore - opponentScore,
       opponentPokemonFainted - teamPokemonFainted,
       diffMode,
+      matchup.winner === teamSide
+        ? "w"
+        : matchup.winner === opponentSide
+          ? matchup.forfeit
+            ? "ff"
+            : "l"
+          : "t",
     );
   }
 

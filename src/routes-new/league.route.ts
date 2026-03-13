@@ -1193,13 +1193,11 @@ export const LeagueRoute = createRoute()((r) => {
                     path: "coach",
                   },
                 },
-                {
-                  path: "tournament",
-                  populate: {
-                    path: "tierList",
-                  },
-                },
               ]);
+
+              const tournament = await ctx.tournament.populate<{
+                tierList: LeagueTierListDocument;
+              }>("tierList");
 
               const allMatchups = await LeagueMatchupModel.find({
                 division: ctx.division._id,
@@ -1214,8 +1212,8 @@ export const LeagueRoute = createRoute()((r) => {
               const { coachStandings, diffMode } =
                 await calculateDivisionCoachStandings(
                   allMatchups,
-                  ctx.division.stages,
-                  division.teams,
+                  ctx.division,
+                  tournament,
                 );
 
               const teams = getDraftOrder(ctx.division).map((team) => {
@@ -1411,14 +1409,6 @@ export const LeagueRoute = createRoute()((r) => {
                 .filter((id) => isValidObjectId(id))
                 .map((id) => new Types.ObjectId(id));
 
-              const includedStages = ctx.division.stages.filter(
-                (stage, index) =>
-                  !ctx.validatedQuery?.stage ||
-                  (ctx.validatedQuery.stage === "current" &&
-                    index === ctx.division.currentStage) ||
-                  ctx.validatedQuery.stage === "past",
-              );
-
               const allMatchups = await LeagueMatchupModel.find({
                 stage: {
                   $in: ctx.division.stages
@@ -1476,61 +1466,67 @@ export const LeagueRoute = createRoute()((r) => {
                 .map((stage) => {
                   const matchups =
                     matchupsByStage.get(stage._id.toString()) ?? [];
-                  const transformedMatchups = matchups.map((matchup) => ({
-                    id: matchup._id.toString(),
-                    team1: {
-                      name: matchup.side1.team.coach.teamName,
-                      coach: matchup.side1.team.coach.name,
-                      score: matchup.side1.score,
-                      logo: matchup.side1.team.coach.logo,
-                      id: matchup.side1.team._id.toString(),
-                      draft: matchup.side1.team.draft.map((draftItem) => ({
-                        id: draftItem.pokemon.id,
-                        capt: {
-                          ...(draftItem.addons?.includes("Tera Captain")
-                            ? { tera: true }
-                            : undefined),
-                        },
-                      })),
-                    },
-                    team2: {
-                      name: matchup.side2.team.coach.teamName,
-                      coach: matchup.side2.team.coach.name,
-                      score: matchup.side2?.score,
-                      logo: matchup.side2.team.coach.logo,
-                      id: matchup.side2.team._id.toString(),
-                      draft: matchup.side2.team.draft.map((draftItem) => ({
-                        id: draftItem.pokemon.id,
-                        capt: {
-                          ...(draftItem.addons?.includes("Tera Captain")
-                            ? { tera: true }
-                            : undefined),
-                        },
-                      })),
-                    },
-                    matches: matchup.results.map((result) => ({
-                      link: result.replay,
+                  const transformedMatchups = matchups.map((matchup) => {
+                    return {
+                      id: matchup._id.toString(),
                       team1: {
-                        team: Object.fromEntries(
-                          result.side1.pokemon.entries(),
-                        ),
-                        score: result.side1.score,
-                        winner: result.winner === "side1",
+                        name: matchup.side1.team.coach.teamName,
+                        coach: matchup.side1.team.coach.name,
+                        score: matchup.forfeit
+                          ? matchup.winner === "side1"
+                            ? ctx.tournament.forfeit.gameDiff
+                            : 0
+                          : matchup.side1.score,
+                        logo: matchup.side1.team.coach.logo,
+                        id: matchup.side1.team._id.toString(),
+                        draft: matchup.side1.team.draft.map((draftItem) => ({
+                          id: draftItem.pokemon.id,
+                          capt: {
+                            ...(draftItem.addons?.includes("Tera Captain")
+                              ? { tera: true }
+                              : undefined),
+                          },
+                        })),
                       },
                       team2: {
-                        team: Object.fromEntries(
-                          result.side2.pokemon.entries(),
-                        ),
-                        score: result.side2.score,
-                        winner: result.winner === "side2",
+                        name: matchup.side2.team.coach.teamName,
+                        coach: matchup.side2.team.coach.name,
+                        score: matchup.forfeit
+                          ? matchup.winner === "side2"
+                            ? ctx.tournament.forfeit.gameDiff
+                            : 0
+                          : matchup.side2.score,
+                        logo: matchup.side2.team.coach.logo,
+                        id: matchup.side2.team._id.toString(),
+                        draft: matchup.side2.team.draft.map((draftItem) => ({
+                          id: draftItem.pokemon.id,
+                          capt: {
+                            ...(draftItem.addons?.includes("Tera Captain")
+                              ? { tera: true }
+                              : undefined),
+                          },
+                        })),
                       },
-                    })),
-                    score: {
-                      team1: matchup.side1.score,
-                      team2: matchup.side2.score,
-                    },
-                    winner: matchup.winner,
-                  }));
+                      matches: matchup.results.map((result) => ({
+                        link: result.replay,
+                        team1: {
+                          team: Object.fromEntries(
+                            result.side1.pokemon.entries(),
+                          ),
+                          score: result.side1.score,
+                          winner: result.winner === "side1",
+                        },
+                        team2: {
+                          team: Object.fromEntries(
+                            result.side2.pokemon.entries(),
+                          ),
+                          score: result.side2.score,
+                          winner: result.winner === "side2",
+                        },
+                      })),
+                      winner: matchup.winner,
+                    };
+                  });
                   return {
                     _id: stage._id,
                     name: stage.name,
@@ -1560,15 +1556,23 @@ export const LeagueRoute = createRoute()((r) => {
                 },
               ]);
 
-              const divisionTeams = await LeagueTeamModel.find({
-                _id: { $in: ctx.division.teams },
-              }).populate({ path: "coach" });
+              const division = await ctx.division.populate<{
+                teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+                tournament: LeagueTournamentDocument;
+              }>([
+                {
+                  path: "teams",
+                  populate: {
+                    path: "coach",
+                  },
+                },
+              ]);
 
               const { coachStandings, diffMode } =
                 await calculateDivisionCoachStandings(
                   allMatchups,
-                  ctx.division.stages,
-                  divisionTeams,
+                  division,
+                  ctx.tournament,
                 );
 
               const pokemonStandings =
@@ -2014,7 +2018,13 @@ export const LeagueRoute = createRoute()((r) => {
                       team1: matchup.side1.score,
                       team2: matchup.side2.score,
                     },
-                    winner: matchup.winner,
+                    winner: matchup.forfeit
+                      ? matchup.winner === "side1"
+                        ? "side1ffw"
+                        : matchup.winner === "side2"
+                          ? "side2ffw"
+                          : "dffl"
+                      : matchup.winner,
                   }));
                   return {
                     _id: stage._id,
@@ -2023,7 +2033,7 @@ export const LeagueRoute = createRoute()((r) => {
                   };
                 });
 
-                return stages;
+                return { stages, currentStage: ctx.division.currentStage };
               });
               r.param("matchup_id", (ctx, matchup_id) => {
                 if (!isValidObjectId(matchup_id))
@@ -2042,11 +2052,20 @@ export const LeagueRoute = createRoute()((r) => {
                             team2: z.number(),
                           })
                           .optional(),
-                        winner: z.enum(["team1", "team2"]).optional(),
+                        winner: z
+                          .enum([
+                            "side1",
+                            "side2",
+                            "draw",
+                            "side1ffw",
+                            "side2ffw",
+                            "dffl",
+                          ])
+                          .optional(),
                         matches: z.array(
                           z.object({
                             link: z.string().optional(),
-                            winner: z.enum(["team1", "team2"]),
+                            winner: z.enum(["side1", "side2", "draw"]),
                             team1: z.object({
                               score: z.number(),
                               pokemon: z.record(
@@ -2094,7 +2113,7 @@ export const LeagueRoute = createRoute()((r) => {
 
                   matchup.results = ctx.validatedBody.matches.map((match) => ({
                     replay: match.link?.trim() || undefined,
-                    winner: match.winner === "team1" ? "side1" : "side2",
+                    winner: match.winner,
                     side1: {
                       score: match.team1.score,
                       pokemon: new Map(
@@ -2121,8 +2140,22 @@ export const LeagueRoute = createRoute()((r) => {
                   }
 
                   if (ctx.validatedBody.winner) {
-                    matchup.winner =
-                      ctx.validatedBody.winner === "team1" ? "side1" : "side2";
+                    if (
+                      ctx.validatedBody.winner === "side1" ||
+                      ctx.validatedBody.winner === "side2" ||
+                      ctx.validatedBody.winner === "draw"
+                    ) {
+                      matchup.winner = ctx.validatedBody.winner;
+                    } else if (ctx.validatedBody.winner === "side1ffw") {
+                      matchup.winner = "side1";
+                      matchup.forfeit = true;
+                    } else if (ctx.validatedBody.winner === "side2ffw") {
+                      matchup.winner = "side2";
+                      matchup.forfeit = true;
+                    } else if (ctx.validatedBody.winner === "dffl") {
+                      matchup.winner = "draw";
+                      matchup.forfeit = true;
+                    }
                   }
 
                   await matchup.save();
@@ -2387,7 +2420,11 @@ export const LeagueRoute = createRoute()((r) => {
                     id: string;
                   };
                 }[] = [undrafted, ...drafted];
-                return { groups };
+                return {
+                  groups,
+                  stages: ctx.division.stages.map((s) => s.name),
+                  currentStage: ctx.division.currentStage,
+                };
               });
               r.path("edit").auth()((r) => {
                 r.get.validate({
