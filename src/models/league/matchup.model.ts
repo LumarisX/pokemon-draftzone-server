@@ -4,8 +4,16 @@ import {
   LEAGUE_MATCHUP_COLLECTION,
   LEAGUE_TEAM_COLLECTION,
 } from ".";
-import { LeagueDivisionDocument, LeagueStageDocument } from "./division.model";
-import { LeagueTeamDocument } from "./team.model";
+import { LeagueDivisionDocument } from "./division.model";
+
+const MATCH_SIDES = ["side1", "side2"] as const;
+const MATCH_WINNERS = [...MATCH_SIDES, "draw"] as const;
+const MATCH_STATUSES = ["pending", "approved"] as const;
+const POKEMON_STATUSES = ["brought", "survived", "fainted"] as const;
+
+type MatchWinner = (typeof MATCH_WINNERS)[number];
+type MatchupStatus = (typeof MATCH_STATUSES)[number];
+type PokemonStatus = (typeof POKEMON_STATUSES)[number];
 
 export type PokemonStatsOld = {
   kills?: number;
@@ -20,7 +28,7 @@ export type PokemonStats = {
     indirect?: number;
     teammate?: number;
   };
-  status: "brought" | "survived" | "fainted";
+  status: PokemonStatus;
 };
 
 export type MatchTeam = {
@@ -30,15 +38,15 @@ export type MatchTeam = {
 
 export type MatchResult = {
   replay?: string;
-  winner: "team1" | "team2";
-  team1: MatchTeam;
-  team2: MatchTeam;
+  winner: MatchWinner;
+  side1: MatchTeam;
+  side2: MatchTeam;
 };
 
 export type MatchSide = {
   team: Types.ObjectId;
   notes?: string;
-  forfiet?: boolean;
+  score?: number;
 };
 
 export type LeagueMatchupData = {
@@ -49,11 +57,9 @@ export type LeagueMatchupData = {
   results: MatchResult[];
   notes?: string;
   scheduledDate?: Date;
-  score?: {
-    team1: number;
-    team2: number;
-  };
-  winner?: "team1" | "team2";
+  winner?: MatchWinner;
+  forfeit?: boolean;
+  status?: MatchupStatus;
 };
 
 export type LeagueMatchupDocument = Document<Types.ObjectId> &
@@ -73,9 +79,9 @@ type LeagueMatchupModel = Model<LeagueMatchupDocument, {}, MatchupMethods>;
 
 const killsSchema = new Schema(
   {
-    direct: { type: Number },
-    indirect: { type: Number },
-    teammate: { type: Number },
+    direct: { type: Number, min: 0 },
+    indirect: { type: Number, min: 0 },
+    teammate: { type: Number, min: 0 },
   },
   { _id: false },
 );
@@ -85,22 +91,25 @@ const pokemonStatsSchema = new Schema<PokemonStats>(
     kills: { type: killsSchema },
     status: {
       type: String,
-      enum: ["brought", "survived", "fainted"],
+      enum: POKEMON_STATUSES,
       required: true,
     },
   },
   { _id: false },
 );
 
-export const leagueMatchupSideSchema = new Schema<MatchSide>({
-  team: {
-    type: Schema.Types.ObjectId,
-    ref: LEAGUE_TEAM_COLLECTION,
-    required: true,
+export const leagueMatchupSideSchema = new Schema<MatchSide>(
+  {
+    team: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_TEAM_COLLECTION,
+      required: true,
+    },
+    notes: { type: String, trim: true },
+    score: { type: Number, min: 0 },
   },
-  notes: { type: String },
-  forfiet: { type: Boolean },
-});
+  { _id: false },
+);
 
 export const leagueMatchupSchema: Schema<
   LeagueMatchupDocument,
@@ -127,39 +136,44 @@ export const leagueMatchupSchema: Schema<
       type: leagueMatchupSideSchema,
       required: true,
     },
-    results: [
-      {
-        replay: { type: String },
-        winner: {
-          type: String,
-          enum: ["team1", "team2"],
-          required: true,
-        },
-        team1: {
-          score: { type: Number, required: true },
-          pokemon: {
-            type: Map,
-            of: pokemonStatsSchema,
+    results: {
+      type: [
+        {
+          _id: false,
+          replay: { type: String, trim: true },
+          winner: {
+            type: String,
+            enum: MATCH_WINNERS,
+            required: true,
+          },
+          side1: {
+            score: { type: Number, required: true, min: 0 },
+            pokemon: {
+              type: Map,
+              of: pokemonStatsSchema,
+              default: {},
+            },
+          },
+          side2: {
+            score: { type: Number, required: true, min: 0 },
+            pokemon: {
+              type: Map,
+              of: pokemonStatsSchema,
+              default: {},
+            },
           },
         },
-        team2: {
-          score: { type: Number, required: true },
-          pokemon: {
-            type: Map,
-            of: pokemonStatsSchema,
-          },
-        },
-      },
-    ],
-    notes: { type: String },
-    scheduledDate: { type: Date },
-    score: {
-      type: {
-        team1: { type: Number, required: true },
-        team2: { type: Number, required: true },
-      },
+      ],
+      default: [],
     },
-    winner: { type: String, enum: ["team1", "team2"] },
+    notes: { type: String, trim: true },
+    scheduledDate: { type: Date },
+    winner: {
+      type: String,
+      enum: MATCH_WINNERS,
+    },
+    forfeit: { type: Boolean },
+    status: { type: String, enum: MATCH_STATUSES },
   },
   { timestamps: true },
 );

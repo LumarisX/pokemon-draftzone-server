@@ -18,11 +18,9 @@ export type LeagueRule = {
   body: string;
 };
 
-export type LeagueTournamentSettings = {
-  forfeit: {
-    gameDiff: number;
-    pokemonDiff: number;
-  };
+export type LeagueTournamentForfeit = {
+  gameDiff: number;
+  pokemonDiff: number;
 };
 
 export type LeagueTournament = {
@@ -43,7 +41,7 @@ export type LeagueTournament = {
   logo?: string;
   discord?: string;
   league: Types.ObjectId | LeagueDocument;
-  settings: LeagueTournamentSettings;
+  forfeit: LeagueTournamentForfeit;
 };
 
 export type LeagueTournamentDocument = Document &
@@ -66,15 +64,10 @@ type LeagueTournamentModel = Model<
   findByKeyOrThrow(key: string): Promise<LeagueTournamentDocument>;
 };
 
-const LeagueTournamentSettingsSchema = new Schema<LeagueTournamentSettings>(
+const LeagueTournamentForfeitSchema = new Schema<LeagueTournamentForfeit>(
   {
-    forfeit: {
-      type: new Schema({
-        gameDiff: { type: Number, required: true },
-        pokemonDiff: { type: Number, required: true },
-      }),
-      required: true,
-    },
+    gameDiff: { type: Number, required: true, default: 0 },
+    pokemonDiff: { type: Number, required: true, default: 0 },
   },
   { _id: false },
 );
@@ -118,7 +111,10 @@ const LeagueTournamentSchema: Schema<
       ref: LEAGUE_COLLECTION,
       required: true,
     },
-    settings: { type: LeagueTournamentSettingsSchema, required: true },
+    forfeit: {
+      type: LeagueTournamentForfeitSchema,
+      required: true,
+    },
   },
   { timestamps: true },
 );

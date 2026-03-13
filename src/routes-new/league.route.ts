@@ -1481,7 +1481,7 @@ export const LeagueRoute = createRoute()((r) => {
                     team1: {
                       name: matchup.side1.team.coach.teamName,
                       coach: matchup.side1.team.coach.name,
-                      score: matchup.score?.team1,
+                      score: matchup.side1.score,
                       logo: matchup.side1.team.coach.logo,
                       id: matchup.side1.team._id.toString(),
                       draft: matchup.side1.team.draft.map((draftItem) => ({
@@ -1496,7 +1496,7 @@ export const LeagueRoute = createRoute()((r) => {
                     team2: {
                       name: matchup.side2.team.coach.teamName,
                       coach: matchup.side2.team.coach.name,
-                      score: matchup.score?.team2,
+                      score: matchup.side2?.score,
                       logo: matchup.side2.team.coach.logo,
                       id: matchup.side2.team._id.toString(),
                       draft: matchup.side2.team.draft.map((draftItem) => ({
@@ -1512,20 +1512,23 @@ export const LeagueRoute = createRoute()((r) => {
                       link: result.replay,
                       team1: {
                         team: Object.fromEntries(
-                          result.team1.pokemon.entries(),
+                          result.side1.pokemon.entries(),
                         ),
-                        score: result.team1.score,
-                        winner: result.winner === "team1",
+                        score: result.side1.score,
+                        winner: result.winner === "side1",
                       },
                       team2: {
                         team: Object.fromEntries(
-                          result.team2.pokemon.entries(),
+                          result.side2.pokemon.entries(),
                         ),
-                        score: result.team2.score,
-                        winner: result.winner === "team2",
+                        score: result.side2.score,
+                        winner: result.winner === "side2",
                       },
                     })),
-                    score: matchup.score,
+                    score: {
+                      team1: matchup.side1.score,
+                      team2: matchup.side2.score,
+                    },
                     winner: matchup.winner,
                   }));
                   return {
@@ -1545,13 +1548,15 @@ export const LeagueRoute = createRoute()((r) => {
               }).populate<PopulatedLeagueMatchup>([
                 {
                   path: "side1.team",
-                  select: "coach",
                   populate: { path: "coach" },
                 },
                 {
                   path: "side2.team",
-                  select: "coach",
                   populate: { path: "coach" },
+                },
+                {
+                  path: "division",
+                  populate: "tournament",
                 },
               ]);
 
@@ -1953,7 +1958,7 @@ export const LeagueRoute = createRoute()((r) => {
                     team1: {
                       name: matchup.side1.team.coach.teamName,
                       coach: matchup.side1.team.coach.name,
-                      score: matchup.score?.team1,
+                      score: matchup.side1.score,
                       logo: matchup.side1.team.coach.logo,
                       id: matchup.side1.team._id.toString(),
                       draft: getRosterByStage(
@@ -1972,7 +1977,7 @@ export const LeagueRoute = createRoute()((r) => {
                     team2: {
                       name: matchup.side2.team.coach.teamName,
                       coach: matchup.side2.team.coach.name,
-                      score: matchup.score?.team2,
+                      score: matchup.side2.score,
                       logo: matchup.side2.team.coach.logo,
                       id: matchup.side2.team._id.toString(),
                       draft: getRosterByStage(
@@ -1992,20 +1997,23 @@ export const LeagueRoute = createRoute()((r) => {
                       link: result.replay,
                       team1: {
                         team: Object.fromEntries(
-                          result.team1.pokemon.entries(),
+                          result.side1.pokemon.entries(),
                         ),
-                        score: result.team1.score,
-                        winner: result.winner === "team1",
+                        score: result.side1.score,
+                        winner: result.winner === "side1",
                       },
                       team2: {
                         team: Object.fromEntries(
-                          result.team2.pokemon.entries(),
+                          result.side2.pokemon.entries(),
                         ),
-                        score: result.team2.score,
-                        winner: result.winner === "team2",
+                        score: result.side2.score,
+                        winner: result.winner === "side2",
                       },
                     })),
-                    score: matchup.score,
+                    score: {
+                      team1: matchup.side1.score,
+                      team2: matchup.side2.score,
+                    },
                     winner: matchup.winner,
                   }));
                   return {
@@ -2086,8 +2094,8 @@ export const LeagueRoute = createRoute()((r) => {
 
                   matchup.results = ctx.validatedBody.matches.map((match) => ({
                     replay: match.link?.trim() || undefined,
-                    winner: match.winner,
-                    team1: {
+                    winner: match.winner === "team1" ? "side1" : "side2",
+                    side1: {
                       score: match.team1.score,
                       pokemon: new Map(
                         Object.entries(match.team1.pokemon).filter(
@@ -2096,7 +2104,7 @@ export const LeagueRoute = createRoute()((r) => {
                         ) as [string, PokemonStats][],
                       ),
                     },
-                    team2: {
+                    side2: {
                       score: match.team2.score,
                       pokemon: new Map(
                         Object.entries(match.team2.pokemon).filter(
@@ -2108,11 +2116,13 @@ export const LeagueRoute = createRoute()((r) => {
                   }));
 
                   if (ctx.validatedBody.score) {
-                    matchup.score = ctx.validatedBody.score;
+                    matchup.side1.score = ctx.validatedBody.score.team1;
+                    matchup.side2.score = ctx.validatedBody.score.team2;
                   }
 
                   if (ctx.validatedBody.winner) {
-                    matchup.winner = ctx.validatedBody.winner;
+                    matchup.winner =
+                      ctx.validatedBody.winner === "team1" ? "side1" : "side2";
                   }
 
                   await matchup.save();
