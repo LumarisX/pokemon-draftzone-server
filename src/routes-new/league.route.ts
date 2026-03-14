@@ -1183,9 +1183,6 @@ export const LeagueRoute = createRoute()((r) => {
                 teams: (LeagueTeamDocument & {
                   coach: LeagueCoachDocument;
                 })[];
-                tournament: LeagueTournamentDocument & {
-                  tierList: LeagueTierListDocument;
-                };
               }>([
                 {
                   path: "teams",
@@ -1238,7 +1235,7 @@ export const LeagueRoute = createRoute()((r) => {
                     capt: {
                       tera: pokemon.addons?.includes("Tera Captain"),
                     },
-                    cost: division.tournament.tierList.getPokemonCost(
+                    cost: tournament.tierList.getPokemonCost(
                       pokemon.id,
                       pokemon.addons,
                     ),
