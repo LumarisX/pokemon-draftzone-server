@@ -1,6 +1,6 @@
 import type { Generation, GenerationNum, ID, StatusName } from "@pkmn/data";
 
-import { is, toID } from "../../dmg/src/utils";
+import { is, toID } from "./utils";
 
 export type Player = "p1" | "p2";
 

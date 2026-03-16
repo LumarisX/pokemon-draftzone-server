@@ -23,7 +23,7 @@ import {
   WeatherName,
 } from "./conditions";
 import { floor, round } from "./math";
-import { DeepPartial, extend, has, is, toID } from "../../dmg/src/utils";
+import { DeepPartial, extend, has, is, toID } from "./utils";
 
 type OverriddenFields =
   | "item"
@@ -815,7 +815,7 @@ function bestMatch(
     } else if (pokemon.nature) {
       score++;
     }
-    if (move && !set.moves?.some((m) => match(m, move))) {
+    if (move && !set.moves?.some((m: string) => match(m, move))) {
       score--;
     } else if (move) {
       score++;

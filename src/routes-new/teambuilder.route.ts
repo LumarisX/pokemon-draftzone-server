@@ -1,5 +1,4 @@
 import { toID } from "@pkmn/data";
-import { Pokemon } from "@smogon/calc";
 import fs from "fs";
 import { z } from "zod";
 import { DraftSpecie } from "../classes/pokemon";
