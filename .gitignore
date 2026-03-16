@@ -11,3 +11,4 @@ src/tests/
 src/scripts/
 cache/*
 reports/*
+vendor/

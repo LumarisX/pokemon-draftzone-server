@@ -18,8 +18,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Ensure vendor dmg exists
+        run: |
+          if [ ! -f vendor/dmg/package.json ]; then
+            git clone --depth 1 https://github.com/LumarisX/dmg.git vendor/dmg
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -41,11 +45,12 @@ jobs:
 
       - name: Package build
         run: |
-          tar -czf server-build.tgz \
+          tar --exclude='vendor/dmg/.git' -czf server-build.tgz \
             dist \
             ecosystem.config.js \
             package.json \
-            package-lock.json
+            package-lock.json \
+            vendor/dmg
 
       - name: Upload artifact to S3
         run: |
