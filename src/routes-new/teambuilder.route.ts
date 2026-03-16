@@ -6,7 +6,7 @@ import { DraftSpecie } from "../classes/pokemon";
 import { getRuleset } from "../data/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
-import { PikalyticData, testSet } from "../services/pats-services/test-set";
+// import { PikalyticData, testSet } from "../services/pats-services/test-set";
 import { createRoute } from "./route-builder";
 
 export const TeambuilderRoute = createRoute()((r) => {
@@ -28,32 +28,32 @@ export const TeambuilderRoute = createRoute()((r) => {
       return await draftSpecies.toTeambuilder();
     });
   });
-  r.path("pats-list")((r) => {
-    r.get(async () => {
-      const data: PikalyticData[] = JSON.parse(
-        fs.readFileSync("./src/services/pats-services/pats.json", "utf-8"),
-      );
-      return data.map((pokemon) => ({
-        name: pokemon.name,
-        id: toID(pokemon.name),
-        percent: pokemon.percent,
-      }));
-    });
-  });
-  r.path("pats-matchup")((r) => {
-    r.get.validate({
-      query: (data) =>
-        z
-          .object({
-            set: z.string().min(1),
-            opp: z.string().min(1),
-          })
-          .parse(data),
-    })(async (ctx) => {
-      const { set, opp } = ctx.validatedQuery;
-      const pokemonData = JSON.parse(atob(set));
-      const pokemon = new Pokemon(9, pokemonData.name, pokemonData);
-      return testSet(pokemon, opp);
-    });
-  });
+  // r.path("pats-list")((r) => {
+  //   r.get(async () => {
+  //     const data: PikalyticData[] = JSON.parse(
+  //       fs.readFileSync("./src/services/pats-services/pats.json", "utf-8"),
+  //     );
+  //     return data.map((pokemon) => ({
+  //       name: pokemon.name,
+  //       id: toID(pokemon.name),
+  //       percent: pokemon.percent,
+  //     }));
+  //   });
+  // });
+  // r.path("pats-matchup")((r) => {
+  //   r.get.validate({
+  //     query: (data) =>
+  //       z
+  //         .object({
+  //           set: z.string().min(1),
+  //           opp: z.string().min(1),
+  //         })
+  //         .parse(data),
+  //   })(async (ctx) => {
+  //     const { set, opp } = ctx.validatedQuery;
+  //     const pokemonData = JSON.parse(atob(set));
+  //     const pokemon = new Pokemon(9, pokemonData.name, pokemonData);
+  //     return testSet(pokemon, opp);
+  //   });
+  // });
 });
