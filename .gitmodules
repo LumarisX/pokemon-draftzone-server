@@ -1,0 +1,3 @@
+[submodule "vendor/dmg"]
+	path = vendor/dmg
+	url = https://github.com/LumarisX/dmg.git
