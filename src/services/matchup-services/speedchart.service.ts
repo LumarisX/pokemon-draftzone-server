@@ -1,5 +1,5 @@
 import { ID, StatusName } from "@pkmn/data";
-import { computeStats, State } from "../../../vendor/dmg/build";
+import { computeStats, State } from "@pkmn/dmg";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 
 export type Speedchart = {
