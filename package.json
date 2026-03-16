@@ -3,6 +3,8 @@
   "version": "1.0.2",
   "private": true,
   "scripts": {
+    "build:dmg": "npm --prefix vendor/dmg run compile",
+    "prebuild": "npm run build:dmg",
     "build": "npx tsc",
     "build:server": "node --max-old-space-size=4096 ./node_modules/.bin/tsc",
     "typecheck": "tsc --noEmit",
