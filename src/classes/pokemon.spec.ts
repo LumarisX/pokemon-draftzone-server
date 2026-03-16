@@ -144,14 +144,14 @@ describe("DraftSpecie Type functions", () => {
   it("should return correct weaknesses", () => {
     expect(pikachu.getWeak().sort()).toEqual(["Ground"].sort());
     expect(charizard.getWeak().sort()).toEqual(
-      ["Rock", "Water", "Electric"].sort()
+      ["Rock", "Water", "Electric"].sort(),
     );
   });
 
   it("should return correct resistances", () => {
     expect(pikachu.getResists().sort()).toEqual(["Flying", "Steel"].sort());
     expect(charizard.getResists().sort()).toEqual(
-      ["Grass", "Fighting", "Bug", "Steel", "Fire", "Fairy"].sort()
+      ["Grass", "Fighting", "Bug", "Steel", "Fire", "Fairy"].sort(),
     );
   });
 
@@ -279,21 +279,21 @@ describe("DraftSpecie Coverage functions", () => {
         id: "ogerponwellspring" as ID,
         capt: { tera: ["Water"] },
       },
-      ruleset
+      ruleset,
     );
     ogerponCornerstone = new DraftSpecie(
       {
         id: "ogerponcornerstone" as ID,
         capt: { tera: ["Rock"] },
       },
-      ruleset
+      ruleset,
     );
     ogerponHearthflame = new DraftSpecie(
       {
         id: "ogerponhearthflame" as ID,
         capt: { tera: ["Fire"] },
       },
-      ruleset
+      ruleset,
     );
     pikachu = new DraftSpecie({ id: "pikachu" as ID }, ruleset);
     charizard = new DraftSpecie({ id: "charizard" as ID }, ruleset);
@@ -316,36 +316,36 @@ describe("DraftSpecie Coverage functions", () => {
 
     expect(
       coverageWellspring.physical.some(
-        (move) => move.id === "ivycudgel" && move.type === "Water"
-      )
+        (move) => move.id === "ivycudgel" && move.type === "Water",
+      ),
     ).toBe(true);
     expect(
       coverageCornerstone.physical.some(
-        (move) => move.id === "ivycudgel" && move.type === "Rock"
-      )
+        (move) => move.id === "ivycudgel" && move.type === "Rock",
+      ),
     ).toBe(true);
     expect(
       coverageHearthflame.physical.some(
-        (move) => move.id === "ivycudgel" && move.type === "Fire"
-      )
+        (move) => move.id === "ivycudgel" && move.type === "Fire",
+      ),
     ).toBe(true);
   });
 
   it("should include Tera Blast if capt.tera is present and terablast is learnable for coverage()", async () => {
     const teraPikachu = new DraftSpecie(
       { id: "pikachu" as ID, capt: { tera: ["Dragon"] } },
-      ruleset
+      ruleset,
     );
     const coverage = await teraPikachu.coverage();
     expect(
       coverage.physical.some(
-        (move) => move.id === "terablast" && move.type === "Dragon"
-      )
+        (move) => move.id === "terablast" && move.type === "Dragon",
+      ),
     ).toBe(true);
     expect(
       coverage.special.some(
-        (move) => move.id === "terablast" && move.type === "Dragon"
-      )
+        (move) => move.id === "terablast" && move.type === "Dragon",
+      ),
     ).toBe(true);
   });
 
@@ -370,32 +370,32 @@ describe("DraftSpecie Coverage functions", () => {
 
     expect(
       fullCoverageWellspring.physical["Water"].some(
-        (move) => move.id === "ivycudgel"
-      )
+        (move) => move.id === "ivycudgel",
+      ),
     ).toBe(true);
     expect(
       fullCoverageCornerstone.physical["Rock"].some(
-        (move) => move.id === "ivycudgel"
-      )
+        (move) => move.id === "ivycudgel",
+      ),
     ).toBe(true);
     expect(
       fullCoverageHearthflame.physical["Fire"].some(
-        (move) => move.id === "ivycudgel"
-      )
+        (move) => move.id === "ivycudgel",
+      ),
     ).toBe(true);
   });
 
   it("should include Tera Blast if capt.tera is present and terablast is learnable for fullcoverage()", async () => {
     const teraPikachu = new DraftSpecie(
       { id: "pikachu" as ID, capt: { tera: ["Water"] } },
-      ruleset
+      ruleset,
     );
     const fullCoverage = await teraPikachu.fullcoverage();
     expect(
-      fullCoverage.physical["Water"].some((move) => move.id === "terablast")
+      fullCoverage.physical["Water"].some((move) => move.id === "terablast"),
     ).toBe(true);
     expect(
-      fullCoverage.special["Water"].some((move) => move.id === "terablast")
+      fullCoverage.special["Water"].some((move) => move.id === "terablast"),
     ).toBe(true);
   });
 
@@ -403,5 +403,129 @@ describe("DraftSpecie Coverage functions", () => {
     const initialFullCoverage = await pikachu.fullcoverage();
     const cachedFullCoverage = await pikachu.fullcoverage();
     expect(initialFullCoverage).toBe(cachedFullCoverage); // Should be the same object due to caching
+  });
+
+  it("should not accumulate recommended moves across bestCoverage() calls", async () => {
+    const sharedCoverage = {
+      physical: [
+        {
+          id: "flamethrower" as ID,
+          name: "Flamethrower",
+          ePower: 100,
+          cPower: 100,
+          type: "Fire",
+          category: "Physical" as const,
+        },
+        {
+          id: "surf" as ID,
+          name: "Surf",
+          ePower: 100,
+          cPower: 100,
+          type: "Water",
+          category: "Physical" as const,
+        },
+        {
+          id: "leafstorm" as ID,
+          name: "Leaf Storm",
+          ePower: 100,
+          cPower: 100,
+          type: "Grass",
+          category: "Physical" as const,
+        },
+        {
+          id: "thunderbolt" as ID,
+          name: "Thunderbolt",
+          ePower: 100,
+          cPower: 100,
+          type: "Electric",
+          category: "Physical" as const,
+        },
+        {
+          id: "psychic" as ID,
+          name: "Psychic",
+          ePower: 100,
+          cPower: 100,
+          type: "Psychic",
+          category: "Physical" as const,
+        },
+        {
+          id: "icebeam" as ID,
+          name: "Ice Beam",
+          ePower: 100,
+          cPower: 100,
+          type: "Ice",
+          category: "Physical" as const,
+        },
+        {
+          id: "closecombat" as ID,
+          name: "Close Combat",
+          ePower: 100,
+          cPower: 100,
+          type: "Fighting",
+          category: "Physical" as const,
+        },
+        {
+          id: "earthquake" as ID,
+          name: "Earthquake",
+          ePower: 100,
+          cPower: 100,
+          type: "Ground",
+          category: "Physical" as const,
+        },
+      ],
+      special: [],
+    };
+
+    jest.spyOn(pikachu, "coverage").mockResolvedValue(sharedCoverage as any);
+
+    const makeOpponent = (effectiveType: string) =>
+      ({
+        typechart: () =>
+          ({
+            Fire: effectiveType === "Fire" ? 2 : 0,
+            Water: effectiveType === "Water" ? 2 : 0,
+            Grass: effectiveType === "Grass" ? 2 : 0,
+            Electric: effectiveType === "Electric" ? 2 : 0,
+            Psychic: effectiveType === "Psychic" ? 2 : 0,
+            Ice: effectiveType === "Ice" ? 2 : 0,
+            Fighting: effectiveType === "Fighting" ? 2 : 0,
+            Ground: effectiveType === "Ground" ? 2 : 0,
+          }) as Record<string, number>,
+      }) as unknown as DraftSpecie;
+
+    const firstTargetTypes = ["Fire", "Water", "Grass", "Electric"];
+    const secondTargetTypes = ["Psychic", "Ice", "Fighting", "Ground"];
+
+    const firstCoverage = await pikachu.bestCoverage(
+      firstTargetTypes.map((type) => makeOpponent(type)),
+    );
+    const firstRecommended = [
+      ...firstCoverage.physical,
+      ...firstCoverage.special,
+    ]
+      .filter((move) => move.recommended)
+      .map((move) => move.type)
+      .sort();
+
+    expect(firstRecommended).toEqual([...firstTargetTypes].sort());
+
+    const secondCoverage = await pikachu.bestCoverage(
+      secondTargetTypes.map((type) => makeOpponent(type)),
+    );
+    const secondRecommended = [
+      ...secondCoverage.physical,
+      ...secondCoverage.special,
+    ]
+      .filter((move) => move.recommended)
+      .map((move) => move.type)
+      .sort();
+
+    expect(secondRecommended).toHaveLength(4);
+    expect(secondRecommended).toEqual([...secondTargetTypes].sort());
+    expect(
+      [...sharedCoverage.physical, ...sharedCoverage.special].some(
+        (move) => (move as { recommended?: boolean }).recommended,
+      ),
+    ).toBe(false);
   });
 });

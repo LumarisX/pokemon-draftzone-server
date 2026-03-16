@@ -585,13 +585,17 @@ export class DraftSpecie implements Specie, Pokemon {
 
   async bestCoverage(oppTeam: DraftSpecie[]) {
     const coverage = await this.coverage();
-    const allMoves = [...coverage.physical, ...coverage.special];
+    const recommendedCoverage: Coverage = JSON.parse(JSON.stringify(coverage));
+    const allMoves = [
+      ...recommendedCoverage.physical,
+      ...recommendedCoverage.special,
+    ];
     const numMoves = allMoves.length;
     const numOpponents = oppTeam.length;
 
     if (numMoves <= 4) {
       allMoves.forEach((move) => (move.recommended = true));
-      return coverage;
+      return recommendedCoverage;
     }
 
     const damages: number[][] = allMoves.map((move) => {
@@ -648,7 +652,7 @@ export class DraftSpecie implements Specie, Pokemon {
     selectedMoveIndices.forEach((index) => {
       allMoves[index].recommended = true;
     });
-    return coverage;
+    return recommendedCoverage;
   }
 
   async learnset(): Promise<Move[]> {

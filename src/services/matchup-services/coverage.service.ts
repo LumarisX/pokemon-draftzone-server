@@ -34,37 +34,39 @@ export async function coveragechart(
   team: DraftSpecie[],
   oppTeam: DraftSpecie[],
 ): Promise<Coveragechart> {
-  let result: Coveragechart = [];
-  for (let pokemon of team) {
-    let data: {
-      species: DraftSpecie;
-      coverage: {
-        [key: string]: CoverageMove[];
+  return Promise.all(
+    team.map(async (pokemon) => {
+      const data: {
+        species: DraftSpecie;
+        coverage: {
+          [key: string]: CoverageMove[];
+        };
+      } = {
+        species: pokemon,
+        coverage: await pokemon.bestCoverage(oppTeam),
       };
-    } = {
-      species: pokemon,
-      coverage: await pokemon.bestCoverage(oppTeam),
-    };
-    for (let category in data.coverage) {
-      data.coverage[category as keyof typeof data.coverage].sort(function (
-        x: { stab?: true; ePower: number },
-        y: { stab?: true; ePower: number },
-      ) {
-        if (x.stab != y.stab) {
-          if (x.stab) return -1;
-          return 1;
-        }
-        if (x.ePower < y.ePower) return 1;
-        if (x.ePower > y.ePower) return -1;
-        return 0;
-      });
-    }
-    result.push({
-      ...data.species.toClient(),
-      coverage: data.coverage,
-    });
-  }
-  return result;
+
+      for (const category in data.coverage) {
+        data.coverage[category as keyof typeof data.coverage].sort(function (
+          x: { stab?: true; ePower: number },
+          y: { stab?: true; ePower: number },
+        ) {
+          if (x.stab != y.stab) {
+            if (x.stab) return -1;
+            return 1;
+          }
+          if (x.ePower < y.ePower) return 1;
+          if (x.ePower > y.ePower) return -1;
+          return 0;
+        });
+      }
+
+      return {
+        ...data.species.toClient(),
+        coverage: data.coverage,
+      };
+    }),
+  );
 }
 
 export async function plannerCoverage(team: DraftSpecie[]) {

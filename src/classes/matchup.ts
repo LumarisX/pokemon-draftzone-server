@@ -242,6 +242,13 @@ export class Matchup {
   async analyze(sub?: string) {
     const aTeam = this.aTeam.owner === sub ? this.aTeam : this.bTeam;
     const bTeam = this.aTeam.owner === sub ? this.bTeam : this.aTeam;
+    const [aCoverageChart, bCoverageChart, aMoveChart, bMoveChart] =
+      await Promise.all([
+        coveragechart(aTeam.team, bTeam.team),
+        coveragechart(bTeam.team, aTeam.team),
+        movechart(aTeam.team, aTeam.team[0].ruleset),
+        movechart(bTeam.team, bTeam.team[0].ruleset),
+      ]);
     const data: {
       details: {
         level: number;
@@ -313,18 +320,12 @@ export class Matchup {
         new SummaryClass(bTeam.team, bTeam.teamName, bTeam.coach).toJson(),
       ],
       speedchart: speedchart([aTeam.team, bTeam.team], this.format.level),
-      coveragechart: [
-        await coveragechart(aTeam.team, bTeam.team),
-        await coveragechart(bTeam.team, aTeam.team),
-      ],
+      coveragechart: [aCoverageChart, bCoverageChart],
       typechart: [
         new Typechart(aTeam.team).toJson(),
         new Typechart(bTeam.team).toJson(),
       ],
-      movechart: [
-        await movechart(aTeam.team, aTeam.team[0].ruleset),
-        await movechart(bTeam.team, bTeam.team[0].ruleset),
-      ],
+      movechart: [aMoveChart, bMoveChart],
       notes:
         sub && sub === aTeam.owner
           ? aTeam.notes
