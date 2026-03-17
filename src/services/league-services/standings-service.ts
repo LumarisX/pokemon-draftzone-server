@@ -312,8 +312,8 @@ export async function calculateDivisionCoachStandings(
         applyMatchupDiffs(
           team1Data.standing,
           stageIndex,
-          matchup.division.tournament.forfeit.gameDiff,
-          matchup.division.tournament.forfeit.pokemonDiff,
+          tournament.forfeit.gameDiff,
+          tournament.forfeit.pokemonDiff,
           diffMode,
           "w",
         );
@@ -322,8 +322,8 @@ export async function calculateDivisionCoachStandings(
         applyMatchupDiffs(
           team2Data.standing,
           stageIndex,
-          matchup.division.tournament.forfeit.gameDiff,
-          matchup.division.tournament.forfeit.pokemonDiff,
+          tournament.forfeit.gameDiff,
+          tournament.forfeit.pokemonDiff,
           diffMode,
           "w",
         );
@@ -333,8 +333,8 @@ export async function calculateDivisionCoachStandings(
         applyMatchupDiffs(
           team2Data.standing,
           stageIndex,
-          -matchup.division.tournament.forfeit.gameDiff,
-          -matchup.division.tournament.forfeit.pokemonDiff,
+          -tournament.forfeit.gameDiff,
+          -tournament.forfeit.pokemonDiff,
           diffMode,
           "ff",
         );
@@ -343,8 +343,8 @@ export async function calculateDivisionCoachStandings(
         applyMatchupDiffs(
           team1Data.standing,
           stageIndex,
-          -matchup.division.tournament.forfeit.gameDiff,
-          -matchup.division.tournament.forfeit.pokemonDiff,
+          -tournament.forfeit.gameDiff,
+          -tournament.forfeit.pokemonDiff,
           diffMode,
           "ff",
         );
