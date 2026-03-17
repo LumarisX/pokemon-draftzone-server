@@ -1,4 +1,4 @@
-import type { Message } from "discord.js";
+import { MessageEmbed, type Message } from "discord.js";
 import type winston from "winston";
 import { config } from "../config";
 import { client } from "./index";
@@ -113,8 +113,7 @@ async function replyWithEmotionEmbed(message: Message, rawReply: string) {
     .replace(/@everyone/g, "@ everyone")
     .replace(/@here/g, "@ here");
 
-  const { EmbedBuilder } = await import("discord.js");
-  const responseEmbed = new EmbedBuilder()
+  const responseEmbed = new MessageEmbed()
     .setThumbnail(emotionUrl)
     .setDescription(safeReply.slice(0, 4096));
 
@@ -171,7 +170,7 @@ export async function geminiRespond(message: Message, logger: winston.Logger) {
   let pipelineStep = "initializing";
   try {
     pipelineStep = "typing-indicator";
-    if (message.channel?.isTextBased() && "sendTyping" in message.channel) {
+    if (message.channel?.isText()) {
       await message.channel.sendTyping();
     }
 

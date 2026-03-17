@@ -1,15 +1,13 @@
 import {
-  ActionRowBuilder,
-  APIEmbedField,
-  ButtonBuilder,
-  ButtonStyle,
-  ChannelType,
+  EmbedFieldData,
   Client,
   ColorResolvable,
-  EmbedBuilder,
-  GatewayIntentBits,
+  Intents,
   GuildMember,
   Interaction,
+  MessageActionRow,
+  MessageButton,
+  MessageEmbed,
   type Message,
 } from "discord.js";
 import type winston from "winston";
@@ -22,10 +20,9 @@ import { deployGuildCommands } from "./deploy-commands";
 import { geminiRespond, initializeGemini } from "./gemini";
 export const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMessages,
+    Intents.FLAGS.GUILDS,
+    Intents.FLAGS.GUILD_MEMBERS,
+    Intents.FLAGS.GUILD_MESSAGES,
   ],
 });
 
@@ -59,7 +56,7 @@ export async function startDiscordBot(
       );
     }
     try {
-      deployGuildCommands({ guildId: `1183936734719922176` });
+      deployGuildCommands({ guildId: `1183936734719922176`, client });
       logger.info("Guild commands deployment initiated.");
     } catch (deployError) {
       logger.error("Failed to initiate guild command deployment:", deployError);
@@ -93,10 +90,10 @@ export async function startDiscordBot(
         const message = interaction.message;
         const existingEmbed = message.embeds[0];
         const embed = existingEmbed
-          ? EmbedBuilder.from(existingEmbed)
-          : new EmbedBuilder().setTitle("League Ad Review");
+          ? new MessageEmbed(existingEmbed)
+          : new MessageEmbed().setTitle("League Ad Review");
 
-        const fields = embed.data.fields ? [...embed.data.fields] : [];
+        const fields = embed.fields ? [...embed.fields] : [];
         const statusIndex = fields.findIndex(
           (field) => field.name === "Status",
         );
@@ -110,16 +107,16 @@ export async function startDiscordBot(
 
         embed.setFields(fields);
 
-        const disabledRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
+        const disabledRow = new MessageActionRow().addComponents(
+          new MessageButton()
             .setCustomId(`league-ad:approve:${adId}`)
             .setLabel("Approve")
-            .setStyle(ButtonStyle.Success)
+            .setStyle("SUCCESS")
             .setDisabled(true),
-          new ButtonBuilder()
+          new MessageButton()
             .setCustomId(`league-ad:deny:${adId}`)
             .setLabel("Deny")
-            .setStyle(ButtonStyle.Danger)
+            .setStyle("DANGER")
             .setDisabled(true),
         );
 
@@ -168,7 +165,7 @@ export async function startDiscordBot(
           autoCompleteError,
         );
       }
-    } else if (interaction.isChatInputCommand()) {
+    } else if (interaction.isCommand()) {
       try {
         const optionsString = interaction.options.data
           .map((option) => `${option.name}:${option.value}`)
@@ -290,7 +287,7 @@ export async function sendDiscordMessage(
           description?: string;
           url?: string;
           color?: ColorResolvable;
-          fields?: APIEmbedField[];
+          fields?: EmbedFieldData[];
           image?: string;
         };
       }
@@ -300,13 +297,7 @@ export async function sendDiscordMessage(
     if (!channelId) return;
     const channel = await client.channels.fetch(channelId);
     if (typeof options === "string") options = { content: options };
-    if (
-      !(
-        channel &&
-        (channel.type === ChannelType.GuildText ||
-          channel.type === ChannelType.DM)
-      )
-    ) {
+    if (!channel) {
       console.warn(`Channel ${channelId} not found or is not a text channel.`);
       return;
     }
@@ -314,10 +305,13 @@ export async function sendDiscordMessage(
     const embedsToSend = [];
 
     if (options?.embed) {
-      const pokemonEmbed = new EmbedBuilder()
+      const pokemonEmbed = new MessageEmbed()
         .setColor(options.embed.color || "#FFDE00")
-        .setImage(options.embed.image ?? null)
         .setTimestamp();
+
+      if (options.embed.image) {
+        pokemonEmbed.setImage(options.embed.image);
+      }
 
       if (options.embed.title) {
         pokemonEmbed.setTitle(options.embed.title);
@@ -335,6 +329,11 @@ export async function sendDiscordMessage(
     }
 
     if (options?.content || embedsToSend.length > 0) {
+      if (!channel.isText()) {
+        console.warn(`Channel ${channelId} is not a text channel.`);
+        return;
+      }
+
       await channel.send({ content: options?.content, embeds: embedsToSend });
       console.log(`Successfully sent message to channel ${channelId}`);
     }

@@ -45,9 +45,12 @@ export async function getDraft(
 
   let draft: DraftDocument | null = null;
   if (ownerId) {
-    draft = await DraftModel.findOne({ owner: ownerId, leagueId: id });
+    draft = (await DraftModel.findOne({
+      owner: ownerId,
+      leagueId: id.toString(),
+    })) as DraftDocument | null;
   } else if (Types.ObjectId.isValid(id)) {
-    draft = await DraftModel.findById(id);
+    draft = (await DraftModel.findById(id)) as DraftDocument | null;
   }
   if (!draft) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
 

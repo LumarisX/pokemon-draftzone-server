@@ -53,7 +53,8 @@ export const DataRoute = createRoute()((r) => {
   });
   r.path("unread-counts")((r) => {
     r.get.validate({
-      query: (data) => z.record(z.string().or(z.number())).parse(data),
+      query: (data) =>
+        z.record(z.string(), z.union([z.string(), z.number()])).parse(data),
     })(async (ctx) => {
       const timeEntries = Object.entries(ctx.validatedQuery);
       const results = await Promise.all(

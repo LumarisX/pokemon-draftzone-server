@@ -1,14 +1,19 @@
 import {
+  ApplicationCommandDataResolvable,
   AutocompleteInteraction,
-  ChatInputCommandInteraction,
-  SharedSlashCommand,
+  CommandInteraction,
 } from "discord.js";
 // import { DraftRoute } from "./draft/draft.router";
 
+type CommandData = {
+  name: string;
+  toJSON: () => ApplicationCommandDataResolvable;
+};
+
 export type Command = {
-  data: SharedSlashCommand;
-  execute: (interaction: ChatInputCommandInteraction) => void;
-  autocomplete?: (interaction: AutocompleteInteraction) => void;
+  data: CommandData;
+  execute: (interaction: CommandInteraction) => void | Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction) => void | Promise<void>;
 };
 
 export type CommandRoute = {

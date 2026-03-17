@@ -1,5 +1,5 @@
 import { toID, TypeName } from "@pkmn/data";
-import { APIEmbedField } from "discord.js";
+import { EmbedFieldData } from "discord.js";
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick } from "../../agenda";
 import { resolveDiscordMention, sendDiscordMessage } from "../../discord";
@@ -80,6 +80,14 @@ function clearSideEffects(session: ClientSession) {
  */
 export function getPokemonIdFromDraft(draft: TeamDraft): string {
   return draft.pokemon.id;
+}
+
+function getDocumentId(
+  value: mongoose.Types.ObjectId | { _id: mongoose.Types.ObjectId },
+): string {
+  return value instanceof mongoose.Types.ObjectId
+    ? value.toString()
+    : value._id.toString();
 }
 
 export type DraftPick = {
@@ -195,7 +203,7 @@ export function getDraftOrder(
     return division.teams;
 
   let seed = 0;
-  const divisionId = division.id.toString();
+  const divisionId = division._id.toString();
   for (let i = 0; i < divisionId.length; i++) {
     seed = (seed << 5) - seed + divisionId.charCodeAt(i);
     seed = seed & seed;
@@ -251,7 +259,7 @@ export async function buildDraftBoards(
 ): Promise<{ flatDraftBoard: DraftPick[]; draftRounds: DraftRound[] }> {
   const initialTeamOrder = getDraftOrder(division);
   const teamDraftCursors = new Map<string, number>();
-  initialTeamOrder.forEach((t) => teamDraftCursors.set(t.id, 0));
+  initialTeamOrder.forEach((t) => teamDraftCursors.set(t._id.toString(), 0));
 
   await division.populate<{
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
@@ -270,14 +278,15 @@ export async function buildDraftBoards(
       teamName: team.coach.teamName,
     };
 
-    const cursor = teamDraftCursors.get(team.id)!;
+    const teamId = team._id.toString();
+    const cursor = teamDraftCursors.get(teamId)!;
     if (team.draft[cursor]) {
       const pokemonId = getPokemonIdFromDraft(team.draft[cursor]);
       draftPick.pokemon = {
         id: pokemonId,
         name: getName(pokemonId),
       };
-      teamDraftCursors.set(team.id, cursor + 1);
+      teamDraftCursors.set(teamId, cursor + 1);
     }
 
     flatDraftBoard.push(draftPick);
@@ -410,19 +419,21 @@ export function calculateCanDraft(
   const counterLimit = Math.min(division.draftCounter, pickOrder.length);
   for (let i = 0; i < counterLimit; i++) {
     if (i >= pickOrder.length) break;
-    const teamId = pickOrder[i].id;
+    const teamId = pickOrder[i]._id.toString();
     picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
   }
 
   for (const team of initialTeamOrder) {
-    const expected = picksExpected.get(team.id) || 0;
+    const teamId = team._id.toString();
+    const expected = picksExpected.get(teamId) || 0;
     if (team.draft.length < expected) {
-      canDraft.push(team.id);
+      canDraft.push(teamId);
     }
   }
 
   if (division.draftCounter < pickOrder.length) {
-    const currentPickingTeamId = pickOrder[division.draftCounter].id;
+    const currentPickingTeamId =
+      pickOrder[division.draftCounter]._id.toString();
     if (!canDraft.includes(currentPickingTeamId)) {
       canDraft.push(currentPickingTeamId);
     }
@@ -748,9 +759,10 @@ export async function draftPokemon(
     );
 
     const coach = currentTeam.coach;
+    const currentTeamId = currentTeam._id.toString();
 
     const teamIndex = currentDivision.teams.findIndex(
-      (t) => t.id === currentTeam.id,
+      (t) => getDocumentId(t) === currentTeamId,
     );
     if (teamIndex !== -1) {
       currentDivision.teams[teamIndex] = currentTeam;
@@ -762,7 +774,7 @@ export async function draftPokemon(
       currentDivision,
       pick.pokemonId,
       session,
-      currentTeam.id,
+      currentTeamId,
     );
 
     const numberOfRounds = tournament.tierList.draftCount.max;
@@ -797,14 +809,14 @@ export async function draftPokemon(
             cost: tier?.cost,
           },
           team: {
-            id: currentTeam.id,
+            id: currentTeamId,
             name: coach.teamName,
           },
           division: currentDivision.name,
         },
         canDraftTeams,
         team: {
-          id: currentTeam.id,
+          id: currentTeamId,
           name: coach.teamName,
           draft,
         },
@@ -838,7 +850,7 @@ export async function draftPokemon(
 
       const color = typeColorMap.get(pokemonSpecie.types[0]);
 
-      const fields: APIEmbedField[] = [
+      const fields: EmbedFieldData[] = [
         {
           name: "Round",
           value: `${currentRound + 1}`,
@@ -1355,7 +1367,7 @@ async function removePokemonFromPicks(
   let teamsToProcess = division.teams;
   if (skipTeamId) {
     teamsToProcess = teamsToProcess.filter(
-      (team: LeagueTeamDocument) => team.id !== skipTeamId,
+      (team: LeagueTeamDocument) => team._id.toString() !== skipTeamId,
     );
   }
 
@@ -1409,7 +1421,7 @@ export async function makeTrade(
       if (!draftedPokemonIds.has(pokemon.id)) {
         throw new PDZError(
           ErrorCodes.SPECIES.NOT_FOUND,
-          `Pokemon ${pokemon.id} not found in ${team1.id} draft`,
+          `Pokemon ${pokemon.id} not found in ${team1._id.toString()} draft`,
         );
       }
     }
@@ -1423,7 +1435,7 @@ export async function makeTrade(
       if (!draftedPokemonIds.has(pokemon.id)) {
         throw new PDZError(
           ErrorCodes.SPECIES.NOT_FOUND,
-          `Pokemon ${pokemon.id} not found in ${team2.id} draft`,
+          `Pokemon ${pokemon.id} not found in ${team2._id.toString()} draft`,
         );
       }
     }

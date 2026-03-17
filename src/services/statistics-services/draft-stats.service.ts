@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import { FilterQuery, PipelineStage } from "mongoose";
+import { PipelineStage } from "mongoose";
 import { DraftData, DraftModel } from "../../models/draft/draft.model";
 
 const DRAFT_STATS_TTL_SECONDS = 60 * 60 * 24;
@@ -51,8 +51,11 @@ export function invalidateDraftStatsCache(): void {
   draftStatsCache.flushAll();
 }
 
-function buildMatchFilter(options: DraftStatsOptions): FilterQuery<DraftData> {
-  const filter: FilterQuery<DraftData> = {};
+function buildMatchFilter(options: DraftStatsOptions): {
+  format?: string;
+  ruleset?: string;
+} {
+  const filter: { format?: string; ruleset?: string } = {};
   if (options.format) filter.format = options.format;
   if (options.ruleset) filter.ruleset = options.ruleset;
   return filter;

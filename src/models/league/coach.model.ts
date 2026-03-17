@@ -28,22 +28,17 @@ export const signUpSchema = z
       .trim()
       .min(1, "Invalid timezone: Must be a non-empty string."),
     experience: z.string({
-      required_error: "Invalid experience: Must be a string.",
-      invalid_type_error: "Invalid experience: Must be a string.",
+      error: "Invalid experience: Must be a string.",
     }),
     droppedBefore: z.boolean({
-      required_error: "Invalid droppedBefore: Must be a boolean.",
-      invalid_type_error: "Invalid droppedBefore: Must be a boolean.",
+      error: "Invalid droppedBefore: Must be a boolean.",
     }),
     droppedWhy: z.string({
-      required_error:
-        "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
-      invalid_type_error:
+      error:
         "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
     }),
     confirm: z.boolean({
-      required_error: "Invalid confirm: Must be true.",
-      invalid_type_error: "Invalid confirm: Must be true.",
+      error: "Invalid confirm: Must be true.",
     }),
   })
   .superRefine((value, ctx) => {

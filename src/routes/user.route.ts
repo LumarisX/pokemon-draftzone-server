@@ -11,11 +11,8 @@ export const UserRoutes: RouteOld = {
         try {
           const management = await getManagementToken();
           const userId = req.auth!.payload.sub!!;
-          const user = await management.users.get({ id: userId });
-          const settings =
-            (user.data.user_metadata && user.data.user_metadata.settings) ||
-            null;
-          return res.status(200).json(settings);
+          const user = await management.users.get(userId);
+          return res.status(200).json(user.user_metadata?.settings ?? null);
         } catch (error) {
           sendError(res, 500, error as Error, "UR-R1-01");
         }
@@ -31,10 +28,9 @@ export const UserRoutes: RouteOld = {
             );
           const management = await getManagementToken();
           const userId = req.auth!.payload.sub!!;
-          await management.users.update(
-            { id: userId },
-            { user_metadata: { settings: req.body } },
-          );
+          await management.users.update(userId, {
+            user_metadata: { settings: req.body },
+          });
           return res.status(201).json({ settings: req.body });
         } catch (error) {
           sendError(res, 500, error as Error, "UR-R2-01");

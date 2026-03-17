@@ -129,18 +129,31 @@ app.use(express.json());
 
 app.use(loggingContext);
 
-app.use(
-  mongoSanitize({
-    replaceWith: "_",
-    onSanitize: ({ req, key }: { req: Request; key: string }) => {
+const SANITIZED_REQUEST_KEYS = ["body", "params"] as const;
+
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  for (const key of SANITIZED_REQUEST_KEYS) {
+    const target = req[key];
+    if (!target || typeof target !== "object") continue;
+
+    const hadProhibitedKeys = mongoSanitize.has(
+      target as Record<string, unknown> | unknown[],
+    );
+    mongoSanitize.sanitize(target as Record<string, unknown> | unknown[], {
+      replaceWith: "_",
+    });
+
+    if (hadProhibitedKeys) {
       req.logger.warn(`Request field sanitized`, {
         key,
         path: req.originalUrl,
         ip: req.ip,
       });
-    },
-  }),
-);
+    }
+  }
+
+  next();
+});
 
 const allowedOrigins = [
   "https://dqptrox2bn9qw.cloudfront.net",

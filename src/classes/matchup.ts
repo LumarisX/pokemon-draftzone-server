@@ -159,7 +159,7 @@ export class Matchup {
       ruleset,
       getFormat(leagueMatchupDoc.division.tournament.format),
       leagueMatchupDoc.division.tournament.name,
-      leagueMatchupDoc.division.tournament.id.toString(),
+      leagueMatchupDoc.division.tournament._id.toString(),
       leagueMatchupDoc.division.stages[stageIndex].name ?? "",
       [],
       notes,

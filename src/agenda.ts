@@ -1,4 +1,5 @@
-import Agenda, { Job } from "agenda";
+import { MongoBackend } from "@agendajs/mongo-backend";
+import { Agenda, Job } from "agenda";
 import { logger } from "./app";
 import { config } from "./config";
 import { resolveDiscordMention, sendDiscordMessage } from "./discord";
@@ -21,7 +22,10 @@ import { LeagueTierListDocument } from "./models/league/tier-list.model";
 const mongoConnectionString = `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`;
 
 export const agenda = new Agenda({
-  db: { address: mongoConnectionString, collection: "jobs" },
+  backend: new MongoBackend({
+    address: mongoConnectionString,
+    collection: "jobs",
+  }),
 });
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -215,11 +219,11 @@ export async function cancelSkipPick(division: LeagueDivisionDocument) {
   await agenda.start();
   await agenda.cancel({
     name: "skip-draft-pick",
-    "data.divisionId": division._id,
+    data: { divisionId: division._id },
   });
   await agenda.cancel({
     name: "skip-draft-reminder",
-    "data.divisionId": division._id,
+    data: { divisionId: division._id },
   });
 }
 

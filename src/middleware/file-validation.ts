@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import * as fileType from "file-type";
+import { fileTypeFromBuffer } from "file-type";
 
 // Security constants
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -99,7 +99,7 @@ export async function verifyFileBuffer(
   declaredContentType: string,
 ): Promise<{ valid: boolean; error?: string; detectedType?: string }> {
   try {
-    const detected = await fileType.fromBuffer(buffer);
+    const detected = await fileTypeFromBuffer(buffer);
 
     if (!detected) {
       return {

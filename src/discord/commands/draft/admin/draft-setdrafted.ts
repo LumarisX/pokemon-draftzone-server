@@ -1,4 +1,5 @@
-import { PermissionsBitField, SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { Permissions } from "discord.js";
 import { guildCheck } from "..";
 import { Command } from "../..";
 import { getDetails, getDivisions, setDrafted } from "../../../../data/pdbl";
@@ -7,14 +8,14 @@ export const DraftModPickCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("mod-setdrafted")
     .setDescription("Admin only: Choose a draft pick a user.")
-    .setDefaultMemberPermissions(PermissionsBitField.Flags.Administrator)
+    .setDefaultMemberPermissions(Permissions.FLAGS.ADMINISTRATOR)
     .addStringOption((option) =>
       option
         .setName("division")
         .setDescription("Division")
         .setRequired(true)
         .addChoices(
-          getDivisions().map((division) => ({
+          ...getDivisions().map((division) => ({
             name: division,
             value: division,
           })),

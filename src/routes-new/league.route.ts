@@ -1,9 +1,8 @@
 import { SpeciesName } from "@pkmn/data";
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
+  MessageActionRow,
+  MessageButton,
+  MessageEmbed,
   TextChannel,
 } from "discord.js";
 import { isValidObjectId, Types } from "mongoose";
@@ -86,12 +85,21 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
 
+const matchupPokemonStatsSchema = z.object({
+  kills: z.object({
+    direct: z.number().optional(),
+    indirect: z.number().optional(),
+    teammate: z.number().optional(),
+  }),
+  status: z.enum(["brought", "survived", "fainted"]).nullable(),
+});
+
 const DivisionHandler = async (
   ctx: { tournament: LeagueTournamentDocument },
   division_id: string,
 ) => {
   const division = await LeagueDivisionModel.findOne({
-    tournament: ctx.tournament.id,
+    tournament: ctx.tournament._id,
     divisionKey: division_id,
   }).populate<{
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
@@ -147,7 +155,7 @@ export const LeagueRoute = createRoute()((r) => {
             const channel = guild.channels.cache.get(
               "1293333149471871108",
             ) as TextChannel;
-            if (channel && channel.isTextBased()) {
+            if (channel && channel.isText()) {
               const formatDate = (value?: Date) =>
                 value ? value.toISOString().split("T")[0] : "TBD";
               const clamp = (value: string, limit: number) =>
@@ -155,7 +163,7 @@ export const LeagueRoute = createRoute()((r) => {
                   ? `${value.slice(0, limit - 3)}...`
                   : value;
 
-              const embed = new EmbedBuilder()
+              const embed = new MessageEmbed()
                 .setTitle(clamp(leagueAd.leagueName, 256))
                 .setDescription(clamp(leagueAd.description, 1024))
                 .setColor("#2F80ED")
@@ -222,17 +230,16 @@ export const LeagueRoute = createRoute()((r) => {
                   },
                 );
 
-              const actionRow =
-                new ActionRowBuilder<ButtonBuilder>().addComponents(
-                  new ButtonBuilder()
-                    .setCustomId(`league-ad:approve:${document._id}`)
-                    .setLabel("Approve")
-                    .setStyle(ButtonStyle.Success),
-                  new ButtonBuilder()
-                    .setCustomId(`league-ad:deny:${document._id}`)
-                    .setLabel("Deny")
-                    .setStyle(ButtonStyle.Danger),
-                );
+              const actionRow = new MessageActionRow().addComponents(
+                new MessageButton()
+                  .setCustomId(`league-ad:approve:${document._id}`)
+                  .setLabel("Approve")
+                  .setStyle("SUCCESS"),
+                new MessageButton()
+                  .setCustomId(`league-ad:deny:${document._id}`)
+                  .setLabel("Deny")
+                  .setStyle("DANGER"),
+              );
 
               channel.send({
                 content: "A new league ad has been submitted.",
@@ -831,7 +838,7 @@ export const LeagueRoute = createRoute()((r) => {
                 const channel = guild.channels.cache.get(
                   "1303896194187132978",
                 ) as TextChannel;
-                if (channel && channel.isTextBased()) {
+                if (channel && channel.isText()) {
                   const totalCoaches = await LeagueCoachModel.countDocuments({
                     tournamentId: ctx.tournament._id,
                   });
@@ -2066,31 +2073,15 @@ export const LeagueRoute = createRoute()((r) => {
                             team1: z.object({
                               score: z.number(),
                               pokemon: z.record(
-                                z.object({
-                                  kills: z.object({
-                                    direct: z.number().optional(),
-                                    indirect: z.number().optional(),
-                                    teammate: z.number().optional(),
-                                  }),
-                                  status: z
-                                    .enum(["brought", "survived", "fainted"])
-                                    .nullable(),
-                                }),
+                                z.string(),
+                                matchupPokemonStatsSchema,
                               ),
                             }),
                             team2: z.object({
                               score: z.number(),
                               pokemon: z.record(
-                                z.object({
-                                  kills: z.object({
-                                    direct: z.number().optional(),
-                                    indirect: z.number().optional(),
-                                    teammate: z.number().optional(),
-                                  }),
-                                  status: z
-                                    .enum(["brought", "survived", "fainted"])
-                                    .nullable(),
-                                }),
+                                z.string(),
+                                matchupPokemonStatsSchema,
                               ),
                             }),
                           }),
