@@ -25,6 +25,31 @@ import {
 import { createRoute } from "./route-builder";
 import { getTournamentsByOwner } from "../services/league-services/league-service";
 
+const scorePokemonSchema = z.object({
+  pokemon: z.object({ id: z.string().min(1) }),
+  kills: z.number().int().nonnegative(),
+  fainted: z.number().int().nonnegative(),
+  indirect: z.number().int().nonnegative(),
+  brought: z.number().int().nonnegative(),
+});
+
+const scorePatchSchema = z.object({
+  aTeamPaste: z.string(),
+  bTeamPaste: z.string(),
+  matches: z.array(
+    z.object({
+      replay: z.string(),
+      winner: z.enum(["a", "b", ""]),
+      aTeam: z.object({
+        team: z.array(scorePokemonSchema),
+      }),
+      bTeam: z.object({
+        team: z.array(scorePokemonSchema),
+      }),
+    }),
+  ),
+});
+
 export const DraftRoute = createRoute().auth()((r) => {
   r.path("teams")((r) => {
     r.get(async (ctx) => {
@@ -107,10 +132,20 @@ export const DraftRoute = createRoute().auth()((r) => {
         try {
           await session.withTransaction(
             async () => {
-              const archive = new Archive(ctx.rawDraft.toObject<DraftData>());
-              console.log("Creating archive for draft:", ctx.team_id);
+              const archive = new Archive(ctx.rawDraft);
               const archiveData = await archive.createArchive();
-              await archiveData.validate();
+              // Debug: log the first match stats to see the structure
+              if (archiveData.matchups?.[0]?.matches?.[0]) {
+                console.log(
+                  "First match aTeam stats:",
+                  JSON.stringify(
+                    archiveData.matchups[0].matches[0].aTeam.stats,
+                    null,
+                    2,
+                  ),
+                );
+              }
+              // Let Mongoose validate during save instead of explicit validation
               await archiveData.save({ session });
               await deleteDraft(ctx.rawDraft, session);
             },

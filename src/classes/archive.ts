@@ -37,7 +37,7 @@ export class Archive {
       doc: this.draft.doc,
       team: this.draft.team.map((pokemon) => ({ id: pokemon.id })),
       matchups: [],
-      stats: new Map<string, StatData>(),
+      stats: {},
       score: { wins: 0, losses: 0, diff: "0" },
     };
     const matchups = await getMatchupsByDraftId(this.draft._id);
@@ -64,12 +64,12 @@ export class Archive {
     winner: "a" | "b" | undefined;
     aTeam: {
       wins: number;
-      stats: Map<string, StatData>;
+      stats: Record<string, StatData>;
       differential: number;
     };
     bTeam: {
       wins: number;
-      stats: Map<string, StatData>;
+      stats: Record<string, StatData>;
       differential: number;
     };
   } {
@@ -77,12 +77,12 @@ export class Archive {
       return {
         winner: undefined,
         aTeam: {
-          stats: new Map<string, StatData>(),
+          stats: {},
           wins: 0,
           differential: 0,
         },
         bTeam: {
-          stats: new Map<string, StatData>(),
+          stats: {},
           wins: 0,
           differential: 0,
         },
@@ -151,15 +151,23 @@ export class Archive {
 
     return {
       winner,
-      aTeam: teamStats(matches, "aTeam"),
-      bTeam: teamStats(matches, "bTeam"),
+      aTeam: {
+        ...teamStats(matches, "aTeam"),
+        stats: Object.fromEntries(teamStats(matches, "aTeam").stats),
+      },
+      bTeam: {
+        ...teamStats(matches, "bTeam"),
+        stats: Object.fromEntries(teamStats(matches, "bTeam").stats),
+      },
     };
   }
 
-  private leagueStats(matches: ArchiveV2Data["matchups"]) {
+  private leagueStats(
+    matches: ArchiveV2Data["matchups"],
+  ): Record<string, StatData> {
     const stats = new Map<string, StatData>();
     for (const matchup of matches) {
-      for (const [pid, pdata] of matchup.stats.aTeam.stats.entries()) {
+      for (const [pid, pdata] of Object.entries(matchup.stats.aTeam.stats)) {
         const existing = stats.get(pid) ?? {
           brought: 0,
           kills: 0,
@@ -181,7 +189,7 @@ export class Archive {
       if (pdata.indirect) pruned.indirect = pdata.indirect;
       stats.set(pid, pruned);
     }
-    return stats;
+    return Object.fromEntries(stats);
   }
 
   private leagueScore(matches: ArchiveV2Data["matchups"]) {

@@ -5,7 +5,7 @@ import { getName } from "../data-services/pokedex.service";
 
 export async function getStats(
   ruleset: Ruleset,
-  archive: ArchiveV1Data | ArchiveV2Data
+  archive: ArchiveV1Data | ArchiveV2Data,
 ): Promise<{
   pokemon: {
     pokemon: { id: ID; name: string };
@@ -30,7 +30,7 @@ export async function getStats(
   } = {};
   if (archive.archiveType === "ArchiveV2") {
     return {
-      pokemon: Array.from(archive.stats, ([pid, statData]) => ({
+      pokemon: Object.entries(archive.stats).map(([pid, statData]) => ({
         pokemon: { id: toID(pid), name: getName(pid) },
         kills: statData.kills ?? 0,
         brought: statData.brought ?? 0,

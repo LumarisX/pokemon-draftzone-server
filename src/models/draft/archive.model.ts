@@ -66,7 +66,7 @@ export type MatchV2Data = {
 
 export type MatchupStatsTeam = {
   wins: number;
-  stats: Map<string, StatData>;
+  stats: Record<string, StatData>;
   differential: number;
 };
 
@@ -96,7 +96,7 @@ export type ArchiveV2Data = ArchiveBaseData &
   DraftData & {
     archiveType: "ArchiveV2";
     matchups: MatchupV2Data[];
-    stats: Map<string, StatData>;
+    stats: Record<string, StatData>;
     score: ScoreData;
   };
 

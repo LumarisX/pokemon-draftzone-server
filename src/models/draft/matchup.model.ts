@@ -6,7 +6,7 @@ const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
     _id: { type: Schema.Types.ObjectId, required: true },
     paste: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchupTeamFullSchema = new Schema<MatchupTeamFull>(
@@ -16,15 +16,34 @@ const matchupTeamFullSchema = new Schema<MatchupTeamFull>(
     team: { type: [pokemonSchema], required: true },
     paste: { type: String },
   },
-  { _id: false }
+  { _id: false },
+);
+
+// Define statsSchema for array of tuples [string, statData]
+const statsSchema = new Schema<{
+  indirect?: number;
+  kills?: number;
+  deaths?: number;
+  brought?: number;
+}>(
+  {
+    indirect: { type: Number },
+    kills: { type: Number },
+    deaths: { type: Number },
+    brought: { type: Number },
+  },
+  { _id: false },
 );
 
 const matchTeamSchema = new Schema<TeamStatData>(
   {
-    stats: { type: [], required: true },
+    stats: {
+      type: [[String, statsSchema]],
+      required: true,
+    },
     score: { type: Number, default: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const matchSchema = new Schema<MatchData>(
@@ -34,7 +53,7 @@ const matchSchema = new Schema<MatchData>(
     replay: { type: String },
     winner: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 export const matchupSchema = new Schema<MatchupData>(
@@ -47,7 +66,7 @@ export const matchupSchema = new Schema<MatchupData>(
     notes: { type: String, default: undefined },
     matches: { type: [matchSchema], required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export type MatchupTeamBase = {
@@ -71,7 +90,7 @@ export type MatchStatData = [
     kills?: number;
     deaths?: number;
     brought?: number;
-  }
+  },
 ];
 
 export type TeamStatData = {
