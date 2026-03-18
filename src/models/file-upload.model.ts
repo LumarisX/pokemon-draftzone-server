@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import { HydratedDocument, model, Schema } from "mongoose";
 
 export const FILE_UPLOAD_COLLECTION = "FileUpload";
 
@@ -16,10 +16,9 @@ export type FileUpload = {
   deletedAt?: Date;
 };
 
-export type FileUploadDocument = Document &
-  FileUpload & { _id: Types.ObjectId };
+export type FileUploadDocument = HydratedDocument<FileUpload>;
 
-const FileUploadSchema: Schema<FileUploadDocument> = new Schema(
+const FileUploadSchema: Schema<FileUpload> = new Schema(
   {
     key: { type: String, required: true, unique: true, index: true },
     uploadedBy: { type: String, required: true, index: true },
@@ -46,7 +45,4 @@ const FileUploadSchema: Schema<FileUploadDocument> = new Schema(
 
 FileUploadSchema.index({ uploadedBy: 1, createdAt: -1 });
 
-export default mongoose.model<FileUploadDocument>(
-  FILE_UPLOAD_COLLECTION,
-  FileUploadSchema,
-);
+export default model<FileUpload>(FILE_UPLOAD_COLLECTION, FileUploadSchema);

@@ -1,5 +1,6 @@
-import mongoose, {
-  Document,
+import {
+  HydratedDocument,
+  model,
   Model,
   QueryWithHelpers,
   Schema,
@@ -45,8 +46,7 @@ export type LeagueTournament = {
   diffMode: "pokemon" | "game";
 };
 
-export type LeagueTournamentDocument = Document &
-  LeagueTournament & { _id: Types.ObjectId };
+export type LeagueTournamentDocument = HydratedDocument<LeagueTournament>;
 
 type TournamentQueryHelpers = {
   withTierList(
@@ -59,8 +59,11 @@ type TournamentQueryHelpers = {
 };
 
 type LeagueTournamentModel = Model<
-  LeagueTournamentDocument,
-  TournamentQueryHelpers
+  LeagueTournament,
+  TournamentQueryHelpers,
+  {},
+  {},
+  LeagueTournamentDocument
 > & {
   findByKeyOrThrow(key: string): Promise<LeagueTournamentDocument>;
 };
@@ -82,7 +85,7 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
 );
 
 const LeagueTournamentSchema: Schema<
-  LeagueTournamentDocument,
+  LeagueTournament,
   LeagueTournamentModel,
   {},
   TournamentQueryHelpers
@@ -137,7 +140,7 @@ LeagueTournamentSchema.statics.findByKeyOrThrow = async function (key: string) {
   return tournament;
 };
 
-export default mongoose.model<LeagueTournamentDocument, LeagueTournamentModel>(
+export default model<LeagueTournament, LeagueTournamentModel>(
   LEAGUE_TOURNAMENT_COLLECTION,
   LeagueTournamentSchema,
 );

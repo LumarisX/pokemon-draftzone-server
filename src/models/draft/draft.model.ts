@@ -1,4 +1,4 @@
-import { Document, model, Schema, Types } from "mongoose";
+import { HydratedDocument, model, Schema } from "mongoose";
 import { FormatId } from "../../data/formats";
 import { RulesetId } from "../../data/rulesets";
 import { PokemonData, pokemonSchema } from "../pokemon.schema";
@@ -11,6 +11,7 @@ const draftSchema = new Schema<DraftData>(
     },
     teamName: {
       type: String,
+      required: true,
     },
     leagueId: {
       type: String,
@@ -62,8 +63,8 @@ export type DraftData = {
   team: PokemonData[];
 };
 
-export type DraftDocument = DraftData & Document<Types.ObjectId>;
+export type DraftDocument = HydratedDocument<DraftData>;
 
-draftSchema.index({ owner: 1, tournamentId: 1 }, { unique: true });
+draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
 export const DraftModel = model<DraftData>("draft", draftSchema);

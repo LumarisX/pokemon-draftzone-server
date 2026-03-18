@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types, Document } from "mongoose";
+import { HydratedDocument, model, Model, Schema, Types } from "mongoose";
 import { LeagueCoachDocument } from "./coach.model";
 import { LEAGUE_COACH_COLLECTION, LEAGUE_TIER_LIST_COLLECTION } from ".";
 
@@ -40,13 +40,24 @@ export type LeagueTierList = {
   ruleset: string;
 };
 
-export type LeagueTierListDocument = Document &
-  LeagueTierList & {
-    _id: Types.ObjectId;
-    getPokemonCost(pokemonId: string, addonName?: string[]): number | undefined;
-    getTierByName(tierName: string): LeagueTier | undefined;
-    getPokemonIds(): string[];
-  };
+type TierListMethods = {
+  getPokemonCost(pokemonId: string, addonName?: string[]): number | undefined;
+  getTierByName(tierName: string): LeagueTier | undefined;
+  getPokemonIds(): string[];
+};
+
+export type LeagueTierListDocument = HydratedDocument<
+  LeagueTierList,
+  TierListMethods
+>;
+
+type LeagueTierListModel = Model<
+  LeagueTierList,
+  {},
+  TierListMethods,
+  {},
+  LeagueTierListDocument
+>;
 
 const TierListPokemonAddonSchema: Schema<TierListPokemonAddon> = new Schema(
   {
@@ -76,7 +87,11 @@ export const LeagueTierSchema: Schema<LeagueTier> = new Schema(
   { _id: false },
 );
 
-const LeagueTierListSchema: Schema<LeagueTierListDocument> = new Schema(
+const LeagueTierListSchema: Schema<
+  LeagueTierList,
+  LeagueTierListModel,
+  TierListMethods
+> = new Schema(
   {
     name: { type: String, required: true },
     description: { type: String },
@@ -108,12 +123,11 @@ const LeagueTierListSchema: Schema<LeagueTierListDocument> = new Schema(
 );
 
 LeagueTierListSchema.methods.getPokemonCost = function (
+  this: LeagueTierListDocument,
   pokemonId: string,
   addons?: string[],
 ): number | undefined {
-  const pokemon = (this.pokemon as Map<string, LeagueTierListPokemon>).get(
-    pokemonId,
-  );
+  const pokemon = this.pokemon.get(pokemonId);
 
   if (!pokemon) return undefined;
 
@@ -127,18 +141,19 @@ LeagueTierListSchema.methods.getPokemonCost = function (
 };
 
 LeagueTierListSchema.methods.getTierByName = function (
+  this: LeagueTierListDocument,
   tierName: string,
 ): LeagueTier | undefined {
   return this.tiers.find((t: LeagueTier) => t.name === tierName);
 };
 
-LeagueTierListSchema.methods.getPokemonIds = function (): string[] {
-  return Array.from(
-    (this.pokemon as Map<string, LeagueTierListPokemon>).keys(),
-  );
+LeagueTierListSchema.methods.getPokemonIds = function (
+  this: LeagueTierListDocument,
+): string[] {
+  return Array.from(this.pokemon.keys());
 };
 
-export default mongoose.model<LeagueTierListDocument>(
+export default model<LeagueTierList, LeagueTierListModel>(
   LEAGUE_TIER_LIST_COLLECTION,
   LeagueTierListSchema,
 );

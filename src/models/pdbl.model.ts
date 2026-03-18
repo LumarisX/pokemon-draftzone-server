@@ -1,6 +1,6 @@
-import mongoose, { InferSchemaType } from "mongoose";
+import { InferSchemaType, model, Schema, Types } from "mongoose";
 
-const pdblSchema = new mongoose.Schema({
+const pdblSchema = new Schema({
   name: { type: String, required: true },
   timezone: { type: String, required: true },
   experience: { type: String, required: true },
@@ -10,6 +10,6 @@ const pdblSchema = new mongoose.Schema({
 });
 
 export type PDBLDoc = InferSchemaType<typeof pdblSchema> & {
-  _id?: mongoose.Types.ObjectId;
+  _id?: Types.ObjectId;
 };
-export const PDBLModel = mongoose.model("pdbl2", pdblSchema);
+export const PDBLModel = model("pdbl2", pdblSchema);

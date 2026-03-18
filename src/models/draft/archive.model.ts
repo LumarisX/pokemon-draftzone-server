@@ -1,5 +1,5 @@
 import { ID } from "@pkmn/data";
-import { Document, model, Model, Schema } from "mongoose";
+import { HydratedDocument, model, Schema } from "mongoose";
 import { DraftData } from "./draft.model";
 import { MatchupData, MatchupTeamFull } from "./matchup.model";
 
@@ -18,7 +18,7 @@ export type PokemonRef = {
 
 export type ArchiveBaseData = {
   leagueName: string;
-  teamName?: string;
+  teamName: string;
   owner: string;
   format: string;
   ruleset: string;
@@ -29,10 +29,11 @@ export type ArchiveBaseData = {
 
 export type ArchiveType = "ArchiveV1" | "ArchiveV2";
 
-export type ArchiveBaseDocument = Document &
+export type ArchiveBaseDocument = HydratedDocument<
   ArchiveBaseData & {
     archiveType?: ArchiveType;
-  };
+  }
+>;
 
 // V1 Types
 export type MatchV1Data = {
@@ -49,7 +50,7 @@ export type ArchiveV1Data = ArchiveBaseData & {
   matches: MatchV1Data[];
 };
 
-export type ArchiveV1Document = Document & ArchiveV1Data;
+export type ArchiveV1Document = HydratedDocument<ArchiveV1Data>;
 
 // V2 Types
 export type MatchTeamStatsV2 = {
@@ -100,7 +101,7 @@ export type ArchiveV2Data = ArchiveBaseData &
     score: ScoreData;
   };
 
-export type ArchiveV2Document = Document & ArchiveV2Data;
+export type ArchiveV2Document = HydratedDocument<ArchiveV2Data>;
 
 const pokemonSchema = new Schema<PokemonRef>(
   {
@@ -204,10 +205,10 @@ const scoreSchema = new Schema<ScoreData>(
 );
 
 // Base Schema
-const baseSchema = new Schema(
+const baseSchema = new Schema<ArchiveBaseData>(
   {
     leagueName: { type: String, required: true },
-    teamName: { type: String },
+    teamName: { type: String, required: true },
     owner: { type: String, required: true, ref: "users" },
     format: { type: String, required: true },
     ruleset: { type: String, required: true },
@@ -220,22 +221,22 @@ const baseSchema = new Schema(
   },
 );
 
-export const ArchiveBaseModel = model<ArchiveBaseDocument>(
+export const ArchiveBaseModel = model<ArchiveBaseData>(
   "ArchiveBase",
   baseSchema,
   ARCHIVE_COLLECTION,
 );
 
-export const ArchiveV1Model = ArchiveBaseModel.discriminator<ArchiveV1Document>(
+export const ArchiveV1Model = ArchiveBaseModel.discriminator<ArchiveV1Data>(
   "ArchiveV1",
-  new Schema({
+  new Schema<ArchiveV1Data>({
     matches: [matchSchemaV1],
   }),
 );
 
-export const ArchiveV2Model = ArchiveBaseModel.discriminator<ArchiveV2Document>(
+export const ArchiveV2Model = ArchiveBaseModel.discriminator<ArchiveV2Data>(
   "ArchiveV2",
-  new Schema({
+  new Schema<ArchiveV2Data>({
     leagueId: { type: String, required: true },
     doc: { type: String },
     stats: { type: Map, of: statsSchema, default: {} },

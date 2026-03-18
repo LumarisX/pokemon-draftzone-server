@@ -1,24 +1,23 @@
 import { model, Schema } from "mongoose";
 
-interface IPushSubscriptionKeys {
+interface PushSubscriptionKeys {
   p256dh: string;
   auth: string;
 }
 
-interface IBrowserPushSubscription {
+interface BrowserPushSubscription {
   endpoint: string;
   expirationTime?: number | null;
-  keys: IPushSubscriptionKeys;
+  keys: PushSubscriptionKeys;
 }
 
-export interface IPushSubscriptionDoc extends Document {
+export type PushSubscriptionData = {
   userId: string;
   endpoint: string;
-  subscription: IBrowserPushSubscription;
-  createdAt: Date;
-}
+  subscription: BrowserPushSubscription;
+};
 
-const PushSubscriptionSchema: Schema = new Schema({
+const PushSubscriptionSchema: Schema<PushSubscriptionData> = new Schema({
   userId: {
     type: String,
     required: true,
@@ -37,7 +36,7 @@ const PushSubscriptionSchema: Schema = new Schema({
     },
     expirationTime: {
       type: Number,
-      required: true,
+      default: null,
     },
     keys: {
       p256dh: {
@@ -49,16 +48,12 @@ const PushSubscriptionSchema: Schema = new Schema({
         required: true,
       },
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
 });
 
 PushSubscriptionSchema.index({ userId: 1, endpoint: 1 }, { unique: true });
 
-export const PushSubscriptionModel = model<IPushSubscriptionDoc>(
+export const PushSubscriptionModel = model<PushSubscriptionData>(
   "PushSubscription",
-  PushSubscriptionSchema
+  PushSubscriptionSchema,
 );

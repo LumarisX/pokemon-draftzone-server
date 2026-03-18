@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
+import { model, Schema } from "mongoose";
 
-const supporterSchema = new mongoose.Schema({
+const supporterSchema = new Schema({
   name: { type: String, required: true },
   startDate: { type: Date, required: true, default: Date.now() },
   tier: { type: String },
@@ -26,7 +26,7 @@ export interface SupporterDocument extends Supporter, Document {
   updatedAt: Date;
   createdAt: Date;
 }
-export const SupporterModel = mongoose.model<SupporterDocument>(
+export const SupporterModel = model<SupporterDocument>(
   "supporters",
-  supporterSchema
+  supporterSchema,
 );

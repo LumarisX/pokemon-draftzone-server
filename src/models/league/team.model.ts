@@ -1,8 +1,9 @@
-import mongoose, {
+import {
   ClientSession,
-  Document,
+  HydratedDocument,
+  model,
   Model,
-  Query,
+  QueryWithHelpers,
   Schema,
   Types,
 } from "mongoose";
@@ -29,9 +30,7 @@ export type LeagueTeam = {
   skipCount: number;
 };
 
-export type LeagueTeamDocument = Document &
-  LeagueTeam &
-  TeamMethods & { _id: Types.ObjectId };
+export type LeagueTeamDocument = HydratedDocument<LeagueTeam, TeamMethods>;
 
 export type PopulatedLeagueTeamDocument = LeagueTeamDocument & {
   coach: LeagueCoachDocument;
@@ -44,16 +43,22 @@ type TeamMethods = {
   draftedAsPokemonIdObjects(): { pokemonId: string }[];
 };
 
-type LeagueTeamModel = Model<LeagueTeamDocument, {}, TeamMethods> & {
+type LeagueTeamModel = Model<
+  LeagueTeam,
+  {},
+  TeamMethods,
+  {},
+  LeagueTeamDocument
+> & {
   findByCoachIds(
     coachIds: (Types.ObjectId | string)[],
-  ): Query<LeagueTeamDocument[], LeagueTeamDocument>;
+  ): QueryWithHelpers<LeagueTeamDocument[], LeagueTeamDocument>;
   findIdsByCoachIds(
     coachIds: (Types.ObjectId | string)[],
   ): Promise<Types.ObjectId[]>;
   findByIdWithCoach(
     id: Types.ObjectId | string,
-  ): Promise<(LeagueTeamDocument & { coach: LeagueCoachDocument }) | null>;
+  ): Promise<PopulatedLeagueTeamDocument | null>;
 };
 
 const TeamDraftSchema: Schema<TeamDraft> = new Schema(
@@ -81,20 +86,17 @@ const TeamPicksSchema: Schema<TeamPick> = new Schema(
   { _id: false },
 );
 
-const LeagueTeamSchema: Schema<
-  LeagueTeamDocument,
-  LeagueTeamModel,
-  TeamMethods
-> = new Schema({
-  coach: {
-    type: Schema.Types.ObjectId,
-    ref: LEAGUE_COACH_COLLECTION,
-    required: true,
-  },
-  picks: [[TeamPicksSchema]],
-  draft: [TeamDraftSchema],
-  skipCount: { type: Number, default: 0 },
-});
+const LeagueTeamSchema: Schema<LeagueTeam, LeagueTeamModel, TeamMethods> =
+  new Schema({
+    coach: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_COACH_COLLECTION,
+      required: true,
+    },
+    picks: [[TeamPicksSchema]],
+    draft: [TeamDraftSchema],
+    skipCount: { type: Number, default: 0 },
+  });
 
 LeagueTeamSchema.methods.incrementSkipCount = async function (
   session?: ClientSession,
@@ -131,12 +133,10 @@ LeagueTeamSchema.statics.findIdsByCoachIds = async function (
 LeagueTeamSchema.statics.findByIdWithCoach = async function (
   id: Types.ObjectId | string,
 ) {
-  return (await this.findById(id).populate("coach")) as
-    | (LeagueTeamDocument & { coach: LeagueCoachDocument })
-    | null;
+  return this.findById(id).populate<{ coach: LeagueCoachDocument }>("coach");
 };
 
-export default mongoose.model<LeagueTeamDocument, LeagueTeamModel>(
+export default model<LeagueTeam, LeagueTeamModel>(
   LEAGUE_TEAM_COLLECTION,
   LeagueTeamSchema,
 );

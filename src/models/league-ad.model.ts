@@ -1,6 +1,6 @@
-import mongoose, { Document, Types } from "mongoose";
+import mongoose, { HydratedDocument, model, Schema } from "mongoose";
 
-const leagueAdSchema = new mongoose.Schema(
+const leagueAdSchema: Schema<LeagueAdData> = new mongoose.Schema(
   {
     leagueName: {
       type: String,
@@ -86,7 +86,7 @@ const leagueAdSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export type LeagueAdData = {
@@ -112,11 +112,6 @@ export type LeagueAdData = {
   updatedAt: Date;
 };
 
-export interface LeagueAdDocument
-  extends LeagueAdData,
-    Document<Types.ObjectId> {}
+export type LeagueAdDocument = HydratedDocument<LeagueAdData>;
 
-export const LeagueAdModel = mongoose.model<LeagueAdDocument>(
-  "leaguead",
-  leagueAdSchema
-);
+export const LeagueAdModel = model<LeagueAdData>("leaguead", leagueAdSchema);

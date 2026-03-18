@@ -1,5 +1,6 @@
-import mongoose, {
-  Document,
+import {
+  HydratedDocument,
+  model,
   Model,
   QueryWithHelpers,
   Schema,
@@ -76,8 +77,7 @@ export type LeagueCoach = {
   signedUpAt: Date;
 };
 
-export type LeagueCoachDocument = Document &
-  LeagueCoach & { _id: Types.ObjectId };
+export type LeagueCoachDocument = HydratedDocument<LeagueCoach>;
 
 type CoachQueryHelpers = {
   approved(
@@ -85,7 +85,13 @@ type CoachQueryHelpers = {
   ): QueryWithHelpers<any, LeagueCoachDocument, CoachQueryHelpers>;
 };
 
-type LeagueCoachModel = Model<LeagueCoachDocument, CoachQueryHelpers> & {
+type LeagueCoachModel = Model<
+  LeagueCoach,
+  CoachQueryHelpers,
+  {},
+  {},
+  LeagueCoachDocument
+> & {
   findByAuth0Id(auth0Id: string): Promise<LeagueCoachDocument[]>;
   findIdsByAuth0Id(auth0Id: string): Promise<Types.ObjectId[]>;
   findByIdMapForAuth0Id(
@@ -97,7 +103,7 @@ type LeagueCoachModel = Model<LeagueCoachDocument, CoachQueryHelpers> & {
 };
 
 const LeagueCoachSchema: Schema<
-  LeagueCoachDocument,
+  LeagueCoach,
   LeagueCoachModel,
   {},
   CoachQueryHelpers
@@ -156,7 +162,7 @@ LeagueCoachSchema.statics.findByIdsMap = async function (
   return new Map(coaches.map((coach) => [coach._id.toString(), coach]));
 };
 
-export default mongoose.model<LeagueCoachDocument, LeagueCoachModel>(
+export default model<LeagueCoach, LeagueCoachModel>(
   LEAGUE_COACH_COLLECTION,
   LeagueCoachSchema,
 );

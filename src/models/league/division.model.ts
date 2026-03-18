@@ -1,8 +1,8 @@
 import {
+  HydratedDocument,
   model,
   Schema,
   Types,
-  Document,
   Model,
   QueryWithHelpers,
 } from "mongoose";
@@ -66,7 +66,7 @@ export type LeagueStageData = {
   tradeDeadline?: Date;
 };
 
-export type LeagueStageDocument = Document<Types.ObjectId> & LeagueStageData;
+export type LeagueStageDocument = HydratedDocument<LeagueStageData>;
 
 const LeagueStageSchema = new Schema<LeagueStageData>(
   {
@@ -111,9 +111,10 @@ const TradeSchema: Schema<DraftTrade> = new Schema(
   { _id: false },
 );
 
-export type LeagueDivisionDocument = Document &
-  LeagueDivision &
-  DivisionMethods & { _id: Types.ObjectId };
+export type LeagueDivisionDocument = HydratedDocument<
+  LeagueDivision,
+  DivisionMethods
+>;
 
 type DivisionMethods = {
   includesTeamId(teamId: Types.ObjectId | string): boolean;
@@ -144,8 +145,11 @@ type DivisionQueryHelpers = {
 };
 
 type LeagueDivisionModel = Model<
-  LeagueDivisionDocument,
-  DivisionQueryHelpers
+  LeagueDivision,
+  DivisionQueryHelpers,
+  DivisionMethods,
+  {},
+  LeagueDivisionDocument
 > & {
   findPublicByTeamIds(
     teamIds: (Types.ObjectId | string)[],
@@ -156,7 +160,7 @@ type LeagueDivisionModel = Model<
 };
 
 const LeagueDivisionSchema: Schema<
-  LeagueDivisionDocument,
+  LeagueDivision,
   LeagueDivisionModel,
   DivisionMethods,
   DivisionQueryHelpers
@@ -270,15 +274,22 @@ LeagueDivisionSchema.methods.firstMatchingTeamId = function (
 LeagueDivisionSchema.statics.findPublicByTeamIds = function (
   teamIds: (Types.ObjectId | string)[],
 ) {
-  return this.find().withTeamIds(teamIds).isPublic().sort({ createdAt: -1 });
+  return this.find({ teams: { $in: teamIds }, public: true }).sort({
+    createdAt: -1,
+  });
 };
 
 LeagueDivisionSchema.statics.findPublicByTeamIdsWithTournament =
   async function (teamIds: (Types.ObjectId | string)[]) {
-    return this.findPublicByTeamIds(teamIds).withTournamentLeagueTierList();
+    return this.find({ teams: { $in: teamIds }, public: true })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "tournament",
+        populate: [{ path: "league" }, { path: "tierList" }],
+      });
   };
 
-export default model<LeagueDivisionDocument, LeagueDivisionModel>(
+export default model<LeagueDivision, LeagueDivisionModel>(
   LEAGUE_DIVISION_COLLECTION,
   LeagueDivisionSchema,
 );

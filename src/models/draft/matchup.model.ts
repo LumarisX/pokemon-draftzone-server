@@ -1,4 +1,4 @@
-import { Document, model, Schema, Types } from "mongoose";
+import { HydratedDocument, model, Schema, Types } from "mongoose";
 import { PokemonData, pokemonSchema } from "../pokemon.schema";
 
 const matchupTeamReferenceSchema = new Schema<MatchupTeamReference>(
@@ -115,6 +115,6 @@ export type MatchupData = {
   matches: MatchData[];
 };
 
-export type MatchupDocument = Document<Types.ObjectId> & MatchupData;
+export type MatchupDocument = HydratedDocument<MatchupData>;
 
 export const MatchupModel = model<MatchupData>("matchup", matchupSchema);

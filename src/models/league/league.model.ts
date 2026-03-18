@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, Types } from "mongoose";
+import { HydratedDocument, model, Schema, Types } from "mongoose";
 import { LEAGUE_COACH_COLLECTION, LEAGUE_COLLECTION } from ".";
 import { LeagueCoachDocument } from "./coach.model";
 
@@ -15,9 +15,9 @@ export type League = {
   logo?: string;
 };
 
-export type LeagueDocument = Document & League & { _id: Types.ObjectId };
+export type LeagueDocument = HydratedDocument<League>;
 
-const LeagueSchema: Schema<LeagueDocument> = new Schema(
+const LeagueSchema: Schema<League> = new Schema(
   {
     name: { type: String, required: true },
     leagueKey: { type: String, required: true, unique: true, index: true },
@@ -33,4 +33,4 @@ const LeagueSchema: Schema<LeagueDocument> = new Schema(
   { timestamps: true },
 );
 
-export default mongoose.model<LeagueDocument>(LEAGUE_COLLECTION, LeagueSchema);
+export default model<League>(LEAGUE_COLLECTION, LeagueSchema);

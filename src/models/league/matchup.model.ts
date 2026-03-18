@@ -1,4 +1,4 @@
-import { Document, Model, model, Schema, Types } from "mongoose";
+import { HydratedDocument, Model, model, Schema, Types } from "mongoose";
 import {
   LEAGUE_DIVISION_COLLECTION,
   LEAGUE_MATCHUP_COLLECTION,
@@ -62,10 +62,10 @@ export type LeagueMatchupData = {
   status?: MatchupStatus;
 };
 
-export type LeagueMatchupDocument = Document<Types.ObjectId> &
-  LeagueMatchupData &
-  MatchupMethods &
-  MatchupVirtuals;
+export type LeagueMatchupDocument = HydratedDocument<
+  LeagueMatchupData,
+  MatchupMethods & MatchupVirtuals
+>;
 
 type MatchupMethods = {
   // getScore(team: "team1" | "team2"): number;
@@ -75,7 +75,13 @@ type MatchupVirtuals = {
   // winner?: "team1" | "team2";
 };
 
-type LeagueMatchupModel = Model<LeagueMatchupDocument, {}, MatchupMethods>;
+type LeagueMatchupModel = Model<
+  LeagueMatchupData,
+  {},
+  MatchupMethods,
+  MatchupVirtuals,
+  LeagueMatchupDocument
+>;
 
 const killsSchema = new Schema(
   {
@@ -112,7 +118,7 @@ export const leagueMatchupSideSchema = new Schema<MatchSide>(
 );
 
 export const leagueMatchupSchema: Schema<
-  LeagueMatchupDocument,
+  LeagueMatchupData,
   LeagueMatchupModel,
   MatchupMethods,
   {},
@@ -211,7 +217,7 @@ export const leagueMatchupSchema: Schema<
 //   return undefined;
 // });
 
-export const LeagueMatchupModel = model<
-  LeagueMatchupDocument,
-  LeagueMatchupModel
->(LEAGUE_MATCHUP_COLLECTION, leagueMatchupSchema);
+export const LeagueMatchupModel = model<LeagueMatchupData, LeagueMatchupModel>(
+  LEAGUE_MATCHUP_COLLECTION,
+  leagueMatchupSchema,
+);

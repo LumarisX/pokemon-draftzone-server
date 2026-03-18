@@ -1,7 +1,7 @@
-import mongoose from "mongoose";
+import { Schema } from "mongoose";
 import { Pokemon } from "../classes/pokemon";
 
-export const captSchema = new mongoose.Schema(
+export const captSchema = new Schema(
   {
     tera: {
       type: [String],
@@ -16,10 +16,10 @@ export const captSchema = new mongoose.Schema(
       default: undefined,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
-const modifiersSchema = new mongoose.Schema(
+const modifiersSchema = new Schema(
   {
     moves: {
       type: [String],
@@ -30,10 +30,10 @@ const modifiersSchema = new mongoose.Schema(
       default: undefined,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
-export const pokemonSchema = new mongoose.Schema<PokemonData>(
+export const pokemonSchema = new Schema<PokemonData>(
   {
     id: {
       type: String,
@@ -58,7 +58,7 @@ export const pokemonSchema = new mongoose.Schema<PokemonData>(
       default: undefined,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 export type PokemonData = Omit<Pokemon, "name">;

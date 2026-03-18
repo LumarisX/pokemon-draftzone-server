@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from "mongoose";
+import { HydratedDocument, Schema, model } from "mongoose";
 
 const buttonSchema = new Schema(
   {
@@ -7,7 +7,7 @@ const buttonSchema = new Schema(
     link: { type: String, required: true },
     newWindow: { type: Boolean, default: false },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const imageSchema = new Schema(
@@ -16,10 +16,10 @@ const imageSchema = new Schema(
     imageUrl: { type: String, required: true },
     size: { type: String, enum: ["small", "medium", "large"] },
   },
-  { _id: false }
+  { _id: false },
 );
 
-const newsSchema = new Schema(
+const newsSchema = new Schema<NewsData>(
   {
     title: { type: String, required: true },
     sections: [
@@ -46,13 +46,13 @@ const newsSchema = new Schema(
 
           images: [imageSchema],
         },
-        { _id: false }
+        { _id: false },
       ),
     ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export type Section =
@@ -92,14 +92,13 @@ export type Section =
       }[];
     };
 
-export type News = {
-  _id: Types.ObjectId;
+export type NewsData = {
   title: string;
   sections: Section[];
   createdAt: Date;
   updatedAt: Date;
 };
 
-export type NewsDocument = News & Document;
+export type NewsDocument = HydratedDocument<NewsData>;
 
-export const NewsModel = model<NewsDocument>("news", newsSchema);
+export const NewsModel = model<NewsData>("news", newsSchema);
