@@ -13,21 +13,20 @@ import { ErrorCodes } from "./errors/error-codes";
 import { errorHandler } from "./errors/error-handler";
 import { PDZError } from "./errors/pdz-error";
 import { loggingContext } from "./middleware/loggingContext";
-import { RouteOld } from "./routes";
-import { ArchiveRoute } from "./routes-new/archive.route";
-import { DraftRoute } from "./routes-new/draft.route";
-import { FileRoute } from "./routes-new/file.route";
-import { LeagueRoute } from "./routes-new/league.route";
-import { MatchupRoute } from "./routes-new/matchup.route";
-import { Route } from "./routes-new/route-builder";
-import { DataRoutes } from "./routes/data.route";
-import { NewsRoutes } from "./routes/news.route";
-import { PlannerRoutes } from "./routes/planner.route";
-import { SupporterRoutes } from "./routes/supporters.route";
-import { TeambuilderRoutes } from "./routes/teambuilder.route";
-import { UserRoutes } from "./routes/user.route";
-import { ReplayRoute } from "./routes-new/replay.route";
-import { StatisticsRoute } from "./routes-new/statistics.route";
+import { ArchiveRoute } from "./routes-old/archive.route";
+import { FileRoute } from "./routes-old/file.route";
+import { LeagueRoute } from "./routes-old/league.route";
+import { MatchupRoute } from "./routes-old/matchup.route";
+import { ReplayRoute } from "./routes-old/replay.route";
+import { Route } from "./routes-old/route-builder";
+import { DataRoute } from "./routes/data.route";
+import { DraftRoute } from "./routes/draft.route";
+import { NewsRoute } from "./routes/news.route";
+import { PlannerRoute } from "./routes/planner.route";
+import { StatisticsRoute } from "./routes/statistics.route";
+import { SupporterRoute } from "./routes/supporters.route";
+import { TeambuilderRoute } from "./routes/teambuilder.route";
+import { UserRoute } from "./routes/user.route";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -216,46 +215,27 @@ const routerStream = {
 
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
-export const ROUTES: { [path: string]: RouteOld | Route } = {
-  "/draft": DraftRoute,
+app.use("/data", DataRoute);
+app.use("/draft", DraftRoute);
+app.use("/news", NewsRoute);
+app.use("/planner", PlannerRoute);
+app.use("/statistics", StatisticsRoute);
+app.use("/supporters", SupporterRoute);
+app.use("/teambuilder", TeambuilderRoute);
+app.use("/user", UserRoute);
+
+export const ROUTES: { [path: string]: Route } = {
   "/archive": ArchiveRoute,
   "/matchup": MatchupRoute,
-  "/data": DataRoutes,
   "/replay": ReplayRoute,
-  "/planner": PlannerRoutes,
   "/leagues": LeagueRoute,
-  "/teambuilder": TeambuilderRoutes,
-  "/statistics": StatisticsRoute,
-  "/supporters": SupporterRoutes,
-  "/user": UserRoutes,
-  "/news": NewsRoutes,
   "/file": FileRoute,
 };
-
-const METHODS = ["get", "post", "delete", "patch"] as const;
 
 for (const path in ROUTES) {
   const route = ROUTES[path];
   if (route instanceof Route) {
     app.use(path, route.getRouter());
-  } else {
-    const router = express.Router();
-    for (const subpath in route.subpaths) {
-      const subroute = router.route(subpath);
-      for (const method of METHODS) {
-        if (route.subpaths[subpath][method])
-          subroute[method](
-            ...(route.subpaths[subpath].middleware ?? []),
-            route.subpaths[subpath][method],
-          );
-      }
-    }
-    if (route.params)
-      for (const param in route.params) {
-        router.param(param, route.params[param]);
-      }
-
-    app.use(path, ...(route.middleware || []), router);
   }
 }
 
