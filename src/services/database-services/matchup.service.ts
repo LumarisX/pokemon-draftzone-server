@@ -66,6 +66,30 @@ export async function updateMatchup(
   return matchup;
 }
 
+export async function updateMatchupScore(
+  id: string,
+  matches: MatchupData["matches"],
+  aTeamPaste?: string,
+  bTeamPaste?: string,
+): Promise<MatchupDocument> {
+  const matchup = await getMatchupById(id);
+  const setData: { [key: string]: unknown } = { matches };
+  if (aTeamPaste !== undefined) setData["aTeam.paste"] = aTeamPaste;
+  if (bTeamPaste !== undefined) setData["bTeam.paste"] = bTeamPaste;
+
+  await MatchupModel.collection.updateOne(
+    { _id: matchup._id },
+    { $set: setData },
+  );
+
+  $matchups.delete(id);
+  clearMatchupsByDraftCache(matchup.aTeam._id as Types.ObjectId);
+
+  const updatedMatchup = await MatchupModel.findById(id);
+  if (!updatedMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+  return updatedMatchup;
+}
+
 export async function deleteMatchup(id: string) {
   const matchup = await getMatchupById(id);
   if (!matchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);

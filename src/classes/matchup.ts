@@ -376,7 +376,7 @@ export class Score {
       bTeamPaste: string;
       aTeamPaste: string;
       matches: {
-        replay: string;
+        replay: string | null;
         winner: "a" | "b" | "";
         aTeam: {
           team: {
@@ -425,7 +425,7 @@ export class Score {
         aTeam: { stats: [], score: 0 },
         bTeam: { stats: [], score: 0 },
       };
-      if (match.replay != "") {
+      if (match.replay != null && match.replay != "") {
         matchData.replay = match.replay;
       }
       if (match.winner) {
@@ -433,24 +433,28 @@ export class Score {
       }
       let aTeamStats: { [key: string]: any } = {};
       for (const stat of match.aTeam.team) {
-        if (stat.brought) {
+        const kills = Number(stat.kills);
+        const fainted = Number(stat.fainted);
+        const indirect = Number(stat.indirect);
+        const brought = Number(stat.brought);
+        if (brought) {
           const pokemonStats: {
             kills?: number;
             indirect?: number;
             deaths?: number;
             brought?: number;
           } = {};
-          if (stat.kills > 0) {
-            pokemonStats.kills = stat.kills;
+          if (kills > 0) {
+            pokemonStats.kills = kills;
           }
-          if (stat.fainted > 0) {
-            pokemonStats.deaths = stat.fainted;
+          if (fainted > 0) {
+            pokemonStats.deaths = fainted;
           }
-          if (stat.indirect > 0) {
-            pokemonStats.indirect = stat.indirect;
+          if (indirect > 0) {
+            pokemonStats.indirect = indirect;
           }
-          if (stat.brought > 0) {
-            pokemonStats.brought = stat.brought;
+          if (brought > 0) {
+            pokemonStats.brought = brought;
           }
           if (Object.keys(pokemonStats).length > 0) {
             aTeamStats[stat.pokemon.id] = pokemonStats;
@@ -460,24 +464,28 @@ export class Score {
       matchData.aTeam.stats = Object.entries(aTeamStats);
       let bTeamStats: { [key: string]: any } = {};
       for (const stat of match.bTeam.team) {
-        if (stat.brought) {
+        const kills = Number(stat.kills);
+        const fainted = Number(stat.fainted);
+        const indirect = Number(stat.indirect);
+        const brought = Number(stat.brought);
+        if (brought) {
           const pokemonStats: {
             kills?: number;
             indirect?: number;
             deaths?: number;
             brought?: number;
           } = {};
-          if (stat.kills > 0) {
-            pokemonStats.kills = stat.kills;
+          if (kills > 0) {
+            pokemonStats.kills = kills;
           }
-          if (stat.fainted > 0) {
-            pokemonStats.deaths = stat.fainted;
+          if (fainted > 0) {
+            pokemonStats.deaths = fainted;
           }
-          if (stat.indirect > 0) {
-            pokemonStats.indirect = stat.indirect;
+          if (indirect > 0) {
+            pokemonStats.indirect = indirect;
           }
-          if (stat.brought > 0) {
-            pokemonStats.brought = stat.brought;
+          if (brought > 0) {
+            pokemonStats.brought = brought;
           }
           if (Object.keys(pokemonStats).length > 0) {
             bTeamStats[stat.pokemon.id] = pokemonStats;

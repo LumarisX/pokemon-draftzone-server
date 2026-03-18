@@ -5,7 +5,6 @@ import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
 import { getRuleset } from "../data/rulesets";
-import { DraftData } from "../models/draft/draft.model";
 import { MatchupData, MatchupDocument } from "../models/draft/matchup.model";
 import {
   createDraft,
@@ -21,16 +20,17 @@ import {
   getMatchupById,
   getMatchupsByDraftId,
   updateMatchup,
+  updateMatchupScore,
 } from "../services/database-services/matchup.service";
-import { createRoute } from "./route-builder";
 import { getTournamentsByOwner } from "../services/league-services/league-service";
+import { createRoute } from "./route-builder";
 
 const scorePokemonSchema = z.object({
   pokemon: z.object({ id: z.string().min(1) }),
-  kills: z.number().int().nonnegative(),
-  fainted: z.number().int().nonnegative(),
-  indirect: z.number().int().nonnegative(),
-  brought: z.number().int().nonnegative(),
+  kills: z.coerce.number().int().nonnegative(),
+  fainted: z.coerce.number().int().nonnegative(),
+  indirect: z.coerce.number().int().nonnegative(),
+  brought: z.coerce.number().int().nonnegative(),
 });
 
 const scorePatchSchema = z.object({
@@ -38,7 +38,7 @@ const scorePatchSchema = z.object({
   bTeamPaste: z.string(),
   matches: z.array(
     z.object({
-      replay: z.string(),
+      replay: z.string().nullable(),
       winner: z.enum(["a", "b", ""]),
       aTeam: z.object({
         team: z.array(scorePokemonSchema),
@@ -134,18 +134,6 @@ export const DraftRoute = createRoute().auth()((r) => {
             async () => {
               const archive = new Archive(ctx.rawDraft);
               const archiveData = await archive.createArchive();
-              // Debug: log the first match stats to see the structure
-              if (archiveData.matchups?.[0]?.matches?.[0]) {
-                console.log(
-                  "First match aTeam stats:",
-                  JSON.stringify(
-                    archiveData.matchups[0].matches[0].aTeam.stats,
-                    null,
-                    2,
-                  ),
-                );
-              }
-              // Let Mongoose validate during save instead of explicit validation
               await archiveData.save({ session });
               await deleteDraft(ctx.rawDraft, session);
             },
@@ -153,7 +141,6 @@ export const DraftRoute = createRoute().auth()((r) => {
           );
           res.status(201).json({ message: "Archive added" });
         } catch (error) {
-          console.log("Error creating archive:", error);
           throw error;
         } finally {
           session.endSession();
@@ -193,16 +180,16 @@ export const DraftRoute = createRoute().auth()((r) => {
       });
       r.path("score")((r) => {
         r.patch.validate({
-          //TODO: refine this schema
-          body: (data) => z.any().parse(data),
+          body: (data) => scorePatchSchema.parse(data),
         })(async (ctx) => {
           const score = new Score(ctx.validatedBody);
           const processedScore = await score.processScore();
-          const updatedMatchup = await updateMatchup(ctx.matchup_id, {
-            matches: processedScore.matches,
-            "aTeam.paste": processedScore.aTeamPaste,
-            "bTeam.paste": processedScore.bTeamPaste,
-          });
+          const updatedMatchup = await updateMatchupScore(
+            ctx.matchup_id,
+            processedScore.matches,
+            processedScore.aTeamPaste,
+            processedScore.bTeamPaste,
+          );
           return { message: "Matchup Updated", draft: updatedMatchup };
         });
       });
