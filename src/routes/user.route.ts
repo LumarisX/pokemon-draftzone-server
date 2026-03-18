@@ -1,42 +1,22 @@
-import { Request, Response } from "express";
-import { Router } from "express";
-import { jwtCheck } from "../middleware/jwtcheck";
+import { z } from "zod";
 import { getManagementToken } from "../services/auth0-services/auth0-service";
+import { createRoute } from "./route-builder";
 
-export const UserRoute = Router();
-
-UserRoute.use(jwtCheck);
-
-UserRoute.get("/settings", async (req: Request, res: Response) => {
-  try {
-    const management = await getManagementToken();
-    const userId = req.auth!.payload.sub!!;
-    const user = await management.users.get(userId);
-    return res.status(200).json(user.user_metadata?.settings ?? null);
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: (error as Error).message, code: "UR-R1-01" });
-  }
-});
-
-UserRoute.patch("/settings", async (req: Request, res: Response) => {
-  try {
-    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
-      return res
-        .status(400)
-        .json({ message: "Body is not a valid object.", code: "UR-R2-01" });
-    }
-
-    const management = await getManagementToken();
-    const userId = req.auth!.payload.sub!!;
-    await management.users.update(userId, {
-      user_metadata: { settings: req.body },
+export const UserRoute = createRoute()((r) => {
+  r.path("settings")((r) => {
+    r.get.auth()(async (ctx) => {
+      const management = await getManagementToken();
+      const user = await management.users.get(ctx.sub);
+      return user.user_metadata?.settings ?? null;
     });
-    return res.status(201).json({ settings: req.body });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: (error as Error).message, code: "UR-R2-01" });
-  }
+    r.patch.auth().validate({
+      body: (data) => z.record(z.string(), z.any()).parse(data),
+    })(async (ctx, req, res) => {
+      const management = await getManagementToken();
+      await management.users.update(ctx.sub, {
+        user_metadata: { settings: ctx.validatedBody },
+      });
+      res.status(201).json({ settings: ctx.validatedBody });
+    });
+  });
 });

@@ -13,16 +13,16 @@ import { ErrorCodes } from "./errors/error-codes";
 import { errorHandler } from "./errors/error-handler";
 import { PDZError } from "./errors/pdz-error";
 import { loggingContext } from "./middleware/loggingContext";
-import { ArchiveRoute } from "./routes-old/archive.route";
-import { FileRoute } from "./routes-old/file.route";
-import { LeagueRoute } from "./routes-old/league.route";
-import { MatchupRoute } from "./routes-old/matchup.route";
-import { ReplayRoute } from "./routes-old/replay.route";
-import { Route } from "./routes-old/route-builder";
+import { ArchiveRoute } from "./routes/archive.route";
 import { DataRoute } from "./routes/data.route";
 import { DraftRoute } from "./routes/draft.route";
+import { FileRoute } from "./routes/file.route";
+import { LeagueRoute } from "./routes/league.route";
+import { MatchupRoute } from "./routes/matchup.route";
 import { NewsRoute } from "./routes/news.route";
 import { PlannerRoute } from "./routes/planner.route";
+import { ReplayRoute } from "./routes/replay.route";
+import { Route } from "./routes/route-builder";
 import { StatisticsRoute } from "./routes/statistics.route";
 import { SupporterRoute } from "./routes/supporters.route";
 import { TeambuilderRoute } from "./routes/teambuilder.route";
@@ -215,21 +215,20 @@ const routerStream = {
 
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
-app.use("/data", DataRoute);
-app.use("/draft", DraftRoute);
-app.use("/news", NewsRoute);
-app.use("/planner", PlannerRoute);
-app.use("/statistics", StatisticsRoute);
-app.use("/supporters", SupporterRoute);
-app.use("/teambuilder", TeambuilderRoute);
-app.use("/user", UserRoute);
-
 export const ROUTES: { [path: string]: Route } = {
   "/archive": ArchiveRoute,
-  "/matchup": MatchupRoute,
-  "/replay": ReplayRoute,
-  "/leagues": LeagueRoute,
+  "/data": DataRoute,
+  "/draft": DraftRoute,
   "/file": FileRoute,
+  "/leagues": LeagueRoute,
+  "/matchup": MatchupRoute,
+  "/news": NewsRoute,
+  "/planner": PlannerRoute,
+  "/replay": ReplayRoute,
+  "/statistics": StatisticsRoute,
+  "/supporters": SupporterRoute,
+  "/teambuilder": TeambuilderRoute,
+  "/user": UserRoute,
 };
 
 for (const path in ROUTES) {

@@ -1,11 +1,8 @@
-import { Request, Response } from "express";
-import { Router } from "express";
 import { Supporter, SupporterModel } from "../models/supporters.model";
+import { createRoute } from "./route-builder";
 
-export const SupporterRoute = Router();
-
-SupporterRoute.get("/", async (_req: Request, res: Response) => {
-  try {
+export const SupporterRoute = createRoute()((r) => {
+  r.get(async () => {
     const today = new Date();
     const supporters: Supporter[] = await SupporterModel.find().lean();
 
@@ -25,7 +22,6 @@ SupporterRoute.get("/", async (_req: Request, res: Response) => {
           }
           return data;
         }
-
         const sTier = {
           name: supporter.name,
           months:
@@ -79,11 +75,6 @@ SupporterRoute.get("/", async (_req: Request, res: Response) => {
     supporterData.top.thirty = supporterData.top.thirty
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-    res.json(supporterData);
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: (error as Error).message, code: "SP-R1-01" });
-  }
+    return supporterData;
+  });
 });

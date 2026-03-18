@@ -141,7 +141,7 @@ LeagueCoachSchema.query.approved = function () {
 
 LeagueCoachSchema.statics.findIdsByAuth0Id = async function (auth0Id: string) {
   const coaches = await this.find({ auth0Id }).select("_id");
-  return coaches.map((coach) => coach._id as Types.ObjectId);
+  return coaches.map((coach) => coach._id);
 };
 
 LeagueCoachSchema.statics.findByAuth0Id = async function (auth0Id: string) {
