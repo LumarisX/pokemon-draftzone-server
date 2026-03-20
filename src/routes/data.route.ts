@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DraftSpecie } from "../classes/pokemon";
 import { _getFormats, getFormat, getFormats } from "../data/formats";
 import { getRuleset, getRulesets, getRulesetsGrouped } from "../data/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
@@ -6,9 +7,48 @@ import { PDZError } from "../errors/pdz-error";
 import { getRandom } from "../services/data-services/pokedex.service";
 import { getLeagueAds } from "../services/league-ad/league-ad-service";
 import { getNews } from "../services/news/news-service";
-import { searchPokemon } from "../services/search.service";
+import {
+  parseSearchRequest,
+  searchPokemon,
+  type SearchPokemonOptions,
+} from "../services/search-services/search.service";
+import { searchPokemon as searchPokemonOld } from "../services/search.service";
 import { parseTime } from "../util";
 import { createRoute } from "./route-builder";
+
+function toAdvancedSearchResult(specie: DraftSpecie) {
+  return {
+    id: specie.id,
+    name: specie.name,
+    types: [...specie.types],
+    abilities: specie.getAbilities(),
+    baseStats: specie.baseStats,
+    weightkg: specie.weightkg,
+    tier: specie.tier,
+    doublesTier: specie.doublesTier,
+    eggGroups: [...specie.eggGroups],
+    nfe: specie.nfe,
+    num: specie.num,
+    tags: [...specie.tags],
+    bst: specie.bst,
+  };
+}
+
+function normalizeSearchInput(input: unknown): string | SearchPokemonOptions {
+  if (typeof input === "string") {
+    try {
+      return decodeURIComponent(input);
+    } catch {
+      return input;
+    }
+  }
+
+  if (input && typeof input === "object" && !Array.isArray(input)) {
+    return input as SearchPokemonOptions;
+  }
+
+  return "";
+}
 
 export const DataRoute = createRoute()((r) => {
   r.path("formats")((r) => {
@@ -33,8 +73,36 @@ export const DataRoute = createRoute()((r) => {
       let { ruleset, query } = ctx.validatedQuery;
       query = decodeURIComponent(query);
       return ruleset
-        ? await searchPokemon(query, ruleset)
-        : await searchPokemon(query);
+        ? await searchPokemonOld(query, ruleset)
+        : await searchPokemonOld(query);
+    });
+  });
+  r.path("pokemonsearch")((r) => {
+    r.get.validate({
+      query: (data) =>
+        z
+          .object({ ruleset: z.string().optional(), query: z.string() })
+          .parse(data),
+    })(async (ctx) => {
+      const ruleset = getRuleset(ctx.validatedQuery.ruleset || "Gen9 NatDex");
+      const query = normalizeSearchInput(ctx.validatedQuery.query);
+      const results = await searchPokemon(ruleset, parseSearchRequest(query));
+      return results.map(toAdvancedSearchResult);
+    });
+
+    r.post.validate({
+      body: (data) =>
+        z
+          .object({
+            ruleset: z.string().optional(),
+            query: z.union([z.string(), z.object({}).passthrough()]),
+          })
+          .parse(data),
+    })(async (ctx) => {
+      const ruleset = getRuleset(ctx.validatedBody.ruleset || "Gen9 NatDex");
+      const query = normalizeSearchInput(ctx.validatedBody.query);
+      const results = await searchPokemon(ruleset, parseSearchRequest(query));
+      return results.map(toAdvancedSearchResult);
     });
   });
   r.path("listpokemon")((r) => {
