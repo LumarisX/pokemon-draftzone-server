@@ -154,7 +154,7 @@ export const DataRoute = createRoute()((r) => {
           .object({
             ruleset: z.string(),
             format: z.string(),
-            count: z.number().min(1).max(20),
+            count: z.coerce.number().min(1).max(20),
             banned: z.union([z.string(), z.array(z.string())]).optional(),
             tier: z.string().optional(),
           })
