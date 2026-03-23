@@ -125,6 +125,67 @@ describe("searchPokemon", () => {
     expect(normalized.sortBy).toBe("num");
   });
 
+  it("excludes cosmetic formes by default unless explicitly requested", async () => {
+    const sourceRuleset = getRuleset("Gen9 NatDex");
+    const sourceSpecie = sourceRuleset.species.get("pikachu");
+
+    expect(sourceSpecie).toBeDefined();
+    if (!sourceSpecie) return;
+
+    const normalSpecie = {
+      ...sourceSpecie,
+      id: "search-specie-normal",
+      name: "Search Specie Normal",
+      fullname: "pokemon: Search Specie Normal",
+      num: 10001,
+      isCosmeticForme: false,
+    };
+    const cosmeticSpecie = {
+      ...sourceSpecie,
+      id: "search-specie-cosmetic",
+      name: "Search Specie Cosmetic",
+      fullname: "pokemon: Search Specie Cosmetic",
+      num: 10002,
+      isCosmeticForme: true,
+    };
+
+    const speciesById = new Map<
+      string,
+      typeof normalSpecie | typeof cosmeticSpecie
+    >([
+      [normalSpecie.id, normalSpecie],
+      [cosmeticSpecie.id, cosmeticSpecie],
+    ]);
+    const species = {
+      get: (id: string) => speciesById.get(id),
+      [Symbol.iterator]: function* () {
+        yield* speciesById.values();
+      },
+    };
+
+    const mockRuleset = Object.create(sourceRuleset) as typeof sourceRuleset;
+    Object.defineProperty(mockRuleset, "species", {
+      value: species,
+      enumerable: true,
+      configurable: true,
+    });
+
+    const defaultResult = await searchPokemon(mockRuleset, {});
+    expect(
+      defaultResult.some((specie) => specie.id === cosmeticSpecie.id),
+    ).toBe(false);
+    expect(defaultResult.some((specie) => specie.id === normalSpecie.id)).toBe(
+      true,
+    );
+
+    const includeResult = await searchPokemon(mockRuleset, {
+      searches: [{ field: "isCosmetic", operator: "eq", value: true }],
+    });
+    expect(
+      includeResult.some((specie) => specie.id === cosmeticSpecie.id),
+    ).toBe(true);
+  });
+
   describe("move sub-filters (learnset)", () => {
     it("finds pokemon that learn a move by name", async () => {
       const options: SearchPokemonOptions = {

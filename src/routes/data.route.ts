@@ -9,30 +9,23 @@ import { getLeagueAds } from "../services/league-ad/league-ad-service";
 import { getNews } from "../services/news/news-service";
 import {
   parseSearchRequest,
-  searchPokemon,
+  searchPokemonWithMetadata,
   type SearchPokemonOptions,
 } from "../services/search-services/search.service";
 import { searchPokemon as searchPokemonOld } from "../services/search.service";
 import { parseTime } from "../util";
 import { createRoute } from "./route-builder";
 
-function toAdvancedSearchResult(specie: DraftSpecie) {
-  return {
-    id: specie.id,
-    name: specie.name,
-    types: [...specie.types],
-    abilities: specie.getAbilities(),
-    baseStats: specie.baseStats,
-    weightkg: specie.weightkg,
-    tier: specie.tier,
-    doublesTier: specie.doublesTier,
-    eggGroups: [...specie.eggGroups],
-    nfe: specie.nfe,
-    num: specie.num,
-    tags: [...specie.tags],
-    bst: specie.bst,
-  };
-}
+const IMMUNITY_LABEL_MAP: Record<string, string> = {
+  slp: "Sleep",
+  par: "Paralysis",
+  psn: "Poison",
+  tox: "Badly Poisoned",
+  brn: "Burn",
+  frz: "Freeze",
+  sand: "Sandstorm",
+  prankster: "Prankster",
+};
 
 function normalizeSearchInput(input: unknown): string | SearchPokemonOptions {
   if (typeof input === "string") {
@@ -78,31 +71,149 @@ export const DataRoute = createRoute()((r) => {
     });
   });
   r.path("pokemonsearch")((r) => {
-    r.get.validate({
-      query: (data) =>
-        z
-          .object({ ruleset: z.string().optional(), query: z.string() })
-          .parse(data),
-    })(async (ctx) => {
-      const ruleset = getRuleset(ctx.validatedQuery.ruleset || "Gen9 NatDex");
-      const query = normalizeSearchInput(ctx.validatedQuery.query);
-      const results = await searchPokemon(ruleset, parseSearchRequest(query));
-      return results.map(toAdvancedSearchResult);
-    });
+    // r.get.validate({
+    //   query: (data) =>
+    //     z
+    //       .object({ ruleset: z.string().optional(), query: z.string() })
+    //       .parse(data),
+    // })(async (ctx) => {
+    //   const ruleset = getRuleset(ctx.validatedQuery.ruleset || "Gen9 NatDex");
+    //   const query = normalizeSearchInput(ctx.validatedQuery.query);
+    //   const options = parseSearchRequest(query);
+    //   const { results, total, limit, offset } = await searchPokemonWithMetadata(
+    //     ruleset,
+    //     options,
+    //   );
+    //   return {
+    //     results: await Promise.all(
+    //       results.map(async (specie) => {
+    //         const coverage = await specie.coverage();
+    //         const baseStats = specie.baseStats;
+    //         return {
+    //           id: specie.id,
+    //           name: specie.name,
+    //           baseSpecies: specie.baseSpecies,
+    //           gen: specie.gen,
+    //           isNonstandard: specie.isNonstandard ?? "",
+    //           types: [...specie.types],
+    //           abilities: specie.getAbilities(),
+    //           weaks: specie.getWeak(),
+    //           resists: specie.getResists(),
+    //           immunities: specie
+    //             .getImmune()
+    //             .map((immunity) => IMMUNITY_LABEL_MAP[immunity] || immunity),
+    //           baseStats,
+    //           hp: baseStats.hp,
+    //           atk: baseStats.atk,
+    //           def: baseStats.def,
+    //           spa: baseStats.spa,
+    //           spd: baseStats.spd,
+    //           spe: baseStats.spe,
+    //           weightkg: specie.weightkg,
+    //           tier: specie.tier,
+    //           natDexTier: specie.natDexTier,
+    //           doublesTier: specie.doublesTier,
+    //           eggGroups: [...specie.eggGroups],
+    //           nfe: specie.nfe,
+    //           evolved: !specie.nfe,
+    //           isMega: Boolean(specie.isMega),
+    //           isPrimal: Boolean(specie.isPrimal),
+    //           isGigantamax: Boolean(specie.isGigantamax),
+    //           prevo: specie.prevo ?? "",
+    //           evos: specie.evos ?? [],
+    //           requiredAbility: specie.requiredAbility ?? "",
+    //           requiredItem: specie.requiredItem
+    //             ? [specie.requiredItem]
+    //             : specie.requiredItems,
+    //           requiredMove: specie.requiredMove ?? "",
+    //           coverage: [...coverage.physical, ...coverage.special].map(
+    //             (move) => move.name,
+    //           ),
+    //           num: specie.num,
+    //           tags: [...specie.tags],
+    //           bst: specie.bst,
+    //           cst: specie.cst,
+    //         };
+    //       }),
+    //     ),
+    //     total,
+    //     limit,
+    //     offset,
+    //   };
+    // });
 
     r.post.validate({
       body: (data) =>
         z
           .object({
             ruleset: z.string().optional(),
-            query: z.union([z.string(), z.object({}).passthrough()]),
+            query: z.union([z.string(), z.object({}).loose()]),
           })
           .parse(data),
     })(async (ctx) => {
       const ruleset = getRuleset(ctx.validatedBody.ruleset || "Gen9 NatDex");
       const query = normalizeSearchInput(ctx.validatedBody.query);
-      const results = await searchPokemon(ruleset, parseSearchRequest(query));
-      return results.map(toAdvancedSearchResult);
+      const options = parseSearchRequest(query);
+      const { results, total, limit, offset } = await searchPokemonWithMetadata(
+        ruleset,
+        options,
+      );
+      return {
+        results: await Promise.all(
+          results.map(async (specie) => {
+            const coverage = await specie.coverage();
+            const baseStats = specie.baseStats;
+            return {
+              id: specie.id,
+              name: specie.name,
+              baseSpecies: specie.baseSpecies,
+              gen: specie.gen,
+              isNonstandard: specie.isNonstandard ?? "",
+              types: [...specie.types],
+              abilities: specie.getAbilities(),
+              weaks: specie.getWeak(),
+              resists: specie.getResists(),
+              immunities: specie
+                .getImmune()
+                .map((immunity) => IMMUNITY_LABEL_MAP[immunity] || immunity),
+              baseStats,
+              hp: baseStats.hp,
+              atk: baseStats.atk,
+              def: baseStats.def,
+              spa: baseStats.spa,
+              spd: baseStats.spd,
+              spe: baseStats.spe,
+              weightkg: specie.weightkg,
+              tier: specie.tier,
+              natDexTier: specie.natDexTier,
+              doublesTier: specie.doublesTier,
+              eggGroups: [...specie.eggGroups],
+              nfe: specie.nfe,
+              evolved: !specie.nfe,
+              isMega: Boolean(specie.isMega),
+              isPrimal: Boolean(specie.isPrimal),
+              isGigantamax: Boolean(specie.isGigantamax),
+              prevo: specie.prevo ?? "",
+              evos: specie.evos ?? [],
+              requiredAbility: specie.requiredAbility ?? "",
+              requiredItem: specie.requiredItem
+                ? [specie.requiredItem]
+                : specie.requiredItems,
+              requiredMove: specie.requiredMove ?? "",
+              coverage: [...coverage.physical, ...coverage.special].map(
+                (move) => move.name,
+              ),
+              num: specie.num,
+              tags: [...specie.tags],
+              bst: specie.bst,
+              cst: specie.cst,
+            };
+          }),
+        ),
+        total,
+        limit,
+        offset,
+      };
     });
   });
   r.path("listpokemon")((r) => {
@@ -111,12 +222,58 @@ export const DataRoute = createRoute()((r) => {
     })(async (ctx) => {
       const { ruleset: rulesetId } = ctx.validatedQuery;
       const ruleset = getRuleset(rulesetId);
-      return Array.from(ruleset.species)
-        .sort((a, b) => a.num - b.num)
-        .map((specie) => ({
-          name: specie.name,
-          id: specie.id,
-        }));
+      return await Promise.all(
+        Array.from(ruleset.species).map(async (s) => {
+          const specie = new DraftSpecie(s, ruleset);
+          const coverage = await specie.coverage();
+          const baseStats = specie.baseStats;
+          return {
+            id: specie.id,
+            name: specie.name,
+            baseSpecies: specie.baseSpecies,
+            gen: specie.gen,
+            isNonstandard: specie.isNonstandard ?? "",
+            types: [...specie.types],
+            abilities: specie.getAbilities(),
+            weaks: specie.getWeak(),
+            resists: specie.getResists(),
+            immunities: specie
+              .getImmune()
+              .map((immunity) => IMMUNITY_LABEL_MAP[immunity] || immunity),
+            baseStats,
+            hp: baseStats.hp,
+            atk: baseStats.atk,
+            def: baseStats.def,
+            spa: baseStats.spa,
+            spd: baseStats.spd,
+            spe: baseStats.spe,
+            weightkg: specie.weightkg,
+            tier: specie.tier,
+            natDexTier: specie.natDexTier,
+            doublesTier: specie.doublesTier,
+            eggGroups: [...specie.eggGroups],
+            nfe: specie.nfe,
+            evolved: !specie.nfe,
+            isMega: Boolean(specie.isMega),
+            isPrimal: Boolean(specie.isPrimal),
+            isGigantamax: Boolean(specie.isGigantamax),
+            prevo: specie.prevo ?? "",
+            evos: specie.evos ?? [],
+            requiredAbility: specie.requiredAbility ?? "",
+            requiredItem: specie.requiredItem
+              ? [specie.requiredItem]
+              : specie.requiredItems,
+            requiredMove: specie.requiredMove ?? "",
+            coverage: [...coverage.physical, ...coverage.special].map(
+              (move) => move.name,
+            ),
+            num: specie.num,
+            tags: [...specie.tags],
+            bst: specie.bst,
+            cst: specie.cst,
+          };
+        }),
+      );
     });
   });
   r.path("unread-counts")((r) => {

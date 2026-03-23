@@ -64,6 +64,7 @@ export type SearchField =
   | "spe"
   | "nfe"
   | "evolved"
+  | "isCosmeticForme"
   | "isMega"
   | "isPrimal"
   | "isGigantamax"
@@ -103,6 +104,13 @@ export type SearchPokemonOptions = {
   offset?: number;
 };
 
+export type SearchPokemonResult = {
+  results: DraftSpecie[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 type FieldType = "string" | "number" | "boolean" | "string[]";
 
 type FieldBase = {
@@ -121,6 +129,54 @@ type MoveFieldDefinition = FieldBase & {
 };
 
 type MoveCanonicalField = MoveField;
+
+function getRequiredItemValues(specie: DraftSpecie): string[] {
+  const values = new Set<string>();
+  if (specie.requiredItem) {
+    values.add(specie.requiredItem);
+  }
+  for (const item of specie.requiredItems ?? []) {
+    values.add(item);
+  }
+  return [...values];
+}
+
+const IMMUNITY_LABEL_MAP: Record<string, string> = {
+  slp: "Sleep",
+  par: "Paralysis",
+  psn: "Poison",
+  tox: "Badly Poisoned",
+  brn: "Burn",
+  frz: "Freeze",
+  sand: "Sandstorm",
+  prankster: "Prankster",
+};
+
+function toDisplayLabel(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) return "";
+
+  const key = normalized.toLowerCase();
+  if (IMMUNITY_LABEL_MAP[key]) {
+    return IMMUNITY_LABEL_MAP[key];
+  }
+
+  return normalized
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function getDisplayImmunities(specie: DraftSpecie): string[] {
+  const values = new Map<string, string>();
+  for (const immunity of specie.getImmune()) {
+    const label = toDisplayLabel(immunity);
+    if (!label) continue;
+    values.set(label.toLowerCase(), label);
+  }
+  return [...values.values()];
+}
 
 const SEARCH_FIELD_DEFINITIONS = {
   id: {
@@ -188,7 +244,7 @@ const SEARCH_FIELD_DEFINITIONS = {
   },
   immunities: {
     type: "string[]",
-    resolver: (specie: DraftSpecie) => specie.getImmune(),
+    resolver: (specie: DraftSpecie) => getDisplayImmunities(specie),
   },
   tags: {
     type: "string[]",
@@ -238,6 +294,10 @@ const SEARCH_FIELD_DEFINITIONS = {
     type: "boolean",
     resolver: (specie: DraftSpecie) => !specie.nfe,
   },
+  isCosmeticForme: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) => Boolean(specie.isCosmeticForme),
+  },
   isMega: {
     type: "boolean",
     resolver: (specie: DraftSpecie) => Boolean(specie.isMega),
@@ -263,12 +323,12 @@ const SEARCH_FIELD_DEFINITIONS = {
     resolver: (specie: DraftSpecie) => specie.requiredAbility ?? "",
   },
   requiredItem: {
-    type: "string",
-    resolver: (specie: DraftSpecie) => specie.requiredItem ?? "",
+    type: "string[]",
+    resolver: (specie: DraftSpecie) => getRequiredItemValues(specie),
   },
   requiredItems: {
     type: "string[]",
-    resolver: (specie: DraftSpecie) => specie.requiredItems ?? [],
+    resolver: (specie: DraftSpecie) => getRequiredItemValues(specie),
   },
   requiredMove: {
     type: "string",
@@ -381,13 +441,39 @@ export async function searchPokemon(
   ruleset: Ruleset,
   options: SearchPokemonOptions,
 ): Promise<DraftSpecie[]> {
+  const result = await searchPokemonWithMetadata(ruleset, options);
+  return result.results;
+}
+
+export async function searchPokemonWithMetadata(
+  ruleset: Ruleset,
+  options: SearchPokemonOptions,
+): Promise<SearchPokemonResult> {
   const normalized = normalizeOptions(options);
+  const sorted = await getSortedMatches(ruleset, normalized);
+  const offset = Math.max(normalized.offset, 0);
+  const limit = Math.max(normalized.limit, 0);
+
+  return {
+    results: paginateResults(sorted, limit, offset),
+    total: sorted.length,
+    limit,
+    offset,
+  };
+}
+
+async function getSortedMatches(
+  ruleset: Ruleset,
+  normalized: Required<SearchPokemonOptions>,
+): Promise<DraftSpecie[]> {
   const baseSpecies = Array.from(ruleset.species)
     .map((specie) => new DraftSpecie(specie, ruleset))
     .sort((a, b) => a.num - b.num || a.name.localeCompare(b.name));
 
+  const shouldIncludeCosmetic = hasCosmeticSearch(normalized.searches);
   const filtered: DraftSpecie[] = [];
   for (const specie of baseSpecies) {
+    if (!shouldIncludeCosmetic && specie.isCosmeticForme) continue;
     const fieldCache = new Map<CanonicalField, ResolvedFieldValue>();
     const passesSearches = await evaluateSearches(
       normalized.searches,
@@ -403,8 +489,27 @@ export async function searchPokemon(
     normalized.sortBy,
     normalized.sortDirection,
   );
-  const offset = Math.max(normalized.offset, 0);
-  const limit = Math.max(normalized.limit, 0);
+  return sorted;
+}
+
+function hasCosmeticSearch(searches: SearchExpression[]): boolean {
+  for (const search of searches) {
+    if (isSearchFilter(search)) {
+      const canonicalField = toCanonicalField(search.field);
+      if (canonicalField === "isCosmeticForme") return true;
+      continue;
+    }
+
+    if (hasCosmeticSearch(search.searches ?? [])) return true;
+  }
+  return false;
+}
+
+function paginateResults(
+  sorted: DraftSpecie[],
+  limit: number,
+  offset: number,
+): DraftSpecie[] {
   if (!limit) return sorted.slice(offset);
   return sorted.slice(offset, offset + limit);
 }
