@@ -7,10 +7,31 @@ import {
   DraftDocument,
   DraftModel,
 } from "../../models/draft/draft.model";
+import { MatchupModel } from "../../models/draft/matchup.model";
 import { getName } from "../data-services/pokedex.service";
 import { getMatchupsByDraftId } from "./matchup.service";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
+
+type PokemonStatTotals = {
+  pokemon: { id: ID; name: string };
+  kills: number;
+  brought: number;
+  indirect: number;
+  deaths: number;
+  kdr: number;
+  kpg: number;
+};
+
+type PokemonStatEntry = [
+  string,
+  {
+    indirect?: number;
+    kills?: number;
+    deaths?: number;
+    brought?: number;
+  },
+];
 
 const $drafts = new LRUCache<string, DraftDocument>({
   max: 100,
@@ -139,25 +160,20 @@ export async function getScore(draftId: Types.ObjectId) {
 }
 
 export async function getStats(ruleset: Ruleset, draftId: Types.ObjectId) {
-  let matchups = await getMatchupsByDraftId(draftId);
-  let stats: {
-    [key: string]: {
-      pokemon: { id: ID; name: string };
-      kills: number;
-      brought: number;
-      indirect: number;
-      deaths: number;
-      kdr: number;
-      kpg: number;
-    };
-  } = {};
-  for (const matchup of matchups) {
-    for (const game of matchup.matches) {
-      let stat = Object.fromEntries(game.aTeam.stats);
-      for (const id in stat) {
+  const rawMatchups = await MatchupModel.find({ "aTeam._id": draftId })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const stats: Record<string, PokemonStatTotals> = {};
+
+  for (const matchup of rawMatchups) {
+    const matches = Array.isArray(matchup.matches) ? matchup.matches : [];
+    for (const game of matches) {
+      for (const [pid, teamStats] of game.aTeam.stats) {
+        const id = toID(pid);
         if (!(id in stats)) {
           stats[id] = {
-            pokemon: { id: toID(id), name: getName(id) },
+            pokemon: { id, name: getName(pid) },
             kills: 0,
             brought: 0,
             indirect: 0,
@@ -166,13 +182,10 @@ export async function getStats(ruleset: Ruleset, draftId: Types.ObjectId) {
             kpg: 0,
           };
         }
-        const teamStats = stat[toID(id)];
-        if (teamStats) {
-          stats[id].kills += teamStats.kills ?? 0;
-          stats[id].brought += teamStats.brought ?? 0;
-          stats[id].indirect += teamStats.indirect ?? 0;
-          stats[id].deaths += teamStats.deaths ?? 0;
-        }
+        stats[id].kills += teamStats.kills ?? 0;
+        stats[id].brought += teamStats.brought ?? 0;
+        stats[id].indirect += teamStats.indirect ?? 0;
+        stats[id].deaths += teamStats.deaths ?? 0;
       }
     }
   }
