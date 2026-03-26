@@ -1,6 +1,10 @@
 import { Data, Generations, toID } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
-import { ParsedReplayLine, ParsedReplayLog } from "./replay-parse.service";
+import {
+  KnownReplayAction,
+  ParsedReplayLine,
+  ParsedReplayLog,
+} from "./replay-parse.service";
 
 const SIDE_IDS = ["p1", "p2", "p3", "p4"] as const;
 const POSITION_IDS = ["a", "b", "c"] as const;
@@ -24,6 +28,7 @@ export type Pokemon = {
   species?: string;
   baseSpecies?: string;
   speciesHistory: string[];
+  detailsHistory: string[];
   moveset: string[];
   details?: string;
   hp?: HPState;
@@ -37,6 +42,7 @@ export type Pokemon = {
 export type Position = {
   id: PositionId;
   pokemonKey?: string;
+  conditions: string[];
 };
 
 export type Side = {
@@ -88,6 +94,13 @@ type PokemonRef = {
   canonicalKey: string;
 };
 
+function defaultPosition(id: PositionId): Position {
+  return {
+    id,
+    conditions: [],
+  };
+}
+
 function defaultSide(id: SideId): Side {
   return {
     id,
@@ -96,9 +109,9 @@ function defaultSide(id: SideId): Side {
     },
     conditions: [],
     active: {
-      a: { id: "a" },
-      b: { id: "b" },
-      c: { id: "c" },
+      a: defaultPosition("a"),
+      b: defaultPosition("b"),
+      c: defaultPosition("c"),
     },
     pokemon: {},
   };
@@ -152,6 +165,7 @@ function cloneSide(side: Side): Side {
         {
           ...pokemon,
           speciesHistory: [...pokemon.speciesHistory],
+          detailsHistory: [...pokemon.detailsHistory],
           moveset: [...pokemon.moveset],
           hp: pokemon.hp ? { ...pokemon.hp } : undefined,
         },
@@ -254,7 +268,11 @@ function parseHpStatus(hpStatus: string | undefined): {
 } {
   if (!hpStatus) return {};
 
-  const [hpRaw, statusRaw] = hpStatus.trim().split(/\s+/, 2);
+  const normalized = hpStatus.trim();
+  // Replay metadata tokens such as [silent] are not HP/status updates.
+  if (normalized.startsWith("[")) return {};
+
+  const [hpRaw, statusRaw] = normalized.split(/\s+/, 2);
   const hp = parseHpState(hpRaw);
   const status = statusRaw?.trim();
   const fainted = status === "fnt" || hp?.raw === "0/100" || hp?.current === 0;
@@ -275,6 +293,7 @@ function upsertPokemon(side: Side, key: string, nickname: string): Pokemon {
     sideId: side.id,
     nickname,
     speciesHistory: [],
+    detailsHistory: [],
     moveset: [],
     fainted: false,
   };
@@ -336,6 +355,7 @@ export class ReplayStatesService {
       const key = `${sideId}: ${baseSpeciesId ?? speciesId}`;
       const pokemon = upsertPokemon(field.sides[sideId], key, speciesId);
       pokemon.details = line.parsedArgs.details;
+      pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
       pokemon.species = speciesId;
       pokemon.baseSpecies = baseSpeciesId ?? speciesId;
       pushUnique(pokemon.speciesHistory, speciesId);
@@ -565,18 +585,18 @@ export class ReplayStatesService {
       };
     }
 
-    if (line.action === "-damage") {
-      if (line.parentId !== undefined) {
-        const parent = lines[line.parentId];
-        if (parent?.action === "move") {
-          return {
-            attackerSideId: parsePokemonRef(parent.parsedArgs.pokemon)?.sideId,
-            attackerPokemon: parent.parsedArgs.pokemon,
-            move: parent.parsedArgs.move,
-          };
-        }
+    if (line.parentId !== undefined) {
+      const parent = lines[line.parentId];
+      if (parent?.action === "move") {
+        return {
+          attackerSideId: parsePokemonRef(parent.parsedArgs.pokemon)?.sideId,
+          attackerPokemon: parent.parsedArgs.pokemon,
+          move: parent.parsedArgs.move,
+        };
       }
+    }
 
+    if (line.action === "-damage") {
       const ofPokemon = (line.parsedArgs as { of?: string }).of;
       const fromCause = (line.parsedArgs as { from?: string }).from;
       const normalizedCause = fromCause?.startsWith("move: ")
@@ -641,6 +661,7 @@ export class ReplayStatesService {
     if (baseSpeciesId) pokemon.baseSpecies = baseSpeciesId;
     pushUnique(pokemon.speciesHistory, speciesId);
     if (line.parsedArgs.details) pokemon.details = line.parsedArgs.details;
+    pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
 
     const { hp, status, fainted } = parseHpStatus(line.parsedArgs.hpStatus);
     if (hp) pokemon.hp = hp;
@@ -656,7 +677,6 @@ export class ReplayStatesService {
   ): Pokemon | undefined {
     const side = field.sides[pokemonRef.sideId];
 
-    // Slot identity is more reliable than nickname under Illusion/form changes.
     const activeKey = side.active[pokemonRef.positionId].pokemonKey;
     if (activeKey && side.pokemon[activeKey]) return side.pokemon[activeKey];
 
@@ -687,6 +707,7 @@ export class ReplayStatesService {
 
     if (line.parsedArgs.details) {
       pokemon.details = line.parsedArgs.details;
+      pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
       const { speciesId, baseSpeciesId } = parseSpeciesMeta(
         line.parsedArgs.details,
         field.genNum,

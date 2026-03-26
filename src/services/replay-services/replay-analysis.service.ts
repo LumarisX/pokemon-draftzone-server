@@ -11,13 +11,24 @@ type StatBreakdown = {
   teammate: number;
 };
 
+type AttributionBreakdown = {
+  direct: string[];
+  indirect: string[];
+  teammate: string[];
+};
+
+type DeathAttribution = AttributionBreakdown & {
+  fainted: string | true | false;
+};
+
 type ReplayPokemonAnalysis = {
   id: string;
   name: string;
   shiny?: true;
   formes?: string[];
   item?: string;
-  kills: StatBreakdown;
+  kills: AttributionBreakdown;
+  deaths: DeathAttribution;
   status: "brought" | "survived" | "fainted";
   moveset: string[];
   damageDealt: StatBreakdown;
@@ -46,6 +57,7 @@ type ParsedPokemonRef = {
 type LastDamageContext = {
   attackerSideId?: string;
   attackerPokemon?: string;
+  attackerName?: string;
   move?: string;
   cause?: string;
   indirect?: boolean;
@@ -104,6 +116,17 @@ function emptyStatBreakdown(): StatBreakdown {
   return { direct: 0, indirect: 0, teammate: 0 };
 }
 
+function emptyAttributionBreakdown(): AttributionBreakdown {
+  return { direct: [], indirect: [], teammate: [] };
+}
+
+function emptyDeathAttribution(): DeathAttribution {
+  return {
+    ...emptyAttributionBreakdown(),
+    fainted: false,
+  };
+}
+
 function emptyLuck() {
   return {
     moves: { total: 0, hits: 0, expected: 0, actual: 0 },
@@ -122,6 +145,44 @@ function toDisplayName(pokemon: Pokemon): string {
   if (pokemon.details) return pokemon.details.split(",")[0].trim();
   if (pokemon.species) return pokemon.species;
   return pokemon.nickname;
+}
+
+function getStableDisplayName(pokemon: Pokemon): string {
+  const latestDetail = [...pokemon.detailsHistory].reverse().find(Boolean);
+  if (latestDetail) return latestDetail.split(",")[0].trim();
+
+  const latestSpecies = [...pokemon.speciesHistory].reverse().find(Boolean);
+  if (latestSpecies) return latestSpecies;
+
+  return toDisplayName(pokemon);
+}
+
+function normalizeConditionName(
+  condition: string | undefined,
+): string | undefined {
+  if (!condition) return undefined;
+  const trimmed = condition.trim();
+  const withoutMovePrefix = trimmed.startsWith("move: ")
+    ? trimmed.slice(6)
+    : trimmed;
+  const normalized = toID(withoutMovePrefix);
+  return normalized || undefined;
+}
+
+function parseSideId(side: string | undefined): string | undefined {
+  if (!side) return undefined;
+  const parsed = side.match(/^(p[1-4])/);
+  return parsed?.[1];
+}
+
+function getAttributionBucket(
+  victimSideId: string,
+  attackerSideId: string | undefined,
+  indirect: boolean | undefined,
+): keyof AttributionBreakdown {
+  if (attackerSideId && attackerSideId === victimSideId) return "teammate";
+  if (indirect) return "indirect";
+  return "direct";
 }
 
 function normalizeSpeciesToBase(speciesId: string, genNum?: number): string {
@@ -181,6 +242,25 @@ function getPokemonByRef(
   );
 }
 
+function getPokemonByName(
+  field: Field,
+  sideId: string | undefined,
+  name: string | undefined,
+): Pokemon | undefined {
+  if (!sideId || !name) return undefined;
+  const side = field.sides[sideId as keyof typeof field.sides];
+  if (!side) return undefined;
+
+  return Object.values(side.pokemon).find((pokemon) => {
+    const detailName = pokemon.details?.split(",")[0].trim();
+    return (
+      pokemon.nickname === name ||
+      detailName === name ||
+      toDisplayName(pokemon) === name
+    );
+  });
+}
+
 export class ReplayAnalysisService {
   analyze(turnStates: TurnState[]): ReplayAnalysisResult {
     const orderedTurnStates = [...turnStates].sort(
@@ -206,7 +286,8 @@ export class ReplayAnalysisService {
     const seenActiveBySide = new Map<string, Set<string>>();
     const killsBySide = new Map<string, number>();
     const deathsBySide = new Map<string, number>();
-    const killsByPokemon = new Map<string, StatBreakdown>();
+    const killsByPokemon = new Map<string, AttributionBreakdown>();
+    const deathsByPokemon = new Map<string, DeathAttribution>();
     const damageDealtByPokemon = new Map<string, StatBreakdown>();
     const damageTakenByPokemon = new Map<string, StatBreakdown>();
     const hpRestoredByPokemon = new Map<string, number>();
@@ -224,21 +305,61 @@ export class ReplayAnalysisService {
     });
 
     const lastDamageByVictimKey = new Map<string, LastDamageContext>();
+    const sideConditionSetters = new Map<string, LastDamageContext>();
+    const attributedVictimKeys = new Set<string>();
 
     orderedTurnStates.forEach((turnState) => {
       turnState.actions.forEach((action) => {
         if (
-          action.action === "-damage" &&
-          action.victimKey &&
+          action.action === "-sidestart" &&
+          action.parsedArgs.side &&
+          action.parsedArgs.condition &&
           action.attackerSideId
         ) {
-          lastDamageByVictimKey.set(action.victimKey, {
+          const condition = normalizeConditionName(action.parsedArgs.condition);
+          const sideId = parseSideId(action.parsedArgs.side);
+          if (condition && sideId) {
+            sideConditionSetters.set(`${sideId}|${condition}`, {
+              attackerSideId: action.attackerSideId,
+              attackerPokemon: action.attackerPokemon,
+              attackerName: action.attackerName,
+              move: action.move,
+              cause: condition,
+              indirect: true,
+            });
+          }
+        }
+
+        if (action.action === "-damage" && action.victimKey) {
+          const baseContext: LastDamageContext = {
             attackerSideId: action.attackerSideId,
             attackerPokemon: action.attackerPokemon,
+            attackerName: action.attackerName,
             move: action.move,
             cause: action.cause,
             indirect: action.indirect,
-          });
+          };
+
+          const hazardCondition = normalizeConditionName(action.cause);
+          const hazardContext =
+            !baseContext.attackerSideId &&
+            action.victimSideId &&
+            hazardCondition
+              ? sideConditionSetters.get(
+                  `${action.victimSideId}|${hazardCondition}`,
+                )
+              : undefined;
+
+          const resolvedContext = hazardContext ?? baseContext;
+          if (resolvedContext.attackerSideId) {
+            lastDamageByVictimKey.set(action.victimKey, resolvedContext);
+          } else {
+            // Keep a marker context so a new unattributed damage source doesn't inherit stale attribution.
+            lastDamageByVictimKey.set(action.victimKey, {
+              cause: action.cause,
+              indirect: action.indirect,
+            });
+          }
         }
 
         if (
@@ -256,24 +377,78 @@ export class ReplayAnalysisService {
 
         const damageContext = lastDamageByVictimKey.get(action.victimKey);
         const attackerSideId = damageContext?.attackerSideId;
+        const attackerBucket = getAttributionBucket(
+          action.victimSideId,
+          attackerSideId,
+          damageContext?.indirect,
+        );
+        const victimSide =
+          turnState.field.sides[
+            action.victimSideId as keyof typeof turnState.field.sides
+          ];
+        const victimPokemon = victimSide?.pokemon[action.victimKey];
+        const victimName =
+          getStableDisplayName(victimPokemon) ??
+          action.victimName ??
+          action.parsedArgs.pokemon?.split(": ").pop() ??
+          "Unknown";
+
+        const attackerRef = parsePokemonRef(damageContext?.attackerPokemon);
+        const attackerPokemon =
+          getPokemonByName(
+            turnState.field,
+            attackerSideId,
+            attackerRef?.nickname ?? damageContext?.attackerName,
+          ) ??
+          (damageContext?.attackerPokemon
+            ? getPokemonByRef(turnState.field, damageContext.attackerPokemon)
+            : undefined);
+        const attackerDisplayName = attackerPokemon?.key
+          ? getStableDisplayName(attackerPokemon)
+          : (damageContext?.attackerName ??
+            damageContext?.attackerPokemon?.split(": ").pop());
+
+        const deathRecord =
+          deathsByPokemon.get(action.victimKey) ?? emptyDeathAttribution();
+        if (attackerDisplayName) {
+          this.pushAttribution(
+            deathsByPokemon,
+            action.victimKey,
+            attackerBucket,
+            attackerDisplayName,
+          );
+          deathsByPokemon.set(action.victimKey, {
+            ...(deathsByPokemon.get(action.victimKey) ?? deathRecord),
+            fainted: attackerDisplayName,
+          });
+        } else {
+          deathsByPokemon.set(action.victimKey, {
+            ...deathRecord,
+            fainted: true,
+          });
+        }
+
         if (attackerSideId && attackerSideId !== action.victimSideId) {
           killsBySide.set(
             attackerSideId,
             (killsBySide.get(attackerSideId) ?? 0) + 1,
           );
+          attributedVictimKeys.add(action.victimKey);
+
+          if (attackerPokemon?.key) {
+            this.pushAttribution(
+              killsByPokemon,
+              attackerPokemon.key,
+              attackerBucket,
+              victimName,
+            );
+          }
         }
 
         const playerIndex = sideIndexById.get(action.victimSideId) ?? 0;
-        const victimSide =
-          finalField.sides[
-            action.victimSideId as keyof typeof finalField.sides
-          ];
-        const victimName =
-          action.victimName ??
-          action.parsedArgs.pokemon?.split(": ").pop() ??
-          "Unknown";
         const attackerName =
           action.attackerName ??
+          damageContext?.attackerName ??
           damageContext?.attackerPokemon?.split(": ").pop();
         const attackerUsername = attackerSideId
           ? turnState.field.sides[
@@ -394,8 +569,27 @@ export class ReplayAnalysisService {
             }
 
             if (!previousPokemon.fainted && currentPokemon.fainted) {
+              if (attributedVictimKeys.has(pokemonKey)) {
+                return;
+              }
+
+              if (attackerSideId && attackerSideId !== victimSideId) {
+                killsBySide.set(
+                  attackerSideId,
+                  (killsBySide.get(attackerSideId) ?? 0) + 1,
+                );
+              }
+
               if (attackerActiveKey) {
-                this.bumpBreakdown(killsByPokemon, attackerActiveKey, 1);
+                const bucket =
+                  attackerSideId === victimSideId ? "teammate" : "direct";
+                const victimName = getStableDisplayName(currentPokemon);
+                this.pushAttribution(
+                  killsByPokemon,
+                  attackerActiveKey,
+                  bucket,
+                  victimName,
+                );
               }
 
               // Faint events and kill totals are derived from turn action timeline.
@@ -433,7 +627,8 @@ export class ReplayAnalysisService {
 
       const team = [...groupedTeam.entries()].map(([id, group]) => {
         let chosenPokemon = group[0];
-        let kills = emptyStatBreakdown();
+        let kills = emptyAttributionBreakdown();
+        let deaths = emptyDeathAttribution();
         let damageDealt = emptyStatBreakdown();
         let damageTaken = emptyStatBreakdown();
         let hpRestored = 0;
@@ -456,16 +651,27 @@ export class ReplayAnalysisService {
           });
           if (pokemon.species) formes.add(toID(pokemon.species));
           const pokemonKills =
-            killsByPokemon.get(pokemon.key) ?? emptyStatBreakdown();
+            killsByPokemon.get(pokemon.key) ?? emptyAttributionBreakdown();
+          const pokemonDeaths =
+            deathsByPokemon.get(pokemon.key) ?? emptyDeathAttribution();
           const pokemonDamageDealt =
             damageDealtByPokemon.get(pokemon.key) ?? emptyStatBreakdown();
           const pokemonDamageTaken =
             damageTakenByPokemon.get(pokemon.key) ?? emptyStatBreakdown();
 
           kills = {
-            direct: kills.direct + pokemonKills.direct,
-            indirect: kills.indirect + pokemonKills.indirect,
-            teammate: kills.teammate + pokemonKills.teammate,
+            direct: [...kills.direct, ...pokemonKills.direct],
+            indirect: [...kills.indirect, ...pokemonKills.indirect],
+            teammate: [...kills.teammate, ...pokemonKills.teammate],
+          };
+          deaths = {
+            direct: [...deaths.direct, ...pokemonDeaths.direct],
+            indirect: [...deaths.indirect, ...pokemonDeaths.indirect],
+            teammate: [...deaths.teammate, ...pokemonDeaths.teammate],
+            fainted:
+              pokemonDeaths.fainted !== false
+                ? pokemonDeaths.fainted
+                : deaths.fainted,
           };
           damageDealt = {
             direct: damageDealt.direct + pokemonDamageDealt.direct,
@@ -485,10 +691,11 @@ export class ReplayAnalysisService {
 
         return {
           id,
-          name: toDisplayName(chosenPokemon),
+          name: getStableDisplayName(chosenPokemon),
           formes: formes.size > 0 ? [...formes] : undefined,
           item: chosenPokemon.item,
           kills,
+          deaths,
           status: chosenPokemon.fainted
             ? "fainted"
             : seenActive || groupedTeam.size <= (side.teamSize ?? 0)
@@ -566,6 +773,19 @@ export class ReplayAnalysisService {
     map.set(key, {
       ...current,
       direct: current.direct + amount,
+    });
+  }
+
+  private pushAttribution(
+    map: Map<string, AttributionBreakdown>,
+    key: string,
+    bucket: keyof AttributionBreakdown,
+    value: string,
+  ): void {
+    const current = map.get(key) ?? emptyAttributionBreakdown();
+    map.set(key, {
+      ...current,
+      [bucket]: [...current[bucket], value],
     });
   }
 }

@@ -5,6 +5,9 @@ import {
   Replay,
   validateUrl,
 } from "../services/replay-services/replay.service";
+import { ReplayAnalysisService } from "../services/replay-services/replay-analysis.service";
+import { ReplayParseService } from "../services/replay-services/replay-parse.service";
+import { ReplayStatesService } from "../services/replay-services/replay-states.service";
 
 import { createRoute } from "./route-builder";
 
@@ -18,6 +21,10 @@ function URLHandler<T>(ctx: T, url: string): { url: string } {
   return { url: decodedUrl };
 }
 
+const replayParseService = new ReplayParseService();
+const replayStatesService = new ReplayStatesService();
+const replayAnalysisService = new ReplayAnalysisService();
+
 export const ReplayRoute = createRoute()((r) => {
   r.path("analyze")((r) => {
     r.param(
@@ -27,6 +34,24 @@ export const ReplayRoute = createRoute()((r) => {
       r.get(async (ctx) => {
         const replay = await Replay.Analysis.fromReplayUrl(ctx.url);
         return replay?.toClient();
+      });
+    });
+  });
+  r.path("analyze-v2")((r) => {
+    r.param(
+      "url",
+      URLHandler,
+    )((r) => {
+      r.get(async (ctx) => {
+        const replayData = await fetch(`${formatUrl(ctx.url)}.log`);
+        const replayLog = await replayData.text();
+        const parsedReplay = replayParseService.parse(replayLog);
+        const turnStates = replayStatesService.build(parsedReplay);
+        const analysis = replayAnalysisService.analyze(turnStates);
+        return {
+          analysis,
+          warnings: parsedReplay.argValidationWarnings,
+        };
       });
     });
   });
