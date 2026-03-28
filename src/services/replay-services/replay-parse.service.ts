@@ -1,21 +1,28 @@
 import { MajorArg, ParsedArgs, REPLAY_ACTIONS, ReplayData } from ".";
 
-export type ParsedReplayLine = {
-  id: number;
+type BaseReplayLine = {
+  id: string;
   rawLine: string;
   raw: ReplayData;
   action: string;
   args: string[];
   parsedArgs: ParsedArgs;
   argValidation?: ArgValidationWarning;
-  isChild: boolean;
-  turnNumber?: number;
-  parentId?: number;
-  childIds: number[];
+  turnNumber: number;
 };
 
+export type ChildReplayLine = BaseReplayLine & {
+  parent: ParentReplayLine;
+};
+
+export type ParentReplayLine = BaseReplayLine & {
+  children: ChildReplayLine[];
+};
+
+export type ReplayLine = ParentReplayLine | ChildReplayLine;
+
 export type ArgValidationWarning = {
-  lineId: number;
+  lineId: string;
   action: string;
   args: string[];
   message: string;
@@ -23,13 +30,12 @@ export type ArgValidationWarning = {
 
 export type ParsedTurn = {
   number: number;
-  lineIds: number[];
+  lines: ReplayLine[];
 };
 
 export type ParsedReplayLog = {
-  lines: ParsedReplayLine[];
   turns: ParsedTurn[];
-  byAction: Record<string, number[]>;
+  byAction: Record<string, string[]>;
   unknownActions: Record<string, number>;
   argValidationWarnings: ArgValidationWarning[];
 };
@@ -161,7 +167,7 @@ export const ACTION_PARSE_ARGS: Record<
   j: ["username"],
   l: ["username"],
   message: ["message"],
-  move: ["pokemon", "move", "target"],
+  move: ["attacker", "move", "target"],
   n: ["username"],
   player: ["player", "username", "avatar", "rating"],
   poke: ["player", "details", "item"],
@@ -194,28 +200,6 @@ function isKnownReplayAction(action: string): action is KnownReplayAction {
   return KNOWN_REPLAY_ACTIONS.has(action as KnownReplayAction);
 }
 
-function toReplayLine(rawLine: string, id: number): ParsedReplayLine {
-  const normalized = rawLine.startsWith("|") ? rawLine.slice(1) : rawLine;
-  const raw = normalized.split("|").map((segment) => segment.trim());
-  const action = raw[0] ?? "";
-  const args = raw.slice(1);
-  const { parsedArgs, remainingArgs } = parseActionArgs(action, args);
-  const { majorActions, remainingArgs: majorRemainingArgs } =
-    extractMajorActions(remainingArgs);
-
-  return {
-    id,
-    rawLine,
-    raw,
-    action,
-    args,
-    parsedArgs: { ...parsedArgs, ...majorActions },
-    argValidation: validateArgCount(id, action, majorRemainingArgs),
-    isChild: action.startsWith("-") || action === "debug",
-    childIds: [],
-  };
-}
-
 type ActionArgsParser = (args: string[]) => ParsedArgs;
 
 const mapArgs =
@@ -232,7 +216,7 @@ const mapArgs =
   };
 
 function validateArgCount(
-  lineId: number,
+  lineId: string,
   action: string,
   args: string[],
 ): ArgValidationWarning | undefined {
@@ -267,23 +251,11 @@ function parseActionArgs(
   };
 }
 
-function parseTurnNumber(line: ParsedReplayLine): number | undefined {
+function parseTurnNumber(line: ReplayLine): number | undefined {
   if (line.action !== "turn") return undefined;
   const [turnArg] = line.args;
   const parsed = Number(turnArg);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function assignTurnToBranch(
-  lines: ParsedReplayLine[],
-  lineId: number,
-  turnNumber: number,
-): void {
-  const line = lines[lineId];
-  line.turnNumber = turnNumber;
-  line.childIds.forEach((childId) =>
-    assignTurnToBranch(lines, childId, turnNumber),
-  );
 }
 
 export class ReplayParseService {
@@ -293,37 +265,66 @@ export class ReplayParseService {
       .map((line) => line.trimEnd())
       .filter((line) => line.length > 0);
 
-    const lines = sourceLines.map((line, id) => toReplayLine(line, id));
-    const topLevelIds: number[] = [];
-    let currentParentId: number | undefined;
-
-    lines.forEach((line) => {
-      if (line.isChild && currentParentId !== undefined) {
-        line.parentId = currentParentId;
-        lines[currentParentId].childIds.push(line.id);
-        return;
-      }
-      topLevelIds.push(line.id);
-      currentParentId = line.id;
+    const lines: BaseReplayLine[] = sourceLines.map((rawLine, index) => {
+      const normalized = rawLine.startsWith("|") ? rawLine.slice(1) : rawLine;
+      const raw = normalized.split("|").map((segment) => segment.trim());
+      const action = raw[0] ?? "";
+      const args = raw.slice(1);
+      const { parsedArgs, remainingArgs } = parseActionArgs(action, args);
+      const { majorActions, remainingArgs: majorRemainingArgs } =
+        extractMajorActions(remainingArgs);
+      const id = `:${index}`;
+      return {
+        id,
+        rawLine,
+        raw,
+        action,
+        args,
+        parsedArgs: { ...parsedArgs, ...majorActions },
+        argValidation: validateArgCount(id, action, majorRemainingArgs),
+        turnNumber: -1,
+      };
     });
 
-    const turns: ParsedTurn[] = [{ number: 0, lineIds: [] }];
-    let activeTurnIndex = 0;
-
-    topLevelIds.forEach((lineId) => {
-      const line = lines[lineId];
-      const turnNumber = parseTurnNumber(line);
-      if (turnNumber !== undefined) {
-        turns.push({ number: turnNumber, lineIds: [] });
-        activeTurnIndex = turns.length - 1;
-        return;
+    const parentLines: ParentReplayLine[] = lines.reduce((parents, line) => {
+      if (line.action.startsWith("-")) {
+        const parent = parents[parents.length - 1];
+        if (!parent) return parents;
+        parent.children.push({ ...line, parent });
+      } else {
+        parents.push({ ...line, children: [] });
       }
+      return parents;
+    }, [] as ParentReplayLine[]);
 
-      turns[activeTurnIndex].lineIds.push(line.id);
-      assignTurnToBranch(lines, line.id, turns[activeTurnIndex].number);
-    });
+    let currentTurnId: number = 1;
 
-    const byAction: Record<string, number[]> = {};
+    const turns: ParsedTurn[] = parentLines.reduce(
+      (turns, line) => {
+        if (line.action === "turn") {
+          turns.push({
+            number: parseTurnNumber(line),
+            lines: [],
+          } as ParsedTurn);
+          currentTurnId = 1;
+        } else {
+          const lastTurn = turns[turns.length - 1];
+          if (lastTurn) {
+            lastTurn.lines.push(line);
+            line.turnNumber = lastTurn.number;
+            line.id = `${lastTurn.number}:${currentTurnId++}`;
+            line.children.forEach((child) => {
+              child.turnNumber = lastTurn.number;
+              child.id = `${lastTurn.number}:${currentTurnId++}`;
+            });
+          }
+        }
+        return turns;
+      },
+      [{ number: 0, lines: [] }] as ParsedTurn[],
+    );
+
+    const byAction: Record<string, string[]> = {};
     const unknownActions: Record<string, number> = {};
     const argValidationWarnings: ArgValidationWarning[] = [];
     lines.forEach((line) => {
@@ -339,7 +340,6 @@ export class ReplayParseService {
     });
 
     return {
-      lines,
       turns,
       byAction,
       unknownActions,

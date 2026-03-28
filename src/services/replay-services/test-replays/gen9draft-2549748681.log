@@ -1,0 +1,353 @@
+|j|☆NotoriousABS
+|j|☆Mr.Twang
+|t:|1772404398
+|gametype|singles
+|player|p1|NotoriousABS|n|
+|player|p2|Mr.Twang|baker|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Dragapult, M|
+|poke|p1|Quaquaval, M|
+|poke|p1|Jirachi|
+|poke|p1|Enamorus-Therian, F|
+|poke|p1|Coalossal, F|
+|poke|p1|Vaporeon, M|
+|poke|p2|Gyarados, M|
+|poke|p2|Hoopa|
+|poke|p2|Toedscruel, M|
+|poke|p2|Quagsire, F|
+|poke|p2|Hydreigon, F|
+|poke|p2|Diancie|
+|raw|NotoriousABS's Tera Types:<br /><psicon pokemon="dragapult" /><psicon type="Dragon" /> / <psicon pokemon="quaquaval" /><psicon type="Water" /> / <psicon pokemon="jirachi" /><psicon type="Steel" /> / <psicon pokemon="enamorustherian" /><psicon type="Ground" /> / <psicon pokemon="coalossal" /><psicon type="Ghost" /> / <psicon pokemon="vaporeon" /><psicon type="Water" />
+|raw|Mr.Twang's Tera Types:<br /><psicon pokemon="gyarados" /><psicon type="Electric" /> / <psicon pokemon="hoopa" /><psicon type="Psychic" /> / <psicon pokemon="toedscruel" /><psicon type="Ground" /> / <psicon pokemon="quagsire" /><psicon type="Water" /> / <psicon pokemon="hydreigon" /><psicon type="Dark" /> / <psicon pokemon="diancie" /><psicon type="Rock" />
+|teampreview
+|c|☆Mr.Twang|glhf :)
+|j| djrean
+|c|☆NotoriousABS|glhf!
+|
+|t:|1772404539
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Shooting Star|Jirachi|100/100
+|switch|p2a: Astrophysicist|Hoopa|100/100
+|turn|1
+|c|☆NotoriousABS|I must admit this was not the team I was expecting
+|
+|t:|1772404562
+|move|p2a: Astrophysicist|Trick|p1a: Shooting Star
+|-activate|p2a: Astrophysicist|move: Trick|[of] p1a: Shooting Star
+|-item|p1a: Shooting Star|Choice Scarf|[from] move: Trick
+|-item|p2a: Astrophysicist|Sitrus Berry|[from] move: Trick
+|move|p1a: Shooting Star|Thunder Wave|p2a: Astrophysicist
+|-status|p2a: Astrophysicist|par
+|
+|upkeep
+|turn|2
+|c|☆Mr.Twang|gotta keep em guessing with the 4x squad :)
+|
+|t:|1772404601
+|switch|p1a: Coal Kaiju|Coalossal, F, shiny|100/100
+|switch|p2a: Sedimentologist|Quagsire, F, shiny|100/100
+|
+|upkeep
+|turn|3
+|
+|t:|1772404638
+|switch|p1a: Fox Mermaid|Vaporeon, M|100/100
+|move|p2a: Sedimentologist|Whirlpool|p1a: Fox Mermaid
+|-immune|p1a: Fox Mermaid|[from] ability: Water Absorb
+|
+|upkeep
+|turn|4
+|
+|t:|1772404673
+|move|p1a: Fox Mermaid|Surf|p2a: Sedimentologist
+|-immune|p2a: Sedimentologist|[from] ability: Water Absorb
+|move|p2a: Sedimentologist|Toxic|p1a: Fox Mermaid
+|-status|p1a: Fox Mermaid|tox
+|
+|-damage|p1a: Fox Mermaid|94/100 tox|[from] psn
+|upkeep
+|turn|5
+|c|☆NotoriousABS|I was hoping no
+|
+|t:|1772404694
+|move|p1a: Fox Mermaid|Ice Beam|p2a: Sedimentologist
+|-damage|p2a: Sedimentologist|73/100
+|move|p2a: Sedimentologist|Stealth Rock|p1a: Fox Mermaid
+|-sidestart|p1: NotoriousABS|move: Stealth Rock
+|
+|-damage|p1a: Fox Mermaid|82/100 tox|[from] psn
+|upkeep
+|turn|6
+|
+|t:|1772404710
+|move|p1a: Fox Mermaid|Flip Turn|p2a: Sedimentologist
+|-heal|p2a: Sedimentologist|98/100|[from] ability: Water Absorb|[of] p1a: Fox Mermaid
+|move|p2a: Sedimentologist|Recover|p2a: Sedimentologist
+|-heal|p2a: Sedimentologist|100/100
+|
+|-damage|p1a: Fox Mermaid|63/100 tox|[from] psn
+|upkeep
+|turn|7
+|c|☆NotoriousABS|...idk why i did that
+|
+|t:|1772404738
+|switch|p1a: Flamboyant Duck|Quaquaval, M, shiny|100/100
+|-damage|p1a: Flamboyant Duck|95/100|[from] Stealth Rock
+|move|p2a: Sedimentologist|Toxic|p1a: Flamboyant Duck
+|-status|p1a: Flamboyant Duck|tox
+|
+|-damage|p1a: Flamboyant Duck|89/100 tox|[from] psn
+|upkeep
+|turn|8
+|
+|t:|1772404794
+|move|p1a: Flamboyant Duck|Swords Dance|p1a: Flamboyant Duck
+|-boost|p1a: Flamboyant Duck|atk|2
+|move|p2a: Sedimentologist|Recover||[still]
+|-fail|p2a: Sedimentologist|heal
+|
+|-damage|p1a: Flamboyant Duck|77/100 tox|[from] psn
+|upkeep
+|turn|9
+|
+|t:|1772404809
+|move|p1a: Flamboyant Duck|Close Combat|p2a: Sedimentologist
+|-damage|p2a: Sedimentologist|0 fnt
+|-unboost|p1a: Flamboyant Duck|def|1
+|-unboost|p1a: Flamboyant Duck|spd|1
+|-damage|p1a: Flamboyant Duck|60/100 tox|[from] item: Rocky Helmet|[of] p2a: Sedimentologist
+|faint|p2a: Sedimentologist
+|-ability|p1a: Flamboyant Duck|Moxie|boost
+|-boost|p1a: Flamboyant Duck|atk|1
+|-damage|p1a: Flamboyant Duck|50/100 tox|[from] item: Life Orb
+|
+|-damage|p1a: Flamboyant Duck|32/100 tox|[from] psn
+|upkeep
+|j| Mhew
+|j| Anygivenday
+|
+|t:|1772404874
+|switch|p2a: Anesthesiologist|Toedscruel, M, shiny|100/100
+|turn|10
+|
+|t:|1772404888
+|move|p2a: Anesthesiologist|Giga Drain|p1a: Flamboyant Duck
+|-supereffective|p1a: Flamboyant Duck
+|-damage|p1a: Flamboyant Duck|0 fnt
+|faint|p1a: Flamboyant Duck
+|
+|upkeep
+|
+|t:|1772404920
+|switch|p1a: Fox Mermaid|Vaporeon, M|63/100 tox
+|-damage|p1a: Fox Mermaid|50/100 tox|[from] Stealth Rock
+|turn|11
+|
+|t:|1772404959
+|move|p2a: Anesthesiologist|Giga Drain|p1a: Fox Mermaid
+|-supereffective|p1a: Fox Mermaid
+|-damage|p1a: Fox Mermaid|7/100 tox
+|move|p1a: Fox Mermaid|Ice Beam|p2a: Anesthesiologist
+|-supereffective|p2a: Anesthesiologist
+|-damage|p2a: Anesthesiologist|39/100
+|
+|-damage|p1a: Fox Mermaid|1/100 tox|[from] psn
+|upkeep
+|turn|12
+|
+|t:|1772404979
+|move|p2a: Anesthesiologist|Rapid Spin|p1a: Fox Mermaid
+|-damage|p1a: Fox Mermaid|0 fnt
+|-boost|p2a: Anesthesiologist|spe|1
+|-damage|p2a: Anesthesiologist|23/100|[from] item: Rocky Helmet|[of] p1a: Fox Mermaid
+|faint|p1a: Fox Mermaid
+|
+|upkeep
+|
+|t:|1772404991
+|switch|p1a: Shooting Star|Jirachi|100/100
+|-damage|p1a: Shooting Star|94/100|[from] Stealth Rock
+|turn|13
+|j| Lumaris
+|
+|t:|1772405018
+|move|p2a: Anesthesiologist|Earth Power|p1a: Shooting Star
+|-supereffective|p1a: Shooting Star
+|-damage|p1a: Shooting Star|53/100
+|move|p1a: Shooting Star|U-turn|p2a: Anesthesiologist
+|-supereffective|p2a: Anesthesiologist
+|-damage|p2a: Anesthesiologist|0 fnt
+|faint|p2a: Anesthesiologist
+|c| Lumaris|Anesthesiologist is a fire name for toedscruel
+|
+|t:|1772405062
+|switch|p1a: Dead Diplocaulus|Dragapult, M, shiny|100/100|[from] U-turn
+|-damage|p1a: Dead Diplocaulus|88/100|[from] Stealth Rock
+|
+|upkeep
+|
+|t:|1772405169
+|switch|p2a: Mineralogist|Diancie|100/100
+|turn|14
+|
+|t:|1772405230
+|move|p1a: Dead Diplocaulus|U-turn|p2a: Mineralogist
+|-resisted|p2a: Mineralogist
+|-damage|p2a: Mineralogist|92/100
+|
+|t:|1772405248
+|switch|p1a: Shooting Star|Jirachi|53/100|[from] U-turn
+|-damage|p1a: Shooting Star|47/100|[from] Stealth Rock
+|move|p2a: Mineralogist|Draining Kiss|p1a: Shooting Star
+|-resisted|p1a: Shooting Star
+|-damage|p1a: Shooting Star|39/100
+|-heal|p2a: Mineralogist|100/100|[from] drain|[of] p1a: Shooting Star
+|
+|upkeep
+|turn|15
+|
+|t:|1772405307
+|switch|p2a: Astrophysicist|Hoopa|100/100 par
+|move|p1a: Shooting Star|Thunder Wave|p2a: Astrophysicist
+|-fail|p2a: Astrophysicist|par
+|
+|upkeep
+|turn|16
+|
+|t:|1772405331
+|switch|p1a: Coal Kaiju|Coalossal, F, shiny|100/100
+|move|p2a: Astrophysicist|Knock Off|p1a: Coal Kaiju
+|-crit|p1a: Coal Kaiju
+|-damage|p1a: Coal Kaiju|82/100
+|-enditem|p1a: Coal Kaiju|Heavy-Duty Boots|[from] move: Knock Off|[of] p2a: Astrophysicist
+|
+|upkeep
+|turn|17
+|
+|t:|1772405444
+|move|p2a: Astrophysicist|Psychic|p1a: Coal Kaiju
+|-damage|p1a: Coal Kaiju|32/100
+|move|p1a: Coal Kaiju|Flamethrower|p2a: Astrophysicist
+|-damage|p2a: Astrophysicist|75/100 par
+|
+|upkeep
+|turn|18
+|l| djrean
+|
+|t:|1772405546
+|move|p2a: Astrophysicist|Psychic|p1a: Coal Kaiju
+|-damage|p1a: Coal Kaiju|0 fnt
+|faint|p1a: Coal Kaiju
+|
+|upkeep
+|l| Mhew
+|
+|t:|1772405617
+|switch|p1a: War Tortle|Enamorus-Therian, F|100/100
+|-damage|p1a: War Tortle|76/100|[from] Stealth Rock
+|turn|19
+|
+|t:|1772405642
+|move|p2a: Astrophysicist|Psychic|p1a: War Tortle
+|-damage|p1a: War Tortle|28/100
+|move|p1a: War Tortle|Calm Mind|p1a: War Tortle
+|-boost|p1a: War Tortle|spa|1
+|-boost|p1a: War Tortle|spd|1
+|
+|-heal|p1a: War Tortle|34/100|[from] item: Leftovers
+|upkeep
+|turn|20
+|j| djrean
+|
+|t:|1772405688
+|move|p2a: Astrophysicist|Destiny Bond|p2a: Astrophysicist
+|-singlemove|p2a: Astrophysicist|Destiny Bond
+|move|p1a: War Tortle|Moonblast|p2a: Astrophysicist
+|-damage|p2a: Astrophysicist|0 fnt
+|faint|p2a: Astrophysicist
+|-activate|p2a: Astrophysicist|move: Destiny Bond
+|faint|p1a: War Tortle
+|
+|upkeep
+|c|☆NotoriousABS|im genuinely so lost, i was so ready for heatran and scizor. Pretty sure thats ggs on my end though haha, idk if I can take whats left. losing qua so early due to toxic hurt bad lol
+|
+|t:|1772405789
+|switch|p2a: Ichthyologist|Gyarados, M, shiny|100/100
+|switch|p1a: Shooting Star|Jirachi|39/100
+|-damage|p1a: Shooting Star|32/100|[from] Stealth Rock
+|turn|21
+|
+|t:|1772405800
+|-terastallize|p2a: Ichthyologist|Electric
+|move|p1a: Shooting Star|Thunder Wave|p2a: Ichthyologist
+|-immune|p2a: Ichthyologist
+|move|p2a: Ichthyologist|Dragon Dance|p2a: Ichthyologist
+|-boost|p2a: Ichthyologist|atk|1
+|-boost|p2a: Ichthyologist|spe|1
+|
+|upkeep
+|turn|22
+|
+|t:|1772405811
+|switch|p1a: Dead Diplocaulus|Dragapult, M, shiny|88/100
+|-damage|p1a: Dead Diplocaulus|76/100|[from] Stealth Rock
+|move|p2a: Ichthyologist|Dragon Dance|p2a: Ichthyologist
+|-boost|p2a: Ichthyologist|atk|1
+|-boost|p2a: Ichthyologist|spe|1
+|
+|upkeep
+|turn|23
+|
+|t:|1772405816
+|move|p2a: Ichthyologist|Crunch|p1a: Dead Diplocaulus
+|-supereffective|p1a: Dead Diplocaulus
+|-damage|p1a: Dead Diplocaulus|0 fnt
+|faint|p1a: Dead Diplocaulus
+|-ability|p2a: Ichthyologist|Moxie|boost
+|-boost|p2a: Ichthyologist|atk|1
+|
+|upkeep
+|
+|t:|1772405822
+|switch|p1a: Shooting Star|Jirachi|32/100
+|-damage|p1a: Shooting Star|26/100|[from] Stealth Rock
+|turn|24
+|c|☆Mr.Twang|I thought they had a real bad matchup here
+|c|☆Mr.Twang|your whole team eats steel fire and bug for breakfast defensively
+|c|☆Mr.Twang|sciz and heatrans movepool typewise is middling
+|c|☆Mr.Twang|or at least in the positions i wanted them for
+|
+|t:|1772405871
+|move|p2a: Ichthyologist|Crunch|p1a: Shooting Star
+|-supereffective|p1a: Shooting Star
+|-damage|p1a: Shooting Star|0 fnt
+|faint|p1a: Shooting Star
+|
+|win|Mr.Twang
+|c|☆Mr.Twang|ggs my guy :)
+|l| djrean
+|c|☆NotoriousABS|ggs!! feels good to be back in draft haha.
+|c|☆NotoriousABS|idk, I felt like they were a really good deterrant for enam
+|c|☆NotoriousABS|I thik I hyper focused on them bc Ive gotten beat by them often
+|c|☆NotoriousABS|But hey, Im glad it happened now and not later
+|c|☆NotoriousABS|In hindsight, def shouldve been more careful about toxic, and not sack my best mon in the matchup early. gl to rest of season!!
+|c|☆Mr.Twang|enam scared the crap out of me lol
+|c|☆Mr.Twang|you as well good luck
+|l|☆NotoriousABS
+|player|p1|
+|l| Lumaris
+|l| Anygivenday

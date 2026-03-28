@@ -1,0 +1,338 @@
+|j|☆frezemn
+|j|☆Ebastia12
+|t:|1772229162
+|gametype|singles
+|player|p1|frezemn|infielder|
+|player|p2|Ebastia12|170|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Brute Bonnet|
+|poke|p1|Slither Wing|
+|poke|p1|Torkoal, F|
+|poke|p1|Bronzong|
+|poke|p1|Walking Wake|
+|poke|p1|Ogerpon-Hearthflame, F|
+|poke|p2|Garchomp, M|
+|poke|p2|Clefable, M|
+|poke|p2|Weavile, F|
+|poke|p2|Oricorio-Sensu, F|
+|poke|p2|Zangoose, M|
+|poke|p2|Glimmora, M|
+|raw|frezemn's Tera Types:<br /><psicon pokemon="brutebonnet" /><psicon type="Dark" /> / <psicon pokemon="slitherwing" /><psicon type="Poison" /> / <psicon pokemon="torkoal" /><psicon type="Fire" /> / <psicon pokemon="bronzong" /><psicon type="Steel" /> / <psicon pokemon="walkingwake" /><psicon type="Water" /> / <psicon pokemon="ogerponhearthflame" /><psicon type="Fire" />
+|raw|Ebastia12's Tera Types:<br /><psicon pokemon="garchomp" /><psicon type="Dragon" /> / <psicon pokemon="clefable" /><psicon type="Fairy" /> / <psicon pokemon="weavile" /><psicon type="Flying" /> / <psicon pokemon="oricoriosensu" /><psicon type="Ghost" /> / <psicon pokemon="zangoose" /><psicon type="Normal" /> / <psicon pokemon="glimmora" /><psicon type="Rock" />
+|teampreview
+|c|☆Ebastia12|glhf
+|c|☆frezemn|glhf
+|
+|t:|1772229218
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: intellectual greed|Slither Wing|100/100
+|switch|p2a: Eric Corio|Oricorio-Sensu, F|100/100
+|turn|1
+|
+|t:|1772229230
+|-terastallize|p1a: intellectual greed|Poison
+|move|p2a: Eric Corio|Air Slash|p1a: intellectual greed
+|-damage|p1a: intellectual greed|81/100
+|move|p1a: intellectual greed|Heavy Slam|p2a: Eric Corio
+|-damage|p2a: Eric Corio|37/100
+|
+|upkeep
+|turn|2
+|
+|t:|1772229324
+|switch|p2a: Richard|Garchomp, M|100/100
+|move|p1a: intellectual greed|Heavy Slam|p2a: Richard
+|-damage|p2a: Richard|85/100
+|-damage|p1a: intellectual greed|69/100|[from] ability: Rough Skin|[of] p2a: Richard
+|
+|upkeep
+|turn|3
+|
+|t:|1772229337
+|-end|p1a: intellectual greed|Protosynthesis|[silent]
+|switch|p1a: Age of Adz|Bronzong|100/100
+|move|p2a: Richard|Stealth Rock|p1a: Age of Adz
+|-sidestart|p1: frezemn|move: Stealth Rock
+|
+|upkeep
+|turn|4
+|
+|t:|1772229343
+|move|p2a: Richard|Fire Fang|p1a: Age of Adz
+|-supereffective|p1a: Age of Adz
+|-damage|p1a: Age of Adz|63/100
+|move|p1a: Age of Adz|Ice Spinner|p2a: Richard
+|-supereffective|p2a: Richard
+|-damage|p2a: Richard|24/100
+|-damage|p1a: Age of Adz|50/100|[from] ability: Rough Skin|[of] p2a: Richard
+|
+|upkeep
+|turn|5
+|
+|t:|1772229373
+|move|p2a: Richard|Fire Fang|p1a: Age of Adz
+|-supereffective|p1a: Age of Adz
+|-damage|p1a: Age of Adz|14/100
+|cant|p1a: Age of Adz|flinch
+|
+|upkeep
+|turn|6
+|c|☆Ebastia12|Sorry
+|
+|t:|1772229390
+|move|p2a: Richard|Dragon Claw|p1a: Age of Adz
+|-resisted|p1a: Age of Adz
+|-damage|p1a: Age of Adz|0 fnt
+|faint|p1a: Age of Adz
+|
+|upkeep
+|
+|t:|1772229415
+|switch|p1a: Tears Into Wine|Walking Wake|100/100
+|-damage|p1a: Tears Into Wine|88/100|[from] Stealth Rock
+|turn|7
+|
+|t:|1772229431
+|switch|p2a: Beeple|Clefable, M|100/100
+|move|p1a: Tears Into Wine|Hydro Steam|p2a: Beeple
+|-damage|p2a: Beeple|75/100
+|
+|upkeep
+|turn|8
+|
+|t:|1772229442
+|-end|p1a: Tears Into Wine|Protosynthesis|[silent]
+|switch|p1a: When The Sun Hits|Torkoal, F|100/100
+|-weather|SunnyDay|[from] ability: Drought|[of] p1a: When The Sun Hits
+|move|p2a: Beeple|Moonblast|p1a: When The Sun Hits
+|-resisted|p1a: When The Sun Hits
+|-damage|p1a: When The Sun Hits|81/100
+|
+|-weather|SunnyDay|[upkeep]
+|upkeep
+|turn|9
+|
+|t:|1772229508
+|switch|p2a: Zoop|Glimmora, M|100/100
+|move|p1a: When The Sun Hits|Flamethrower|p2a: Zoop
+|-resisted|p2a: Zoop
+|-damage|p2a: Zoop|67/100
+|-status|p2a: Zoop|brn
+|
+|-weather|SunnyDay|[upkeep]
+|-damage|p2a: Zoop|61/100 brn|[from] brn
+|upkeep
+|turn|10
+|
+|t:|1772229537
+|move|p2a: Zoop|Power Gem|p1a: When The Sun Hits
+|-supereffective|p1a: When The Sun Hits
+|-damage|p1a: When The Sun Hits|0 fnt
+|faint|p1a: When The Sun Hits
+|
+|-weather|SunnyDay|[upkeep]
+|-damage|p2a: Zoop|55/100 brn|[from] brn
+|upkeep
+|
+|t:|1772229554
+|switch|p1a: Tears Into Wine|Walking Wake|88/100
+|-damage|p1a: Tears Into Wine|76/100|[from] Stealth Rock
+|-activate|p1a: Tears Into Wine|ability: Protosynthesis
+|-start|p1a: Tears Into Wine|protosynthesisspa
+|turn|11
+|
+|t:|1772229566
+|switch|p2a: Richard|Garchomp, M|24/100
+|move|p1a: Tears Into Wine|Hydro Steam|p2a: Richard
+|-damage|p2a: Richard|0 fnt
+|faint|p2a: Richard
+|
+|-weather|SunnyDay|[upkeep]
+|upkeep
+|
+|t:|1772229579
+|switch|p2a: Beeple|Clefable, M|75/100
+|turn|12
+|
+|t:|1772229603
+|-end|p1a: Tears Into Wine|Protosynthesis|[silent]
+|switch|p1a: intellectual greed|Slither Wing, tera:Poison|69/100
+|-damage|p1a: intellectual greed|57/100|[from] Stealth Rock
+|-activate|p1a: intellectual greed|ability: Protosynthesis
+|-start|p1a: intellectual greed|protosynthesisatk
+|move|p2a: Beeple|Moonblast|p1a: intellectual greed
+|-resisted|p1a: intellectual greed
+|-damage|p1a: intellectual greed|47/100
+|
+|-weather|none
+|-end|p1a: intellectual greed|Protosynthesis
+|upkeep
+|turn|13
+|
+|t:|1772229660
+|switch|p2a: Eric Corio|Oricorio-Sensu, F|37/100
+|move|p1a: intellectual greed|Heavy Slam|p2a: Eric Corio
+|-damage|p2a: Eric Corio|0 fnt
+|faint|p2a: Eric Corio
+|
+|upkeep
+|
+|t:|1772229682
+|switch|p2a: Nyeh heh|Weavile, F|100/100
+|-ability|p2a: Nyeh heh|Pressure
+|turn|14
+|
+|t:|1772229692
+|move|p2a: Nyeh heh|Knock Off|p1a: intellectual greed
+|-damage|p1a: intellectual greed|0 fnt
+|-enditem|p1a: intellectual greed|Assault Vest|[from] move: Knock Off|[of] p2a: Nyeh heh
+|faint|p1a: intellectual greed
+|-end|p1a: intellectual greed|Protosynthesis|[silent]
+|
+|upkeep
+|
+|t:|1772229707
+|switch|p1a: Tears Into Wine|Walking Wake|76/100
+|-damage|p1a: Tears Into Wine|63/100|[from] Stealth Rock
+|turn|15
+|
+|t:|1772229771
+|move|p1a: Tears Into Wine|Flip Turn|p2a: Nyeh heh
+|-damage|p2a: Nyeh heh|74/100
+|
+|t:|1772229795
+|-end|p1a: Tears Into Wine|Protosynthesis|[silent]
+|switch|p1a: Punisher|Brute Bonnet|100/100|[from] Flip Turn
+|-damage|p1a: Punisher|88/100|[from] Stealth Rock
+|move|p2a: Nyeh heh|Knock Off|p1a: Punisher
+|-resisted|p1a: Punisher
+|-damage|p1a: Punisher|72/100
+|-enditem|p1a: Punisher|Black Glasses|[from] move: Knock Off|[of] p2a: Nyeh heh
+|
+|-heal|p2a: Nyeh heh|81/100|[from] item: Leftovers
+|upkeep
+|turn|16
+|
+|t:|1772229882
+|-terastallize|p2a: Nyeh heh|Flying
+|move|p1a: Punisher|Sucker Punch||[still]
+|-fail|p1a: Punisher
+|move|p2a: Nyeh heh|Swords Dance|p2a: Nyeh heh
+|-boost|p2a: Nyeh heh|atk|2
+|
+|-heal|p2a: Nyeh heh|87/100|[from] item: Leftovers
+|upkeep
+|turn|17
+|
+|t:|1772229901
+|move|p1a: Punisher|Sucker Punch|p2a: Nyeh heh
+|-crit|p2a: Nyeh heh
+|-damage|p2a: Nyeh heh|0 fnt
+|faint|p2a: Nyeh heh
+|
+|upkeep
+|c|☆Ebastia12|Bruh
+|c|☆frezemn|sorruy
+|
+|t:|1772229937
+|switch|p2a: Beeple|Clefable, M|75/100
+|turn|18
+|
+|t:|1772229965
+|move|p2a: Beeple|Moonblast|p1a: Punisher
+|-supereffective|p1a: Punisher
+|-damage|p1a: Punisher|17/100
+|move|p1a: Punisher|Seed Bomb|p2a: Beeple
+|-damage|p2a: Beeple|28/100
+|-enditem|p2a: Beeple|Sitrus Berry|[eat]
+|-heal|p2a: Beeple|53/100|[from] item: Sitrus Berry
+|
+|upkeep
+|turn|19
+|
+|t:|1772229980
+|-end|p1a: Punisher|Protosynthesis|[silent]
+|switch|p1a: Burnout|Ogerpon-Hearthflame, F|100/100
+|-damage|p1a: Burnout|76/100|[from] Stealth Rock
+|-ability|p1a: Burnout|Mold Breaker
+|move|p2a: Beeple|Moonblast|p1a: Burnout
+|-resisted|p1a: Burnout
+|-damage|p1a: Burnout|59/100
+|
+|upkeep
+|turn|20
+|
+|t:|1772230024
+|move|p1a: Burnout|Horn Leech|p2a: Beeple
+|-damage|p2a: Beeple|2/100
+|-heal|p1a: Burnout|90/100|[from] drain|[of] p2a: Beeple
+|move|p2a: Beeple|Encore|p1a: Burnout
+|-start|p1a: Burnout|Encore
+|
+|upkeep
+|turn|21
+|
+|t:|1772230039
+|move|p1a: Burnout|Horn Leech|p2a: Beeple
+|-damage|p2a: Beeple|0 fnt
+|-heal|p1a: Burnout|91/100|[from] drain|[of] p2a: Beeple
+|faint|p2a: Beeple
+|
+|upkeep
+|
+|t:|1772230070
+|switch|p2a: Zoop|Glimmora, M|55/100 brn
+|turn|22
+|
+|t:|1772230076
+|move|p1a: Burnout|Horn Leech|p2a: Zoop
+|-crit|p2a: Zoop
+|-damage|p2a: Zoop|0 fnt
+|-heal|p1a: Burnout|100/100|[from] drain|[of] p2a: Zoop
+|-activate|p2a: Zoop|ability: Toxic Debris
+|-sidestart|p1: frezemn|move: Toxic Spikes
+|faint|p2a: Zoop
+|
+|upkeep
+|
+|t:|1772230083
+|switch|p2a: Martinez|Zangoose, M|100/100
+|turn|23
+|c|☆Ebastia12|That crit also mattered
+|
+|t:|1772230095
+|move|p1a: Burnout|Horn Leech|p2a: Martinez
+|-damage|p2a: Martinez|19/100
+|move|p2a: Martinez|Body Slam|p1a: Burnout
+|-damage|p1a: Burnout|54/100
+|
+|-end|p1a: Burnout|Encore
+|upkeep
+|turn|24
+|
+|t:|1772230103
+|move|p2a: Martinez|Quick Attack|p1a: Burnout
+|-damage|p1a: Burnout|28/100
+|move|p1a: Burnout|Horn Leech|p2a: Martinez
+|-crit|p2a: Martinez
+|-damage|p2a: Martinez|0 fnt
+|-heal|p1a: Burnout|37/100|[from] drain|[of] p2a: Martinez
+|faint|p2a: Martinez
+|
+|win|frezemn
+|c|☆frezemn|im sorry man
+|c|☆Ebastia12|All good

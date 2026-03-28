@@ -1,0 +1,326 @@
+|j|☆fallensword912
+|j|☆clintonsponsor
+|t:|1771896024
+|gametype|singles
+|player|p1|fallensword912|265|
+|player|p2|clintonsponsor|roark|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|clearpoke
+|poke|p1|Great Tusk|
+|poke|p1|Meowscarada, F|
+|poke|p1|Rotom-Wash|
+|poke|p1|Primarina, M|
+|poke|p1|Cobalion|
+|poke|p1|Armarouge, F|
+|poke|p2|Urshifu-*, M|
+|poke|p2|Moltres|
+|poke|p2|Archaludon, M|
+|poke|p2|Landorus-Therian, M|
+|poke|p2|Ninetales-Alola, M|
+|poke|p2|Lokix, M|
+|teampreview
+|j| Mr.Twang
+|c|☆fallensword912|gl hf
+|c|☆clintonsponsor|gl have fun!
+|c| Mr.Twang|please tell each other your teras
+|c|☆clintonsponsor|none on my team
+|j| Dddddsf
+|j| frezemn
+|c|☆fallensword912|like who is tera'd and what their type is?
+|j| Cajac11
+|c| Mr.Twang|what tera type is meow...
+|c|☆fallensword912|Ghost
+|l| Cajac11
+|
+|t:|1771896131
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Meowscarada|Meowscarada, F|100/100
+|switch|p2a: Lion-O|Landorus-Therian, M, shiny|100/100
+|-ability|p2a: Lion-O|Intimidate|boost
+|-unboost|p1a: Meowscarada|atk|1
+|turn|1
+|
+|t:|1771896153
+|switch|p2a: Fawkes|Moltres, shiny|100/100
+|move|p1a: Meowscarada|U-turn|p2a: Fawkes
+|-start|p1a: Meowscarada|typechange|Bug|[from] ability: Protean
+|-resisted|p2a: Fawkes
+|-damage|p2a: Fawkes|95/100
+|-status|p1a: Meowscarada|brn|[from] ability: Flame Body|[of] p2a: Fawkes
+|
+|t:|1771896166
+|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn
+|
+|upkeep
+|turn|2
+|
+|t:|1771896187
+|switch|p2a: Lion-O|Landorus-Therian, M, shiny|100/100
+|-ability|p2a: Lion-O|Intimidate|boost
+|-unboost|p1a: Great Tusk|atk|1
+|move|p1a: Great Tusk|Stone Edge|p2a: Lion-O
+|-damage|p2a: Lion-O|73/100
+|
+|upkeep
+|turn|3
+|
+|t:|1771896197
+|move|p2a: Lion-O|Stealth Rock|p1a: Great Tusk
+|-sidestart|p1: fallensword912|move: Stealth Rock
+|move|p1a: Great Tusk|Ice Spinner|p2a: Lion-O
+|-supereffective|p2a: Lion-O
+|-damage|p2a: Lion-O|0 fnt
+|-damage|p1a: Great Tusk|84/100|[from] item: Rocky Helmet|[of] p2a: Lion-O
+|faint|p2a: Lion-O
+|
+|upkeep
+|
+|t:|1771896218
+|switch|p2a: Kurama|Ninetales-Alola, M, shiny|100/100
+|-weather|Snowscape|[from] ability: Snow Warning|[of] p2a: Kurama
+|turn|4
+|
+|t:|1771896245
+|-end|p1a: Great Tusk|Protosynthesis|[silent]
+|switch|p1a: Primarina|Primarina, M|100/100
+|-damage|p1a: Primarina|88/100|[from] Stealth Rock
+|move|p2a: Kurama|Blizzard|p1a: Primarina
+|-resisted|p1a: Primarina
+|-damage|p1a: Primarina|78/100
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|turn|5
+|j| iamstupiditstrue
+|
+|t:|1771896293
+|move|p2a: Kurama|Aurora Veil|p2a: Kurama
+|-sidestart|p2: clintonsponsor|move: Aurora Veil
+|move|p1a: Primarina|Moonblast|p2a: Kurama
+|-damage|p2a: Kurama|75/100
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|turn|6
+|
+|t:|1771896300
+|move|p2a: Kurama|Freeze-Dry|p1a: Primarina
+|-supereffective|p1a: Primarina
+|-damage|p1a: Primarina|51/100
+|move|p1a: Primarina|Moonblast|p2a: Kurama
+|-damage|p2a: Kurama|47/100
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|turn|7
+|
+|t:|1771896318
+|switch|p1a: Cobalion|Cobalion|100/100
+|-damage|p1a: Cobalion|98/100|[from] Stealth Rock
+|move|p2a: Kurama|Freeze-Dry|p1a: Cobalion
+|-resisted|p1a: Cobalion
+|-damage|p1a: Cobalion|84/100
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|turn|8
+|
+|t:|1771896329
+|switch|p2a: Fawkes|Moltres, shiny|95/100
+|move|p1a: Cobalion|Thunder Wave|p2a: Fawkes
+|-status|p2a: Fawkes|par
+|
+|-weather|none
+|upkeep
+|turn|9
+|
+|t:|1771896344
+|switch|p1a: Rotom|Rotom-Wash|100/100
+|-damage|p1a: Rotom|88/100|[from] Stealth Rock
+|move|p2a: Fawkes|U-turn|p1a: Rotom
+|-damage|p1a: Rotom|76/100
+|j| Lumaris
+|
+|t:|1771896383
+|switch|p2a: Daggeron|Lokix, M, shiny|100/100|[from] U-turn
+|
+|-heal|p1a: Rotom|83/100|[from] item: Leftovers
+|upkeep
+|turn|10
+|
+|t:|1771896390
+|move|p2a: Daggeron|First Impression|p1a: Rotom
+|-damage|p1a: Rotom|43/100
+|move|p1a: Rotom|Will-O-Wisp|p2a: Daggeron
+|-status|p2a: Daggeron|brn
+|
+|-heal|p1a: Rotom|50/100|[from] item: Leftovers
+|-damage|p2a: Daggeron|94/100 brn|[from] brn
+|upkeep
+|turn|11
+|
+|t:|1771896399
+|move|p2a: Daggeron|Knock Off|p1a: Rotom
+|-damage|p1a: Rotom|32/100
+|-enditem|p1a: Rotom|Leftovers|[from] move: Knock Off|[of] p2a: Daggeron
+|move|p1a: Rotom|Volt Switch|p2a: Daggeron
+|-damage|p2a: Daggeron|69/100 brn
+|
+|t:|1771896405
+|switch|p1a: Great Tusk|Great Tusk|84/100|[from] Volt Switch
+|-damage|p1a: Great Tusk|81/100|[from] Stealth Rock
+|
+|-damage|p2a: Daggeron|63/100 brn|[from] brn
+|upkeep
+|turn|12
+|
+|t:|1771896412
+|move|p2a: Daggeron|U-turn|p1a: Great Tusk
+|-resisted|p1a: Great Tusk
+|-damage|p1a: Great Tusk|68/100
+|-damage|p2a: Daggeron|47/100 brn|[from] item: Rocky Helmet|[of] p1a: Great Tusk
+|
+|t:|1771896416
+|switch|p2a: Fawkes|Moltres, shiny|95/100 par|[from] U-turn
+|move|p1a: Great Tusk|Rapid Spin|p2a: Fawkes
+|-damage|p2a: Fawkes|89/100 par
+|-boost|p1a: Great Tusk|spe|1
+|-sideend|p1: fallensword912|Stealth Rock|[from] move: Rapid Spin|[of] p1a: Great Tusk
+|
+|-sideend|p2: clintonsponsor|move: Aurora Veil
+|upkeep
+|turn|13
+|
+|t:|1771896434
+|move|p1a: Great Tusk|Stone Edge|p2a: Fawkes
+|-supereffective|p2a: Fawkes
+|-crit|p2a: Fawkes
+|-damage|p2a: Fawkes|0 fnt
+|faint|p2a: Fawkes
+|
+|upkeep
+|
+|t:|1771896440
+|switch|p2a: Brooklyn Don|Archaludon, M, shiny|100/100
+|turn|14
+|
+|t:|1771896454
+|move|p1a: Great Tusk|Headlong Rush|p2a: Brooklyn Don
+|-supereffective|p2a: Brooklyn Don
+|-damage|p2a: Brooklyn Don|17/100
+|-unboost|p1a: Great Tusk|def|1
+|-unboost|p1a: Great Tusk|spd|1
+|-ability|p2a: Brooklyn Don|Stamina|boost
+|-boost|p2a: Brooklyn Don|def|1
+|move|p2a: Brooklyn Don|Body Press|p1a: Great Tusk
+|-damage|p1a: Great Tusk|30/100
+|-damage|p2a: Brooklyn Don|0 fnt|[from] item: Rocky Helmet|[of] p1a: Great Tusk
+|faint|p2a: Brooklyn Don
+|
+|upkeep
+|
+|t:|1771896468
+|switch|p2a: Kurama|Ninetales-Alola, M, shiny|47/100
+|-weather|Snowscape|[from] ability: Snow Warning|[of] p2a: Kurama
+|turn|15
+|
+|t:|1771896477
+|move|p1a: Great Tusk|Headlong Rush|p2a: Kurama
+|-damage|p2a: Kurama|0 fnt
+|-unboost|p1a: Great Tusk|def|1
+|-unboost|p1a: Great Tusk|spd|1
+|faint|p2a: Kurama
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|c|☆clintonsponsor|gg
+|
+|t:|1771896486
+|switch|p2a: Daggeron|Lokix, M, shiny|47/100 brn
+|turn|16
+|
+|t:|1771896508
+|-end|p1a: Great Tusk|Protosynthesis|[silent]
+|switch|p1a: Cobalion|Cobalion|84/100
+|move|p2a: Daggeron|First Impression|p1a: Cobalion
+|-resisted|p1a: Cobalion
+|-damage|p1a: Cobalion|76/100
+|-damage|p2a: Daggeron|30/100 brn|[from] item: Rocky Helmet|[of] p1a: Cobalion
+|
+|-weather|Snowscape|[upkeep]
+|-damage|p2a: Daggeron|24/100 brn|[from] brn
+|upkeep
+|turn|17
+|
+|t:|1771896521
+|move|p1a: Cobalion|Body Press|p2a: Daggeron
+|-damage|p2a: Daggeron|0 fnt
+|faint|p2a: Daggeron
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|
+|t:|1771896530
+|switch|p2a: Bang|Urshifu-Rapid-Strike, M|100/100
+|turn|18
+|
+|t:|1771896535
+|move|p1a: Cobalion|Body Press|p2a: Bang
+|-damage|p2a: Bang|61/100
+|move|p2a: Bang|Surging Strikes|p1a: Cobalion
+|-crit|p1a: Cobalion
+|-damage|p1a: Cobalion|53/100
+|-damage|p2a: Bang|44/100|[from] item: Rocky Helmet|[of] p1a: Cobalion
+|-crit|p1a: Cobalion
+|-damage|p1a: Cobalion|29/100
+|-damage|p2a: Bang|28/100|[from] item: Rocky Helmet|[of] p1a: Cobalion
+|-crit|p1a: Cobalion
+|-damage|p1a: Cobalion|5/100
+|-damage|p2a: Bang|11/100|[from] item: Rocky Helmet|[of] p1a: Cobalion
+|-hitcount|p1a: Cobalion|3
+|
+|-weather|Snowscape|[upkeep]
+|upkeep
+|turn|19
+|
+|t:|1771896557
+|switch|p1a: Primarina|Primarina, M|51/100
+|move|p2a: Bang|Surging Strikes|p1a: Primarina
+|-resisted|p1a: Primarina
+|-crit|p1a: Primarina
+|-damage|p1a: Primarina|30/100
+|-resisted|p1a: Primarina
+|-crit|p1a: Primarina
+|-damage|p1a: Primarina|7/100
+|-resisted|p1a: Primarina
+|-crit|p1a: Primarina
+|-damage|p1a: Primarina|0 fnt
+|faint|p1a: Primarina
+|-hitcount|p1: Primarina|3
+|
+|-weather|none
+|upkeep
+|
+|t:|1771896574
+|switch|p1a: Cobalion|Cobalion|5/100
+|turn|20
+|
+|t:|1771896578
+|move|p1a: Cobalion|Body Press|p2a: Bang
+|-damage|p2a: Bang|0 fnt
+|faint|p2a: Bang
+|
+|win|fallensword912
+|c|☆fallensword912|gg
+|l| Dddddsf

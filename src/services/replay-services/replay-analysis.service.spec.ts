@@ -26,6 +26,17 @@ type ReplayFixtureCase = {
   };
 };
 
+function getExpectedGameTimeFromLog(replayLog: string): number {
+  const timestamps = replayLog
+    .split("\n")
+    .filter((line) => line.startsWith("|t:|"))
+    .map((line) => Number(line.split("|")[2]))
+    .filter((timestamp) => Number.isFinite(timestamp));
+
+  if (timestamps.length < 2) return 0;
+  return Math.max(Math.max(...timestamps) - Math.min(...timestamps), 0);
+}
+
 const replayCases: ReplayFixtureCase[] = [
   {
     fileName: "gen8draft-2445027050.log",
@@ -109,6 +120,33 @@ const replayCases: ReplayFixtureCase[] = [
     },
   },
   {
+    fileName: "gen9draft-2545881955.log",
+    expected: {
+      gametype: "singles",
+      genNum: 9,
+      turns: 20,
+      winner: "fallensword912",
+      players: [
+        {
+          username: "fallensword912",
+          win: true,
+          kills: 6,
+          deaths: 1,
+          switches: 9,
+          teamSize: 6,
+        },
+        {
+          username: "clintonsponsor",
+          win: false,
+          kills: 1,
+          deaths: 6,
+          switches: 11,
+          teamSize: 6,
+        },
+      ],
+    },
+  },
+  {
     fileName: "gen9draft-2547354745.log",
     expected: {
       gametype: "singles",
@@ -169,6 +207,42 @@ describe("ReplayAnalysisService", () => {
   const statesService = new ReplayStatesService();
   const analysisService = new ReplayAnalysisService();
 
+  it("credits destiny bond as a kill for the user", () => {
+    const parsed = parseService.parse(
+      `
+|player|p1|Alice
+|player|p2|Bob
+|teamsize|p1|1
+|teamsize|p2|1
+|poke|p1|Pikachu, M|
+|poke|p2|Gengar, M|
+|switch|p1a: Sparky|Pikachu, M|100/100
+|switch|p2a: Shade|Gengar, M|100/100
+|turn|1
+|move|p2a: Shade|Destiny Bond|p2a: Shade
+|-singlemove|p2a: Shade|Destiny Bond
+|move|p1a: Sparky|Tackle|p2a: Shade
+|-damage|p2a: Shade|0 fnt
+|faint|p2a: Shade
+|-activate|p2a: Shade|move: Destiny Bond
+|faint|p1a: Sparky
+|win|Bob
+`.trim(),
+    );
+
+    const turnStates = statesService.build(parsed);
+    const analysis = analysisService.analyze(turnStates);
+    const alice = analysis.players.find(
+      (player) => player.username === "Alice",
+    );
+    const bob = analysis.players.find((player) => player.username === "Bob");
+
+    expect(alice?.total.kills).toBe(1);
+    expect(alice?.total.deaths).toBe(1);
+    expect(bob?.total.kills).toBe(1);
+    expect(bob?.total.deaths).toBe(1);
+  });
+
   describe.each(replayCases)("$fileName", ({ fileName, expected }) => {
     it("matches expected replay summary values", () => {
       const replayPath = path.join(__dirname, `test-replays/${fileName}`);
@@ -177,10 +251,12 @@ describe("ReplayAnalysisService", () => {
       const parsed = parseService.parse(replayLog);
       const turnStates = statesService.build(parsed);
       const analysis = analysisService.analyze(turnStates);
+      const expectedGameTime = getExpectedGameTimeFromLog(replayLog);
 
       expect(analysis.gametype).toBe(expected.gametype);
       expect(analysis.genNum).toBe(expected.genNum);
       expect(analysis.turns).toBe(expected.turns);
+      expect(analysis.gameTime).toBe(expectedGameTime);
 
       const winner = analysis.players.find(
         (player: ReplayAnalysisResult["players"][number]) => player.win,
@@ -197,6 +273,15 @@ describe("ReplayAnalysisService", () => {
         expect(
           Math.abs(actual.total.deaths - expectedPlayer.deaths),
         ).toBeLessThanOrEqual(1);
+        const teamKillSum = actual.team.reduce(
+          (sum, pokemon) =>
+            sum +
+            pokemon.kills.direct +
+            pokemon.kills.indirect +
+            pokemon.kills.teammate,
+          0,
+        );
+        expect(teamKillSum).toBe(actual.total.kills);
         expect(actual.stats.switches).toBe(expectedPlayer.switches);
         expect(actual.team).toHaveLength(expectedPlayer.teamSize);
       });

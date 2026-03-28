@@ -1,0 +1,283 @@
+|j|☆BennyTheJet0
+|j|☆bennyyyyy
+|t:|1772390621
+|gametype|singles
+|player|p1|BennyTheJet0|266|
+|player|p2|bennyyyyy|170|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Sneasler, M|
+|poke|p1|Arboliva, F|
+|poke|p1|Porygon2|
+|poke|p1|Forretress, M|
+|poke|p1|Araquanid, M|
+|poke|p1|Sandaconda, M|
+|poke|p2|Incineroar, F|
+|poke|p2|Excadrill, F|
+|poke|p2|Noivern, M|
+|poke|p2|Regieleki|
+|poke|p2|Glaceon, F|
+|poke|p2|Krookodile, M|
+|raw|BennyTheJet0's Tera Types:<br /><psicon pokemon="sneasler" /><psicon type="Bug" /> / <psicon pokemon="arboliva" /><psicon type="Normal" /> / <psicon pokemon="porygon2" /><psicon type="Bug" /> / <psicon pokemon="forretress" /><psicon type="Bug" /> / <psicon pokemon="araquanid" /><psicon type="Bug" /> / <psicon pokemon="sandaconda" /><psicon type="Bug" />
+|raw|bennyyyyy's Tera Types:<br /><psicon pokemon="incineroar" /><psicon type="Fire" /> / <psicon pokemon="excadrill" /><psicon type="Ground" /> / <psicon pokemon="noivern" /><psicon type="Flying" /> / <psicon pokemon="regieleki" /><psicon type="Electric" /> / <psicon pokemon="glaceon" /><psicon type="Ice" /> / <psicon pokemon="krookodile" /><psicon type="Ground" />
+|teampreview
+|c|☆BennyTheJet0|arboliva tera normal
+|c|☆BennyTheJet0|glhf
+|c|☆BennyTheJet0|i'll send the link
+|c|☆bennyyyyy|alright thanks krookodile is tera ground
+|c|☆BennyTheJet0|thanks
+|j| Mr.Twang
+|
+|t:|1772390712
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Gordo|Sandaconda, M|100/100
+|switch|p2a: Excadrill|Excadrill, F|100/100
+|-ability|p2a: Excadrill|Mold Breaker
+|turn|1
+|c|☆bennyyyyy|this is my first ever draft eague battle so if i do something unorthodox you know why lol
+|c|☆BennyTheJet0|lol welcome to draft!!
+|
+|t:|1772390742
+|move|p2a: Excadrill|Stealth Rock|p1a: Gordo
+|-sidestart|p1: BennyTheJet0|move: Stealth Rock
+|move|p1a: Gordo|Glare|p2a: Excadrill
+|-status|p2a: Excadrill|par
+|
+|upkeep
+|turn|2
+|
+|t:|1772390777
+|move|p1a: Gordo|Body Press|p2a: Excadrill
+|-supereffective|p2a: Excadrill
+|-damage|p2a: Excadrill|36/100 par
+|move|p2a: Excadrill|Earthquake|p1a: Gordo
+|-damage|p1a: Gordo|61/100
+|
+|-heal|p2a: Excadrill|42/100 par|[from] item: Leftovers
+|upkeep
+|turn|3
+|
+|t:|1772390824
+|switch|p2a: Noivern|Noivern, M|100/100
+|-item|p1a: Gordo|Sitrus Berry|[from] ability: Frisk|[of] p2a: Noivern
+|move|p1a: Gordo|Stealth Rock|p2a: Noivern
+|-sidestart|p2: bennyyyyy|move: Stealth Rock
+|
+|upkeep
+|turn|4
+|
+|t:|1772390868
+|move|p2a: Noivern|U-turn|p1a: Gordo
+|-damage|p1a: Gordo|53/100
+|
+|t:|1772390876
+|switch|p2a: Glaceon|Glaceon, F|100/100|[from] U-turn
+|-damage|p2a: Glaceon|76/100|[from] Stealth Rock
+|move|p1a: Gordo|Glare|p2a: Glaceon
+|-status|p2a: Glaceon|par
+|
+|upkeep
+|turn|5
+|
+|t:|1772390893
+|switch|p1a: Blade|Araquanid, M|100/100
+|-damage|p1a: Blade|75/100|[from] Stealth Rock
+|move|p2a: Glaceon|Ice Beam|p1a: Blade
+|-resisted|p1a: Blade
+|-damage|p1a: Blade|50/100
+|
+|upkeep
+|turn|6
+|
+|t:|1772390935
+|switch|p2a: Regieleki|Regieleki|100/100
+|-damage|p2a: Regieleki|88/100|[from] Stealth Rock
+|move|p1a: Blade|Liquidation|p2a: Regieleki
+|-damage|p2a: Regieleki|0 fnt
+|faint|p2a: Regieleki
+|
+|upkeep
+|
+|t:|1772390949
+|switch|p2a: Noivern|Noivern, M|100/100
+|-damage|p2a: Noivern|76/100|[from] Stealth Rock
+|-item|p1a: Blade|Choice Band|[from] ability: Frisk|[of] p2a: Noivern
+|turn|7
+|
+|t:|1772391010
+|switch|p1a: Me'Shell|Forretress, M|100/100
+|move|p2a: Noivern|Flamethrower|p1a: Me'Shell
+|-supereffective|p1a: Me'Shell
+|-ability|p1a: Me'Shell|Sturdy
+|-damage|p1a: Me'Shell|1/100
+|
+|-heal|p2a: Noivern|82/100|[from] item: Leftovers
+|upkeep
+|turn|8
+|
+|t:|1772391034
+|switch|p1a: Blade|Araquanid, M|50/100
+|-damage|p1a: Blade|25/100|[from] Stealth Rock
+|move|p2a: Noivern|U-turn|p1a: Blade
+|-damage|p1a: Blade|12/100
+|c|☆BennyTheJet0|good play
+|
+|t:|1772391055
+|switch|p2a: Incineroar|Incineroar, F|100/100|[from] U-turn
+|-ability|p2a: Incineroar|Intimidate|boost
+|-unboost|p1a: Blade|atk|1
+|
+|upkeep
+|turn|9
+|
+|t:|1772391090
+|move|p2a: Incineroar|Fake Out|p1a: Blade
+|-crit|p1a: Blade
+|-damage|p1a: Blade|0 fnt
+|faint|p1a: Blade
+|
+|upkeep
+|
+|t:|1772391117
+|switch|p1a: Gordo|Sandaconda, M|53/100
+|-damage|p1a: Gordo|47/100|[from] Stealth Rock
+|-enditem|p1a: Gordo|Sitrus Berry|[eat]
+|-heal|p1a: Gordo|72/100|[from] item: Sitrus Berry
+|turn|10
+|
+|t:|1772391145
+|switch|p2a: Glaceon|Glaceon, F|76/100 par
+|-damage|p2a: Glaceon|51/100 par|[from] Stealth Rock
+|move|p1a: Gordo|Body Press|p2a: Glaceon
+|-supereffective|p2a: Glaceon
+|-damage|p2a: Glaceon|6/100 par
+|
+|upkeep
+|turn|11
+|
+|t:|1772391208
+|switch|p1a: Me'Shell|Forretress, M|1/100
+|move|p2a: Glaceon|Quick Attack|p1a: Me'Shell
+|-resisted|p1a: Me'Shell
+|-damage|p1a: Me'Shell|0 fnt
+|faint|p1a: Me'Shell
+|
+|upkeep
+|
+|t:|1772391224
+|switch|p1a: Patches|Sneasler, M|100/100
+|-damage|p1a: Patches|95/100|[from] Stealth Rock
+|turn|12
+|
+|t:|1772391251
+|cant|p2a: Glaceon|par
+|move|p1a: Patches|Swords Dance|p1a: Patches
+|-boost|p1a: Patches|atk|2
+|
+|upkeep
+|turn|13
+|
+|t:|1772391268
+|switch|p2a: Krookodile|Krookodile, M|100/100
+|-damage|p2a: Krookodile|94/100|[from] Stealth Rock
+|-ability|p2a: Krookodile|Intimidate|boost
+|-unboost|p1a: Patches|atk|1
+|move|p1a: Patches|Dire Claw|p2a: Krookodile
+|-resisted|p2a: Krookodile
+|-damage|p2a: Krookodile|53/100
+|
+|upkeep
+|turn|14
+|
+|t:|1772391285
+|-terastallize|p2a: Krookodile|Ground
+|move|p1a: Patches|Close Combat|p2a: Krookodile
+|-damage|p2a: Krookodile|0 fnt
+|-unboost|p1a: Patches|def|1
+|-unboost|p1a: Patches|spd|1
+|faint|p2a: Krookodile
+|-enditem|p1a: Patches|White Herb
+|-clearnegativeboost|p1a: Patches|[silent]
+|
+|upkeep
+|
+|t:|1772391330
+|switch|p2a: Excadrill|Excadrill, F|42/100 par
+|-damage|p2a: Excadrill|39/100 par|[from] Stealth Rock
+|-ability|p2a: Excadrill|Mold Breaker
+|turn|15
+|
+|t:|1772391341
+|move|p1a: Patches|Close Combat|p2a: Excadrill
+|-supereffective|p2a: Excadrill
+|-damage|p2a: Excadrill|0 fnt
+|-unboost|p1a: Patches|def|1
+|-unboost|p1a: Patches|spd|1
+|faint|p2a: Excadrill
+|
+|upkeep
+|
+|t:|1772391365
+|switch|p2a: Noivern|Noivern, M|82/100
+|-damage|p2a: Noivern|57/100|[from] Stealth Rock
+|turn|16
+|
+|t:|1772391388
+|move|p1a: Patches|Dire Claw|p2a: Noivern
+|-damage|p2a: Noivern|0 fnt
+|faint|p2a: Noivern
+|
+|upkeep
+|
+|t:|1772391394
+|switch|p2a: Incineroar|Incineroar, F|100/100
+|-ability|p2a: Incineroar|Intimidate|boost
+|-unboost|p1a: Patches|atk|1
+|turn|17
+|
+|t:|1772391411
+|move|p1a: Patches|Close Combat|p2a: Incineroar
+|-supereffective|p2a: Incineroar
+|-crit|p2a: Incineroar
+|-damage|p2a: Incineroar|0 fnt
+|-unboost|p1a: Patches|def|1
+|-unboost|p1a: Patches|spd|1
+|faint|p2a: Incineroar
+|
+|upkeep
+|c|☆BennyTheJet0|gg
+|c|☆bennyyyyy|dang gg
+|
+|t:|1772391425
+|switch|p2a: Glaceon|Glaceon, F|6/100 par
+|-damage|p2a: Glaceon|0 fnt|[from] Stealth Rock
+|faint|p2a: Glaceon
+|
+|win|BennyTheJet0
+|c| Mr.Twang|ggs
+|c|☆bennyyyyy|i thought noivern was faster
+|c|☆BennyTheJet0|i got my unburden boost from the white herb
+|c| Mr.Twang|unburden on sneasler made it faster sdaly
+|c|☆bennyyyyy|darn
+|c|☆bennyyyyy|thats alright first match ever and i didnt get swept, take the little wins where you can lol
+|c|☆BennyTheJet0|it was a roll to kill noivern based on investment it looks like
+|c|☆BennyTheJet0|my first ever match was even worse so head up bro!
+|c|☆bennyyyyy|thanks I appreciate it im aiming for like 2 wins so we shall see
+|c|☆BennyTheJet0|good luck this season! it'll get more natural as you play more matches
+|c|☆bennyyyyy|gatcha. thanks same to you
+|c|☆BennyTheJet0|thanks!
+|l|☆BennyTheJet0
+|player|p1|
