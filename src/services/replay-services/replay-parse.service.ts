@@ -1,25 +1,20 @@
-import { MajorArg, ParsedArgs, REPLAY_ACTIONS, ReplayData } from ".";
+import {
+  MajorArg as MajorArgs,
+  ParsedArgs,
+  REPLAY_ACTIONS,
+  ReplayData,
+} from ".";
 
-type BaseReplayLine = {
+export type ReplayLine = {
   id: string;
   rawLine: string;
   raw: ReplayData;
   action: string;
-  args: string[];
-  parsedArgs: ParsedArgs;
+  args: ParsedArgs & MajorArgs;
   argValidation?: ArgValidationWarning;
   turnNumber: number;
+  children?: ReplayLine[];
 };
-
-export type ChildReplayLine = BaseReplayLine & {
-  parent: ParentReplayLine;
-};
-
-export type ParentReplayLine = BaseReplayLine & {
-  children: ChildReplayLine[];
-};
-
-export type ReplayLine = ParentReplayLine | ChildReplayLine;
 
 export type ArgValidationWarning = {
   lineId: string;
@@ -40,13 +35,13 @@ export type ParsedReplayLog = {
   argValidationWarnings: ArgValidationWarning[];
 };
 
-type MajorArgHandler = (majorActions: MajorArg, value?: string) => void;
+type MajorArgHandler = (majorActions: MajorArgs, value?: string) => void;
 
 type MajorArgValueKey = "from" | "of" | "wisher";
 type MajorArgFlagKey = "miss" | "silent";
 
 function majorMap(key: MajorArgValueKey) {
-  return (majorActions: MajorArg, value?: string) => {
+  return (majorActions: MajorArgs, value?: string) => {
     if (value !== undefined) {
       (majorActions as Record<string, string>)[key] = value;
     }
@@ -54,12 +49,12 @@ function majorMap(key: MajorArgValueKey) {
 }
 
 function majorFlag(key: MajorArgFlagKey) {
-  return (majorActions: MajorArg) => {
+  return (majorActions: MajorArgs) => {
     majorActions[key] = true;
   };
 }
 
-const MAJOR_ARG_HANDLERS: Record<keyof MajorArg, MajorArgHandler> = {
+const MAJOR_ARG_HANDLERS: Record<keyof MajorArgs, MajorArgHandler> = {
   from: majorMap("from"),
   of: majorMap("of"),
   wisher: majorMap("wisher"),
@@ -67,12 +62,12 @@ const MAJOR_ARG_HANDLERS: Record<keyof MajorArg, MajorArgHandler> = {
   silent: majorFlag("silent"),
 };
 
-function isMajorArgKey(key: string): key is keyof MajorArg {
+function isMajorArgKey(key: string): key is keyof MajorArgs {
   return key in MAJOR_ARG_HANDLERS;
 }
 
 function extractMajorActions(args: string[]) {
-  const majorActions: MajorArg = {};
+  const majorActions: MajorArgs = {};
   const remainingArgs: string[] = [];
   for (const arg of args) {
     if (!arg.startsWith("[")) {
@@ -253,7 +248,7 @@ function parseActionArgs(
 
 function parseTurnNumber(line: ReplayLine): number | undefined {
   if (line.action !== "turn") return undefined;
-  const [turnArg] = line.args;
+  const turnArg = line.args.turn;
   const parsed = Number(turnArg);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -265,7 +260,7 @@ export class ReplayParseService {
       .map((line) => line.trimEnd())
       .filter((line) => line.length > 0);
 
-    const lines: BaseReplayLine[] = sourceLines.map((rawLine, index) => {
+    const lines: ReplayLine[] = sourceLines.map((rawLine, index) => {
       const normalized = rawLine.startsWith("|") ? rawLine.slice(1) : rawLine;
       const raw = normalized.split("|").map((segment) => segment.trim());
       const action = raw[0] ?? "";
@@ -279,23 +274,23 @@ export class ReplayParseService {
         rawLine,
         raw,
         action,
-        args,
-        parsedArgs: { ...parsedArgs, ...majorActions },
+        args: { ...parsedArgs, ...majorActions },
         argValidation: validateArgCount(id, action, majorRemainingArgs),
         turnNumber: -1,
       };
     });
 
-    const parentLines: ParentReplayLine[] = lines.reduce((parents, line) => {
+    const parentLines: ReplayLine[] = lines.reduce((parents, line) => {
       if (line.action.startsWith("-")) {
         const parent = parents[parents.length - 1];
         if (!parent) return parents;
-        parent.children.push({ ...line, parent });
+        if (!parent.children) parent.children = [];
+        parent.children.push(line);
       } else {
         parents.push({ ...line, children: [] });
       }
       return parents;
-    }, [] as ParentReplayLine[]);
+    }, [] as ReplayLine[]);
 
     let currentTurnId: number = 1;
 
@@ -313,7 +308,7 @@ export class ReplayParseService {
             lastTurn.lines.push(line);
             line.turnNumber = lastTurn.number;
             line.id = `${lastTurn.number}:${currentTurnId++}`;
-            line.children.forEach((child) => {
+            line.children?.forEach((child) => {
               child.turnNumber = lastTurn.number;
               child.id = `${lastTurn.number}:${currentTurnId++}`;
             });

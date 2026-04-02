@@ -48,8 +48,10 @@ export type FaintState = {
   indirect?: boolean;
 };
 
+export type PokemonKey = string; // Format: `${sideId}: ${speciesId}`
+
 export type Pokemon = {
-  key: string;
+  key: PokemonKey;
   sideId: SideId;
   nickname: string;
   species?: string;
@@ -61,15 +63,15 @@ export type Pokemon = {
   damageHistory: DamageData[];
   details?: string;
   hp: HPState;
-  status?: string;
+  status?: SetterState;
   fainted?: FaintState;
-  item?: string;
+  item?: SetterState;
   ability?: string;
   teraType?: string;
   shiny?: true;
   gender?: GenderName;
   flags: {
-    destinyBond?: true;
+    destinyBond?: string;
   };
 };
 
@@ -111,6 +113,11 @@ export type ConditionState = {
   setterPokemon?: string;
   sourceMove?: string;
   singleTurn?: boolean;
+};
+
+export type SetterState = {
+  raw: string;
+  setter?: PokemonKey;
 };
 
 export type TurnState = {
@@ -200,6 +207,7 @@ function cloneSide(side: Side): Side {
         })),
         fainted: value.fainted ? { ...value.fainted } : undefined,
         hp: { ...value.hp },
+        flags: { ...value.flags },
       },
     ]),
   );
@@ -326,24 +334,16 @@ function parseHpState(hpRaw: string | undefined): HPState | undefined {
   };
 }
 
-function parseHpStatus(hpStatus: string | undefined): {
-  hp?: HPState;
-  status?: string;
-} {
-  if (!hpStatus) return {};
+function parseHpStatus(hpStatus: string | undefined): HPState | undefined {
+  if (!hpStatus) return undefined;
 
   const normalized = hpStatus.trim();
-  // Replay metadata tokens such as [silent] are not HP/status updates.
-  if (normalized.startsWith("[")) return {};
+  if (normalized.startsWith("[")) return undefined;
 
   const [hpRaw, statusRaw] = normalized.split(/\s+/, 2);
   const hp = parseHpState(hpRaw);
   const status = statusRaw?.trim();
-
-  return {
-    hp,
-    status,
-  };
+  return hp;
 }
 
 function upsertPokemon(side: Side, key: string, nickname: string): Pokemon {
@@ -428,13 +428,13 @@ export class ReplayStatesService {
     detailschange: (line, field) => this.applyDetailsTransformLike(line, field),
     drag: (line, field) => this.applySwitchLike(line, field),
     faint: (line, field, _parentLine) => {
-      const position = this.getPositionFromArgs(line.parsedArgs.pokemon, field);
+      const position = this.getPositionFromArgs(line.args.pokemon, field);
       const pokemon = position?.pokemon;
       if (!pokemon) return;
-
       const lastDamage =
         pokemon.damageHistory[pokemon.damageHistory.length - 1];
-      const fainted = {
+
+      let fainted = {
         turnNumber: line.turnNumber,
         sourceAction: line.action,
         attackerSideId:
@@ -445,35 +445,23 @@ export class ReplayStatesService {
         indirect: lastDamage?.indirect,
       };
 
-      if (!fainted.attackerPokemon || !fainted.attackerSideId) {
-        let destinyBondSource: Pokemon | undefined;
-
-        for (const sideId of SIDE_IDS) {
-          if (sideId === pokemon.sideId) continue;
-          const source = Object.values(field.sides[sideId].pokemon).find(
-            (pokemon) => pokemon.flags.destinyBond,
-          );
-          if (source) destinyBondSource = source;
-        }
-
-        if (destinyBondSource) {
-          fainted.attackerPokemon = destinyBondSource.key;
-          fainted.attackerSideId = destinyBondSource.sideId;
-          fainted.move = "Destiny Bond";
-          fainted.cause = "move: Destiny Bond";
-          fainted.indirect = true;
-        }
-      }
-
-      const attacker = this.getPokemonFromArgs(fainted.attackerPokemon, field);
-      if (attacker?.flags.destinyBond && attacker.sideId !== pokemon.sideId) {
-        fainted.move = "Destiny Bond";
-        fainted.cause = "move: Destiny Bond";
-        fainted.indirect = true;
+      if (pokemon.flags.destinyBond) {
+        const attacker = this.getPokemonFromArgs(
+          pokemon.flags.destinyBond,
+          field,
+        );
+        fainted = {
+          turnNumber: line.turnNumber,
+          sourceAction: "destinybond",
+          attackerSideId: attacker?.sideId,
+          attackerPokemon: attacker?.key,
+          move: "Destiny Bond",
+          cause: "Destiny Bond",
+          indirect: true,
+        };
       }
 
       pokemon.fainted = fainted;
-      pokemon.status = "fnt";
       if (pokemon.hp?.max) {
         pokemon.hp = {
           raw: `0/${pokemon.hp.max}`,
@@ -484,128 +472,129 @@ export class ReplayStatesService {
       }
     },
     player: (line, field) => {
-      const sideId = parseSideId(line.parsedArgs.player);
-      if (!sideId || !line.parsedArgs.username) return;
-      field.sides[sideId].username = line.parsedArgs.username;
+      const sideId = parseSideId(line.args.player);
+      if (!sideId || !line.args.username) return;
+      field.sides[sideId].username = line.args.username;
     },
     poke: (line, field) => {
-      const sideId = parseSideId(line.parsedArgs.player);
-      if (!sideId || !line.parsedArgs.details) return;
+      const sideId = parseSideId(line.args.player);
+      if (!sideId || !line.args.details) return;
       const { speciesId, baseSpeciesId, gender, shiny } = parseSpeciesDetails(
-        line.parsedArgs.details,
+        line.args.details,
         field.genNum,
       );
       if (!speciesId) return;
 
       const key = `${sideId}: ${baseSpeciesId ?? speciesId}`;
       const pokemon = upsertPokemon(field.sides[sideId], key, speciesId);
-      pokemon.details = line.parsedArgs.details;
-      pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
+      pokemon.details = line.args.details;
+      pushUnique(pokemon.detailsHistory, line.args.details);
       pokemon.species = speciesId;
       pokemon.baseSpecies = baseSpeciesId ?? speciesId;
       pushUnique(pokemon.speciesHistory, speciesId);
       pokemon.gender = gender;
       pokemon.shiny = shiny;
-      if (line.parsedArgs.item) pokemon.item = line.parsedArgs.item;
+      if (line.args.item)
+        pokemon.item = {
+          raw: line.args.item,
+          setter: pokemon.key,
+        };
     },
     gametype: (line, field) => {
-      if (line.parsedArgs.gameType) field.gameType = line.parsedArgs.gameType;
+      if (line.args.gameType) field.gameType = line.args.gameType;
     },
     gen: (line, field) => {
-      const genNum = line.parsedArgs.genNum
-        ? Number(line.parsedArgs.genNum)
-        : NaN;
+      const genNum = line.args.genNum ? Number(line.args.genNum) : NaN;
       if (!Number.isFinite(genNum)) return;
       field.genNum = genNum;
     },
     move: (line, field) => {
       const pokemon = this.getPokemonFromArgs(
-        line.parsedArgs.attacker ?? line.parsedArgs.pokemon,
+        line.args.attacker ?? line.args.pokemon,
         field,
       );
-      if (!pokemon || !line.parsedArgs.move) return;
-      if (!pokemon.moveset.includes(line.parsedArgs.move)) {
-        pokemon.moveset.push(line.parsedArgs.move);
+      if (!pokemon || !line.args.move) return;
+      if (!pokemon.moveset.includes(line.args.move)) {
+        pokemon.moveset.push(line.args.move);
       }
 
-      const moveId = toID(line.parsedArgs.move);
+      const moveId = toID(line.args.move);
       const history = pokemon.moveHistory[moveId] ?? [];
       history.push({
         turnNumber: line.turnNumber,
-        raw: line.parsedArgs.move,
-        target: line.parsedArgs.target,
+        raw: line.args.move,
+        target: line.args.target,
       });
       pokemon.moveHistory[moveId] = history;
     },
     replace: (line, field) => this.applySwitchLike(line, field),
     switch: (line, field) => {
-      const pokemonRef = parsePokemonRef(line.parsedArgs.pokemon);
+      const pokemonRef = parsePokemonRef(line.args.pokemon);
       if (pokemonRef) {
         field.sides[pokemonRef.sideId].stats.switches++;
       }
       this.applySwitchLike(line, field);
     },
     "t:": (line, field) => {
-      const timestamp = line.parsedArgs.timestamp
-        ? Number(line.parsedArgs.timestamp)
-        : NaN;
+      const timestamp = line.args.timestamp ? Number(line.args.timestamp) : NaN;
       if (!Number.isFinite(timestamp)) return;
       if (field.timestampStart === undefined) field.timestampStart = timestamp;
       field.timestampEnd = timestamp;
     },
     teamsize: (line, field) => {
-      const sideId = parseSideId(line.parsedArgs.player);
-      const teamSize = line.parsedArgs.number
-        ? Number(line.parsedArgs.number)
-        : NaN;
+      const sideId = parseSideId(line.args.player);
+      const teamSize = line.args.number ? Number(line.args.number) : NaN;
       if (!sideId || !Number.isFinite(teamSize)) return;
       field.sides[sideId].teamSize = teamSize;
     },
     win: (line, field) => {
-      if (line.parsedArgs.winner) field.winner = line.parsedArgs.winner;
+      if (line.args.winner) field.winner = line.args.winner;
     },
     "-ability": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (!pokemon || !line.parsedArgs.ability) return;
-      pokemon.ability = line.parsedArgs.ability;
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      if (!pokemon || !line.args.ability) return;
+      pokemon.ability = line.args.ability;
     },
-    "-activate": (line, field, parentLine) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+    "-activate": (line, field) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
-      const effectName = line.parsedArgs.effect?.replace(/^move:\s*/i, "");
-      if (toID(effectName) === "destinybond") {
-        pokemon.flags.destinyBond = true;
+      const effectName = line.args.effect?.replace(/^move:\s*/i, "");
+      if (effectName === "Destiny Bond") {
+        const lastDamage =
+          pokemon.damageHistory[pokemon.damageHistory.length - 1];
+        const attackerKey = lastDamage?.attacker;
+        const attacker = this.getPokemonFromArgs(attackerKey, field);
+        if (attacker) attacker.flags.destinyBond = pokemon.key;
       }
     },
     "-curestatus": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
-      pokemon.status = "healthy";
+      pokemon.status = {
+        raw: "healthy",
+      };
     },
     "-damage": (line, field, parentLine) => {
-      const damaged = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+      const damaged = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!damaged) return;
-      const majorArgs = line.parsedArgs as typeof line.parsedArgs & {
-        from?: string;
-        of?: string;
-      };
-      const source = majorArgs.from
-        ? this.findConditionSource(field, damaged.sideId, majorArgs.from)
+
+      if (line.args.from) {
+        console.log(line.args.from);
+      }
+      const source = line.args.from
+        ? this.findConditionSource(field, damaged.sideId, line.args.from)
         : undefined;
-      const target = this.getPokemonFromArgs(
-        parentLine?.parsedArgs.target,
-        field,
-      );
+      const target = this.getPokemonFromArgs(parentLine?.args.target, field);
       const attackerRef =
         source?.setterPokemon ??
-        parentLine?.parsedArgs.attacker ??
-        parentLine?.parsedArgs.pokemon ??
-        majorArgs.of;
+        parentLine?.args.attacker ??
+        parentLine?.args.pokemon ??
+        line.args.of;
       const attacker = this.getPokemonFromArgs(attackerRef, field);
 
-      const indirect = target !== damaged || Boolean(source || majorArgs.from);
+      const indirect = target !== damaged || Boolean(source || line.args.from);
 
-      const { hp, status } = parseHpStatus(line.parsedArgs.hpStatus);
+      const hp = parseHpStatus(line.args.hpStatus);
 
       const hpDelta =
         hp?.current !== undefined && damaged.hp?.current !== undefined
@@ -618,35 +607,34 @@ export class ReplayStatesService {
         hpBefore: damaged.hp.current ?? 100,
         hpAfter: hp?.current ?? 100,
         indirect,
-        move:
-          parentLine?.parsedArgs.move ?? source?.sourceMove ?? majorArgs.from,
-        cause: source?.name ?? majorArgs.from ?? parentLine?.action,
-        attacker: attackerRef,
+        move: parentLine?.args.move ?? source?.sourceMove ?? line.args.from,
+        cause: source?.name ?? line.args.from ?? parentLine?.action,
+        attacker: attacker?.key,
         attackerSideId: attacker?.sideId ?? source?.setterSideId,
       };
 
-      this.applyHpStatus(damaged, line.parsedArgs.hpStatus, damageContext);
+      this.applyHpStatus(damaged, line.args.hpStatus, damageContext);
     },
     "-endability": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
       pokemon.ability = undefined;
     },
     "-enditem": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
       pokemon.item = undefined;
     },
     "-fieldend": (line, field) => {
-      if (!line.parsedArgs.condition) return;
-      removeConditionFromList(field.conditions, line.parsedArgs.condition);
+      if (!line.args.condition) return;
+      removeConditionFromList(field.conditions, line.args.condition);
     },
     "-fieldstart": (line, field, parentLine) => {
-      if (!line.parsedArgs.condition) return;
+      if (!line.args.condition) return;
       ensureConditionInList(
         field.conditions,
         this.createConditionState(
-          line.parsedArgs.condition,
+          line.args.condition,
           field,
           parentLine,
           line.turnNumber,
@@ -656,20 +644,22 @@ export class ReplayStatesService {
     "-formechange": (line, field) =>
       this.applyDetailsTransformLike(line, field),
     "-heal": (line, field, parentLine) => {
-      const position = this.getPositionFromArgs(line.parsedArgs.pokemon, field);
+      const position = this.getPositionFromArgs(line.args.pokemon, field);
       const pokemon = position?.pokemon;
       if (!pokemon) return;
-      this.applyHpStatus(pokemon, line.parsedArgs.hpStatus);
+      this.applyHpStatus(pokemon, line.args.hpStatus);
     },
     "-item": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (!pokemon || !line.parsedArgs.item) return;
-      pokemon.item = line.parsedArgs.item;
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      if (!pokemon || !line.args.item) return;
+      pokemon.item = {
+        raw: line.args.item,
+      };
     },
     "-sethp": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (!pokemon || !line.parsedArgs.hp) return;
-      const parsedHp = parseHpState(line.parsedArgs.hp);
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      if (!pokemon || !line.args.hp) return;
+      const parsedHp = parseHpState(line.args.hp);
       if (parsedHp) {
         pokemon.hp = {
           ...pokemon.hp,
@@ -678,20 +668,20 @@ export class ReplayStatesService {
       }
     },
     "-sideend": (line, field) => {
-      const sideId = parseSideId(line.parsedArgs.side);
-      if (!sideId || !line.parsedArgs.condition) return;
+      const sideId = parseSideId(line.args.side);
+      if (!sideId || !line.args.condition) return;
       removeConditionFromList(
         field.sides[sideId].conditions,
-        line.parsedArgs.condition,
+        line.args.condition,
       );
     },
     "-sidestart": (line, field, parentLine) => {
-      const sideId = parseSideId(line.parsedArgs.side);
-      if (!sideId || !line.parsedArgs.condition) return;
+      const sideId = parseSideId(line.args.side);
+      if (!sideId || !line.args.condition) return;
       ensureConditionInList(
         field.sides[sideId].conditions,
         this.createConditionState(
-          line.parsedArgs.condition,
+          line.args.condition,
           field,
           parentLine,
           line.turnNumber,
@@ -702,21 +692,24 @@ export class ReplayStatesService {
       this.applySingleTurnCondition(line, field, parentLine),
     "-singleturn": (line, field, parentLine) =>
       this.applySingleTurnCondition(line, field, parentLine),
-    "-status": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (!pokemon || !line.parsedArgs.status) return;
-      pokemon.status = line.parsedArgs.status;
+    "-status": (line, field, parentLine) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      if (!pokemon || !line.args.status) return;
+      pokemon.status = {
+        raw: line.args.status,
+        setter: this.getPokemonFromArgs(line.args.pokemon, field)?.key,
+      };
     },
     "-transform": (line, field) => this.applyDetailsTransformLike(line, field),
     "-terastallize": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (!pokemon || !line.parsedArgs.type) return;
-      pokemon.teraType = line.parsedArgs.type;
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      if (!pokemon || !line.args.type) return;
+      pokemon.teraType = line.args.type;
     },
     "-weather": (line, field) => {
       field.weather =
-        line.parsedArgs.weather && line.parsedArgs.weather !== "none"
-          ? line.parsedArgs.weather
+        line.args.weather && line.args.weather !== "none"
+          ? line.args.weather
           : undefined;
     },
   };
@@ -730,10 +723,9 @@ export class ReplayStatesService {
 
       turn.lines.forEach((line) => {
         this.actionFns[line.action]?.(line, field);
-        if ("children" in line)
-          line.children.forEach((child) => {
-            this.actionFns[child.action]?.(child, field, child.parent);
-          });
+        line.children?.forEach((child) => {
+          this.actionFns[child.action]?.(child, field, line);
+        });
       });
 
       const turnState: TurnState = {
@@ -766,13 +758,13 @@ export class ReplayStatesService {
     const name = normalizeConditionName(condition);
     const sourceMove =
       parentLine?.action === "move"
-        ? parentLine.parsedArgs.move
+        ? parentLine.args.move
         : condition.startsWith("move: ")
           ? name
           : undefined;
     const setterPokemonRef =
       parentLine?.action === "move"
-        ? (parentLine.parsedArgs.attacker ?? parentLine.parsedArgs.pokemon)
+        ? (parentLine.args.attacker ?? parentLine.args.pokemon)
         : undefined;
     const setterPokemon =
       this.getPokemonFromArgs(setterPokemonRef, field) ??
@@ -825,28 +817,23 @@ export class ReplayStatesService {
     field: Field,
     parentLine?: ReplayLine,
   ): void {
-    const sideId = parseSideId(line.parsedArgs.pokemon);
-    if (!sideId || !line.parsedArgs.move) return;
+    const sideId = parseSideId(line.args.pokemon);
+    if (!sideId || !line.args.move) return;
 
-    const positionId = parsePokemonRef(line.parsedArgs.pokemon)?.positionId;
+    const positionId = parsePokemonRef(line.args.pokemon)?.positionId;
     if (!positionId) return;
 
     const position = field.sides[sideId].positions[positionId];
     if (!position) return;
 
     const condition = this.createConditionState(
-      line.parsedArgs.move,
+      line.args.move,
       field,
       parentLine,
       line.turnNumber,
       true,
     );
     position.conditions.push(condition);
-
-    if (toID(line.parsedArgs.move) === "destinybond") {
-      const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
-      if (pokemon) pokemon.flags.destinyBond = true;
-    }
   }
 
   private findConditionSource(
@@ -914,12 +901,12 @@ export class ReplayStatesService {
   }
 
   private applySwitchLike(line: ReplayLine, field: Field): void {
-    const pokemonRef = parsePokemonRef(line.parsedArgs.pokemon);
+    const pokemonRef = parsePokemonRef(line.args.pokemon);
     if (!pokemonRef) return;
 
     const side = field.sides[pokemonRef.sideId];
     const { speciesId, baseSpeciesId, gender, shiny } = parseSpeciesDetails(
-      line.parsedArgs.details,
+      line.args.details,
       field.genNum,
     );
     const speciesKey = speciesId
@@ -948,12 +935,11 @@ export class ReplayStatesService {
     pushUnique(pokemon.speciesHistory, speciesId);
     pokemon.gender = gender;
     pokemon.shiny = shiny;
-    if (line.parsedArgs.details) pokemon.details = line.parsedArgs.details;
-    pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
+    if (line.args.details) pokemon.details = line.args.details;
+    pushUnique(pokemon.detailsHistory, line.args.details);
 
-    const { hp, status } = parseHpStatus(line.parsedArgs.hpStatus);
+    const hp = parseHpStatus(line.args.hpStatus);
     if (hp) pokemon.hp = hp;
-    if (status) pokemon.status = status;
 
     side.positions[pokemonRef.positionId].pokemon = pokemon;
   }
@@ -983,14 +969,13 @@ export class ReplayStatesService {
     if (!pokemon || !hpStatus) return;
     const previousPercent =
       typeof pokemon.hp?.percent === "number" ? pokemon.hp.percent : undefined;
-    const { hp, status } = parseHpStatus(hpStatus);
+    const hp = parseHpStatus(hpStatus);
     hp;
     if (hp)
       pokemon.hp = {
         ...pokemon.hp,
         ...hp,
       };
-    if (status) pokemon.status = status;
 
     const nextPercent = hp?.percent;
     const hpDelta =
@@ -1014,14 +999,14 @@ export class ReplayStatesService {
   }
 
   private applyDetailsTransformLike(line: ReplayLine, field: Field): void {
-    const pokemon = this.getPokemonFromArgs(line.parsedArgs.pokemon, field);
+    const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
     if (!pokemon) return;
 
-    if (line.parsedArgs.details) {
-      pokemon.details = line.parsedArgs.details;
-      pushUnique(pokemon.detailsHistory, line.parsedArgs.details);
+    if (line.args.details) {
+      pokemon.details = line.args.details;
+      pushUnique(pokemon.detailsHistory, line.args.details);
       const { speciesId, baseSpeciesId, gender, shiny } = parseSpeciesDetails(
-        line.parsedArgs.details,
+        line.args.details,
         field.genNum,
       );
       if (speciesId) pokemon.species = speciesId;
@@ -1030,17 +1015,16 @@ export class ReplayStatesService {
       pokemon.gender = gender;
       pokemon.shiny = shiny;
     }
-    if (line.parsedArgs.species) {
-      const speciesId = toID(line.parsedArgs.species);
+    if (line.args.species) {
+      const speciesId = toID(line.args.species);
       const baseSpeciesId = toBaseSpeciesId(speciesId, field.genNum);
       pokemon.species = speciesId;
       pokemon.baseSpecies = baseSpeciesId;
       pushUnique(pokemon.speciesHistory, speciesId);
     }
-    if (line.parsedArgs.hpStatus) {
-      const { hp, status } = parseHpStatus(line.parsedArgs.hpStatus);
+    if (line.args.hpStatus) {
+      const hp = parseHpStatus(line.args.hpStatus);
       if (hp) pokemon.hp = hp;
-      if (status) pokemon.status = status;
     }
   }
 }

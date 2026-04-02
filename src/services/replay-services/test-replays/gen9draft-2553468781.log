@@ -1,0 +1,964 @@
+|j|☆spiralbb
+|j|☆TurtleCode
+|t:|1772834134
+|gametype|singles
+|player|p1|spiralbb|n|
+|player|p2|TurtleCode|169|
+|gen|9
+|tier|[Gen 9] Draft
+|rule|Tera Type Preview: Tera Types are shown at Team Preview
+|rule|Sleep Clause Mod: Limit one foe put to sleep
+|rule|OHKO Clause: OHKO moves are banned
+|rule|Evasion Clause: Evasion abilities, items, and moves are banned
+|rule|Evasion Abilities Clause: Evasion abilities are banned
+|rule|Evasion Items Clause: Evasion items are banned
+|rule|Evasion Moves Clause: Evasion moves are banned
+|rule|Endless Battle Clause: Forcing endless battles is banned
+|rule|HP Percentage Mod: HP is shown in percentages
+|raw|<div class="infobox"><details class="readmore" open><summary><strong>1 custom rule:</strong></summary> Tera Type Preview</details></div>
+|clearpoke
+|poke|p1|Rillaboom, F|
+|poke|p1|Scyther, M|
+|poke|p1|Iron Valiant|
+|poke|p1|Gliscor, M|
+|poke|p1|Terapagos, M|
+|poke|p1|Empoleon, F|
+|poke|p2|Lapras, F|
+|poke|p2|Avalugg, F|
+|poke|p2|Toxapex, F|
+|poke|p2|Ting-Lu|
+|poke|p2|Deoxys-Defense|
+|poke|p2|Duraludon, F|
+|raw|spiralbb's Tera Types:<br /><psicon pokemon="rillaboom" /><psicon type="Ghost" /> / <psicon pokemon="scyther" /><psicon type="Flying" /> / <psicon pokemon="ironvaliant" /><psicon type="Stellar" /> / <psicon pokemon="gliscor" /><psicon type="Ground" /> / <psicon pokemon="terapagos" /><psicon type="Stellar" /> / <psicon pokemon="empoleon" /><psicon type="Water" />
+|raw|TurtleCode's Tera Types:<br /><psicon pokemon="lapras" /><psicon type="Bug" /> / <psicon pokemon="avalugg" /><psicon type="Ghost" /> / <psicon pokemon="toxapex" /><psicon type="Ghost" /> / <psicon pokemon="tinglu" /><psicon type="Bug" /> / <psicon pokemon="deoxysdefense" /><psicon type="Bug" /> / <psicon pokemon="duraludon" /><psicon type="Bug" />
+|teampreview
+|c|☆spiralbb|glhf
+|c|☆TurtleCode|glhf
+|
+|t:|1772834195
+|teamsize|p1|6
+|teamsize|p2|6
+|start
+|switch|p1a: Law|Empoleon, F|100/100
+|switch|p2a: Ancient Bowl|Ting-Lu|100/100
+|-ability|p2a: Ancient Bowl|Vessel of Ruin
+|turn|1
+|
+|t:|1772834245
+|move|p2a: Ancient Bowl|Stealth Rock|p1a: Law
+|-sidestart|p1: spiralbb|move: Stealth Rock
+|move|p1a: Law|Stealth Rock|p2a: Ancient Bowl
+|-sidestart|p2: TurtleCode|move: Stealth Rock
+|
+|upkeep
+|turn|2
+|j| Lumaris
+|
+|t:|1772834275
+|move|p1a: Law|Flip Turn|p2a: Ancient Bowl
+|-supereffective|p2a: Ancient Bowl
+|-damage|p2a: Ancient Bowl|80/100
+|
+|t:|1772834280
+|switch|p1a: Mihawk|Gliscor, M|100/100|[from] Flip Turn
+|-damage|p1a: Mihawk|88/100|[from] Stealth Rock
+|move|p2a: Ancient Bowl|Whirlwind|p1a: Mihawk
+|drag|p1a: Kuma|Rillaboom, F|100/100
+|-damage|p1a: Kuma|88/100|[from] Stealth Rock
+|-fieldstart|move: Grassy Terrain|[from] ability: Grassy Surge|[of] p1a: Kuma
+|
+|-heal|p1a: Kuma|94/100|[from] Grassy Terrain
+|-heal|p2a: Ancient Bowl|86/100|[from] Grassy Terrain
+|-heal|p2a: Ancient Bowl|93/100|[from] item: Leftovers
+|upkeep
+|turn|3
+|
+|t:|1772834327
+|switch|p2a: Another Tower|Duraludon, F|100/100
+|-damage|p2a: Another Tower|94/100|[from] Stealth Rock
+|-terastallize|p1a: Kuma|Ghost
+|move|p1a: Kuma|Taunt|p2a: Another Tower
+|-start|p2a: Another Tower|move: Taunt
+|
+|-heal|p1a: Kuma|100/100|[from] Grassy Terrain
+|-heal|p2a: Another Tower|100/100|[from] Grassy Terrain
+|upkeep
+|turn|4
+|
+|t:|1772834339
+|move|p1a: Kuma|Leech Seed|p2a: Another Tower
+|-start|p2a: Another Tower|move: Leech Seed
+|move|p2a: Another Tower|Dragon Tail|p1a: Kuma
+|-damage|p1a: Kuma|80/100
+|drag|p1a: Mihawk|Gliscor, M|88/100
+|-damage|p1a: Mihawk|76/100|[from] Stealth Rock
+|
+|-damage|p2a: Another Tower|88/100|[from] Leech Seed|[of] p1a: Mihawk
+|-heal|p1a: Mihawk|88/100|[silent]
+|-status|p1a: Mihawk|tox|[from] item: Toxic Orb
+|upkeep
+|turn|5
+|
+|t:|1772834374
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|-damage|p2a: Toxic Female|88/100|[from] Stealth Rock
+|move|p1a: Mihawk|Spikes|p2a: Toxic Female
+|-sidestart|p2: TurtleCode|Spikes
+|
+|-heal|p2a: Toxic Female|94/100|[from] Grassy Terrain
+|-heal|p2a: Toxic Female|99/100|[from] item: Leftovers
+|-heal|p1a: Mihawk|99/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|6
+|
+|t:|1772834390
+|switch|p2a: Endangered Icecap|Avalugg, F, shiny|100/100
+|move|p1a: Mihawk|Knock Off|p2a: Endangered Icecap
+|-crit|p2a: Endangered Icecap
+|-damage|p2a: Endangered Icecap|87/100
+|-enditem|p2a: Endangered Icecap|Heavy-Duty Boots|[from] move: Knock Off|[of] p1a: Mihawk
+|
+|-heal|p2a: Endangered Icecap|93/100|[from] Grassy Terrain
+|-heal|p1a: Mihawk|100/100 tox|[from] ability: Poison Heal
+|-fieldend|move: Grassy Terrain
+|upkeep
+|turn|7
+|
+|t:|1772834419
+|switch|p1a: Kuma|Rillaboom, F, tera:Ghost|80/100
+|-damage|p1a: Kuma|67/100|[from] Stealth Rock
+|-fieldstart|move: Grassy Terrain|[from] ability: Grassy Surge|[of] p1a: Kuma
+|-terastallize|p2a: Endangered Icecap|Ghost
+|move|p2a: Endangered Icecap|Tera Blast|p1a: Kuma|[anim] Tera Blast Ghost
+|-supereffective|p1a: Kuma
+|-damage|p1a: Kuma|2/100
+|
+|-heal|p1a: Kuma|8/100|[from] Grassy Terrain
+|-heal|p2a: Endangered Icecap|99/100|[from] Grassy Terrain
+|upkeep
+|turn|8
+|
+|t:|1772834482
+|move|p1a: Kuma|Leech Seed|p2a: Endangered Icecap
+|-start|p2a: Endangered Icecap|move: Leech Seed
+|move|p2a: Endangered Icecap|Tera Blast|p1a: Kuma|[anim] Tera Blast Ghost
+|-supereffective|p1a: Kuma
+|-damage|p1a: Kuma|0 fnt
+|faint|p1a: Kuma
+|
+|-heal|p2a: Endangered Icecap|100/100|[from] Grassy Terrain
+|upkeep
+|
+|t:|1772834504
+|switch|p1a: Zoro|Iron Valiant|100/100
+|-damage|p1a: Zoro|94/100|[from] Stealth Rock
+|turn|9
+|
+|t:|1772834528
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|-damage|p2a: Toxic Female|88/100|[from] Stealth Rock
+|-damage|p2a: Toxic Female|76/100|[from] Spikes
+|move|p1a: Zoro|Encore||[still]
+|-fail|p1a: Zoro
+|
+|-heal|p1a: Zoro|100/100|[from] Grassy Terrain
+|-heal|p2a: Toxic Female|82/100|[from] Grassy Terrain
+|-heal|p2a: Toxic Female|88/100|[from] item: Leftovers
+|upkeep
+|turn|10
+|j|+Srn
+|j| Mr.Twang
+|
+|t:|1772834551
+|-end|p1a: Zoro|Quark Drive|[silent]
+|switch|p1a: Law|Empoleon, F|100/100
+|-damage|p1a: Law|94/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Gunk Shot|p1a: Law
+|-immune|p1a: Law
+|
+|-heal|p1a: Law|100/100|[from] Grassy Terrain
+|-heal|p2a: Toxic Female|94/100|[from] Grassy Terrain
+|-heal|p2a: Toxic Female|99/100|[from] item: Leftovers
+|upkeep
+|turn|11
+|
+|t:|1772834570
+|switch|p2a: Endangered Icecap|Avalugg, F, shiny, tera:Ghost|100/100
+|-damage|p2a: Endangered Icecap|88/100|[from] Stealth Rock
+|-damage|p2a: Endangered Icecap|76/100|[from] Spikes
+|move|p1a: Law|Flip Turn|p2a: Endangered Icecap
+|-damage|p2a: Endangered Icecap|68/100
+|
+|t:|1772834599
+|switch|p1a: Zoro|Iron Valiant|100/100|[from] Flip Turn
+|-damage|p1a: Zoro|94/100|[from] Stealth Rock
+|
+|-heal|p1a: Zoro|100/100|[from] Grassy Terrain
+|-heal|p2a: Endangered Icecap|74/100|[from] Grassy Terrain
+|-fieldend|move: Grassy Terrain
+|upkeep
+|turn|12
+|
+|t:|1772834630
+|switch|p2a: Illegal Alien|Deoxys-Defense|100/100
+|-damage|p2a: Illegal Alien|88/100|[from] Stealth Rock
+|-damage|p2a: Illegal Alien|75/100|[from] Spikes
+|-ability|p2a: Illegal Alien|Pressure
+|move|p1a: Zoro|Swords Dance|p1a: Zoro
+|-boost|p1a: Zoro|atk|2
+|
+|-heal|p2a: Illegal Alien|82/100|[from] item: Leftovers
+|upkeep
+|turn|13
+|
+|t:|1772834660
+|move|p1a: Zoro|Knock Off|p2a: Illegal Alien
+|-supereffective|p2a: Illegal Alien
+|-damage|p2a: Illegal Alien|0 fnt
+|-enditem|p2a: Illegal Alien|Leftovers|[from] move: Knock Off|[of] p1a: Zoro
+|faint|p2a: Illegal Alien
+|-damage|p1a: Zoro|91/100|[from] item: Life Orb
+|
+|upkeep
+|
+|t:|1772834690
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|-damage|p2a: Toxic Female|88/100|[from] Stealth Rock
+|-damage|p2a: Toxic Female|76/100|[from] Spikes
+|turn|14
+|
+|t:|1772834722
+|-end|p1a: Zoro|Quark Drive|[silent]
+|switch|p1a: Law|Empoleon, F|100/100
+|-damage|p1a: Law|94/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Baneful Bunker||[still]
+|-fail|p2a: Toxic Female
+|
+|-heal|p2a: Toxic Female|82/100|[from] item: Leftovers
+|upkeep
+|turn|15
+|
+|t:|1772834731
+|move|p1a: Law|Flip Turn|p2a: Toxic Female
+|-resisted|p2a: Toxic Female
+|-damage|p2a: Toxic Female|75/100
+|
+|t:|1772834738
+|switch|p1a: Mihawk|Gliscor, M|100/100 tox|[from] Flip Turn
+|-damage|p1a: Mihawk|88/100 tox|[from] Stealth Rock
+|move|p2a: Toxic Female|Gunk Shot|p1a: Mihawk
+|-resisted|p1a: Mihawk
+|-damage|p1a: Mihawk|77/100 tox
+|
+|-heal|p2a: Toxic Female|81/100|[from] item: Leftovers
+|-heal|p1a: Mihawk|89/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|16
+|
+|t:|1772834812
+|switch|p1a: Luffy|Terapagos, M|100/100
+|-activate|p1a: Luffy|ability: Tera Shift
+|detailschange|p1a: Luffy|Terapagos-Terastal, M
+|-heal|p1a: Luffy|100/100|[silent]
+|switch|p2a: Endangered Icecap|Avalugg, F, shiny, tera:Ghost|74/100
+|-damage|p2a: Endangered Icecap|61/100|[from] Stealth Rock
+|-damage|p2a: Endangered Icecap|49/100|[from] Spikes
+|
+|upkeep
+|turn|17
+|
+|t:|1772834840
+|move|p1a: Luffy|Earth Power|p2a: Endangered Icecap
+|-damage|p2a: Endangered Icecap|4/100
+|move|p2a: Endangered Icecap|Recover|p2a: Endangered Icecap
+|-heal|p2a: Endangered Icecap|54/100
+|
+|upkeep
+|turn|18
+|
+|t:|1772834849
+|move|p1a: Luffy|Earth Power|p2a: Endangered Icecap
+|-damage|p2a: Endangered Icecap|5/100
+|move|p2a: Endangered Icecap|Rapid Spin|p1a: Luffy
+|-activate|p1a: Luffy|ability: Tera Shell
+|-resisted|p1a: Luffy
+|-damage|p1a: Luffy|95/100
+|-boost|p2a: Endangered Icecap|spe|1
+|-sideend|p2: TurtleCode|Spikes|[from] move: Rapid Spin|[of] p2a: Endangered Icecap
+|-sideend|p2: TurtleCode|Stealth Rock|[from] move: Rapid Spin|[of] p2a: Endangered Icecap
+|
+|upkeep
+|turn|19
+|
+|t:|1772834873
+|move|p1a: Luffy|Earth Power|p2a: Endangered Icecap
+|-damage|p2a: Endangered Icecap|0 fnt
+|faint|p2a: Endangered Icecap
+|
+|upkeep
+|
+|t:|1772834925
+|switch|p2a: Another Tower|Duraludon, F|88/100
+|turn|20
+|
+|t:|1772834937
+|move|p1a: Luffy|Earth Power|p2a: Another Tower
+|-supereffective|p2a: Another Tower
+|-damage|p2a: Another Tower|45/100
+|move|p2a: Another Tower|Dragon Tail|p1a: Luffy|[miss]
+|-miss|p2a: Another Tower|p1a: Luffy
+|
+|upkeep
+|turn|21
+|
+|t:|1772834947
+|move|p1a: Luffy|Earth Power|p2a: Another Tower
+|-supereffective|p2a: Another Tower
+|-damage|p2a: Another Tower|0 fnt
+|faint|p2a: Another Tower
+|
+|upkeep
+|c|☆spiralbb|sorry about that miss
+|j| SwaglessBozo
+|c|☆TurtleCode|that's wild lol it's all good
+|l| SwaglessBozo
+|
+|t:|1772834989
+|switch|p2a: Ancient Bowl|Ting-Lu|93/100
+|-ability|p2a: Ancient Bowl|Vessel of Ruin
+|turn|22
+|
+|t:|1772835002
+|move|p1a: Luffy|Toxic|p2a: Ancient Bowl
+|-status|p2a: Ancient Bowl|tox
+|move|p2a: Ancient Bowl|Earthquake|p1a: Luffy
+|-damage|p1a: Luffy|54/100
+|
+|-heal|p2a: Ancient Bowl|99/100 tox|[from] item: Leftovers
+|-damage|p2a: Ancient Bowl|93/100 tox|[from] psn
+|upkeep
+|turn|23
+|
+|t:|1772835013
+|switch|p1a: Buggy D Clown|Scyther, M|100/100
+|move|p2a: Ancient Bowl|Earthquake|p1a: Buggy D Clown
+|-immune|p1a: Buggy D Clown
+|
+|-heal|p2a: Ancient Bowl|99/100 tox|[from] item: Leftovers
+|-damage|p2a: Ancient Bowl|86/100 tox|[from] psn
+|upkeep
+|turn|24
+|
+|t:|1772835024
+|move|p1a: Buggy D Clown|Swords Dance|p1a: Buggy D Clown
+|-boost|p1a: Buggy D Clown|atk|2
+|move|p2a: Ancient Bowl|Stone Edge|p1a: Buggy D Clown
+|-supereffective|p1a: Buggy D Clown
+|-damage|p1a: Buggy D Clown|0 fnt
+|faint|p1a: Buggy D Clown
+|
+|-heal|p2a: Ancient Bowl|93/100 tox|[from] item: Leftovers
+|-damage|p2a: Ancient Bowl|74/100 tox|[from] psn
+|upkeep
+|
+|t:|1772835048
+|switch|p1a: Mihawk|Gliscor, M|89/100 tox
+|-damage|p1a: Mihawk|77/100 tox|[from] Stealth Rock
+|turn|25
+|
+|t:|1772835057
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|move|p1a: Mihawk|Spikes|p2a: Toxic Female
+|-sidestart|p2: TurtleCode|Spikes
+|
+|-heal|p1a: Mihawk|89/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|26
+|
+|t:|1772835076
+|move|p1a: Mihawk|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|84/100
+|-enditem|p2a: Toxic Female|Leftovers|[from] move: Knock Off|[of] p1a: Mihawk
+|move|p2a: Toxic Female|Gunk Shot|p1a: Mihawk
+|-resisted|p1a: Mihawk
+|-damage|p1a: Mihawk|77/100 tox
+|
+|-heal|p1a: Mihawk|89/100 tox|[from] ability: Poison Heal
+|upkeep
+|turn|27
+|
+|t:|1772835100
+|switch|p2a: Ancient Bowl|Ting-Lu|74/100 tox
+|-damage|p2a: Ancient Bowl|62/100 tox|[from] Spikes
+|-ability|p2a: Ancient Bowl|Vessel of Ruin
+|move|p1a: Mihawk|High Horsepower|p2a: Ancient Bowl
+|-damage|p2a: Ancient Bowl|43/100 tox
+|
+|-heal|p2a: Ancient Bowl|50/100 tox|[from] item: Leftovers
+|-heal|p1a: Mihawk|100/100 tox|[from] ability: Poison Heal
+|-damage|p2a: Ancient Bowl|43/100 tox|[from] psn
+|upkeep
+|turn|28
+|
+|t:|1772835109
+|move|p1a: Mihawk|Taunt|p2a: Ancient Bowl
+|-start|p2a: Ancient Bowl|move: Taunt
+|cant|p2a: Ancient Bowl|move: Taunt|Whirlwind
+|
+|-heal|p2a: Ancient Bowl|50/100 tox|[from] item: Leftovers
+|-damage|p2a: Ancient Bowl|37/100 tox|[from] psn
+|upkeep
+|turn|29
+|
+|t:|1772835112
+|move|p1a: Mihawk|Spikes|p2a: Ancient Bowl
+|-sidestart|p2: TurtleCode|Spikes
+|move|p2a: Ancient Bowl|Stone Edge|p1a: Mihawk
+|-damage|p1a: Mihawk|75/100 tox
+|
+|-heal|p2a: Ancient Bowl|43/100 tox|[from] item: Leftovers
+|-heal|p1a: Mihawk|88/100 tox|[from] ability: Poison Heal
+|-damage|p2a: Ancient Bowl|25/100 tox|[from] psn
+|upkeep
+|turn|30
+|
+|t:|1772835120
+|move|p1a: Mihawk|High Horsepower|p2a: Ancient Bowl
+|-damage|p2a: Ancient Bowl|7/100 tox
+|move|p2a: Ancient Bowl|Stone Edge|p1a: Mihawk
+|-damage|p1a: Mihawk|59/100 tox
+|
+|-heal|p2a: Ancient Bowl|13/100 tox|[from] item: Leftovers
+|-heal|p1a: Mihawk|71/100 tox|[from] ability: Poison Heal
+|-damage|p2a: Ancient Bowl|0 fnt|[from] psn
+|faint|p2a: Ancient Bowl
+|upkeep
+|
+|t:|1772835127
+|switch|p2a: Endangered Species|Lapras, F|100/100
+|-damage|p2a: Endangered Species|84/100|[from] Spikes
+|turn|31
+|
+|t:|1772835152
+|move|p1a: Mihawk|Taunt|p2a: Endangered Species
+|-start|p2a: Endangered Species|move: Taunt
+|move|p2a: Endangered Species|Icicle Spear|p1a: Mihawk
+|-supereffective|p1a: Mihawk
+|-damage|p1a: Mihawk|37/100 tox
+|-supereffective|p1a: Mihawk
+|-damage|p1a: Mihawk|2/100 tox
+|-supereffective|p1a: Mihawk
+|-damage|p1a: Mihawk|0 fnt
+|faint|p1a: Mihawk
+|-hitcount|p1: Mihawk|3
+|
+|upkeep
+|
+|t:|1772835166
+|switch|p1a: Luffy|Terapagos-Terastal, M|54/100
+|turn|32
+|
+|t:|1772835203
+|move|p1a: Luffy|Tera Starstorm|p2a: Endangered Species
+|-damage|p2a: Endangered Species|36/100
+|move|p2a: Endangered Species|Icicle Spear|p1a: Luffy
+|-damage|p1a: Luffy|45/100
+|-damage|p1a: Luffy|35/100
+|-damage|p1a: Luffy|25/100
+|-crit|p1a: Luffy
+|-damage|p1a: Luffy|11/100
+|-hitcount|p1a: Luffy|4
+|
+|upkeep
+|turn|33
+|
+|t:|1772835217
+|move|p2a: Endangered Species|Ice Shard|p1a: Luffy
+|-damage|p1a: Luffy|0 fnt
+|faint|p1a: Luffy
+|
+|-end|p2a: Endangered Species|move: Taunt
+|upkeep
+|
+|t:|1772835226
+|switch|p1a: Zoro|Iron Valiant|91/100
+|-damage|p1a: Zoro|85/100|[from] Stealth Rock
+|turn|34
+|
+|t:|1772835256
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|-damage|p2a: Toxic Female|84/100|[from] Spikes
+|move|p1a: Zoro|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|57/100
+|-damage|p1a: Zoro|75/100|[from] item: Life Orb
+|
+|upkeep
+|turn|35
+|
+|t:|1772835263
+|-end|p1a: Zoro|Quark Drive|[silent]
+|switch|p1a: Law|Empoleon, F|94/100
+|-damage|p1a: Law|88/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Recover|p2a: Toxic Female
+|-heal|p2a: Toxic Female|100/100
+|
+|upkeep
+|turn|36
+|
+|t:|1772835271
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|91/100
+|move|p2a: Toxic Female|Gunk Shot|p1a: Law
+|-immune|p1a: Law
+|
+|upkeep
+|turn|37
+|
+|t:|1772835277
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|81/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|38
+|
+|t:|1772835283
+|move|p1a: Law|Stealth Rock|p2a: Toxic Female
+|-sidestart|p2: TurtleCode|move: Stealth Rock
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|39
+|c|☆TurtleCode|I forgor lmao
+|c|☆TurtleCode|ggs
+|c|☆spiralbb|ggs
+|
+|t:|1772835313
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|40
+|
+|t:|1772835329
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|41
+|
+|t:|1772835332
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|42
+|
+|t:|1772835334
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|43
+|
+|t:|1772835336
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|44
+|
+|t:|1772835338
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|45
+|
+|t:|1772835340
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|46
+|
+|t:|1772835342
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|47
+|
+|t:|1772835344
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|48
+|
+|t:|1772835346
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|49
+|
+|t:|1772835350
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|50
+|
+|t:|1772835353
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|51
+|
+|t:|1772835357
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|52
+|
+|t:|1772835359
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|53
+|
+|t:|1772835363
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|54
+|
+|t:|1772835367
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|55
+|
+|t:|1772835370
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|56
+|
+|t:|1772835371
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|57
+|
+|t:|1772835373
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|58
+|
+|t:|1772835375
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|59
+|
+|t:|1772835377
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|60
+|
+|t:|1772835378
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|61
+|
+|t:|1772835380
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|62
+|
+|t:|1772835382
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|63
+|
+|t:|1772835389
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|71/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|64
+|
+|t:|1772835394
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|65
+|
+|t:|1772835397
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|60/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|66
+|
+|t:|1772835403
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|49/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|67
+|
+|t:|1772835408
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-crit|p2a: Toxic Female
+|-damage|p2a: Toxic Female|33/100
+|move|p2a: Toxic Female|Recover|p2a: Toxic Female
+|-heal|p2a: Toxic Female|83/100
+|
+|upkeep
+|turn|68
+|
+|t:|1772835422
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|69
+|
+|t:|1772835427
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|70
+|
+|t:|1772835429
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|71
+|
+|t:|1772835432
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|72
+|
+|t:|1772835435
+|switch|p1a: Zoro|Iron Valiant|75/100
+|-damage|p1a: Zoro|69/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|73
+|
+|t:|1772835440
+|switch|p2a: Endangered Species|Lapras, F|36/100
+|-damage|p2a: Endangered Species|19/100|[from] Spikes
+|-damage|p2a: Endangered Species|0 fnt|[from] Stealth Rock
+|faint|p2a: Endangered Species
+|move|p1a: Zoro|Encore|p2: Endangered Species|[notarget]
+|-fail|p1a: Zoro
+|
+|upkeep
+|
+|t:|1772835446
+|switch|p2a: Toxic Female|Toxapex, F|100/100
+|-damage|p2a: Toxic Female|84/100|[from] Spikes
+|-damage|p2a: Toxic Female|72/100|[from] Stealth Rock
+|turn|74
+|c|☆TurtleCode|lmao
+|
+|t:|1772835455
+|-end|p1a: Zoro|Quark Drive|[silent]
+|switch|p1a: Law|Empoleon, F|88/100
+|-damage|p1a: Law|82/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Gunk Shot|p1a: Law
+|-immune|p1a: Law
+|
+|upkeep
+|turn|75
+|
+|t:|1772835462
+|move|p1a: Law|Stealth Rock||[still]
+|-fail|p1a: Law
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|76
+|
+|t:|1772835466
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|62/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|77
+|
+|t:|1772835470
+|move|p1a: Law|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|51/100
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|78
+|
+|t:|1772835475
+|switch|p1a: Zoro|Iron Valiant|69/100
+|-damage|p1a: Zoro|62/100|[from] Stealth Rock
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|79
+|
+|t:|1772835479
+|move|p1a: Zoro|Encore|p2a: Toxic Female
+|-start|p2a: Toxic Female|Encore
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|80
+|
+|t:|1772835482
+|move|p1a: Zoro|Swords Dance|p1a: Zoro
+|-boost|p1a: Zoro|atk|2
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|81
+|
+|t:|1772835484
+|move|p1a: Zoro|Swords Dance|p1a: Zoro
+|-boost|p1a: Zoro|atk|2
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|-end|p2a: Toxic Female|Encore
+|upkeep
+|turn|82
+|
+|t:|1772835486
+|move|p1a: Zoro|Encore|p2a: Toxic Female
+|-start|p2a: Toxic Female|Encore
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|83
+|
+|t:|1772835488
+|move|p1a: Zoro|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|26/100
+|-damage|p1a: Zoro|53/100|[from] item: Life Orb
+|move|p2a: Toxic Female|Haze|p2a: Toxic Female
+|-clearallboost
+|
+|upkeep
+|turn|84
+|
+|t:|1772835491
+|move|p1a: Zoro|Knock Off|p2a: Toxic Female
+|-damage|p2a: Toxic Female|0 fnt
+|faint|p2a: Toxic Female
+|-damage|p1a: Zoro|43/100|[from] item: Life Orb
+|
+|win|spiralbb
+|c|☆TurtleCode|ggs
+|c|☆spiralbb|ggs
+|c|☆TurtleCode|funniest way to end it

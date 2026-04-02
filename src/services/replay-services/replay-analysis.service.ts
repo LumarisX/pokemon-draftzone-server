@@ -45,7 +45,7 @@ type ParsedPokemonRef = {
 
 type LastDamageContext = {
   attackerSideId?: string;
-  attackerPokemon?: string | Pokemon;
+  attackerPokemon?: string;
   move?: string;
   cause?: string;
   indirect?: boolean;
@@ -186,10 +186,9 @@ function getPokemonByRef(
   );
 }
 
-function getPokemonName(
-  pokemonRefRaw: string | Pokemon | undefined,
-): string | undefined {
+function getPokemonName(pokemonRefRaw: string | undefined): string | undefined {
   if (!pokemonRefRaw) return undefined;
+  console.log(pokemonRefRaw);
   if (typeof pokemonRefRaw !== "string") return toDisplayName(pokemonRefRaw);
   return pokemonRefRaw.split(": ").pop();
 }
@@ -287,9 +286,12 @@ export class ReplayAnalysisService {
               currentField.sides[
                 victimSideId as keyof typeof currentField.sides
               ];
-            const victimName =
-              currentPokemon.nickname || toDisplayName(currentPokemon);
-            const attackerName = getPokemonName(damageContext?.attackerPokemon);
+            const victimName = toDisplayName(currentPokemon);
+            const attacker = getPokemonByRef(
+              currentField,
+              damageContext?.attackerPokemon,
+            );
+            const attackerName = attacker ? toDisplayName(attacker) : undefined;
             const attackerUsername = attackerSideId
               ? currentField.sides[
                   attackerSideId as keyof typeof currentField.sides
@@ -313,6 +315,7 @@ export class ReplayAnalysisService {
               }
               message += ` by ${attackerUsername}'s ${attackerName}`;
             }
+            // console.log(message);
 
             events.push({
               player: playerIndex + 1,

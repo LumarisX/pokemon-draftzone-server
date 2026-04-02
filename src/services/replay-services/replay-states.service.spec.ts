@@ -148,7 +148,7 @@ describe("ReplayStatesService", () => {
     expect(hazardDamage?.indirect).toBe(true);
   });
 
-  it("attributes destiny bond retaliation context to the follow-up faint", () => {
+  it("captures Destiny Bond activation and retaliation context in replay 2549748681", () => {
     const replayPath = path.join(
       __dirname,
       "test-replays/gen9draft-2549748681.log",
@@ -160,9 +160,15 @@ describe("ReplayStatesService", () => {
     const turn20Field = turnStates.find(
       (state) => state.turnNumber === 20,
     )?.field;
+    const hoopa = Object.values(turn20Field?.sides.p2.pokemon ?? {}).find(
+      (pokemon) => pokemon.nickname === "Astrophysicist",
+    );
     const enamorus = Object.values(turn20Field?.sides.p1.pokemon ?? {}).find(
       (pokemon) => pokemon.nickname === "War Tortle",
     );
+
+    expect(enamorus).toBeDefined();
+    expect(enamorus?.flags.destinyBond).toBe(hoopa?.key);
 
     expect(enamorus?.fainted).toMatchObject({
       turnNumber: 20,
