@@ -338,7 +338,8 @@ export async function calculateDivisionCoachStandings(
           diffMode,
           "ff",
         );
-      } else if (matchup.winner === "side2" || matchup.winner === "draw") {
+      }
+      if (matchup.winner === "side2" || matchup.winner === "draw") {
         team1Data.standing.losses += 1;
         applyMatchupDiffs(
           team1Data.standing,

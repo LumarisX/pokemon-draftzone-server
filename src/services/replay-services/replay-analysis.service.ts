@@ -499,7 +499,7 @@ export class ReplayAnalysisService {
           name: toDisplayName(chosenPokemon),
           shiny: group.some((pokemon) => pokemon.shiny) ? true : undefined,
           formes: formes.size > 0 ? [...formes] : undefined,
-          item: chosenPokemon.item,
+          item: chosenPokemon.item?.raw,
           kills,
           status: isPokemonFainted(chosenPokemon)
             ? "fainted"
