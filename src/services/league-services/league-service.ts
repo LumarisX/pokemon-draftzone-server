@@ -103,6 +103,7 @@ export async function getTournamentsByOwner(auth0Id: string) {
         matchups,
         division.stages,
         userTeam,
+        division.tournament.forfeit,
       );
 
       if (coach && !tournamentMap.has(division.tournament._id.toString())) {

@@ -1,5 +1,8 @@
 import { Types } from "mongoose";
-import { calculateDivisionCoachStandings } from "./standings-service";
+import {
+  calculateDivisionCoachStandings,
+  calculateTeamScore,
+} from "./standings-service";
 
 describe("calculateDivisionCoachStandings", () => {
   it("marks both teams as losses for double forfeits", async () => {
@@ -78,5 +81,65 @@ describe("calculateDivisionCoachStandings", () => {
 
     expect(teamOneStanding?.results[0]).toEqual({ outcome: "ff", score: -6 });
     expect(teamTwoStanding?.results[0]).toEqual({ outcome: "ff", score: -6 });
+  });
+});
+
+describe("calculateTeamScore", () => {
+  it("marks a team as a loss for double forfeits", async () => {
+    const stageId = new Types.ObjectId();
+    const team1Id = new Types.ObjectId();
+    const team2Id = new Types.ObjectId();
+
+    const team1 = {
+      _id: team1Id,
+      coach: {
+        teamName: "Team One",
+        name: "Coach One",
+        logo: "",
+      },
+    };
+
+    const team2 = {
+      _id: team2Id,
+      coach: {
+        teamName: "Team Two",
+        name: "Coach Two",
+        logo: "",
+      },
+    };
+
+    const matchups = [
+      {
+        side1: {
+          team: team1,
+          score: 0,
+        },
+        side2: {
+          team: team2,
+          score: 0,
+        },
+        stage: { _id: stageId },
+        forfeit: true,
+        winner: "draw",
+        results: [],
+      },
+    ];
+
+    const teamScore = await calculateTeamScore(
+      matchups as any,
+      [{ _id: stageId }] as any,
+      team1 as any,
+      {
+        gameDiff: 1,
+        pokemonDiff: 6,
+      },
+    );
+
+    expect(teamScore.wins).toBe(0);
+    expect(teamScore.losses).toBe(1);
+    expect(teamScore.unplayed).toBe(0);
+    expect(teamScore.pokemonDiff).toBe(-6);
+    expect(teamScore.gameDiff).toBe(-1);
+    expect(teamScore.results[0]).toEqual({ outcome: "ff", score: -6 });
   });
 });

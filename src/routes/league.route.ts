@@ -1319,6 +1319,7 @@ export const LeagueRoute = createRoute()((r) => {
                   teamMatchups,
                   ctx.division.stages,
                   ctx.team,
+                  ctx.tournament.forfeit,
                 );
 
                 return {

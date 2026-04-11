@@ -150,6 +150,22 @@ type CoachStanding = {
   teamId: string;
 };
 
+type ForfeitConfig = {
+  gameDiff: number;
+  pokemonDiff: number;
+};
+
+type TeamSide = "side1" | "side2";
+
+type ResolvedMatchupResult = {
+  wins: number;
+  losses: number;
+  unplayed: number;
+  outcome: "w" | "l" | "t" | "ff";
+  stageDiff: number;
+  pokemonDiff: number;
+};
+
 export type TeamScore = {
   teamId: string;
   wins: number;
@@ -241,6 +257,74 @@ function applyMatchupDiffs(
   standing.pokemonDiff += pokemonDiff;
 }
 
+function resolveTeamMatchupResult({
+  winner,
+  forfeit,
+  teamSide,
+  stageDiff,
+  pokemonDiff,
+  forfeitConfig,
+}: {
+  winner: LeagueMatchupDocument["winner"];
+  forfeit?: boolean;
+  teamSide: TeamSide;
+  stageDiff: number;
+  pokemonDiff: number;
+  forfeitConfig?: ForfeitConfig;
+}): ResolvedMatchupResult {
+  const opponentSide: TeamSide = teamSide === "side1" ? "side2" : "side1";
+
+  if (forfeit === true) {
+    const didWin = winner === teamSide;
+    const didLose = winner === opponentSide || winner === "draw";
+    const gameDiff = forfeitConfig?.gameDiff ?? 0;
+    const forfeitPokemonDiff = forfeitConfig?.pokemonDiff ?? 0;
+
+    return {
+      wins: didWin ? 1 : 0,
+      losses: didLose ? 1 : 0,
+      unplayed: didWin || didLose ? 0 : 1,
+      outcome: didWin ? "w" : didLose ? "ff" : "t",
+      stageDiff: didWin ? gameDiff : didLose ? -gameDiff : 0,
+      pokemonDiff: didWin
+        ? forfeitPokemonDiff
+        : didLose
+          ? -forfeitPokemonDiff
+          : 0,
+    };
+  }
+
+  const didWin = winner === teamSide;
+  const didLose = winner === opponentSide;
+
+  return {
+    wins: didWin ? 1 : 0,
+    losses: didLose ? 1 : 0,
+    unplayed: didWin || didLose ? 0 : 1,
+    outcome: didWin ? "w" : didLose ? "l" : "t",
+    stageDiff,
+    pokemonDiff,
+  };
+}
+
+function applyResolvedMatchupResult(
+  standing: CoachStanding,
+  stageIndex: number,
+  diffMode: "game" | "pokemon",
+  result: ResolvedMatchupResult,
+) {
+  standing.wins += result.wins;
+  standing.losses += result.losses;
+  applyMatchupDiffs(
+    standing,
+    stageIndex,
+    result.stageDiff,
+    result.pokemonDiff,
+    diffMode,
+    result.outcome,
+  );
+}
+
 function calculateStreak(
   results: ({
     score: number;
@@ -285,75 +369,24 @@ export async function calculateDivisionCoachStandings(
   for (const matchup of matchups) {
     const team1Doc = matchup.side1.team;
     const team2Doc = matchup.side2.team;
-    const team1Data = {
-      score: matchup.side1.score ?? 0,
-      standing: getOrCreateCoachStanding(
-        coachStandingsMap,
-        team1Doc,
-        division.stages.length,
-      ),
-    };
-
+    const team1Standing = getOrCreateCoachStanding(
+      coachStandingsMap,
+      team1Doc,
+      division.stages.length,
+    );
     const stageIndex = division.stages.findIndex((s) =>
       s._id.equals(matchup.stage._id),
     );
-    const team2Data = {
-      score: matchup.side2.score ?? 0,
-      standing: getOrCreateCoachStanding(
-        coachStandingsMap,
-        team2Doc,
-        division.stages.length,
-      ),
-    };
+    const team2Standing = getOrCreateCoachStanding(
+      coachStandingsMap,
+      team2Doc,
+      division.stages.length,
+    );
 
-    if (matchup.forfeit) {
-      if (matchup.winner === "side1") {
-        team1Data.standing.wins += 1;
-        applyMatchupDiffs(
-          team1Data.standing,
-          stageIndex,
-          tournament.forfeit.gameDiff,
-          tournament.forfeit.pokemonDiff,
-          diffMode,
-          "w",
-        );
-      } else if (matchup.winner === "side2") {
-        team2Data.standing.wins += 1;
-        applyMatchupDiffs(
-          team2Data.standing,
-          stageIndex,
-          tournament.forfeit.gameDiff,
-          tournament.forfeit.pokemonDiff,
-          diffMode,
-          "w",
-        );
-      }
-      if (matchup.winner === "side1" || matchup.winner === "draw") {
-        team2Data.standing.losses += 1;
-        applyMatchupDiffs(
-          team2Data.standing,
-          stageIndex,
-          -tournament.forfeit.gameDiff,
-          -tournament.forfeit.pokemonDiff,
-          diffMode,
-          "ff",
-        );
-      }
-      if (matchup.winner === "side2" || matchup.winner === "draw") {
-        team1Data.standing.losses += 1;
-        applyMatchupDiffs(
-          team1Data.standing,
-          stageIndex,
-          -tournament.forfeit.gameDiff,
-          -tournament.forfeit.pokemonDiff,
-          diffMode,
-          "ff",
-        );
-      }
-      continue;
-    }
+    const team1Score = matchup.side1.score ?? 0;
+    const team2Score = matchup.side2.score ?? 0;
 
-    const team1StageDiff = team1Data.score - team2Data.score;
+    const team1StageDiff = team1Score - team2Score;
     const team1PokemonDiff = matchup.results.reduce(
       (sum, result) =>
         sum +
@@ -363,7 +396,7 @@ export async function calculateDivisionCoachStandings(
       0,
     );
 
-    const team2StageDiff = team2Data.score - team1Data.score;
+    const team2StageDiff = team2Score - team1Score;
     const team2PokemonDiff = matchup.results.reduce(
       (sum, result) =>
         sum +
@@ -373,42 +406,34 @@ export async function calculateDivisionCoachStandings(
       0,
     );
 
-    if (matchup.winner === "side1") {
-      team1Data.standing.wins += 1;
-      team2Data.standing.losses += 1;
-    } else if (matchup.winner === "side2") {
-      team1Data.standing.losses += 1;
-      team2Data.standing.wins += 1;
-    }
-
-    applyMatchupDiffs(
-      team2Data.standing,
+    const team1Result = resolveTeamMatchupResult({
+      winner: matchup.winner,
+      forfeit: matchup.forfeit,
+      teamSide: "side1",
+      stageDiff: team1StageDiff,
+      pokemonDiff: team1PokemonDiff,
+      forfeitConfig: tournament.forfeit,
+    });
+    applyResolvedMatchupResult(
+      team1Standing,
       stageIndex,
-      team2StageDiff,
-      team2PokemonDiff,
       diffMode,
-      matchup.winner === "side2"
-        ? "w"
-        : matchup.winner === "side1"
-          ? matchup.forfeit
-            ? "ff"
-            : "l"
-          : "t",
+      team1Result,
     );
 
-    applyMatchupDiffs(
-      team1Data.standing,
+    const team2Result = resolveTeamMatchupResult({
+      winner: matchup.winner,
+      forfeit: matchup.forfeit,
+      teamSide: "side2",
+      stageDiff: team2StageDiff,
+      pokemonDiff: team2PokemonDiff,
+      forfeitConfig: tournament.forfeit,
+    });
+    applyResolvedMatchupResult(
+      team2Standing,
       stageIndex,
-      team1StageDiff,
-      team1PokemonDiff,
       diffMode,
-      matchup.winner === "side1"
-        ? "w"
-        : matchup.winner === "side2"
-          ? matchup.forfeit
-            ? "ff"
-            : "l"
-          : "t",
+      team2Result,
     );
   }
 
@@ -447,6 +472,7 @@ export async function calculateTeamScore(
   })[],
   stages: LeagueStageDocument[],
   team: LeagueTeamDocument,
+  forfeitConfig?: ForfeitConfig,
 ): Promise<TeamScore> {
   const teamStanding = createCoachStanding(team, stages.length);
   const teamId = team._id.toString();
@@ -472,28 +498,17 @@ export async function calculateTeamScore(
     );
     const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
 
-    if (matchup.winner === teamSide) {
-      teamStanding.wins += 1;
-    } else if (matchup.winner === opponentSide) {
-      teamStanding.losses += 1;
-    } else {
-      unplayed += 1;
-    }
+    const result = resolveTeamMatchupResult({
+      winner: matchup.winner,
+      forfeit: matchup.forfeit,
+      teamSide,
+      stageDiff: teamScore - opponentScore,
+      pokemonDiff: opponentPokemonFainted - teamPokemonFainted,
+      forfeitConfig,
+    });
 
-    applyMatchupDiffs(
-      teamStanding,
-      stageIndex,
-      teamScore - opponentScore,
-      opponentPokemonFainted - teamPokemonFainted,
-      diffMode,
-      matchup.winner === teamSide
-        ? "w"
-        : matchup.winner === opponentSide
-          ? matchup.forfeit
-            ? "ff"
-            : "l"
-          : "t",
-    );
+    applyResolvedMatchupResult(teamStanding, stageIndex, diffMode, result);
+    unplayed += result.unplayed;
   }
 
   return {
