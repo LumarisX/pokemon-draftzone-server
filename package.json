@@ -3,7 +3,7 @@
   "version": "1.0.2",
   "private": true,
   "scripts": {
-    "build": "npx tsc",
+    "build": "./node_modules/.bin/tsc",
     "build:server": "node --max-old-space-size=4096 ./node_modules/.bin/tsc",
     "typecheck": "tsc --noEmit",
     "start": "ts-node src/index.ts",
