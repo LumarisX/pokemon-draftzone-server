@@ -44,18 +44,20 @@ agenda.define("skip-draft-pick", async (job: Job) => {
     divisionId: string;
     retryCount?: number;
   };
-  const tournament = await LeagueTournamentModel.findById(
+  const tournament = (await LeagueTournamentModel.findById(
     tournamentId,
   ).populate<{ tierList: LeagueTierListDocument }>({
     path: "tierList",
-  });
+  })) as
+    | (LeagueTournamentDocument & { tierList: LeagueTierListDocument })
+    | null;
   if (!tournament) {
     logger.error(
       `Tournament not found for skip-draft-pick job: ${tournamentId}`,
     );
     return;
   }
-  const division = await LeagueDivisionModel.findById(divisionId).populate<{
+  const division = (await LeagueDivisionModel.findById(divisionId).populate<{
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
   }>([
     {
@@ -64,7 +66,11 @@ agenda.define("skip-draft-pick", async (job: Job) => {
         path: "coach",
       },
     },
-  ]);
+  ])) as
+    | (LeagueDivisionDocument & {
+        teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+      })
+    | null;
   if (!division) {
     logger.error(`Division not found for skip-draft-pick job: ${divisionId}`);
     return;
@@ -124,14 +130,18 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     console.error(`League not found: ${tournamentId}`);
     return;
   }
-  const division = await LeagueDivisionModel.findById(divisionId).populate<{
+  const division = (await LeagueDivisionModel.findById(divisionId).populate<{
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
   }>({
     path: "teams",
     populate: {
       path: "coach",
     },
-  });
+  })) as
+    | (LeagueDivisionDocument & {
+        teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+      })
+    | null;
   if (!division) {
     console.error(
       `Division not found: ${divisionId} in league ${tournamentId}`,

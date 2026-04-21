@@ -202,9 +202,18 @@ export class LeagueAd {
     const cleanMarkdown = (value: unknown) => {
       if (typeof value !== "string") return "";
       return value
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-        .replace(/on\w+\s*=/gi, "")
-        .replace(/javascript:/gi, "");
+        .replace(/<[^>]*>/g, "")
+        .replace(/(javascript|data|vbscript):/gi, "");
+    };
+    const cleanUrl = (value: unknown): string | undefined => {
+      if (typeof value !== "string" || !value.length) return undefined;
+      try {
+        const url = new URL(value);
+        if (url.protocol === "https:" || url.protocol === "http:") return value;
+      } catch {
+        // not a valid URL
+      }
+      return undefined;
     };
 
     return new LeagueAd({
@@ -213,10 +222,7 @@ export class LeagueAd {
       leagueDoc: formData.leagueDoc
         ? cleanString(formData.leagueDoc)
         : undefined,
-      serverLink:
-        typeof formData.serverLink === "string" && formData.serverLink.length
-          ? formData.serverLink
-          : undefined,
+      serverLink: cleanUrl(formData.serverLink),
       owner: owner,
       skillLevelRange: formData.skillLevelRange,
       prizeValue: formData.prizeValue,

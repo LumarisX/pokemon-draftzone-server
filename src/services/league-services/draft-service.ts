@@ -1023,7 +1023,9 @@ export async function increaseCounter(
           t._id.equals(fullTeam._id),
         );
         if (teamIndex !== -1) {
-          division.teams[teamIndex] = fullTeam;
+          division.teams[teamIndex] = fullTeam as LeagueTeamDocument & {
+            coach: LeagueCoachDocument;
+          };
         }
       }
       division.draftCounter++;
@@ -1238,7 +1240,9 @@ export async function skipCurrentPick(
       t._id.equals(fullTeam._id),
     );
     if (teamIndex !== -1) {
-      division.teams[teamIndex] = fullTeam;
+      division.teams[teamIndex] = fullTeam as LeagueTeamDocument & {
+        coach: LeagueCoachDocument;
+      };
     }
   }
 

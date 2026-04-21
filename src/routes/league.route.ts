@@ -806,9 +806,11 @@ export const LeagueRoute = createRoute()((r) => {
                 },
               ]);
 
-              const tournament = await ctx.tournament.populate<{
+              const tournament = (await ctx.tournament.populate<{
                 tierList: LeagueTierListDocument;
-              }>("tierList");
+              }>("tierList")) as LeagueTournamentDocument & {
+                tierList: LeagueTierListDocument;
+              };
 
               const allMatchups = await LeagueMatchupModel.find({
                 division: ctx.division._id,
@@ -876,12 +878,18 @@ export const LeagueRoute = createRoute()((r) => {
                 throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
                   teamId: team_id,
                 });
-              return { team };
+              return {
+                team: team as LeagueTeamDocument & {
+                  coach: LeagueCoachDocument;
+                },
+              };
             })((r) => {
               r.get(async (ctx) => {
-                const tournament = await ctx.tournament.populate<{
+                const tournament = (await ctx.tournament.populate<{
                   tierList: LeagueTierListDocument;
-                }>("tierList");
+                }>("tierList")) as LeagueTournamentDocument & {
+                  tierList: LeagueTierListDocument;
+                };
 
                 const draft: {
                   id: string;
@@ -1168,7 +1176,7 @@ export const LeagueRoute = createRoute()((r) => {
                 },
               ]);
 
-              const division = await ctx.division.populate<{
+              const division = (await ctx.division.populate<{
                 teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
                 tournament: LeagueTournamentDocument;
               }>([
@@ -1178,7 +1186,9 @@ export const LeagueRoute = createRoute()((r) => {
                     path: "coach",
                   },
                 },
-              ]);
+              ])) as LeagueDivisionDocument & {
+                teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
+              };
 
               const { coachStandings, diffMode } =
                 await calculateDivisionCoachStandings(
