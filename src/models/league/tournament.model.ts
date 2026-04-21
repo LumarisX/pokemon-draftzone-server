@@ -13,6 +13,7 @@ import {
 } from ".";
 import { LeagueDocument } from "./league.model";
 import { LeagueTierListDocument } from "./tier-list.model";
+import { LeagueTeamDocument } from "./team.model";
 
 export type LeagueRule = {
   title: string;
@@ -22,6 +23,12 @@ export type LeagueRule = {
 export type LeagueTournamentForfeit = {
   gameDiff: number;
   pokemonDiff: number;
+};
+
+export type LeaguePlayoffs = {
+  format: string;
+  teams: (Types.ObjectId | LeagueTeamDocument)[];
+  matches: BracketMatch[];
 };
 
 export type LeagueTournament = {
@@ -44,6 +51,21 @@ export type LeagueTournament = {
   league: Types.ObjectId | LeagueDocument;
   forfeit: LeagueTournamentForfeit;
   diffMode: "pokemon" | "game";
+  playoffs: LeaguePlayoffs;
+};
+
+type BracketSeedSlot = { type: "seed"; seed: number };
+type BracketWinnerSlot = { type: "winner"; from: string };
+type BracketSlot = BracketSeedSlot | BracketWinnerSlot;
+
+type BracketMatch = {
+  id: string;
+  round: number;
+  position: number;
+  a: BracketSlot;
+  b: BracketSlot;
+  winner?: 0 | 1;
+  replay?: string;
 };
 
 export type LeagueTournamentDocument = HydratedDocument<LeagueTournament>;
@@ -80,6 +102,37 @@ const LeagueRuleSchema: Schema<LeagueRule> = new Schema(
   {
     title: { type: String, required: true },
     body: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+const BracketSlotSchema = new Schema<BracketSlot>(
+  {
+    type: { type: String, enum: ["seed", "winner"], required: true },
+    seed: { type: Number },
+    from: { type: String },
+  },
+  { _id: false },
+);
+
+const BracketMatchSchema = new Schema<BracketMatch>(
+  {
+    id: { type: String, required: true },
+    round: { type: Number, required: true },
+    position: { type: Number, required: true },
+    a: { type: BracketSlotSchema, required: true },
+    b: { type: BracketSlotSchema, required: true },
+    winner: { type: Number, enum: [0, 1] },
+    replay: { type: String },
+  },
+  { _id: false },
+);
+
+const LeaguePlayoffsSchema = new Schema<LeaguePlayoffs>(
+  {
+    format: { type: String, required: true },
+    teams: [{ type: Schema.Types.ObjectId, ref: "LeagueTeam" }],
+    matches: [BracketMatchSchema],
   },
   { _id: false },
 );
@@ -122,6 +175,10 @@ const LeagueTournamentSchema: Schema<
     diffMode: {
       type: String,
       enum: ["pokemon", "game"],
+      required: true,
+    },
+    playoffs: {
+      type: LeaguePlayoffsSchema,
       required: true,
     },
   },
