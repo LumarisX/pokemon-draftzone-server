@@ -3,7 +3,9 @@ import z from "zod";
 import { Matchup, type PopulatedLeagueMatchup } from "../classes/matchup";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
+import LeagueDivisionModel from "../models/league/division.model";
 import { LeagueMatchupModel } from "../models/league/matchup.model";
+import LeagueTournamentModel from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
   deleteMatchup,
@@ -54,7 +56,32 @@ export const MatchupRoute = createRoute()((r) => {
         ]);
 
         if (!leagueMatchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
-        matchup = Matchup.fromLeagueMatchup(leagueMatchup);
+
+        if (!leagueMatchup.division) {
+          // Bracket matchup: no division on the document — resolve tournament + per-team divisions
+          const tournament = await LeagueTournamentModel.findOne({
+            "stages.rounds._id": leagueMatchup.round,
+          });
+          if (!tournament) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+          const [side1Division, side2Division] = await Promise.all([
+            LeagueDivisionModel.findOne({
+              teams: leagueMatchup.side1.team._id,
+              tournament: tournament._id,
+            }),
+            LeagueDivisionModel.findOne({
+              teams: leagueMatchup.side2.team._id,
+              tournament: tournament._id,
+            }),
+          ]);
+          matchup = Matchup.fromLeagueBracketMatchup(
+            leagueMatchup as any,
+            tournament,
+            side1Division,
+            side2Division,
+          );
+        } else {
+          matchup = Matchup.fromLeagueMatchup(leagueMatchup);
+        }
       }
 
       return { rawMatchup, matchup, matchup_id };

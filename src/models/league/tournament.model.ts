@@ -25,6 +25,19 @@ export type LeagueTournamentForfeit = {
   pokemonDiff: number;
 };
 
+export type TournamentRound = {
+  _id: Types.ObjectId;
+  name: string;
+  matchDeadline?: Date;
+};
+
+export type TournamentStage = {
+  _id: Types.ObjectId;
+  name: string;
+  type: "round-robin" | "single-elimination" | "double-elimination" | "custom";
+  rounds: TournamentRound[];
+};
+
 export type LeaguePlayoffs = {
   format: string;
   teams: (Types.ObjectId | LeagueTeamDocument)[];
@@ -52,6 +65,7 @@ export type LeagueTournament = {
   forfeit: LeagueTournamentForfeit;
   diffMode: "pokemon" | "game";
   playoffs: LeaguePlayoffs;
+  stages: TournamentStage[];
 };
 
 type BracketSeedSlot = { type: "seed"; seed: number };
@@ -89,6 +103,21 @@ type LeagueTournamentModel = Model<
 > & {
   findByKeyOrThrow(key: string): Promise<LeagueTournamentDocument>;
 };
+
+const TournamentRoundSchema = new Schema<TournamentRound>({
+  name: { type: String, required: true },
+  matchDeadline: { type: Date },
+});
+
+const TournamentStageSchema = new Schema<TournamentStage>({
+  name: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ["round-robin", "single-elimination", "double-elimination", "custom"],
+    required: true,
+  },
+  rounds: [TournamentRoundSchema],
+});
 
 const LeagueTournamentForfeitSchema = new Schema<LeagueTournamentForfeit>(
   {
@@ -181,6 +210,7 @@ const LeagueTournamentSchema: Schema<
       type: LeaguePlayoffsSchema,
       required: true,
     },
+    stages: [TournamentStageSchema],
   },
   { timestamps: true },
 );

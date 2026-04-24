@@ -287,45 +287,115 @@ export const LeagueRoute = createRoute()((r) => {
     })((r) => {
       r.path("bracket")((r) => {
         r.get(async (ctx) => {
-          const tournament = await ctx.tournament.populate<{
-            playoffs: {
-              format: string;
-              teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
-              matches: any[];
-            };
-          }>({
-            path: "playoffs.teams",
-            populate: {
-              path: "coach",
-            },
-          });
+          const playoffsStage = ctx.tournament.stages?.find(
+            (s) => s.name === "Playoffs",
+          );
 
-          const teamIds = tournament.playoffs.teams.map((t) => t._id);
+          if (!playoffsStage) {
+            return { format: null, teams: [], rounds: [], matches: [] };
+          }
+
+          const roundIds = playoffsStage.rounds.map((r) => r._id);
+          const bracketMatchups = await LeagueMatchupModel.find({
+            round: { $in: roundIds },
+          }).lean();
+
+          // Load teams from playoffs.teams (array index + 1 = seed)
+          const teamObjIds = (
+            ctx.tournament.playoffs.teams as unknown as Types.ObjectId[]
+          ).map((t) => new Types.ObjectId(t.toString()));
+
+          const teamDocs = await LeagueTeamModel.find({
+            _id: { $in: teamObjIds },
+          }).populate<{ coach: LeagueCoachDocument }>("coach");
+
+          // Collect unique division IDs from matchups + team membership
+          const matchupDivisionIds = [
+            ...new Set(
+              bracketMatchups
+                .filter((m) => m.division)
+                .map((m) => m.division.toString()),
+            ),
+          ];
+
           const divisions = await LeagueDivisionModel.find({
-            tournament: ctx.tournament._id,
-            teams: { $in: teamIds },
+            $or: [
+              { tournament: ctx.tournament._id, teams: { $in: teamObjIds } },
+              { _id: { $in: matchupDivisionIds } },
+            ],
           });
 
           const teamToDivision = new Map<string, string>();
+          const divisionIdToKey = new Map<string, string>();
           divisions.forEach((div) => {
+            divisionIdToKey.set(div._id.toString(), div.divisionKey);
             div.teams.forEach((teamId) => {
               teamToDivision.set(teamId.toString(), div.divisionKey);
             });
           });
 
-          const teams = tournament.playoffs.teams.map((team, index) => ({
-            teamName: team.coach.teamName,
-            coachName: team.coach.name,
-            seed: index + 1,
-            logo: team.coach.logo,
-            divisionKey: teamToDivision.get(team._id.toString()),
-            teamId: team._id.toString(),
+          const teamsArray = teamObjIds
+            .map((teamId, idx) => {
+              const teamDoc = teamDocs.find(
+                (t) => t._id.toString() === teamId.toString(),
+              );
+              if (!teamDoc) return null;
+              return {
+                seed: idx + 1,
+                teamName: teamDoc.coach.teamName,
+                coachName: teamDoc.coach.name,
+                logo: teamDoc.coach.logo,
+                divisionKey: teamToDivision.get(teamDoc._id.toString()),
+                teamId: teamDoc._id.toString(),
+              };
+            })
+            .filter((t): t is NonNullable<typeof t> => t !== null);
+
+          const roundIdToName = new Map(
+            playoffsStage.rounds.map((r) => [r._id.toString(), r.name]),
+          );
+
+          const matches = bracketMatchups.map((m) => ({
+            _id: m._id.toString(),
+            round: m.round?.toString() ?? null,
+            roundName: m.round
+              ? (roundIdToName.get(m.round.toString()) ?? null)
+              : null,
+            a: m.side1.slot
+              ? {
+                  type: m.side1.slot.type,
+                  ...(m.side1.slot.type === "seed"
+                    ? { seed: m.side1.slot.seed }
+                    : { from: (m.side1.slot as any).matchId }),
+                }
+              : null,
+            b: m.side2.slot
+              ? {
+                  type: m.side2.slot.type,
+                  ...(m.side2.slot.type === "seed"
+                    ? { seed: m.side2.slot.seed }
+                    : { from: (m.side2.slot as any).matchId }),
+                }
+              : null,
+            winner:
+              m.winner === "side1" ? 0 : m.winner === "side2" ? 1 : undefined,
+            replay: m.results?.[0]?.replay,
+            divisionKey: m.division
+              ? (divisionIdToKey.get(m.division.toString()) ?? null)
+              : null,
+          }));
+
+          const rounds = playoffsStage.rounds.map((r) => ({
+            _id: r._id.toString(),
+            name: r.name,
+            matchDeadline: r.matchDeadline ?? null,
           }));
 
           return {
-            format: tournament.playoffs.format,
-            teams,
-            matches: tournament.playoffs.matches,
+            format: playoffsStage.type,
+            teams: teamsArray,
+            rounds,
+            matches,
           };
         });
       });
@@ -1066,7 +1136,7 @@ export const LeagueRoute = createRoute()((r) => {
 
               const matchupsByStage = new Map<string, typeof allMatchups>();
               for (const matchup of allMatchups) {
-                const stageKey = matchup.stage.toString();
+                const stageKey = matchup.round!.toString();
                 const bucket = matchupsByStage.get(stageKey);
                 if (bucket) {
                   bucket.push(matchup);
@@ -1567,7 +1637,7 @@ export const LeagueRoute = createRoute()((r) => {
 
                 const matchupsByStage = new Map<string, typeof matchups>();
                 for (const matchup of matchups) {
-                  const stageKey = matchup.stage.toString();
+                  const stageKey = matchup.round!.toString();
                   const bucket = matchupsByStage.get(stageKey);
                   if (bucket) {
                     bucket.push(matchup);

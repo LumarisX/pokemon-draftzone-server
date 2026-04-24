@@ -106,9 +106,12 @@ export class Matchup {
   ): Matchup {
     const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
     let notes: string | undefined = undefined;
-    const stageIndex = leagueMatchupDoc.division.stages.findIndex(
-      (stage) => stage._id.toString() === leagueMatchupDoc.stage._id.toString(),
-    );
+    const stageIndex = leagueMatchupDoc.round
+      ? leagueMatchupDoc.division.stages.findIndex(
+          (stage) =>
+            stage._id.toString() === leagueMatchupDoc.round._id.toString(),
+        )
+      : -1;
     return new Matchup(
       {
         teamName: leagueMatchupDoc.side1.team.coach.teamName,
@@ -160,9 +163,74 @@ export class Matchup {
       getFormat(leagueMatchupDoc.division.tournament.format),
       leagueMatchupDoc.division.tournament.name,
       leagueMatchupDoc.division.tournament._id.toString(),
-      leagueMatchupDoc.division.stages[stageIndex].name ?? "",
+      leagueMatchupDoc.division.stages[stageIndex]?.name ?? "",
       [],
       notes,
+    );
+  }
+
+  static fromLeagueBracketMatchup(
+    leagueMatchupDoc: Omit<PopulatedLeagueMatchup, "division"> & {
+      division: null;
+    },
+    tournament: LeagueTournamentDocument,
+    side1Division: LeagueDivisionDocument | null,
+    side2Division: LeagueDivisionDocument | null,
+  ): Matchup {
+    const ruleset = getRuleset(tournament.ruleset);
+    // Find the playoff stage name from the tournament's stages
+    const stageName =
+      tournament.stages.find((s) =>
+        s.rounds.some(
+          (r) => r._id.toString() === leagueMatchupDoc.round.toString(),
+        ),
+      )?.name ?? "Playoffs";
+    return new Matchup(
+      {
+        teamName: leagueMatchupDoc.side1.team.coach.teamName,
+        coach: leagueMatchupDoc.side1.team.coach.name,
+        team: side1Division
+          ? getRosterByStage(leagueMatchupDoc.side1.team, side1Division).map(
+              (pokemon) =>
+                new DraftSpecie(
+                  {
+                    id: pokemon.id as ID,
+                    capt: pokemon.addons?.includes("Tera Captain")
+                      ? { tera: [] }
+                      : undefined,
+                  },
+                  ruleset,
+                ),
+            )
+          : [],
+        owner: leagueMatchupDoc.side1.team.coach.auth0Id,
+      },
+      {
+        teamName: leagueMatchupDoc.side2.team.coach.teamName,
+        coach: leagueMatchupDoc.side2.team.coach.name,
+        team: side2Division
+          ? getRosterByStage(leagueMatchupDoc.side2.team, side2Division).map(
+              (pokemon) =>
+                new DraftSpecie(
+                  {
+                    id: pokemon.id as ID,
+                    capt: pokemon.addons?.includes("Tera Captain")
+                      ? { tera: [] }
+                      : undefined,
+                  },
+                  ruleset,
+                ),
+            )
+          : [],
+        owner: leagueMatchupDoc.side2.team.coach.auth0Id,
+      },
+      ruleset,
+      getFormat(tournament.format),
+      tournament.name,
+      tournament._id.toString(),
+      stageName,
+      [],
+      undefined,
     );
   }
 

@@ -375,7 +375,7 @@ export async function calculateDivisionCoachStandings(
       division.stages.length,
     );
     const stageIndex = division.stages.findIndex((s) =>
-      s._id.equals(matchup.stage._id),
+      s._id.equals(matchup.round._id),
     );
     const team2Standing = getOrCreateCoachStanding(
       coachStandingsMap,
@@ -496,7 +496,7 @@ export async function calculateTeamScore(
       matchup,
       opponentSide,
     );
-    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.stage._id));
+    const stageIndex = stages.findIndex((s) => s._id.equals(matchup.round._id));
 
     const result = resolveTeamMatchupResult({
       winner: matchup.winner,

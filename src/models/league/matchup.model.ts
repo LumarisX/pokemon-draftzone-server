@@ -43,14 +43,23 @@ export type MatchResult = {
   side2: MatchTeam;
 };
 
+type MatchSideSlotSeed = { type: "seed"; seed: number };
+type MatchSideSlotWinner = { type: "winner"; matchId: string };
+type MatchSideSlotLoser = { type: "loser"; matchId: string };
+export type MatchSideSlot =
+  | MatchSideSlotSeed
+  | MatchSideSlotWinner
+  | MatchSideSlotLoser;
+
 export type MatchSide = {
-  team: Types.ObjectId;
+  team?: Types.ObjectId;
+  slot?: MatchSideSlot;
   notes?: string;
   score?: number;
 };
 
 export type LeagueMatchupData = {
-  stage: Types.ObjectId;
+  round: Types.ObjectId;
   division: LeagueDivisionDocument | Types.ObjectId;
   side1: MatchSide;
   side2: MatchSide;
@@ -104,13 +113,26 @@ const pokemonStatsSchema = new Schema<PokemonStats>(
   { _id: false },
 );
 
+const matchSideSlotSchema = new Schema<MatchSideSlot>(
+  {
+    type: {
+      type: String,
+      enum: ["seed", "winner", "loser"],
+      required: true,
+    },
+    seed: { type: Number },
+    matchId: { type: String },
+  },
+  { _id: false },
+);
+
 export const leagueMatchupSideSchema = new Schema<MatchSide>(
   {
     team: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TEAM_COLLECTION,
-      required: true,
     },
+    slot: { type: matchSideSlotSchema },
     notes: { type: String, trim: true },
     score: { type: Number, min: 0 },
   },
@@ -125,14 +147,12 @@ export const leagueMatchupSchema: Schema<
   MatchupVirtuals
 > = new Schema(
   {
-    stage: {
+    round: {
       type: Schema.Types.ObjectId,
-      required: true,
     },
     division: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_DIVISION_COLLECTION,
-      required: true,
     },
     side1: {
       type: leagueMatchupSideSchema,
