@@ -76,6 +76,7 @@ export async function getTierList(
         name: string;
         notes?: string;
         addons?: TierListPokemonAddon[];
+        draftBanned?: boolean;
         banned?: {
           moves?: string[];
           abilities?: string[];
@@ -93,7 +94,7 @@ export async function getTierList(
               assignedPokemon.add(pokemonId);
 
               const learnableMoves = await Promise.all(
-                tierList.bannedMoves.map(async (move) => ({
+                tierList.banned.moves.map(async (move) => ({
                   move,
                   canLearn: await specie.canLearn(move),
                 })),
@@ -102,7 +103,7 @@ export async function getTierList(
               const bannedMoves = learnableMoves
                 .filter(({ canLearn }) => canLearn)
                 .map(({ move }) => move);
-              const bannedAbilities = tierList.bannedAbilities.filter(
+              const bannedAbilities = tierList.banned.abilities.filter(
                 (ability) => Object.values(specie.abilities).includes(ability),
               );
 
@@ -114,6 +115,7 @@ export async function getTierList(
                 bst: specie.bst,
                 stats: specie.baseStats,
                 notes: pokemonData.notes,
+                ...(pokemonData.banned && { draftBanned: true }),
                 ...(pokemonData.addons?.length && {
                   addons: pokemonData.addons,
                 }),
@@ -141,10 +143,14 @@ export async function getTierList(
         name: UNTIERED_TIER_NAME,
         pokemon: Array.from(ruleset.species)
           .filter((specie) => !assignedPokemon.has(specie.id))
-          .map((specie) => ({
-            id: specie.id,
-            name: specie.name,
-          })),
+          .map((specie) => {
+            const pokemonData = tierList.pokemon.get(specie.id);
+            return {
+              id: specie.id,
+              name: specie.name,
+              ...(pokemonData?.banned && { draftBanned: true }),
+            };
+          }),
       });
     }
     return tiers;
@@ -233,7 +239,7 @@ export async function updateTierList(
   clientTiers: {
     name: string;
     cost: number;
-    pokemon: { id: string; name: string }[];
+    pokemon: { id: string; name: string; banned?: boolean }[];
   }[],
 ) {
   const tierList = await tierListModel.findById(tournament.tierList);
@@ -258,11 +264,35 @@ export async function updateTierList(
       pokemonMap.set(pokemon.id, {
         name: pokemon.name,
         tier: tier.name,
+        ...(pokemon.banned !== undefined && { banned: pokemon.banned }),
         ...(existingData?.notes !== undefined && { notes: existingData.notes }),
         ...(existingData?.addons !== undefined && {
           addons: existingData.addons,
         }),
       });
+    }
+  }
+
+  // Persist banned pokemon sent in the untiered section, preserving their original tier.
+  const untieredClientTier = clientTiers.find(
+    (tier) => tier.name.toLowerCase() === UNTIERED_TIER_NAME.toLowerCase(),
+  );
+  if (untieredClientTier) {
+    for (const pokemon of untieredClientTier.pokemon) {
+      if (pokemon.banned) {
+        const existingData = tierList.pokemon.get(pokemon.id);
+        pokemonMap.set(pokemon.id, {
+          name: pokemon.name,
+          tier: existingData?.tier ?? UNTIERED_TIER_NAME,
+          banned: true,
+          ...(existingData?.notes !== undefined && {
+            notes: existingData.notes,
+          }),
+          ...(existingData?.addons !== undefined && {
+            addons: existingData.addons,
+          }),
+        });
+      }
     }
   }
 

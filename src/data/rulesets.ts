@@ -2,6 +2,7 @@ import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
 import * as RRDex from "../mods/radicalred";
 import * as InsDex from "../mods/insurgance";
+import * as ChampionsData from "./champions-data";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Pichu-Spiky-eared",
@@ -43,6 +44,7 @@ type ExistFilter = {
   species?: {
     unobtainable?: string[];
     cosmetic?: string[];
+    allowed?: string[];
   };
 };
 
@@ -73,6 +75,8 @@ function _exists(d: Data, filters: ExistFilter = {}) {
         return false;
       if (filters.species.cosmetic && filters.species.cosmetic.includes(d.name))
         return false;
+      if (filters.species.allowed && !filters.species.allowed.includes(d.id))
+        return false;
     }
   }
 
@@ -92,6 +96,15 @@ function _exists(d: Data, filters: ExistFilter = {}) {
 function ROM_EXISTS(d: Data) {
   return _exists(d, {
     nonstandard: ["CAP", "Custom", "Future"],
+  });
+}
+
+function CHAMPIONS_EXISTS(d: Data) {
+  return _exists(d, {
+    species: {
+      cosmetic: COSMETIC_SPECIES,
+      allowed: ChampionsData.MA.pokemon,
+    },
   });
 }
 
@@ -132,6 +145,7 @@ function DRAFT_EXISTS(d: Data) {
 }
 
 const RULESET_IDS = {
+  CHAMP_MA: "Champions MA",
   ZA_NATDEX: "ZA NatDex",
   GEN9_NATDEX: "Gen9 NatDex",
   PALDEA_DEX: "Paldea Dex",
@@ -160,7 +174,7 @@ export class Ruleset extends Generation {
     dex: ModdedDex,
     exists: (d: Data) => boolean,
     name: RulesetId,
-    options?: { restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea" }
+    options?: { restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea" },
   ) {
     super(dex, exists);
     this.name = name;
@@ -178,6 +192,21 @@ export const Rulesets: {
     };
   };
 } = {
+  Champions: {
+    "M-A": {
+      id: RULESET_IDS.CHAMP_MA,
+      desc: "Only Pokémon allowed in Champions M-A ruleset.",
+      ruleset: new Ruleset(
+        Dex.forGen(9),
+        (d: Data) =>
+          !(
+            !CHAMPIONS_EXISTS(d) ||
+            (d.kind === "Species" && d.forme === "Gmax")
+          ),
+        RULESET_IDS.CHAMP_MA,
+      ),
+    },
+  },
   "Gen 9": {
     "National Dex": {
       id: RULESET_IDS.GEN9_NATDEX,
@@ -186,7 +215,7 @@ export const Rulesets: {
         Dex.forGen(9),
         (d: Data) =>
           !(!NATDEX_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-        RULESET_IDS.GEN9_NATDEX
+        RULESET_IDS.GEN9_NATDEX,
       ),
     },
     "Paldea Dex": {
@@ -198,7 +227,7 @@ export const Rulesets: {
         RULESET_IDS.PALDEA_DEX,
         {
           restriction: "Paldea",
-        }
+        },
       ),
     },
     "ZA National Dex": {
@@ -208,7 +237,7 @@ export const Rulesets: {
         Dex.forGen(9),
         (d: Data) =>
           !(!ZA_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-        RULESET_IDS.ZA_NATDEX
+        RULESET_IDS.ZA_NATDEX,
       ),
     },
   },
@@ -317,7 +346,7 @@ export const Rulesets: {
           Dex.forGen(9),
           (d: Data) =>
             !(!CAP_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-          this.id
+          this.id,
         );
       },
     },
@@ -336,13 +365,13 @@ export function getRuleset(rulesetId: string): Ruleset {
 
 export function getRulesets() {
   return [Rulesets["Gen 9"], Rulesets["Gen 8"], Rulesets["Older Gens"]].flatMap(
-    (rulesetgroup) => Object.values(rulesetgroup).map((ruleset) => ruleset.id)
+    (rulesetgroup) => Object.values(rulesetgroup).map((ruleset) => ruleset.id),
   );
 }
 
 export function getRulesetsGrouped(): [
   string,
-  { name: string; id: string }[]
+  { name: string; id: string }[],
 ][] {
   return Object.entries(Rulesets).map(([groupName, rulesetgroup]) => [
     groupName,

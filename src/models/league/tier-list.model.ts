@@ -13,6 +13,7 @@ export type LeagueTierListPokemon = {
   tier: string;
   notes?: string;
   addons?: TierListPokemonAddon[];
+  banned?: boolean;
 };
 
 export type LeagueTier = {
@@ -32,8 +33,10 @@ export type LeagueTierList = {
   createdBy: Types.ObjectId | LeagueCoachDocument;
   pokemon: Map<string, LeagueTierListPokemon>;
   tiers: LeagueTier[];
-  bannedMoves: string[];
-  bannedAbilities: string[];
+  banned: {
+    moves: string[];
+    abilities: string[];
+  };
   pointTotal: number;
   draftCount: DraftCount;
   format: string;
@@ -75,6 +78,7 @@ export const LeagueTierListPokemonSchema: Schema<LeagueTierListPokemon> =
       tier: { type: String, required: true },
       notes: { type: String },
       addons: [TierListPokemonAddonSchema],
+      banned: { type: Boolean },
     },
     { _id: false },
   );
@@ -106,8 +110,10 @@ const LeagueTierListSchema: Schema<
       default: {},
     },
     tiers: [LeagueTierSchema],
-    bannedMoves: [{ type: String }],
-    bannedAbilities: [{ type: String }],
+    banned: {
+      moves: [{ type: String }],
+      abilities: [{ type: String }],
+    },
     pointTotal: { type: Number },
     draftCount: {
       type: {
