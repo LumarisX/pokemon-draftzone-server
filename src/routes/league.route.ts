@@ -2213,80 +2213,80 @@ export const LeagueRoute = createRoute()((r) => {
                 const transformedMatchups = roundMatchups
                   .filter((matchup) => matchup.side1.team && matchup.side2.team)
                   .map((matchup) => {
-                  const side1Division = teamToDivision.get(
-                    matchup.side1.team._id.toString(),
-                  );
-                  const side2Division = teamToDivision.get(
-                    matchup.side2.team._id.toString(),
-                  );
-                  return {
-                    id: matchup._id.toString(),
-                    team1: {
-                      name: matchup.side1.team.coach.teamName,
-                      coach: matchup.side1.team.coach.name,
-                      score: matchup.side1.score,
-                      logo: matchup.side1.team.coach.logo,
-                      id: matchup.side1.team._id.toString(),
-                      draft: side1Division
-                        ? getRosterByStage(
-                            matchup.side1.team,
-                            side1Division,
-                          ).map((p) => ({
-                            id: p.id,
-                            capt: p.addons?.includes("Tera Captain")
-                              ? { tera: true }
-                              : {},
-                          }))
-                        : [],
-                    },
-                    team2: {
-                      name: matchup.side2.team.coach.teamName,
-                      coach: matchup.side2.team.coach.name,
-                      score: matchup.side2.score,
-                      logo: matchup.side2.team.coach.logo,
-                      id: matchup.side2.team._id.toString(),
-                      draft: side2Division
-                        ? getRosterByStage(
-                            matchup.side2.team,
-                            side2Division,
-                          ).map((p) => ({
-                            id: p.id,
-                            capt: p.addons?.includes("Tera Captain")
-                              ? { tera: true }
-                              : {},
-                          }))
-                        : [],
-                    },
-                    matches: matchup.results.map((result) => ({
-                      link: result.replay,
+                    const side1Division = teamToDivision.get(
+                      matchup.side1.team._id.toString(),
+                    );
+                    const side2Division = teamToDivision.get(
+                      matchup.side2.team._id.toString(),
+                    );
+                    return {
+                      id: matchup._id.toString(),
                       team1: {
-                        team: Object.fromEntries(
-                          result.side1.pokemon.entries(),
-                        ),
-                        score: result.side1.score,
-                        winner: result.winner === "side1",
+                        name: matchup.side1.team.coach.teamName,
+                        coach: matchup.side1.team.coach.name,
+                        score: matchup.side1.score,
+                        logo: matchup.side1.team.coach.logo,
+                        id: matchup.side1.team._id.toString(),
+                        draft: side1Division
+                          ? getRosterByStage(
+                              matchup.side1.team,
+                              side1Division,
+                            ).map((p) => ({
+                              id: p.id,
+                              capt: p.addons?.includes("Tera Captain")
+                                ? { tera: true }
+                                : {},
+                            }))
+                          : [],
                       },
                       team2: {
-                        team: Object.fromEntries(
-                          result.side2.pokemon.entries(),
-                        ),
-                        score: result.side2.score,
-                        winner: result.winner === "side2",
+                        name: matchup.side2.team.coach.teamName,
+                        coach: matchup.side2.team.coach.name,
+                        score: matchup.side2.score,
+                        logo: matchup.side2.team.coach.logo,
+                        id: matchup.side2.team._id.toString(),
+                        draft: side2Division
+                          ? getRosterByStage(
+                              matchup.side2.team,
+                              side2Division,
+                            ).map((p) => ({
+                              id: p.id,
+                              capt: p.addons?.includes("Tera Captain")
+                                ? { tera: true }
+                                : {},
+                            }))
+                          : [],
                       },
-                    })),
-                    score: {
-                      team1: matchup.side1.score,
-                      team2: matchup.side2.score,
-                    },
-                    winner: matchup.forfeit
-                      ? matchup.winner === "side1"
-                        ? "side1ffw"
-                        : matchup.winner === "side2"
-                          ? "side2ffw"
-                          : "dffl"
-                      : matchup.winner,
-                  };
-                });
+                      matches: matchup.results.map((result) => ({
+                        link: result.replay,
+                        team1: {
+                          team: Object.fromEntries(
+                            result.side1.pokemon.entries(),
+                          ),
+                          score: result.side1.score,
+                          winner: result.winner === "side1",
+                        },
+                        team2: {
+                          team: Object.fromEntries(
+                            result.side2.pokemon.entries(),
+                          ),
+                          score: result.side2.score,
+                          winner: result.winner === "side2",
+                        },
+                      })),
+                      score: {
+                        team1: matchup.side1.score,
+                        team2: matchup.side2.score,
+                      },
+                      winner: matchup.forfeit
+                        ? matchup.winner === "side1"
+                          ? "side1ffw"
+                          : matchup.winner === "side2"
+                            ? "side2ffw"
+                            : "dffl"
+                        : matchup.winner,
+                    };
+                  });
                 return {
                   _id: round._id,
                   name: round.name,
