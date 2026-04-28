@@ -2154,6 +2154,271 @@ export const LeagueRoute = createRoute()((r) => {
             });
           });
         });
+        r.path("playoffs").use(rolecheck("organizer"))((r) => {
+          r.path("schedule")((r) => {
+            r.get(async (ctx) => {
+              const playoffsStage = ctx.tournament.stages?.find(
+                (s) => s.name === "Playoffs",
+              );
+              if (!playoffsStage) {
+                return { stages: [], currentStage: 0 };
+              }
+
+              const roundIds = playoffsStage.rounds.map((r) => r._id);
+              const bracketMatchups = await LeagueMatchupModel.find({
+                round: { $in: roundIds },
+              }).populate<
+                LeagueMatchupDocument & {
+                  side1: { team: PopulatedLeagueTeamDocument };
+                  side2: { team: PopulatedLeagueTeamDocument };
+                }
+              >([
+                { path: "side1.team", populate: { path: "coach" } },
+                { path: "side2.team", populate: { path: "coach" } },
+              ]);
+
+              const teamIds = [
+                ...new Set(
+                  bracketMatchups
+                    .filter((m) => m.side1.team && m.side2.team)
+                    .flatMap((m) => [
+                      m.side1.team._id.toString(),
+                      m.side2.team._id.toString(),
+                    ]),
+                ),
+              ].map((id) => new Types.ObjectId(id));
+
+              const divisions = await LeagueDivisionModel.find({
+                tournament: ctx.tournament._id,
+                teams: { $in: teamIds },
+              });
+              const teamToDivision = new Map<string, LeagueDivisionDocument>();
+              divisions.forEach((div) => {
+                div.teams.forEach((teamId) => {
+                  teamToDivision.set(teamId.toString(), div);
+                });
+              });
+
+              const matchupsByRound = new Map<string, typeof bracketMatchups>();
+              for (const matchup of bracketMatchups) {
+                const key = matchup.round?.toString() ?? "";
+                const bucket = matchupsByRound.get(key) ?? [];
+                bucket.push(matchup);
+                matchupsByRound.set(key, bucket);
+              }
+
+              const stages = playoffsStage.rounds.map((round) => {
+                const roundMatchups =
+                  matchupsByRound.get(round._id.toString()) ?? [];
+                const transformedMatchups = roundMatchups
+                  .filter((matchup) => matchup.side1.team && matchup.side2.team)
+                  .map((matchup) => {
+                  const side1Division = teamToDivision.get(
+                    matchup.side1.team._id.toString(),
+                  );
+                  const side2Division = teamToDivision.get(
+                    matchup.side2.team._id.toString(),
+                  );
+                  return {
+                    id: matchup._id.toString(),
+                    team1: {
+                      name: matchup.side1.team.coach.teamName,
+                      coach: matchup.side1.team.coach.name,
+                      score: matchup.side1.score,
+                      logo: matchup.side1.team.coach.logo,
+                      id: matchup.side1.team._id.toString(),
+                      draft: side1Division
+                        ? getRosterByStage(
+                            matchup.side1.team,
+                            side1Division,
+                          ).map((p) => ({
+                            id: p.id,
+                            capt: p.addons?.includes("Tera Captain")
+                              ? { tera: true }
+                              : {},
+                          }))
+                        : [],
+                    },
+                    team2: {
+                      name: matchup.side2.team.coach.teamName,
+                      coach: matchup.side2.team.coach.name,
+                      score: matchup.side2.score,
+                      logo: matchup.side2.team.coach.logo,
+                      id: matchup.side2.team._id.toString(),
+                      draft: side2Division
+                        ? getRosterByStage(
+                            matchup.side2.team,
+                            side2Division,
+                          ).map((p) => ({
+                            id: p.id,
+                            capt: p.addons?.includes("Tera Captain")
+                              ? { tera: true }
+                              : {},
+                          }))
+                        : [],
+                    },
+                    matches: matchup.results.map((result) => ({
+                      link: result.replay,
+                      team1: {
+                        team: Object.fromEntries(
+                          result.side1.pokemon.entries(),
+                        ),
+                        score: result.side1.score,
+                        winner: result.winner === "side1",
+                      },
+                      team2: {
+                        team: Object.fromEntries(
+                          result.side2.pokemon.entries(),
+                        ),
+                        score: result.side2.score,
+                        winner: result.winner === "side2",
+                      },
+                    })),
+                    score: {
+                      team1: matchup.side1.score,
+                      team2: matchup.side2.score,
+                    },
+                    winner: matchup.forfeit
+                      ? matchup.winner === "side1"
+                        ? "side1ffw"
+                        : matchup.winner === "side2"
+                          ? "side2ffw"
+                          : "dffl"
+                      : matchup.winner,
+                  };
+                });
+                return {
+                  _id: round._id,
+                  name: round.name,
+                  matchups: transformedMatchups,
+                };
+              });
+
+              return { stages, currentStage: 0 };
+            });
+            r.param("matchup_id", (ctx, matchup_id) => {
+              if (!isValidObjectId(matchup_id))
+                throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+                  reason: "Invalid matchup ID",
+                });
+              return { matchup_id };
+            })((r) => {
+              r.post.validate({
+                body: (data) =>
+                  z
+                    .object({
+                      score: z
+                        .object({
+                          team1: z.number(),
+                          team2: z.number(),
+                        })
+                        .optional(),
+                      winner: z
+                        .enum([
+                          "side1",
+                          "side2",
+                          "draw",
+                          "side1ffw",
+                          "side2ffw",
+                          "dffl",
+                        ])
+                        .nullable()
+                        .optional(),
+                      matches: z.array(
+                        z.object({
+                          link: z.string().optional(),
+                          winner: z.enum(["side1", "side2", "draw"]),
+                          team1: z.object({
+                            score: z.number(),
+                            pokemon: z.record(
+                              z.string(),
+                              matchupPokemonStatsSchema,
+                            ),
+                          }),
+                          team2: z.object({
+                            score: z.number(),
+                            pokemon: z.record(
+                              z.string(),
+                              matchupPokemonStatsSchema,
+                            ),
+                          }),
+                        }),
+                      ),
+                    })
+                    .parse(data),
+              })(async (ctx) => {
+                const playoffsStage = ctx.tournament.stages?.find(
+                  (s) => s.name === "Playoffs",
+                );
+                if (!playoffsStage)
+                  throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
+                    matchupId: ctx.matchup_id,
+                  });
+
+                const roundIds = playoffsStage.rounds.map((r) => r._id);
+                const matchup = await LeagueMatchupModel.findOne({
+                  _id: ctx.matchup_id,
+                  round: { $in: roundIds },
+                });
+                if (!matchup)
+                  throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
+                    matchupId: ctx.matchup_id,
+                  });
+
+                matchup.results = ctx.validatedBody.matches.map((match) => ({
+                  replay: match.link?.trim() || undefined,
+                  winner: match.winner,
+                  side1: {
+                    score: match.team1.score,
+                    pokemon: new Map(
+                      Object.entries(match.team1.pokemon).filter(
+                        ([, stats]) =>
+                          stats.status !== null && stats.status !== undefined,
+                      ) as [string, PokemonStats][],
+                    ),
+                  },
+                  side2: {
+                    score: match.team2.score,
+                    pokemon: new Map(
+                      Object.entries(match.team2.pokemon).filter(
+                        ([, stats]) =>
+                          stats.status !== null && stats.status !== undefined,
+                      ) as [string, PokemonStats][],
+                    ),
+                  },
+                }));
+
+                if (ctx.validatedBody.score) {
+                  matchup.side1.score = ctx.validatedBody.score.team1;
+                  matchup.side2.score = ctx.validatedBody.score.team2;
+                }
+
+                if (ctx.validatedBody.winner != null) {
+                  if (
+                    ctx.validatedBody.winner === "side1" ||
+                    ctx.validatedBody.winner === "side2" ||
+                    ctx.validatedBody.winner === "draw"
+                  ) {
+                    matchup.winner = ctx.validatedBody.winner;
+                    matchup.forfeit = false;
+                  } else if (ctx.validatedBody.winner === "side1ffw") {
+                    matchup.winner = "side1";
+                    matchup.forfeit = true;
+                  } else if (ctx.validatedBody.winner === "side2ffw") {
+                    matchup.winner = "side2";
+                    matchup.forfeit = true;
+                  } else if (ctx.validatedBody.winner === "dffl") {
+                    matchup.winner = "draw";
+                    matchup.forfeit = true;
+                  }
+                }
+
+                await matchup.save();
+                return { message: "Playoff schedule updated." };
+              });
+            });
+          });
+        });
       });
     });
   });
