@@ -202,7 +202,7 @@ export class LeagueAd {
     const cleanMarkdown = (value: unknown) => {
       if (typeof value !== "string") return "";
       return value
-        .replace(/<[^>]*>/g, "")
+        .replace(/[<>]/g, "")
         .replace(/(javascript|data|vbscript):/gi, "");
     };
     const cleanUrl = (value: unknown): string | undefined => {

@@ -27,10 +27,16 @@ export type DraftCount = {
   max: number;
 };
 
+export type TierListSettings = {
+  isPublic: boolean;
+  shareToken?: string;
+};
+
 export type LeagueTierList = {
   name: string;
   description?: string;
   createdBy: Types.ObjectId | LeagueCoachDocument;
+  copiedFrom?: Types.ObjectId;
   pokemon: Map<string, LeagueTierListPokemon>;
   tiers: LeagueTier[];
   banned: {
@@ -41,6 +47,8 @@ export type LeagueTierList = {
   draftCount: DraftCount;
   format: string;
   ruleset: string;
+  settings: TierListSettings;
+  collaborators: Types.ObjectId[];
 };
 
 type TierListMethods = {
@@ -104,6 +112,10 @@ const LeagueTierListSchema: Schema<
       ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
+    copiedFrom: {
+      type: Schema.Types.ObjectId,
+      ref: LEAGUE_TIER_LIST_COLLECTION,
+    },
     pokemon: {
       type: Map,
       of: LeagueTierListPokemonSchema,
@@ -124,6 +136,17 @@ const LeagueTierListSchema: Schema<
     },
     format: { type: String, required: true },
     ruleset: { type: String, required: true },
+    collaborators: [
+      { type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION },
+    ],
+    settings: {
+      type: {
+        isPublic: { type: Boolean, required: true, default: false },
+        shareToken: { type: String },
+      },
+      required: true,
+      default: () => ({ isPublic: false }),
+    },
   },
   { timestamps: true },
 );

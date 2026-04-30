@@ -836,6 +836,7 @@ export const LeagueRoute = createRoute()((r) => {
                         z.object({
                           id: z.string(),
                           name: z.string(),
+                          banned: z.boolean().optional(),
                         }),
                       ),
                     }),
