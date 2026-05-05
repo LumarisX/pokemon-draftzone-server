@@ -4,7 +4,11 @@ import { Matchup, type PopulatedLeagueMatchup } from "../classes/matchup";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import LeagueDivisionModel from "../models/league/division.model";
-import { LeagueMatchupModel } from "../models/league/matchup.model";
+import {
+  LeagueMatchupModel,
+  type MatchSide,
+} from "../models/league/matchup.model";
+import LeagueTeamModel from "../models/league/team.model";
 import LeagueTournamentModel from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import {
@@ -17,6 +21,27 @@ import { speedchart } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { createRoute } from "./route-builder";
+
+/** Resolves the team for a bracket side that has a winner/loser slot but no team yet. */
+async function resolveSlotTeam(side: MatchSide) {
+  if (side.team || !side.slot || side.slot.type === "seed") return null;
+  const { matchId, type } = side.slot as {
+    type: "winner" | "loser";
+    matchId: string;
+  };
+  const previousMatch = await LeagueMatchupModel.findById(matchId);
+  if (!previousMatch?.winner) return null;
+  // For "winner" slot we want the match winner; for "loser" we want the other side.
+  const winnerSide = previousMatch.winner; // "side1" | "side2" | "draw"
+  if (winnerSide === "draw") return null;
+  const resolvedSide: "side1" | "side2" =
+    type === "winner" ? winnerSide : winnerSide === "side1" ? "side2" : "side1";
+  const teamId = previousMatch[resolvedSide].team;
+  if (!teamId) return null;
+  return LeagueTeamModel.findById(teamId).populate<{
+    coach: { teamName: string; name: string; auth0Id: string };
+  }>("coach");
+}
 
 export const MatchupRoute = createRoute()((r) => {
   r.path("quick")((r) => {
@@ -63,15 +88,34 @@ export const MatchupRoute = createRoute()((r) => {
             "stages.rounds._id": leagueMatchup.round,
           });
           if (!tournament) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+
+          // If a side has no team yet, try resolving from the previous match's winner
+          const [resolvedSide1Team, resolvedSide2Team] = await Promise.all([
+            !leagueMatchup.side1.team
+              ? resolveSlotTeam(leagueMatchup.side1)
+              : Promise.resolve(null),
+            !leagueMatchup.side2.team
+              ? resolveSlotTeam(leagueMatchup.side2)
+              : Promise.resolve(null),
+          ]);
+          if (resolvedSide1Team)
+            (leagueMatchup as any).side1.team = resolvedSide1Team;
+          if (resolvedSide2Team)
+            (leagueMatchup as any).side2.team = resolvedSide2Team;
+
           const [side1Division, side2Division] = await Promise.all([
-            LeagueDivisionModel.findOne({
-              teams: leagueMatchup.side1.team._id,
-              tournament: tournament._id,
-            }),
-            LeagueDivisionModel.findOne({
-              teams: leagueMatchup.side2.team._id,
-              tournament: tournament._id,
-            }),
+            leagueMatchup.side1.team
+              ? LeagueDivisionModel.findOne({
+                  teams: leagueMatchup.side1.team._id,
+                  tournament: tournament._id,
+                })
+              : Promise.resolve(null),
+            leagueMatchup.side2.team
+              ? LeagueDivisionModel.findOne({
+                  teams: leagueMatchup.side2.team._id,
+                  tournament: tournament._id,
+                })
+              : Promise.resolve(null),
           ]);
           matchup = Matchup.fromLeagueBracketMatchup(
             leagueMatchup as any,

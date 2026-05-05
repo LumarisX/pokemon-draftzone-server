@@ -298,7 +298,9 @@ export const LeagueRoute = createRoute()((r) => {
           const roundIds = playoffsStage.rounds.map((r) => r._id);
           const bracketMatchups = await LeagueMatchupModel.find({
             round: { $in: roundIds },
-          }).lean();
+          })
+            .sort({ _id: 1 })
+            .lean();
 
           // Load teams from playoffs.teams (array index + 1 = seed)
           const teamObjIds = (
