@@ -2180,14 +2180,87 @@ export const LeagueRoute = createRoute()((r) => {
                 { path: "side2.team", populate: { path: "coach" } },
               ]);
 
+              // Batch-resolve teams from previous match winners for sides with a slot but no team
+              const slotMatchIds = new Set<string>();
+              for (const m of bracketMatchups) {
+                if (
+                  !m.side1.team &&
+                  m.side1.slot &&
+                  m.side1.slot.type !== "seed"
+                )
+                  slotMatchIds.add((m.side1.slot as any).matchId);
+                if (
+                  !m.side2.team &&
+                  m.side2.slot &&
+                  m.side2.slot.type !== "seed"
+                )
+                  slotMatchIds.add((m.side2.slot as any).matchId);
+              }
+              if (slotMatchIds.size > 0) {
+                const previousMatchups = await LeagueMatchupModel.find({
+                  _id: { $in: [...slotMatchIds] },
+                });
+                const prevMatchMap = new Map(
+                  previousMatchups.map((pm) => [pm._id.toString(), pm]),
+                );
+                const resolvedTeamIds = new Set<string>();
+                for (const pm of previousMatchups) {
+                  if (pm.winner && pm.winner !== "draw") {
+                    const teamId = pm[pm.winner as "side1" | "side2"].team;
+                    if (teamId) resolvedTeamIds.add(teamId.toString());
+                    // loser side
+                    const loserSide = pm.winner === "side1" ? "side2" : "side1";
+                    const loserId = pm[loserSide].team;
+                    if (loserId) resolvedTeamIds.add(loserId.toString());
+                  }
+                }
+                const resolvedTeams = await LeagueTeamModel.find({
+                  _id: { $in: [...resolvedTeamIds] },
+                }).populate<{ coach: PopulatedLeagueTeamDocument["coach"] }>(
+                  "coach",
+                );
+                const teamMap = new Map(
+                  resolvedTeams.map((t) => [t._id.toString(), t]),
+                );
+                for (const m of bracketMatchups) {
+                  for (const side of ["side1", "side2"] as const) {
+                    if (
+                      m[side].team ||
+                      !m[side].slot ||
+                      m[side].slot!.type === "seed"
+                    )
+                      continue;
+                    const slot = m[side].slot as {
+                      type: "winner" | "loser";
+                      matchId: string;
+                    };
+                    const prev = prevMatchMap.get(slot.matchId);
+                    if (!prev?.winner || prev.winner === "draw") continue;
+                    const winnerSide = prev.winner as "side1" | "side2";
+                    const resolvedSide: "side1" | "side2" =
+                      slot.type === "winner"
+                        ? winnerSide
+                        : winnerSide === "side1"
+                          ? "side2"
+                          : "side1";
+                    const teamId = prev[resolvedSide].team;
+                    if (teamId) {
+                      const team = teamMap.get(teamId.toString());
+                      if (team) (m as any)[side].team = team;
+                    }
+                  }
+                }
+              }
+
               const teamIds = [
                 ...new Set(
                   bracketMatchups
-                    .filter((m) => m.side1.team && m.side2.team)
+                    .filter((m) => m.side1.team || m.side2.team)
                     .flatMap((m) => [
-                      m.side1.team._id.toString(),
-                      m.side2.team._id.toString(),
-                    ]),
+                      m.side1.team?._id.toString(),
+                      m.side2.team?._id.toString(),
+                    ])
+                    .filter(Boolean) as string[],
                 ),
               ].map((id) => new Types.ObjectId(id));
 
@@ -2213,83 +2286,85 @@ export const LeagueRoute = createRoute()((r) => {
               const stages = playoffsStage.rounds.map((round) => {
                 const roundMatchups =
                   matchupsByRound.get(round._id.toString()) ?? [];
-                const transformedMatchups = roundMatchups
-                  .filter((matchup) => matchup.side1.team && matchup.side2.team)
-                  .map((matchup) => {
-                    const side1Division = teamToDivision.get(
-                      matchup.side1.team._id.toString(),
-                    );
-                    const side2Division = teamToDivision.get(
-                      matchup.side2.team._id.toString(),
-                    );
-                    return {
-                      id: matchup._id.toString(),
+                const transformedMatchups = roundMatchups.map((matchup) => {
+                  const side1Division = matchup.side1.team
+                    ? teamToDivision.get(matchup.side1.team._id.toString())
+                    : undefined;
+                  const side2Division = matchup.side2.team
+                    ? teamToDivision.get(matchup.side2.team._id.toString())
+                    : undefined;
+                  return {
+                    id: matchup._id.toString(),
+                    team1: matchup.side1.team
+                      ? {
+                          name: matchup.side1.team.coach.teamName,
+                          coach: matchup.side1.team.coach.name,
+                          score: matchup.side1.score,
+                          logo: matchup.side1.team.coach.logo,
+                          id: matchup.side1.team._id.toString(),
+                          draft: side1Division
+                            ? getRosterByStage(
+                                matchup.side1.team,
+                                side1Division,
+                              ).map((p) => ({
+                                id: p.id,
+                                capt: p.addons?.includes("Tera Captain")
+                                  ? { tera: true }
+                                  : {},
+                              }))
+                            : [],
+                        }
+                      : null,
+                    team2: matchup.side2.team
+                      ? {
+                          name: matchup.side2.team.coach.teamName,
+                          coach: matchup.side2.team.coach.name,
+                          score: matchup.side2.score,
+                          logo: matchup.side2.team.coach.logo,
+                          id: matchup.side2.team._id.toString(),
+                          draft: side2Division
+                            ? getRosterByStage(
+                                matchup.side2.team,
+                                side2Division,
+                              ).map((p) => ({
+                                id: p.id,
+                                capt: p.addons?.includes("Tera Captain")
+                                  ? { tera: true }
+                                  : {},
+                              }))
+                            : [],
+                        }
+                      : null,
+                    matches: matchup.results.map((result) => ({
+                      link: result.replay,
                       team1: {
-                        name: matchup.side1.team.coach.teamName,
-                        coach: matchup.side1.team.coach.name,
-                        score: matchup.side1.score,
-                        logo: matchup.side1.team.coach.logo,
-                        id: matchup.side1.team._id.toString(),
-                        draft: side1Division
-                          ? getRosterByStage(
-                              matchup.side1.team,
-                              side1Division,
-                            ).map((p) => ({
-                              id: p.id,
-                              capt: p.addons?.includes("Tera Captain")
-                                ? { tera: true }
-                                : {},
-                            }))
-                          : [],
+                        team: Object.fromEntries(
+                          result.side1.pokemon.entries(),
+                        ),
+                        score: result.side1.score,
+                        winner: result.winner === "side1",
                       },
                       team2: {
-                        name: matchup.side2.team.coach.teamName,
-                        coach: matchup.side2.team.coach.name,
-                        score: matchup.side2.score,
-                        logo: matchup.side2.team.coach.logo,
-                        id: matchup.side2.team._id.toString(),
-                        draft: side2Division
-                          ? getRosterByStage(
-                              matchup.side2.team,
-                              side2Division,
-                            ).map((p) => ({
-                              id: p.id,
-                              capt: p.addons?.includes("Tera Captain")
-                                ? { tera: true }
-                                : {},
-                            }))
-                          : [],
+                        team: Object.fromEntries(
+                          result.side2.pokemon.entries(),
+                        ),
+                        score: result.side2.score,
+                        winner: result.winner === "side2",
                       },
-                      matches: matchup.results.map((result) => ({
-                        link: result.replay,
-                        team1: {
-                          team: Object.fromEntries(
-                            result.side1.pokemon.entries(),
-                          ),
-                          score: result.side1.score,
-                          winner: result.winner === "side1",
-                        },
-                        team2: {
-                          team: Object.fromEntries(
-                            result.side2.pokemon.entries(),
-                          ),
-                          score: result.side2.score,
-                          winner: result.winner === "side2",
-                        },
-                      })),
-                      score: {
-                        team1: matchup.side1.score,
-                        team2: matchup.side2.score,
-                      },
-                      winner: matchup.forfeit
-                        ? matchup.winner === "side1"
-                          ? "side1ffw"
-                          : matchup.winner === "side2"
-                            ? "side2ffw"
-                            : "dffl"
-                        : matchup.winner,
-                    };
-                  });
+                    })),
+                    score: {
+                      team1: matchup.side1.score,
+                      team2: matchup.side2.score,
+                    },
+                    winner: matchup.forfeit
+                      ? matchup.winner === "side1"
+                        ? "side1ffw"
+                        : matchup.winner === "side2"
+                          ? "side2ffw"
+                          : "dffl"
+                      : matchup.winner,
+                  };
+                });
                 return {
                   _id: round._id,
                   name: round.name,
