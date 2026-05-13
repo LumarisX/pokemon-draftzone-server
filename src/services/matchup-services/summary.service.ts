@@ -24,11 +24,7 @@ export class SummaryClass {
     private readonly team: DraftSpecie[],
     private readonly teamName?: string,
     private readonly coach?: string,
-  ) {
-    if (!team?.length) {
-      throw new Error("Team must contain at least one Pokemon");
-    }
-  }
+  ) {}
 
   private calculateMedian(sortedValues: readonly number[]): number {
     const midpoint = Math.floor(sortedValues.length / 2);
@@ -113,7 +109,7 @@ export class SummaryClass {
         index,
         types: pokemon.types,
       })),
-      stats: this.teamStatistics(),
+      stats: this.team.length ? this.teamStatistics() : undefined,
     };
   }
 }

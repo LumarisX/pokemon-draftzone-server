@@ -187,42 +187,44 @@ export class Matchup {
       )?.name ?? "Playoffs";
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.side1.team.coach.teamName,
-        coach: leagueMatchupDoc.side1.team.coach.name,
-        team: side1Division
-          ? getRosterByStage(leagueMatchupDoc.side1.team, side1Division).map(
-              (pokemon) =>
-                new DraftSpecie(
-                  {
-                    id: pokemon.id as ID,
-                    capt: pokemon.addons?.includes("Tera Captain")
-                      ? { tera: [] }
-                      : undefined,
-                  },
-                  ruleset,
-                ),
-            )
-          : [],
-        owner: leagueMatchupDoc.side1.team.coach.auth0Id,
+        teamName: leagueMatchupDoc.side1.team?.coach?.teamName ?? "TBD",
+        coach: leagueMatchupDoc.side1.team?.coach?.name,
+        team:
+          side1Division && leagueMatchupDoc.side1.team
+            ? getRosterByStage(leagueMatchupDoc.side1.team, side1Division).map(
+                (pokemon) =>
+                  new DraftSpecie(
+                    {
+                      id: pokemon.id as ID,
+                      capt: pokemon.addons?.includes("Tera Captain")
+                        ? { tera: [] }
+                        : undefined,
+                    },
+                    ruleset,
+                  ),
+              )
+            : [],
+        owner: leagueMatchupDoc.side1.team?.coach?.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.side2.team.coach.teamName,
-        coach: leagueMatchupDoc.side2.team.coach.name,
-        team: side2Division
-          ? getRosterByStage(leagueMatchupDoc.side2.team, side2Division).map(
-              (pokemon) =>
-                new DraftSpecie(
-                  {
-                    id: pokemon.id as ID,
-                    capt: pokemon.addons?.includes("Tera Captain")
-                      ? { tera: [] }
-                      : undefined,
-                  },
-                  ruleset,
-                ),
-            )
-          : [],
-        owner: leagueMatchupDoc.side2.team.coach.auth0Id,
+        teamName: leagueMatchupDoc.side2.team?.coach?.teamName ?? "TBD",
+        coach: leagueMatchupDoc.side2.team?.coach?.name,
+        team:
+          side2Division && leagueMatchupDoc.side2.team
+            ? getRosterByStage(leagueMatchupDoc.side2.team, side2Division).map(
+                (pokemon) =>
+                  new DraftSpecie(
+                    {
+                      id: pokemon.id as ID,
+                      capt: pokemon.addons?.includes("Tera Captain")
+                        ? { tera: [] }
+                        : undefined,
+                    },
+                    ruleset,
+                  ),
+              )
+            : [],
+        owner: leagueMatchupDoc.side2.team?.coach?.auth0Id,
       },
       ruleset,
       getFormat(tournament.format),
@@ -314,8 +316,8 @@ export class Matchup {
       await Promise.all([
         coveragechart(aTeam.team, bTeam.team),
         coveragechart(bTeam.team, aTeam.team),
-        movechart(aTeam.team, aTeam.team[0].ruleset),
-        movechart(bTeam.team, bTeam.team[0].ruleset),
+        movechart(aTeam.team, aTeam.team[0]?.ruleset ?? this.ruleset),
+        movechart(bTeam.team, bTeam.team[0]?.ruleset ?? this.ruleset),
       ]);
     const data: {
       details: {

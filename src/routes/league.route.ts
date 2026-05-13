@@ -2180,77 +2180,109 @@ export const LeagueRoute = createRoute()((r) => {
                 { path: "side2.team", populate: { path: "coach" } },
               ]);
 
-              // Batch-resolve teams from previous match winners for sides with a slot but no team
-              const slotMatchIds = new Set<string>();
-              for (const m of bracketMatchups) {
-                if (
-                  !m.side1.team &&
-                  m.side1.slot &&
-                  m.side1.slot.type !== "seed"
-                )
-                  slotMatchIds.add((m.side1.slot as any).matchId);
-                if (
-                  !m.side2.team &&
-                  m.side2.slot &&
-                  m.side2.slot.type !== "seed"
-                )
-                  slotMatchIds.add((m.side2.slot as any).matchId);
-              }
-              if (slotMatchIds.size > 0) {
-                const previousMatchups = await LeagueMatchupModel.find({
-                  _id: { $in: [...slotMatchIds] },
-                });
-                const prevMatchMap = new Map(
-                  previousMatchups.map((pm) => [pm._id.toString(), pm]),
-                );
-                const resolvedTeamIds = new Set<string>();
-                for (const pm of previousMatchups) {
-                  if (pm.winner && pm.winner !== "draw") {
-                    const teamId = pm[pm.winner as "side1" | "side2"].team;
-                    if (teamId) resolvedTeamIds.add(teamId.toString());
-                    // loser side
-                    const loserSide = pm.winner === "side1" ? "side2" : "side1";
-                    const loserId = pm[loserSide].team;
-                    if (loserId) resolvedTeamIds.add(loserId.toString());
-                  }
+              // Recursively resolve bracket side teams by following the slot chain
+              const matchCache = new Map<
+                string,
+                LeagueMatchupDocument | null
+              >();
+              const teamCache = new Map<
+                string,
+                PopulatedLeagueTeamDocument | null
+              >();
+
+              const fetchMatch = async (id: string) => {
+                if (!matchCache.has(id)) {
+                  matchCache.set(id, await LeagueMatchupModel.findById(id));
                 }
-                const resolvedTeams = await LeagueTeamModel.find({
-                  _id: { $in: [...resolvedTeamIds] },
-                }).populate<{ coach: PopulatedLeagueTeamDocument["coach"] }>(
-                  "coach",
-                );
-                const teamMap = new Map(
-                  resolvedTeams.map((t) => [t._id.toString(), t]),
-                );
-                for (const m of bracketMatchups) {
-                  for (const side of ["side1", "side2"] as const) {
+                return matchCache.get(id)!;
+              };
+
+              const fetchTeam = async (id: string) => {
+                if (!teamCache.has(id)) {
+                  const t = await LeagueTeamModel.findById(id).populate<{
+                    coach: PopulatedLeagueTeamDocument["coach"];
+                  }>("coach");
+                  teamCache.set(id, t as PopulatedLeagueTeamDocument | null);
+                }
+                return teamCache.get(id)!;
+              };
+
+              type MatchSideRef = {
+                team?: Types.ObjectId | PopulatedLeagueTeamDocument;
+                slot?: { type: string; matchId?: string; seed?: number } | null;
+              };
+              const resolveTeamRecursive = async (
+                side: MatchSideRef,
+                depth = 0,
+              ): Promise<PopulatedLeagueTeamDocument | null> => {
+                if (side.team) {
+                  const id =
+                    (side.team as any)._id?.toString() ?? side.team.toString();
+                  return fetchTeam(id);
+                }
+                if (!side.slot || side.slot.type === "seed" || depth > 8)
+                  return null;
+                const { matchId, type } = side.slot as {
+                  type: "winner" | "loser";
+                  matchId: string;
+                };
+                if (!matchId) return null;
+                const prev = await fetchMatch(matchId);
+                if (!prev) return null;
+                let winnerSide = prev.winner as
+                  | "side1"
+                  | "side2"
+                  | "draw"
+                  | undefined;
+                if (!winnerSide && prev.results?.length > 0) {
+                  const s1 = prev.results.filter(
+                    (r) => r.winner === "side1",
+                  ).length;
+                  const s2 = prev.results.filter(
+                    (r) => r.winner === "side2",
+                  ).length;
+                  if (s1 > s2) winnerSide = "side1";
+                  else if (s2 > s1) winnerSide = "side2";
+                  else winnerSide = "draw";
+                }
+                if (!winnerSide || winnerSide === "draw") return null;
+                const resolvedSide: "side1" | "side2" =
+                  type === "winner"
+                    ? winnerSide
+                    : winnerSide === "side1"
+                      ? "side2"
+                      : "side1";
+                return resolveTeamRecursive(prev[resolvedSide], depth + 1);
+              };
+
+              await Promise.all(
+                bracketMatchups.flatMap((m) => [
+                  (async () => {
                     if (
-                      m[side].team ||
-                      !m[side].slot ||
-                      m[side].slot!.type === "seed"
-                    )
-                      continue;
-                    const slot = m[side].slot as {
-                      type: "winner" | "loser";
-                      matchId: string;
-                    };
-                    const prev = prevMatchMap.get(slot.matchId);
-                    if (!prev?.winner || prev.winner === "draw") continue;
-                    const winnerSide = prev.winner as "side1" | "side2";
-                    const resolvedSide: "side1" | "side2" =
-                      slot.type === "winner"
-                        ? winnerSide
-                        : winnerSide === "side1"
-                          ? "side2"
-                          : "side1";
-                    const teamId = prev[resolvedSide].team;
-                    if (teamId) {
-                      const team = teamMap.get(teamId.toString());
-                      if (team) (m as any)[side].team = team;
+                      !m.side1.team &&
+                      m.side1.slot &&
+                      m.side1.slot.type !== "seed"
+                    ) {
+                      const resolved = await resolveTeamRecursive(
+                        m.side1 as MatchSideRef,
+                      );
+                      if (resolved) (m as any).side1.team = resolved;
                     }
-                  }
-                }
-              }
+                  })(),
+                  (async () => {
+                    if (
+                      !m.side2.team &&
+                      m.side2.slot &&
+                      m.side2.slot.type !== "seed"
+                    ) {
+                      const resolved = await resolveTeamRecursive(
+                        m.side2 as MatchSideRef,
+                      );
+                      if (resolved) (m as any).side2.team = resolved;
+                    }
+                  })(),
+                ]),
+              );
 
               const teamIds = [
                 ...new Set(

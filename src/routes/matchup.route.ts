@@ -22,25 +22,50 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { createRoute } from "./route-builder";
 
-/** Resolves the team for a bracket side that has a winner/loser slot but no team yet. */
-async function resolveSlotTeam(side: MatchSide) {
-  if (side.team || !side.slot || side.slot.type === "seed") return null;
+/** Derives the winner side from a match document, using the explicit winner or counting results. */
+function deriveWinnerSide(
+  match: InstanceType<typeof LeagueMatchupModel>,
+): "side1" | "side2" | null {
+  if (match.winner && match.winner !== "draw") {
+    return match.winner as "side1" | "side2";
+  }
+  if (match.results?.length > 0) {
+    const s1 = match.results.filter((r) => r.winner === "side1").length;
+    const s2 = match.results.filter((r) => r.winner === "side2").length;
+    if (s1 > s2) return "side1";
+    if (s2 > s1) return "side2";
+  }
+  return null;
+}
+
+/** Recursively resolves the team for a bracket side by following the slot chain. */
+async function resolveSlotTeam(side: MatchSide, depth = 0): Promise<any> {
+  if (side.team) return side.team;
+  if (!side.slot || side.slot.type === "seed" || depth > 8) return null;
   const { matchId, type } = side.slot as {
     type: "winner" | "loser";
     matchId: string;
   };
+  if (!matchId) return null;
+
   const previousMatch = await LeagueMatchupModel.findById(matchId);
-  if (!previousMatch?.winner) return null;
-  // For "winner" slot we want the match winner; for "loser" we want the other side.
-  const winnerSide = previousMatch.winner; // "side1" | "side2" | "draw"
-  if (winnerSide === "draw") return null;
+  if (!previousMatch) return null;
+
+  const winnerSide = deriveWinnerSide(previousMatch);
+  if (!winnerSide) return null;
+
   const resolvedSide: "side1" | "side2" =
     type === "winner" ? winnerSide : winnerSide === "side1" ? "side2" : "side1";
-  const teamId = previousMatch[resolvedSide].team;
-  if (!teamId) return null;
-  return LeagueTeamModel.findById(teamId).populate<{
-    coach: { teamName: string; name: string; auth0Id: string };
-  }>("coach");
+
+  // If the resolved side has a team, return it populated
+  if (previousMatch[resolvedSide].team) {
+    return LeagueTeamModel.findById(previousMatch[resolvedSide].team).populate<{
+      coach: { teamName: string; name: string; auth0Id: string };
+    }>("coach");
+  }
+
+  // Otherwise follow the chain recursively
+  return resolveSlotTeam(previousMatch[resolvedSide], depth + 1);
 }
 
 export const MatchupRoute = createRoute()((r) => {
@@ -89,36 +114,41 @@ export const MatchupRoute = createRoute()((r) => {
           });
           if (!tournament) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
 
-          // If a side has no team yet, try resolving from the previous match's winner
-          const [resolvedSide1Team, resolvedSide2Team] = await Promise.all([
-            !leagueMatchup.side1.team
-              ? resolveSlotTeam(leagueMatchup.side1)
-              : Promise.resolve(null),
-            !leagueMatchup.side2.team
-              ? resolveSlotTeam(leagueMatchup.side2)
-              : Promise.resolve(null),
+          // Resolve teams: use populated team if present, otherwise look up previous match winner
+          const [side1Team, side2Team] = await Promise.all([
+            leagueMatchup.side1.team
+              ? Promise.resolve(leagueMatchup.side1.team as any)
+              : resolveSlotTeam(leagueMatchup.side1),
+            leagueMatchup.side2.team
+              ? Promise.resolve(leagueMatchup.side2.team as any)
+              : resolveSlotTeam(leagueMatchup.side2),
           ]);
-          if (resolvedSide1Team)
-            (leagueMatchup as any).side1.team = resolvedSide1Team;
-          if (resolvedSide2Team)
-            (leagueMatchup as any).side2.team = resolvedSide2Team;
 
           const [side1Division, side2Division] = await Promise.all([
-            leagueMatchup.side1.team
+            side1Team
               ? LeagueDivisionModel.findOne({
-                  teams: leagueMatchup.side1.team._id,
+                  teams: side1Team._id,
                   tournament: tournament._id,
                 })
               : Promise.resolve(null),
-            leagueMatchup.side2.team
+            side2Team
               ? LeagueDivisionModel.findOne({
-                  teams: leagueMatchup.side2.team._id,
+                  teams: side2Team._id,
                   tournament: tournament._id,
                 })
               : Promise.resolve(null),
           ]);
+
+          // Build a plain object merging the matchup with the resolved teams
+          const matchupWithTeams = {
+            ...leagueMatchup.toObject(),
+            side1: { ...leagueMatchup.toObject().side1, team: side1Team },
+            side2: { ...leagueMatchup.toObject().side2, team: side2Team },
+            division: null,
+          };
+
           matchup = Matchup.fromLeagueBracketMatchup(
-            leagueMatchup as any,
+            matchupWithTeams as any,
             tournament,
             side1Division,
             side2Division,
