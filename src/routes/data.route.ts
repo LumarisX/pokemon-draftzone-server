@@ -373,4 +373,34 @@ export const DataRoute = createRoute()((r) => {
       });
     });
   });
+  r.param("ruleset", (ctx, ruleset) => ({
+    ruleset: getRuleset(ruleset),
+  }))((r) => {
+    r.path("pokemon")((r) => {
+      r.param("pid", (ctx, pid) => {
+        const species = ctx.ruleset.species.get(pid);
+        if (!species)
+          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
+            pid,
+          });
+        return { species };
+      })((r) => {
+        r.path("learnset")((r) => {
+          r.get(async (ctx) => {
+            const specie = new DraftSpecie(ctx.species.id, ctx.ruleset);
+            const learnset = await specie.learnset();
+            return learnset.map((move) => ({
+              id: move.id,
+              name: move.name,
+              type: move.type,
+              category: move.category,
+              basePower: move.basePower,
+              accuracy: move.accuracy,
+              pp: move.pp,
+            }));
+          });
+        });
+      });
+    });
+  });
 });
