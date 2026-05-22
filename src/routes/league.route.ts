@@ -2529,6 +2529,80 @@ export const LeagueRoute = createRoute()((r) => {
             });
           });
         });
+        r.path("settings").use(rolecheck("organizer"))((r) => {
+          r.get(async (ctx) => {
+            return {
+              name: ctx.tournament.name,
+              description: ctx.tournament.description,
+              format: ctx.tournament.format,
+              ruleset: ctx.tournament.ruleset,
+              signUpDeadline: ctx.tournament.signUpDeadline,
+              draftStart: ctx.tournament.draftStart,
+              draftEnd: ctx.tournament.draftEnd,
+              seasonStart: ctx.tournament.seasonStart,
+              seasonEnd: ctx.tournament.seasonEnd,
+              discord: ctx.tournament.discord,
+              forfeit: ctx.tournament.forfeit,
+              diffMode: ctx.tournament.diffMode,
+            };
+          });
+          r.patch.validate({
+            body: (data) =>
+              z
+                .object({
+                  name: z.string().min(1),
+                  description: z.string().optional(),
+                  format: z.string().min(1),
+                  ruleset: z.string().min(1),
+                  signUpDeadline: z.coerce.date(),
+                  draftStart: z.coerce.date().optional(),
+                  draftEnd: z.coerce.date().optional(),
+                  seasonStart: z.coerce.date().optional(),
+                  seasonEnd: z.coerce.date().optional(),
+                  discord: z.string().optional(),
+                  forfeit: z
+                    .object({
+                      gameDiff: z.number().int().min(0),
+                      pokemonDiff: z.number().int().min(0),
+                    })
+                    .optional(),
+                  diffMode: z.enum(["pokemon", "game"]).optional(),
+                })
+                .parse(data),
+          })(async (ctx) => {
+            const {
+              name,
+              description,
+              format,
+              ruleset,
+              signUpDeadline,
+              draftStart,
+              draftEnd,
+              seasonStart,
+              seasonEnd,
+              discord,
+              forfeit,
+              diffMode,
+            } = ctx.validatedBody;
+            ctx.tournament.name = name;
+            ctx.tournament.description = description;
+            ctx.tournament.format = format;
+            ctx.tournament.ruleset = ruleset;
+            ctx.tournament.signUpDeadline = signUpDeadline;
+            ctx.tournament.draftStart = draftStart;
+            ctx.tournament.draftEnd = draftEnd;
+            ctx.tournament.seasonStart = seasonStart;
+            ctx.tournament.seasonEnd = seasonEnd;
+            ctx.tournament.discord = discord;
+            if (forfeit !== undefined) ctx.tournament.forfeit = forfeit;
+            if (diffMode !== undefined) ctx.tournament.diffMode = diffMode;
+            await ctx.tournament.save();
+            logger.info(
+              `Tournament settings updated for ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
+            );
+            return { message: "Tournament settings updated." };
+          });
+        });
       });
     });
   });

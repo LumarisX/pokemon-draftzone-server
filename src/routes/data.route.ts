@@ -264,9 +264,14 @@ export const DataRoute = createRoute()((r) => {
               ? [specie.requiredItem]
               : specie.requiredItems,
             requiredMove: specie.requiredMove ?? "",
-            coverage: [...coverage.physical, ...coverage.special].map(
-              (move) => move.name,
-            ),
+            coverage: [
+              ...new Set(
+                [...coverage.physical, ...coverage.special].map(
+                  (move) => move.type,
+                ),
+              ),
+            ],
+            learns: (await specie.learnset()).map((move) => move.name),
             num: specie.num,
             tags: [...specie.tags],
             bst: specie.bst,

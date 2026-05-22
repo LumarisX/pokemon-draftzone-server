@@ -1,4 +1,3 @@
-import type { Move } from "@pkmn/dex-types";
 import { DraftSpecie } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
@@ -17,23 +16,6 @@ export type SearchOperator =
   | "notContains"
   | "in"
   | "nin";
-
-export type MoveField =
-  | "id"
-  | "name"
-  | "type"
-  | "category"
-  | "basePower"
-  | "accuracy"
-  | "pp"
-  | "priority"
-  | "target";
-
-export type MoveFilter = {
-  field: MoveField | string;
-  operator: SearchOperator;
-  value: SearchValue;
-};
 
 export type SearchField =
   | "id"
@@ -68,6 +50,11 @@ export type SearchField =
   | "isMega"
   | "isPrimal"
   | "isGigantamax"
+  | "mythical"
+  | "restrictedLegendary"
+  | "subLegendary"
+  | "ultraBeast"
+  | "paradox"
   | "prevo"
   | "evos"
   | "requiredAbility"
@@ -84,8 +71,6 @@ export type SearchFilter = {
   field: SearchField | string;
   operator: SearchOperator;
   value?: SearchValue;
-  moveFilters?: MoveFilter[];
-  moveMode?: SearchLogicalMode;
 };
 
 export type SearchGroup = {
@@ -123,12 +108,6 @@ type FieldDefinition = FieldBase & {
     specie: DraftSpecie,
   ) => Promise<ResolvedFieldValue> | ResolvedFieldValue;
 };
-
-type MoveFieldDefinition = FieldBase & {
-  resolver: (move: Move) => ResolvedFieldValue;
-};
-
-type MoveCanonicalField = MoveField;
 
 function getRequiredItemValues(specie: DraftSpecie): string[] {
   const values = new Set<string>();
@@ -310,6 +289,27 @@ const SEARCH_FIELD_DEFINITIONS = {
     type: "boolean",
     resolver: (specie: DraftSpecie) => Boolean(specie.isGigantamax),
   },
+  mythical: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) => specie.tags.includes("Mythical"),
+  },
+  restrictedLegendary: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) =>
+      specie.tags.includes("Restricted Legendary"),
+  },
+  subLegendary: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) => specie.tags.includes("Sub-Legendary"),
+  },
+  ultraBeast: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) => specie.tags.includes("Ultra Beast"),
+  },
+  paradox: {
+    type: "boolean",
+    resolver: (specie: DraftSpecie) => specie.tags.includes("Paradox"),
+  },
   prevo: {
     type: "string",
     resolver: (specie: DraftSpecie) => specie.prevo ?? "",
@@ -350,59 +350,16 @@ const SEARCH_FIELD_DEFINITIONS = {
     type: "string[]",
     resolver: async (specie: DraftSpecie) => {
       const coverage = await specie.coverage();
-      const values = new Set<string>();
-      for (const move of [...coverage.physical, ...coverage.special]) {
-        values.add(move.id);
-        values.add(move.name);
-        values.add(move.type);
-      }
-      return [...values];
+      return [
+        ...new Set(
+          [...coverage.physical, ...coverage.special].map((move) => move.type),
+        ),
+      ];
     },
   },
 } as const satisfies Record<string, FieldDefinition>;
 
 type CanonicalField = keyof typeof SEARCH_FIELD_DEFINITIONS;
-
-const MOVE_FIELD_DEFINITIONS: Record<MoveField, MoveFieldDefinition> = {
-  id: {
-    type: "string",
-    resolver: (move: Move) => move.id as string,
-  },
-  name: {
-    type: "string",
-    resolver: (move: Move) => move.name,
-  },
-  type: {
-    type: "string",
-    resolver: (move: Move) => String(move.type),
-  },
-  category: {
-    type: "string",
-    resolver: (move: Move) => move.category ?? "Status",
-  },
-  basePower: {
-    type: "number",
-    resolver: (move: Move) => move.basePower,
-  },
-  accuracy: {
-    type: "number",
-    // accuracy === true means the move always hits; represent as 101 for numeric comparisons
-    resolver: (move: Move) =>
-      typeof move.accuracy === "number" ? move.accuracy : 101,
-  },
-  pp: {
-    type: "number",
-    resolver: (move: Move) => move.pp,
-  },
-  priority: {
-    type: "number",
-    resolver: (move: Move) => move.priority ?? 0,
-  },
-  target: {
-    type: "string",
-    resolver: (move: Move) => String(move.target ?? ""),
-  },
-};
 
 const TIER_RANKS: Record<string, number> = {
   AG: 140,
@@ -590,10 +547,7 @@ function isSearchFilter(value: unknown): value is SearchFilter {
             typeof item === "boolean",
         )));
 
-  const hasMoveFilters =
-    Array.isArray(filter.moveFilters) && filter.moveFilters.every(isMoveFilter);
-
-  return hasValue || hasMoveFilters;
+  return hasValue;
 }
 
 function isSearchGroup(value: unknown): value is SearchGroup {
@@ -610,25 +564,6 @@ function isSearchGroup(value: unknown): value is SearchGroup {
 
 function isSearchExpression(value: unknown): value is SearchExpression {
   return isSearchFilter(value) || isSearchGroup(value);
-}
-
-function isMoveFilter(value: unknown): value is MoveFilter {
-  if (!value || typeof value !== "object") return false;
-  const filter = value as Partial<MoveFilter>;
-  return (
-    typeof filter.field === "string" &&
-    typeof filter.operator === "string" &&
-    (typeof filter.value === "string" ||
-      typeof filter.value === "number" ||
-      typeof filter.value === "boolean" ||
-      (Array.isArray(filter.value) &&
-        filter.value.every(
-          (item) =>
-            typeof item === "string" ||
-            typeof item === "number" ||
-            typeof item === "boolean",
-        )))
-  );
 }
 
 async function evaluateSearches(
@@ -677,14 +612,6 @@ async function evaluateFilter(
 ): Promise<boolean> {
   const canonicalField = toCanonicalField(filter.field);
   if (!canonicalField) return false;
-
-  if (filter.moveFilters?.length && canonicalField === "learns") {
-    return evaluateMoveSubFilters(
-      filter.moveFilters,
-      filter.moveMode ?? "and",
-      specie,
-    );
-  }
 
   if (filter.value === undefined) return false;
   const definition = SEARCH_FIELD_DEFINITIONS[canonicalField];
@@ -865,12 +792,12 @@ function compareContains(
     if (Array.isArray(filterValue)) {
       return filterValue.every((searchValue) =>
         fieldValue.some((fieldItem) =>
-          compareScalar(fieldItem, searchValue, definition),
+          compareContains(fieldItem, searchValue, definition),
         ),
       );
     }
     return fieldValue.some((fieldItem) =>
-      compareScalar(fieldItem, filterValue, definition),
+      compareContains(fieldItem, filterValue, definition),
     );
   }
 
@@ -980,42 +907,4 @@ function normalizeSortableValue(
     return definition.ranker(String(value)) ?? Number.NEGATIVE_INFINITY;
   }
   return normalizeString(String(value));
-}
-
-async function evaluateMoveSubFilters(
-  moveFilters: MoveFilter[],
-  mode: SearchLogicalMode,
-  specie: DraftSpecie,
-): Promise<boolean> {
-  const moves = await specie.learnset();
-  for (const move of moves) {
-    const passes =
-      mode === "or"
-        ? moveFilters.some((f) => evaluateSingleMoveFilter(move, f))
-        : moveFilters.every((f) => evaluateSingleMoveFilter(move, f));
-    if (passes) return true;
-  }
-  return false;
-}
-
-function toCanonicalMoveField(field: string): MoveCanonicalField | undefined {
-  const normalized = field.trim();
-  if (normalized in MOVE_FIELD_DEFINITIONS) {
-    return normalized as MoveCanonicalField;
-  }
-  return undefined;
-}
-
-function evaluateSingleMoveFilter(move: Move, filter: MoveFilter): boolean {
-  const canonicalField = toCanonicalMoveField(filter.field);
-  if (!canonicalField) return false;
-  const definition = MOVE_FIELD_DEFINITIONS[canonicalField];
-  const fieldValue = definition.resolver(move);
-  if (fieldValue === undefined) return false;
-  return compareFilterValues(
-    fieldValue,
-    definition,
-    filter.operator,
-    normalizeFilterValue(filter.value, definition.type),
-  );
 }
