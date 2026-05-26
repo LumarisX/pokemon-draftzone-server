@@ -808,7 +808,7 @@ export const LeagueRoute = createRoute()((r) => {
             }[];
           } = {};
           if (division) divisions = await getDrafted(ctx.tournament, division);
-          return { tierList, divisions };
+          return { tierList, divisions, ruleset: ctx.ruleset.name };
         });
         r.path("edit").auth()((r) => {
           r.get.validate({

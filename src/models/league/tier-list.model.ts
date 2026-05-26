@@ -146,6 +146,7 @@ const LeagueTierListSchema: Schema<
       },
       required: true,
       default: () => ({ isPublic: false }),
+      _id: false,
     },
   },
   { timestamps: true },
