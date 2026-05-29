@@ -45,6 +45,7 @@ import {
   LeagueTierListDocument,
   TierListPokemonAddon,
 } from "../models/league/tier-list.model";
+import LeagueModel from "../models/league/league.model";
 import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "../models/league/tournament.model";
@@ -75,7 +76,6 @@ import {
 import {
   getDrafted,
   getPokemonTier,
-  getTierList,
   updateTierList,
 } from "../services/league-services/tier-list-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
@@ -84,6 +84,7 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
+import { getTierList } from "../services/tier-lists-services/tier-list-service";
 
 const matchupPokemonStatsSchema = z.object({
   kills: z.object({
@@ -788,76 +789,79 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      r.path("tier-list")((r) => {
-        r.get.validate({
-          query: (data) =>
-            z
-              .object({
-                division: z
-                  .union([z.string().min(1), z.array(z.string().min(1))])
-                  .optional(),
-              })
-              .parse(data),
-        })(async (ctx) => {
-          const { division } = ctx.validatedQuery;
-          const tierList = await getTierList(ctx.tournament);
+      // r.path("tier-list")((r) => {
+      //   r.get.validate({
+      //     query: (data) =>
+      //       z
+      //         .object({
+      //           division: z
+      //             .union([z.string().min(1), z.array(z.string().min(1))])
+      //             .optional(),
+      //         })
+      //         .parse(data),
+      //   })(async (ctx) => {
+      //     const { division } = ctx.validatedQuery;
+      //     const tierList = await getTierList(ctx.tournament.tierList._id);
 
-          let divisions: {
-            [key: string]: {
-              pokemonId: string;
-            }[];
-          } = {};
-          if (division) divisions = await getDrafted(ctx.tournament, division);
-          return { tierList, divisions, ruleset: ctx.ruleset.name };
-        });
-        r.path("edit").auth()((r) => {
-          r.get.validate({
-            query: (data) =>
-              z
-                .object({
-                  division: z
-                    .union([z.string().min(1), z.array(z.string().min(1))])
-                    .optional(),
-                })
-                .parse(data),
-          })(async (ctx) => {
-            const { division } = ctx.validatedQuery;
-            const tierList = await getTierList(ctx.tournament, true);
-            const divisions = await getDrafted(ctx.tournament, division);
-            return { tierList, divisions };
-          });
-          r.post.validate({
-            body: (data) =>
-              z
-                .object({
-                  tiers: z.array(
-                    z.object({
-                      name: z.string(),
-                      cost: z.number(),
-                      pokemon: z.array(
-                        z.object({
-                          id: z.string(),
-                          name: z.string(),
-                          banned: z.boolean().optional(),
-                        }),
-                      ),
-                    }),
-                  ),
-                })
-                .parse(data),
-          })(async (ctx) => {
-            const { tiers } = ctx.validatedBody;
-            await updateTierList(ctx.tournament, tiers);
-            logger.info(
-              `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
-            );
-            return {
-              success: true,
-              message: "Tier list updated successfully",
-            };
-          });
-        });
-      });
+      //     let divisions: {
+      //       [key: string]: {
+      //         pokemonId: string;
+      //       }[];
+      //     } = {};
+      //     if (division) divisions = await getDrafted(ctx.tournament, division);
+      //     return { tierList, divisions, ruleset: ctx.ruleset.name };
+      //   });
+      //   r.path("edit").auth()((r) => {
+      //     r.get.validate({
+      //       query: (data) =>
+      //         z
+      //           .object({
+      //             division: z
+      //               .union([z.string().min(1), z.array(z.string().min(1))])
+      //               .optional(),
+      //           })
+      //           .parse(data),
+      //     })(async (ctx) => {
+      //       const { division } = ctx.validatedQuery;
+      //       const tierList = await getTierList(
+      //         ctx.tournament.tierList._id,
+      //         true,
+      //       );
+      //       const divisions = await getDrafted(ctx.tournament, division);
+      //       return { tierList, divisions };
+      //     });
+      //     r.post.validate({
+      //       body: (data) =>
+      //         z
+      //           .object({
+      //             tiers: z.array(
+      //               z.object({
+      //                 name: z.string(),
+      //                 cost: z.number(),
+      //                 pokemon: z.array(
+      //                   z.object({
+      //                     id: z.string(),
+      //                     name: z.string(),
+      //                     banned: z.boolean().optional(),
+      //                   }),
+      //                 ),
+      //               }),
+      //             ),
+      //           })
+      //           .parse(data),
+      //     })(async (ctx) => {
+      //       const { tiers } = ctx.validatedBody;
+      //       await updateTierList(ctx.tournament.tierList._id, tiers);
+      //       logger.info(
+      //         `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
+      //       );
+      //       return {
+      //         success: true,
+      //         message: "Tier list updated successfully",
+      //       };
+      //     });
+      //   });
+      // });
       r.path("divisions")((r) => {
         r.param("division_id", DivisionHandler).auth()((r) => {
           r.get(
@@ -2027,7 +2031,7 @@ export const LeagueRoute = createRoute()((r) => {
               r.get(async (ctx) => {
                 await ctx.tournament.populate("tierList");
                 const rawTierList = ctx.tournament.tierList;
-                const tierList = await getTierList(ctx.tournament);
+                const tierList = await getTierList(ctx.tournament.tierList._id);
                 const division = await ctx.division.populate<{
                   teams: (LeagueTeamDocument & {
                     coach: LeagueCoachDocument;
@@ -2120,7 +2124,10 @@ export const LeagueRoute = createRoute()((r) => {
                       .parse(data),
                 })(async (ctx) => {
                   const { division } = ctx.validatedQuery;
-                  const tierList = await getTierList(ctx.tournament, true);
+                  const tierList = await getTierList(
+                    ctx.tournament.tierList._id,
+                    true,
+                  );
                   const divisions = await getDrafted(ctx.tournament, division);
                   return { tierList, divisions };
                 });
@@ -2144,7 +2151,7 @@ export const LeagueRoute = createRoute()((r) => {
                       .parse(data),
                 })(async (ctx) => {
                   const { tiers } = ctx.validatedBody;
-                  await updateTierList(ctx.tournament, tiers);
+                  await updateTierList(ctx.tournament.tierList._id, tiers);
                   logger.info(
                     `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
                   );
@@ -2604,6 +2611,45 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
+    });
+  });
+  r.param("league_key", async (ctx, league_key) => {
+    const league = await LeagueModel.findOne({ leagueKey: league_key });
+    if (!league)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+        leagueKey: league_key,
+      });
+    return { league };
+  })((r) => {
+    r.get(async (ctx) => {
+      const tournaments = await LeagueTournamentModel.find({
+        league: ctx.league._id,
+      })
+        .sort({ createdAt: -1 })
+        .select(
+          "name tournamentKey description format ruleset signUpDeadline draftStart draftEnd seasonStart seasonEnd logo discord",
+        );
+
+      return {
+        name: ctx.league.name,
+        leagueKey: ctx.league.leagueKey,
+        description: ctx.league.description,
+        logo: ctx.league.logo,
+        tournaments: tournaments.map((t) => ({
+          name: t.name,
+          tournamentKey: t.tournamentKey,
+          description: t.description,
+          format: t.format,
+          ruleset: t.ruleset,
+          signUpDeadline: t.signUpDeadline,
+          draftStart: t.draftStart,
+          draftEnd: t.draftEnd,
+          seasonStart: t.seasonStart,
+          seasonEnd: t.seasonEnd,
+          logo: t.logo,
+          discord: t.discord,
+        })),
+      };
     });
   });
 });

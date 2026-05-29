@@ -35,7 +35,7 @@ export type TierListSettings = {
 export type LeagueTierList = {
   name: string;
   description?: string;
-  createdBy: Types.ObjectId | LeagueCoachDocument;
+  createdBy: string;
   copiedFrom?: Types.ObjectId;
   pokemon: Map<string, LeagueTierListPokemon>;
   tiers: LeagueTier[];
@@ -48,7 +48,7 @@ export type LeagueTierList = {
   format: string;
   ruleset: string;
   settings: TierListSettings;
-  collaborators: Types.ObjectId[];
+  collaborators: string[];
 };
 
 type TierListMethods = {
@@ -108,8 +108,7 @@ const LeagueTierListSchema: Schema<
     name: { type: String, required: true },
     description: { type: String },
     createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_COACH_COLLECTION,
+      type: String,
       required: true,
     },
     copiedFrom: {
@@ -136,9 +135,7 @@ const LeagueTierListSchema: Schema<
     },
     format: { type: String, required: true },
     ruleset: { type: String, required: true },
-    collaborators: [
-      { type: Schema.Types.ObjectId, ref: LEAGUE_COACH_COLLECTION },
-    ],
+    collaborators: [{ type: String }],
     settings: {
       type: {
         isPublic: { type: Boolean, required: true, default: false },

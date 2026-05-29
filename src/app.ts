@@ -27,6 +27,7 @@ import { StatisticsRoute } from "./routes/statistics.route";
 import { SupporterRoute } from "./routes/supporters.route";
 import { TeambuilderRoute } from "./routes/teambuilder.route";
 import { UserRoute } from "./routes/user.route";
+import { TierListRoute } from "./routes/tier-list.route";
 
 const logDir = path.join(__dirname, "../logs");
 if (!fs.existsSync(logDir)) {
@@ -221,6 +222,7 @@ export const ROUTES: { [path: string]: Route } = {
   "/draft": DraftRoute,
   "/file": FileRoute,
   "/leagues": LeagueRoute,
+  "/tier-lists": TierListRoute,
   "/matchup": MatchupRoute,
   "/news": NewsRoute,
   "/planner": PlannerRoute,
