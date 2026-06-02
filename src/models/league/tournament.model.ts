@@ -48,8 +48,6 @@ export type LeagueTournament = {
   name: string;
   tournamentKey: string;
   description?: string;
-  format: string;
-  ruleset: string;
   signUpDeadline: Date;
   draftStart?: Date;
   draftEnd?: Date;
@@ -176,8 +174,6 @@ const LeagueTournamentSchema: Schema<
     name: { type: String, required: true },
     tournamentKey: { type: String, required: true, unique: true, index: true },
     description: { type: String },
-    format: { type: String, required: true },
-    ruleset: { type: String, required: true },
     signUpDeadline: { type: Date, required: true },
     draftStart: { type: Date },
     draftEnd: { type: Date },

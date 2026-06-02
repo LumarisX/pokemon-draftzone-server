@@ -27,6 +27,7 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { LeagueTierListDocument } from "../models/league/tier-list.model";
 
 export type MatchupTeam = {
   teamName: string;
@@ -46,7 +47,7 @@ export type PopulatedLeagueMatchup = LeagueMatchupDocument & {
     team: LeagueTeamDocument & { coach: LeagueCoachDocument };
   };
   division: LeagueDivisionDocument & {
-    tournament: LeagueTournamentDocument;
+    tournament: LeagueTournamentDocument & { tierList: LeagueTierListDocument };
   };
 };
 
@@ -104,7 +105,9 @@ export class Matchup {
     leagueMatchupDoc: PopulatedLeagueMatchup,
     sub?: string,
   ): Matchup {
-    const ruleset = getRuleset(leagueMatchupDoc.division.tournament.ruleset);
+    const ruleset = getRuleset(
+      leagueMatchupDoc.division.tournament.tierList.ruleset,
+    );
     let notes: string | undefined = undefined;
     const stageIndex = leagueMatchupDoc.round
       ? leagueMatchupDoc.division.stages.findIndex(
@@ -160,7 +163,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side2.team.coach.auth0Id,
       },
       ruleset,
-      getFormat(leagueMatchupDoc.division.tournament.format),
+      getFormat(leagueMatchupDoc.division.tournament.tierList.format),
       leagueMatchupDoc.division.tournament.name,
       leagueMatchupDoc.division.tournament._id.toString(),
       leagueMatchupDoc.division.stages[stageIndex]?.name ?? "",
@@ -173,11 +176,11 @@ export class Matchup {
     leagueMatchupDoc: Omit<PopulatedLeagueMatchup, "division"> & {
       division: null;
     },
-    tournament: LeagueTournamentDocument,
+    tournament: LeagueTournamentDocument & { tierList: LeagueTierListDocument },
     side1Division: LeagueDivisionDocument | null,
     side2Division: LeagueDivisionDocument | null,
   ): Matchup {
-    const ruleset = getRuleset(tournament.ruleset);
+    const ruleset = getRuleset(tournament.tierList.ruleset);
     // Find the playoff stage name from the tournament's stages
     const stageName =
       tournament.stages.find((s) =>
@@ -227,7 +230,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side2.team?.coach?.auth0Id,
       },
       ruleset,
-      getFormat(tournament.format),
+      getFormat(tournament.tierList.format),
       tournament.name,
       tournament._id.toString(),
       stageName,

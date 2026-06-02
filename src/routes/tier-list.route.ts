@@ -27,6 +27,7 @@ export const TierListRoute = createRoute()((r) => {
         ruleset: ctx.tierListRuleset,
         name: ctx.tierListName,
         description: ctx.tierListDescription,
+        draftCount: ctx.tierListDraftCount,
       };
     });
     r.path("settings").auth()((r) => {
@@ -44,11 +45,11 @@ export const TierListRoute = createRoute()((r) => {
             .object({
               name: z.string().min(1).optional(),
               description: z.string().optional(),
-              pointTotal: z.number().int().positive().optional(),
+              pointTotal: z.number().int().nonnegative().optional(),
               draftCount: z
                 .object({
                   min: z.number().int().nonnegative(),
-                  max: z.number().int().positive(),
+                  max: z.number().int().nonnegative(),
                 })
                 .optional(),
             })

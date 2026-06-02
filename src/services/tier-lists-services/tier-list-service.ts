@@ -97,9 +97,14 @@ export async function getTierList(
           .filter((specie) => !assignedPokemon.has(specie.id))
           .map((specie) => {
             const pokemonData = tierList.pokemon.get(specie.id);
+            const draftSpecie = new DraftSpecie(specie.id as ID, ruleset);
             return {
               id: specie.id,
               name: specie.name,
+              types: draftSpecie.types,
+              abilities: Object.values(draftSpecie.abilities),
+              bst: draftSpecie.bst,
+              stats: draftSpecie.baseStats,
               ...(pokemonData?.banned && { draftBanned: true }),
             };
           }),

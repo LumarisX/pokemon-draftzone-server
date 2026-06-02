@@ -118,8 +118,8 @@ export async function getTournamentsByOwner(auth0Id: string) {
           leagueKey: division.tournament.league.leagueKey,
           divisionKey: division.divisionKey,
           teamId: userTeam._id.toString(),
-          format: division.tournament.format,
-          ruleset: division.tournament.ruleset,
+          format: division.tournament.tierList.format,
+          ruleset: division.tournament.tierList.ruleset,
           draft: getRosterByStage(userTeam, division).map((pokemon) => ({
             id: pokemon.id,
           })),

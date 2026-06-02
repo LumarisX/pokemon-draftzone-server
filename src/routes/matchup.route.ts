@@ -21,6 +21,7 @@ import { speedchart } from "../services/matchup-services/speedchart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { createRoute } from "./route-builder";
+import { LeagueTierListDocument } from "../models/league/tier-list.model";
 
 /** Derives the winner side from a match document, using the explicit winner or counting results. */
 function deriveWinnerSide(
@@ -101,6 +102,9 @@ export const MatchupRoute = createRoute()((r) => {
             path: "division",
             populate: {
               path: "tournament",
+              populate: {
+                path: "tierList",
+              },
             },
           },
         ]);
@@ -111,7 +115,9 @@ export const MatchupRoute = createRoute()((r) => {
           // Bracket matchup: no division on the document — resolve tournament + per-team divisions
           const tournament = await LeagueTournamentModel.findOne({
             "stages.rounds._id": leagueMatchup.round,
-          });
+          }).populate<{
+            tierList: LeagueTierListDocument;
+          }>("tierList");
           if (!tournament) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
 
           // Resolve teams: use populated team if present, otherwise look up previous match winner

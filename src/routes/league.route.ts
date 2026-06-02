@@ -418,8 +418,8 @@ export const LeagueRoute = createRoute()((r) => {
             name: ctx.tournament.name,
             tournamentKey: ctx.tournament.tournamentKey,
             description: ctx.tournament.description,
-            format: ctx.tournament.format,
-            ruleset: ctx.tournament.ruleset,
+            format: ctx.tournament.tierList.format,
+            ruleset: ctx.tournament.tierList.ruleset,
             signUpDeadline: ctx.tournament.signUpDeadline,
             draftStart: ctx.tournament.draftStart,
             draftEnd: ctx.tournament.draftEnd,
@@ -428,6 +428,7 @@ export const LeagueRoute = createRoute()((r) => {
             logo: ctx.tournament.logo,
             divisions,
             discord: ctx.tournament.discord,
+            tierListId: ctx.tournament.tierList._id?.toString(),
           };
         });
       });
@@ -435,6 +436,41 @@ export const LeagueRoute = createRoute()((r) => {
         r.get(async (ctx) => getRoles(ctx.sub));
       });
       r.path("signup").auth()((r) => {
+        r.get(async (ctx) => {
+          const coach = await LeagueCoachModel.findOne({
+            auth0Id: ctx.sub,
+            tournamentId: ctx.tournament._id,
+          });
+          if (!coach)
+            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+              tournamentId: ctx.tournament._id.toString(),
+            });
+
+          const team = await LeagueTeamModel.findOne({ coach: coach._id });
+          let division: { divisionKey: string; name: string } | null = null;
+          if (team) {
+            const div = await LeagueDivisionModel.findOne({
+              tournament: ctx.tournament._id,
+              teams: team._id,
+            });
+            if (div) {
+              division = { divisionKey: div.divisionKey, name: div.name };
+            }
+          }
+
+          return {
+            name: coach.name,
+            gameName: coach.gameName,
+            discordName: coach.discordName,
+            timezone: coach.timezone,
+            teamName: coach.teamName,
+            status: coach.status,
+            logo: coach.logo ? s3Service.getPublicUrl(coach.logo) : undefined,
+            signedUpAt: coach.signedUpAt,
+            teamId: team?._id.toString(),
+            division,
+          };
+        });
         r.post.validate({
           body: (data) => signUpSchema.parse(data),
         })(async (ctx, req, res) => {
@@ -2541,8 +2577,6 @@ export const LeagueRoute = createRoute()((r) => {
             return {
               name: ctx.tournament.name,
               description: ctx.tournament.description,
-              format: ctx.tournament.format,
-              ruleset: ctx.tournament.ruleset,
               signUpDeadline: ctx.tournament.signUpDeadline,
               draftStart: ctx.tournament.draftStart,
               draftEnd: ctx.tournament.draftEnd,
@@ -2559,8 +2593,6 @@ export const LeagueRoute = createRoute()((r) => {
                 .object({
                   name: z.string().min(1),
                   description: z.string().optional(),
-                  format: z.string().min(1),
-                  ruleset: z.string().min(1),
                   signUpDeadline: z.coerce.date(),
                   draftStart: z.coerce.date().optional(),
                   draftEnd: z.coerce.date().optional(),
@@ -2580,8 +2612,6 @@ export const LeagueRoute = createRoute()((r) => {
             const {
               name,
               description,
-              format,
-              ruleset,
               signUpDeadline,
               draftStart,
               draftEnd,
@@ -2593,8 +2623,6 @@ export const LeagueRoute = createRoute()((r) => {
             } = ctx.validatedBody;
             ctx.tournament.name = name;
             ctx.tournament.description = description;
-            ctx.tournament.format = format;
-            ctx.tournament.ruleset = ruleset;
             ctx.tournament.signUpDeadline = signUpDeadline;
             ctx.tournament.draftStart = draftStart;
             ctx.tournament.draftEnd = draftEnd;
@@ -2625,6 +2653,9 @@ export const LeagueRoute = createRoute()((r) => {
       const tournaments = await LeagueTournamentModel.find({
         league: ctx.league._id,
       })
+        .populate<{
+          tierList: LeagueTierListDocument;
+        }>("tierList")
         .sort({ createdAt: -1 })
         .select(
           "name tournamentKey description format ruleset signUpDeadline draftStart draftEnd seasonStart seasonEnd logo discord",
@@ -2639,8 +2670,8 @@ export const LeagueRoute = createRoute()((r) => {
           name: t.name,
           tournamentKey: t.tournamentKey,
           description: t.description,
-          format: t.format,
-          ruleset: t.ruleset,
+          format: t.tierList.format,
+          ruleset: t.tierList.ruleset,
           signUpDeadline: t.signUpDeadline,
           draftStart: t.draftStart,
           draftEnd: t.draftEnd,
