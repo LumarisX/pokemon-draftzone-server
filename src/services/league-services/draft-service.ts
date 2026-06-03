@@ -9,6 +9,7 @@ import eventEmitter from "../../event-emitter";
 import { LEAGUE_COACH_COLLECTION } from "../../models/league";
 import { LeagueCoachDocument } from "../../models/league/coach.model";
 import {
+  LeagueDivision,
   LeagueDivisionDocument,
   TradeSide,
 } from "../../models/league/division.model";
@@ -199,7 +200,7 @@ export function getDraftOrder(
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
   },
 ): (LeagueTeamDocument & { coach: LeagueCoachDocument })[] {
-  if (division.teams.length <= 1 || !division.useRandomDraftOrder)
+  if (division.teams.length <= 1 || !division.draft.useRandomSeeding)
     return division.teams;
 
   let seed = 0;
@@ -226,18 +227,18 @@ export function getDraftOrder(
  * Generates the full pick order for a draft.
  * @param initialTeamOrder - The initial order of teams.
  * @param numberOfRounds - The total number of rounds in the draft.
- * @param draftStyle - The style of the draft ('snake' or 'linear').
+ * @param draft.orderProgression - The style of the draft ('snake' or 'linear').
  * @returns An array of LeagueTeamDocument representing the pick order.
  */
 export function generatePickOrder(
   initialTeamOrder: (LeagueTeamDocument & { coach: LeagueCoachDocument })[],
   numberOfRounds: number,
-  draftStyle: "snake" | "linear",
+  orderProgression: LeagueDivision["draft"]["orderProgression"],
 ): (LeagueTeamDocument & { coach: LeagueCoachDocument })[] {
   const pickOrder: (LeagueTeamDocument & { coach: LeagueCoachDocument })[] = [];
   for (let r = 0; r < numberOfRounds; r++) {
     let currentRoundOrder = [...initialTeamOrder];
-    if (draftStyle === "snake" && r % 2 === 1) {
+    if (orderProgression === "snake" && r % 2 === 1) {
       currentRoundOrder.reverse();
     }
     pickOrder.push(...currentRoundOrder);
@@ -410,34 +411,43 @@ export function calculateCanDraft(
   pickOrder: (LeagueTeamDocument & { coach: LeagueCoachDocument })[],
 ): string[] {
   const canDraft: string[] = [];
-  if (division.status !== "IN_PROGRESS") return canDraft;
+  if (division.draft.status !== "IN_PROGRESS") return canDraft;
 
-  const initialTeamOrder = getDraftOrder(division);
-  if (!initialTeamOrder || initialTeamOrder.length === 0) return canDraft;
+  if (!division.draft.sequentialTurns)
+    return pickOrder.map((t) => t._id.toString());
 
-  const picksExpected = new Map<string, number>();
-  const counterLimit = Math.min(division.draftCounter, pickOrder.length);
-  for (let i = 0; i < counterLimit; i++) {
-    if (i >= pickOrder.length) break;
-    const teamId = pickOrder[i]._id.toString();
-    picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
-  }
+  if (division.draft.orderProgression === "snake") {
+    const initialTeamOrder = getDraftOrder(division);
+    if (!initialTeamOrder || initialTeamOrder.length === 0) return canDraft;
 
-  for (const team of initialTeamOrder) {
-    const teamId = team._id.toString();
-    const expected = picksExpected.get(teamId) || 0;
-    if (team.draft.length < expected) {
-      canDraft.push(teamId);
+    const picksExpected = new Map<string, number>();
+    const counterLimit = Math.min(division.draft.counter, pickOrder.length);
+    for (let i = 0; i < counterLimit; i++) {
+      if (i >= pickOrder.length) break;
+      const teamId = pickOrder[i]._id.toString();
+      picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
     }
+
+    for (const team of initialTeamOrder) {
+      const teamId = team._id.toString();
+      const expected = picksExpected.get(teamId) || 0;
+      if (team.draft.length < expected) {
+        canDraft.push(teamId);
+      }
+    }
+
+    if (division.draft.counter < pickOrder.length) {
+      const currentPickingTeamId =
+        pickOrder[division.draft.counter]._id.toString();
+      if (!canDraft.includes(currentPickingTeamId)) {
+        canDraft.push(currentPickingTeamId);
+      }
+    }
+    return canDraft;
   }
 
-  if (division.draftCounter < pickOrder.length) {
-    const currentPickingTeamId =
-      pickOrder[division.draftCounter]._id.toString();
-    if (!canDraft.includes(currentPickingTeamId)) {
-      canDraft.push(currentPickingTeamId);
-    }
-  }
+  // Todo: Add support for linear draft
+
   return canDraft;
 }
 
@@ -449,9 +459,9 @@ export function calculateCanDraft(
  */
 export function calculateCurrentPick(division: LeagueDivisionDocument) {
   return {
-    round: Math.floor(division.draftCounter / division.teams.length),
-    position: division.draftCounter % division.teams.length,
-    skipTime: division.skipTime,
+    round: Math.floor(division.draft.counter / division.teams.length),
+    position: division.draft.counter % division.teams.length,
+    skipTime: division.draft.skipTime,
   };
 }
 
@@ -465,11 +475,11 @@ export async function isCoach(
 }
 
 export function getCurrentRound(division: LeagueDivisionDocument) {
-  return Math.floor(division.draftCounter / division.teams.length);
+  return Math.floor(division.draft.counter / division.teams.length);
 }
 
 export function getCurrentPositionInRound(division: LeagueDivisionDocument) {
-  return division.draftCounter % division.teams.length;
+  return division.draft.counter % division.teams.length;
 }
 
 export function getCurrentPickingTeam(
@@ -484,7 +494,7 @@ export function getCurrentPickingTeam(
   const currentPositionInRound = getCurrentPositionInRound(division);
 
   let pickingOrder = [...teams];
-  if (division.draftStyle === "snake" && currentRound % 2 === 1) {
+  if (division.draft.orderProgression === "snake" && currentRound % 2 === 1) {
     pickingOrder.reverse();
   }
 
@@ -516,19 +526,19 @@ export async function canTeamDraft(
   },
   team: LeagueTeamDocument & { coach: LeagueCoachDocument },
 ): Promise<boolean> {
-  if (division.status !== "IN_PROGRESS") {
+  if (division.draft.status !== "IN_PROGRESS") {
     return false;
   }
 
   const teams = getDraftOrder(division);
   const teamsCount = teams.length;
   const currentRound = Math.floor(
-    division.draftCounter / division.teams.length,
+    division.draft.counter / division.teams.length,
   );
-  const currentPositionInRound = division.draftCounter % teamsCount;
+  const currentPositionInRound = division.draft.counter % teamsCount;
 
   let pickingOrder = [...teams];
-  if (division.draftStyle === "snake" && currentRound % 2 === 1) {
+  if (division.draft.orderProgression === "snake" && currentRound % 2 === 1) {
     pickingOrder.reverse();
   }
   const teamIndexInPickingOrder = pickingOrder.findIndex((t) =>
@@ -708,8 +718,8 @@ export async function draftPokemon(
   let currentTeam = team;
 
   try {
-    if (division.status === "IN_PROGRESS") {
-      currentDivision.status = "IN_PROGRESS";
+    if (division.draft.status === "IN_PROGRESS") {
+      currentDivision.draft.status = "IN_PROGRESS";
     }
 
     const dbTeam = currentDivision.teams.find((t: LeagueTeamDocument) =>
@@ -783,7 +793,7 @@ export async function draftPokemon(
     const pickOrder = generatePickOrder(
       initialTeamOrder,
       numberOfRounds,
-      currentDivision.draftStyle,
+      currentDivision.draft.orderProgression,
     );
     const canDraftTeams = calculateCanDraft(currentDivision, pickOrder);
     const pokemonSpecie = getSpecies(pick.pokemonId)!;
@@ -824,7 +834,7 @@ export async function draftPokemon(
       });
     });
 
-    if (currentDivision.channelId) {
+    if (currentDivision.draft.channelId) {
       const pokemon = {
         name: pokemonSpecie.name,
         id: pick.pokemonId,
@@ -838,7 +848,7 @@ export async function draftPokemon(
       });
 
       const coachMention = await resolveDiscordMention(
-        currentDivision.channelId,
+        currentDivision.draft.channelId,
         currentTeam.coach?.discordName,
       );
       const messageContent = `${pokemon.name} was drafted by ${
@@ -880,7 +890,7 @@ export async function draftPokemon(
           inline: true,
         });
       queueSideEffect(session, () => {
-        sendDiscordMessage(currentDivision.channelId, {
+        sendDiscordMessage(currentDivision.draft.channelId, {
           content: messageContent,
           embed: {
             title: `${coach.teamName} drafted ${pokemon.name}!`,
@@ -950,7 +960,7 @@ export function isDraftComplete(
   const tierList = tournament.tierList;
   const totalPicksNeeded = division.teams.length * tierList.draftCount.max;
 
-  if (division.draftCounter >= totalPicksNeeded) return true;
+  if (division.draft.counter >= totalPicksNeeded) return true;
 
   const allTeamsDone = division.teams.every(
     (team: LeagueTeamDocument) => team.draft.length >= tierList.draftCount.max,
@@ -972,19 +982,19 @@ export async function increaseCounter(
     const pickOrder = generatePickOrder(
       initialTeamOrder,
       numberOfRounds,
-      division.draftStyle,
+      division.draft.orderProgression,
     );
 
-    if (division.status !== "IN_PROGRESS") return;
+    if (division.draft.status !== "IN_PROGRESS") return;
 
     if (isDraftComplete(tournament, division)) {
       await completeDraft(tournament, division, session);
       return;
     }
 
-    division.draftCounter++;
+    division.draft.counter++;
 
-    if (division.draftCounter >= pickOrder.length) {
+    if (division.draft.counter >= pickOrder.length) {
       await completeDraft(tournament, division, session);
       return;
     }
@@ -1007,7 +1017,7 @@ export async function increaseCounter(
 
       if (
         skippedTeams > maxSkips ||
-        division.draftCounter >= pickOrder.length - 1
+        division.draft.counter >= pickOrder.length - 1
       ) {
         await completeDraft(tournament, division, session);
         return;
@@ -1028,7 +1038,7 @@ export async function increaseCounter(
           };
         }
       }
-      division.draftCounter++;
+      division.draft.counter++;
       const newNextTeam = getCurrentPickingTeam(division);
       if (!newNextTeam) {
         await completeDraft(tournament, division, session);
@@ -1040,20 +1050,20 @@ export async function increaseCounter(
     if (session) {
       const newSkipTime = new Date();
       const teamTimer = calculateTeamTimer(
-        division.timerLength,
+        division.draft.timerLength,
         nextTeam.skipCount || 0,
       );
       newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-      division.skipTime = newSkipTime;
+      division.draft.skipTime = newSkipTime;
       queueSideEffect(session, () => resumeSkipPick(tournament, division));
     } else {
       const newSkipTime = new Date();
       const teamTimer = calculateTeamTimer(
-        division.timerLength,
+        division.draft.timerLength,
         nextTeam.skipCount || 0,
       );
       newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-      division.skipTime = newSkipTime;
+      division.draft.skipTime = newSkipTime;
       await cancelSkipPick(division);
       await resumeSkipPick(tournament, division);
     }
@@ -1090,15 +1100,15 @@ export async function increaseCounter(
           canDraftTeams: calculateCanDraft(division, pickOrder),
         });
 
-        if (division.channelId) {
+        if (division.draft.channelId) {
           const nextCoachMention = await resolveDiscordMention(
-            division.channelId,
+            division.draft.channelId,
             nextTeam.coach.discordName,
           );
           const mentionText = nextCoachMention
             ? `${nextCoachMention}, it is now your turn!`
             : "It is now your turn!";
-          await sendDiscordMessage(division.channelId, mentionText);
+          await sendDiscordMessage(division.draft.channelId, mentionText);
         }
       });
 
@@ -1115,12 +1125,12 @@ async function completeDraft(
   division: LeagueDivisionDocument,
   session?: ClientSession,
 ) {
-  if (division.status === "COMPLETED") return;
+  if (division.draft.status === "COMPLETED") return;
 
-  division.status = "COMPLETED";
+  division.draft.status = "COMPLETED";
   queueSideEffect(session, () => cancelSkipPick(division));
-  division.skipTime = undefined;
-  division.remainingTime = undefined;
+  division.draft.skipTime = undefined;
+  division.draft.remainingTime = undefined;
 
   await division.save({ session });
 
@@ -1131,8 +1141,8 @@ async function completeDraft(
       divisionName: division.name,
     });
 
-    if (division.channelId) {
-      sendDiscordMessage(division.channelId, {
+    if (division.draft.channelId) {
+      sendDiscordMessage(division.draft.channelId, {
         content: `🎉 The draft for ${division.name} has been completed!`,
         embed: {
           title: `${division.name} Draft Complete`,
@@ -1155,7 +1165,7 @@ export async function checkCounterIncrease(
   session?: ClientSession,
 ) {
   const currentRound = Math.floor(
-    division.draftCounter / division.teams.length,
+    division.draft.counter / division.teams.length,
   );
   const currentPickingTeam = getCurrentPickingTeam(division);
   if (!currentPickingTeam) {
@@ -1183,7 +1193,7 @@ export async function getDivisionDetails(
   const pickOrder = generatePickOrder(
     initialTeamOrder,
     numberOfRounds,
-    division.draftStyle,
+    division.draft.orderProgression,
   );
 
   const teams = await getTeamsWithCoachStatus(
@@ -1201,13 +1211,14 @@ export async function getDivisionDetails(
   return {
     leagueName: tournament.name,
     divisionName: division.name,
-    draftStyle: division.draftStyle,
+    orderProgression: division.draft.orderProgression,
+    sequentialTurns: division.draft.sequentialTurns,
     teamOrder: initialTeamOrder.map((team) => team._id),
     rounds: numberOfRounds,
     teams: teams,
     currentPick,
-    skipTime: division.skipTime,
-    status: division.status,
+    skipTime: division.draft.skipTime,
+    status: division.draft.status,
     canDraft,
     points: tierList.pointTotal,
     logo: tournament.logo,
@@ -1220,7 +1231,7 @@ export async function skipCurrentPick(
     teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
   },
 ) {
-  if (division.status !== "IN_PROGRESS") return false;
+  if (division.draft.status !== "IN_PROGRESS") return false;
 
   const team = getCurrentPickingTeam(division);
 
@@ -1246,7 +1257,7 @@ export async function skipCurrentPick(
     }
   }
 
-  division.eventLog.push({
+  division.draft.eventLog.push({
     eventType: "SKIP",
     details: `${teamName} was skipped`,
     timestamp: new Date(),
@@ -1255,8 +1266,8 @@ export async function skipCurrentPick(
   await division.save();
 
   const newTimerLength = fullTeam
-    ? calculateTeamTimer(division.timerLength, fullTeam.skipCount)
-    : division.timerLength;
+    ? calculateTeamTimer(division.draft.timerLength, fullTeam.skipCount)
+    : division.draft.timerLength;
 
   eventEmitter.emit("league.draft.skip", {
     tournamentId: tournament.tournamentKey,
@@ -1266,14 +1277,14 @@ export async function skipCurrentPick(
     newTimerLength,
   });
 
-  if (division.channelId) {
+  if (division.draft.channelId) {
     const coachMention = await resolveDiscordMention(
-      division.channelId,
+      division.draft.channelId,
       fullTeam?.coach?.discordName,
     );
     const coachLabel = coachMention ?? "coach";
     sendDiscordMessage(
-      division.channelId,
+      division.draft.channelId,
       `${teamName} (${coachLabel}) was skipped!`,
     );
   }
@@ -1285,10 +1296,10 @@ export async function skipCurrentPick(
 
 export function cancelSkipTime(division: LeagueDivisionDocument) {
   const now: Date = new Date();
-  const differenceInMs = division.skipTime
-    ? division.skipTime.getTime() - now.getTime()
+  const differenceInMs = division.draft.skipTime
+    ? division.draft.skipTime.getTime() - now.getTime()
     : 0;
-  division.remainingTime = differenceInMs / 1000;
+  division.draft.remainingTime = differenceInMs / 1000;
 }
 
 export async function setDivsionState(
@@ -1300,16 +1311,19 @@ export async function setDivsionState(
 ) {
   const statusActions: { [key: string]: () => Promise<void> } = {
     play: async () => {
-      division.status = "IN_PROGRESS";
+      division.draft.status = "IN_PROGRESS";
       const newSkipTime = new Date();
       const currentTeam = getCurrentPickingTeam(division);
       const teamTimer = currentTeam
-        ? calculateTeamTimer(division.timerLength, currentTeam.skipCount || 0)
-        : division.timerLength;
-      const secondsToAdd = division.remainingTime ?? teamTimer;
+        ? calculateTeamTimer(
+            division.draft.timerLength,
+            currentTeam.skipCount || 0,
+          )
+        : division.draft.timerLength;
+      const secondsToAdd = division.draft.remainingTime ?? teamTimer;
       newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
-      division.skipTime = newSkipTime;
-      division.remainingTime = undefined;
+      division.draft.skipTime = newSkipTime;
+      division.draft.remainingTime = undefined;
 
       await division.save();
 
@@ -1330,9 +1344,9 @@ export async function setDivsionState(
       await resumeSkipPick(tournament, division);
     },
     pause: async () => {
-      division.status = "PAUSED";
+      division.draft.status = "PAUSED";
       cancelSkipTime(division);
-      division.skipTime = undefined;
+      division.draft.skipTime = undefined;
       await cancelSkipPick(division);
     },
   };
@@ -1345,18 +1359,21 @@ export async function setDivsionState(
     eventEmitter.emit("draft.status", {
       tournamentId: tournament.tournamentKey,
       divisionId: division.divisionKey,
-      status: division.status,
+      status: division.draft.status,
       currentPick: calculateCurrentPick(division),
     });
 
     const statusLabel =
-      division.status === "IN_PROGRESS"
+      division.draft.status === "IN_PROGRESS"
         ? "started"
-        : division.status === "PAUSED"
+        : division.draft.status === "PAUSED"
           ? "paused"
-          : division.status.toLowerCase();
+          : division.draft.status.toLowerCase();
 
-    sendDiscordMessage(division.channelId, `The draft is now ${statusLabel}.`);
+    sendDiscordMessage(
+      division.draft.channelId,
+      `The draft is now ${statusLabel}.`,
+    );
   }
 }
 

@@ -31,6 +31,7 @@ import LeagueDivisionModel, {
   DraftTrade,
   LeagueDivisionDocument,
 } from "../models/league/division.model";
+import LeagueModel from "../models/league/league.model";
 import {
   LeagueMatchupDocument,
   LeagueMatchupModel,
@@ -45,7 +46,6 @@ import {
   LeagueTierListDocument,
   TierListPokemonAddon,
 } from "../models/league/tier-list.model";
-import LeagueModel from "../models/league/league.model";
 import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "../models/league/tournament.model";
@@ -64,7 +64,6 @@ import {
   skipCurrentPick,
 } from "../services/league-services/draft-service";
 import {
-  checkDiscordMembership,
   getRoles,
   getRosterByStage,
   getTeamDraft,
@@ -84,8 +83,8 @@ import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { s3Service } from "../services/s3.service";
-import { createRoute } from "./route-builder";
 import { getTierList } from "../services/tier-lists-services/tier-list-service";
+import { createRoute } from "./route-builder";
 
 const matchupPokemonStatsSchema = z.object({
   kills: z.object({
@@ -1390,7 +1389,7 @@ export const LeagueRoute = createRoute()((r) => {
                 "teams",
               );
 
-              const draftStyle = ctx.division.draftStyle;
+              const orderProgression = ctx.division.draft.orderProgression;
               const numberOfRounds = ctx.tournament.tierList.draftCount.max;
 
               const initialTeamOrder = ctx.division.teams;
@@ -1408,7 +1407,7 @@ export const LeagueRoute = createRoute()((r) => {
                 const currentRound: DraftPick[] = [];
                 let pickingOrder = [...initialTeamOrder];
 
-                if (draftStyle === "snake" && round % 2 === 1) {
+                if (orderProgression === "snake" && round % 2 === 1) {
                   pickingOrder.reverse();
                 }
 
@@ -1421,7 +1420,7 @@ export const LeagueRoute = createRoute()((r) => {
                     draftPick.pokemon = { id: pokemonId, name: pokemonName };
                   }
                   if (
-                    ctx.division.draftCounter ===
+                    ctx.division.draft.counter ===
                     round * pickingOrder.length + index
                   ) {
                     // TODO: remove random for production

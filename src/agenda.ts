@@ -86,14 +86,14 @@ agenda.define("skip-draft-pick", async (job: Job) => {
   const latestDivision = await LeagueDivisionModel.findById(divisionId);
   if (
     !latestDivision ||
-    latestDivision.status !== "IN_PROGRESS" ||
-    !latestDivision.skipTime
+    latestDivision.draft.status !== "IN_PROGRESS" ||
+    !latestDivision.draft.skipTime
   ) {
     return;
   }
 
   const retryTime = new Date(Date.now() + SKIP_RETRY_DELAY_MS);
-  if (latestDivision.skipTime.getTime() > retryTime.getTime()) {
+  if (latestDivision.draft.skipTime.getTime() > retryTime.getTime()) {
     return;
   }
 
@@ -149,25 +149,27 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     return;
   }
 
-  if (division.status !== "IN_PROGRESS" || !division.skipTime) return;
+  if (division.draft.status !== "IN_PROGRESS" || !division.draft.skipTime)
+    return;
 
   if (skipTime) {
     const expectedTime = new Date(skipTime).getTime();
-    if (Math.abs(division.skipTime.getTime() - expectedTime) > 1000) return;
+    if (Math.abs(division.draft.skipTime.getTime() - expectedTime) > 1000)
+      return;
   }
 
   const currentTeam = getCurrentPickingTeam(division);
-  if (!currentTeam || !division.channelId) return;
+  if (!currentTeam || !division.draft.channelId) return;
 
   const coach = currentTeam.coach as LeagueCoachDocument | undefined;
   const teamName = coach?.teamName ?? "Unknown Team";
   const coachMention = await resolveDiscordMention(
-    division.channelId,
+    division.draft.channelId,
     coach?.discordName,
   );
   const coachLabel = coachMention ?? "coach";
   await sendDiscordMessage(
-    division.channelId,
+    division.draft.channelId,
     `${teamName} (${coachLabel}) has 1 hour remaining!`,
   );
 });
@@ -216,9 +218,9 @@ export async function scheduleSkipPick(
 ) {
   await agenda.start();
   const now = new Date();
-  now.setSeconds(now.getSeconds() + division.timerLength);
-  division.skipTime = now;
-  await agenda.schedule(division.skipTime, "skip-draft-pick", {
+  now.setSeconds(now.getSeconds() + division.draft.timerLength);
+  division.draft.skipTime = now;
+  await agenda.schedule(division.draft.skipTime, "skip-draft-pick", {
     tournamentId: league._id,
     divisionId: division._id,
   });
@@ -242,8 +244,8 @@ export async function resumeSkipPick(
   division: LeagueDivisionDocument,
 ) {
   await agenda.start();
-  if (division.skipTime)
-    await agenda.schedule(division.skipTime, "skip-draft-pick", {
+  if (division.draft.skipTime)
+    await agenda.schedule(division.draft.skipTime, "skip-draft-pick", {
       tournamentId: league._id,
       divisionId: division._id,
     });
@@ -254,16 +256,19 @@ async function scheduleSkipReminder(
   league: LeagueTournamentDocument,
   division: LeagueDivisionDocument,
 ) {
-  if (!division.skipTime) {
+  if (!division.draft.skipTime) {
     return;
   }
 
-  const timeToSkipSeconds = (division.skipTime.getTime() - Date.now()) / 1000;
+  const timeToSkipSeconds =
+    (division.draft.skipTime.getTime() - Date.now()) / 1000;
   if (timeToSkipSeconds <= SKIP_REMINDER_THRESHOLD_SECONDS) {
     return;
   }
 
-  const reminderTime = new Date(division.skipTime.getTime() - ONE_HOUR_MS);
+  const reminderTime = new Date(
+    division.draft.skipTime.getTime() - ONE_HOUR_MS,
+  );
   if (reminderTime.getTime() <= Date.now()) {
     return;
   }
@@ -271,7 +276,7 @@ async function scheduleSkipReminder(
   await agenda.schedule(reminderTime, "skip-draft-reminder", {
     tournamentId: league._id,
     divisionId: division._id,
-    skipTime: division.skipTime,
+    skipTime: division.draft.skipTime,
   });
 }
 

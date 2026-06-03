@@ -44,6 +44,30 @@ export type LeaguePlayoffs = {
   matches: BracketMatch[];
 };
 
+// export type LeagueDraftGroup = {
+//   name?: string;
+//   teams: (Types.ObjectId | LeagueTeamDocument)[];
+// };
+
+// export type LeagueDraft = {
+//   start?: Date;
+//   end?: Date;
+//   skipTime?: Date;
+//   channelId?: string;
+//   timerLength: number;
+//   skipTimerPenalty: number;
+//   remainingTime?: number;
+//   draftStyle: "snake" | "linear";
+//   draftCounter: number;
+//   status: "PRE_DRAFT" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
+//   public: boolean;
+//   eventLog: DraftEventLog[];
+//   tournament: Types.ObjectId | LeagueTournamentDocument;
+//   useRandomDraftOrder?: boolean;
+//   trades: DraftTrade[];
+//   groups: LeagueDraftGroup[];
+// };
+
 export type LeagueTournament = {
   name: string;
   tournamentKey: string;

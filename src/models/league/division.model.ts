@@ -25,25 +25,30 @@ export type DraftEventLog = {
   timestamp: Date;
 };
 
+export type LeagueDraft = {
+  status: "PRE_DRAFT" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
+  sequentialTurns: boolean;
+  orderProgression: "snake" | "linear";
+  remainingTime?: number;
+  counter: number;
+  eventLog: DraftEventLog[];
+  skipTimerPenalty: number;
+  skipTime?: Date;
+  channelId?: string;
+  timerLength: number;
+  useRandomSeeding?: boolean;
+};
+
 export type LeagueDivision = {
   divisionKey: string;
   name: string;
   teams: (Types.ObjectId | LeagueTeamDocument)[];
-  skipTime?: Date;
-  channelId?: string;
-  timerLength: number;
-  skipTimerPenalty: number;
-  remainingTime?: number;
-  draftStyle: "snake" | "linear";
-  draftCounter: number;
-  status: "PRE_DRAFT" | "IN_PROGRESS" | "PAUSED" | "COMPLETED";
   public: boolean;
-  eventLog: DraftEventLog[];
   tournament: Types.ObjectId | LeagueTournamentDocument;
-  useRandomDraftOrder?: boolean;
   trades: DraftTrade[];
   currentStage: number;
   stages: LeagueStageDocument[];
+  draft: LeagueDraft;
 };
 
 export type TradeSide = {
@@ -96,7 +101,7 @@ const TradeSideSchema = new Schema<TradeSide>(
   { _id: false },
 );
 
-const TradeSchema: Schema<DraftTrade> = new Schema(
+const TradeSchema = new Schema<DraftTrade>(
   {
     side1: { type: TradeSideSchema, required: true },
     side2: { type: TradeSideSchema, required: true },
@@ -110,6 +115,37 @@ const TradeSchema: Schema<DraftTrade> = new Schema(
   },
   { _id: false },
 );
+
+const LeagueDraftSchema = new Schema<LeagueDraft>({
+  skipTime: { type: Date },
+  channelId: { type: String },
+  timerLength: { type: Number },
+  skipTimerPenalty: { type: Number, default: 30 },
+  remainingTime: { type: Number },
+  orderProgression: {
+    type: String,
+    enum: ["snake", "linear"],
+    default: "snake",
+  },
+  status: {
+    type: String,
+    enum: ["PRE_DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED"],
+    default: "PRE_DRAFT",
+  },
+  counter: { type: Number, default: 0 },
+  eventLog: [
+    {
+      eventType: {
+        type: String,
+        enum: ["PICK", "SKIP", "TIMER_START", "TIMER_PAUSE"],
+      },
+      details: { type: String },
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
+  useRandomSeeding: { type: Boolean, default: true },
+  sequentialTurns: { type: Boolean, default: true },
+});
 
 export type LeagueDivisionDocument = HydratedDocument<
   LeagueDivision,
@@ -169,39 +205,19 @@ const LeagueDivisionSchema: Schema<
     divisionKey: { type: String, required: true },
     name: { type: String, required: true },
     teams: [{ type: Schema.Types.ObjectId, ref: LEAGUE_TEAM_COLLECTION }],
-    skipTime: { type: Date },
-    channelId: { type: String },
-    timerLength: { type: Number },
-    skipTimerPenalty: { type: Number, default: 30 },
-    remainingTime: { type: Number },
-    draftStyle: { type: String, enum: ["snake", "linear"], default: "snake" },
     public: { type: Boolean, default: false },
-    status: {
-      type: String,
-      enum: ["PRE_DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED"],
-      default: "PRE_DRAFT",
-    },
-
-    draftCounter: { type: Number, default: 0 },
-    eventLog: [
-      {
-        eventType: {
-          type: String,
-          enum: ["PICK", "SKIP", "TIMER_START", "TIMER_PAUSE"],
-        },
-        details: { type: String },
-        timestamp: { type: Date, default: Date.now },
-      },
-    ],
     tournament: {
       type: Schema.Types.ObjectId,
       ref: LEAGUE_TOURNAMENT_COLLECTION,
       required: true,
     },
-    useRandomDraftOrder: { type: Boolean, default: true },
     trades: { type: [TradeSchema], default: [] },
     currentStage: { type: Number, default: -1 },
     stages: { type: [LeagueStageSchema], default: [] },
+    draft: {
+      type: LeagueDraftSchema,
+      required: true,
+    },
   },
   { timestamps: true },
 );
