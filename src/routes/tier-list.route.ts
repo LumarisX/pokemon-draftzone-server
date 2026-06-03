@@ -92,6 +92,8 @@ export const TierListRoute = createRoute()((r) => {
                       id: z.string(),
                       name: z.string(),
                       banned: z.boolean().optional(),
+                      notes: z.string().optional(),
+                      bannedAbilities: z.array(z.string()).optional(),
                     }),
                   ),
                 }),

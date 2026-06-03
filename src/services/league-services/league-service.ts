@@ -1,4 +1,8 @@
 import { Types } from "mongoose";
+import {
+  findDiscordMemberInIndex,
+  getDiscordMemberIndex,
+} from "../../discord";
 import LeagueCoachModel, {
   LeagueCoachDocument,
 } from "../../models/league/coach.model";
@@ -137,6 +141,20 @@ export async function getTournamentsByOwner(auth0Id: string) {
   }
 
   return Array.from(tournamentMap.values());
+}
+
+const DISCORD_GUILD_ID = "1183936734719922176";
+
+export async function checkDiscordMembership(
+  userIds: string[],
+): Promise<{ query: string; joined: boolean }[]> {
+  const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
+  return userIds.map((userId) => ({
+    query: userId,
+    joined: Boolean(
+      memberIndex ? findDiscordMemberInIndex(memberIndex, userId) : null,
+    ),
+  }));
 }
 
 export function getTeamClient(

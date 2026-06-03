@@ -38,6 +38,7 @@ export const signUpSchema = z
       error:
         "Invalid droppedWhy: Must be a non-empty string if droppedBefore is true.",
     }),
+    logo: z.string().trim().min(1).optional(),
     confirm: z.boolean({
       error: "Invalid confirm: Must be true.",
     }),

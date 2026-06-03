@@ -64,6 +64,7 @@ import {
   skipCurrentPick,
 } from "../services/league-services/draft-service";
 import {
+  checkDiscordMembership,
   getRoles,
   getRosterByStage,
   getTeamDraft,
@@ -442,7 +443,7 @@ export const LeagueRoute = createRoute()((r) => {
             tournamentId: ctx.tournament._id,
           });
           if (!coach)
-            throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+            throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
               tournamentId: ctx.tournament._id.toString(),
             });
 
@@ -458,6 +459,15 @@ export const LeagueRoute = createRoute()((r) => {
             }
           }
 
+          const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
+          const member = memberIndex
+            ? findDiscordMemberInIndex(memberIndex, coach.discordName)
+            : await getDiscordMemberInGuild(
+                DISCORD_GUILD_ID,
+                coach.discordName,
+              );
+          const inDiscordServer = Boolean(member);
+
           return {
             name: coach.name,
             gameName: coach.gameName,
@@ -465,10 +475,11 @@ export const LeagueRoute = createRoute()((r) => {
             timezone: coach.timezone,
             teamName: coach.teamName,
             status: coach.status,
-            logo: coach.logo ? s3Service.getPublicUrl(coach.logo) : undefined,
+            logo: coach.logo,
             signedUpAt: coach.signedUpAt,
             teamId: team?._id.toString(),
             division,
+            inDiscordServer,
           };
         });
         r.post.validate({
@@ -492,6 +503,7 @@ export const LeagueRoute = createRoute()((r) => {
             timezone: ctx.validatedBody.timezone,
             tournamentId: ctx.tournament._id,
             teamName: ctx.validatedBody.teamName,
+            logo: ctx.validatedBody.logo,
             experience: ctx.validatedBody.experience,
             droppedBefore: ctx.validatedBody.droppedBefore,
             droppedWhy: ctx.validatedBody.droppedWhy,
@@ -558,9 +570,56 @@ export const LeagueRoute = createRoute()((r) => {
                   const totalCoaches = await LeagueCoachModel.countDocuments({
                     tournamentId: ctx.tournament._id,
                   });
-                  channel.send(
-                    `${ctx.validatedBody.name} signed up for **${ctx.tournament.name}**. Total coaches: ${totalCoaches}.`,
-                  );
+
+                  const formatDate = (value?: Date) =>
+                    value ? value.toISOString().split("T")[0] : "TBD";
+                  const clamp = (value: string, limit: number) =>
+                    value.length > limit
+                      ? `${value.slice(0, limit - 3)}...`
+                      : value;
+
+                  const embed = new MessageEmbed()
+                    .setTitle(clamp(ctx.validatedBody.name, 256))
+                    .setColor("#2F80ED")
+                    .setTimestamp(new Date())
+                    .addFields(
+                      {
+                        name: "Team Name",
+                        value: ctx.validatedBody.teamName,
+                        inline: true,
+                      },
+                      {
+                        name: "In-Game Name",
+                        value: ctx.validatedBody.gameName,
+                        inline: true,
+                      },
+                      {
+                        name: "Discord Name",
+                        value: ctx.validatedBody.discordName,
+                        inline: true,
+                      },
+                      {
+                        name: "Timezone",
+                        value: ctx.validatedBody.timezone,
+                        inline: true,
+                      },
+                      {
+                        name: "Experience",
+                        value: clamp(ctx.validatedBody.experience, 1024),
+                        inline: false,
+                      },
+                    );
+
+                  if (ctx.validatedBody.logo && s3Service.isEnabled()) {
+                    embed.setImage(
+                      s3Service.getPublicUrl(ctx.validatedBody.logo),
+                    );
+                  }
+
+                  channel.send({
+                    content: `There's a new sign up for **${ctx.tournament.name}**! Total sign ups: ${totalCoaches}`,
+                    embeds: [embed],
+                  });
                 }
               }
             } catch (discordError) {
@@ -2656,10 +2715,7 @@ export const LeagueRoute = createRoute()((r) => {
         .populate<{
           tierList: LeagueTierListDocument;
         }>("tierList")
-        .sort({ createdAt: -1 })
-        .select(
-          "name tournamentKey description format ruleset signUpDeadline draftStart draftEnd seasonStart seasonEnd logo discord",
-        );
+        .sort({ createdAt: -1 });
 
       return {
         name: ctx.league.name,
@@ -2681,6 +2737,36 @@ export const LeagueRoute = createRoute()((r) => {
           discord: t.discord,
         })),
       };
+    });
+    r.path("tournaments").auth()((r) => {
+      r.param("tournament_key", async (ctx, tournament_key) => {
+        const tournament = await LeagueTournamentModel.findOne({
+          tournamentKey: tournament_key,
+          league: ctx.league._id,
+        }).populate("tierList");
+        if (!tournament)
+          throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+            tournamentKey: tournament_key,
+          });
+        return { tournament };
+      })((r) => {
+        // r.path("discord")((r) => {
+        //   r.path("joined").auth()((r) => {
+        //     r.param("discord_id", (ctx, discord_id) => {
+        //       if (!/^\d{17,20}$/.test(discord_id))
+        //         throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        //           reason: "Invalid Discord ID format",
+        //         });
+        //       return { discord_id };
+        //     })((r) => {
+        //       r.get(async (ctx) => {
+        //         return (await checkDiscordMembership([ctx.discord_id]))[0]
+        //           .joined;
+        //       });
+        //     });
+        //   });
+        // });
+      });
     });
   });
 });

@@ -18,6 +18,7 @@ import { invalidateLeagueAdsCache } from "../services/league-ad/league-ad-servic
 import { routes } from "./commands";
 import { deployGuildCommands } from "./deploy-commands";
 import { geminiRespond, initializeGemini } from "./gemini";
+
 export const client = new Client({
   intents: [
     Intents.FLAGS.GUILDS,

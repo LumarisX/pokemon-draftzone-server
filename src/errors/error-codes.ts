@@ -31,6 +31,11 @@ export const ErrorCodes = {
       status: 400,
       message: "You are already signed up for this league",
     },
+    COACH_NOT_FOUND: {
+      code: "LR-006",
+      status: 404,
+      message: "Coach not found",
+    },
   },
   DIVISION: {
     NOT_FOUND: {

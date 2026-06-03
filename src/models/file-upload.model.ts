@@ -20,8 +20,8 @@ export type FileUploadDocument = HydratedDocument<FileUpload>;
 
 const FileUploadSchema: Schema<FileUpload> = new Schema(
   {
-    key: { type: String, required: true, unique: true, index: true },
-    uploadedBy: { type: String, required: true, index: true },
+    key: { type: String, required: true },
+    uploadedBy: { type: String, required: true },
     uploadType: {
       type: String,
       enum: ["league-logo", "team-logo", "other"],

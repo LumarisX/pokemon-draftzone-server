@@ -101,9 +101,8 @@ class S3Service {
   }
 
   generateFileKey(filename: string, folder: string = "league-uploads"): string {
-    const timestamp = Date.now();
     const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-    return `${folder}/${timestamp}-${sanitizedFilename}`;
+    return `${folder}/${sanitizedFilename}`;
   }
 
   getPublicUrl(key: string): string {

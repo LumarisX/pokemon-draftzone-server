@@ -133,7 +133,13 @@ export async function updateTierList(
   clientTiers: {
     name: string;
     cost: number;
-    pokemon: { id: string; name: string; banned?: boolean }[];
+    pokemon: {
+      id: string;
+      name: string;
+      banned?: boolean;
+      notes?: string;
+      bannedAbilities?: string[];
+    }[];
   }[],
 ) {
   const tierList = await tierListModel.findById(tierListId);
@@ -151,15 +157,20 @@ export async function updateTierList(
     cost: tier.cost,
   }));
 
+  const nextBannedAbilities = new Set<string>();
+
   const pokemonMap = new Map<string, LeagueTierListPokemon>();
   for (const tier of validTiers) {
     for (const pokemon of tier.pokemon) {
+      pokemon.bannedAbilities?.forEach((ability) =>
+        nextBannedAbilities.add(ability),
+      );
       const existingData = tierList.pokemon.get(pokemon.id);
       pokemonMap.set(pokemon.id, {
         name: pokemon.name,
         tier: tier.name,
         ...(pokemon.banned !== undefined && { banned: pokemon.banned }),
-        ...(existingData?.notes !== undefined && { notes: existingData.notes }),
+        ...(pokemon.notes !== undefined && { notes: pokemon.notes }),
         ...(existingData?.addons !== undefined && {
           addons: existingData.addons,
         }),
@@ -174,14 +185,15 @@ export async function updateTierList(
   if (untieredClientTier) {
     for (const pokemon of untieredClientTier.pokemon) {
       if (pokemon.banned) {
+        pokemon.bannedAbilities?.forEach((ability) =>
+          nextBannedAbilities.add(ability),
+        );
         const existingData = tierList.pokemon.get(pokemon.id);
         pokemonMap.set(pokemon.id, {
           name: pokemon.name,
           tier: existingData?.tier ?? UNTIERED_TIER_NAME,
           banned: true,
-          ...(existingData?.notes !== undefined && {
-            notes: existingData.notes,
-          }),
+          ...(pokemon.notes !== undefined && { notes: pokemon.notes }),
           ...(existingData?.addons !== undefined && {
             addons: existingData.addons,
           }),
@@ -191,6 +203,7 @@ export async function updateTierList(
   }
 
   tierList.pokemon = pokemonMap;
+  tierList.banned.abilities = Array.from(nextBannedAbilities);
   await tierList.save();
 
   return tierList;
