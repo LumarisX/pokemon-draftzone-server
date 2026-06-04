@@ -37,6 +37,8 @@ export type LeagueDraft = {
   channelId?: string;
   timerLength: number;
   useRandomSeeding?: boolean;
+  visibility: "ALL" | "SELF";
+  allowRemovals: boolean;
 };
 
 export type LeagueDivision = {
@@ -145,6 +147,12 @@ const LeagueDraftSchema = new Schema<LeagueDraft>({
   ],
   useRandomSeeding: { type: Boolean, default: true },
   sequentialTurns: { type: Boolean, default: true },
+  visibility: {
+    type: String,
+    enum: ["ALL", "SELF"],
+    default: "ALL",
+  },
+  allowRemovals: { type: Boolean, default: false },
 });
 
 export type LeagueDivisionDocument = HydratedDocument<

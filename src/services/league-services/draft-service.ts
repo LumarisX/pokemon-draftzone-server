@@ -361,11 +361,13 @@ export async function getTeamsWithCoachStatus(
               pokemonId: pick.pokemon.id,
               addons: pick.addons,
             });
+            const pokemonId = getPokemonIdFromDraft(pick);
             return {
-              id: getPokemonIdFromDraft(pick),
-              name: getName(getPokemonIdFromDraft(pick)),
-              tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
+              id: pokemonId,
+              name: getName(pokemonId),
+              tier: pokemonTierMap.get(pokemonId),
               cost,
+              types: getSpecies(pokemonId)?.types ?? [],
               capt: {
                 tera: pick.addons?.includes("Tera Captain") || undefined,
               },
@@ -805,6 +807,10 @@ export async function draftPokemon(
         id: getPokemonIdFromDraft(pick),
         name: getName(getPokemonIdFromDraft(pick)),
         tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
+        cost: getPickCost(tournament.tierList, {
+          pokemonId: getPokemonIdFromDraft(pick),
+          addons: pick.addons,
+        }),
       })),
     );
     queueSideEffect(session, () => {
@@ -1213,6 +1219,8 @@ export async function getDivisionDetails(
     divisionName: division.name,
     orderProgression: division.draft.orderProgression,
     sequentialTurns: division.draft.sequentialTurns,
+    visibility: division.draft.visibility,
+    allowRemovals: division.draft.allowRemovals,
     teamOrder: initialTeamOrder.map((team) => team._id),
     rounds: numberOfRounds,
     teams: teams,
