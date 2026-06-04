@@ -1,4 +1,4 @@
-import { TypeName } from "@pkmn/data";
+import { Move, TypeName } from "@pkmn/data";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
@@ -229,7 +229,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   technoblast: ["Type Changing"],
   teleport: ["Momentum"],
   terablast: ["Type Changing"],
-  terrainpulse: ["Field Manipulation"],
+  terrainpulse: ["Field Manipulation", "Type Changing"],
   thousandwaves: ["Trapping"],
   thundercage: ["Trapping"],
   thunderclap: ["Priority"],
@@ -259,68 +259,130 @@ const moveList: { [key: string]: MoveCategory[] } = {
   wrap: ["Trapping"],
   yawn: ["Status"],
   zippyzap: ["Priority"],
+  babydolleyes: ["Priority"],
+  inferno: ["Status"],
+  zapcannon: ["Status"],
+  buzzybuzz: ["Status"],
+  accupressure: ["Setup"],
+  baddybad: ["Support"],
+  brickbreak: ["Disruption"],
+  psychicfangs: ["Disruption"],
+  ragingbull: ["Disruption"],
+  coreenforcer: ["Disruption"],
+  covet: ["Disruption"],
+  eeriespell: ["Disruption"],
+  electrify: ["Disruption"],
+  embargo: ["Disruption"],
+  entainment: ["Support", "Disruption"],
+  fling: ["Disruption"],
+  flowershield: ["Setup"],
+  forestscurse: ["Disruption"],
+  gastroacid: ["Disruption"],
+  gearup: ["Setup"],
+  glitzyglow: ["Support"],
+  grudge: ["Disruption"],
+  healblock: ["Disruption"],
+  psychicnoise: ["Disruption"],
+  icespinner: ["Field Manipulation"],
+  incinerate: ["Disruption"],
+  instruct: ["Support"],
+  laserfocus: ["Setup"],
 };
 
+// export type Movechart = {
+//   moves: {
+//     name: string;
+//     type: string;
+//     pokemon: PokemonFormData[];
+//   }[];
+// }
+
+// export async function movechart(
+//   team: DraftSpecie[],
+//   ruleset: Ruleset,
+// ): Promise<Movechart> {
+//   const mc: {
+//     [key in MoveCategory]: {
+//       name: string;
+//       type: TypeName;
+//       pokemon: PokemonFormData[];
+//     }[];
+//   } = {
+
+//   };
+
+//   for (const moveID in moveList) {
+//     const move = ruleset.moves.get(moveID);
+//     if (!move || !move.exists) continue;
+//     const data = {
+//       name: move.name,
+//       type: move.type,
+//       desc: move.shortDesc,
+//       pokemon: (
+//         await Promise.all(
+//           team.map(async (pokemon) => ({
+//             pokemon,
+//             canLearn: await pokemon.canLearn(move.id),
+//           })),
+//         )
+//       )
+//         .filter((result) => result.canLearn)
+//         .map((result) => result.pokemon.toClient()),
+//     };
+//     for (const category of moveList[moveID]) {
+//       mc[category].push(data);
+//     }
+//   }
+
+//   return Object.entries(mc).map(([category, moves]) => ({
+//     categoryName: category,
+//     moves,
+//   }));
+// }
+
 export type Movechart = {
-  categoryName: string;
-  moves: {
-    name: string;
-    type: string;
-    pokemon: PokemonFormData[];
-  }[];
+  name: string;
+  type: string;
+  pokemon: PokemonFormData[];
+  tags: string[];
 }[];
 
 export async function movechart(
   team: DraftSpecie[],
   ruleset: Ruleset,
 ): Promise<Movechart> {
-  const mc: {
-    [key in MoveCategory]: {
+  const combinedLearnset = new Map<
+    string,
+    {
       name: string;
-      type: TypeName;
+      type: string;
+      tags: string[];
       pokemon: PokemonFormData[];
-    }[];
-  } = {
-    Priority: [],
-    Setup: [],
-    Cleric: [],
-    Momentum: [],
-    "Hazard Control": [],
-    "Speed Control": [],
-    Support: [],
-    Status: [],
-    Disruption: [],
-    "Field Manipulation": [],
-    Trapping: [],
-    "Type Changing": [],
-    "Z-Setup": [],
-  };
+    }
+  >();
 
-  for (const moveID in moveList) {
-    const move = ruleset.moves.get(moveID);
-    if (!move || !move.exists) continue;
-    const data = {
-      name: move.name,
-      type: move.type,
-      desc: move.shortDesc,
-      pokemon: (
-        await Promise.all(
-          team.map(async (pokemon) => ({
-            pokemon,
-            canLearn: await pokemon.canLearn(move.id),
-          })),
-        )
-      )
-        .filter((result) => result.canLearn)
-        .map((result) => result.pokemon.toClient()),
-    };
-    for (const category of moveList[moveID]) {
-      mc[category].push(data);
+  const teamWithLearnsets = await Promise.all(
+    team.map(async (pokemon) => ({
+      pokemon,
+      learnset: await pokemon.learnset(),
+    })),
+  );
+
+  for (let { pokemon, learnset } of teamWithLearnsets) {
+    for (let move of learnset) {
+      if (!combinedLearnset.has(move.id)) {
+        combinedLearnset.set(move.id, {
+          name: move.name,
+          type: move.type,
+          tags: move.id in moveList ? moveList[move.id] : [],
+          pokemon: [],
+        });
+      }
+      combinedLearnset.get(move.id)?.pokemon.push(pokemon.toClient());
     }
   }
 
-  return Object.entries(mc).map(([category, moves]) => ({
-    categoryName: category,
-    moves,
-  }));
+  return Array.from(combinedLearnset.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 }
