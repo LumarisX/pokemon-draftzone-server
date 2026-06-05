@@ -1,8 +1,5 @@
 import { Types } from "mongoose";
-import {
-  findDiscordMemberInIndex,
-  getDiscordMemberIndex,
-} from "../../discord";
+import { findDiscordMemberInIndex, getDiscordMemberIndex } from "../../discord";
 import LeagueCoachModel, {
   LeagueCoachDocument,
 } from "../../models/league/coach.model";
@@ -10,10 +7,11 @@ import LeagueDivisionModel, {
   DraftTrade,
   LeagueDivisionDocument,
 } from "../../models/league/division.model";
-import LeagueModel, {
-  League,
-  LeagueDocument,
-} from "../../models/league/league.model";
+import LeagueModel, { LeagueDocument } from "../../models/league/league.model";
+import {
+  LeagueMatchupDocument,
+  LeagueMatchupModel,
+} from "../../models/league/matchup.model";
 import LeagueTeamModel, {
   LeagueTeamDocument,
   PopulatedLeagueTeamDocument,
@@ -22,23 +20,17 @@ import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
 import { calculateTeamScore } from "./standings-service";
-import {
-  LeagueMatchupDocument,
-  LeagueMatchupModel,
-} from "../../models/league/matchup.model";
-import { PopulatedLeagueMatchup } from "../../classes/matchup";
 
-export function getRoles(sub: string | undefined) {
+export async function getRoles(
+  tournament: LeagueTournamentDocument,
+  sub: string | undefined,
+): Promise<string[]> {
   if (!sub) return [];
-  const roles = [];
-  if (
-    sub === "google-oauth2|110216442143129521066" || //lumaris
-    sub === "oauth2|discord|491431053471383575" || //twang
-    sub === "oauth2|discord|533998216450932756" || //turtlecode
-    sub === "oauth2|discord|422843761765122071" //ian
-  ) {
-    roles.push("organizer");
-  }
+  const roles: string[] = [];
+  const isOwner = tournament.owner === sub;
+  if (isOwner) roles.push("owner");
+  const isOrganizer = tournament.organizers.includes(sub);
+  if (isOrganizer || isOwner) roles.push("organizer");
   return roles;
 }
 

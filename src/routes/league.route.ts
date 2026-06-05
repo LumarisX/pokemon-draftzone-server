@@ -433,7 +433,7 @@ export const LeagueRoute = createRoute()((r) => {
         });
       });
       r.path("roles").auth()((r) => {
-        r.get(async (ctx) => getRoles(ctx.sub));
+        r.get(async (ctx) => await getRoles(ctx.tournament, ctx.sub));
       });
       r.path("signup").auth()((r) => {
         r.get(async (ctx) => {
@@ -632,7 +632,10 @@ export const LeagueRoute = createRoute()((r) => {
             tournamentId: ctx.tournament._id.toString(),
           });
         });
-        r.path("manage").auth().use(rolecheck("organizer"))((r) => {
+        r
+          .path("manage")
+          .auth()
+          .use((ctx) => rolecheck(ctx.tournament, "organizer"))((r) => {
           r.get(async (ctx) => {
             const divisions = await LeagueDivisionModel.find({
               tournament: ctx.tournament._id,
@@ -824,7 +827,7 @@ export const LeagueRoute = createRoute()((r) => {
                   })
                   .parse(data),
             })(async (ctx) => {
-              const roles = getRoles(ctx.sub);
+              const roles = await getRoles(ctx.tournament, ctx.sub);
               const isOrganizer = roles.includes("organizer");
               const isSelf = ctx.coach.auth0Id === ctx.sub;
 
@@ -862,7 +865,7 @@ export const LeagueRoute = createRoute()((r) => {
         });
         r.post
           .auth()
-          .use(rolecheck("organizer"))
+          .use((ctx) => rolecheck(ctx.tournament, "organizer"))
           .validate({
             body: (data) =>
               z
@@ -1663,7 +1666,9 @@ export const LeagueRoute = createRoute()((r) => {
         });
       });
       r.path("manage").auth()((r) => {
-        r.path("divisions").use(rolecheck("organizer"))((r) => {
+        r
+          .path("divisions")
+          .use((ctx) => rolecheck(ctx.tournament, "organizer"))((r) => {
           r.param(
             "division_id",
             DivisionHandler,
@@ -2258,444 +2263,459 @@ export const LeagueRoute = createRoute()((r) => {
             });
           });
         });
-        r.path("playoffs").use(rolecheck("organizer"))((r) => {
-          r.path("schedule")((r) => {
-            r.get(async (ctx) => {
-              const playoffsStage = ctx.tournament.stages?.find(
-                (s) => s.name === "Playoffs",
-              );
-              if (!playoffsStage) {
-                return { stages: [], currentStage: 0 };
-              }
-
-              const roundIds = playoffsStage.rounds.map((r) => r._id);
-              const bracketMatchups = await LeagueMatchupModel.find({
-                round: { $in: roundIds },
-              }).populate<
-                LeagueMatchupDocument & {
-                  side1: { team: PopulatedLeagueTeamDocument };
-                  side2: { team: PopulatedLeagueTeamDocument };
-                }
-              >([
-                { path: "side1.team", populate: { path: "coach" } },
-                { path: "side2.team", populate: { path: "coach" } },
-              ]);
-
-              // Recursively resolve bracket side teams by following the slot chain
-              const matchCache = new Map<
-                string,
-                LeagueMatchupDocument | null
-              >();
-              const teamCache = new Map<
-                string,
-                PopulatedLeagueTeamDocument | null
-              >();
-
-              const fetchMatch = async (id: string) => {
-                if (!matchCache.has(id)) {
-                  matchCache.set(id, await LeagueMatchupModel.findById(id));
-                }
-                return matchCache.get(id)!;
-              };
-
-              const fetchTeam = async (id: string) => {
-                if (!teamCache.has(id)) {
-                  const t = await LeagueTeamModel.findById(id).populate<{
-                    coach: PopulatedLeagueTeamDocument["coach"];
-                  }>("coach");
-                  teamCache.set(id, t as PopulatedLeagueTeamDocument | null);
-                }
-                return teamCache.get(id)!;
-              };
-
-              type MatchSideRef = {
-                team?: Types.ObjectId | PopulatedLeagueTeamDocument;
-                slot?: { type: string; matchId?: string; seed?: number } | null;
-              };
-              const resolveTeamRecursive = async (
-                side: MatchSideRef,
-                depth = 0,
-              ): Promise<PopulatedLeagueTeamDocument | null> => {
-                if (side.team) {
-                  const id =
-                    (side.team as any)._id?.toString() ?? side.team.toString();
-                  return fetchTeam(id);
-                }
-                if (!side.slot || side.slot.type === "seed" || depth > 8)
-                  return null;
-                const { matchId, type } = side.slot as {
-                  type: "winner" | "loser";
-                  matchId: string;
-                };
-                if (!matchId) return null;
-                const prev = await fetchMatch(matchId);
-                if (!prev) return null;
-                let winnerSide = prev.winner as
-                  | "side1"
-                  | "side2"
-                  | "draw"
-                  | undefined;
-                if (!winnerSide && prev.results?.length > 0) {
-                  const s1 = prev.results.filter(
-                    (r) => r.winner === "side1",
-                  ).length;
-                  const s2 = prev.results.filter(
-                    (r) => r.winner === "side2",
-                  ).length;
-                  if (s1 > s2) winnerSide = "side1";
-                  else if (s2 > s1) winnerSide = "side2";
-                  else winnerSide = "draw";
-                }
-                if (!winnerSide || winnerSide === "draw") return null;
-                const resolvedSide: "side1" | "side2" =
-                  type === "winner"
-                    ? winnerSide
-                    : winnerSide === "side1"
-                      ? "side2"
-                      : "side1";
-                return resolveTeamRecursive(prev[resolvedSide], depth + 1);
-              };
-
-              await Promise.all(
-                bracketMatchups.flatMap((m) => [
-                  (async () => {
-                    if (
-                      !m.side1.team &&
-                      m.side1.slot &&
-                      m.side1.slot.type !== "seed"
-                    ) {
-                      const resolved = await resolveTeamRecursive(
-                        m.side1 as MatchSideRef,
-                      );
-                      if (resolved) (m as any).side1.team = resolved;
-                    }
-                  })(),
-                  (async () => {
-                    if (
-                      !m.side2.team &&
-                      m.side2.slot &&
-                      m.side2.slot.type !== "seed"
-                    ) {
-                      const resolved = await resolveTeamRecursive(
-                        m.side2 as MatchSideRef,
-                      );
-                      if (resolved) (m as any).side2.team = resolved;
-                    }
-                  })(),
-                ]),
-              );
-
-              const teamIds = [
-                ...new Set(
-                  bracketMatchups
-                    .filter((m) => m.side1.team || m.side2.team)
-                    .flatMap((m) => [
-                      m.side1.team?._id.toString(),
-                      m.side2.team?._id.toString(),
-                    ])
-                    .filter(Boolean) as string[],
-                ),
-              ].map((id) => new Types.ObjectId(id));
-
-              const divisions = await LeagueDivisionModel.find({
-                tournament: ctx.tournament._id,
-                teams: { $in: teamIds },
-              });
-              const teamToDivision = new Map<string, LeagueDivisionDocument>();
-              divisions.forEach((div) => {
-                div.teams.forEach((teamId) => {
-                  teamToDivision.set(teamId.toString(), div);
-                });
-              });
-
-              const matchupsByRound = new Map<string, typeof bracketMatchups>();
-              for (const matchup of bracketMatchups) {
-                const key = matchup.round?.toString() ?? "";
-                const bucket = matchupsByRound.get(key) ?? [];
-                bucket.push(matchup);
-                matchupsByRound.set(key, bucket);
-              }
-
-              const stages = playoffsStage.rounds.map((round) => {
-                const roundMatchups =
-                  matchupsByRound.get(round._id.toString()) ?? [];
-                const transformedMatchups = roundMatchups.map((matchup) => {
-                  const side1Division = matchup.side1.team
-                    ? teamToDivision.get(matchup.side1.team._id.toString())
-                    : undefined;
-                  const side2Division = matchup.side2.team
-                    ? teamToDivision.get(matchup.side2.team._id.toString())
-                    : undefined;
-                  return {
-                    id: matchup._id.toString(),
-                    team1: matchup.side1.team
-                      ? {
-                          name: matchup.side1.team.coach.teamName,
-                          coach: matchup.side1.team.coach.name,
-                          score: matchup.side1.score,
-                          logo: matchup.side1.team.coach.logo,
-                          id: matchup.side1.team._id.toString(),
-                          draft: side1Division
-                            ? getRosterByStage(
-                                matchup.side1.team,
-                                side1Division,
-                              ).map((p) => ({
-                                id: p.id,
-                                capt: p.addons?.includes("Tera Captain")
-                                  ? { tera: true }
-                                  : {},
-                              }))
-                            : [],
-                        }
-                      : null,
-                    team2: matchup.side2.team
-                      ? {
-                          name: matchup.side2.team.coach.teamName,
-                          coach: matchup.side2.team.coach.name,
-                          score: matchup.side2.score,
-                          logo: matchup.side2.team.coach.logo,
-                          id: matchup.side2.team._id.toString(),
-                          draft: side2Division
-                            ? getRosterByStage(
-                                matchup.side2.team,
-                                side2Division,
-                              ).map((p) => ({
-                                id: p.id,
-                                capt: p.addons?.includes("Tera Captain")
-                                  ? { tera: true }
-                                  : {},
-                              }))
-                            : [],
-                        }
-                      : null,
-                    matches: matchup.results.map((result) => ({
-                      link: result.replay,
-                      team1: {
-                        team: Object.fromEntries(
-                          result.side1.pokemon.entries(),
-                        ),
-                        score: result.side1.score,
-                        winner: result.winner === "side1",
-                      },
-                      team2: {
-                        team: Object.fromEntries(
-                          result.side2.pokemon.entries(),
-                        ),
-                        score: result.side2.score,
-                        winner: result.winner === "side2",
-                      },
-                    })),
-                    score: {
-                      team1: matchup.side1.score,
-                      team2: matchup.side2.score,
-                    },
-                    winner: matchup.forfeit
-                      ? matchup.winner === "side1"
-                        ? "side1ffw"
-                        : matchup.winner === "side2"
-                          ? "side2ffw"
-                          : "dffl"
-                      : matchup.winner,
-                  };
-                });
-                return {
-                  _id: round._id,
-                  name: round.name,
-                  matchups: transformedMatchups,
-                };
-              });
-
-              return { stages, currentStage: 0 };
-            });
-            r.param("matchup_id", (ctx, matchup_id) => {
-              if (!isValidObjectId(matchup_id))
-                throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-                  reason: "Invalid matchup ID",
-                });
-              return { matchup_id };
-            })((r) => {
-              r.post.validate({
-                body: (data) =>
-                  z
-                    .object({
-                      score: z
-                        .object({
-                          team1: z.number(),
-                          team2: z.number(),
-                        })
-                        .optional(),
-                      winner: z
-                        .enum([
-                          "side1",
-                          "side2",
-                          "draw",
-                          "side1ffw",
-                          "side2ffw",
-                          "dffl",
-                        ])
-                        .nullable()
-                        .optional(),
-                      matches: z.array(
-                        z.object({
-                          link: z.string().optional(),
-                          winner: z.enum(["side1", "side2", "draw"]),
-                          team1: z.object({
-                            score: z.number(),
-                            pokemon: z.record(
-                              z.string(),
-                              matchupPokemonStatsSchema,
-                            ),
-                          }),
-                          team2: z.object({
-                            score: z.number(),
-                            pokemon: z.record(
-                              z.string(),
-                              matchupPokemonStatsSchema,
-                            ),
-                          }),
-                        }),
-                      ),
-                    })
-                    .parse(data),
-              })(async (ctx) => {
+        r.path("playoffs").use((ctx) => rolecheck(ctx.tournament, "organizer"))(
+          (r) => {
+            r.path("schedule")((r) => {
+              r.get(async (ctx) => {
                 const playoffsStage = ctx.tournament.stages?.find(
                   (s) => s.name === "Playoffs",
                 );
-                if (!playoffsStage)
-                  throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
-                    matchupId: ctx.matchup_id,
-                  });
+                if (!playoffsStage) {
+                  return { stages: [], currentStage: 0 };
+                }
 
                 const roundIds = playoffsStage.rounds.map((r) => r._id);
-                const matchup = await LeagueMatchupModel.findOne({
-                  _id: ctx.matchup_id,
+                const bracketMatchups = await LeagueMatchupModel.find({
                   round: { $in: roundIds },
-                });
-                if (!matchup)
-                  throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
-                    matchupId: ctx.matchup_id,
-                  });
-
-                matchup.results = ctx.validatedBody.matches.map((match) => ({
-                  replay: match.link?.trim() || undefined,
-                  winner: match.winner,
-                  side1: {
-                    score: match.team1.score,
-                    pokemon: new Map(
-                      Object.entries(match.team1.pokemon).filter(
-                        ([, stats]) =>
-                          stats.status !== null && stats.status !== undefined,
-                      ) as [string, PokemonStats][],
-                    ),
-                  },
-                  side2: {
-                    score: match.team2.score,
-                    pokemon: new Map(
-                      Object.entries(match.team2.pokemon).filter(
-                        ([, stats]) =>
-                          stats.status !== null && stats.status !== undefined,
-                      ) as [string, PokemonStats][],
-                    ),
-                  },
-                }));
-
-                if (ctx.validatedBody.score) {
-                  matchup.side1.score = ctx.validatedBody.score.team1;
-                  matchup.side2.score = ctx.validatedBody.score.team2;
-                }
-
-                if (ctx.validatedBody.winner != null) {
-                  if (
-                    ctx.validatedBody.winner === "side1" ||
-                    ctx.validatedBody.winner === "side2" ||
-                    ctx.validatedBody.winner === "draw"
-                  ) {
-                    matchup.winner = ctx.validatedBody.winner;
-                    matchup.forfeit = false;
-                  } else if (ctx.validatedBody.winner === "side1ffw") {
-                    matchup.winner = "side1";
-                    matchup.forfeit = true;
-                  } else if (ctx.validatedBody.winner === "side2ffw") {
-                    matchup.winner = "side2";
-                    matchup.forfeit = true;
-                  } else if (ctx.validatedBody.winner === "dffl") {
-                    matchup.winner = "draw";
-                    matchup.forfeit = true;
+                }).populate<
+                  LeagueMatchupDocument & {
+                    side1: { team: PopulatedLeagueTeamDocument };
+                    side2: { team: PopulatedLeagueTeamDocument };
                   }
+                >([
+                  { path: "side1.team", populate: { path: "coach" } },
+                  { path: "side2.team", populate: { path: "coach" } },
+                ]);
+
+                // Recursively resolve bracket side teams by following the slot chain
+                const matchCache = new Map<
+                  string,
+                  LeagueMatchupDocument | null
+                >();
+                const teamCache = new Map<
+                  string,
+                  PopulatedLeagueTeamDocument | null
+                >();
+
+                const fetchMatch = async (id: string) => {
+                  if (!matchCache.has(id)) {
+                    matchCache.set(id, await LeagueMatchupModel.findById(id));
+                  }
+                  return matchCache.get(id)!;
+                };
+
+                const fetchTeam = async (id: string) => {
+                  if (!teamCache.has(id)) {
+                    const t = await LeagueTeamModel.findById(id).populate<{
+                      coach: PopulatedLeagueTeamDocument["coach"];
+                    }>("coach");
+                    teamCache.set(id, t as PopulatedLeagueTeamDocument | null);
+                  }
+                  return teamCache.get(id)!;
+                };
+
+                type MatchSideRef = {
+                  team?: Types.ObjectId | PopulatedLeagueTeamDocument;
+                  slot?: {
+                    type: string;
+                    matchId?: string;
+                    seed?: number;
+                  } | null;
+                };
+                const resolveTeamRecursive = async (
+                  side: MatchSideRef,
+                  depth = 0,
+                ): Promise<PopulatedLeagueTeamDocument | null> => {
+                  if (side.team) {
+                    const id =
+                      (side.team as any)._id?.toString() ??
+                      side.team.toString();
+                    return fetchTeam(id);
+                  }
+                  if (!side.slot || side.slot.type === "seed" || depth > 8)
+                    return null;
+                  const { matchId, type } = side.slot as {
+                    type: "winner" | "loser";
+                    matchId: string;
+                  };
+                  if (!matchId) return null;
+                  const prev = await fetchMatch(matchId);
+                  if (!prev) return null;
+                  let winnerSide = prev.winner as
+                    | "side1"
+                    | "side2"
+                    | "draw"
+                    | undefined;
+                  if (!winnerSide && prev.results?.length > 0) {
+                    const s1 = prev.results.filter(
+                      (r) => r.winner === "side1",
+                    ).length;
+                    const s2 = prev.results.filter(
+                      (r) => r.winner === "side2",
+                    ).length;
+                    if (s1 > s2) winnerSide = "side1";
+                    else if (s2 > s1) winnerSide = "side2";
+                    else winnerSide = "draw";
+                  }
+                  if (!winnerSide || winnerSide === "draw") return null;
+                  const resolvedSide: "side1" | "side2" =
+                    type === "winner"
+                      ? winnerSide
+                      : winnerSide === "side1"
+                        ? "side2"
+                        : "side1";
+                  return resolveTeamRecursive(prev[resolvedSide], depth + 1);
+                };
+
+                await Promise.all(
+                  bracketMatchups.flatMap((m) => [
+                    (async () => {
+                      if (
+                        !m.side1.team &&
+                        m.side1.slot &&
+                        m.side1.slot.type !== "seed"
+                      ) {
+                        const resolved = await resolveTeamRecursive(
+                          m.side1 as MatchSideRef,
+                        );
+                        if (resolved) (m as any).side1.team = resolved;
+                      }
+                    })(),
+                    (async () => {
+                      if (
+                        !m.side2.team &&
+                        m.side2.slot &&
+                        m.side2.slot.type !== "seed"
+                      ) {
+                        const resolved = await resolveTeamRecursive(
+                          m.side2 as MatchSideRef,
+                        );
+                        if (resolved) (m as any).side2.team = resolved;
+                      }
+                    })(),
+                  ]),
+                );
+
+                const teamIds = [
+                  ...new Set(
+                    bracketMatchups
+                      .filter((m) => m.side1.team || m.side2.team)
+                      .flatMap((m) => [
+                        m.side1.team?._id.toString(),
+                        m.side2.team?._id.toString(),
+                      ])
+                      .filter(Boolean) as string[],
+                  ),
+                ].map((id) => new Types.ObjectId(id));
+
+                const divisions = await LeagueDivisionModel.find({
+                  tournament: ctx.tournament._id,
+                  teams: { $in: teamIds },
+                });
+                const teamToDivision = new Map<
+                  string,
+                  LeagueDivisionDocument
+                >();
+                divisions.forEach((div) => {
+                  div.teams.forEach((teamId) => {
+                    teamToDivision.set(teamId.toString(), div);
+                  });
+                });
+
+                const matchupsByRound = new Map<
+                  string,
+                  typeof bracketMatchups
+                >();
+                for (const matchup of bracketMatchups) {
+                  const key = matchup.round?.toString() ?? "";
+                  const bucket = matchupsByRound.get(key) ?? [];
+                  bucket.push(matchup);
+                  matchupsByRound.set(key, bucket);
                 }
 
-                await matchup.save();
-                return { message: "Playoff schedule updated." };
+                const stages = playoffsStage.rounds.map((round) => {
+                  const roundMatchups =
+                    matchupsByRound.get(round._id.toString()) ?? [];
+                  const transformedMatchups = roundMatchups.map((matchup) => {
+                    const side1Division = matchup.side1.team
+                      ? teamToDivision.get(matchup.side1.team._id.toString())
+                      : undefined;
+                    const side2Division = matchup.side2.team
+                      ? teamToDivision.get(matchup.side2.team._id.toString())
+                      : undefined;
+                    return {
+                      id: matchup._id.toString(),
+                      team1: matchup.side1.team
+                        ? {
+                            name: matchup.side1.team.coach.teamName,
+                            coach: matchup.side1.team.coach.name,
+                            score: matchup.side1.score,
+                            logo: matchup.side1.team.coach.logo,
+                            id: matchup.side1.team._id.toString(),
+                            draft: side1Division
+                              ? getRosterByStage(
+                                  matchup.side1.team,
+                                  side1Division,
+                                ).map((p) => ({
+                                  id: p.id,
+                                  capt: p.addons?.includes("Tera Captain")
+                                    ? { tera: true }
+                                    : {},
+                                }))
+                              : [],
+                          }
+                        : null,
+                      team2: matchup.side2.team
+                        ? {
+                            name: matchup.side2.team.coach.teamName,
+                            coach: matchup.side2.team.coach.name,
+                            score: matchup.side2.score,
+                            logo: matchup.side2.team.coach.logo,
+                            id: matchup.side2.team._id.toString(),
+                            draft: side2Division
+                              ? getRosterByStage(
+                                  matchup.side2.team,
+                                  side2Division,
+                                ).map((p) => ({
+                                  id: p.id,
+                                  capt: p.addons?.includes("Tera Captain")
+                                    ? { tera: true }
+                                    : {},
+                                }))
+                              : [],
+                          }
+                        : null,
+                      matches: matchup.results.map((result) => ({
+                        link: result.replay,
+                        team1: {
+                          team: Object.fromEntries(
+                            result.side1.pokemon.entries(),
+                          ),
+                          score: result.side1.score,
+                          winner: result.winner === "side1",
+                        },
+                        team2: {
+                          team: Object.fromEntries(
+                            result.side2.pokemon.entries(),
+                          ),
+                          score: result.side2.score,
+                          winner: result.winner === "side2",
+                        },
+                      })),
+                      score: {
+                        team1: matchup.side1.score,
+                        team2: matchup.side2.score,
+                      },
+                      winner: matchup.forfeit
+                        ? matchup.winner === "side1"
+                          ? "side1ffw"
+                          : matchup.winner === "side2"
+                            ? "side2ffw"
+                            : "dffl"
+                        : matchup.winner,
+                    };
+                  });
+                  return {
+                    _id: round._id,
+                    name: round.name,
+                    matchups: transformedMatchups,
+                  };
+                });
+
+                return { stages, currentStage: 0 };
+              });
+              r.param("matchup_id", (ctx, matchup_id) => {
+                if (!isValidObjectId(matchup_id))
+                  throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+                    reason: "Invalid matchup ID",
+                  });
+                return { matchup_id };
+              })((r) => {
+                r.post.validate({
+                  body: (data) =>
+                    z
+                      .object({
+                        score: z
+                          .object({
+                            team1: z.number(),
+                            team2: z.number(),
+                          })
+                          .optional(),
+                        winner: z
+                          .enum([
+                            "side1",
+                            "side2",
+                            "draw",
+                            "side1ffw",
+                            "side2ffw",
+                            "dffl",
+                          ])
+                          .nullable()
+                          .optional(),
+                        matches: z.array(
+                          z.object({
+                            link: z.string().optional(),
+                            winner: z.enum(["side1", "side2", "draw"]),
+                            team1: z.object({
+                              score: z.number(),
+                              pokemon: z.record(
+                                z.string(),
+                                matchupPokemonStatsSchema,
+                              ),
+                            }),
+                            team2: z.object({
+                              score: z.number(),
+                              pokemon: z.record(
+                                z.string(),
+                                matchupPokemonStatsSchema,
+                              ),
+                            }),
+                          }),
+                        ),
+                      })
+                      .parse(data),
+                })(async (ctx) => {
+                  const playoffsStage = ctx.tournament.stages?.find(
+                    (s) => s.name === "Playoffs",
+                  );
+                  if (!playoffsStage)
+                    throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
+                      matchupId: ctx.matchup_id,
+                    });
+
+                  const roundIds = playoffsStage.rounds.map((r) => r._id);
+                  const matchup = await LeagueMatchupModel.findOne({
+                    _id: ctx.matchup_id,
+                    round: { $in: roundIds },
+                  });
+                  if (!matchup)
+                    throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, {
+                      matchupId: ctx.matchup_id,
+                    });
+
+                  matchup.results = ctx.validatedBody.matches.map((match) => ({
+                    replay: match.link?.trim() || undefined,
+                    winner: match.winner,
+                    side1: {
+                      score: match.team1.score,
+                      pokemon: new Map(
+                        Object.entries(match.team1.pokemon).filter(
+                          ([, stats]) =>
+                            stats.status !== null && stats.status !== undefined,
+                        ) as [string, PokemonStats][],
+                      ),
+                    },
+                    side2: {
+                      score: match.team2.score,
+                      pokemon: new Map(
+                        Object.entries(match.team2.pokemon).filter(
+                          ([, stats]) =>
+                            stats.status !== null && stats.status !== undefined,
+                        ) as [string, PokemonStats][],
+                      ),
+                    },
+                  }));
+
+                  if (ctx.validatedBody.score) {
+                    matchup.side1.score = ctx.validatedBody.score.team1;
+                    matchup.side2.score = ctx.validatedBody.score.team2;
+                  }
+
+                  if (ctx.validatedBody.winner != null) {
+                    if (
+                      ctx.validatedBody.winner === "side1" ||
+                      ctx.validatedBody.winner === "side2" ||
+                      ctx.validatedBody.winner === "draw"
+                    ) {
+                      matchup.winner = ctx.validatedBody.winner;
+                      matchup.forfeit = false;
+                    } else if (ctx.validatedBody.winner === "side1ffw") {
+                      matchup.winner = "side1";
+                      matchup.forfeit = true;
+                    } else if (ctx.validatedBody.winner === "side2ffw") {
+                      matchup.winner = "side2";
+                      matchup.forfeit = true;
+                    } else if (ctx.validatedBody.winner === "dffl") {
+                      matchup.winner = "draw";
+                      matchup.forfeit = true;
+                    }
+                  }
+
+                  await matchup.save();
+                  return { message: "Playoff schedule updated." };
+                });
               });
             });
-          });
-        });
-        r.path("settings").use(rolecheck("organizer"))((r) => {
-          r.get(async (ctx) => {
-            return {
-              name: ctx.tournament.name,
-              description: ctx.tournament.description,
-              signUpDeadline: ctx.tournament.signUpDeadline,
-              draftStart: ctx.tournament.draftStart,
-              draftEnd: ctx.tournament.draftEnd,
-              seasonStart: ctx.tournament.seasonStart,
-              seasonEnd: ctx.tournament.seasonEnd,
-              discord: ctx.tournament.discord,
-              forfeit: ctx.tournament.forfeit,
-              diffMode: ctx.tournament.diffMode,
-            };
-          });
-          r.patch.validate({
-            body: (data) =>
-              z
-                .object({
-                  name: z.string().min(1),
-                  description: z.string().optional(),
-                  signUpDeadline: z.coerce.date(),
-                  draftStart: z.coerce.date().optional(),
-                  draftEnd: z.coerce.date().optional(),
-                  seasonStart: z.coerce.date().optional(),
-                  seasonEnd: z.coerce.date().optional(),
-                  discord: z.string().optional(),
-                  forfeit: z
-                    .object({
-                      gameDiff: z.number().int().min(0),
-                      pokemonDiff: z.number().int().min(0),
-                    })
-                    .optional(),
-                  diffMode: z.enum(["pokemon", "game"]).optional(),
-                })
-                .parse(data),
-          })(async (ctx) => {
-            const {
-              name,
-              description,
-              signUpDeadline,
-              draftStart,
-              draftEnd,
-              seasonStart,
-              seasonEnd,
-              discord,
-              forfeit,
-              diffMode,
-            } = ctx.validatedBody;
-            ctx.tournament.name = name;
-            ctx.tournament.description = description;
-            ctx.tournament.signUpDeadline = signUpDeadline;
-            ctx.tournament.draftStart = draftStart;
-            ctx.tournament.draftEnd = draftEnd;
-            ctx.tournament.seasonStart = seasonStart;
-            ctx.tournament.seasonEnd = seasonEnd;
-            ctx.tournament.discord = discord;
-            if (forfeit !== undefined) ctx.tournament.forfeit = forfeit;
-            if (diffMode !== undefined) ctx.tournament.diffMode = diffMode;
-            await ctx.tournament.save();
-            logger.info(
-              `Tournament settings updated for ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
-            );
-            return { message: "Tournament settings updated." };
-          });
-        });
+          },
+        );
+        r.path("settings").use((ctx) => rolecheck(ctx.tournament, "organizer"))(
+          (r) => {
+            r.get(async (ctx) => {
+              return {
+                name: ctx.tournament.name,
+                description: ctx.tournament.description,
+                signUpDeadline: ctx.tournament.signUpDeadline,
+                draftStart: ctx.tournament.draftStart,
+                draftEnd: ctx.tournament.draftEnd,
+                seasonStart: ctx.tournament.seasonStart,
+                seasonEnd: ctx.tournament.seasonEnd,
+                discord: ctx.tournament.discord,
+                forfeit: ctx.tournament.forfeit,
+                diffMode: ctx.tournament.diffMode,
+              };
+            });
+            r.patch.validate({
+              body: (data) =>
+                z
+                  .object({
+                    name: z.string().min(1),
+                    description: z.string().optional(),
+                    signUpDeadline: z.coerce.date(),
+                    draftStart: z.coerce.date().optional(),
+                    draftEnd: z.coerce.date().optional(),
+                    seasonStart: z.coerce.date().optional(),
+                    seasonEnd: z.coerce.date().optional(),
+                    discord: z.string().optional(),
+                    forfeit: z
+                      .object({
+                        gameDiff: z.number().int().min(0),
+                        pokemonDiff: z.number().int().min(0),
+                      })
+                      .optional(),
+                    diffMode: z.enum(["pokemon", "game"]).optional(),
+                  })
+                  .parse(data),
+            })(async (ctx) => {
+              const {
+                name,
+                description,
+                signUpDeadline,
+                draftStart,
+                draftEnd,
+                seasonStart,
+                seasonEnd,
+                discord,
+                forfeit,
+                diffMode,
+              } = ctx.validatedBody;
+              ctx.tournament.name = name;
+              ctx.tournament.description = description;
+              ctx.tournament.signUpDeadline = signUpDeadline;
+              ctx.tournament.draftStart = draftStart;
+              ctx.tournament.draftEnd = draftEnd;
+              ctx.tournament.seasonStart = seasonStart;
+              ctx.tournament.seasonEnd = seasonEnd;
+              ctx.tournament.discord = discord;
+              if (forfeit !== undefined) ctx.tournament.forfeit = forfeit;
+              if (diffMode !== undefined) ctx.tournament.diffMode = diffMode;
+              await ctx.tournament.save();
+              logger.info(
+                `Tournament settings updated for ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
+              );
+              return { message: "Tournament settings updated." };
+            });
+          },
+        );
       });
     });
   });

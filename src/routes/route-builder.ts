@@ -1,5 +1,6 @@
 import {
   ErrorRequestHandler,
+  NextFunction,
   Request,
   RequestHandler,
   Response,
@@ -64,6 +65,17 @@ type Handler<TCtx = any> = (
   req: Request,
   res: Response,
 ) => Promise<any> | any;
+
+export type ContextAwareMiddleware<TCtx = any> = (
+  ctx: TCtx,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => any | Promise<any>;
+
+export type PDZMiddleware<TCtx = any> =
+  | RequestHandler
+  | ContextAwareMiddleware<TCtx>;
 
 type MethodHandler = { [m in HttpMethod]: Handler };
 type MethodMiddleware = Partial<Record<HttpMethod, RequestHandler[]>>;
@@ -277,9 +289,12 @@ function createValidationMiddleware<TBody, TQuery>(schema: {
   };
 }
 
+type MiddlewareFactory<TCtx> = (ctx: TCtx) => RequestHandler;
+
 type ConfigurableBuilder<TCtx> = {
   (configure: (builder: RouteBuilder<TCtx>) => void): Route;
   auth(): ConfigurableBuilder<TCtx & { sub: string }>;
+  use(...middleware: MiddlewareFactory<TCtx>[]): ConfigurableBuilder<TCtx>;
   use(...middleware: RequestHandler[]): ConfigurableBuilder<TCtx>;
 };
 
@@ -291,12 +306,18 @@ type HttpMethodBuilderWithValidate<TCtx> = {
   }): (
     handler: Handler<TCtx & { validatedBody: TBody; validatedQuery: TQuery }>,
   ) => void;
+  use(
+    ...middleware: MiddlewareFactory<TCtx>[]
+  ): HttpMethodBuilderWithValidate<TCtx>;
   use(...middleware: RequestHandler[]): HttpMethodBuilderWithValidate<TCtx>;
 };
 
 type HttpMethodBuilder<TCtx> = {
   (handler: Handler<TCtx>): void;
   auth(): HttpMethodBuilderWithValidate<TCtx & { sub: string }>;
+  use(
+    ...middleware: MiddlewareFactory<TCtx>[]
+  ): HttpMethodBuilderWithValidate<TCtx>;
   use(...middleware: RequestHandler[]): HttpMethodBuilderWithValidate<TCtx>;
   validate<TBody = undefined, TQuery = undefined>(schema: {
     body?: (data: any) => TBody;
@@ -310,6 +331,23 @@ export class RouteBuilder<TCtx = {}> {
   private node: RouteNode<TCtx> = {};
   private children: Map<string, RouteBuilder<any>> = new Map();
 
+  private wrapMiddleware(middlewares: any[]): RequestHandler[] {
+    return middlewares.map((mw) => {
+      if (typeof mw === "function" && mw.length <= 1) {
+        return (req: Request, res: Response, next: NextFunction) => {
+          try {
+            const ctx = getRequestContext(res);
+            const dynamicMiddleware = mw(ctx);
+            return dynamicMiddleware(req, res, next);
+          } catch (error) {
+            return next(error);
+          }
+        };
+      }
+      return mw;
+    });
+  }
+
   auth(): ConfigurableBuilder<TCtx & { sub: string }> {
     this.node.authCheck = true;
     return this.makeConfigurable() as ConfigurableBuilder<
@@ -317,8 +355,9 @@ export class RouteBuilder<TCtx = {}> {
     >;
   }
 
-  use(...middleware: RequestHandler[]): ConfigurableBuilder<TCtx> {
-    this.node.middleware = [...(this.node.middleware || []), ...middleware];
+  use(...middleware: any[]): ConfigurableBuilder<TCtx> {
+    const wrapped = this.wrapMiddleware(middleware);
+    this.node.middleware = [...(this.node.middleware || []), ...wrapped];
     return this.makeConfigurable();
   }
 
@@ -336,8 +375,9 @@ export class RouteBuilder<TCtx = {}> {
       >;
     };
 
-    callable.use = (...middleware: RequestHandler[]) => {
-      self.node.middleware = [...(self.node.middleware || []), ...middleware];
+    callable.use = (...middleware: any[]) => {
+      const wrapped = self.wrapMiddleware(middleware);
+      self.node.middleware = [...(self.node.middleware || []), ...wrapped];
       return self.makeConfigurable();
     };
 
@@ -406,16 +446,16 @@ export class RouteBuilder<TCtx = {}> {
     >;
   }
 
-  private setMethodRoute<TMethodCtx>(
+  private setMethodRoute(
     method: HttpMethod,
-    handler: Handler<TMethodCtx>,
+    handler: Handler<any>,
     methodMiddleware: RequestHandler[] = [],
   ): void {
     if (this.node[method]) {
       logger.warn(`Overwriting existing ${method.toUpperCase()} handler`);
     }
 
-    this.node[method] = handler as Handler<any>;
+    this.node[method] = handler;
 
     if (methodMiddleware.length > 0) {
       this.node.methodMiddleware = this.node.methodMiddleware || {};
@@ -466,10 +506,11 @@ export class RouteBuilder<TCtx = {}> {
       middleware,
     );
 
-    builder.use = (...moreMiddleware: RequestHandler[]) => {
+    builder.use = (...moreMiddleware: any[]) => {
+      const wrapped = this.wrapMiddleware(moreMiddleware);
       return this.createMethodBuilderWithValidate<TMethodCtx>(method, [
         ...middleware,
-        ...moreMiddleware,
+        ...wrapped,
       ]);
     };
 
@@ -483,15 +524,15 @@ export class RouteBuilder<TCtx = {}> {
 
     builder.auth = () => {
       const authMiddleware = createAuthMiddleware();
-
       return this.createMethodBuilderWithValidate<TCtx & { sub: string }>(
         method,
         [authMiddleware],
       );
     };
 
-    builder.use = (...middleware: RequestHandler[]) => {
-      return this.createMethodBuilderWithValidate<TCtx>(method, middleware);
+    builder.use = (...middleware: any[]) => {
+      const wrapped = this.wrapMiddleware(middleware);
+      return this.createMethodBuilderWithValidate<TCtx>(method, wrapped);
     };
 
     builder.validate = this.createValidationConfigurer<TCtx>(method, []);
