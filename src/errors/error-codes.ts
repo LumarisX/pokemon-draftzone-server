@@ -231,6 +231,13 @@ export const ErrorCodes = {
       message: "Species not found",
     },
   },
+  MOVE: {
+    NOT_FOUND: {
+      code: "MOV-001",
+      status: 404,
+      message: "Move not found",
+    },
+  },
   MATCHUP: {
     NOT_FOUND: {
       code: "MU-001",

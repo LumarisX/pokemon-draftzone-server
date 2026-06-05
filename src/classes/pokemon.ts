@@ -8,9 +8,7 @@ import {
   EvoType,
   FormeName,
   GenderName,
-  Item,
   ItemName,
-  Move,
   MoveName,
   Nonstandard,
   SpeciesAbility,
@@ -22,6 +20,8 @@ import {
 import { LRUCache } from "lru-cache";
 import { abilityModifiers } from "../data/pokedex/abilities";
 import { Ruleset } from "../data/rulesets";
+import { ErrorCodes } from "../errors/error-codes";
+import { PDZError } from "../errors/pdz-error";
 import { PokemonData } from "../models/pokemon.schema";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { typeWeak } from "../services/data-services/type.services";
@@ -29,9 +29,8 @@ import {
   CoverageMove,
   FullCoverageMove,
 } from "../services/matchup-services/coverage.service";
+import { DraftMove } from "./move";
 import { getBST, getCST } from "./specieUtil";
-import { ErrorCodes } from "../errors/error-codes";
-import { PDZError } from "../errors/pdz-error";
 
 export type PokemonOptions = {
   shiny?: boolean;
@@ -62,7 +61,7 @@ type RawCoverage = {
   };
 };
 
-const learnsetCache = new LRUCache<string, Promise<Move[]>>({ max: 500 });
+const learnsetCache = new LRUCache<string, Promise<DraftMove[]>>({ max: 500 });
 const coverageCache = new LRUCache<string, Coverage>({ max: 500 });
 const fullCoverageCache = new LRUCache<string, FullCoverage>({ max: 500 });
 
@@ -162,7 +161,8 @@ export class DraftSpecie implements Specie, Pokemon {
       pokemonData instanceof Specie
         ? pokemonData
         : ruleset.species.get(pokemonData.id);
-    if (!specie) throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND);
+    if (!specie)
+      throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, { pokemonData });
 
     Object.assign(this, specie);
     this.ruleset = ruleset;
@@ -473,14 +473,14 @@ export class DraftSpecie implements Specie, Pokemon {
     } else {
       const learnset = await this.learnset();
       const coverage: {
-        physical: { [key: string]: Move[] };
-        special: { [key: string]: Move[] };
+        physical: { [key: string]: DraftMove[] };
+        special: { [key: string]: DraftMove[] };
       } = { physical: {}, special: {} };
 
       if (learnset) {
         const addMove = (
-          list: { [key: string]: Move[] },
-          move: Move,
+          list: { [key: string]: DraftMove[] },
+          move: DraftMove,
           type: TypeName,
         ) => {
           if (!(type in list)) list[type] = [];
@@ -502,7 +502,7 @@ export class DraftSpecie implements Specie, Pokemon {
       }
 
       const formatMoves = (movesByType: {
-        [key: string]: Move[];
+        [key: string]: DraftMove[];
       }): { [key: string]: FullCoverageMove[] } => {
         return Object.fromEntries(
           Object.entries(movesByType).map(([type, moves]) => [
@@ -655,7 +655,7 @@ export class DraftSpecie implements Specie, Pokemon {
     return recommendedCoverage;
   }
 
-  async learnset(): Promise<Move[]> {
+  async learnset(): Promise<DraftMove[]> {
     const cacheKey = `${this.ruleset.name}:${this.id}:${
       this.ruleset.restriction || ""
     }`;
@@ -666,13 +666,13 @@ export class DraftSpecie implements Specie, Pokemon {
     const learnsetPromise = (async () => {
       const learnset = await this.ruleset.learnsets.learnable(
         this.id,
-
         this.ruleset.restriction,
       );
       if (!learnset) return [];
-      const moves: Move[] = Object.keys(learnset)
-        .map((move) => this.ruleset.moves.get(move))
-        .filter((move) => move !== undefined) as Move[];
+
+      const moves: DraftMove[] = Object.keys(learnset).map(
+        (move) => new DraftMove(move as ID, this.ruleset),
+      );
       return moves;
     })();
     learnsetCache.set(cacheKey, learnsetPromise);
