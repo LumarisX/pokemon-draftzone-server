@@ -1,4 +1,4 @@
-import { Move, TypeName } from "@pkmn/data";
+import { Move, Type, TypeName } from "@pkmn/data";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
@@ -289,63 +289,17 @@ const moveList: { [key: string]: MoveCategory[] } = {
   laserfocus: ["Setup"],
 };
 
-// export type Movechart = {
-//   moves: {
-//     name: string;
-//     type: string;
-//     pokemon: PokemonFormData[];
-//   }[];
-// }
-
-// export async function movechart(
-//   team: DraftSpecie[],
-//   ruleset: Ruleset,
-// ): Promise<Movechart> {
-//   const mc: {
-//     [key in MoveCategory]: {
-//       name: string;
-//       type: TypeName;
-//       pokemon: PokemonFormData[];
-//     }[];
-//   } = {
-
-//   };
-
-//   for (const moveID in moveList) {
-//     const move = ruleset.moves.get(moveID);
-//     if (!move || !move.exists) continue;
-//     const data = {
-//       name: move.name,
-//       type: move.type,
-//       desc: move.shortDesc,
-//       pokemon: (
-//         await Promise.all(
-//           team.map(async (pokemon) => ({
-//             pokemon,
-//             canLearn: await pokemon.canLearn(move.id),
-//           })),
-//         )
-//       )
-//         .filter((result) => result.canLearn)
-//         .map((result) => result.pokemon.toClient()),
-//     };
-//     for (const category of moveList[moveID]) {
-//       mc[category].push(data);
-//     }
-//   }
-
-//   return Object.entries(mc).map(([category, moves]) => ({
-//     categoryName: category,
-//     moves,
-//   }));
-// }
-
 export type Movechart = {
-  name: string;
-  type: string;
+  moves: {
+    name: string;
+    type: TypeName;
+    desc: string;
+    pokemon: string[];
+    tags: string[];
+  }[];
   pokemon: PokemonFormData[];
-  tags: string[];
-}[];
+  tags: ReadonlyArray<string>;
+};
 
 export async function movechart(
   team: DraftSpecie[],
@@ -354,10 +308,8 @@ export async function movechart(
   const combinedLearnset = new Map<
     string,
     {
-      name: string;
-      type: string;
-      tags: string[];
-      pokemon: PokemonFormData[];
+      move: Move;
+      pokemon: string[];
     }
   >();
 
@@ -372,17 +324,31 @@ export async function movechart(
     for (let move of learnset) {
       if (!combinedLearnset.has(move.id)) {
         combinedLearnset.set(move.id, {
-          name: move.name,
-          type: move.type,
-          tags: move.id in moveList ? moveList[move.id] : [],
+          move,
           pokemon: [],
         });
       }
-      combinedLearnset.get(move.id)?.pokemon.push(pokemon.toClient());
+      combinedLearnset.get(move.id)?.pokemon.push(pokemon.id);
     }
   }
 
-  return Array.from(combinedLearnset.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  return {
+    moves: Array.from(combinedLearnset.values())
+      .map(({ move, pokemon }) => {
+        const tags = move.id in moveList ? moveList[move.id] : [];
+        return {
+          name: move.name,
+          type: move.type,
+          desc: move.shortDesc,
+          accuracy: move.accuracy,
+          basePower: move.basePower,
+          category: move.category,
+          tags,
+          pokemon,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    pokemon: team.map((p) => p.toClient()),
+    tags: MOVECATEGORIES,
+  };
 }
