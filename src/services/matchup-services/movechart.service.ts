@@ -1,4 +1,4 @@
-import { TypeName } from "@pkmn/data";
+import { Move, Type, TypeName } from "@pkmn/data";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
@@ -229,7 +229,7 @@ const moveList: { [key: string]: MoveCategory[] } = {
   technoblast: ["Type Changing"],
   teleport: ["Momentum"],
   terablast: ["Type Changing"],
-  terrainpulse: ["Field Manipulation"],
+  terrainpulse: ["Field Manipulation", "Type Changing"],
   thousandwaves: ["Trapping"],
   thundercage: ["Trapping"],
   thunderclap: ["Priority"],
@@ -259,68 +259,96 @@ const moveList: { [key: string]: MoveCategory[] } = {
   wrap: ["Trapping"],
   yawn: ["Status"],
   zippyzap: ["Priority"],
+  babydolleyes: ["Priority"],
+  inferno: ["Status"],
+  zapcannon: ["Status"],
+  buzzybuzz: ["Status"],
+  accupressure: ["Setup"],
+  baddybad: ["Support"],
+  brickbreak: ["Disruption"],
+  psychicfangs: ["Disruption"],
+  ragingbull: ["Disruption"],
+  coreenforcer: ["Disruption"],
+  covet: ["Disruption"],
+  eeriespell: ["Disruption"],
+  electrify: ["Disruption"],
+  embargo: ["Disruption"],
+  entainment: ["Support", "Disruption"],
+  fling: ["Disruption"],
+  flowershield: ["Setup"],
+  forestscurse: ["Disruption"],
+  gastroacid: ["Disruption"],
+  gearup: ["Setup"],
+  glitzyglow: ["Support"],
+  grudge: ["Disruption"],
+  healblock: ["Disruption"],
+  psychicnoise: ["Disruption"],
+  icespinner: ["Field Manipulation"],
+  incinerate: ["Disruption"],
+  instruct: ["Support"],
+  laserfocus: ["Setup"],
 };
 
 export type Movechart = {
-  categoryName: string;
   moves: {
     name: string;
-    type: string;
-    pokemon: PokemonFormData[];
+    type: TypeName;
+    desc: string;
+    pokemon: string[];
+    tags: string[];
   }[];
-}[];
+  pokemon: PokemonFormData[];
+  tags: ReadonlyArray<string>;
+};
 
 export async function movechart(
   team: DraftSpecie[],
   ruleset: Ruleset,
 ): Promise<Movechart> {
-  const mc: {
-    [key in MoveCategory]: {
-      name: string;
-      type: TypeName;
-      pokemon: PokemonFormData[];
-    }[];
-  } = {
-    Priority: [],
-    Setup: [],
-    Cleric: [],
-    Momentum: [],
-    "Hazard Control": [],
-    "Speed Control": [],
-    Support: [],
-    Status: [],
-    Disruption: [],
-    "Field Manipulation": [],
-    Trapping: [],
-    "Type Changing": [],
-    "Z-Setup": [],
-  };
+  const combinedLearnset = new Map<
+    string,
+    {
+      move: Move;
+      pokemon: string[];
+    }
+  >();
 
-  for (const moveID in moveList) {
-    const move = ruleset.moves.get(moveID);
-    if (!move || !move.exists) continue;
-    const data = {
-      name: move.name,
-      type: move.type,
-      desc: move.shortDesc,
-      pokemon: (
-        await Promise.all(
-          team.map(async (pokemon) => ({
-            pokemon,
-            canLearn: await pokemon.canLearn(move.id),
-          })),
-        )
-      )
-        .filter((result) => result.canLearn)
-        .map((result) => result.pokemon.toClient()),
-    };
-    for (const category of moveList[moveID]) {
-      mc[category].push(data);
+  const teamWithLearnsets = await Promise.all(
+    team.map(async (pokemon) => ({
+      pokemon,
+      learnset: await pokemon.learnset(),
+    })),
+  );
+
+  for (let { pokemon, learnset } of teamWithLearnsets) {
+    for (let move of learnset) {
+      if (!combinedLearnset.has(move.id)) {
+        combinedLearnset.set(move.id, {
+          move,
+          pokemon: [],
+        });
+      }
+      combinedLearnset.get(move.id)?.pokemon.push(pokemon.id);
     }
   }
 
-  return Object.entries(mc).map(([category, moves]) => ({
-    categoryName: category,
-    moves,
-  }));
+  return {
+    moves: Array.from(combinedLearnset.values())
+      .map(({ move, pokemon }) => {
+        const tags = move.id in moveList ? moveList[move.id] : [];
+        return {
+          name: move.name,
+          type: move.type,
+          desc: move.shortDesc,
+          accuracy: move.accuracy,
+          basePower: move.basePower,
+          category: move.category,
+          tags,
+          pokemon,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    pokemon: team.map((p) => p.toClient()),
+    tags: MOVECATEGORIES,
+  };
 }
