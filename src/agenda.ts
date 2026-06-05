@@ -162,7 +162,7 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
   if (!currentTeam || !division.draft.channelId) return;
 
   const coach = currentTeam.coach as LeagueCoachDocument | undefined;
-  const teamName = coach?.teamName ?? "Unknown Team";
+  const teamName = currentTeam?.teamName ?? "Unknown Team";
   const coachMention = await resolveDiscordMention(
     division.draft.channelId,
     coach?.discordName,

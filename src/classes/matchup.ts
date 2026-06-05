@@ -117,7 +117,7 @@ export class Matchup {
       : -1;
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.side1.team.coach.teamName,
+        teamName: leagueMatchupDoc.side1.team.teamName,
         coach: leagueMatchupDoc.side1.team.coach.name,
         team: getRosterByStage(
           leagueMatchupDoc.side1.team,
@@ -140,7 +140,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side1.team.coach.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.side2.team.coach.teamName,
+        teamName: leagueMatchupDoc.side2.team.teamName,
         coach: leagueMatchupDoc.side2.team.coach.name,
         team: getRosterByStage(
           leagueMatchupDoc.side2.team,
@@ -190,7 +190,7 @@ export class Matchup {
       )?.name ?? "Playoffs";
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.side1.team?.coach?.teamName ?? "TBD",
+        teamName: leagueMatchupDoc.side1.team?.teamName ?? "TBD",
         coach: leagueMatchupDoc.side1.team?.coach?.name,
         team:
           side1Division && leagueMatchupDoc.side1.team
@@ -210,7 +210,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side1.team?.coach?.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.side2.team?.coach?.teamName ?? "TBD",
+        teamName: leagueMatchupDoc.side2.team?.teamName ?? "TBD",
         coach: leagueMatchupDoc.side2.team?.coach?.name,
         team:
           side2Division && leagueMatchupDoc.side2.team

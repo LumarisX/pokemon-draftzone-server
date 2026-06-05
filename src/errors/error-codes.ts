@@ -31,11 +31,6 @@ export const ErrorCodes = {
       status: 400,
       message: "You are already signed up for this league",
     },
-    COACH_NOT_FOUND: {
-      code: "LR-006",
-      status: 404,
-      message: "Coach not found",
-    },
   },
   DIVISION: {
     NOT_FOUND: {
@@ -74,6 +69,13 @@ export const ErrorCodes = {
       code: "LR-TEAM-003",
       status: 400,
       message: "Invalid team roster",
+    },
+  },
+  COACH: {
+    NOT_FOUND: {
+      code: "LR-CCH-001",
+      status: 404,
+      message: "Coach not found",
     },
   },
   DRAFT: {

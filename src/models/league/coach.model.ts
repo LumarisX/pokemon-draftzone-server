@@ -67,9 +67,6 @@ export type LeagueCoach = {
   name: string;
   discordName: string;
   gameName: string;
-  tournamentId: Types.ObjectId;
-  teamName: string;
-  logo?: string;
   experience: string;
   droppedBefore: boolean;
   droppedWhy?: string;
@@ -115,13 +112,6 @@ const LeagueCoachSchema: Schema<
     name: { type: String, required: true },
     discordName: { type: String, required: true },
     gameName: { type: String, required: true },
-    tournamentId: {
-      type: Schema.Types.ObjectId,
-      ref: "League",
-      required: true,
-    },
-    teamName: { type: String, required: true },
-    logo: { type: String, index: true },
     experience: { type: String, required: true },
     droppedBefore: { type: Boolean, required: true, default: false },
     droppedWhy: { type: String },

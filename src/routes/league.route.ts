@@ -345,9 +345,9 @@ export const LeagueRoute = createRoute()((r) => {
               if (!teamDoc) return null;
               return {
                 seed: idx + 1,
-                teamName: teamDoc.coach.teamName,
+                teamName: teamDoc.teamName,
                 coachName: teamDoc.coach.name,
-                logo: teamDoc.coach.logo,
+                logo: teamDoc.logo,
                 divisionKey: teamToDivision.get(teamDoc._id.toString()),
                 teamId: teamDoc._id.toString(),
               };
@@ -442,11 +442,15 @@ export const LeagueRoute = createRoute()((r) => {
             tournamentId: ctx.tournament._id,
           });
           if (!coach)
-            throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+            throw new PDZError(ErrorCodes.COACH.NOT_FOUND, {
               tournamentId: ctx.tournament._id.toString(),
             });
 
           const team = await LeagueTeamModel.findOne({ coach: coach._id });
+          if (!team)
+            throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+              tournamentId: ctx.tournament._id.toString(),
+            });
           let division: { divisionKey: string; name: string } | null = null;
           if (team) {
             const div = await LeagueDivisionModel.findOne({
@@ -472,9 +476,9 @@ export const LeagueRoute = createRoute()((r) => {
             gameName: coach.gameName,
             discordName: coach.discordName,
             timezone: coach.timezone,
-            teamName: coach.teamName,
+            teamName: team.teamName,
             status: coach.status,
-            logo: coach.logo,
+            logo: team.logo,
             signedUpAt: coach.signedUpAt,
             teamId: team?._id.toString(),
             division,
@@ -645,44 +649,45 @@ export const LeagueRoute = createRoute()((r) => {
             });
 
             const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
-            const coachesWithLogos = await Promise.all(
-              users.map(async (user) => {
-                const division = divisions.find((division) =>
-                  division.teams.some(
-                    (team) => team.coach.toString() === user._id.toString(),
-                  ),
-                )?.divisionKey;
-                const member = memberIndex
-                  ? findDiscordMemberInIndex(memberIndex, user.discordName)
-                  : await getDiscordMemberInGuild(
-                      DISCORD_GUILD_ID,
-                      user.discordName,
-                    );
-                const inDiscordServer = Boolean(member);
-                const hasDiscordRole = Boolean(
-                  member &&
-                  DISCORD_ROLE_IDS.some((id) => member.roles.cache.has(id)),
-                );
-                return {
-                  id: user._id.toString(),
-                  name: user.name,
-                  gameName: user.gameName,
-                  discordName: user.discordName,
-                  timezone: user.timezone,
-                  experience: user.experience,
-                  dropped: user.droppedBefore ? user.droppedWhy : undefined,
-                  status: user.status,
-                  teamName: user.teamName,
-                  signedUpAt: user.signedUpAt,
-                  logo: user.logo
-                    ? s3Service.getPublicUrl(user.logo)
-                    : undefined,
-                  division,
-                  inDiscordServer,
-                  hasDiscordRole,
-                };
-              }),
-            );
+            const coachesWithLogos = [] as string[];
+            // await Promise.all(
+            //   users.map(async (user) => {
+            //     const division = divisions.find((division) =>
+            //       division.teams.some(
+            //         (team) => team.coach.toString() === user._id.toString(),
+            //       ),
+            //     )?.divisionKey;
+            //     const member = memberIndex
+            //       ? findDiscordMemberInIndex(memberIndex, user.discordName)
+            //       : await getDiscordMemberInGuild(
+            //           DISCORD_GUILD_ID,
+            //           user.discordName,
+            //         );
+            //     const inDiscordServer = Boolean(member);
+            //     const hasDiscordRole = Boolean(
+            //       member &&
+            //       DISCORD_ROLE_IDS.some((id) => member.roles.cache.has(id)),
+            //     );
+            //     return {
+            //       id: user._id.toString(),
+            //       name: user.name,
+            //       gameName: user.gameName,
+            //       discordName: user.discordName,
+            //       timezone: user.timezone,
+            //       experience: user.experience,
+            //       dropped: user.droppedBefore ? user.droppedWhy : undefined,
+            //       status: user.status,
+            //       teamName: user.teamName,
+            //       signedUpAt: user.signedUpAt,
+            //       logo: user.logo
+            //         ? s3Service.getPublicUrl(user.logo)
+            //         : undefined,
+            //       division,
+            //       inDiscordServer,
+            //       hasDiscordRole,
+            //     };
+            //   }),
+            // );
 
             return {
               signups: coachesWithLogos,
@@ -798,25 +803,25 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      r.path("coaches")((r) => {
-        r.param("coach_id", async (ctx, coach_id) => {
-          if (!Types.ObjectId.isValid(coach_id))
+      r.path("team")((r) => {
+        r.param("team_id", async (ctx, team_id) => {
+          if (!Types.ObjectId.isValid(team_id))
             throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-              coachId: coach_id,
+              team_id,
             });
 
-          const coach = await LeagueCoachModel.findOne({
-            _id: coach_id,
+          const team = await LeagueTeamModel.findOne({
+            _id: team_id,
             tournamentId: ctx.tournament._id,
-          });
+          }).populate<{ coach: LeagueCoachDocument }>("coach");
 
-          if (!coach)
+          if (!team)
             throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
               tournamentKey: ctx.tournament.tournamentKey,
-              coachId: coach_id,
+              coachId: team_id,
             });
 
-          return { coach };
+          return { team };
         })((r) => {
           r.path("logo")((r) => {
             r.patch.auth().validate({
@@ -829,7 +834,7 @@ export const LeagueRoute = createRoute()((r) => {
             })(async (ctx) => {
               const roles = await getRoles(ctx.tournament, ctx.sub);
               const isOrganizer = roles.includes("organizer");
-              const isSelf = ctx.coach.auth0Id === ctx.sub;
+              const isSelf = ctx.team.coach.auth0Id === ctx.sub;
 
               if (!isOrganizer && !isSelf)
                 throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
@@ -843,17 +848,17 @@ export const LeagueRoute = createRoute()((r) => {
 
               if (!uploadRecord) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
 
-              ctx.coach.logo = ctx.validatedBody.fileKey;
-              await ctx.coach.save();
+              ctx.team.logo = ctx.validatedBody.fileKey;
+              await ctx.team.save();
 
               await FileUploadModel.findOneAndUpdate(
                 { key: ctx.validatedBody.fileKey },
-                { relatedEntityId: ctx.coach._id.toString() },
+                { relatedEntityId: ctx.team._id.toString() },
               );
 
               return {
                 message: "Logo updated.",
-                logo: ctx.coach.logo,
+                logo: ctx.team.logo,
               };
             });
           });
@@ -886,79 +891,6 @@ export const LeagueRoute = createRoute()((r) => {
           });
         });
       });
-      // r.path("tier-list")((r) => {
-      //   r.get.validate({
-      //     query: (data) =>
-      //       z
-      //         .object({
-      //           division: z
-      //             .union([z.string().min(1), z.array(z.string().min(1))])
-      //             .optional(),
-      //         })
-      //         .parse(data),
-      //   })(async (ctx) => {
-      //     const { division } = ctx.validatedQuery;
-      //     const tierList = await getTierList(ctx.tournament.tierList._id);
-
-      //     let divisions: {
-      //       [key: string]: {
-      //         pokemonId: string;
-      //       }[];
-      //     } = {};
-      //     if (division) divisions = await getDrafted(ctx.tournament, division);
-      //     return { tierList, divisions, ruleset: ctx.ruleset.name };
-      //   });
-      //   r.path("edit").auth()((r) => {
-      //     r.get.validate({
-      //       query: (data) =>
-      //         z
-      //           .object({
-      //             division: z
-      //               .union([z.string().min(1), z.array(z.string().min(1))])
-      //               .optional(),
-      //           })
-      //           .parse(data),
-      //     })(async (ctx) => {
-      //       const { division } = ctx.validatedQuery;
-      //       const tierList = await getTierList(
-      //         ctx.tournament.tierList._id,
-      //         true,
-      //       );
-      //       const divisions = await getDrafted(ctx.tournament, division);
-      //       return { tierList, divisions };
-      //     });
-      //     r.post.validate({
-      //       body: (data) =>
-      //         z
-      //           .object({
-      //             tiers: z.array(
-      //               z.object({
-      //                 name: z.string(),
-      //                 cost: z.number(),
-      //                 pokemon: z.array(
-      //                   z.object({
-      //                     id: z.string(),
-      //                     name: z.string(),
-      //                     banned: z.boolean().optional(),
-      //                   }),
-      //                 ),
-      //               }),
-      //             ),
-      //           })
-      //           .parse(data),
-      //     })(async (ctx) => {
-      //       const { tiers } = ctx.validatedBody;
-      //       await updateTierList(ctx.tournament.tierList._id, tiers);
-      //       logger.info(
-      //         `Tier list updated for league ${ctx.tournament.tournamentKey} by ${ctx.sub}`,
-      //       );
-      //       return {
-      //         success: true,
-      //         message: "Tier list updated successfully",
-      //       };
-      //     });
-      //   });
-      // });
       r.path("divisions")((r) => {
         r.param("division_id", DivisionHandler).auth()((r) => {
           r.get(
@@ -1018,7 +950,7 @@ export const LeagueRoute = createRoute()((r) => {
                 return {
                   id: team._id.toString(),
                   coach: team.coach.name,
-                  logo: team.coach.logo,
+                  logo: team.logo,
                   draft: getRosterByStage(team, division).map((pokemon) => ({
                     id: pokemon.id,
                     name: getName(pokemon.id),
@@ -1032,7 +964,7 @@ export const LeagueRoute = createRoute()((r) => {
                     record: pokemonStandings.find((p) => p.id === pokemon.id)
                       ?.record,
                   })),
-                  name: team.coach.teamName,
+                  name: team.teamName,
                   isCoach: team.coach.auth0Id === ctx.sub,
                   timezone: team.coach.timezone,
                   record,
@@ -1112,10 +1044,10 @@ export const LeagueRoute = createRoute()((r) => {
                 );
 
                 return {
-                  name: coach.teamName,
+                  name: ctx.team.teamName,
                   timezone: coach.timezone,
                   coach: coach.name,
-                  logo: coach.logo,
+                  logo: ctx.team.logo,
                   draft,
                   matchups: teamMatchups,
                   record: {
@@ -1169,9 +1101,8 @@ export const LeagueRoute = createRoute()((r) => {
                     ),
                   );
 
-                  const coach = team.coach;
                   return {
-                    name: coach.teamName,
+                    name: team.teamName,
                     picks: picks,
                     id: team._id.toString(),
                   };
@@ -1264,14 +1195,14 @@ export const LeagueRoute = createRoute()((r) => {
                     return {
                       id: matchup._id.toString(),
                       team1: {
-                        name: matchup.side1.team.coach.teamName,
+                        name: matchup.side1.team.teamName,
                         coach: matchup.side1.team.coach.name,
                         score: matchup.forfeit
                           ? matchup.winner === "side1"
                             ? ctx.tournament.forfeit.gameDiff
                             : 0
                           : matchup.side1.score,
-                        logo: matchup.side1.team.coach.logo,
+                        logo: matchup.side1.team.logo,
                         id: matchup.side1.team._id.toString(),
                         draft: matchup.side1.team.draft.map((draftItem) => ({
                           id: draftItem.pokemon.id,
@@ -1283,14 +1214,14 @@ export const LeagueRoute = createRoute()((r) => {
                         })),
                       },
                       team2: {
-                        name: matchup.side2.team.coach.teamName,
+                        name: matchup.side2.team.teamName,
                         coach: matchup.side2.team.coach.name,
                         score: matchup.forfeit
                           ? matchup.winner === "side2"
                             ? ctx.tournament.forfeit.gameDiff
                             : 0
                           : matchup.side2.score,
-                        logo: matchup.side2.team.coach.logo,
+                        logo: matchup.side2.team.logo,
                         id: matchup.side2.team._id.toString(),
                         draft: matchup.side2.team.draft.map((draftItem) => ({
                           id: draftItem.pokemon.id,
@@ -1416,7 +1347,7 @@ export const LeagueRoute = createRoute()((r) => {
 
                 for (const [index, team] of pickingOrder.entries()) {
                   const coach = team.coach;
-                  const draftPick: DraftPick = { teamName: coach.teamName };
+                  const draftPick: DraftPick = { teamName: team.teamName };
                   if (team.draft[round]) {
                     const pokemonId = team.draft[round].pokemon.id;
                     const pokemonName = getName(pokemonId);
@@ -1460,7 +1391,7 @@ export const LeagueRoute = createRoute()((r) => {
                   const coach = team.coach;
                   return {
                     info: {
-                      name: coach.teamName,
+                      name: team.teamName,
                       index,
                       id: team._id.toString(),
                     },
@@ -1520,9 +1451,9 @@ export const LeagueRoute = createRoute()((r) => {
                       side1: {
                         team: side1Team
                           ? {
-                              name: side1Team.coach.teamName,
+                              name: side1Team.teamName,
                               coach: side1Team.coach.name,
-                              logo: side1Team.coach.logo,
+                              logo: side1Team.logo,
                             }
                           : undefined,
                         pokemon: trade.side1.pokemon.map((p) => ({
@@ -1538,9 +1469,9 @@ export const LeagueRoute = createRoute()((r) => {
                       side2: {
                         team: side2Team
                           ? {
-                              name: side2Team.coach.teamName,
+                              name: side2Team.teamName,
                               coach: side2Team.coach.name,
-                              logo: side2Team.coach.logo,
+                              logo: side2Team.logo,
                             }
                           : undefined,
                         pokemon: trade.side2.pokemon.map((p) => ({
@@ -1758,10 +1689,10 @@ export const LeagueRoute = createRoute()((r) => {
                   const transformedMatchups = matchups.map((matchup) => ({
                     id: matchup._id.toString(),
                     team1: {
-                      name: matchup.side1.team.coach.teamName,
+                      name: matchup.side1.team.teamName,
                       coach: matchup.side1.team.coach.name,
                       score: matchup.side1.score,
-                      logo: matchup.side1.team.coach.logo,
+                      logo: matchup.side1.team.logo,
                       id: matchup.side1.team._id.toString(),
                       draft: getRosterByStage(
                         matchup.side1.team,
@@ -1777,10 +1708,10 @@ export const LeagueRoute = createRoute()((r) => {
                       })),
                     },
                     team2: {
-                      name: matchup.side2.team.coach.teamName,
+                      name: matchup.side2.team.teamName,
                       coach: matchup.side2.team.coach.name,
                       score: matchup.side2.score,
-                      logo: matchup.side2.team.coach.logo,
+                      logo: matchup.side2.team.logo,
                       id: matchup.side2.team._id.toString(),
                       draft: getRosterByStage(
                         matchup.side2.team,
@@ -2026,9 +1957,9 @@ export const LeagueRoute = createRoute()((r) => {
                       team: trade.side1.team
                         ? {
                             id: trade.side1.team._id.toString(),
-                            name: trade.side1.team.coach.teamName,
+                            name: trade.side1.team.teamName,
                             coach: trade.side1.team.coach.name,
-                            logo: trade.side1.team.coach.logo,
+                            logo: trade.side1.team.logo,
                           }
                         : undefined,
                       pokemon: trade.side1.pokemon.map((p) => {
@@ -2045,9 +1976,9 @@ export const LeagueRoute = createRoute()((r) => {
                       team: trade.side2.team
                         ? {
                             id: trade.side2.team._id.toString(),
-                            name: trade.side2.team.coach.teamName,
+                            name: trade.side2.team.teamName,
                             coach: trade.side2.team.coach.name,
-                            logo: trade.side2.team.coach.logo,
+                            logo: trade.side2.team.logo,
                           }
                         : undefined,
                       pokemon: trade.side2.pokemon.map((p) => {
@@ -2145,7 +2076,7 @@ export const LeagueRoute = createRoute()((r) => {
                 const drafted = division.teams
                   .map((team) => ({
                     team: {
-                      name: team.coach.teamName,
+                      name: team.teamName,
                       coachName: team.coach.name,
                       id: team._id.toString(),
                     },
@@ -2447,10 +2378,10 @@ export const LeagueRoute = createRoute()((r) => {
                       id: matchup._id.toString(),
                       team1: matchup.side1.team
                         ? {
-                            name: matchup.side1.team.coach.teamName,
+                            name: matchup.side1.team.teamName,
                             coach: matchup.side1.team.coach.name,
                             score: matchup.side1.score,
-                            logo: matchup.side1.team.coach.logo,
+                            logo: matchup.side1.team.logo,
                             id: matchup.side1.team._id.toString(),
                             draft: side1Division
                               ? getRosterByStage(
@@ -2467,10 +2398,10 @@ export const LeagueRoute = createRoute()((r) => {
                         : null,
                       team2: matchup.side2.team
                         ? {
-                            name: matchup.side2.team.coach.teamName,
+                            name: matchup.side2.team.teamName,
                             coach: matchup.side2.team.coach.name,
                             score: matchup.side2.score,
-                            logo: matchup.side2.team.coach.logo,
+                            logo: matchup.side2.team.logo,
                             id: matchup.side2.team._id.toString(),
                             draft: side2Division
                               ? getRosterByStage(

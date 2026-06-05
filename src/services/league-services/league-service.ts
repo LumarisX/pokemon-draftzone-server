@@ -105,7 +105,7 @@ export async function getTournamentsByOwner(auth0Id: string) {
       if (coach && !tournamentMap.has(division.tournament._id.toString())) {
         tournamentMap.set(division.tournament._id.toString(), {
           name: coach.name,
-          teamName: coach.teamName,
+          teamName: userTeam.teamName,
           tournamentName: division.tournament.name,
           logo: division.tournament.logo,
           discord: division.tournament.discord,
@@ -154,9 +154,9 @@ export function getTeamClient(
 ) {
   return {
     id: team._id,
-    name: team.coach.teamName,
+    name: team.teamName,
     coach: team.coach.name,
-    logo: team.coach.logo,
+    logo: team.logo,
   };
 }
 
