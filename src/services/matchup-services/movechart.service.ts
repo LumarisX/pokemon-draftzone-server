@@ -1,110 +1,34 @@
-import { Move, Type, TypeName } from "@pkmn/data";
+import { Move, TypeName } from "@pkmn/data";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 
-const MOVECATEGORIES = [
-  "Priority",
-  "Setup",
-  "Cleric",
-  "Momentum",
-  "Hazard Control",
-  "Speed Control",
-  "Support",
-  "Status",
-  "Disruption",
-  "Field Manipulation",
-  "Trapping",
-  "Type Changing",
-  "Z-Setup",
-] as const;
-
-type MoveCategory = (typeof MOVECATEGORIES)[number];
-
-const moveList: { [key: string]: MoveCategory[] } = {
-  accelerock: ["Priority"],
-  acidarmor: ["Setup"],
+const moveList: { [key: string]: string[] } = {
   afteryou: ["Speed Control"],
-  agility: ["Setup"],
   allyswitch: ["Support"],
-  amnesia: ["Setup"],
   anchorshot: ["Trapping"],
-  aquajet: ["Priority"],
   aromatherapy: ["Cleric"],
-  aromaticmist: ["Setup"],
   auroraveil: ["Support"],
-  autotomize: ["Setup"],
-  barrier: ["Setup"],
-  batonpass: ["Momentum"],
   beatup: ["Support"],
-  bellydrum: ["Setup", "Z-Setup"],
-  bind: ["Trapping"],
-  bleakwindstorm: ["Speed Control"],
   block: ["Trapping"],
-  bulkup: ["Setup"],
-  bulldoze: ["Speed Control"],
-  bulletpunch: ["Priority"],
-  calmmind: ["Setup"],
   ceaselessedge: ["Hazard Control"],
-  celebrate: ["Z-Setup"],
-  charge: ["Setup"],
-  chillyreception: ["Momentum", "Field Manipulation"],
-  circlethrow: ["Disruption"],
-  clamp: ["Trapping"],
-  clangoroussoul: ["Setup"],
-  clangoroussoulblaze: ["Z-Setup"],
   clearsmog: ["Disruption"],
   coaching: ["Support"],
-  coil: ["Setup"],
-  conversion: ["Z-Setup"],
   copycat: ["Disruption"],
   corrosivegas: ["Disruption"],
-  cosmicpower: ["Setup"],
-  cottonguard: ["Setup"],
   cottonspore: ["Speed Control"],
   courtchange: ["Hazard Control"],
   craftyshield: ["Support"],
-  curse: ["Setup"],
-  darkvoid: ["Status"],
-  decorate: ["Setup"],
-  defendorder: ["Setup"],
-  defensecurl: ["Setup"],
   defog: ["Hazard Control"],
   destinybond: ["Disruption"],
   disable: ["Disruption"],
-  doubleteam: ["Setup"],
   dragoncheer: ["Support"],
-  dragondance: ["Setup"],
-  dragontail: ["Disruption"],
-  electricterrain: ["Field Manipulation"],
-  electroweb: ["Speed Control"],
   encore: ["Disruption"],
   expandingforce: ["Field Manipulation"],
-  explosion: ["Momentum"],
-  extremeevoboost: ["Z-Setup"],
-  extremespeed: ["Priority"],
   fairylock: ["Trapping"],
-  fakeout: ["Priority"],
-  feint: ["Priority"],
-  filletaway: ["Setup"],
-  finalgambit: ["Momentum"],
-  firespin: ["Trapping"],
-  firstimpression: ["Priority"],
-  flatter: ["Setup"],
-  flipturn: ["Momentum"],
   floralhealing: ["Cleric"],
-  focusenergy: ["Setup"],
   followme: ["Support"],
-  geomancy: ["Setup", "Z-Setup"],
-  glaciate: ["Speed Control"],
-  glare: ["Status"],
-  grasswhistle: ["Status"],
   grassyglide: ["Field Manipulation"],
-  grassyterrain: ["Field Manipulation"],
-  gravity: ["Field Manipulation"],
-  growth: ["Setup"],
-  hail: ["Field Manipulation"],
-  happyhour: ["Z-Setup"],
-  harden: ["Setup"],
+  gravity: ["Support"],
   haze: ["Disruption"],
   healbell: ["Cleric"],
   healingwish: ["Cleric"],
@@ -112,158 +36,80 @@ const moveList: { [key: string]: MoveCategory[] } = {
   healpulse: ["Cleric"],
   helpinghand: ["Support"],
   hiddenpower: ["Type Changing"],
-  holdhands: ["Z-Setup"],
-  honeclaws: ["Setup"],
-  howl: ["Setup"],
-  hypnosis: ["Status"],
-  iceshard: ["Priority"],
-  icywind: ["Speed Control"],
   imprison: ["Disruption"],
-  infestation: ["Trapping"],
-  irondefense: ["Setup"],
   jawlock: ["Trapping"],
-  jetpunch: ["Priority"],
   junglehealing: ["Cleric"],
   knockoff: ["Disruption"],
   leechseed: ["Cleric"],
   lifedew: ["Cleric"],
   lightscreen: ["Support"],
-  lovelykiss: ["Status"],
   luckychant: ["Support"],
   lunarblessing: ["Cleric"],
   lunardance: ["Cleric"],
-  machpunch: ["Priority"],
   magiccoat: ["Disruption"],
   magicroom: ["Disruption"],
-  magmastorm: ["Trapping"],
   matblock: ["Support"],
   meanlook: ["Trapping"],
-  meditate: ["Setup"],
   mefirst: ["Disruption"],
-  memento: ["Momentum"],
   milkdrink: ["Cleric"],
-  minimize: ["Setup"],
   mist: ["Support"],
-  mistyexplosion: ["Momentum", "Field Manipulation"],
-  mistyterrain: ["Field Manipulation"],
+  mistyexplosion: ["Field Manipulation"],
   moonlight: ["Cleric"],
   morningsun: ["Cleric"],
-  mortalspin: ["Hazard Control", "Status"],
+  mortalspin: ["Hazard Control"],
   multiattack: ["Type Changing"],
-  nastyplot: ["Setup"],
   naturalgift: ["Type Changing"],
   naturepower: ["Field Manipulation", "Type Changing"],
-  noretreat: ["Setup"],
-  nuzzle: ["Status"],
   octolock: ["Trapping"],
   painsplit: ["Cleric"],
-  partingshot: ["Momentum"],
-  poisongas: ["Status"],
-  poisonpowder: ["Status"],
   pollenpuff: ["Cleric"],
-  psychicterrain: ["Field Manipulation"],
   psychup: ["Disruption"],
-  purify: ["Cleric", "Z-Setup"],
+  purify: ["Cleric"],
   pursuit: ["Trapping"],
   quash: ["Speed Control"],
-  quickattack: ["Priority"],
   quickguard: ["Support"],
-  quiverdance: ["Setup"],
   ragepowder: ["Support"],
-  raindance: ["Field Manipulation"],
   rapidspin: ["Hazard Control"],
   recover: ["Cleric"],
   reflect: ["Support"],
   refresh: ["Cleric"],
   rest: ["Cleric"],
   revelationdance: ["Type Changing"],
-  revivalblessing: ["Momentum"],
   risingvoltage: ["Field Manipulation"],
-  roar: ["Disruption"],
-  rockpolish: ["Setup"],
   roost: ["Cleric"],
   safeguard: ["Support"],
-  sandstorm: ["Field Manipulation"],
-  sandtomb: ["Trapping"],
   scaryface: ["Speed Control"],
-  selfdestruct: ["Momentum"],
-  shadowsneak: ["Priority"],
-  sharpen: ["Setup"],
-  shedtail: ["Momentum"],
-  shellsmash: ["Setup"],
-  shelter: ["Setup"],
-  shiftgear: ["Setup"],
-  shinyscurse: ["Z-Setup"],
   shoreup: ["Cleric"],
-  sing: ["Status"],
-  sketch: ["Z-Setup"],
   slackoff: ["Cleric"],
-  sleeppowder: ["Status"],
-  snaptrap: ["Trapping"],
   snatch: ["Disruption"],
-  snowscape: ["Field Manipulation"],
   softboiled: ["Cleric"],
   speedswap: ["Speed Control"],
-  spicyextract: ["Setup"],
   spiderweb: ["Trapping"],
   spikes: ["Hazard Control"],
   spiritshackle: ["Trapping"],
-  splash: ["Z-Setup"],
-  spore: ["Status"],
   stealthrock: ["Hazard Control"],
   stickyweb: ["Hazard Control", "Speed Control"],
   stoneaxe: ["Hazard Control"],
   strengthsap: ["Cleric"],
   stringshot: ["Speed Control"],
-  stunspore: ["Status"],
-  suckerpunch: ["Priority"],
-  sunnyday: ["Field Manipulation"],
-  swagger: ["Setup"],
   swallow: ["Cleric"],
   switcheroo: ["Disruption"],
-  swordsdance: ["Setup"],
   synthesis: ["Cleric"],
-  tailglow: ["Setup"],
   tailwind: ["Speed Control"],
   taunt: ["Disruption"],
   technoblast: ["Type Changing"],
-  teleport: ["Momentum"],
   terablast: ["Type Changing"],
   terrainpulse: ["Field Manipulation", "Type Changing"],
   thousandwaves: ["Trapping"],
-  thundercage: ["Trapping"],
-  thunderclap: ["Priority"],
-  thunderwave: ["Status"],
-  tidyup: ["Setup", "Hazard Control"],
-  toxic: ["Status"],
+  tidyup: ["Hazard Control"],
   toxicspikes: ["Hazard Control"],
-  toxicthread: ["Status", "Speed Control"],
   trick: ["Disruption"],
-  trickortreat: ["Z-Setup"],
   trickroom: ["Speed Control"],
-  upperhand: ["Priority"],
-  uturn: ["Momentum"],
-  vacuumwave: ["Priority"],
-  victorydance: ["Setup"],
-  voltswitch: ["Momentum"],
-  watershuriken: ["Priority"],
   weatherball: ["Field Manipulation", "Type Changing"],
-  whirlpool: ["Trapping"],
-  whirlwind: ["Disruption"],
   wideguard: ["Support"],
-  willowisp: ["Status"],
   wish: ["Cleric"],
-  withdraw: ["Setup"],
   wonderroom: ["Field Manipulation"],
-  workup: ["Setup"],
-  wrap: ["Trapping"],
   yawn: ["Status"],
-  zippyzap: ["Priority"],
-  babydolleyes: ["Priority"],
-  inferno: ["Status"],
-  zapcannon: ["Status"],
-  buzzybuzz: ["Status"],
-  accupressure: ["Setup"],
   baddybad: ["Support"],
   brickbreak: ["Disruption"],
   psychicfangs: ["Disruption"],
@@ -275,10 +121,8 @@ const moveList: { [key: string]: MoveCategory[] } = {
   embargo: ["Disruption"],
   entainment: ["Support", "Disruption"],
   fling: ["Disruption"],
-  flowershield: ["Setup"],
   forestscurse: ["Disruption"],
   gastroacid: ["Disruption"],
-  gearup: ["Setup"],
   glitzyglow: ["Support"],
   grudge: ["Disruption"],
   healblock: ["Disruption"],
@@ -286,7 +130,6 @@ const moveList: { [key: string]: MoveCategory[] } = {
   icespinner: ["Field Manipulation"],
   incinerate: ["Disruption"],
   instruct: ["Support"],
-  laserfocus: ["Setup"],
 };
 
 export type Movechart = {
@@ -300,6 +143,34 @@ export type Movechart = {
   pokemon: PokemonFormData[];
   tags: ReadonlyArray<string>;
 };
+
+function getMoveTags(move: Move) {
+  const tags = new Set<string>(
+    move.id in moveList ? [...moveList[move.id]] : [],
+  );
+  if (move.boosts && Object.entries(move.boosts).length) tags.add("Setup");
+  if (move.priority > 0) tags.add("Priority");
+  if (move.volatileStatus === "partiallytrapped") tags.add("Trapping");
+  if (move.forceSwitch) tags.add("Disruption");
+  const statusSecondary = move.secondaries?.find((s) => s.status);
+  if (
+    move.status ||
+    (statusSecondary &&
+      (!statusSecondary.chance ||
+        (statusSecondary.chance *
+          (move.accuracy === true ? 100 : move.accuracy)) /
+          100 >
+          49))
+  )
+    tags.add("Status");
+  if (move.selfSwitch || move.selfdestruct) tags.add("Momentum");
+  if (move.secondaries?.some((s) => s.boosts?.spe && s.boosts.spe < 0))
+    tags.add("Speed Control");
+  if (move.weather || move.pseudoWeather || move.terrain)
+    tags.add("Field Manipulation");
+
+  return tags;
+}
 
 export async function movechart(
   team: DraftSpecie[],
@@ -332,23 +203,35 @@ export async function movechart(
     }
   }
 
+  // for (let move of ruleset.moves) {
+  //   const tags = getMoveTags(move);
+  //   if (tags.size) console.log(`${move.name}: ${Array.from(tags).join(", ")}`);
+  // }
+  // console.log();
+
+  // console.log(ruleset.moves.get("explosion"));
+
+  const allTags = new Set<string>();
+  const moves = Array.from(combinedLearnset.values())
+    .map(({ move, pokemon }) => {
+      const tags = getMoveTags(move);
+      tags.forEach((tag) => allTags.add(tag));
+      return {
+        name: move.name,
+        type: move.type,
+        desc: move.shortDesc,
+        accuracy: move.accuracy === true ? "-" : `${move.accuracy}%`,
+        basePower: move.basePower,
+        category: move.category,
+        tags: Array.from(tags),
+        pokemon,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   return {
-    moves: Array.from(combinedLearnset.values())
-      .map(({ move, pokemon }) => {
-        const tags = move.id in moveList ? moveList[move.id] : [];
-        return {
-          name: move.name,
-          type: move.type,
-          desc: move.shortDesc,
-          accuracy: move.accuracy,
-          basePower: move.basePower,
-          category: move.category,
-          tags,
-          pokemon,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    moves,
     pokemon: team.map((p) => p.toClient()),
-    tags: MOVECATEGORIES,
+    tags: Array.from(allTags).sort(),
   };
 }
