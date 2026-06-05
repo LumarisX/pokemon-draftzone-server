@@ -10,7 +10,6 @@ import tierListModel, {
   LeagueTierListPokemon,
 } from "../../models/league/tier-list.model";
 import LeagueTournamentModel, {
-  LeagueTournament,
   LeagueTournamentDocument,
 } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
@@ -116,7 +115,7 @@ export async function getDraftedByTeam(
     })[]
   ).map((team) => ({
     team: {
-      name: team.coach.teamName,
+      name: team.teamName,
       coachName: team.coach.name,
       id: team._id.toString(),
     },

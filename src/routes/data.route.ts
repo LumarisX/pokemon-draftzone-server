@@ -15,6 +15,7 @@ import {
 import { searchPokemon as searchPokemonOld } from "../services/search.service";
 import { parseTime } from "../util";
 import { createRoute } from "./route-builder";
+import { ID } from "@pkmn/data";
 
 const IMMUNITY_LABEL_MAP: Record<string, string> = {
   slp: "Sleep",
@@ -383,17 +384,12 @@ export const DataRoute = createRoute()((r) => {
   }))((r) => {
     r.path("pokemon")((r) => {
       r.param("pid", (ctx, pid) => {
-        const species = ctx.ruleset.species.get(pid);
-        if (!species)
-          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
-            pid,
-          });
-        return { species };
+        const specie = new DraftSpecie(pid as ID, ctx.ruleset);
+        return { specie };
       })((r) => {
         r.path("learnset")((r) => {
           r.get(async (ctx) => {
-            const specie = new DraftSpecie(ctx.species.id, ctx.ruleset);
-            const learnset = await specie.learnset();
+            const learnset = await ctx.specie.learnset();
             return learnset.map((move) => ({
               id: move.id,
               name: move.name,
@@ -403,6 +399,16 @@ export const DataRoute = createRoute()((r) => {
               accuracy: move.accuracy,
               pp: move.pp,
             }));
+          });
+        });
+        r.path("formes")((r) => {
+          r.get(async (ctx) => {
+            const formeIds = [];
+            if (ctx.specie.formes) formeIds.push(...ctx.specie.formes);
+            if (ctx.specie.changesFrom) formeIds.push(ctx.specie.changesFrom);
+            return formeIds.map((id) =>
+              new DraftSpecie(id as ID, ctx.ruleset).toClient(),
+            );
           });
         });
       });

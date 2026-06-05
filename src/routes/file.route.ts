@@ -4,7 +4,7 @@ import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { validateUploadRequest } from "../middleware/file-validation";
 import FileUploadModel from "../models/file-upload.model";
-import LeagueCoachesModel from "../models/league/coach.model";
+import LeagueTeamModel from "../models/league/team.model";
 import { s3Service } from "../services/s3.service";
 import { createRoute } from "./route-builder";
 
@@ -142,10 +142,10 @@ export const FileRoute = createRoute().auth()(
           tournamentId
         ) {
           try {
-            const user = await LeagueCoachesModel.findById(relatedEntityId);
-            if (user) {
-              user.logo = fileKey;
-              await user.save();
+            const team = await LeagueTeamModel.findById(relatedEntityId);
+            if (team) {
+              team.logo = fileKey;
+              await team.save();
               logger.info(
                 `Updated LeagueCoaches ${relatedEntityId} signup for league ${tournamentId} with logo: ${fileKey}`,
               );

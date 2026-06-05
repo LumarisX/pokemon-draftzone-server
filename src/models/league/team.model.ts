@@ -28,6 +28,8 @@ export type LeagueTeam = {
   picks: TeamPick[][];
   draft: TeamDraft[];
   skipCount: number;
+  teamName: string;
+  logo?: string;
 };
 
 export type LeagueTeamDocument = HydratedDocument<LeagueTeam, TeamMethods>;
@@ -95,6 +97,8 @@ const LeagueTeamSchema: Schema<LeagueTeam, LeagueTeamModel, TeamMethods> =
     },
     picks: [[TeamPicksSchema]],
     draft: [TeamDraftSchema],
+    teamName: { type: String, required: true },
+    logo: { type: String, index: true },
     skipCount: { type: Number, default: 0 },
   });
 
