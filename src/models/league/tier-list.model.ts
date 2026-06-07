@@ -52,6 +52,7 @@ export type LeagueTierList = {
 };
 
 type TierListMethods = {
+  getPokemonTier(pokemonId: string): LeagueTier | undefined;
   getPokemonCost(pokemonId: string, addonName?: string[]): number | undefined;
   getTierByName(tierName: string): LeagueTier | undefined;
   getPokemonIds(): string[];
@@ -165,6 +166,16 @@ LeagueTierListSchema.methods.getPokemonCost = function (
 
   const tier = this.tiers.find((t: LeagueTier) => t.name === pokemon.tier);
   return tier ? tier.cost : undefined;
+};
+
+LeagueTierListSchema.methods.getPokemonTier = function (
+  this: LeagueTierListDocument,
+  pokemonId: string,
+): LeagueTier | undefined {
+  const pokemon = this.pokemon.get(pokemonId);
+  if (!pokemon) return undefined;
+  const tier = this.tiers.find((t: LeagueTier) => t.name === pokemon.tier);
+  return tier;
 };
 
 LeagueTierListSchema.methods.getTierByName = function (
