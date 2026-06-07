@@ -75,7 +75,6 @@ import {
 } from "../services/league-services/standings-service";
 import {
   getDrafted,
-  getPokemonTier,
   updateTierList,
 } from "../services/league-services/tier-list-service";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
@@ -1077,6 +1076,8 @@ export const LeagueRoute = createRoute()((r) => {
 
               if (!division) throw new PDZError(ErrorCodes.DIVISION.NOT_FOUND);
 
+              const tierList = ctx.tournament.tierList;
+
               const allPicks = await Promise.all(
                 division.teams.map(async (team) => {
                   const picks = await Promise.all(
@@ -1087,10 +1088,8 @@ export const LeagueRoute = createRoute()((r) => {
                         pokemon: {
                           id: draftItem.pokemon.id,
                           name: getName(draftItem.pokemon.id),
-                          tier: await getPokemonTier(
-                            ctx.tournament,
-                            draftItem.pokemon.id,
-                          ),
+                          tier: tierList.getPokemonTier(draftItem.pokemon.id)
+                            ?.name,
                           capt: {
                             tera: draftItem.addons?.includes("Tera Captain"),
                           },

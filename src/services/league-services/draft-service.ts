@@ -21,7 +21,6 @@ import LeagueTeamModel, {
 import { LeagueTierListDocument } from "../../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName, getSpecies } from "../data-services/pokedex.service";
-import { getPokemonTier } from "./tier-list-service";
 import { getRosterByStage } from "./league-service";
 
 type DeferredSideEffect = () => void | Promise<void>;
@@ -780,7 +779,7 @@ export async function draftPokemon(
       currentDivision.teams[teamIndex] = currentTeam;
     }
 
-    const tier = await getPokemonTier(tournament._id, pick.pokemonId);
+    const tier = tournament.tierList.getPokemonTier(pick.pokemonId);
 
     const snipeCount = await removePokemonFromPicks(
       currentDivision,

@@ -5,52 +5,12 @@ import { LeagueCoachDocument } from "../../models/league/coach.model";
 import LeagueDivisionModel from "../../models/league/division.model";
 import { LeagueTeamDocument } from "../../models/league/team.model";
 import tierListModel, {
-  LeagueTier,
-  LeagueTierListDocument,
   LeagueTierListPokemon,
 } from "../../models/league/tier-list.model";
-import LeagueTournamentModel, {
-  LeagueTournamentDocument,
-} from "../../models/league/tournament.model";
+import { LeagueTournamentDocument } from "../../models/league/tournament.model";
 import { getName } from "../data-services/pokedex.service";
 import { UNTIERED_TIER_NAME } from "../tier-lists-services/tier-list-service";
 import { getRosterByStage } from "./league-service";
-
-/**
- * @deprecated getPokemonTier is deprecated and will be removed in a future release.
- * Prefer using `getTierList()` and inspecting the returned tiers, or access the
- * tournament's `tierList` document directly via `tierListModel`.
- */
-export async function getPokemonTier(
-  tournamentId: Types.ObjectId | LeagueTournamentDocument,
-  pokemonId: string,
-): Promise<LeagueTier | undefined> {
-  try {
-    const league =
-      "tierList" in tournamentId
-        ? await tournamentId.populate<{
-            tierList: LeagueTierListDocument;
-          }>("tierList")
-        : await LeagueTournamentModel.findById(tournamentId).populate<{
-            tierList: LeagueTierListDocument;
-          }>("tierList");
-
-    if (!league || !league.tierList) {
-      return undefined;
-    }
-
-    const tierList = league.tierList as LeagueTierListDocument;
-    const pokemonData = tierList.pokemon.get(pokemonId);
-    const tier = tierList.tiers.find((t) => t.name === pokemonData?.tier);
-    return tier;
-  } catch (error) {
-    console.error(
-      `Error getting pokemon tier for ${pokemonId} in league ${tournamentId}:`,
-      error,
-    );
-    return undefined;
-  }
-}
 
 export async function getDrafted(
   tournament: LeagueTournamentDocument,
