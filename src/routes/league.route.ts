@@ -1,8 +1,9 @@
 import { SpeciesName } from "@pkmn/data";
 import {
-  MessageActionRow,
-  MessageButton,
-  MessageEmbed,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
   TextChannel,
 } from "discord.js";
 import { isValidObjectId, Types } from "mongoose";
@@ -156,7 +157,7 @@ export const LeagueRoute = createRoute()((r) => {
             const channel = guild.channels.cache.get(
               "1293333149471871108",
             ) as TextChannel;
-            if (channel && channel.isText()) {
+            if (channel && channel.isTextBased()) {
               const formatDate = (value?: Date) =>
                 value ? value.toISOString().split("T")[0] : "TBD";
               const clamp = (value: string, limit: number) =>
@@ -164,7 +165,7 @@ export const LeagueRoute = createRoute()((r) => {
                   ? `${value.slice(0, limit - 3)}...`
                   : value;
 
-              const embed = new MessageEmbed()
+              const embed = new EmbedBuilder()
                 .setTitle(clamp(leagueAd.leagueName, 256))
                 .setDescription(clamp(leagueAd.description, 1024))
                 .setColor("#2F80ED")
@@ -231,21 +232,21 @@ export const LeagueRoute = createRoute()((r) => {
                   },
                 );
 
-              const actionRow = new MessageActionRow().addComponents(
-                new MessageButton()
+              const actionRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
                   .setCustomId(`league-ad:approve:${document._id}`)
                   .setLabel("Approve")
-                  .setStyle("SUCCESS"),
-                new MessageButton()
+                  .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
                   .setCustomId(`league-ad:deny:${document._id}`)
                   .setLabel("Deny")
-                  .setStyle("DANGER"),
+                  .setStyle(ButtonStyle.Danger),
               );
 
               channel.send({
                 content: "A new league ad has been submitted.",
                 embeds: [embed],
-                components: [actionRow],
+                components: [actionRow.toJSON()],
               });
             }
           } catch (discordError) {
@@ -565,7 +566,7 @@ export const LeagueRoute = createRoute()((r) => {
                 const channel = guild.channels.cache.get(
                   "1303896194187132978",
                 ) as TextChannel;
-                if (channel && channel.isText()) {
+                if (channel && channel.isTextBased()) {
                   const totalCoaches = await LeagueCoachModel.countDocuments({
                     tournamentId: ctx.tournament._id,
                   });
@@ -577,7 +578,7 @@ export const LeagueRoute = createRoute()((r) => {
                       ? `${value.slice(0, limit - 3)}...`
                       : value;
 
-                  const embed = new MessageEmbed()
+                  const embed = new EmbedBuilder()
                     .setTitle(clamp(ctx.validatedBody.name, 256))
                     .setColor("#2F80ED")
                     .setTimestamp(new Date())

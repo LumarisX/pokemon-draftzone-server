@@ -148,7 +148,7 @@ const moveList: { [key: string]: string[] } = {
 export class DraftMove implements Move {
   effectType!: "Move";
   kind!: "Move";
-  secondaries!: SecondaryEffect[] | null;
+  secondaries!: SecondaryEffect[];
   flags!: Move["flags"];
   zMoveEffect?: ID | undefined;
   isZ!: boolean | ID;
@@ -195,7 +195,7 @@ export class DraftMove implements Move {
   noPPBoosts?: boolean | undefined;
   ohko?: boolean | "Ice" | undefined;
   thawsTarget?: boolean | undefined;
-  heal?: number[] | null | undefined;
+  heal?: number[] | undefined;
   forceSwitch?: boolean | undefined;
   selfSwitch?: boolean | "copyvolatile" | "shedtail" | undefined;
   selfBoost?: { boosts?: Partial<BoostsTable> } | undefined;
@@ -205,8 +205,8 @@ export class DraftMove implements Move {
   drain?: [number, number] | undefined;
   mindBlownRecoil?: boolean | undefined;
   stealsBoosts?: boolean | undefined;
-  secondary?: SecondaryEffect | null | undefined;
-  self?: HitEffect | null | undefined;
+  secondary?: SecondaryEffect | undefined;
+  self?: HitEffect | undefined;
   struggleRecoil?: boolean | undefined;
   alwaysHit?: boolean | undefined;
   basePowerModifier?: number | undefined;

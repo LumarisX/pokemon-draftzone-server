@@ -1,5 +1,5 @@
 import { toID, TypeName } from "@pkmn/data";
-import { EmbedFieldData } from "discord.js";
+import { EmbedField } from "discord.js";
 import mongoose, { ClientSession } from "mongoose";
 import { cancelSkipPick, resumeSkipPick } from "../../agenda";
 import { resolveDiscordMention, sendDiscordMessage } from "../../discord";
@@ -866,7 +866,7 @@ export async function draftPokemon(
 
       const color = typeColorMap.get(pokemonSpecie.types[0]);
 
-      const fields: EmbedFieldData[] = [
+      const fields: EmbedField[] = [
         {
           name: "Round",
           value: `${currentRound + 1}`,

@@ -1,14 +1,15 @@
 import {
-  EmbedFieldData,
+  EmbedField,
   Client,
   ColorResolvable,
-  Intents,
   GuildMember,
   Interaction,
-  MessageActionRow,
-  MessageButton,
-  MessageEmbed,
+  GatewayIntentBits,
+  ButtonBuilder,
+  ActionRowBuilder,
+  EmbedBuilder,
   type Message,
+  ButtonStyle,
 } from "discord.js";
 import type winston from "winston";
 import { config } from "../config";
@@ -21,9 +22,9 @@ import { geminiRespond, initializeGemini } from "./gemini";
 
 export const client = new Client({
   intents: [
-    Intents.FLAGS.GUILDS,
-    Intents.FLAGS.GUILD_MEMBERS,
-    Intents.FLAGS.GUILD_MESSAGES,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
   ],
 });
 
@@ -91,10 +92,10 @@ export async function startDiscordBot(
         const message = interaction.message;
         const existingEmbed = message.embeds[0];
         const embed = existingEmbed
-          ? new MessageEmbed(existingEmbed)
-          : new MessageEmbed().setTitle("League Ad Review");
+          ? EmbedBuilder.from(existingEmbed)
+          : new EmbedBuilder().setTitle("League Ad Review");
 
-        const fields = embed.fields ? [...embed.fields] : [];
+        const fields = existingEmbed?.fields ? [...existingEmbed.fields] : [];
         const statusIndex = fields.findIndex(
           (field) => field.name === "Status",
         );
@@ -108,22 +109,22 @@ export async function startDiscordBot(
 
         embed.setFields(fields);
 
-        const disabledRow = new MessageActionRow().addComponents(
-          new MessageButton()
+        const disabledRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
             .setCustomId(`league-ad:approve:${adId}`)
             .setLabel("Approve")
-            .setStyle("SUCCESS")
+            .setStyle(ButtonStyle.Success)
             .setDisabled(true),
-          new MessageButton()
+          new ButtonBuilder()
             .setCustomId(`league-ad:deny:${adId}`)
             .setLabel("Deny")
-            .setStyle("DANGER")
+            .setStyle(ButtonStyle.Danger)
             .setDisabled(true),
         );
 
         await interaction.update({
           embeds: [embed],
-          components: [disabledRow],
+          components: [disabledRow.toJSON()],
         });
         return;
       } catch (error) {
@@ -166,7 +167,7 @@ export async function startDiscordBot(
           autoCompleteError,
         );
       }
-    } else if (interaction.isCommand()) {
+    } else if (interaction.isChatInputCommand()) {
       try {
         const optionsString = interaction.options.data
           .map((option) => `${option.name}:${option.value}`)
@@ -288,7 +289,7 @@ export async function sendDiscordMessage(
           description?: string;
           url?: string;
           color?: ColorResolvable;
-          fields?: EmbedFieldData[];
+          fields?: EmbedField[];
           image?: string;
         };
       }
@@ -306,7 +307,7 @@ export async function sendDiscordMessage(
     const embedsToSend = [];
 
     if (options?.embed) {
-      const pokemonEmbed = new MessageEmbed()
+      const pokemonEmbed = new EmbedBuilder()
         .setColor(options.embed.color || "#FFDE00")
         .setTimestamp();
 
@@ -330,8 +331,8 @@ export async function sendDiscordMessage(
     }
 
     if (options?.content || embedsToSend.length > 0) {
-      if (!channel.isText()) {
-        console.warn(`Channel ${channelId} is not a text channel.`);
+      if (!channel.isSendable()) {
+        console.warn(`Channel ${channelId} is not a sendable channel.`);
         return;
       }
 
