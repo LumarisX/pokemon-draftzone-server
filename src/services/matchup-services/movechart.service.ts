@@ -1,8 +1,7 @@
-import { Move, TypeName } from "@pkmn/data";
+import { TypeName } from "@pkmn/data";
+import { DraftMove } from "../../classes/move";
 import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
-import { DraftMove } from "../../classes/move";
-import { Draft } from "../../classes/draft";
 
 export type Movechart = {
   moves: {
@@ -47,13 +46,15 @@ export async function movechart(
     }
   }
 
-  // for (let move of ruleset.moves) {
-  //   const tags = getMoveTags(move);
-  //   if (tags.size) console.log(`${move.name}: ${Array.from(tags).join(", ")}`);
+  // for (let m of ruleset.moves) {
+  //   const move = new DraftMove(m, ruleset);
+  //   const tags = move.tags;
+  //   if (move.condition && "onFoeRedirectTargetPriority" in move.condition)
+  //     console.log(`${move.name}: ${Array.from(tags).join(", ")}`);
   // }
   // console.log();
 
-  // console.log(ruleset.moves.get("explosion"));
+  // console.log(ruleset.moves.get("destinybond"));
 
   const allTags = new Set<string>();
   const moves = Array.from(combinedLearnset.values())

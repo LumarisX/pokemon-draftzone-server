@@ -31,8 +31,7 @@ export class LeagueTeamLoader {
   }
 
   public get name(): string | undefined {
-    const coach = this._team?.coach as LeagueCoachDocument | undefined;
-    return coach?.teamName;
+    return this._team?.teamName;
   }
 
   public get coach(): (Types.ObjectId | LeagueCoachDocument) | undefined {

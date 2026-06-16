@@ -6,7 +6,7 @@ import {
   EmbedBuilder,
   TextChannel,
 } from "discord.js";
-import { isValidObjectId, Types } from "mongoose";
+import mongoose, { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
@@ -25,6 +25,7 @@ import { rolecheck } from "../middleware/rolecheck";
 import FileUploadModel from "../models/file-upload.model";
 import { LeagueAdModel } from "../models/league-ad.model";
 import LeagueCoachModel, {
+  LeagueCoach,
   LeagueCoachDocument,
   signUpSchema,
 } from "../models/league/coach.model";
@@ -39,6 +40,7 @@ import {
   PokemonStats,
 } from "../models/league/matchup.model";
 import LeagueTeamModel, {
+  LeagueTeam,
   LeagueTeamDocument,
   PopulatedLeagueTeamDocument,
   TeamDraft,
@@ -439,14 +441,16 @@ export const LeagueRoute = createRoute()((r) => {
         r.get(async (ctx) => {
           const coach = await LeagueCoachModel.findOne({
             auth0Id: ctx.sub,
-            tournamentId: ctx.tournament._id,
           });
           if (!coach)
             throw new PDZError(ErrorCodes.COACH.NOT_FOUND, {
               tournamentId: ctx.tournament._id.toString(),
             });
 
-          const team = await LeagueTeamModel.findOne({ coach: coach._id });
+          const team = await LeagueTeamModel.findOne({
+            coach: coach._id,
+            tournamentId: ctx.tournament._id,
+          });
           if (!team)
             throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
               tournamentId: ctx.tournament._id.toString(),
@@ -488,25 +492,23 @@ export const LeagueRoute = createRoute()((r) => {
         r.post.validate({
           body: (data) => signUpSchema.parse(data),
         })(async (ctx, req, res) => {
+          const existingCoach = await LeagueCoachModel.findOne({ auth0Id: ctx.sub });
           if (
-            await LeagueCoachModel.findOne({
-              auth0Id: ctx.sub,
+            existingCoach &&
+            (await LeagueTeamModel.findOne({
+              coach: existingCoach._id,
               tournamentId: ctx.tournament._id,
-            })
+            }))
           )
             throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
               tournamentId: ctx.tournament._id.toString(),
             });
-
-          const leagueCoach = new LeagueCoachModel({
+          const leagueCoach = existingCoach ?? new LeagueCoachModel<LeagueCoach>({
             auth0Id: ctx.sub,
             name: ctx.validatedBody.name,
             gameName: ctx.validatedBody.gameName,
             discordName: ctx.validatedBody.discordName,
             timezone: ctx.validatedBody.timezone,
-            tournamentId: ctx.tournament._id,
-            teamName: ctx.validatedBody.teamName,
-            logo: ctx.validatedBody.logo,
             experience: ctx.validatedBody.experience,
             droppedBefore: ctx.validatedBody.droppedBefore,
             droppedWhy: ctx.validatedBody.droppedWhy,
@@ -514,7 +516,26 @@ export const LeagueRoute = createRoute()((r) => {
             status: "pending",
             signedUpAt: new Date(),
           });
-          await leagueCoach.save();
+          const session = await mongoose.startSession();
+          const leagueTeam = new LeagueTeamModel<LeagueTeam>({
+            teamName: ctx.validatedBody.teamName,
+            logo: ctx.validatedBody.logo,
+            coach: leagueCoach._id,
+            tournamentId: ctx.tournament._id,
+            picks: [],
+            draft: [],
+            skipCount: 0,
+          });
+          try {
+            session.startTransaction();
+            if (!existingCoach) await leagueCoach.save({ session });
+            await leagueTeam.save({ session });
+          } catch (error) {
+            await session.abortTransaction();
+            throw error;
+          } finally {
+            session.endSession();
+          }
           if (client) {
             try {
               const guild = await client.guilds.fetch("1183936734719922176");
@@ -713,9 +734,11 @@ export const LeagueRoute = createRoute()((r) => {
             const divisions = await LeagueDivisionModel.find({
               tournament: ctx.tournament._id,
             }).populate<{ teams: LeagueTeamDocument[] }>("teams", ["coach"]);
-            const users = await LeagueCoachModel.find({
+            const tournamentTeams = await LeagueTeamModel.find({
               tournamentId: ctx.tournament._id,
             });
+            const coachIds = tournamentTeams.map((t) => t.coach);
+            const users = await LeagueCoachModel.find({ _id: { $in: coachIds } });
 
             const divisionsByKey = new Map(
               divisions.map((division) => [division.divisionKey, division]),
@@ -738,7 +761,7 @@ export const LeagueRoute = createRoute()((r) => {
               );
               const existingTeam =
                 currentTeam ||
-                (await LeagueTeamModel.findOne({ coach: coach._id }));
+                (await LeagueTeamModel.findOne({ coach: coach._id, tournamentId: ctx.tournament._id }));
 
               if (!signup.division) {
                 if (existingTeam) {
@@ -812,7 +835,6 @@ export const LeagueRoute = createRoute()((r) => {
 
           const team = await LeagueTeamModel.findOne({
             _id: team_id,
-            tournamentId: ctx.tournament._id,
           }).populate<{ coach: LeagueCoachDocument }>("coach");
 
           if (!team)

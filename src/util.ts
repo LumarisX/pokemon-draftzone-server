@@ -1,5 +1,5 @@
 export function parseTime(time: string | number): Date | null {
-  if (typeof time === 'string' && time.trim() === '') {
+  if (typeof time === "string" && time.trim() === "") {
     return null;
   }
   const timestamp =

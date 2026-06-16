@@ -25,6 +25,7 @@ export type TeamPick = {
 
 export type LeagueTeam = {
   coach: Types.ObjectId | LeagueCoachDocument;
+  tournamentId: Types.ObjectId;
   picks: TeamPick[][];
   draft: TeamDraft[];
   skipCount: number;
@@ -95,6 +96,7 @@ const LeagueTeamSchema: Schema<LeagueTeam, LeagueTeamModel, TeamMethods> =
       ref: LEAGUE_COACH_COLLECTION,
       required: true,
     },
+    tournamentId: { type: Schema.Types.ObjectId, required: true, index: true },
     picks: [[TeamPicksSchema]],
     draft: [TeamDraftSchema],
     teamName: { type: String, required: true },
