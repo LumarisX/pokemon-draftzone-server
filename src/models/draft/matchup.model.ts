@@ -56,7 +56,7 @@ const matchSchema = new Schema<MatchData>(
   { _id: false },
 );
 
-export const matchupSchema = new Schema<MatchupData>(
+export const MatchupSchema = new Schema<MatchupData>(
   {
     aTeam: { type: matchupTeamReferenceSchema, required: true },
     bTeam: { type: matchupTeamFullSchema, required: true },
@@ -117,4 +117,4 @@ export type MatchupData = {
 
 export type MatchupDocument = HydratedDocument<MatchupData>;
 
-export const MatchupModel = model<MatchupData>("matchup", matchupSchema);
+export const MatchupModel = model<MatchupData>("matchup", MatchupSchema);
