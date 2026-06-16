@@ -26,8 +26,9 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
-import { DraftSpecie, PokemonFormData } from "./pokemon";
+import { DraftSpecie } from "./pokemon";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
+import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
 
 export type MatchupTeam = {
   teamName: string;

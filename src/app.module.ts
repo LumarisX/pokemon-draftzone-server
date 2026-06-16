@@ -1,8 +1,9 @@
-import { Module, Logger } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
+import { MatchupModule } from "@modules/matchup/matchup.module";
+import { TournamentModule } from "@modules/tournament/tournament.module";
+import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
-import { DraftModule } from "@modules/draft/draft.module";
 import { AuthModule } from "./modules/auth/auth.module";
 
 @Module({
@@ -57,8 +58,9 @@ import { AuthModule } from "./modules/auth/auth.module";
       },
     }),
 
-    DraftModule,
+    TournamentModule,
     AuthModule,
+    MatchupModule,
   ],
 })
 export class AppModule {}

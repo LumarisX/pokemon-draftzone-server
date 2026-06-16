@@ -1,6 +1,4 @@
-import { startSession } from "mongoose";
 import { z } from "zod";
-import { Archive } from "../classes/archive";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
@@ -126,27 +124,27 @@ export const DraftRoute = createRoute().auth()((r) => {
     r.path("stats")((r) => {
       r.get(async (ctx) => await getStats(ctx.ruleset, ctx.rawDraft._id));
     });
-    r.path("archive")((r) => {
-      r.delete(async (ctx, req, res) => {
-        const session = await startSession();
-        try {
-          await session.withTransaction(
-            async () => {
-              const archive = new Archive(ctx.rawDraft);
-              const archiveData = await archive.createArchive();
-              await archiveData.save({ session });
-              await deleteDraft(ctx.rawDraft, session);
-            },
-            { writeConcern: { w: "majority" } },
-          );
-          res.status(201).json({ message: "Archive added" });
-        } catch (error) {
-          throw error;
-        } finally {
-          session.endSession();
-        }
-      });
-    });
+    // r.path("archive")((r) => {
+    //   r.delete(async (ctx, req, res) => {
+    //     const session = await startSession();
+    //     try {
+    //       await session.withTransaction(
+    //         async () => {
+    //           const archive = new Archive(ctx.rawDraft);
+    //           const archiveData = await archive.createArchive();
+    //           await archiveData.save({ session });
+    //           await deleteDraft(ctx.rawDraft, session);
+    //         },
+    //         { writeConcern: { w: "majority" } },
+    //       );
+    //       res.status(201).json({ message: "Archive added" });
+    //     } catch (error) {
+    //       throw error;
+    //     } finally {
+    //       session.endSession();
+    //     }
+    //   });
+    // });
     r.param("matchup_id", async (ctx, matchup_id) => {
       const rawMatchup = await getMatchupById(matchup_id);
       const matchup = rawMatchup.toObject<MatchupData>();
