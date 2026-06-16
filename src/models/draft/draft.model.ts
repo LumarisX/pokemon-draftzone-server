@@ -3,7 +3,7 @@ import { FormatId } from "../../data/formats";
 import { RulesetId } from "../../data/rulesets";
 import { PokemonData, pokemonSchema } from "../pokemon.schema";
 
-const draftSchema = new Schema<DraftData>(
+export const DraftSchema = new Schema<DraftData>(
   {
     leagueName: {
       type: String,
@@ -65,6 +65,6 @@ export type DraftData = {
 
 export type DraftDocument = HydratedDocument<DraftData>;
 
-draftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
+DraftSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
 
-export const DraftModel = model<DraftData>("draft", draftSchema);
+export const DraftModel = model<DraftData>("draft", DraftSchema);
