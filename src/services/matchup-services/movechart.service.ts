@@ -1,8 +1,9 @@
 import { Move, TypeName } from "@pkmn/data";
-import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
 import { Ruleset } from "../../data/rulesets";
 import { DraftMove } from "../../classes/move";
 import { Draft } from "../../classes/draft";
+import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
 
 export type Movechart = {
   moves: {

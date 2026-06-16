@@ -1,7 +1,8 @@
 import { ID, StatusName } from "@pkmn/data";
 import { computeStats } from "../../../dmg/stats";
 import { State } from "../../../dmg/state";
-import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
+import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
 
 export type Speedchart = {
   teams: (PokemonFormData & {

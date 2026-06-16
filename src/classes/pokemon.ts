@@ -31,6 +31,7 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { DraftMove } from "./move";
 import { getBST, getCST } from "./specieUtil";
+import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
 
 export type PokemonOptions = {
   shiny?: boolean;
@@ -172,12 +173,12 @@ export class DraftSpecie implements Specie, Pokemon {
       tera: pokemonData.capt?.tera
         ? pokemonData.capt.tera.length >= TYPES.length
           ? []
-          : pokemonData.capt.tera
+          : (pokemonData.capt.tera as TypeName[])
         : undefined,
       z: pokemonData.capt?.z
         ? pokemonData.capt.z.length >= ZTYPES.length
           ? []
-          : pokemonData.capt.z
+          : (pokemonData.capt.z as TypeName[])
         : undefined,
       dmax: pokemonData.capt?.dmax,
     };
@@ -700,21 +701,3 @@ export class DraftSpecie implements Specie, Pokemon {
     return specieTeam;
   }
 }
-
-export type PokemonFormData = {
-  id: ID;
-  name: string;
-  shiny?: boolean;
-  nickname?: string;
-  draftFormes?: Pokemon[];
-  genders?: ("M" | "F")[];
-  modifiers?: {
-    abilities?: string[];
-    moves?: string[];
-  };
-  capt?: {
-    tera?: TypeName[];
-    z?: TypeName[];
-    dmax?: boolean;
-  };
-};

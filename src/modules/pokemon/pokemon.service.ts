@@ -4,7 +4,7 @@ import { Ruleset, getRuleset } from "../../data/rulesets";
 import { Format } from "../../data/formats";
 
 @Injectable()
-export class PokedexService {
+export class PokemonService {
   constructor() {}
 
   SINGLES_TIER_HIERARCHY = ["AG", "UBER", "OU", "UU", "RU", "NU", "PU", "ZU"];

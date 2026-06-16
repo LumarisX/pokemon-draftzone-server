@@ -1,5 +1,6 @@
 import { ID } from "@pkmn/data";
-import { DraftSpecie, PokemonFormData } from "../../classes/pokemon";
+import { DraftSpecie } from "../../classes/pokemon";
+import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
 
 export type Coveragechart = (PokemonFormData & {
   coverage: {

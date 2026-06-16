@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
 import { AppModule } from "./app.module";
@@ -6,6 +6,7 @@ import { BusinessExceptionFilter } from "@core/filters/business-exception.filter
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { agenda, startRecurringJobs } from "./agenda";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   const bootstrapLogger = new Logger("Bootstrap");
@@ -41,6 +42,20 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.useGlobalFilters(new BusinessExceptionFilter());
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  const config = new DocumentBuilder()
+    .setTitle("Pokémon DraftZone API")
+    .setDescription("The backend API documentation for Pokémon DraftZone")
+    .setVersion("1.0")
+    .addBearerAuth(
+      { type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
+      "JWT-auth",
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("docs", app, document);
 
   const nestLoggerBridge = {
     log: (msg: string) => Logger.log(msg),
