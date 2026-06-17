@@ -1,6 +1,6 @@
 import mongoose, { HydratedDocument, model, Schema } from "mongoose";
 
-const leagueAdSchema: Schema<LeagueAdData> = new mongoose.Schema(
+export const leagueAdSchema: Schema<LeagueAdData> = new mongoose.Schema(
   {
     leagueName: {
       type: String,

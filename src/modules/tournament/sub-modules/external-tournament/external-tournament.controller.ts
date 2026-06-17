@@ -10,14 +10,14 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { TournamentDto } from "./tournament.dto";
-import { TournamentService } from "./tournament.service";
+import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
+import { ExternalTournamentDto } from "./external-tournament.dto";
+import { ExternalTournamentService } from "./external-tournament.service";
 
-@Controller("drafts")
+@Controller("tournaments/external")
 @UseGuards(JwtAuthGuard)
-export class TournamentController {
-  constructor(private readonly tournamentService: TournamentService) {}
+export class ExternalTournamentController {
+  constructor(private readonly tournamentService: ExternalTournamentService) {}
 
   @Get()
   async getTournaments(@User() sub: string) {
@@ -26,7 +26,10 @@ export class TournamentController {
 
   @Post()
   @HttpCode(201)
-  async createTournament(@Body() body: TournamentDto, @User() sub: string) {
+  async createTournament(
+    @Body() body: ExternalTournamentDto,
+    @User() sub: string,
+  ) {
     return this.tournamentService.createTournament(body, sub);
   }
 
@@ -41,7 +44,7 @@ export class TournamentController {
   @Patch(":tournamentId")
   async updateTournament(
     @Param("tournamentId") tournamentId: string,
-    @Body() body: TournamentDto,
+    @Body() body: ExternalTournamentDto,
     @User() sub: string,
   ) {
     const updated = await this.tournamentService.updateTournament(

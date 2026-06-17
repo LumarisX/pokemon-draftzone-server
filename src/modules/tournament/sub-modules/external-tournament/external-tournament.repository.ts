@@ -1,19 +1,21 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { ClientSession, Model, Types } from "mongoose";
-import { ErrorCodes } from "../../errors/error-codes";
-import { PDZError } from "../../errors/pdz-error";
-import { DraftDocument } from "../../models/draft/draft.model";
-import { Tournament } from "./tournament.domain";
+import { ErrorCodes } from "../../../../errors/error-codes";
+import { PDZError } from "../../../../errors/pdz-error";
+import {
+  ExternalTournamentDocument,
+  ExternalTournamentEntity,
+} from "./external-tournament.schema";
 
 @Injectable()
-export class TournamentRepository {
+export class ExternalTournamentRepository {
   constructor(
-    @InjectModel(Tournament.name)
-    private readonly tournamentModel: Model<DraftDocument>,
+    @InjectModel(ExternalTournamentEntity.name)
+    private readonly tournamentModel: Model<ExternalTournamentDocument>,
   ) {}
 
-  async findByOwner(ownerId: string): Promise<DraftDocument[]> {
+  async findByOwner(ownerId: string): Promise<ExternalTournamentDocument[]> {
     return this.tournamentModel
       .find({ owner: ownerId })
       .sort({ createdAt: -1 })
@@ -23,7 +25,7 @@ export class TournamentRepository {
   async findByTournamentAndOwner(
     tournamentId: string,
     ownerId: string,
-  ): Promise<DraftDocument> {
+  ): Promise<ExternalTournamentDocument> {
     const tournament = await this.tournamentModel
       .findOne({ owner: ownerId, leagueId: tournamentId })
       .exec();
@@ -31,11 +33,13 @@ export class TournamentRepository {
     return tournament;
   }
 
-  async findById(id: string | Types.ObjectId): Promise<DraftDocument | null> {
+  async findById(
+    id: string | Types.ObjectId,
+  ): Promise<ExternalTournamentDocument | null> {
     return this.tournamentModel.findById(id).exec();
   }
 
-  async create(draftData: any): Promise<DraftDocument> {
+  async create(draftData: any): Promise<ExternalTournamentDocument> {
     const doc = new this.tournamentModel(draftData);
     return doc.save();
   }
@@ -44,7 +48,7 @@ export class TournamentRepository {
     leagueId: string,
     ownerId: string,
     data: any,
-  ): Promise<DraftDocument | null> {
+  ): Promise<ExternalTournamentDocument | null> {
     return this.tournamentModel
       .findOneAndUpdate({ owner: ownerId, leagueId }, data, {
         new: true,

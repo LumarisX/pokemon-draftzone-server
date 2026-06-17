@@ -1,12 +1,11 @@
-import { Logger, ValidationPipe } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { ConfigService } from "@nestjs/config";
-import { AppModule } from "./app.module";
 import { BusinessExceptionFilter } from "@core/filters/business-exception.filter";
-import helmet from "helmet";
+import { Logger, ValidationPipe } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
-import { agenda, startRecurringJobs } from "./agenda";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import helmet from "helmet";
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const bootstrapLogger = new Logger("Bootstrap");
@@ -14,18 +13,17 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const allowedOrigins = [
-    "https://dqptrox2bn9qw.cloudfront.net",
-    "https://pokemondraftzone.com",
-    "http://localhost:4200",
-  ];
+  const configService = app.get(ConfigService);
+
+  const allowedOrigins = configService
+    .get<string>("ALLOWED_ORIGINS")
+    ?.split(",") || ["http://localhost:4200"];
 
   app.enableCors({
     origin: (
       origin: string,
       callback: (arg0: Error | null, arg1: boolean) => any,
     ) => {
-      // Allow server-to-server requests or tools like Postman (no origin header)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.indexOf(origin) === -1) {
@@ -44,41 +42,23 @@ async function bootstrap() {
   app.useGlobalFilters(new BusinessExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const config = new DocumentBuilder()
-    .setTitle("Pokémon DraftZone API")
-    .setDescription("The backend API documentation for Pokémon DraftZone")
-    .setVersion("1.0")
-    .addBearerAuth(
-      { type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
-      "JWT-auth",
-    )
-    .build();
+  const nodeEnv = configService.get<string>("NODE_ENV") || "development";
+  if (nodeEnv === "development") {
+    const config = new DocumentBuilder()
+      .setTitle("Pokémon DraftZone API")
+      .setDescription("The backend API documentation for Pokémon DraftZone")
+      .setVersion("4.0")
+      .addBearerAuth(
+        { type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
+        "JWT-auth",
+      )
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("docs", app, document);
-
-  const nestLoggerBridge = {
-    log: (msg: string) => Logger.log(msg),
-    info: (msg: string) => Logger.log(msg),
-    error: (msg: string, trace?: string) => Logger.error(msg, trace),
-    warn: (msg: string) => Logger.warn(msg),
-    debug: (msg: string) => Logger.debug(msg),
-  };
-  try {
-    await agenda.start();
-    await startRecurringJobs();
-    bootstrapLogger.log("Agenda background jobs initialized.");
-
-    // await startDiscordBot(nestLoggerBridge);
-    // bootstrapLogger.log("Discord bot initialized.");
-  } catch (err) {
-    bootstrapLogger.error("Failed to initialize sidecar services", err);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, document);
+    bootstrapLogger.log("Swagger UI initialized on /docs");
   }
 
-  //   const httpServer = app.getHttpServer();
-  //   startWebSocket(nestLoggerBridge, httpServer);
-
-  const configService = app.get(ConfigService);
   const port = configService.get<number>("PORT") || 9960;
   await app.listen(port);
 
@@ -87,16 +67,11 @@ async function bootstrap() {
   );
 }
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", (reason: any, promise) => {
   Logger.error(
-    "Unhandled Rejection at:",
-    JSON.stringify({ promise, reason }),
-    "Process",
+    `Unhandled Rejection at Promise: ${promise}, reason: ${reason?.stack || reason}`,
+    "ProcessLifecycle",
   );
-});
-
-process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled rejection:", reason);
 });
 
 bootstrap();

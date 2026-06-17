@@ -1,36 +1,26 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Patch,
-  UseGuards,
-} from "@nestjs/common";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { User } from "@core/decorators/user.decorator";
+import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
+import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
+import { UserSettingsDto } from "./user.dto";
 import { UserService } from "./user.service";
-import { SettingsDto } from "./user.dto";
 
-@Controller("user")
+@Controller("users")
 @UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get("settings")
   async getSettings(@User() sub: string) {
-    const management = await this.userService.getManagementToken();
-    const user = await management.users.get(sub);
-    return user.user_metadata?.settings ?? null;
+    return this.userService.getSettings(sub);
   }
 
   @Patch("settings")
-  @HttpCode(201)
-  async updateSettings(@User() sub: string, @Body() body: SettingsDto) {
-    const management = await this.userService.getManagementToken();
-    await management.users.update(sub, {
-      user_metadata: { settings: body.setbody },
-    });
-    return { settings: body.settings };
+  async updateSettings(@User() sub: string, @Body() body: UserSettingsDto) {
+    return this.userService.updateSettings(sub, body);
+  }
+
+  @Get("me")
+  async getMe(@User() sub: string) {
+    return this.userService.getMe(sub);
   }
 }

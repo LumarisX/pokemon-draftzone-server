@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
-import { DraftSpecie } from "../../../classes/pokemon";
-import { Ruleset } from "../../../data/rulesets";
-import { MatchupDocument } from "../../../models/draft/matchup.model";
-import { MatchDto, MatchupDto } from "./matchup.dto";
+import { DraftSpecie } from "../../../../../classes/pokemon";
+import { Ruleset } from "../../../../../data/rulesets";
+import { MatchDto, ExternalMatchupDto } from "./external-matchup.dto";
+import { ExternalMatchupDocument } from "./external-matchup.schema";
 
-export class Matchup {
+export class ExternalMatchup {
   constructor(
     public ruleset: Ruleset,
     public team: DraftSpecie[],
@@ -42,14 +42,14 @@ export class Matchup {
     };
   }
 
-  static fromForm(data: MatchupDto, ruleset: Ruleset): Matchup {
+  static fromForm(data: ExternalMatchupDto, ruleset: Ruleset): ExternalMatchup {
     const errors: string[] = [];
 
     if (errors.length > 0) {
       throw new Error(errors.join(", "));
     }
 
-    return new Matchup(
+    return new ExternalMatchup(
       ruleset,
       data.team
         .filter((pokemonData) => pokemonData.id)
@@ -61,8 +61,11 @@ export class Matchup {
     );
   }
 
-  static fromDatabase(doc: MatchupDocument, ruleset: Ruleset): Matchup {
-    return new Matchup(
+  static fromDatabase(
+    doc: ExternalMatchupDocument,
+    ruleset: Ruleset,
+  ): ExternalMatchup {
+    return new ExternalMatchup(
       ruleset,
       DraftSpecie.getTeam(doc.bTeam.team, ruleset),
       doc.bTeam.teamName,

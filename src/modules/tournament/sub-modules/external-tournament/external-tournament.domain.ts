@@ -1,10 +1,11 @@
 import { Types } from "mongoose";
-import { DraftSpecie } from "../../classes/pokemon";
-import { getRuleset, Ruleset } from "../../data/rulesets";
-import { MatchupDocument } from "../../models/draft/matchup.model";
-import { Format, getFormat } from "../../data/formats";
-import { DraftDocument } from "../../models/draft/draft.model";
-import { TournamentDto } from "./tournament.dto";
+import { DraftSpecie } from "../../../../classes/pokemon";
+import { Format, getFormat } from "../../../../data/formats";
+import { Ruleset, getRuleset } from "../../../../data/rulesets";
+
+import { ExternalMatchupDocument } from "./external-matchup/external-matchup.schema";
+import { ExternalTournamentDto } from "./external-tournament.dto";
+import { ExternalTournamentDocument } from "./external-tournament.schema";
 
 export interface TournamentScore {
   wins: number;
@@ -12,7 +13,7 @@ export interface TournamentScore {
   diff: string;
 }
 
-export class Tournament {
+export class ExternalTournament {
   constructor(
     public readonly _id: Types.ObjectId | undefined,
     public readonly ruleset: Ruleset,
@@ -38,7 +39,7 @@ export class Tournament {
     };
   }
 
-  public toClientPayload(matchups: MatchupDocument[]) {
+  public toClientPayload(matchups: ExternalMatchupDocument[]) {
     return {
       id: this._id?.toString(),
       leagueName: this.leagueName,
@@ -52,7 +53,10 @@ export class Tournament {
     };
   }
 
-  public static fromForm(dto: TournamentDto, userId: string): Tournament {
+  public static fromForm(
+    dto: ExternalTournamentDto,
+    userId: string,
+  ): ExternalTournament {
     const computedId = dto.leagueName.toLowerCase().trim().replace(/\W/gi, "");
     const ruleset = getRuleset(dto.ruleset);
     const format = getFormat(dto.format);
@@ -60,7 +64,7 @@ export class Tournament {
       .filter((poke) => poke.id)
       .map((poke) => new DraftSpecie(poke, ruleset));
 
-    return new Tournament(
+    return new ExternalTournament(
       undefined,
       ruleset,
       format,
@@ -73,10 +77,12 @@ export class Tournament {
     );
   }
 
-  public static fromDatabase(doc: DraftDocument): Tournament {
+  public static fromDatabase(
+    doc: ExternalTournamentDocument,
+  ): ExternalTournament {
     const ruleset = getRuleset(doc.ruleset);
     const format = getFormat(doc.format);
-    return new Tournament(
+    return new ExternalTournament(
       doc._id,
       ruleset,
       format,
@@ -89,7 +95,7 @@ export class Tournament {
     );
   }
 
-  public calculateScore(matchups: MatchupDocument[]): TournamentScore {
+  public calculateScore(matchups: ExternalMatchupDocument[]): TournamentScore {
     let wins = 0;
     let losses = 0;
     let netDiff = 0;
