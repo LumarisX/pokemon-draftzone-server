@@ -96,7 +96,7 @@ export class MatchDto {
   winner?: "a" | "b";
 }
 
-export class MatchupDto {
+export class ExternalMatchupDto {
   @IsString()
   @MinLength(1)
   stage!: string;

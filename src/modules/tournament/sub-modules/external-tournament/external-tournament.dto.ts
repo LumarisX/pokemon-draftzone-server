@@ -8,7 +8,7 @@ import {
 import { Type } from "class-transformer";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
-export class TournamentDto {
+export class ExternalTournamentDto {
   @IsString()
   @MinLength(1)
   leagueName!: string;

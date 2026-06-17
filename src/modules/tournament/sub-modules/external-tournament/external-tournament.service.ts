@@ -1,20 +1,20 @@
-import { MatchupRepository } from "@modules/tournament/matchup/matchup.repository";
+import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
 import { ClientSession } from "mongoose";
-import { ErrorCodes } from "../../errors/error-codes";
-import { PDZError } from "../../errors/pdz-error";
-import { MatchupDocument } from "../../models/draft/matchup.model";
-import { PokemonService } from "../pokemon/pokemon.service";
-import { Tournament } from "./tournament.domain";
-import { TournamentDto } from "./tournament.dto";
-import { TournamentRepository } from "./tournament.repository";
+import { ErrorCodes } from "../../../../errors/error-codes";
+import { PDZError } from "../../../../errors/pdz-error";
+import { ExternalMatchupRepository } from "./external-matchup/external-matchup.repository";
+import { ExternalTournament } from "./external-tournament.domain";
+import { ExternalTournamentDto } from "./external-tournament.dto";
+import { ExternalTournamentRepository } from "./external-tournament.repository";
+import { ExternalMatchupDocument } from "./external-matchup/external-matchup.schema";
 
 @Injectable()
-export class TournamentService {
+export class ExternalTournamentService {
   constructor(
-    private readonly tournamentRepository: TournamentRepository,
-    private readonly matchupRepository: MatchupRepository,
+    private readonly tournamentRepository: ExternalTournamentRepository,
+    private readonly matchupRepository: ExternalMatchupRepository,
     private readonly pokedexService: PokemonService,
   ) {}
 
@@ -25,7 +25,9 @@ export class TournamentService {
         const matchups = await this.matchupRepository.findByTournamentId(
           tournament._id,
         );
-        return Tournament.fromDatabase(tournament).toClientPayload(matchups);
+        return ExternalTournament.fromDatabase(tournament).toClientPayload(
+          matchups,
+        );
       }),
     );
     return { drafts: tournaments, tournaments: [] };
@@ -36,20 +38,27 @@ export class TournamentService {
       teamId,
       sub,
     );
-    const tournament = Tournament.fromDatabase(doc);
+    const tournament = ExternalTournament.fromDatabase(doc);
     const matchups = await this.matchupRepository.findByTournamentId(doc._id);
     return tournament.toClientPayload(matchups);
   }
 
-  async createTournament(body: TournamentDto, sub: string) {
-    const tournament = Tournament.fromForm(body, sub);
+  async createTournament(body: ExternalTournamentDto, sub: string) {
+    const tournament = ExternalTournament.fromForm(body, sub);
     await this.tournamentRepository.create(tournament.toDatabasePayload());
     return { message: "Tournament Added" };
   }
 
-  async updateTournament(teamId: string, sub: string, team: TournamentDto) {
+  async updateTournament(
+    teamId: string,
+    sub: string,
+    team: ExternalTournamentDto,
+  ) {
     await this.tournamentRepository.findByTournamentAndOwner(teamId, sub);
-    const tournamentData = Tournament.fromForm(team, sub).toDatabasePayload();
+    const tournamentData = ExternalTournament.fromForm(
+      team,
+      sub,
+    ).toDatabasePayload();
     const updatedTournament =
       await this.tournamentRepository.updateByLeagueAndOwner(
         teamId,
@@ -74,17 +83,14 @@ export class TournamentService {
       tournamentId,
       sub,
     );
-
     const matchups = await this.matchupRepository.findByTournamentId(
       tournament._id,
     );
-
     const stats = this.compileStats(matchups);
-
     return { pokemon: Object.values(stats) };
   }
 
-  private compileStats(matchups: MatchupDocument[]) {
+  private compileStats(matchups: ExternalMatchupDocument[]) {
     const stats: Record<
       string,
       {

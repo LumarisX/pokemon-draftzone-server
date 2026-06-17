@@ -1,10 +1,13 @@
+import { ExternalTournamentAdModule } from "@modules/tournament-ad/sub-modules/external-tournament-ad/external-tournament-ad.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
+import { UserModule } from "@modules/user/user.module";
+import { WebhookModule } from "@modules/webhook/webhook.module";
 import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
-import { UserModule } from "@modules/user/user.module";
+import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
 
 @Module({
   imports: [
@@ -59,8 +62,10 @@ import { UserModule } from "@modules/user/user.module";
     }),
 
     TournamentModule,
+    TournamentAdModule,
     AuthModule,
     UserModule,
+    WebhookModule,
   ],
 })
 export class AppModule {}
