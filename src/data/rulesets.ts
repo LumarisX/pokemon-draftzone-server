@@ -99,11 +99,11 @@ function ROM_EXISTS(d: Data) {
   });
 }
 
-function CHAMPIONS_EXISTS(d: Data) {
+function CHAMPIONS_EXISTS(d: Data, list: { pokemon: string[] }) {
   return _exists(d, {
     species: {
       cosmetic: COSMETIC_SPECIES,
-      allowed: ChampionsData.MA.pokemon,
+      allowed: list.pokemon,
     },
   });
 }
@@ -146,6 +146,7 @@ function DRAFT_EXISTS(d: Data) {
 
 const RULESET_IDS = {
   CHAMP_MA: "Champions MA",
+  CHAMP_MB: "Champions MB",
   ZA_NATDEX: "ZA NatDex",
   GEN9_NATDEX: "Gen9 NatDex",
   PALDEA_DEX: "Paldea Dex",
@@ -200,10 +201,23 @@ export const Rulesets: {
         Dex.forGen(9),
         (d: Data) =>
           !(
-            !CHAMPIONS_EXISTS(d) ||
+            !CHAMPIONS_EXISTS(d, ChampionsData.MA) ||
             (d.kind === "Species" && d.forme === "Gmax")
           ),
         RULESET_IDS.CHAMP_MA,
+      ),
+    },
+    "M-B": {
+      id: RULESET_IDS.CHAMP_MB,
+      desc: "Only Pokémon allowed in Champions M-B ruleset.",
+      ruleset: new Ruleset(
+        Dex.forGen(9),
+        (d: Data) =>
+          !(
+            !CHAMPIONS_EXISTS(d, ChampionsData.MB) ||
+            (d.kind === "Species" && d.forme === "Gmax")
+          ),
+        RULESET_IDS.CHAMP_MB,
       ),
     },
   },
