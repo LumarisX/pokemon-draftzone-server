@@ -31,7 +31,7 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { DraftMove } from "./move";
 import { getBST, getCST } from "./specieUtil";
-import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export type PokemonOptions = {
   shiny?: boolean;
@@ -151,10 +151,7 @@ export class DraftSpecie implements Specie, Pokemon {
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
   constructor(
-    pokemonData:
-      | ID
-      | (PokemonData | PokemonFormData)
-      | (Specie & PokemonOptions),
+    pokemonData: ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions),
     ruleset: Ruleset,
   ) {
     if (typeof pokemonData === "string") pokemonData = { id: pokemonData };
@@ -223,7 +220,7 @@ export class DraftSpecie implements Specie, Pokemon {
           ) ?? 0);
   }
 
-  toClient(): PokemonFormData {
+  toClient(): PokemonDto {
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
     const capt = {
@@ -687,7 +684,7 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   static getTeam(
-    team: (ID | (PokemonData | PokemonFormData) | (Specie & PokemonOptions))[],
+    team: (ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions))[],
     ruleset: Ruleset,
   ) {
     const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
