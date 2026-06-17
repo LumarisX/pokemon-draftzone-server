@@ -28,7 +28,7 @@ import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie } from "./pokemon";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
-import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export type MatchupTeam = {
   teamName: string;
@@ -244,11 +244,11 @@ export class Matchup {
     format: string;
     ruleset: string;
     side1: {
-      team: PokemonFormData[];
+      team: PokemonDto[];
       teamName: string;
     };
     side2: {
-      team: PokemonFormData[];
+      team: PokemonDto[];
       teamName: string;
     };
   }): Promise<Matchup> {
@@ -335,7 +335,7 @@ export class Matchup {
       summary: {
         teamName?: string;
         coach?: string;
-        team: (PokemonFormData & {
+        team: (PokemonDto & {
           abilities: string[];
           baseStats: StatsTable;
           types: [TypeName] | [TypeName, TypeName];
@@ -371,7 +371,7 @@ export class Matchup {
       speedchart: Speedchart;
       coveragechart: Coveragechart[];
       typechart: {
-        team: (PokemonFormData & {
+        team: (PokemonDto & {
           weak: { [key: string]: number }[];
         })[];
         teraTypes: {

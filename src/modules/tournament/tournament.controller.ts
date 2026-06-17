@@ -14,7 +14,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { TournamentDto } from "./tournament.dto";
 import { TournamentService } from "./tournament.service";
 
-@Controller("tournaments")
+@Controller("drafts")
 @UseGuards(JwtAuthGuard)
 export class TournamentController {
   constructor(private readonly tournamentService: TournamentService) {}

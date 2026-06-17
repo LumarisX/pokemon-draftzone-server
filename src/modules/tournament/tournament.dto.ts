@@ -6,7 +6,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export class TournamentDto {
   @IsString()
@@ -31,6 +31,6 @@ export class TournamentDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PokemonFormData)
-  team!: PokemonFormData[];
+  @Type(() => PokemonDto)
+  team!: PokemonDto[];
 }

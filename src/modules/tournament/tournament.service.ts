@@ -1,20 +1,20 @@
+import { MatchupRepository } from "@modules/tournament/matchup/matchup.repository";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
 import { ClientSession } from "mongoose";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
 import { MatchupDocument } from "../../models/draft/matchup.model";
-import { MatchupService } from "../matchup/matchup.service";
 import { PokemonService } from "../pokemon/pokemon.service";
 import { Tournament } from "./tournament.domain";
-import { TournamentRepository } from "./tournament.repository";
 import { TournamentDto } from "./tournament.dto";
+import { TournamentRepository } from "./tournament.repository";
 
 @Injectable()
 export class TournamentService {
   constructor(
     private readonly tournamentRepository: TournamentRepository,
-    private readonly matchupService: MatchupService,
+    private readonly matchupRepository: MatchupRepository,
     private readonly pokedexService: PokemonService,
   ) {}
 
@@ -22,7 +22,7 @@ export class TournamentService {
     const tournamentDocs = await this.tournamentRepository.findByOwner(sub);
     const tournaments = await Promise.all(
       tournamentDocs.map(async (tournament) => {
-        const matchups = await this.matchupService.getMatchupsByDraftId(
+        const matchups = await this.matchupRepository.findByTournamentId(
           tournament._id,
         );
         return Tournament.fromDatabase(tournament).toClientPayload(matchups);
@@ -32,12 +32,12 @@ export class TournamentService {
   }
 
   async getTournament(teamId: string, sub: string) {
-    const doc = await this.tournamentRepository.findByLeagueAndOwner(
+    const doc = await this.tournamentRepository.findByTournamentAndOwner(
       teamId,
       sub,
     );
     const tournament = Tournament.fromDatabase(doc);
-    const matchups = await this.matchupService.getMatchupsByDraftId(doc._id);
+    const matchups = await this.matchupRepository.findByTournamentId(doc._id);
     return tournament.toClientPayload(matchups);
   }
 
@@ -48,7 +48,7 @@ export class TournamentService {
   }
 
   async updateTournament(teamId: string, sub: string, team: TournamentDto) {
-    await this.tournamentRepository.findByLeagueAndOwner(teamId, sub);
+    await this.tournamentRepository.findByTournamentAndOwner(teamId, sub);
     const tournamentData = Tournament.fromForm(team, sub).toDatabasePayload();
     const updatedTournament =
       await this.tournamentRepository.updateByLeagueAndOwner(
@@ -61,7 +61,7 @@ export class TournamentService {
   }
 
   async deleteTournament(teamId: string, sub: string, session?: ClientSession) {
-    await this.tournamentRepository.findByLeagueAndOwner(teamId, sub);
+    await this.tournamentRepository.findByTournamentAndOwner(teamId, sub);
     return this.tournamentRepository.deleteByLeagueAndOwner(
       teamId,
       sub,
@@ -70,12 +70,12 @@ export class TournamentService {
   }
 
   async getTournamentStats(tournamentId: string, sub: string) {
-    const tournament = await this.tournamentRepository.findByLeagueAndOwner(
+    const tournament = await this.tournamentRepository.findByTournamentAndOwner(
       tournamentId,
       sub,
     );
 
-    const matchups = await this.matchupService.getMatchupsByDraftId(
+    const matchups = await this.matchupRepository.findByTournamentId(
       tournament._id,
     );
 

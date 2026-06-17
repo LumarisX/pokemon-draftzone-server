@@ -5,7 +5,7 @@ import { DraftData } from "../models/draft/draft.model";
 import { MatchupDocument } from "../models/draft/matchup.model";
 import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
 import { DraftSpecie } from "./pokemon";
-import { PokemonFormData } from "@modules/pokemon/pokemon.dto";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export class Draft {
   constructor(
@@ -28,7 +28,7 @@ export class Draft {
       format: string;
       ruleset: string;
       doc?: string;
-      team: PokemonFormData[];
+      team: PokemonDto[];
     },
     user_id: string,
     ruleset?: Ruleset,

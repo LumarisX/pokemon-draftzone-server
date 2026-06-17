@@ -1,15 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { ClientSession, Model, Types } from "mongoose";
-import { Draft } from "../../classes/draft";
-import { DraftDocument } from "../../models/draft/draft.model";
-import { PDZError } from "../../errors/pdz-error";
 import { ErrorCodes } from "../../errors/error-codes";
+import { PDZError } from "../../errors/pdz-error";
+import { DraftDocument } from "../../models/draft/draft.model";
+import { Tournament } from "./tournament.domain";
 
 @Injectable()
 export class TournamentRepository {
   constructor(
-    @InjectModel(Draft.name)
+    @InjectModel(Tournament.name)
     private readonly tournamentModel: Model<DraftDocument>,
   ) {}
 
@@ -20,12 +20,12 @@ export class TournamentRepository {
       .exec();
   }
 
-  async findByLeagueAndOwner(
-    leagueId: string,
+  async findByTournamentAndOwner(
+    tournamentId: string,
     ownerId: string,
   ): Promise<DraftDocument> {
     const tournament = await this.tournamentModel
-      .findOne({ owner: ownerId, leagueId })
+      .findOne({ owner: ownerId, leagueId: tournamentId })
       .exec();
     if (!tournament) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
     return tournament;

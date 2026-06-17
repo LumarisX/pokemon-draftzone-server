@@ -1,10 +1,10 @@
-import { MatchupModule } from "@modules/matchup/matchup.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
 import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
+import { UserModule } from "@modules/user/user.module";
 
 @Module({
   imports: [
@@ -60,7 +60,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 
     TournamentModule,
     AuthModule,
-    MatchupModule,
+    UserModule,
   ],
 })
 export class AppModule {}
