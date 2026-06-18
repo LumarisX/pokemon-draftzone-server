@@ -1,22 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { FormatId } from "../../../../data/formats";
-import { RulesetId } from "../../../../data/rulesets";
 import { PokemonData, PokemonSchema } from "@modules/pokemon/pokemon.schema";
+import { FormatId } from "@core/data/formats/formats";
+import { RulesetId } from "@core/data/rulesets/rulesets";
 
 export type ExternalTournamentDocument =
   HydratedDocument<ExternalTournamentEntity>;
-
-class DraftScore {
-  @Prop({ required: true, default: 0 })
-  wins!: number;
-
-  @Prop({ required: true, default: 0 })
-  losses!: number;
-
-  @Prop({ required: true, default: "0" })
-  diff!: string;
-}
 
 @Schema({
   timestamps: true,
@@ -46,9 +35,6 @@ export class ExternalTournamentEntity {
 
   @Prop({ type: [PokemonSchema], required: true })
   team!: PokemonData[];
-
-  @Prop({ type: DraftScore, required: true })
-  score!: DraftScore;
 }
 
 export const ExternalTournamentSchema = SchemaFactory.createForClass(
@@ -56,3 +42,9 @@ export const ExternalTournamentSchema = SchemaFactory.createForClass(
 );
 
 ExternalTournamentSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
+
+ExternalTournamentSchema.virtual("matchups", {
+  ref: "ExternalMatchupEntity",
+  localField: "_id",
+  foreignField: "aTeam._id",
+});

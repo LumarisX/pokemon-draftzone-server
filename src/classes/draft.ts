@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { Format, getFormat } from "../data/formats";
-import { Ruleset, getRuleset } from "../data/rulesets";
+import { Format, getFormat } from "../core/data/formats/formats";
+import { Ruleset, getRuleset } from "../core/data/rulesets/rulesets";
 import { DraftData } from "../models/draft/draft.model";
 import { MatchupDocument } from "../models/draft/matchup.model";
 import { getMatchupsByDraftId } from "../services/database-services/matchup.service";

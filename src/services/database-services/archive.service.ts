@@ -1,5 +1,5 @@
 import { ID, toID } from "@pkmn/data";
-import { Ruleset } from "../../data/rulesets";
+import { Ruleset } from "../../core/data/rulesets/rulesets";
 import { ArchiveV1Data, ArchiveV2Data } from "../../models/draft/archive.model";
 import { getName } from "../data-services/pokedex.service";
 

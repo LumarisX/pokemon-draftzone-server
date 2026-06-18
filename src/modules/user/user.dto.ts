@@ -9,7 +9,25 @@ import {
 } from "class-validator";
 
 export class UserSettingsDto {
-  [key: string]: any;
+  @IsBoolean()
+  @IsOptional()
+  shinyUnlock?: boolean;
+
+  @IsString()
+  @IsOptional()
+  spriteSet?: string;
+
+  @IsString()
+  @IsOptional()
+  theme?: string;
+
+  @IsString()
+  @IsOptional()
+  ldMode?: string;
+
+  @IsString()
+  @IsOptional()
+  themeOverride?: string;
 }
 
 export class Auth0UserDto {

@@ -11,7 +11,7 @@ import {
   SpeciesName,
   StatusName,
 } from "@pkmn/dex-types";
-import { Ruleset } from "../data/rulesets";
+import { Ruleset } from "../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 

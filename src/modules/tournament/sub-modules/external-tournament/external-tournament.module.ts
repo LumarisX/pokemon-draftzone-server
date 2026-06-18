@@ -2,7 +2,6 @@ import { PokemonModule } from "@modules/pokemon/pokemon.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ExternalMatchupController } from "./external-matchup/external-matchup.controller";
-import { ExternalMatchupRepository } from "./external-matchup/external-matchup.repository";
 import {
   ExternalMatchupEntity,
   ExternalMatchupSchema,
@@ -15,6 +14,7 @@ import {
   ExternalTournamentSchema,
 } from "./external-tournament.schema";
 import { ExternalTournamentService } from "./external-tournament.service";
+import { ExternalMatchupRepository } from "./external-matchup/external-matchup.repository";
 
 @Module({
   imports: [

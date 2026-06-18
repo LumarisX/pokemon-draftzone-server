@@ -1,36 +1,39 @@
 import { Injectable } from "@nestjs/common";
-import { Auth0UserDto, UserSettingsDto } from "./user.dto";
+import { User, UserSettings } from "./user.domain";
 import { UserRepository } from "./user.repository";
-import { UserSettings } from "./user.domain";
+import { UserSettingsDto } from "./user.dto";
+import { UserSettingsEntity } from "./user.schema";
 
 @Injectable()
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async getSettings(sub: string) {
+  async getSettings(sub: string): Promise<UserSettings> {
     const user = await this.userRepository.getUserBySub(sub);
-    return UserSettings.fromDatabase(user.settings).toClientPayload();
+    return user.settings ?? {};
   }
 
-  async updateSettings(sub: string, dto: UserSettingsDto) {
-    const domainSettings = UserSettings.fromForm(dto);
-    const updatedUser = await this.userRepository.updateSettings(
-      sub,
-      domainSettings.toDatabasePayload(),
-    );
-    return UserSettings.fromDatabase(updatedUser.settings).toClientPayload();
-  }
-
-  async syncUser(data: Auth0UserDto) {
-    const payload = {
-      lastLogin: new Date(data.lastLogin),
-      joined: new Date(data.joined),
-      settings: data.settings,
+  async updateSettings(
+    sub: string,
+    dto: UserSettingsDto,
+  ): Promise<UserSettingsEntity> {
+    const user = await this.userRepository.getUserBySub(sub);
+    const updatedSettingsPayload: UserSettingsEntity = {
+      ...user.settings,
+      ...dto,
     };
-    return await this.userRepository.upsertFromWebhook(data.auth0Sub, payload);
+    const updatedUserDoc = await this.userRepository.updateSettings(
+      sub,
+      updatedSettingsPayload,
+    );
+
+    return updatedUserDoc.settings;
+  }
+  async syncUser(user: User) {
+    return await this.userRepository.updateUser(user);
   }
 
-  async getMe(sub: string) {
+  async getMe(sub: string): Promise<User> {
     return await this.userRepository.getUserBySub(sub);
   }
 }

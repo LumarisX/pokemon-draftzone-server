@@ -2,95 +2,64 @@ import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
 import { ClientSession } from "mongoose";
-import { ErrorCodes } from "../../../../errors/error-codes";
-import { PDZError } from "../../../../errors/pdz-error";
-import { ExternalMatchupRepository } from "./external-matchup/external-matchup.repository";
+import { ExternalMatchup } from "./external-matchup/external-matchup.domain";
 import { ExternalTournament } from "./external-tournament.domain";
-import { ExternalTournamentDto } from "./external-tournament.dto";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
-import { ExternalMatchupDocument } from "./external-matchup/external-matchup.schema";
 
 @Injectable()
 export class ExternalTournamentService {
   constructor(
     private readonly tournamentRepository: ExternalTournamentRepository,
-    private readonly matchupRepository: ExternalMatchupRepository,
     private readonly pokedexService: PokemonService,
   ) {}
 
-  async getTournaments(sub: string) {
-    const tournamentDocs = await this.tournamentRepository.findByOwner(sub);
-    const tournaments = await Promise.all(
-      tournamentDocs.map(async (tournament) => {
-        const matchups = await this.matchupRepository.findByTournamentId(
-          tournament._id,
-        );
-        return ExternalTournament.fromDatabase(tournament).toClientPayload(
-          matchups,
-        );
-      }),
-    );
-    return { drafts: tournaments, tournaments: [] };
+  async getTournaments(sub: string): Promise<ExternalTournament[]> {
+    const tournaments = await this.tournamentRepository.findByOwner(sub);
+    return tournaments;
   }
 
-  async getTournament(teamId: string, sub: string) {
-    const doc = await this.tournamentRepository.findByTournamentAndOwner(
+  async getTournament(
+    teamId: string,
+    sub: string,
+  ): Promise<ExternalTournament> {
+    const tournament = await this.tournamentRepository.findByKeyAndOwner(
       teamId,
       sub,
     );
-    const tournament = ExternalTournament.fromDatabase(doc);
-    const matchups = await this.matchupRepository.findByTournamentId(doc._id);
-    return tournament.toClientPayload(matchups);
+
+    return tournament;
   }
 
-  async createTournament(body: ExternalTournamentDto, sub: string) {
-    const tournament = ExternalTournament.fromForm(body, sub);
-    await this.tournamentRepository.create(tournament.toDatabasePayload());
-    return { message: "Tournament Added" };
+  async createTournament(tournament: ExternalTournament): Promise<void> {
+    await this.tournamentRepository.create(tournament);
   }
 
   async updateTournament(
     teamId: string,
     sub: string,
-    team: ExternalTournamentDto,
-  ) {
-    await this.tournamentRepository.findByTournamentAndOwner(teamId, sub);
-    const tournamentData = ExternalTournament.fromForm(
-      team,
+    tournament: ExternalTournament,
+  ): Promise<void> {
+    await this.tournamentRepository.updateByKeyAndOwner(
+      teamId,
       sub,
-    ).toDatabasePayload();
-    const updatedTournament =
-      await this.tournamentRepository.updateByLeagueAndOwner(
-        teamId,
-        sub,
-        tournamentData,
-      );
-    if (!updatedTournament) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
-    return updatedTournament;
+      tournament,
+    );
   }
 
   async deleteTournament(teamId: string, sub: string, session?: ClientSession) {
-    await this.tournamentRepository.findByTournamentAndOwner(teamId, sub);
-    return this.tournamentRepository.deleteByLeagueAndOwner(
-      teamId,
-      sub,
-      session,
-    );
+    return this.tournamentRepository.deleteByKeyAndOwner(teamId, sub, session);
   }
 
   async getTournamentStats(tournamentId: string, sub: string) {
-    const tournament = await this.tournamentRepository.findByTournamentAndOwner(
+    const tournament = await this.tournamentRepository.findByKeyAndOwner(
       tournamentId,
       sub,
     );
-    const matchups = await this.matchupRepository.findByTournamentId(
-      tournament._id,
-    );
-    const stats = this.compileStats(matchups);
-    return { pokemon: Object.values(stats) };
+
+    return this.compileStats(tournament.matchups);
   }
 
-  private compileStats(matchups: ExternalMatchupDocument[]) {
+  private compileStats(matchups: ExternalMatchup[]) {
     const stats: Record<
       string,
       {
@@ -128,13 +97,13 @@ export class ExternalTournamentService {
       }
     }
 
-    for (let id in stats) {
+    for (const id in stats) {
       stats[id].kdr = stats[id].kills + stats[id].indirect - stats[id].deaths;
       stats[id].kpg =
         stats[id].brought > 0
           ? (stats[id].kills + stats[id].indirect) / stats[id].brought
           : 0;
     }
-    return stats;
+    return { pokemon: Object.values(stats) };
   }
 }

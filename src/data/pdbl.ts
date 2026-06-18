@@ -1,7 +1,7 @@
 import { Specie } from "@pkmn/data";
 import fs from "fs";
 import { getBST } from "../classes/specieUtil";
-import { getRuleset } from "./rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import eventEmitter from "../event-emitter";
 
 const path = "./src/data/pdbldetails.json";

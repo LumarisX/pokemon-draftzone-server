@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Specie, SpeciesName, TypeName } from "@pkmn/data";
-import { Ruleset, getRuleset } from "../../data/rulesets";
-import { Format } from "../../data/formats";
+import { Ruleset, getRuleset } from "../../core/data/rulesets/rulesets";
+import { Format } from "../../core/data/formats/formats";
 
 @Injectable()
 export class PokemonService {

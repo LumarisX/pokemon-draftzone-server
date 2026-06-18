@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Ruleset } from "../data/rulesets";
+import { Ruleset } from "../core/data/rulesets/rulesets";
 import { MatchData } from "../models/draft/matchup.model";
 import { DraftSpecie } from "./pokemon";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";

@@ -1,63 +1,57 @@
-import { Injectable } from "@nestjs/common";
-import { getRuleset } from "../../../../../data/rulesets";
-import { ExternalTournamentRepository } from "../external-tournament.repository";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { ErrorCodes } from "../../../../../errors/error-codes";
 import { ExternalMatchup } from "./external-matchup.domain";
-import { ExternalMatchupDto } from "./external-matchup.dto";
+import {
+  ExternalMatchupDto,
+  SchedulePatchDto,
+  ScorePatchDto,
+} from "./external-matchup.dto";
+import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
+import { ExternalTournamentRepository } from "../external-tournament.repository";
 
 @Injectable()
 export class ExternalMatchupService {
   constructor(
-    private readonly externalmatchupRepository: ExternalMatchupRepository,
-    private readonly tournamentRepository: ExternalTournamentRepository,
+    private readonly matchupRepo: ExternalMatchupRepository,
+    private readonly tournamentRepo: ExternalTournamentRepository,
   ) {}
 
-  async getExternalMatchups(tournamentId: string, owner: string) {
-    const tournament = await this.tournamentRepository.findByTournamentAndOwner(
-      tournamentId,
+  async getExternalMatchups(
+    tournamentKey: string,
+    owner: string,
+  ): Promise<ExternalMatchup[]> {
+    const tournament = await this.tournamentRepo.findByKeyAndOwner(
+      tournamentKey,
       owner,
     );
-    const docs = await this.externalmatchupRepository.findByTournamentId(
-      tournament._id,
-    );
-    const ruleset = getRuleset(tournament.ruleset);
-    return docs.map((doc) => {
-      return ExternalMatchup.fromDatabase(doc, ruleset).toClientPayload();
-    });
+    return tournament.matchups;
   }
 
   async createExternalMatchup(
     tournamentId: string,
     owner: string,
-    externalmatchupData: ExternalMatchupDto,
+    dto: ExternalMatchupDto,
   ): Promise<void> {
-    // const tournament = await this.tournamentRepository.findByTournamentAndOwner(
-    //   tournamentId,
-    //   owner,
-    // );
-    // const ruleset = getRuleset(tournament.ruleset);
-    // const externalmatchup = ExternalMatchup.fromForm(externalmatchupData, ruleset);
-    // const draftObjectId = new (require("mongoose").Types.ObjectId)(
-    //   tournamentId,
-    // );
-    // await this.externalmatchupRepository.create(
-    //   externalmatchup.toDatabasePayload(draftObjectId, owner, tournamentId),
-    // );
-  }
-
-  async getExternalMatchup(
-    tournamentId: string,
-    externalmatchupId: string,
-    owner: string,
-  ) {
-    const tournament = await this.tournamentRepository.findByTournamentAndOwner(
+    const tournament = await this.tournamentRepo.findByKeyAndOwner(
       tournamentId,
       owner,
     );
-    const ruleset = getRuleset(tournament.ruleset);
-    const doc =
-      await this.externalmatchupRepository.findById(externalmatchupId);
-    return ExternalMatchup.fromDatabase(doc, ruleset).toClientPayload();
+    if (!tournament._id)
+      throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
+    const matchup = ExternalMatchupMapper.fromForm(dto, tournament.ruleset);
+    const payload = {
+      ...ExternalMatchupMapper.toDatabasePayload(matchup),
+      aTeam: { _id: tournament._id },
+      matches: [],
+    };
+    await this.matchupRepo.create(payload);
+  }
+
+  async getExternalMatchup(
+    externalmatchupId: string,
+  ): Promise<ExternalMatchup> {
+    return this.matchupRepo.findById(externalmatchupId);
   }
 
   async getExternalMatchupOpponent(
@@ -65,28 +59,51 @@ export class ExternalMatchupService {
     externalmatchupId: string,
     owner: string,
   ) {
-    // const externalmatchup = await this.externalmatchupRepository.findById(externalmatchupId);
-    // const externalmatchupInstance = await ExternalMatchup.fromData(externalmatchup.toObject());
-    // return externalmatchupInstance.toOpponent().toClient();
+    const matchup = await this.matchupRepo.findById(externalmatchupId);
+    return ExternalMatchupMapper.toClientPayload(matchup);
   }
 
   async updateExternalMatchupOpponent(
     externalmatchupId: string,
     owner: string,
-    opponentData: ExternalMatchupDto,
-  ) {
-    //   const updatedExternalMatchup = await this.externalmatchupRepository.update(
-    //     externalmatchupId,
-    //     opponentData,
-    //   );
-    //   if (!updatedExternalMatchup) throw new PDZError(ErrorCodes.EXTERNALMATCHUP.NOT_FOUND);
-    //   return updatedExternalMatchup;
-    // }
-    // async getExternalMatchupSchedule(tournamentId: string, externalmatchupId: string) {
-    //   const externalmatchup = await this.externalmatchupRepository.findById(externalmatchupId);
-    //   return {
-    //     gameTime: externalmatchup.gameTime,
-    //     reminder: externalmatchup.reminder,
-    //   };
+    dto: ExternalMatchupDto,
+  ): Promise<ExternalMatchup> {
+    const existing = await this.matchupRepo.findById(externalmatchupId);
+    const updated = ExternalMatchupMapper.fromForm(dto, existing.ruleset);
+    await this.matchupRepo.update(
+      externalmatchupId,
+      ExternalMatchupMapper.toDatabasePayload(updated),
+    );
+    return this.matchupRepo.findById(externalmatchupId);
+  }
+
+  async updateExternalMatchupScore(
+    externalmatchupId: string,
+    dto: ScorePatchDto,
+  ): Promise<void> {
+    await this.matchupRepo.updateScore(
+      externalmatchupId,
+      dto.matches as any,
+      dto.aTeamPaste,
+      dto.bTeamPaste,
+    );
+  }
+
+  async getExternalMatchupSchedule(externalmatchupId: string) {
+    const matchup = await this.matchupRepo.findById(externalmatchupId);
+    return {
+      gameTime: (matchup as any).gameTime,
+      reminder: (matchup as any).reminder,
+    };
+  }
+
+  async updateExternalMatchupSchedule(
+    externalmatchupId: string,
+    dto: SchedulePatchDto,
+  ): Promise<void> {
+    await this.matchupRepo.update(externalmatchupId, {
+      gameTime: dto.dateTime,
+      reminder: dto.emailTime,
+    });
   }
 }

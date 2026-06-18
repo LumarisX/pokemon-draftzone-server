@@ -2,7 +2,7 @@ import { toID } from "@pkmn/data";
 import fs from "fs";
 import { z } from "zod";
 import { DraftSpecie } from "../classes/pokemon";
-import { getRuleset } from "../data/rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 // import { PikalyticData, testSet } from "../services/pats-services/test-set";

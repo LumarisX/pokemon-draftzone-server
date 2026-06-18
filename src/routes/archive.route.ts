@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { getRuleset } from "../data/rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import {

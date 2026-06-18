@@ -1,5 +1,5 @@
 import { typeWeak } from "./type.services";
-import { getRuleset, Ruleset } from "../../data/rulesets";
+import { getRuleset, Ruleset } from "../../core/data/rulesets/rulesets";
 import { TypeName } from "@pkmn/data";
 
 describe("typeWeak", () => {

@@ -1,5 +1,5 @@
-import { ErrorCodes } from "../errors/error-codes";
-import { PDZError } from "../errors/pdz-error";
+import { ErrorCodes } from "../../../errors/error-codes";
+import { PDZError } from "../../../errors/pdz-error";
 
 export type FormatId =
   | "Singles"

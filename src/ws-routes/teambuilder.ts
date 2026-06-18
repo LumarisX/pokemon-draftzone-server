@@ -3,7 +3,7 @@ import { Server, Socket } from "socket.io";
 // import { pdzCalculateMove } from "../../../dmg/src/mechanics";
 // import { PokemonOptions, State } from "../../../dmg/src/state";
 import { DraftSpecie } from "../classes/pokemon";
-import { getRuleset } from "../data/rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import { getEffectivePower } from "../services/data-services/move.service";
 import { JsonRpcRequest, sendResponse } from "../services/websocket.service";
 import { WSRoute, WSRouteGroup } from ".";

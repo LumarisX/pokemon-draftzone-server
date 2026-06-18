@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { UserDocument, UserEntity, UserSettingsEntity } from "./user.schema";
+import { User } from "./user.domain";
+import { UserMapper } from "./user.mapper";
 
 @Injectable()
 export class UserRepository {
@@ -10,26 +12,24 @@ export class UserRepository {
     private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async getUserBySub(sub: string): Promise<UserDocument> {
-    const user = await this.userModel.findOne({ auth0Sub: sub }).exec();
-    if (!user) throw new NotFoundException(`User with sub "${sub}" not found`);
-    return user;
+  async getUserBySub(sub: string): Promise<User> {
+    const userDoc = await this.userModel.findOne({ auth0Sub: sub }).exec();
+    if (!userDoc)
+      throw new NotFoundException(`User with sub "${sub}" not found`);
+    return UserMapper.fromDatabase(userDoc);
   }
 
-  async upsertFromWebhook(
-    sub: string,
-    payload: { lastLogin: Date; joined: Date; settings: UserSettingsEntity },
-  ): Promise<UserDocument> {
+  async updateUser(user: User): Promise<UserDocument> {
     return await this.userModel
       .findOneAndUpdate(
-        { auth0Sub: sub },
+        { auth0Sub: user.sub },
         {
           $set: {
-            lastLogin: payload.lastLogin,
-            settings: payload.settings,
+            lastLogin: user.lastLogin,
+            settings: user.settings,
           },
           $setOnInsert: {
-            joined: payload.joined,
+            joined: user.joined,
             lastCheckedAdsAt: new Date(0),
           },
         },
