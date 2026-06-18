@@ -1,18 +1,30 @@
-import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import {
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { AuthGuard } from "@nestjs/passport";
+import { IS_OPTIONAL_AUTH } from "./optional-auth.dectorator";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard("jwt") {
   private readonly logger = new Logger(JwtAuthGuard.name);
 
-  handleRequest(err: any, user: any, info: any) {
-    if (info) {
-      this.logger.warn(`JWT auth failed: ${info.message}`);
-    }
+  constructor(private reflector: Reflector) {
+    super();
+  }
 
-    if (err || !user) {
-      throw err || new UnauthorizedException();
-    }
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+    const isOptional = this.reflector.getAllAndOverride<boolean>(
+      IS_OPTIONAL_AUTH,
+      [context.getHandler(), context.getClass()],
+    );
+    if (info && !isOptional)
+      this.logger.warn(`JWT auth failed: ${info.message}`);
+    if (isOptional) return user || null;
+    if (err || !user) throw err || new UnauthorizedException();
     return user;
   }
 }
