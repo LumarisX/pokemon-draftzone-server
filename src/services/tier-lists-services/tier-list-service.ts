@@ -1,7 +1,7 @@
 import { ID } from "@pkmn/data";
 import { Types } from "mongoose";
 import { DraftSpecie } from "../../classes/pokemon";
-import { getRuleset } from "../../data/rulesets";
+import { getRuleset } from "../../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
 import tierListModel, {

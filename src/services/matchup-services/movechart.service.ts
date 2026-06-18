@@ -1,6 +1,6 @@
 import { Move, TypeName } from "@pkmn/data";
 import { DraftSpecie } from "../../classes/pokemon";
-import { Ruleset } from "../../data/rulesets";
+import { Ruleset } from "../../core/data/rulesets/rulesets";
 import { DraftMove } from "../../classes/move";
 import { Draft } from "../../classes/draft";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";

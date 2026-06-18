@@ -1,7 +1,7 @@
 import { ID, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
-import { Format, FormatId, getFormat } from "../data/formats";
-import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
+import { Format, FormatId, getFormat } from "../core/data/formats/formats";
+import { getRuleset, Ruleset, RulesetId } from "../core/data/rulesets/rulesets";
 import { MatchData, MatchupData } from "../models/draft/matchup.model";
 import { LeagueCoachDocument } from "../models/league/coach.model";
 import { LeagueDivisionDocument } from "../models/league/division.model";

@@ -1,84 +1,41 @@
 import { Types } from "mongoose";
 import { DraftSpecie } from "../../../../../classes/pokemon";
-import { Ruleset } from "../../../../../data/rulesets";
-import { MatchDto, ExternalMatchupDto } from "./external-matchup.dto";
-import { ExternalMatchupDocument } from "./external-matchup.schema";
+import { MatchDto } from "./external-matchup.dto";
+import { Ruleset } from "@core/data/rulesets/rulesets";
 
 export class ExternalMatchup {
-  constructor(
-    public ruleset: Ruleset,
-    public team: DraftSpecie[],
-    public teamName: string,
-    public matches: MatchDto[],
-    public stage: string,
-    public coach?: string,
-    public _id?: Types.ObjectId,
-    public paste?: string,
-    public notes?: string,
-  ) {}
-
-  toClientPayload() {
-    return {
-      stage: this.stage,
-      teamName: this.teamName,
-      coach: this.coach,
-      team: this.team.map((pokemon) => pokemon.toClient()),
-      score: this.calculateScore(),
-      matches: this.matches,
-      _id: this._id,
-      paste: this.paste,
-    };
+  ruleset: Ruleset;
+  team: DraftSpecie[];
+  teamName: string;
+  matches: MatchDto[];
+  stage: string;
+  coach?: string;
+  _id?: Types.ObjectId;
+  paste?: string;
+  notes?: string;
+  constructor(props: {
+    ruleset: Ruleset;
+    team: DraftSpecie[];
+    teamName: string;
+    matches: MatchDto[];
+    stage: string;
+    coach?: string;
+    _id?: Types.ObjectId;
+    paste?: string;
+    notes?: string;
+  }) {
+    this.ruleset = props.ruleset;
+    this.team = props.team;
+    this.teamName = props.teamName;
+    this.matches = props.matches;
+    this.stage = props.stage;
+    this.coach = props.coach;
+    this._id = props._id;
+    this.paste = props.paste;
+    this.notes = props.paste;
   }
 
-  toDatabasePayload() {
-    return {
-      bTeam: {
-        teamName: this.teamName,
-        coach: this.coach ?? undefined,
-        team: this.team.map((pokemon) => pokemon.toData()),
-        paste: this.paste,
-      },
-      stage: this.stage,
-    };
-  }
-
-  static fromForm(data: ExternalMatchupDto, ruleset: Ruleset): ExternalMatchup {
-    const errors: string[] = [];
-
-    if (errors.length > 0) {
-      throw new Error(errors.join(", "));
-    }
-
-    return new ExternalMatchup(
-      ruleset,
-      data.team
-        .filter((pokemonData) => pokemonData.id)
-        .map((pokemonData) => new DraftSpecie(pokemonData, ruleset)),
-      data.teamName,
-      data.matches || [],
-      data.stage,
-      data.coach,
-    );
-  }
-
-  static fromDatabase(
-    doc: ExternalMatchupDocument,
-    ruleset: Ruleset,
-  ): ExternalMatchup {
-    return new ExternalMatchup(
-      ruleset,
-      DraftSpecie.getTeam(doc.bTeam.team, ruleset),
-      doc.bTeam.teamName,
-      doc.matches ?? [],
-      doc.stage,
-      doc.bTeam.coach,
-      doc._id,
-      doc.bTeam.paste,
-      doc.notes,
-    );
-  }
-
-  private calculateScore(): [number, number] | null {
+  calculateScore(): [number, number] | null {
     if (!this.matches?.length) return null;
 
     if (this.matches.length === 1) {

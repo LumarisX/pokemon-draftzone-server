@@ -1,5 +1,5 @@
 import type { Types } from "mongoose";
-import { getFormat } from "../data/formats";
+import { getFormat } from "../core/data/formats/formats";
 import {
   LeagueAdData,
   LeagueAdDocument,

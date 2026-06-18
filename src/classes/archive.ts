@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { FormatId } from "../data/formats";
-import { RulesetId } from "../data/rulesets";
+import { FormatId } from "../core/data/formats/formats";
+import { RulesetId } from "../core/data/rulesets/rulesets";
 import {
   ArchiveV2Data,
   ArchiveV2Model,

@@ -15,8 +15,9 @@ import {
   ScorePatchDto,
 } from "./external-matchup.dto";
 import { ExternalMatchupService } from "./external-matchup.service";
+import { ExternalMatchupMapper } from "./external-matchup.mapper";
 
-@Controller("tournaments/external/:tournamentId/matchups")
+@Controller("external/tournaments/:tournamentKey/matchups")
 @UseGuards(JwtAuthGuard)
 export class ExternalMatchupController {
   constructor(
@@ -25,47 +26,49 @@ export class ExternalMatchupController {
 
   @Get()
   async getExternalMatchups(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
   ) {
-    return this.externalmatchupService.getExternalMatchups(tournamentId, sub);
+    const matchups = await this.externalmatchupService.getExternalMatchups(
+      tournamentKey,
+      sub,
+    );
+    return matchups.map(ExternalMatchupMapper.toClientPayload);
   }
 
   @Post()
   async createExternalMatchup(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
     @Body() body: ExternalMatchupDto,
   ) {
     await this.externalmatchupService.createExternalMatchup(
-      tournamentId,
+      tournamentKey,
       sub,
       body,
     );
     return { message: "ExternalMatchup Added" };
   }
 
-  @Get(":externalmatchupId")
+  @Get(":matchupId")
   async getExternalMatchup(
-    @Param("tournamentId") tournamentId: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
-    return this.externalmatchupService.getExternalMatchup(
-      tournamentId,
-      externalmatchupId,
-      sub,
-    );
+    const matchup =
+      await this.externalmatchupService.getExternalMatchup(matchupId);
+    return ExternalMatchupMapper.toClientPayload(matchup);
   }
 
   @Get(":externalmatchupId/opponent")
   async getExternalMatchupOpponent(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Param("externalmatchupId") externalmatchupId: string,
     @User() sub: string,
   ) {
     return this.externalmatchupService.getExternalMatchupOpponent(
-      tournamentId,
+      tournamentKey,
       externalmatchupId,
       sub,
     );
@@ -73,12 +76,12 @@ export class ExternalMatchupController {
 
   @Patch(":externalmatchupId/opponent")
   async updateExternalMatchupOpponent(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Param("externalmatchupId") externalmatchupId: string,
     @User() sub: string,
     @Body() body: ExternalMatchupDto,
   ) {
-    const updatedExternalMatchup =
+    const updatedMatchup =
       await this.externalmatchupService.updateExternalMatchupOpponent(
         externalmatchupId,
         sub,
@@ -86,30 +89,46 @@ export class ExternalMatchupController {
       );
     return {
       message: "ExternalMatchup Updated",
-      draft: updatedExternalMatchup,
+      draft: ExternalMatchupMapper.toClientPayload(updatedMatchup),
     };
   }
 
   @Patch(":externalmatchupId/score")
   async updateExternalMatchupScore(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Param("externalmatchupId") externalmatchupId: string,
     @User() sub: string,
     @Body() body: ScorePatchDto,
-  ) {}
+  ) {
+    await this.externalmatchupService.updateExternalMatchupScore(
+      externalmatchupId,
+      body,
+    );
+    return { message: "Score Updated" };
+  }
 
   @Get(":externalmatchupId/schedule")
   async getExternalMatchupSchedule(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Param("externalmatchupId") externalmatchupId: string,
     @User() sub: string,
-  ) {}
+  ) {
+    return this.externalmatchupService.getExternalMatchupSchedule(
+      externalmatchupId,
+    );
+  }
 
   @Patch(":externalmatchupId/schedule")
   async updateExternalMatchupSchedule(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Param("externalmatchupId") externalmatchupId: string,
     @User() sub: string,
     @Body() body: SchedulePatchDto,
-  ) {}
+  ) {
+    await this.externalmatchupService.updateExternalMatchupSchedule(
+      externalmatchupId,
+      body,
+    );
+    return { message: "Schedule Updated" };
+  }
 }

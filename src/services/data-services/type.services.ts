@@ -1,5 +1,5 @@
 import { TypeName } from "@pkmn/data";
-import { Ruleset } from "../../data/rulesets";
+import { Ruleset } from "../../core/data/rulesets/rulesets";
 
 export function typeWeak(
   types: [TypeName] | [TypeName, TypeName],

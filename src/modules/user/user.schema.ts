@@ -23,7 +23,7 @@ export class UserSettingsEntity {
 export const UserSettingsSchema =
   SchemaFactory.createForClass(UserSettingsEntity);
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: "users" })
 export class UserEntity {
   @Prop({ type: String, required: true, trim: true })
   auth0Sub!: string;

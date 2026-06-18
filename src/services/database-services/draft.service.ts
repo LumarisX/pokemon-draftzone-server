@@ -1,7 +1,7 @@
 import { ID, toID } from "@pkmn/data";
 import { LRUCache } from "lru-cache";
 import { ClientSession, Types } from "mongoose";
-import { Ruleset } from "../../data/rulesets";
+import { Ruleset } from "../../core/data/rulesets/rulesets";
 import {
   DraftData,
   DraftDocument,

@@ -1,6 +1,6 @@
 import { HydratedDocument, model, Schema } from "mongoose";
-import { FormatId } from "../../data/formats";
-import { RulesetId } from "../../data/rulesets";
+import { FormatId } from "../../core/data/formats/formats";
+import { RulesetId } from "../../core/data/rulesets/rulesets";
 import { PokemonData, pokemonSchema } from "../pokemon.schema";
 
 export const DraftSchema = new Schema<DraftData>(

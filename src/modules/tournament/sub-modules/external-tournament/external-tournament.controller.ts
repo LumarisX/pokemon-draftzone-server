@@ -13,15 +13,20 @@ import {
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { ExternalTournamentDto } from "./external-tournament.dto";
 import { ExternalTournamentService } from "./external-tournament.service";
+import { ExternalTournamentMapper } from "./external-tournament.mapper";
 
-@Controller("tournaments/external")
+@Controller("external/tournaments")
 @UseGuards(JwtAuthGuard)
 export class ExternalTournamentController {
   constructor(private readonly tournamentService: ExternalTournamentService) {}
 
   @Get()
   async getTournaments(@User() sub: string) {
-    return this.tournamentService.getTournaments(sub);
+    const tournaments = await this.tournamentService.getTournaments(sub);
+    return {
+      drafts: tournaments.map(ExternalTournamentMapper.toClientPayload),
+      tournaments: [],
+    };
   }
 
   @Post()
@@ -30,45 +35,51 @@ export class ExternalTournamentController {
     @Body() body: ExternalTournamentDto,
     @User() sub: string,
   ) {
-    return this.tournamentService.createTournament(body, sub);
+    const tournament = ExternalTournamentMapper.fromForm(body, sub);
+    return this.tournamentService.createTournament(tournament);
   }
 
-  @Get(":tournamentId")
+  @Get(":tournamentKey")
   async getTournament(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
   ) {
-    return this.tournamentService.getTournament(tournamentId, sub);
+    const tournament = await this.tournamentService.getTournament(
+      tournamentKey,
+      sub,
+    );
+    return ExternalTournamentMapper.toClientPayload(tournament);
   }
 
-  @Patch(":tournamentId")
+  @Patch(":tournamentKey")
   async updateTournament(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @Body() body: ExternalTournamentDto,
     @User() sub: string,
   ) {
+    const tournament = ExternalTournamentMapper.fromForm(body, sub);
     const updated = await this.tournamentService.updateTournament(
-      tournamentId,
+      tournamentKey,
       sub,
-      body,
+      tournament,
     );
     return { message: "Tournament updated", tournament: updated };
   }
 
-  @Delete(":tournamentId")
+  @Delete(":tournamentKey")
   async deleteTournament(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
   ) {
-    await this.tournamentService.deleteTournament(tournamentId, sub);
+    await this.tournamentService.deleteTournament(tournamentKey, sub);
     return { message: "Tournament deleted" };
   }
 
-  @Get(":tournamentId/stats")
+  @Get(":tournamentKey/stats")
   async getStats(
-    @Param("tournamentId") tournamentId: string,
+    @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
   ) {
-    return await this.tournamentService.getTournamentStats(tournamentId, sub);
+    return await this.tournamentService.getTournamentStats(tournamentKey, sub);
   }
 }

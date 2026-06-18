@@ -12,7 +12,7 @@ import { logger } from "../app";
 import { LeagueAd } from "../classes/league-ad";
 import { PopulatedLeagueMatchup } from "../classes/matchup";
 import { DraftSpecie } from "../classes/pokemon";
-import { getRuleset } from "../data/rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import {
   client,
   findDiscordMemberInIndex,

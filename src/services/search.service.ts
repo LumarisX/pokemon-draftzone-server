@@ -1,6 +1,6 @@
 import { ID } from "@pkmn/data";
 import { DraftSpecie, Pokemon } from "../classes/pokemon";
-import { getRuleset } from "../data/rulesets";
+import { getRuleset } from "../core/data/rulesets/rulesets";
 import { LRUCache } from "lru-cache";
 
 type Token = { type: string; value: string };
@@ -23,7 +23,7 @@ const cache = new LRUCache({
 
 export async function searchPokemon(
   query: string,
-  rulesetId: string = "Gen9 NatDex"
+  rulesetId: string = "Gen9 NatDex",
 ) {
   const cacheKey = `${rulesetId}:${query}`;
   if (cache.has(cacheKey)) {
@@ -56,7 +56,7 @@ export async function searchPokemon(
         },
         await evaluate(ast, pokemon),
       ];
-    })
+    }),
   );
   let filteredResults = searchResults
     .filter((result) => result[1])
@@ -147,7 +147,7 @@ function parse(tokens: Token[]): ASTNode {
 
 async function evaluate(
   node: ASTNode | undefined,
-  pokemon: DraftSpecie
+  pokemon: DraftSpecie,
 ): Promise<boolean> {
   if (node) {
     const tiers = [
@@ -219,7 +219,7 @@ async function evaluate(
             break;
           case "coverage":
             leftValue = Object.keys(
-              (await pokemon.ruleset.learnsets.learnable(pokemon.id)) || {}
+              (await pokemon.ruleset.learnsets.learnable(pokemon.id)) || {},
             )
               .map((moveid) => pokemon.ruleset.dex.moves.getByID(moveid as ID))
               .filter((move) => move.category != "Status")
@@ -228,7 +228,7 @@ async function evaluate(
                   coverage.includes(move.type)
                     ? coverage
                     : [...coverage, move.type],
-                []
+                [],
               );
             break;
           case "learns":
@@ -331,12 +331,12 @@ async function evaluate(
             case "includes":
             case "∈":
               return leftValue.some(
-                (value) => value.toLowerCase() === rightValue.toLowerCase()
+                (value) => value.toLowerCase() === rightValue.toLowerCase(),
               );
             case "!includes":
             case "∉":
               return !leftValue.some(
-                (value) => value.toLowerCase() === rightValue.toLowerCase()
+                (value) => value.toLowerCase() === rightValue.toLowerCase(),
               );
             case "=":
               return leftValue == rightValue;
@@ -344,7 +344,7 @@ async function evaluate(
               return leftValue != rightValue;
             default:
               console.log(
-                `Parsing error: invalid array binary operator "${node.operator}"`
+                `Parsing error: invalid array binary operator "${node.operator}"`,
               );
           }
         } else {
@@ -372,7 +372,7 @@ async function evaluate(
 
             default:
               console.log(
-                `Parsing error: invalid string binary operator "${node.operator}"`
+                `Parsing error: invalid string binary operator "${node.operator}"`,
               );
           }
         }

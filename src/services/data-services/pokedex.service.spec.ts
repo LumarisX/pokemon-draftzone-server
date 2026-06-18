@@ -1,4 +1,4 @@
-import { getRuleset } from "../../data/rulesets";
+import { getRuleset } from "../../core/data/rulesets/rulesets";
 import { getName, getRandom } from "./pokedex.service";
 
 jest.mock("../../data/rulesets", () => ({

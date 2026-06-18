@@ -1,13 +1,18 @@
 import { PokemonSchema, PokemonData } from "@modules/pokemon/pokemon.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
+import { ExternalTournamentEntity } from "../external-tournament.schema";
 
 export type ExternalMatchupDocument = HydratedDocument<ExternalMatchupEntity>;
 
 @Schema({ _id: false })
 export class MatchupTeamReferenceEntity {
-  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
-  _id!: Types.ObjectId;
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    required: true,
+    ref: ExternalTournamentEntity.name,
+  })
+  _id!: Types.ObjectId | ExternalTournamentEntity;
 
   @Prop({ type: String })
   paste?: string;

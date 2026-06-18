@@ -1,6 +1,6 @@
 import { Specie, SpeciesName, TypeName } from "@pkmn/data";
-import { Format } from "../../data/formats";
-import { getRuleset, Ruleset } from "../../data/rulesets";
+import { Format } from "../../core/data/formats/formats";
+import { getRuleset, Ruleset } from "../../core/data/rulesets/rulesets";
 
 const SINGLES_TIER_HIERARCHY = [
   "AG",
