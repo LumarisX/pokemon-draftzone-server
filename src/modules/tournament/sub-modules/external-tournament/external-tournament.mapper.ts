@@ -7,7 +7,7 @@ import {
   ExternalTournamentDocument,
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
-import { ExternalMatchup } from "./external-matchup/external-matchup.domain";
+import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 
 export class ExternalTournamentMapper {
   static toDatabasePayload(
@@ -33,7 +33,6 @@ export class ExternalTournamentMapper {
       teamName: tournament.teamName,
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
-      score: tournament.calculateScore(),
       doc: tournament.doc,
       team: tournament.team.map((pokemon) => pokemon.toClient()),
     };

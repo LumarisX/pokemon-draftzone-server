@@ -1,10 +1,9 @@
-import { getRuleset } from "@core/data/rulesets/rulesets";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import mongoose, { ClientSession, Model, Types } from "mongoose";
 import { ErrorCodes } from "../../../../errors/error-codes";
-import { ExternalMatchupMapper } from "./external-matchup/external-matchup.mapper";
-import { ExternalMatchupDocument } from "./external-matchup/external-matchup.schema";
+import { ExternalMatchupMapper } from "../../../matchup/sub-modules/external-matchup/external-matchup.mapper";
+import { ExternalMatchupDocument } from "../../../matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentMapper } from "./external-tournament.mapper";
 import {
@@ -27,9 +26,8 @@ export class ExternalTournamentRepository {
       .exec();
 
     return tournamentDocs.map((doc) => {
-      const ruleset = getRuleset(doc.ruleset);
       const matchups = doc.matchups.map((matchup) =>
-        ExternalMatchupMapper.fromDatabase(matchup, ruleset),
+        ExternalMatchupMapper.fromDatabase(matchup, doc),
       );
 
       return ExternalTournamentMapper.fromDatabase(doc, matchups);
@@ -45,9 +43,8 @@ export class ExternalTournamentRepository {
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
     if (!tournamentDoc) throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
-    const ruleset = getRuleset(tournamentDoc.ruleset);
     const matchups = tournamentDoc.matchups.map((matchup) =>
-      ExternalMatchupMapper.fromDatabase(matchup, ruleset),
+      ExternalMatchupMapper.fromDatabase(matchup, tournamentDoc),
     );
     return ExternalTournamentMapper.fromDatabase(tournamentDoc, matchups);
   }
@@ -58,9 +55,8 @@ export class ExternalTournamentRepository {
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
     if (!tournamentDoc) throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
-    const ruleset = getRuleset(tournamentDoc.ruleset);
     const matchups = tournamentDoc.matchups.map((matchup) =>
-      ExternalMatchupMapper.fromDatabase(matchup, ruleset),
+      ExternalMatchupMapper.fromDatabase(matchup, tournamentDoc),
     );
     return ExternalTournamentMapper.fromDatabase(tournamentDoc, matchups);
   }

@@ -17,14 +17,26 @@ import {
 import { ExternalMatchupService } from "./external-matchup.service";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 
-@Controller("external/tournaments/:tournamentKey/matchups")
+@Controller("external/tournaments/:tournamentKey")
 @UseGuards(JwtAuthGuard)
 export class ExternalMatchupController {
   constructor(
     private readonly externalmatchupService: ExternalMatchupService,
   ) {}
 
-  @Get()
+  @Get("score")
+  async getScore(
+    @Param("tournamentKey") tournamentKey: string,
+    @User() sub: string,
+  ) {
+    const matchups = await this.externalmatchupService.getExternalMatchups(
+      tournamentKey,
+      sub,
+    );
+    return matchups.map(ExternalMatchupMapper.toClientPayload);
+  }
+
+  @Get("matchups")
   async getExternalMatchups(
     @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
@@ -36,7 +48,7 @@ export class ExternalMatchupController {
     return matchups.map(ExternalMatchupMapper.toClientPayload);
   }
 
-  @Post()
+  @Post("matchups")
   async createExternalMatchup(
     @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
@@ -50,7 +62,7 @@ export class ExternalMatchupController {
     return { message: "ExternalMatchup Added" };
   }
 
-  @Get(":matchupId")
+  @Get("matchups/:matchupId")
   async getExternalMatchup(
     @Param("tournamentKey") tournamentKey: string,
     @Param("matchupId") matchupId: string,
@@ -61,29 +73,29 @@ export class ExternalMatchupController {
     return ExternalMatchupMapper.toClientPayload(matchup);
   }
 
-  @Get(":externalmatchupId/opponent")
+  @Get("matchups/:matchupId/opponent")
   async getExternalMatchupOpponent(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
     return this.externalmatchupService.getExternalMatchupOpponent(
       tournamentKey,
-      externalmatchupId,
+      matchupId,
       sub,
     );
   }
 
-  @Patch(":externalmatchupId/opponent")
+  @Patch("matchups/:matchupId/opponent")
   async updateExternalMatchupOpponent(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: ExternalMatchupDto,
   ) {
     const updatedMatchup =
       await this.externalmatchupService.updateExternalMatchupOpponent(
-        externalmatchupId,
+        matchupId,
         sub,
         body,
       );
@@ -93,40 +105,38 @@ export class ExternalMatchupController {
     };
   }
 
-  @Patch(":externalmatchupId/score")
+  @Patch("matchups/:matchupId/score")
   async updateExternalMatchupScore(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: ScorePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupScore(
-      externalmatchupId,
+      matchupId,
       body,
     );
     return { message: "Score Updated" };
   }
 
-  @Get(":externalmatchupId/schedule")
+  @Get("matchups/:matchupId/schedule")
   async getExternalMatchupSchedule(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
-    return this.externalmatchupService.getExternalMatchupSchedule(
-      externalmatchupId,
-    );
+    return this.externalmatchupService.getExternalMatchupSchedule(matchupId);
   }
 
-  @Patch(":externalmatchupId/schedule")
+  @Patch("matchups/:matchupId/schedule")
   async updateExternalMatchupSchedule(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") externalmatchupId: string,
+    @Param("externalmatchupId") matchupId: string,
     @User() sub: string,
     @Body() body: SchedulePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupSchedule(
-      externalmatchupId,
+      matchupId,
       body,
     );
     return { message: "Schedule Updated" };

@@ -1,12 +1,6 @@
 import { PokemonModule } from "@modules/pokemon/pokemon.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ExternalMatchupController } from "./external-matchup/external-matchup.controller";
-import {
-  ExternalMatchupEntity,
-  ExternalMatchupSchema,
-} from "./external-matchup/external-matchup.schema";
-import { ExternalMatchupService } from "./external-matchup/external-matchup.service";
 import { ExternalTournamentController } from "./external-tournament.controller";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
 import {
@@ -14,23 +8,16 @@ import {
   ExternalTournamentSchema,
 } from "./external-tournament.schema";
 import { ExternalTournamentService } from "./external-tournament.service";
-import { ExternalMatchupRepository } from "./external-matchup/external-matchup.repository";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: ExternalTournamentEntity.name, schema: ExternalTournamentSchema },
-      { name: ExternalMatchupEntity.name, schema: ExternalMatchupSchema },
     ]),
     PokemonModule,
   ],
-  controllers: [ExternalTournamentController, ExternalMatchupController],
-  providers: [
-    ExternalTournamentService,
-    ExternalTournamentRepository,
-    ExternalMatchupService,
-    ExternalMatchupRepository,
-  ],
-  exports: [ExternalTournamentRepository, ExternalMatchupRepository],
+  controllers: [ExternalTournamentController],
+  providers: [ExternalTournamentService, ExternalTournamentRepository],
+  exports: [ExternalTournamentRepository],
 })
 export class ExternalTournamentModule {}

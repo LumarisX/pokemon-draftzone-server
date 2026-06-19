@@ -8,6 +8,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
+import { MatchupModule } from "@modules/matchup/matchup.module";
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module"
     }),
 
     TournamentModule,
+    MatchupModule,
     TournamentAdModule,
     AuthModule,
     UserModule,
