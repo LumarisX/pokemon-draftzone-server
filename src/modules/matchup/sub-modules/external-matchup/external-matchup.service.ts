@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { ErrorCodes } from "../../../../../errors/error-codes";
+import { ErrorCodes } from "../../../../errors/error-codes";
 import { ExternalMatchup } from "./external-matchup.domain";
 import {
   ExternalMatchupDto,
@@ -8,7 +8,10 @@ import {
 } from "./external-matchup.dto";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
-import { ExternalTournamentRepository } from "../external-tournament.repository";
+import { ExternalTournamentRepository } from "../../../tournament/sub-modules/external-tournament/external-tournament.repository";
+import { DraftSpecie } from "../../../../classes/pokemon";
+import { TournamentScore } from "../../../tournament/sub-modules/external-tournament/external-tournament.domain";
+import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 
 @Injectable()
 export class ExternalMatchupService {
@@ -16,6 +19,18 @@ export class ExternalMatchupService {
     private readonly matchupRepo: ExternalMatchupRepository,
     private readonly tournamentRepo: ExternalTournamentRepository,
   ) {}
+
+  async getScore(
+    tournamentKey: string,
+    owner: string,
+  ): Promise<TournamentScore> {
+    const tournament = await this.tournamentRepo.findByKeyAndOwner(
+      tournamentKey,
+      owner,
+    );
+    const matchups = await this.matchupRepo.findByTournamentId(tournament._id!);
+    return this.calculateScore(matchups);
+  }
 
   async getExternalMatchups(
     tournamentKey: string,
@@ -39,15 +54,20 @@ export class ExternalMatchupService {
     );
     if (!tournament._id)
       throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
-    const matchup = ExternalMatchupMapper.fromForm(dto, tournament.ruleset);
     const payload = {
-      ...ExternalMatchupMapper.toDatabasePayload(matchup),
       aTeam: { _id: tournament._id },
+      bTeam: {
+        teamName: dto.teamName,
+        coach: dto.coach ?? undefined,
+        team: dto.team
+          .filter((p) => p.id)
+          .map((p) => new DraftSpecie(p, tournament.ruleset).toData()),
+      },
+      stage: dto.stage,
       matches: [],
     };
     await this.matchupRepo.create(payload);
   }
-
   async getExternalMatchup(
     externalmatchupId: string,
   ): Promise<ExternalMatchup> {
@@ -69,7 +89,7 @@ export class ExternalMatchupService {
     dto: ExternalMatchupDto,
   ): Promise<ExternalMatchup> {
     const existing = await this.matchupRepo.findById(externalmatchupId);
-    const updated = ExternalMatchupMapper.fromForm(dto, existing.ruleset);
+    const updated = ExternalMatchupMapper.fromForm(dto, existing);
     await this.matchupRepo.update(
       externalmatchupId,
       ExternalMatchupMapper.toDatabasePayload(updated),
@@ -83,7 +103,7 @@ export class ExternalMatchupService {
   ): Promise<void> {
     await this.matchupRepo.updateScore(
       externalmatchupId,
-      dto.matches as any,
+      dto.matches.map(MatchMapper.fromForm),
       dto.aTeamPaste,
       dto.bTeamPaste,
     );
@@ -92,8 +112,8 @@ export class ExternalMatchupService {
   async getExternalMatchupSchedule(externalmatchupId: string) {
     const matchup = await this.matchupRepo.findById(externalmatchupId);
     return {
-      gameTime: (matchup as any).gameTime,
-      reminder: (matchup as any).reminder,
+      gameTime: matchup.gameTime,
+      reminder: undefined,
     };
   }
 
@@ -105,5 +125,45 @@ export class ExternalMatchupService {
       gameTime: dto.dateTime,
       reminder: dto.emailTime,
     });
+  }
+
+  private calculateScore(matchups: ExternalMatchup[]): TournamentScore {
+    let wins = 0;
+    let losses = 0;
+    let netDiff = 0;
+
+    for (const matchup of matchups) {
+      if (!matchup.matches || matchup.matches.length === 0) continue;
+
+      if (matchup.matches.length > 1) {
+        let seriesWins = 0;
+        let seriesLosses = 0;
+
+        for (const match of matchup.matches) {
+          if (match.winner === "a") seriesWins++;
+          if (match.winner === "b") seriesLosses++;
+        }
+
+        if (seriesWins > seriesLosses) wins++;
+        else if (seriesLosses > seriesWins) losses++;
+
+        netDiff += seriesWins - seriesLosses;
+      } else {
+        const singleMatch = matchup.matches[0];
+        const scoreA = singleMatch.aTeam?.score ?? 0;
+        const scoreB = singleMatch.bTeam?.score ?? 0;
+
+        if (scoreA > scoreB) wins++;
+        else if (scoreA < scoreB) losses++;
+
+        netDiff += scoreA - scoreB;
+      }
+    }
+
+    return {
+      wins,
+      losses,
+      diff: `${netDiff >= 0 ? "+" : ""}${netDiff}`,
+    };
   }
 }

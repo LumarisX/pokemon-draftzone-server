@@ -2,7 +2,7 @@ import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
 import { ClientSession } from "mongoose";
-import { ExternalMatchup } from "./external-matchup/external-matchup.domain";
+import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
 

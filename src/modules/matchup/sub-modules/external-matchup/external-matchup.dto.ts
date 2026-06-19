@@ -12,6 +12,7 @@ import {
   ValidationOptions,
   IsIn,
 } from "class-validator";
+import { ExternalMatchDto } from "./external-matchup-match/external-matchup-match.dto";
 
 export type MatchStatData = [
   string,
@@ -68,34 +69,6 @@ export class MatchStatPropertiesDto {
   brought?: number;
 }
 
-export class TeamStatDataDto {
-  @IsMatchStatTuple()
-  stats!: MatchStatData[];
-
-  @IsNumber()
-  score!: number;
-}
-
-export class MatchDto {
-  @ValidateNested()
-  @Type(() => TeamStatDataDto)
-  aTeam!: TeamStatDataDto;
-
-  @ValidateNested()
-  @IsOptional()
-  @Type(() => TeamStatDataDto)
-  bTeam?: TeamStatDataDto;
-
-  @IsString()
-  @MinLength(1)
-  @IsOptional()
-  replay?: string;
-
-  @IsIn(["a", "b"])
-  @IsOptional()
-  winner?: "a" | "b";
-}
-
 export class ExternalMatchupDto {
   @IsString()
   @MinLength(1)
@@ -113,61 +86,13 @@ export class ExternalMatchupDto {
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => MatchDto)
-  matches!: MatchDto[];
+  @Type(() => ExternalMatchDto)
+  matches!: ExternalMatchDto[];
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PokemonDto)
   team!: PokemonDto[];
-}
-
-class ScorePokemonIdDto {
-  @IsString()
-  id!: string;
-}
-
-class ScorePokemonDto {
-  @ValidateNested()
-  @Type(() => ScorePokemonIdDto)
-  pokemon!: ScorePokemonIdDto;
-
-  @IsNumber()
-  kills!: number;
-
-  @IsNumber()
-  fainted!: number;
-
-  @IsNumber()
-  indirect!: number;
-
-  @IsNumber()
-  brought!: number;
-}
-
-class ScoreTeamDto {
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => ScorePokemonDto)
-  team!: ScorePokemonDto[];
-}
-
-class ScoreMatchDto {
-  @IsString()
-  @IsOptional()
-  replay?: string | null;
-
-  @IsIn(["a", "b", ""])
-  @IsOptional()
-  winner?: "a" | "b" | "";
-
-  @ValidateNested()
-  @Type(() => ScoreTeamDto)
-  aTeam!: ScoreTeamDto;
-
-  @ValidateNested()
-  @Type(() => ScoreTeamDto)
-  bTeam!: ScoreTeamDto;
 }
 
 export class ScorePatchDto {
@@ -181,8 +106,8 @@ export class ScorePatchDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ScoreMatchDto)
-  matches!: ScoreMatchDto[];
+  @Type(() => ExternalMatchDto)
+  matches!: ExternalMatchDto[];
 }
 
 export class SchedulePatchDto {

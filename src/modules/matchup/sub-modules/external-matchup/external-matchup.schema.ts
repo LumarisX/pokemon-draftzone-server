@@ -1,7 +1,11 @@
 import { PokemonSchema, PokemonData } from "@modules/pokemon/pokemon.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
-import { ExternalTournamentEntity } from "../external-tournament.schema";
+import { ExternalTournamentEntity } from "../../../tournament/sub-modules/external-tournament/external-tournament.schema";
+import {
+  ExternalMatchEntity,
+  MatchDataSchema,
+} from "./external-matchup-match/external-matchup-match.schema";
 
 export type ExternalMatchupDocument = HydratedDocument<ExternalMatchupEntity>;
 
@@ -33,48 +37,6 @@ export class MatchupTeamFullEntity {
   paste?: string;
 }
 
-@Schema({ _id: false })
-export class PokemonStatsEntity {
-  @Prop({ type: Number })
-  indirect?: number;
-
-  @Prop({ type: Number })
-  kills?: number;
-
-  @Prop({ type: Number })
-  deaths?: number;
-
-  @Prop({ type: Number })
-  brought?: number;
-}
-const PokemonStatsSchema = SchemaFactory.createForClass(PokemonStatsEntity);
-
-@Schema({ _id: false })
-export class MatchTeamEntity {
-  @Prop({ type: [[String, PokemonStatsSchema]], required: true })
-  stats!: [string, PokemonStatsEntity][];
-
-  @Prop({ type: Number, default: 0 })
-  score!: number;
-}
-const MatchTeamSchema = SchemaFactory.createForClass(MatchTeamEntity);
-
-@Schema({ _id: false })
-export class MatchDataEntity {
-  @Prop({ type: MatchTeamSchema, required: true })
-  aTeam!: MatchTeamEntity;
-
-  @Prop({ type: MatchTeamSchema, required: true })
-  bTeam!: MatchTeamEntity;
-
-  @Prop({ type: String })
-  replay?: string;
-
-  @Prop({ type: String })
-  winner?: "a" | "b";
-}
-const MatchDataSchema = SchemaFactory.createForClass(MatchDataEntity);
-
 @Schema({
   timestamps: true,
   collection: "matchups",
@@ -99,7 +61,7 @@ export class ExternalMatchupEntity {
   notes?: string;
 
   @Prop({ type: [MatchDataSchema], required: true })
-  matches!: MatchDataEntity[];
+  matches!: ExternalMatchEntity[];
 }
 
 export const ExternalMatchupSchema = SchemaFactory.createForClass(
