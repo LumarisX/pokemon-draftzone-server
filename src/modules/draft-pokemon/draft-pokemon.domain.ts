@@ -1,3 +1,8 @@
+import { Ruleset } from "@core/data/rulesets/rulesets";
+import {
+  CoverageMove,
+  FullCoverageMove,
+} from "@modules/matchup/domain/coverage";
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
@@ -17,22 +22,15 @@ import {
   StatsTable,
   Tier,
 } from "@pkmn/dex-types";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { Ruleset } from "@core/data/rulesets/rulesets";
-import {
-  CoverageMove,
-  FullCoverageMove,
-} from "@modules/matchup/domain/coverage";
 import { DraftMove } from "../../classes/move";
 import { getBST, getCST } from "../../classes/specieUtil";
 import { abilityModifiers } from "../../data/pokedex/abilities";
-import { ErrorCodes } from "../../errors/error-codes";
-import { PDZError } from "../../errors/pdz-error";
 import { getEffectivePower } from "../../services/data-services/move.service";
 import { typeWeak } from "../../services/data-services/type.services";
-import { PokemonData } from "./pokemon.schema";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 
-export type PokemonOptions = {
+export type DraftOptions = {
   shiny?: boolean;
   nickname?: string;
   draftFormes?: ID[];
@@ -47,7 +45,7 @@ export type PokemonOptions = {
   };
 };
 
-export type Pokemon = PokemonOptions & {
+export type Pokemon = {
   id: ID;
   name: string;
 };
@@ -71,7 +69,7 @@ type FullCoverage = {
   special: { [key: string]: FullCoverageMove[] };
 };
 
-export class DraftSpecie implements Specie, Pokemon {
+export class DraftPokemon implements Specie, Pokemon, DraftOptions {
   effectType!: "Pokemon";
   kind!: "Species";
   baseSpecies!: SpeciesName;
@@ -146,7 +144,7 @@ export class DraftSpecie implements Specie, Pokemon {
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
   constructor(
-    pokemonData: ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions),
+    pokemonData: ID | ({ id: string } & DraftOptions) | (Specie & DraftOptions),
     ruleset: Ruleset,
   ) {
     if (typeof pokemonData === "string") pokemonData = { id: pokemonData };
@@ -179,9 +177,7 @@ export class DraftSpecie implements Specie, Pokemon {
       moves: pokemonData.modifiers?.moves,
       abilities: pokemonData.modifiers?.abilities,
     };
-    this.draftFormes = pokemonData.draftFormes?.map((specie) =>
-      typeof specie === "string" ? specie : specie.id,
-    );
+    this.draftFormes = pokemonData.draftFormes;
     this.toString = specie.toString;
     this.toJSON = specie.toJSON;
     this.shiny = pokemonData.shiny;
@@ -213,47 +209,6 @@ export class DraftSpecie implements Specie, Pokemon {
                 ? this.baseSpecies
                 : this.name),
           ) ?? 0);
-  }
-
-  toClient(): PokemonDto {
-    const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
-    const ZTYPES = TYPES.filter((name) => name !== "Stellar");
-    const capt = {
-      tera: this.capt?.tera
-        ? this.capt.tera.length
-          ? this.capt.tera
-          : [...TYPES]
-        : undefined,
-      z: this.capt?.z
-        ? this.capt.z.length
-          ? this.capt.z
-          : [...ZTYPES]
-        : undefined,
-      dmax: this.capt?.dmax,
-    };
-    return {
-      id: this.id,
-      name: this.name,
-      nickname: this.nickname,
-      shiny: this.shiny,
-      draftFormes: this.draftFormes?.map((pokemon) => {
-        const specie = this.ruleset.species.get(pokemon)!;
-        return { id: specie.id, name: specie.name };
-      }),
-      modifiers: this.modifiers,
-      capt: Object.values(capt).length ? capt : undefined,
-    };
-  }
-
-  toData(): PokemonData {
-    return {
-      id: this.id,
-      nickname: this.nickname,
-      shiny: this.shiny,
-      draftFormes: this.draftFormes,
-      modifiers: this.modifiers,
-      capt: this.capt,
-    };
   }
 
   async toTeambuilder() {
@@ -560,7 +515,7 @@ export class DraftSpecie implements Specie, Pokemon {
     return finalCoverage;
   }
 
-  async bestCoverage(oppTeam: DraftSpecie[]) {
+  async bestCoverage(oppTeam: DraftPokemon[]) {
     const coverage = await this.coverage();
     const recommendedCoverage: Coverage = JSON.parse(JSON.stringify(coverage));
     const allMoves = [
@@ -652,20 +607,5 @@ export class DraftSpecie implements Specie, Pokemon {
     if (this.id === "smeargle") return true;
     let moveID = toID(moveString);
     return (await this.learnset()).some((move) => move.id === moveID);
-  }
-
-  static getTeam(
-    team: (ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions))[],
-    ruleset: Ruleset,
-  ) {
-    const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
-      try {
-        acc.push(new DraftSpecie(pokemon, ruleset));
-      } catch (e) {
-        // ignore pokemon that throws error
-      }
-      return acc;
-    }, []);
-    return specieTeam;
   }
 }

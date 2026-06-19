@@ -1,19 +1,17 @@
-import { Format, FormatId } from "@core/data/formats/formats";
-import { Ruleset, RulesetId } from "@core/data/rulesets/rulesets";
-import { coveragechart, Coveragechart } from "@modules/matchup/domain/coverage";
-import { movechart, Movechart } from "@modules/matchup/domain/movechart";
-import { Speedchart, speedchart } from "@modules/matchup/domain/speedchart";
+import { Format } from "@core/data/formats/formats";
+import { Ruleset } from "@core/data/rulesets/rulesets";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { getTeamCoverage } from "@modules/matchup/domain/coverage";
+import { getTeamMoves } from "@modules/matchup/domain/movechart";
+import { speedchart } from "@modules/matchup/domain/speedchart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
-import { generateTeamTypechart } from "@modules/matchup/domain/typechart";
-import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { StatsTable, TypeName } from "@pkmn/data";
+import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { Types } from "mongoose";
 import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
 
 export interface MatchupSide {
-  id: Types.ObjectId;
-  team: DraftSpecie[];
+  id?: Types.ObjectId;
+  team: DraftPokemon[];
   teamName: string;
   coach?: string;
   owner?: string;
@@ -27,21 +25,21 @@ export class ExternalMatchup {
   aTeam: MatchupSide;
   bTeam: MatchupSide;
   matches: ExternalMatch[];
-  stage: string;
+  stage?: string;
   gameTime?: Date;
-  tournamentName: string;
+  tournamentName?: string;
   constructor(props: {
     aTeam: MatchupSide;
     bTeam: MatchupSide;
     ruleset: Ruleset;
     format: Format;
-    matches: ExternalMatch[];
-    stage: string;
-    tournamentName: string;
+    matches?: ExternalMatch[];
+    stage?: string;
+    tournamentName?: string;
   }) {
     this.ruleset = props.ruleset;
     this.format = props.format;
-    this.matches = props.matches;
+    this.matches = props.matches ?? [];
     this.stage = props.stage;
     this.tournamentName = props.tournamentName;
     this.aTeam = props.aTeam;
@@ -53,69 +51,12 @@ export class ExternalMatchup {
     const bTeam = this.aTeam.owner === sub ? this.bTeam : this.aTeam;
     const [aCoverageChart, bCoverageChart, aMoveChart, bMoveChart] =
       await Promise.all([
-        coveragechart(aTeam.team, bTeam.team),
-        coveragechart(bTeam.team, aTeam.team),
-        movechart(aTeam.team, aTeam.team[0]?.ruleset ?? this.ruleset),
-        movechart(bTeam.team, bTeam.team[0]?.ruleset ?? this.ruleset),
+        getTeamCoverage(aTeam.team, bTeam.team),
+        getTeamCoverage(bTeam.team, aTeam.team),
+        getTeamMoves(aTeam.team),
+        getTeamMoves(bTeam.team),
       ]);
-    const data: {
-      details: {
-        level: number;
-        format: FormatId;
-        ruleset: RulesetId;
-        gameTime?: Date;
-        stage?: string;
-        leagueName?: string;
-      };
-      summary: {
-        teamName?: string;
-        coach?: string;
-        team: (PokemonDto & {
-          abilities: string[];
-          baseStats: StatsTable;
-          types: [TypeName] | [TypeName, TypeName];
-          index: number;
-        })[];
-        stats?: {
-          mean: {
-            hp?: number;
-            atk?: number;
-            def?: number;
-            spa?: number;
-            spd?: number;
-            spe?: number;
-          };
-          median: {
-            hp?: number;
-            atk?: number;
-            def?: number;
-            spa?: number;
-            spd?: number;
-            spe?: number;
-          };
-          max: {
-            hp?: number;
-            atk?: number;
-            def?: number;
-            spa?: number;
-            spd?: number;
-            spe?: number;
-          };
-        };
-      }[];
-      speedchart: Speedchart;
-      coveragechart: Coveragechart[];
-      typechart: {
-        team: (PokemonDto & {
-          weak: { [key: string]: number }[];
-        })[];
-        teraTypes: {
-          [key: string]: {};
-        };
-      }[];
-      movechart: Movechart[];
-      notes?: string;
-    } = {
+    const data = {
       details: {
         level: this.format.level,
         format: this.format.name,
@@ -130,10 +71,7 @@ export class ExternalMatchup {
       ],
       speedchart: speedchart([aTeam.team, bTeam.team], this.format.level),
       coveragechart: [aCoverageChart, bCoverageChart],
-      typechart: [
-        generateTeamTypechart(aTeam.team),
-        generateTeamTypechart(bTeam.team),
-      ],
+      typechart: [getTeamTypechart(aTeam.team), getTeamTypechart(bTeam.team)],
       movechart: [aMoveChart, bMoveChart],
       notes:
         sub && sub === aTeam.owner

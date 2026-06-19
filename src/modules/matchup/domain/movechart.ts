@@ -1,25 +1,8 @@
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { TypeName } from "@pkmn/data";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
 import { DraftMove } from "../../../classes/move";
-import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
-import { Ruleset } from "@core/data/rulesets/rulesets";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 
-export type Movechart = {
-  moves: {
-    name: string;
-    type: TypeName;
-    desc: string;
-    pokemon: string[];
-    tags: string[];
-  }[];
-  pokemon: PokemonDto[];
-  tags: ReadonlyArray<string>;
-};
-
-export async function movechart(
-  team: DraftSpecie[],
-  ruleset: Ruleset,
-): Promise<Movechart> {
+export async function getTeamMoves(team: DraftPokemon[]) {
   const combinedLearnset = new Map<
     string,
     {
@@ -47,14 +30,6 @@ export async function movechart(
     }
   }
 
-  // for (let move of ruleset.moves) {
-  //   const tags = getMoveTags(move);
-  //   if (tags.size) console.log(`${move.name}: ${Array.from(tags).join(", ")}`);
-  // }
-  // console.log();
-
-  // console.log(ruleset.moves.get("explosion"));
-
   const allTags = new Set<string>();
   const moves = Array.from(combinedLearnset.values())
     .map(({ move, pokemon }) => {
@@ -70,7 +45,7 @@ export async function movechart(
 
   return {
     moves,
-    pokemon: team.map((p) => p.toClient()),
+    pokemon: team.map(DraftPokemonMapper.toClientPayload),
     tags: Array.from(allTags).sort(),
   };
 }

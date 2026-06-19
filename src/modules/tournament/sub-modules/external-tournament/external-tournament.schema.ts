@@ -1,6 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { PokemonData, PokemonSchema } from "@modules/pokemon/pokemon.schema";
+import {
+  PokemonEntity,
+  PokemonSchema,
+} from "@modules/draft-pokemon/draft-pokemon.schema";
 import { FormatId } from "@core/data/formats/formats";
 import { RulesetId } from "@core/data/rulesets/rulesets";
 
@@ -34,7 +37,7 @@ export class ExternalTournamentEntity {
   doc?: string;
 
   @Prop({ type: [PokemonSchema], required: true })
-  team!: PokemonData[];
+  team!: PokemonEntity[];
 }
 
 export const ExternalTournamentSchema = SchemaFactory.createForClass(

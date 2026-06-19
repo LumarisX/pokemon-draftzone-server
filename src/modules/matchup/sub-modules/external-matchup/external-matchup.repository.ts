@@ -1,17 +1,17 @@
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { ErrorCodes } from "../../../../errors/error-codes";
-import { PDZError } from "../../../../errors/pdz-error";
 import { ExternalTournamentDocument } from "../../../tournament/sub-modules/external-tournament/external-tournament.schema";
+import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
+import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import {
   ExternalMatchupDocument,
   ExternalMatchupEntity,
 } from "./external-matchup.schema";
-import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
-import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 
 @Injectable()
 export class ExternalMatchupRepository {

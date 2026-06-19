@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { UserDocument, UserEntity, UserSettingsEntity } from "./user.schema";
 import { User } from "./user.domain";
 import { UserMapper } from "./user.mapper";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 
 @Injectable()
 export class UserRepository {
@@ -14,8 +16,7 @@ export class UserRepository {
 
   async getUserBySub(sub: string): Promise<User> {
     const userDoc = await this.userModel.findOne({ auth0Sub: sub }).exec();
-    if (!userDoc)
-      throw new NotFoundException(`User with sub "${sub}" not found`);
+    if (!userDoc) throw new PDZError(ErrorCodes.USER.NOT_FOUND);
     return UserMapper.fromDatabase(userDoc);
   }
 
@@ -50,8 +51,7 @@ export class UserRepository {
       )
       .exec();
 
-    if (!user)
-      throw new NotFoundException(`User with sub "${sub}" does not exist`);
+    if (!user) throw new PDZError(ErrorCodes.USER.NOT_FOUND);
     return user;
   }
 }

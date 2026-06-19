@@ -1,17 +1,18 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { ErrorCodes } from "../../../../errors/error-codes";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { Injectable } from "@nestjs/common";
+import { TournamentScore } from "../../../tournament/sub-modules/external-tournament/external-tournament.domain";
+import { ExternalTournamentRepository } from "../../../tournament/sub-modules/external-tournament/external-tournament.repository";
+import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import {
   ExternalMatchupDto,
   SchedulePatchDto,
   ScorePatchDto,
 } from "./external-matchup.dto";
-import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
-import { ExternalTournamentRepository } from "../../../tournament/sub-modules/external-tournament/external-tournament.repository";
-import { DraftSpecie } from "../../../../classes/pokemon";
-import { TournamentScore } from "../../../tournament/sub-modules/external-tournament/external-tournament.domain";
-import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
+import { ExternalMatchupMapper } from "./external-matchup.mapper";
 
 @Injectable()
 export class ExternalMatchupService {
@@ -52,8 +53,7 @@ export class ExternalMatchupService {
       tournamentId,
       owner,
     );
-    if (!tournament._id)
-      throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
+    if (!tournament._id) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
     const payload = {
       aTeam: { _id: tournament._id },
       bTeam: {
@@ -61,7 +61,11 @@ export class ExternalMatchupService {
         coach: dto.coach ?? undefined,
         team: dto.team
           .filter((p) => p.id)
-          .map((p) => new DraftSpecie(p, tournament.ruleset).toData()),
+          .map((p) =>
+            DraftPokemonMapper.toDatabasePayload(
+              DraftPokemonMapper.fromForm(p, tournament.ruleset),
+            ),
+          ),
       },
       stage: dto.stage,
       matches: [],
@@ -79,8 +83,7 @@ export class ExternalMatchupService {
     externalmatchupId: string,
     owner: string,
   ) {
-    const matchup = await this.matchupRepo.findById(externalmatchupId);
-    return ExternalMatchupMapper.toClientPayload(matchup);
+    return await this.matchupRepo.findById(externalmatchupId);
   }
 
   async updateExternalMatchupOpponent(

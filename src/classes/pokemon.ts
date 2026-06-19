@@ -19,7 +19,7 @@ import {
 } from "@pkmn/dex-types";
 import { LRUCache } from "lru-cache";
 import { abilityModifiers } from "../data/pokedex/abilities";
-import { Ruleset } from "../core/data/rulesets/rulesets";
+import { Ruleset } from "../data/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { PokemonData } from "../models/pokemon.schema";
@@ -31,7 +31,6 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { DraftMove } from "./move";
 import { getBST, getCST } from "./specieUtil";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export type PokemonOptions = {
   shiny?: boolean;
@@ -151,7 +150,10 @@ export class DraftSpecie implements Specie, Pokemon {
   toString: () => SpeciesName;
   toJSON: () => { [key: string]: any };
   constructor(
-    pokemonData: ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions),
+    pokemonData:
+      | ID
+      | (PokemonData | PokemonFormData)
+      | (Specie & PokemonOptions),
     ruleset: Ruleset,
   ) {
     if (typeof pokemonData === "string") pokemonData = { id: pokemonData };
@@ -170,12 +172,12 @@ export class DraftSpecie implements Specie, Pokemon {
       tera: pokemonData.capt?.tera
         ? pokemonData.capt.tera.length >= TYPES.length
           ? []
-          : (pokemonData.capt.tera as TypeName[])
+          : pokemonData.capt.tera
         : undefined,
       z: pokemonData.capt?.z
         ? pokemonData.capt.z.length >= ZTYPES.length
           ? []
-          : (pokemonData.capt.z as TypeName[])
+          : pokemonData.capt.z
         : undefined,
       dmax: pokemonData.capt?.dmax,
     };
@@ -220,7 +222,7 @@ export class DraftSpecie implements Specie, Pokemon {
           ) ?? 0);
   }
 
-  toClient(): PokemonDto {
+  toClient(): PokemonFormData {
     const TYPES = Array.from(this.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
     const capt = {
@@ -684,7 +686,7 @@ export class DraftSpecie implements Specie, Pokemon {
   }
 
   static getTeam(
-    team: (ID | (PokemonData | PokemonDto) | (Specie & PokemonOptions))[],
+    team: (ID | (PokemonData | PokemonFormData) | (Specie & PokemonOptions))[],
     ruleset: Ruleset,
   ) {
     const specieTeam = team.reduce((acc: DraftSpecie[], pokemon) => {
@@ -698,3 +700,21 @@ export class DraftSpecie implements Specie, Pokemon {
     return specieTeam;
   }
 }
+
+export type PokemonFormData = {
+  id: ID;
+  name: string;
+  shiny?: boolean;
+  nickname?: string;
+  draftFormes?: Pokemon[];
+  genders?: ("M" | "F")[];
+  modifiers?: {
+    abilities?: string[];
+    moves?: string[];
+  };
+  capt?: {
+    tera?: TypeName[];
+    z?: TypeName[];
+    dmax?: boolean;
+  };
+};

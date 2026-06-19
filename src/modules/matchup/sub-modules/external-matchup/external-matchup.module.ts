@@ -1,4 +1,4 @@
-import { PokemonModule } from "@modules/pokemon/pokemon.module";
+import { DraftPokemonModule } from "@modules/draft-pokemon/draft-pokemon.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ExternalTournamentModule } from "../../../tournament/sub-modules/external-tournament/external-tournament.module";
@@ -23,7 +23,7 @@ import { ExternalMatchupService } from "./external-matchup.service";
       { name: ExternalMatchupEntity.name, schema: ExternalMatchupSchema },
     ]),
     ExternalTournamentModule,
-    PokemonModule,
+    DraftPokemonModule,
   ],
   controllers: [ExternalMatchupController, ExternalMatchupBreakdownController],
   providers: [

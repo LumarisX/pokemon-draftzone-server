@@ -10,8 +10,4 @@ export class ExternalMatchupBreakdownService {
     const matchup = await this.matchupRepo.findById(matchupId);
     return matchup;
   }
-
-  async createQuickMatchup(quickData: any) {
-    throw new Error("Method not implemented.");
-  }
 }

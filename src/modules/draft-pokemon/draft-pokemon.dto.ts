@@ -36,7 +36,7 @@ export class PokemonCapt {
   dmax?: boolean;
 }
 
-export class PokemonDto {
+export class DraftPokemonDto {
   @IsString()
   id!: string;
 
@@ -53,7 +53,7 @@ export class PokemonDto {
 
   @IsArray()
   @IsOptional()
-  draftFormes?: any[];
+  draftFormes?: string[];
 
   @IsArray()
   @IsIn(["M", "F"], { each: true })

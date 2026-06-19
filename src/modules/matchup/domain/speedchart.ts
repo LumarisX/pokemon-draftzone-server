@@ -1,11 +1,12 @@
 import { ID, StatusName } from "@pkmn/data";
 import { computeStats } from "../../../../dmg/stats";
 import { State } from "../../../../dmg/state";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
+import { DraftPokemonDto } from "@modules/draft-pokemon/draft-pokemon.dto";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 
 export type Speedchart = {
-  teams: (PokemonDto & {
+  teams: (DraftPokemonDto & {
     spe: number;
     tiers: Tier[];
   })[][];
@@ -97,7 +98,7 @@ function applyScenarioSpeedEffects(
     : Math.min(speed, 10000);
 }
 
-function getSpeedTiers(pokemon: DraftSpecie, level: number) {
+function getSpeedTiers(pokemon: DraftPokemon, level: number) {
   const fastConfigurations: Configurations = {
     stages: [0],
     additional: [{ mult: 1 }],
@@ -200,7 +201,7 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
 }
 
 function buildScenarios(
-  pokemon: DraftSpecie,
+  pokemon: DraftPokemon,
   configurations: Configurations,
 ): SpeedScenario[] {
   const scenarios: SpeedScenario[] = [];
@@ -261,7 +262,7 @@ function buildScenarios(
 }
 
 function evaluateScenario(
-  pokemon: DraftSpecie,
+  pokemon: DraftPokemon,
   level: number,
   scenario: SpeedScenario,
 ): Tier | null {
@@ -301,7 +302,7 @@ function evaluateScenario(
 }
 
 function generateTiers(
-  pokemon: DraftSpecie,
+  pokemon: DraftPokemon,
   level: number,
   configurations: Configurations,
 ): Tier[] {
@@ -311,12 +312,12 @@ function generateTiers(
 }
 
 export function speedchart(
-  teamsRaw: DraftSpecie[][],
+  teamsRaw: DraftPokemon[][],
   level: number,
 ): Speedchart {
   const teams = teamsRaw.map((team) =>
     team.map((pokemon) => ({
-      ...pokemon.toClient(),
+      ...DraftPokemonMapper.toClientPayload(pokemon),
       spe: pokemon.baseStats.spe,
       tiers: getSpeedTiers(pokemon, level),
     })),

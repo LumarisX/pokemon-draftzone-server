@@ -1,8 +1,7 @@
 import { Types } from "mongoose";
-import { Ruleset } from "../core/data/rulesets/rulesets";
+import { Ruleset } from "../data/rulesets";
 import { MatchData } from "../models/draft/matchup.model";
-import { DraftSpecie } from "./pokemon";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 export class Opponent {
   constructor(
@@ -32,7 +31,7 @@ export class Opponent {
       stage: string;
       teamName: string;
       coach?: string;
-      team: PokemonDto[];
+      team: PokemonFormData[];
       matches?: MatchData[];
       _id?: string;
     },

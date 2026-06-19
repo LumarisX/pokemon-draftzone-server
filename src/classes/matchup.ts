@@ -1,7 +1,7 @@
 import { ID, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
-import { Format, FormatId, getFormat } from "../core/data/formats/formats";
-import { getRuleset, Ruleset, RulesetId } from "../core/data/rulesets/rulesets";
+import { Format, FormatId, getFormat } from "../data/formats";
+import { getRuleset, Ruleset, RulesetId } from "../data/rulesets";
 import { MatchData, MatchupData } from "../models/draft/matchup.model";
 import { LeagueCoachDocument } from "../models/league/coach.model";
 import { LeagueDivisionDocument } from "../models/league/division.model";
@@ -26,9 +26,8 @@ import { SummaryClass } from "../services/matchup-services/summary.service";
 import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
-import { DraftSpecie } from "./pokemon";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 import { LeagueTierListDocument } from "../models/league/tier-list.model";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export type MatchupTeam = {
   teamName: string;
@@ -118,7 +117,7 @@ export class Matchup {
       : -1;
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.side1.team.coach.teamName,
+        teamName: leagueMatchupDoc.side1.team.teamName,
         coach: leagueMatchupDoc.side1.team.coach.name,
         team: getRosterByStage(
           leagueMatchupDoc.side1.team,
@@ -141,7 +140,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side1.team.coach.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.side2.team.coach.teamName,
+        teamName: leagueMatchupDoc.side2.team.teamName,
         coach: leagueMatchupDoc.side2.team.coach.name,
         team: getRosterByStage(
           leagueMatchupDoc.side2.team,
@@ -191,7 +190,7 @@ export class Matchup {
       )?.name ?? "Playoffs";
     return new Matchup(
       {
-        teamName: leagueMatchupDoc.side1.team?.coach?.teamName ?? "TBD",
+        teamName: leagueMatchupDoc.side1.team?.teamName ?? "TBD",
         coach: leagueMatchupDoc.side1.team?.coach?.name,
         team:
           side1Division && leagueMatchupDoc.side1.team
@@ -211,7 +210,7 @@ export class Matchup {
         owner: leagueMatchupDoc.side1.team?.coach?.auth0Id,
       },
       {
-        teamName: leagueMatchupDoc.side2.team?.coach?.teamName ?? "TBD",
+        teamName: leagueMatchupDoc.side2.team?.teamName ?? "TBD",
         coach: leagueMatchupDoc.side2.team?.coach?.name,
         team:
           side2Division && leagueMatchupDoc.side2.team
@@ -244,11 +243,11 @@ export class Matchup {
     format: string;
     ruleset: string;
     side1: {
-      team: PokemonDto[];
+      team: PokemonFormData[];
       teamName: string;
     };
     side2: {
-      team: PokemonDto[];
+      team: PokemonFormData[];
       teamName: string;
     };
   }): Promise<Matchup> {
@@ -335,7 +334,7 @@ export class Matchup {
       summary: {
         teamName?: string;
         coach?: string;
-        team: (PokemonDto & {
+        team: (PokemonFormData & {
           abilities: string[];
           baseStats: StatsTable;
           types: [TypeName] | [TypeName, TypeName];
@@ -371,7 +370,7 @@ export class Matchup {
       speedchart: Speedchart;
       coveragechart: Coveragechart[];
       typechart: {
-        team: (PokemonDto & {
+        team: (PokemonFormData & {
           weak: { [key: string]: number }[];
         })[];
         teraTypes: {

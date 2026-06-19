@@ -79,11 +79,13 @@ export class ExternalMatchupController {
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
-    return this.externalmatchupService.getExternalMatchupOpponent(
-      tournamentKey,
-      matchupId,
-      sub,
-    );
+    const matchup =
+      await this.externalmatchupService.getExternalMatchupOpponent(
+        tournamentKey,
+        matchupId,
+        sub,
+      );
+    return ExternalMatchupMapper.toClientPayload(matchup);
   }
 
   @Patch("matchups/:matchupId/opponent")
