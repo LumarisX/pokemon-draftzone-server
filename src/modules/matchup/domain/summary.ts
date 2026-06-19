@@ -1,5 +1,5 @@
+import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
 import { StatID } from "@pkmn/data";
-import { DraftSpecie } from "../../../classes/pokemon";
 
 type StatKey = StatID | "bst" | "cst";
 

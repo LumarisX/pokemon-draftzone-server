@@ -1,14 +1,14 @@
-import { FormatId, Format } from "@core/data/formats/formats";
+import { Format, FormatId } from "@core/data/formats/formats";
 import { Ruleset, RulesetId } from "@core/data/rulesets/rulesets";
 import { coveragechart, Coveragechart } from "@modules/matchup/domain/coverage";
 import { movechart, Movechart } from "@modules/matchup/domain/movechart";
 import { Speedchart, speedchart } from "@modules/matchup/domain/speedchart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
-import { Typechart } from "@modules/matchup/domain/typechart";
+import { generateTeamTypechart } from "@modules/matchup/domain/typechart";
+import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
-import { DraftSpecie } from "../../../../classes/pokemon";
 import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
 
 export interface MatchupSide {
@@ -131,8 +131,8 @@ export class ExternalMatchup {
       speedchart: speedchart([aTeam.team, bTeam.team], this.format.level),
       coveragechart: [aCoverageChart, bCoverageChart],
       typechart: [
-        new Typechart(aTeam.team).toJson(),
-        new Typechart(bTeam.team).toJson(),
+        generateTeamTypechart(aTeam.team),
+        generateTeamTypechart(bTeam.team),
       ],
       movechart: [aMoveChart, bMoveChart],
       notes:
