@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Pokemon } from "../../classes/pokemon";
+import { Pokemon } from "./pokemon.domain";
 
 @Schema({ _id: false })
 class CaptSubEntity {
