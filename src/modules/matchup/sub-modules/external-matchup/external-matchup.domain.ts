@@ -1,23 +1,14 @@
-import { Format, FormatId } from "@core/data/formats/formats";
+import { FormatId, Format } from "@core/data/formats/formats";
 import { Ruleset, RulesetId } from "@core/data/rulesets/rulesets";
+import { coveragechart, Coveragechart } from "@modules/matchup/domain/coverage";
+import { movechart, Movechart } from "@modules/matchup/domain/movechart";
+import { Speedchart, speedchart } from "@modules/matchup/domain/speedchart";
+import { summarizeTeam } from "@modules/matchup/domain/summary";
+import { Typechart } from "@modules/matchup/domain/typechart";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { DraftSpecie } from "../../../../classes/pokemon";
-import {
-  coveragechart,
-  Coveragechart,
-} from "../../../../services/matchup-services/coverage.service";
-import {
-  movechart,
-  Movechart,
-} from "../../../../services/matchup-services/movechart.service";
-import {
-  Speedchart,
-  speedchart,
-} from "../../../../services/matchup-services/speedchart.service";
-import { SummaryClass } from "../../../../services/matchup-services/summary.service";
-import { Typechart } from "../../../../services/matchup-services/typechart.service";
 import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
 
 export interface MatchupSide {
@@ -134,8 +125,8 @@ export class ExternalMatchup {
         stage: this.stage,
       },
       summary: [
-        new SummaryClass(aTeam.team, aTeam.teamName, aTeam.coach).toJson(),
-        new SummaryClass(bTeam.team, bTeam.teamName, bTeam.coach).toJson(),
+        summarizeTeam(aTeam.team, aTeam.teamName, aTeam.coach),
+        summarizeTeam(bTeam.team, bTeam.teamName, bTeam.coach),
       ],
       speedchart: speedchart([aTeam.team, bTeam.team], this.format.level),
       coveragechart: [aCoverageChart, bCoverageChart],
