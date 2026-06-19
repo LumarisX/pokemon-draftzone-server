@@ -1,11 +1,10 @@
 import { Types } from "mongoose";
-import { Format, getFormat } from "../core/data/formats/formats";
-import { Ruleset, getRuleset } from "../core/data/rulesets/rulesets";
+import { Format, getFormat } from "../data/formats";
+import { Ruleset, getRuleset } from "../data/rulesets";
 import { DraftData } from "../models/draft/draft.model";
 import { MatchupDocument } from "../models/draft/matchup.model";
 import { getMatchupsByDraftId } from "../services/database-services/matchup.service";
-import { DraftSpecie } from "./pokemon";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { DraftSpecie, PokemonFormData } from "./pokemon";
 
 export class Draft {
   constructor(
@@ -28,7 +27,7 @@ export class Draft {
       format: string;
       ruleset: string;
       doc?: string;
-      team: PokemonDto[];
+      team: PokemonFormData[];
     },
     user_id: string,
     ruleset?: Ruleset,

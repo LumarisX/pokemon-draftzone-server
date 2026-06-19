@@ -1,6 +1,5 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { DraftSpecie } from "../../../../classes/pokemon";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentDto } from "./external-tournament.dto";
 import {
@@ -8,6 +7,8 @@ import {
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 
 export class ExternalTournamentMapper {
   static toDatabasePayload(
@@ -21,7 +22,7 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       owner: tournament.owner,
       doc: tournament.doc,
-      team: tournament.team.map((pokemon) => pokemon.toData()),
+      team: tournament.team.map(DraftPokemonMapper.toDatabasePayload),
     };
   }
 
@@ -34,7 +35,7 @@ export class ExternalTournamentMapper {
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
-      team: tournament.team.map((pokemon) => pokemon.toClient()),
+      team: tournament.team.map(DraftPokemonMapper.toClientPayload),
     };
   }
 
@@ -43,8 +44,8 @@ export class ExternalTournamentMapper {
     const ruleset = getRuleset(dto.ruleset);
     const format = getFormat(dto.format);
     const mappedTeam = dto.team
-      .filter((poke) => poke.id)
-      .map((poke) => new DraftSpecie(poke, ruleset));
+      .filter((pokemon) => pokemon.id)
+      .map((pokemon) => DraftPokemonMapper.fromForm(pokemon, ruleset));
 
     return new ExternalTournament(
       {
@@ -76,7 +77,9 @@ export class ExternalTournamentMapper {
         teamName: tournamentDoc.teamName,
         key: tournamentDoc.leagueId,
         owner: tournamentDoc.owner,
-        team: DraftSpecie.getTeam(tournamentDoc.team, ruleset),
+        team: tournamentDoc.team.map((pokemon) =>
+          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+        ),
         doc: tournamentDoc.doc,
       },
       matchups,

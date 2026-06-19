@@ -1,4 +1,7 @@
-import { PokemonSchema, PokemonData } from "@modules/pokemon/pokemon.schema";
+import {
+  PokemonEntity,
+  PokemonSchema,
+} from "@modules/draft-pokemon/draft-pokemon.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 import { ExternalTournamentEntity } from "../../../tournament/sub-modules/external-tournament/external-tournament.schema";
@@ -31,7 +34,7 @@ export class MatchupTeamFullEntity {
   coach?: string;
 
   @Prop({ type: [PokemonSchema], required: true })
-  team!: PokemonData[];
+  team!: PokemonEntity[];
 
   @Prop({ type: String })
   paste?: string;

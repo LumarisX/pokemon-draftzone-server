@@ -1,4 +1,4 @@
-import { PokemonModule } from "@modules/pokemon/pokemon.module";
+import { DraftPokemonModule } from "@modules/draft-pokemon/draft-pokemon.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ExternalTournamentController } from "./external-tournament.controller";
@@ -14,7 +14,7 @@ import { ExternalTournamentService } from "./external-tournament.service";
     MongooseModule.forFeature([
       { name: ExternalTournamentEntity.name, schema: ExternalTournamentSchema },
     ]),
-    PokemonModule,
+    DraftPokemonModule,
   ],
   controllers: [ExternalTournamentController],
   providers: [ExternalTournamentService, ExternalTournamentRepository],

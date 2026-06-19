@@ -1,14 +1,14 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { DraftSpecie } from "../../../../classes/pokemon";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 import { ExternalTournamentDocument } from "../../../tournament/sub-modules/external-tournament/external-tournament.schema";
+import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupDto } from "./external-matchup.dto";
 import {
   ExternalMatchupDocument,
   ExternalMatchupEntity,
 } from "./external-matchup.schema";
-import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 
 export class ExternalMatchupMapper {
   static toClientPayload(matchup: ExternalMatchup) {
@@ -17,7 +17,7 @@ export class ExternalMatchupMapper {
       stage: matchup.stage,
       teamName: matchup.bTeam.teamName,
       coach: matchup.bTeam.coach,
-      team: matchup.bTeam.team.map((pokemon) => pokemon.toClient()),
+      team: matchup.bTeam.team.map(DraftPokemonMapper.toClientPayload),
       score: matchup.calculateScore(),
       matches: matchup.matches,
       paste: matchup.bTeam.paste,
@@ -27,16 +27,16 @@ export class ExternalMatchupMapper {
   static toDatabasePayload(matchup: ExternalMatchup): ExternalMatchupEntity {
     return {
       aTeam: {
-        _id: matchup.aTeam.id,
+        _id: matchup.aTeam.id!,
         paste: matchup.aTeam.paste,
       },
       bTeam: {
         teamName: matchup.bTeam.teamName,
         coach: matchup.bTeam.coach ?? undefined,
-        team: matchup.bTeam.team.map((pokemon) => pokemon.toData()),
+        team: matchup.bTeam.team.map(DraftPokemonMapper.toDatabasePayload),
         paste: matchup.bTeam.paste,
       },
-      stage: matchup.stage,
+      stage: matchup.stage ?? "",
       matches: matchup.matches.map((match) =>
         MatchMapper.toDatabasePayload(match),
       ),
@@ -60,7 +60,9 @@ export class ExternalMatchupMapper {
         id: existing.bTeam.id,
         team: data.team
           .filter((pokemonData) => pokemonData.id)
-          .map((pokemonData) => new DraftSpecie(pokemonData, existing.ruleset)),
+          .map((pokemonData) =>
+            DraftPokemonMapper.fromForm(pokemonData, existing.ruleset),
+          ),
         teamName: data.teamName,
         coach: data.coach,
         paste: existing.bTeam.paste,
@@ -84,7 +86,9 @@ export class ExternalMatchupMapper {
         : [],
       aTeam: {
         id: tournamentDoc._id,
-        team: DraftSpecie.getTeam(tournamentDoc.team, ruleset),
+        team: tournamentDoc.team.map((pokemon) =>
+          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+        ),
         teamName: tournamentDoc.teamName,
         owner: tournamentDoc.owner,
         paste: matchupDoc.aTeam?.paste,
@@ -92,7 +96,9 @@ export class ExternalMatchupMapper {
       },
       bTeam: {
         id: matchupDoc._id,
-        team: DraftSpecie.getTeam(matchupDoc.bTeam.team, ruleset),
+        team: tournamentDoc.team.map((pokemon) =>
+          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+        ),
         teamName: matchupDoc.bTeam.teamName,
         coach: matchupDoc.bTeam.coach,
         paste: matchupDoc.bTeam.paste,

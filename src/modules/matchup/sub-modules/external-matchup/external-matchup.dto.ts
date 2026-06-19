@@ -1,4 +1,4 @@
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { DraftPokemonDto } from "@modules/draft-pokemon/draft-pokemon.dto";
 import { Type } from "class-transformer";
 import {
   IsArray,
@@ -91,8 +91,8 @@ export class ExternalMatchupDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => PokemonDto)
-  team!: PokemonDto[];
+  @Type(() => DraftPokemonDto)
+  team!: DraftPokemonDto[];
 }
 
 export class ScorePatchDto {

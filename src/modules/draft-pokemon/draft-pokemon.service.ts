@@ -1,10 +1,10 @@
+import { Format } from "@core/data/formats/formats";
+import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 import { Injectable } from "@nestjs/common";
 import { Specie, SpeciesName, TypeName } from "@pkmn/data";
-import { Ruleset, getRuleset } from "../../core/data/rulesets/rulesets";
-import { Format } from "../../core/data/formats/formats";
 
 @Injectable()
-export class PokemonService {
+export class DraftPokemonService {
   constructor() {}
 
   SINGLES_TIER_HIERARCHY = ["AG", "UBER", "OU", "UU", "RU", "NU", "PU", "ZU"];

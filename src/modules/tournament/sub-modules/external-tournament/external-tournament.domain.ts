@@ -1,9 +1,8 @@
-import { Types } from "mongoose";
-import { DraftSpecie } from "../../../../classes/pokemon";
 import { Format } from "@core/data/formats/formats";
 import { Ruleset } from "@core/data/rulesets/rulesets";
+import { Types } from "mongoose";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
-import { toID } from "@pkmn/data";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
 
 export interface TournamentScore {
   wins: number;
@@ -19,7 +18,7 @@ export class ExternalTournament {
   teamName: string;
   key: string;
   owner: string;
-  team: DraftSpecie[];
+  team: DraftPokemon[];
   doc?: string;
   matchups: ExternalMatchup[];
   constructor(
@@ -31,7 +30,7 @@ export class ExternalTournament {
       teamName: string;
       key: string;
       owner: string;
-      team: DraftSpecie[];
+      team: DraftPokemon[];
       doc?: string;
     },
     matchups: ExternalMatchup[],

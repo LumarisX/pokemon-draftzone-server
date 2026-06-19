@@ -1,5 +1,4 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Pokemon } from "./pokemon.domain";
 
 @Schema({ _id: false })
 class CaptSubEntity {
@@ -42,7 +41,5 @@ export class PokemonEntity {
   @Prop({ type: [String], default: undefined })
   draftFormes?: string[];
 }
-
-export type PokemonData = Omit<Pokemon, "name">;
 
 export const PokemonSchema = SchemaFactory.createForClass(PokemonEntity);

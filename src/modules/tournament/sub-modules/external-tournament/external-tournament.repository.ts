@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import mongoose, { ClientSession, Model, Types } from "mongoose";
-import { ErrorCodes } from "../../../../errors/error-codes";
 import { ExternalMatchupMapper } from "../../../matchup/sub-modules/external-matchup/external-matchup.mapper";
 import { ExternalMatchupDocument } from "../../../matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ExternalTournament } from "./external-tournament.domain";
@@ -42,7 +43,7 @@ export class ExternalTournamentRepository {
       .findOne({ owner: owner, leagueId: key })
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
-    if (!tournamentDoc) throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
+    if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
     const matchups = tournamentDoc.matchups.map((matchup) =>
       ExternalMatchupMapper.fromDatabase(matchup, tournamentDoc),
     );
@@ -54,7 +55,7 @@ export class ExternalTournamentRepository {
       .findById(id)
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
-    if (!tournamentDoc) throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
+    if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
     const matchups = tournamentDoc.matchups.map((matchup) =>
       ExternalMatchupMapper.fromDatabase(matchup, tournamentDoc),
     );
@@ -83,7 +84,7 @@ export class ExternalTournamentRepository {
         },
       )
       .exec();
-    if (!tournamentDoc) throw new NotFoundException(ErrorCodes.DRAFT.NOT_FOUND);
+    if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
   }
 
   async deleteByKeyAndOwner(

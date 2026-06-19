@@ -1,12 +1,6 @@
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 import { ID } from "@pkmn/data";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
-
-export type Coveragechart = (PokemonDto & {
-  coverage: {
-    [key: string]: CoverageMove[];
-  };
-})[];
 
 export type CoverageMove = {
   ePower: number;
@@ -31,14 +25,14 @@ export type FullCoverageMove = {
   value: number;
 };
 
-export async function coveragechart(
-  team: DraftSpecie[],
-  oppTeam: DraftSpecie[],
-): Promise<Coveragechart> {
+export async function getTeamCoverage(
+  team: DraftPokemon[],
+  oppTeam: DraftPokemon[],
+) {
   return Promise.all(
     team.map(async (pokemon) => {
       const data: {
-        species: DraftSpecie;
+        species: DraftPokemon;
         coverage: {
           [key: string]: CoverageMove[];
         };
@@ -63,14 +57,14 @@ export async function coveragechart(
       }
 
       return {
-        ...data.species.toClient(),
+        ...DraftPokemonMapper.toClientPayload(data.species),
         coverage: data.coverage,
       };
     }),
   );
 }
 
-export async function plannerCoverage(team: DraftSpecie[]) {
+export async function plannerCoverage(team: DraftPokemon[]) {
   const teamCoverage = await Promise.all(
     team.map(async (pokemon) => ({
       id: pokemon.id,

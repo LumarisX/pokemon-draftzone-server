@@ -1,9 +1,10 @@
-import { DraftSpecie } from "@modules/pokemon/pokemon.domain";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 import { StatID } from "@pkmn/data";
 
 type StatKey = StatID | "bst" | "cst";
 
-interface TeamStatistics {
+export interface TeamStatistics {
   mean: Record<StatKey, number>;
   median: Record<StatKey, number>;
   max: Record<StatKey, number>;
@@ -40,7 +41,7 @@ function computeStats(collections: Record<StatKey, number[]>): TeamStatistics {
 }
 
 export function summarizeTeam(
-  team: DraftSpecie[],
+  team: DraftPokemon[],
   teamName?: string,
   coach?: string,
 ) {
@@ -67,7 +68,7 @@ export function summarizeTeam(
     teamName,
     coach,
     team: team.map((pokemon, index) => ({
-      ...pokemon.toClient(),
+      ...DraftPokemonMapper.toClientPayload(pokemon),
       abilities: pokemon.getAbilities(),
       baseStats: pokemon.baseStats,
       bst: pokemon.bst,
