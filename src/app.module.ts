@@ -9,6 +9,8 @@ import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
 import { MatchupModule } from "@modules/matchup/matchup.module";
+import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
+import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
 
 @Module({
   imports: [
@@ -61,7 +63,8 @@ import { MatchupModule } from "@modules/matchup/matchup.module";
         };
       },
     }),
-
+    ReplayAnalysisModule,
+    ReplayLegacyModule,
     TournamentModule,
     MatchupModule,
     TournamentAdModule,
