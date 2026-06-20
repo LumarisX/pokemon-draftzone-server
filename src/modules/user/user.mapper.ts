@@ -1,10 +1,16 @@
 import { User, UserSettings } from "./user.domain";
 import { Auth0UserDto, UserSettingsDto } from "./user.dto";
-import { UserDocument, UserSettingsEntity } from "./user.schema";
+import { UserEntity, UserSettingsEntity } from "./user.schema";
 
 export class UserMapper {
-  static toClientPayload() {
-    return {};
+  static toClientPayload(user: User) {
+    return {
+      sub: user.sub,
+      settings: user.settings,
+      joined: user.joined,
+      lastLogin: user.lastLogin,
+      lastCheckedAdsAt: user.lastCheckedAdsAt,
+    };
   }
 
   static fromAuth0(data: Auth0UserDto): User {
@@ -15,12 +21,13 @@ export class UserMapper {
     });
   }
 
-  static fromDatabase(doc: UserDocument): User {
+  static fromDatabase(entity: UserEntity): User {
     return new User({
-      sub: doc.auth0Sub,
-      settings: UserSettingsMapper.fromDatabase(doc.settings),
-      joined: doc.joined,
-      lastLogin: doc.lastLogin,
+      sub: entity.auth0Sub,
+      settings: UserSettingsMapper.fromDatabase(entity.settings),
+      joined: entity.joined,
+      lastLogin: entity.lastLogin,
+      lastCheckedAdsAt: entity.lastCheckedAdsAt,
     });
   }
 }
