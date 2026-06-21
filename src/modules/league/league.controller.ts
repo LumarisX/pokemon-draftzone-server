@@ -1,7 +1,7 @@
 import { Controller, Get, Param } from "@nestjs/common";
 import { LeagueService } from "./league.service";
 
-@Controller("league")
+@Controller("leagues")
 export class LeagueController {
   constructor(private readonly leagueService: LeagueService) {}
 

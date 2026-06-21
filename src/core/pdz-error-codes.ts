@@ -75,6 +75,11 @@ export const ErrorCodes = {
       status: 400,
       message: "Invalid team roster",
     },
+    NOT_IN_DRAFT: {
+      code: "LR-TEAM-004",
+      status: 404,
+      message: "Team not found in this draft",
+    },
   },
   DRAFT: {
     NOT_YOUR_TURN: {
@@ -106,6 +111,33 @@ export const ErrorCodes = {
       code: "DR-006",
       status: 404,
       message: "Draft team ID not found",
+    },
+    NOT_IN_LEAGUE: {
+      code: "DR-007",
+      status: 404,
+      message: "Draft not found in this league",
+    },
+    INVALID_STATE: {
+      code: "DR-008",
+      status: 400,
+      message: "Invalid draft state",
+    },
+  },
+  STAGE: {
+    NOT_FOUND: {
+      code: "STG-001",
+      status: 404,
+      message: "Stage not found",
+    },
+    INVALID_TRADE: {
+      code: "STG-002",
+      status: 400,
+      message: "Invalid trade data",
+    },
+    NO_POOLS_DEFINED: {
+      code: "STG-003",
+      status: 400,
+      message: "This stage has no pools defined yet",
     },
   },
   SYSTEM: {
@@ -312,6 +344,7 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.DIVISION
   | keyof typeof ErrorCodes.TEAM
   | keyof typeof ErrorCodes.DRAFT
+  | keyof typeof ErrorCodes.STAGE
   | keyof typeof ErrorCodes.SYSTEM
   | keyof typeof ErrorCodes.VALIDATION
   | keyof typeof ErrorCodes.AUTH

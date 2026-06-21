@@ -1,16 +1,22 @@
+import { StageDocument } from "@modules/stage/stage.schema";
 import {
   HostedTournament,
   TournamentForfeit,
-  TournamentRound,
   TournamentRule,
-  TournamentStage,
 } from "./hosted-tournament.domain";
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
 
 export class HostedTournamentMapper {
+  /**
+   * `stages` must already be resolved (and ordered to match `doc.stages`'
+   * ObjectId order — that order IS the tournament's stage sequence) by the
+   * caller, since `doc.stages` is now a plain `ObjectId[]` and no longer
+   * embeds stage data directly.
+   */
   static fromDatabase(
     doc: HostedTournamentDocument,
     ownerAuth0Id: string,
+    stages: StageDocument[],
   ): HostedTournament {
     return new HostedTournament({
       id: doc._id.toString(),
@@ -31,23 +37,7 @@ export class HostedTournamentMapper {
       ),
       logo: doc.logo,
       discord: doc.discord,
-      playoffTeamIds: (doc.playoffs?.teams ?? []).map((id) => id.toString()),
-      stages: doc.stages.map(
-        (stage) =>
-          new TournamentStage({
-            id: (stage as unknown as { _id: { toString(): string } })._id.toString(),
-            name: stage.name,
-            type: stage.type,
-            rounds: stage.rounds.map(
-              (round) =>
-                new TournamentRound({
-                  id: (round as unknown as { _id: { toString(): string } })._id.toString(),
-                  name: round.name,
-                  matchDeadline: round.matchDeadline,
-                }),
-            ),
-          }),
-      ),
+      stages,
       forfeit: new TournamentForfeit({
         gameDiff: doc.forfeit.gameDiff,
         pokemonDiff: doc.forfeit.pokemonDiff,

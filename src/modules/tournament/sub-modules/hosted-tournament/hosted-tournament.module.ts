@@ -1,7 +1,8 @@
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TeamModule } from "@modules/team/team.module";
 import { CoachModule } from "@modules/coach/coach.module";
-import { DivisionModule } from "@modules/division/division.modules";
+import { DraftModule } from "@modules/draft/draft.module";
+import { StageModule } from "@modules/stage/stage.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -21,7 +22,8 @@ import { HostedTournamentService } from "./hosted-tournament.service";
     TierListModule,
     TeamModule,
     CoachModule,
-    DivisionModule,
+    DraftModule,
+    StageModule,
     LeagueMatchupModule,
   ],
   controllers: [HostedTournamentController],

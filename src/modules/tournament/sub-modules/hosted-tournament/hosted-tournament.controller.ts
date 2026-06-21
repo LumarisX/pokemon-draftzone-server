@@ -20,7 +20,7 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
 
-@Controller("league/:leagueKey/tournaments")
+@Controller("leagues/:leagueKey/tournaments")
 export class HostedTournamentController {
   constructor(private readonly tournamentService: HostedTournamentService) {}
 

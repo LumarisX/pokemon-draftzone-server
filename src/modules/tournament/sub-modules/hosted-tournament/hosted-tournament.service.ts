@@ -12,7 +12,8 @@ import {
 } from "../../../../discord";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
-import { DivisionRepository } from "@modules/division/division.repository";
+import { DraftRepository } from "@modules/draft/draft.repository";
+import { StageRepository } from "@modules/stage/stage.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import FileUploadModel from "../../../../models/file-upload.model";
@@ -40,7 +41,8 @@ export class HostedTournamentService {
     private readonly tierListRepo: TierListRepository,
     private readonly teamRepo: TeamRepository,
     private readonly coachRepo: CoachRepository,
-    private readonly divisionRepo: DivisionRepository,
+    private readonly draftRepo: DraftRepository,
+    private readonly stageRepo: StageRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
   ) {}
 
@@ -53,7 +55,7 @@ export class HostedTournamentService {
     const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
 
-    const divisions = await this.divisionRepo.findPublicByTournament(
+    const drafts = await this.draftRepo.findPublicByTournament(
       tournament.id,
     );
 
@@ -69,9 +71,9 @@ export class HostedTournamentService {
       seasonStart: tournament.seasonStart,
       seasonEnd: tournament.seasonEnd,
       logo: tournament.logo,
-      divisions: divisions.map((division) => ({
-        divisionKey: division.divisionKey,
-        name: division.name,
+      drafts: drafts.map((draft) => ({
+        draftKey: draft.draftKey,
+        name: draft.name,
       })),
       discord: tournament.discord,
       tierListId: tournament.tierListId,
@@ -86,34 +88,17 @@ export class HostedTournamentService {
       return { format: null, teams: [], rounds: [], matches: [] };
     }
 
-    const roundIds = playoffsStage.rounds.map((round) => round.id);
+    const roundIds = playoffsStage.rounds.map((round) => round._id.toString());
     const bracketMatchups = await this.matchupRepo.findByRounds(roundIds);
 
-    const teamObjIds = tournament.playoffTeamIds.map(
-      (id) => new Types.ObjectId(id),
-    );
+    // Brackets now only ever belong to a single Stage (the resolved
+    // playoffsStage), so there's no longer a need to resolve a per-matchup
+    // or per-team "divisionKey" the way the old code resolved multiple
+    // divisions across matchups/teams. The team list comes straight from
+    // this stage's own pools.
+    const teamObjIds = this.stageRepo.flattenPoolTeamIds(playoffsStage);
 
     const teamDocs = await this.teamRepo.findManyByIds(teamObjIds);
-
-    const matchupDivisionIds = [
-      ...new Set(
-        bracketMatchups
-          .filter((matchup) => matchup.division)
-          .map((matchup) => matchup.division!.toString()),
-      ),
-    ];
-
-    const teamDivisionIds = teamDocs
-      .filter((team) => team.divisionId)
-      .map((team) => team.divisionId!.toString());
-
-    const divisions = await this.divisionRepo.findManyByIds([
-      ...new Set([...matchupDivisionIds, ...teamDivisionIds]),
-    ]);
-
-    const divisionIdToKey = new Map(
-      divisions.map((division) => [division._id.toString(), division.divisionKey]),
-    );
 
     const teamsArray = teamObjIds
       .map((teamId, idx) => {
@@ -126,16 +111,13 @@ export class HostedTournamentService {
           teamName: teamDoc.teamName,
           coachName: teamDoc.coach.name,
           logo: teamDoc.logo,
-          divisionKey: teamDoc.divisionId
-            ? divisionIdToKey.get(teamDoc.divisionId.toString())
-            : undefined,
           teamId: teamDoc._id.toString(),
         };
       })
       .filter((t): t is NonNullable<typeof t> => t !== null);
 
     const roundIdToName = new Map(
-      playoffsStage.rounds.map((round) => [round.id, round.name]),
+      playoffsStage.rounds.map((round) => [round._id.toString(), round.name]),
     );
 
     const matches = bracketMatchups.map((matchup) => ({
@@ -167,13 +149,10 @@ export class HostedTournamentService {
             ? 1
             : undefined,
       replay: matchup.results?.[0]?.replay,
-      divisionKey: matchup.division
-        ? divisionIdToKey.get(matchup.division.toString()) ?? null
-        : null,
     }));
 
     const rounds = playoffsStage.rounds.map((round) => ({
-      _id: round.id,
+      _id: round._id.toString(),
       name: round.name,
       matchDeadline: round.matchDeadline ?? null,
     }));
@@ -217,10 +196,10 @@ export class HostedTournamentService {
       });
     const { coach, team } = signup;
 
-    let division: { divisionKey: string; name: string } | null = null;
-    if (team.divisionId) {
-      const div = await this.divisionRepo.findById(team.divisionId);
-      if (div) division = { divisionKey: div.divisionKey, name: div.name };
+    let draft: { draftKey: string; name: string } | null = null;
+    if (team.draftId) {
+      const d = await this.draftRepo.findById(team.draftId);
+      if (d) draft = { draftKey: d.draftKey, name: d.name };
     }
 
     const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
@@ -239,7 +218,7 @@ export class HostedTournamentService {
       logo: team.logo,
       signedUpAt: coach.signedUpAt,
       teamId: team._id.toString(),
-      division,
+      draft,
       inDiscordServer,
     };
   }
@@ -308,7 +287,7 @@ export class HostedTournamentService {
 
   /**
    * Organizers/owners get the full admin roster view (Discord membership,
-   * dropped reason, division assignment); everyone else gets the minimal
+   * dropped reason, draft assignment); everyone else gets the minimal
    * public-safe shape. One endpoint instead of a separate "manage" copy.
    */
   async getCoaches(
@@ -329,20 +308,20 @@ export class HostedTournamentService {
       }));
     }
 
-    const divisionIds = teams
-      .filter((team) => team.divisionId)
-      .map((team) => team.divisionId!);
-    const divisions = await this.divisionRepo.findManyByIds(divisionIds);
-    const divisionIdToKey = new Map(
-      divisions.map((d) => [d._id.toString(), d.divisionKey]),
+    const draftIds = teams
+      .filter((team) => team.draftId)
+      .map((team) => team.draftId!);
+    const drafts = await this.draftRepo.findManyByIds(draftIds);
+    const draftIdToKey = new Map(
+      drafts.map((d) => [d._id.toString(), d.draftKey]),
     );
     const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
 
     const signups = await Promise.all(
       teams.map(async (team) => {
         const coach = team.coach;
-        const division = team.divisionId
-          ? divisionIdToKey.get(team.divisionId.toString())
+        const draft = team.draftId
+          ? draftIdToKey.get(team.draftId.toString())
           : undefined;
         const member = memberIndex
           ? findDiscordMemberInIndex(memberIndex, coach.discordName)
@@ -363,7 +342,7 @@ export class HostedTournamentService {
           teamName: team.teamName,
           signedUpAt: coach.signedUpAt,
           logo: team.logo ? s3Service.getPublicUrl(team.logo) : undefined,
-          division,
+          draft,
           inDiscordServer,
           hasDiscordRole,
         };
@@ -372,14 +351,14 @@ export class HostedTournamentService {
 
     return {
       signups,
-      divisions: divisions.map((d) => ({
-        divisionKey: d.divisionKey,
+      drafts: drafts.map((d) => ({
+        draftKey: d.draftKey,
         name: d.name,
       })),
     };
   }
 
-  /** Bulk assign/move/remove coaches across divisions. Replaces the old POST /signup/manage. */
+  /** Bulk assign/move/remove coaches across drafts. Replaces the old POST /signup/manage. */
   async assignCoaches(
     leagueKey: string,
     tournamentKey: string,
@@ -390,10 +369,10 @@ export class HostedTournamentService {
     if (!tournament.isOrganizer(sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
-    const divisions = await this.divisionRepo.findAllByTournament(
+    const drafts = await this.draftRepo.findAllByTournament(
       tournament.id,
     );
-    const divisionsByKey = new Map(divisions.map((d) => [d.divisionKey, d]));
+    const draftsByKey = new Map(drafts.map((d) => [d.draftKey, d]));
 
     for (const assignment of assignments) {
       if (!Types.ObjectId.isValid(assignment.coachId)) continue;
@@ -406,19 +385,19 @@ export class HostedTournamentService {
       if (!team || team.tournamentId.toString() !== tournament.id) continue;
 
       if (!assignment.divisionKey) {
-        await this.teamRepo.update(team._id, { divisionId: null });
+        await this.teamRepo.update(team._id, { draftId: null });
         continue;
       }
 
-      const targetDivision = divisionsByKey.get(assignment.divisionKey);
-      if (!targetDivision)
-        throw new PDZError(ErrorCodes.DIVISION.NOT_IN_LEAGUE, {
-          divisionKey: assignment.divisionKey,
+      const targetDraft = draftsByKey.get(assignment.divisionKey);
+      if (!targetDraft)
+        throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
+          draftKey: assignment.divisionKey,
           tournamentKey: tournament.tournamentKey,
         });
 
       await this.teamRepo.update(team._id, {
-        divisionId: targetDivision._id,
+        draftId: targetDraft._id,
       });
     }
 

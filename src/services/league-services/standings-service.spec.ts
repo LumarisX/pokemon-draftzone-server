@@ -6,31 +6,31 @@ import {
 
 describe("calculateDivisionCoachStandings", () => {
   it("marks both teams as losses for double forfeits", async () => {
-    const stageId = new Types.ObjectId();
+    const roundId = new Types.ObjectId();
     const team1Id = new Types.ObjectId();
     const team2Id = new Types.ObjectId();
 
     const team1 = {
       _id: team1Id,
+      teamName: "Team One",
+      logo: "",
       coach: {
-        teamName: "Team One",
         name: "Coach One",
-        logo: "",
       },
     };
 
     const team2 = {
       _id: team2Id,
+      teamName: "Team Two",
+      logo: "",
       coach: {
-        teamName: "Team Two",
         name: "Coach Two",
-        logo: "",
       },
     };
 
-    const division = {
+    const stage = {
       teams: [team1, team2],
-      stages: [{ _id: stageId }],
+      rounds: [{ _id: roundId }],
     };
 
     const tournament = {
@@ -51,7 +51,7 @@ describe("calculateDivisionCoachStandings", () => {
           team: team2,
           score: 0,
         },
-        stage: { _id: stageId },
+        round: roundId,
         forfeit: true,
         winner: "draw",
         results: [],
@@ -60,7 +60,7 @@ describe("calculateDivisionCoachStandings", () => {
 
     const { coachStandings } = await calculateDivisionCoachStandings(
       matchups as any,
-      division as any,
+      stage as any,
       tournament as any,
     );
 
@@ -86,25 +86,25 @@ describe("calculateDivisionCoachStandings", () => {
 
 describe("calculateTeamScore", () => {
   it("marks a team as a loss for double forfeits", async () => {
-    const stageId = new Types.ObjectId();
+    const roundId = new Types.ObjectId();
     const team1Id = new Types.ObjectId();
     const team2Id = new Types.ObjectId();
 
     const team1 = {
       _id: team1Id,
+      teamName: "Team One",
+      logo: "",
       coach: {
-        teamName: "Team One",
         name: "Coach One",
-        logo: "",
       },
     };
 
     const team2 = {
       _id: team2Id,
+      teamName: "Team Two",
+      logo: "",
       coach: {
-        teamName: "Team Two",
         name: "Coach Two",
-        logo: "",
       },
     };
 
@@ -118,7 +118,7 @@ describe("calculateTeamScore", () => {
           team: team2,
           score: 0,
         },
-        stage: { _id: stageId },
+        round: roundId,
         forfeit: true,
         winner: "draw",
         results: [],
@@ -127,7 +127,7 @@ describe("calculateTeamScore", () => {
 
     const teamScore = await calculateTeamScore(
       matchups as any,
-      [{ _id: stageId }] as any,
+      [{ _id: roundId }] as any,
       team1 as any,
       {
         gameDiff: 1,

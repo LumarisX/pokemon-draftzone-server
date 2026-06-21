@@ -13,46 +13,6 @@ export class TournamentRuleEntity {
 export const TournamentRuleSchema =
   SchemaFactory.createForClass(TournamentRuleEntity);
 
-@Schema()
-export class TournamentRoundEntity {
-  @Prop({ required: true })
-  name!: string;
-
-  @Prop()
-  matchDeadline?: Date;
-}
-export const TournamentRoundSchema = SchemaFactory.createForClass(
-  TournamentRoundEntity,
-);
-
-@Schema()
-export class TournamentStageEntity {
-  @Prop({ required: true })
-  name!: string;
-
-  @Prop({
-    type: String,
-    enum: ["round-robin", "single-elimination", "double-elimination", "custom"],
-    required: true,
-  })
-  type!: "round-robin" | "single-elimination" | "double-elimination" | "custom";
-
-  @Prop({ type: [TournamentRoundSchema], default: [] })
-  rounds!: TournamentRoundEntity[];
-}
-export const TournamentStageSchema = SchemaFactory.createForClass(
-  TournamentStageEntity,
-);
-
-@Schema({ _id: false })
-export class TournamentPlayoffsEntity {
-  @Prop({ type: [Types.ObjectId], default: [] })
-  teams!: Types.ObjectId[];
-}
-export const TournamentPlayoffsSchema = SchemaFactory.createForClass(
-  TournamentPlayoffsEntity,
-);
-
 @Schema({ _id: false })
 export class TournamentForfeitEntity {
   @Prop({ required: true, default: 0 })
@@ -114,11 +74,16 @@ export class HostedTournamentEntity {
   @Prop()
   discord?: string;
 
-  @Prop({ type: TournamentPlayoffsSchema })
-  playoffs?: TournamentPlayoffsEntity;
+  // Ref name is a literal string to avoid pulling stage.schema.ts into the
+  // tournament/stage import chain unnecessarily. Ordered list — a
+  // tournament's stage sequence is this array's order, not derived from
+  // each Stage's own `order` field (that field is informational/for
+  // queries that only have a Stage, not the owning tournament, in hand).
+  @Prop({ type: [Types.ObjectId], ref: "StageEntity", default: [] })
+  stages!: Types.ObjectId[];
 
-  @Prop({ type: [TournamentStageSchema], default: [] })
-  stages!: TournamentStageEntity[];
+  @Prop({ default: -1 })
+  currentStageIndex!: number;
 
   @Prop({ type: TournamentForfeitSchema, required: true })
   forfeit!: TournamentForfeitEntity;

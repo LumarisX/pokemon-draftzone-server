@@ -1,4 +1,3 @@
-import { DivisionEntity } from "@modules/division/division.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 import { PokemonData, pokemonSchema } from "../../models/pokemon.schema";
@@ -15,7 +14,7 @@ export class TeamPickEntity {
 export const TeamPickSchema = SchemaFactory.createForClass(TeamPickEntity);
 
 @Schema({ _id: false })
-export class TeamDraftEntity {
+export class PickLogEntity {
   @Prop({ type: pokemonSchema, required: true })
   pokemon!: PokemonData;
 
@@ -30,7 +29,7 @@ export class TeamDraftEntity {
   @Prop({ type: Types.ObjectId, ref: "CoachEntity", required: true })
   picker!: Types.ObjectId;
 }
-export const TeamDraftSchema = SchemaFactory.createForClass(TeamDraftEntity);
+export const PickLogSchema = SchemaFactory.createForClass(PickLogEntity);
 
 export type TeamDocument = HydratedDocument<TeamEntity>;
 
@@ -47,8 +46,10 @@ export class TeamEntity {
   })
   tournamentId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: DivisionEntity.name, index: true })
-  divisionId?: Types.ObjectId;
+  // Ref name is a literal string to avoid pulling draft.schema.ts into the
+  // team/draft/stage import chain unnecessarily.
+  @Prop({ type: Types.ObjectId, ref: "DraftEntity", index: true })
+  draftId?: Types.ObjectId;
 
   // Ref name is a literal string (not CoachEntity.name) to avoid a circular
   // import with coach.schema.ts, which refs back to TeamEntity.
@@ -71,8 +72,8 @@ export class TeamEntity {
   @Prop({ type: [[TeamPickSchema]], default: [] })
   picks!: TeamPickEntity[][];
 
-  @Prop({ type: [TeamDraftSchema], default: [] })
-  draft!: TeamDraftEntity[];
+  @Prop({ type: [PickLogSchema], default: [] })
+  pickLog!: PickLogEntity[];
 
   @Prop({ default: 0 })
   skipCount!: number;

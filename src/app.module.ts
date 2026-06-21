@@ -14,7 +14,8 @@ import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
-import { DivisionModule } from "@modules/division/division.modules";
+import { DraftModule } from "@modules/draft/draft.module";
+import { StageModule } from "@modules/stage/stage.module";
 
 @Module({
   imports: [
@@ -69,7 +70,8 @@ import { DivisionModule } from "@modules/division/division.modules";
     }),
     AuthModule,
     DataModule,
-    DivisionModule,
+    DraftModule,
+    StageModule,
     LeagueModule,
     MatchupModule,
     PlannerModule,

@@ -1,3 +1,5 @@
+import { StageDocument } from "@modules/stage/stage.schema";
+
 export class TournamentRule {
   title: string;
   body: string;
@@ -5,37 +7,6 @@ export class TournamentRule {
   constructor(props: { title: string; body: string }) {
     this.title = props.title;
     this.body = props.body;
-  }
-}
-
-export class TournamentRound {
-  id: string;
-  name: string;
-  matchDeadline?: Date;
-
-  constructor(props: { id: string; name: string; matchDeadline?: Date }) {
-    this.id = props.id;
-    this.name = props.name;
-    this.matchDeadline = props.matchDeadline;
-  }
-}
-
-export class TournamentStage {
-  id: string;
-  name: string;
-  type: "round-robin" | "single-elimination" | "double-elimination" | "custom";
-  rounds: TournamentRound[];
-
-  constructor(props: {
-    id: string;
-    name: string;
-    type: "round-robin" | "single-elimination" | "double-elimination" | "custom";
-    rounds: TournamentRound[];
-  }) {
-    this.id = props.id;
-    this.name = props.name;
-    this.type = props.type;
-    this.rounds = props.rounds;
   }
 }
 
@@ -48,8 +19,6 @@ export class TournamentForfeit {
     this.pokemonDiff = props.pokemonDiff;
   }
 }
-
-export const PLAYOFFS_STAGE_NAME = "Playoffs";
 
 export class HostedTournament {
   id: string;
@@ -68,8 +37,7 @@ export class HostedTournament {
   rules: TournamentRule[];
   logo?: string;
   discord?: string;
-  playoffTeamIds: string[];
-  stages: TournamentStage[];
+  stages: StageDocument[];
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
 
@@ -90,8 +58,7 @@ export class HostedTournament {
     rules: TournamentRule[];
     logo?: string;
     discord?: string;
-    playoffTeamIds: string[];
-    stages: TournamentStage[];
+    stages: StageDocument[];
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
   }) {
@@ -111,7 +78,6 @@ export class HostedTournament {
     this.rules = props.rules;
     this.logo = props.logo;
     this.discord = props.discord;
-    this.playoffTeamIds = props.playoffTeamIds;
     this.stages = props.stages;
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
@@ -130,7 +96,19 @@ export class HostedTournament {
     return this.getRoles(sub).includes("organizer");
   }
 
-  getPlayoffsStage(): TournamentStage | undefined {
-    return this.stages.find((stage) => stage.name === PLAYOFFS_STAGE_NAME);
+  /**
+   * Resolves the playoffs/bracket stage by `type` rather than by name (no
+   * more bespoke "Playoffs" stage name to match on). If more than one
+   * bracket-typed stage exists, prefers the one with the highest `order`.
+   */
+  getPlayoffsStage(): StageDocument | undefined {
+    const bracketStages = this.stages.filter(
+      (stage) =>
+        stage.type === "single-elimination" || stage.type === "double-elimination",
+    );
+    if (bracketStages.length === 0) return undefined;
+    return bracketStages.reduce((highest, stage) =>
+      stage.order > highest.order ? stage : highest,
+    );
   }
 }
