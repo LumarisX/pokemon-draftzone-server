@@ -116,7 +116,7 @@ export async function getDraftedByTeam(
     })[]
   ).map((team) => ({
     team: {
-      name: team.coach.teamName,
+      name: team.teamName,
       coachName: team.coach.name,
       id: team._id.toString(),
     },

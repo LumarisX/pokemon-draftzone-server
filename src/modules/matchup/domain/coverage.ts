@@ -25,7 +25,7 @@ export type FullCoverageMove = {
   value: number;
 };
 
-export async function getTeamCoverage(
+export async function getMatchupCoverage(
   team: DraftPokemon[],
   oppTeam: DraftPokemon[],
 ) {
@@ -64,7 +64,7 @@ export async function getTeamCoverage(
   );
 }
 
-export async function plannerCoverage(team: DraftPokemon[]) {
+export async function getTeamCoverage(team: DraftPokemon[]) {
   const teamCoverage = await Promise.all(
     team.map(async (pokemon) => ({
       id: pokemon.id,

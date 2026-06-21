@@ -1,7 +1,7 @@
 import { Format } from "@core/data/formats/formats";
 import { Ruleset } from "@core/data/rulesets/rulesets";
 import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { getTeamCoverage } from "@modules/matchup/domain/coverage";
+import { getMatchupCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
 import { speedchart } from "@modules/matchup/domain/speedchart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
@@ -51,8 +51,8 @@ export class ExternalMatchup {
     const bTeam = this.aTeam.owner === sub ? this.bTeam : this.aTeam;
     const [aCoverageChart, bCoverageChart, aMoveChart, bMoveChart] =
       await Promise.all([
-        getTeamCoverage(aTeam.team, bTeam.team),
-        getTeamCoverage(bTeam.team, aTeam.team),
+        getMatchupCoverage(aTeam.team, bTeam.team),
+        getMatchupCoverage(bTeam.team, aTeam.team),
         getTeamMoves(aTeam.team),
         getTeamMoves(bTeam.team),
       ]);

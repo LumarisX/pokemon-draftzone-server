@@ -202,6 +202,11 @@ export const ErrorCodes = {
       status: 500,
       message: "Failed to update tier list",
     },
+    FORBIDDEN: {
+      code: "LR-TIER-004",
+      status: 403,
+      message: "You do not have permission to edit this tier list",
+    },
   },
   SCHEDULE: {
     NOT_FOUND: {

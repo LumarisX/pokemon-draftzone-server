@@ -1,6 +1,5 @@
-import { HydratedDocument, model, Schema, Types } from "mongoose";
-import { LEAGUE_COACH_COLLECTION, LEAGUE_COLLECTION } from ".";
-import { LeagueCoachDocument } from "./coach.model";
+import { HydratedDocument, model, Schema } from "mongoose";
+import { LEAGUE_COLLECTION } from ".";
 
 export type LeagueRule = {
   title: string;
@@ -11,7 +10,7 @@ export type League = {
   name: string;
   leagueKey: string;
   description?: string;
-  owner: Types.ObjectId | LeagueCoachDocument;
+  owner: string;
   logo?: string;
 };
 
@@ -22,11 +21,7 @@ const LeagueSchema: Schema<League> = new Schema(
     name: { type: String, required: true },
     leagueKey: { type: String, required: true, unique: true, index: true },
     description: { type: String },
-    owner: {
-      type: Schema.Types.ObjectId,
-      ref: LEAGUE_COACH_COLLECTION,
-      required: true,
-    },
+    owner: { type: String, required: true },
 
     logo: { type: String },
   },

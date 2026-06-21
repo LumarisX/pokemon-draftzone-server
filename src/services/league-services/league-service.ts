@@ -154,9 +154,9 @@ export function getTeamClient(
 ) {
   return {
     id: team._id,
-    name: team.coach.teamName,
+    name: team.teamName,
     coach: team.coach.name,
-    logo: team.coach.logo,
+    logo: team.logo,
   };
 }
 
