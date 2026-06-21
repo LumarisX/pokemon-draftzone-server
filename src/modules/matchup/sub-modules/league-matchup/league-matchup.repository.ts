@@ -27,14 +27,14 @@ export class LeagueMatchupRepository {
       .lean();
   }
 
-  async findByDivision(
-    divisionId: Types.ObjectId | string,
+  async findByStage(
+    stageId: Types.ObjectId | string,
     options?: { teamIds?: (Types.ObjectId | string)[] },
   ) {
     const hasTeamFilter = options?.teamIds && options.teamIds.length > 0;
     return this.matchupModel
       .find({
-        division: divisionId,
+        stage: stageId,
         ...(hasTeamFilter
           ? {
               $or: [
@@ -48,15 +48,15 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  async findByRoundsInDivision(
-    divisionId: Types.ObjectId | string,
+  async findByRoundsInStage(
+    stageId: Types.ObjectId | string,
     roundIds: (Types.ObjectId | string)[],
     options?: { teamIds?: (Types.ObjectId | string)[] },
   ) {
     const hasTeamFilter = options?.teamIds && options.teamIds.length > 0;
     return this.matchupModel
       .find({
-        division: divisionId,
+        stage: stageId,
         round: { $in: roundIds },
         ...(hasTeamFilter
           ? {
@@ -71,12 +71,12 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  async findByIdInDivision(
+  async findByIdInStage(
     matchupId: Types.ObjectId | string,
-    divisionId: Types.ObjectId | string,
+    stageId: Types.ObjectId | string,
   ) {
     const matchup = await this.matchupModel
-      .findOne({ _id: matchupId, division: divisionId })
+      .findOne({ _id: matchupId, stage: stageId })
       .exec();
     if (!matchup)
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });

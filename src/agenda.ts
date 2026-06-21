@@ -1,13 +1,10 @@
 import { MongoBackend } from "@agendajs/mongo-backend";
 import { Agenda, Job } from "agenda";
+import mongoose from "mongoose";
 import { logger } from "./app";
 import { config } from "./config";
 import { resolveDiscordMention, sendDiscordMessage } from "./discord";
 import FileUploadModel from "./models/file-upload.model";
-import { LeagueCoachDocument } from "./models/league/coach.model";
-import LeagueDivisionModel, {
-  LeagueDivisionDocument,
-} from "./models/league/division.model";
 import LeagueTournamentModel, {
   LeagueTournamentDocument,
 } from "./models/league/tournament.model";
@@ -16,8 +13,15 @@ import {
   skipCurrentPick,
 } from "./services/league-services/draft-service";
 import { s3Service } from "./services/s3.service";
-import { LeagueTeamDocument } from "./models/league/team.model";
 import { LeagueTierListDocument } from "./models/league/tier-list.model";
+import {
+  DraftDocument,
+  DraftEntity,
+  DraftSchema,
+} from "@modules/draft/draft.schema";
+import { PopulatedDraft } from "@modules/draft/draft.repository";
+import { TeamDocument, TeamEntity, TeamSchema } from "@modules/team/team.schema";
+import { CoachDocument } from "@modules/coach/coach.schema";
 
 const mongoConnectionString = `mongodb+srv://${config.MONGODB_USER}:${config.MONGODB_PASS}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`;
 
@@ -28,6 +32,45 @@ export const agenda = new Agenda({
   }),
 });
 
+// Plain Mongoose model lookups (not Nest-DI) — this file is a free-function
+// module with agenda.define(...) job handlers, not a Nest-managed class, so
+// it can't take DraftRepository/TeamRepository via constructor injection.
+// Mirrors the same pattern used in services/league-services/draft-service.ts
+// and stage-service.ts: resolve against whatever model Nest already
+// registered for these entities on the default connection, falling back to
+// registering directly if this module loads before Nest does.
+const DraftMongooseModel: mongoose.Model<DraftDocument> =
+  (mongoose.models[DraftEntity.name] as mongoose.Model<DraftDocument>) ??
+  (mongoose.model(
+    DraftEntity.name,
+    DraftSchema,
+  ) as unknown as mongoose.Model<DraftDocument>);
+
+const TeamMongooseModel: mongoose.Model<TeamDocument> =
+  (mongoose.models[TeamEntity.name] as mongoose.Model<TeamDocument>) ??
+  (mongoose.model(
+    TeamEntity.name,
+    TeamSchema,
+  ) as unknown as mongoose.Model<TeamDocument>);
+
+/**
+ * `teams` is composed in memory from a separate Team query, not a real
+ * schema field on DraftEntity — mirrors DraftRepository.findDraft's
+ * composition pattern, just without Nest DI.
+ */
+async function findPopulatedDraft(
+  draftId: string,
+): Promise<PopulatedDraft | null> {
+  const draft = await DraftMongooseModel.findById(draftId);
+  if (!draft) return null;
+
+  const teams = await TeamMongooseModel.find({ draftId: draft._id }).populate<{
+    coach: CoachDocument;
+  }>("coach");
+
+  return Object.assign(draft, { teams }) as unknown as PopulatedDraft;
+}
+
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const SKIP_REMINDER_THRESHOLD_SECONDS = ONE_HOUR_MS + 1;
 const SKIP_RETRY_DELAY_MS = 60 * 1000;
@@ -37,11 +80,11 @@ agenda.define("skip-draft-pick", async (job: Job) => {
   if (isDev) return;
   const {
     tournamentId,
-    divisionId,
+    draftId,
     retryCount = 0,
   } = job.attrs.data as {
     tournamentId: string;
-    divisionId: string;
+    draftId: string;
     retryCount?: number;
   };
   const tournament = (await LeagueTournamentModel.findById(
@@ -57,60 +100,47 @@ agenda.define("skip-draft-pick", async (job: Job) => {
     );
     return;
   }
-  const division = (await LeagueDivisionModel.findById(divisionId).populate<{
-    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
-  }>([
-    {
-      path: "teams",
-      populate: {
-        path: "coach",
-      },
-    },
-  ])) as
-    | (LeagueDivisionDocument & {
-        teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
-      })
-    | null;
-  if (!division) {
-    logger.error(`Division not found for skip-draft-pick job: ${divisionId}`);
+  const draft = await findPopulatedDraft(draftId);
+  if (!draft) {
+    logger.error(`Draft not found for skip-draft-pick job: ${draftId}`);
     return;
   }
   logger.info(
-    `Executing skip-draft-pick for tournament ${tournament.name}, division ${division.name}`,
+    `Executing skip-draft-pick for tournament ${tournament.name}, draft ${draft.name}`,
   );
-  const skipped = await skipCurrentPick(tournament, division);
+  const skipped = await skipCurrentPick(tournament, draft);
   if (skipped) {
     return;
   }
 
-  const latestDivision = await LeagueDivisionModel.findById(divisionId);
+  const latestDraft = await DraftMongooseModel.findById(draftId);
   if (
-    !latestDivision ||
-    latestDivision.draft.status !== "IN_PROGRESS" ||
-    !latestDivision.draft.skipTime
+    !latestDraft ||
+    latestDraft.status !== "IN_PROGRESS" ||
+    !latestDraft.skipTime
   ) {
     return;
   }
 
   const retryTime = new Date(Date.now() + SKIP_RETRY_DELAY_MS);
-  if (latestDivision.draft.skipTime.getTime() > retryTime.getTime()) {
+  if (latestDraft.skipTime.getTime() > retryTime.getTime()) {
     return;
   }
 
   if (retryCount >= SKIP_MAX_RETRIES) {
     logger.warn(
-      `skip-draft-pick reached max retries for tournament ${tournament.name}, division ${division.name}`,
+      `skip-draft-pick reached max retries for tournament ${tournament.name}, draft ${draft.name}`,
     );
     return;
   }
 
   logger.warn(
-    `skip-draft-pick no-op for tournament ${tournament.name}, division ${division.name}; retrying in 1 minute (${retryCount + 1}/${SKIP_MAX_RETRIES})`,
+    `skip-draft-pick no-op for tournament ${tournament.name}, draft ${draft.name}; retrying in 1 minute (${retryCount + 1}/${SKIP_MAX_RETRIES})`,
   );
   job.schedule(retryTime);
   job.attrs.data = {
     tournamentId,
-    divisionId,
+    draftId,
     retryCount: retryCount + 1,
   };
   await job.save();
@@ -118,9 +148,9 @@ agenda.define("skip-draft-pick", async (job: Job) => {
 
 agenda.define("skip-draft-reminder", async (job: Job) => {
   if (isDev) return;
-  const { tournamentId, divisionId, skipTime } = job.attrs.data as {
+  const { tournamentId, draftId, skipTime } = job.attrs.data as {
     tournamentId: string;
-    divisionId: string;
+    draftId: string;
     skipTime?: string | Date;
   };
   const league = await LeagueTournamentModel.findById(tournamentId).populate({
@@ -130,46 +160,31 @@ agenda.define("skip-draft-reminder", async (job: Job) => {
     console.error(`League not found: ${tournamentId}`);
     return;
   }
-  const division = (await LeagueDivisionModel.findById(divisionId).populate<{
-    teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
-  }>({
-    path: "teams",
-    populate: {
-      path: "coach",
-    },
-  })) as
-    | (LeagueDivisionDocument & {
-        teams: (LeagueTeamDocument & { coach: LeagueCoachDocument })[];
-      })
-    | null;
-  if (!division) {
-    console.error(
-      `Division not found: ${divisionId} in league ${tournamentId}`,
-    );
+  const draft = await findPopulatedDraft(draftId);
+  if (!draft) {
+    console.error(`Draft not found: ${draftId} in league ${tournamentId}`);
     return;
   }
 
-  if (division.draft.status !== "IN_PROGRESS" || !division.draft.skipTime)
-    return;
+  if (draft.status !== "IN_PROGRESS" || !draft.skipTime) return;
 
   if (skipTime) {
     const expectedTime = new Date(skipTime).getTime();
-    if (Math.abs(division.draft.skipTime.getTime() - expectedTime) > 1000)
-      return;
+    if (Math.abs(draft.skipTime.getTime() - expectedTime) > 1000) return;
   }
 
-  const currentTeam = getCurrentPickingTeam(division);
-  if (!currentTeam || !division.draft.channelId) return;
+  const currentTeam = getCurrentPickingTeam(draft);
+  if (!currentTeam || !draft.channelId) return;
 
-  const coach = currentTeam.coach as LeagueCoachDocument | undefined;
-  const teamName = coach?.teamName ?? "Unknown Team";
+  const coach = currentTeam.coach;
+  const teamName = currentTeam.teamName ?? "Unknown Team";
   const coachMention = await resolveDiscordMention(
-    division.draft.channelId,
+    draft.channelId,
     coach?.discordName,
   );
   const coachLabel = coachMention ?? "coach";
   await sendDiscordMessage(
-    division.draft.channelId,
+    draft.channelId,
     `${teamName} (${coachLabel}) has 1 hour remaining!`,
   );
 });
@@ -214,69 +229,66 @@ const isDev = config.NODE_ENV === "development";
 
 export async function scheduleSkipPick(
   league: LeagueTournamentDocument,
-  division: LeagueDivisionDocument,
+  draft: DraftDocument,
 ) {
   await agenda.start();
   const now = new Date();
-  now.setSeconds(now.getSeconds() + division.draft.timerLength);
-  division.draft.skipTime = now;
-  await agenda.schedule(division.draft.skipTime, "skip-draft-pick", {
+  now.setSeconds(now.getSeconds() + draft.timerLength!);
+  draft.skipTime = now;
+  await agenda.schedule(draft.skipTime, "skip-draft-pick", {
     tournamentId: league._id,
-    divisionId: division._id,
+    draftId: draft._id,
   });
-  await scheduleSkipReminder(league, division);
+  await scheduleSkipReminder(league, draft);
 }
 
-export async function cancelSkipPick(division: LeagueDivisionDocument) {
+export async function cancelSkipPick(draft: DraftDocument) {
   await agenda.start();
   await agenda.cancel({
     name: "skip-draft-pick",
-    data: { divisionId: division._id },
+    data: { draftId: draft._id },
   });
   await agenda.cancel({
     name: "skip-draft-reminder",
-    data: { divisionId: division._id },
+    data: { draftId: draft._id },
   });
 }
 
 export async function resumeSkipPick(
   league: LeagueTournamentDocument,
-  division: LeagueDivisionDocument,
+  draft: DraftDocument,
 ) {
   await agenda.start();
-  if (division.draft.skipTime)
-    await agenda.schedule(division.draft.skipTime, "skip-draft-pick", {
+  if (draft.skipTime)
+    await agenda.schedule(draft.skipTime, "skip-draft-pick", {
       tournamentId: league._id,
-      divisionId: division._id,
+      draftId: draft._id,
     });
-  await scheduleSkipReminder(league, division);
+  await scheduleSkipReminder(league, draft);
 }
 
 async function scheduleSkipReminder(
   league: LeagueTournamentDocument,
-  division: LeagueDivisionDocument,
+  draft: DraftDocument,
 ) {
-  if (!division.draft.skipTime) {
+  if (!draft.skipTime) {
     return;
   }
 
-  const timeToSkipSeconds =
-    (division.draft.skipTime.getTime() - Date.now()) / 1000;
+  const timeToSkipSeconds = (draft.skipTime.getTime() - Date.now()) / 1000;
   if (timeToSkipSeconds <= SKIP_REMINDER_THRESHOLD_SECONDS) {
     return;
   }
 
-  const reminderTime = new Date(
-    division.draft.skipTime.getTime() - ONE_HOUR_MS,
-  );
+  const reminderTime = new Date(draft.skipTime.getTime() - ONE_HOUR_MS);
   if (reminderTime.getTime() <= Date.now()) {
     return;
   }
 
   await agenda.schedule(reminderTime, "skip-draft-reminder", {
     tournamentId: league._id,
-    divisionId: division._id,
-    skipTime: division.draft.skipTime,
+    draftId: draft._id,
+    skipTime: draft.skipTime,
   });
 }
 

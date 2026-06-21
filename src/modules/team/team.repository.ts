@@ -14,7 +14,7 @@ export type CreateTeamInput = {
   // either side's required ref to the other.
   _id?: Types.ObjectId;
   tournamentId: Types.ObjectId | string;
-  divisionId?: Types.ObjectId | string;
+  draftId?: Types.ObjectId | string;
   coach: Types.ObjectId | string;
   teamName: string;
   logo?: string;
@@ -67,11 +67,11 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam | null;
   }
 
-  async findAllByDivision(
-    divisionId: Types.ObjectId | string,
+  async findAllByDraft(
+    draftId: Types.ObjectId | string,
   ): Promise<PopulatedTeam[]> {
     const teams = await this.teamModel
-      .find({ divisionId })
+      .find({ draftId })
       .populate<{ coach: CoachDocument }>("coach")
       .exec();
     return teams as unknown as PopulatedTeam[];
@@ -91,13 +91,13 @@ export class TeamRepository {
     const team = new this.teamModel({
       ...(data._id ? { _id: data._id } : {}),
       tournamentId: data.tournamentId,
-      divisionId: data.divisionId,
+      draftId: data.draftId,
       coach: data.coach,
       teamName: data.teamName,
       logo: data.logo,
       status: data.status ?? "pending",
       picks: [],
-      draft: [],
+      pickLog: [],
     });
     await team.save();
     return this.findById(team._id);
@@ -115,7 +115,7 @@ export class TeamRepository {
       teamName?: string;
       logo?: string;
       status?: "approved" | "pending" | "denied";
-      divisionId?: Types.ObjectId | string | null;
+      draftId?: Types.ObjectId | string | null;
     },
   ): Promise<PopulatedTeam> {
     const update: Record<string, unknown> = {};
@@ -123,9 +123,9 @@ export class TeamRepository {
     if (data.teamName !== undefined) update["teamName"] = data.teamName;
     if (data.logo !== undefined) update["logo"] = data.logo;
     if (data.status !== undefined) update["status"] = data.status;
-    if (data.divisionId !== undefined) {
-      if (data.divisionId === null) unset["divisionId"] = "";
-      else update["divisionId"] = data.divisionId;
+    if (data.draftId !== undefined) {
+      if (data.draftId === null) unset["draftId"] = "";
+      else update["draftId"] = data.draftId;
     }
 
     const team = await this.teamModel.findByIdAndUpdate(teamId, {

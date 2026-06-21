@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsDate,
   IsIn,
   IsNumber,
   IsObject,
@@ -10,28 +11,6 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-
-export class DraftPickDto {
-  @IsString()
-  @MinLength(1)
-  pokemonId!: string;
-
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  addons?: string[];
-}
-
-export class SetPicksDto {
-  @IsArray()
-  picks!: DraftPickDto[][];
-}
-
-export class SetDivisionStateDto {
-  @IsString()
-  @MinLength(1)
-  state!: string;
-}
 
 export class MatchupScoreDto {
   @IsNumber()
@@ -118,5 +97,65 @@ export class MakeTradeDto {
   side2!: TradeSideDto;
 
   @IsNumber()
-  stage!: number;
+  roundIndex!: number;
+}
+
+export class CreateStageRoundDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  matchDeadline?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  tradeDeadline?: Date;
+
+  @IsNumber()
+  @IsOptional()
+  bestOf?: number;
+}
+
+export class CreateStageDto {
+  @IsNumber()
+  order!: number;
+
+  @IsIn(["round-robin", "single-elimination", "double-elimination", "swiss", "custom"])
+  type!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateStageRoundDto)
+  @IsOptional()
+  rounds?: CreateStageRoundDto[];
+}
+
+export class SetStagePoolDto {
+  @IsString()
+  @MinLength(1)
+  poolKey!: string;
+
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  teamIds!: string[];
+}
+
+export class SetStagePoolsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SetStagePoolDto)
+  pools!: SetStagePoolDto[];
+}
+
+export class SetCurrentRoundDto {
+  @IsNumber()
+  currentRoundIndex!: number;
 }

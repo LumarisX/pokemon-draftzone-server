@@ -1,6 +1,5 @@
 import { Server, Socket } from "socket.io";
 import eventEmitter from "../event-emitter";
-import { TeamDraft } from "../models/league/team.model";
 import {
   JsonRpcRequest,
   sendError,
@@ -11,9 +10,19 @@ import {
 } from "../services/websocket.service";
 import { WSRoute, WSRouteGroup } from ".";
 
+// Shape of the per-pick display array draft-service.ts actually builds and
+// emits on `team.draft` (see draftPokemon's `draftPicks` local) — derived
+// from PopulatedTeam.pickLog, not a 1:1 serialization of PickLogEntity.
+type TeamDraftPick = {
+  id: string;
+  name: string;
+  tier: string | undefined;
+  cost: number;
+};
+
 type DraftAddedPayload = {
   tournamentId: string;
-  divisionId: string;
+  draftId: string;
   pick: {
     pokemon: { id: string; name: string; tier: string };
     team: { name: string; id: string };
@@ -21,14 +30,14 @@ type DraftAddedPayload = {
   team: {
     id: string;
     name: string;
-    draft: TeamDraft[];
+    draft: TeamDraftPick[];
   };
   canDraftTeams: string[];
 };
 
 type DraftCounterPayload = {
   tournamentId: string;
-  divisionId: string;
+  draftId: string;
   currentPick: { round: number; position: number; skipTime?: Date };
   nextTeam: string;
   canDraftTeams: string[];
@@ -36,14 +45,14 @@ type DraftCounterPayload = {
 
 type DraftStatusPayload = {
   tournamentId: string;
-  divisionId: string;
+  draftId: string;
   status: string;
   currentPick: { round: number; position: number; skipTime?: Date };
 };
 
 type DraftSkipPayload = {
   tournamentId: string;
-  divisionId: string;
+  draftId: string;
   teamName: string;
 };
 
@@ -80,7 +89,7 @@ export const unsubscribeLeague: WSRoute = (io: Server, socket: Socket) => {
 export const registerLeagueEvents = (io: Server) => {
   eventEmitter.on("draft.added", (data: DraftAddedPayload) => {
     sendLeagueNotification(io, data.tournamentId, "league.draft.added", {
-      divisionId: data.divisionId,
+      draftId: data.draftId,
       pick: data.pick,
       canDraftTeams: data.canDraftTeams,
       team: data.team,
@@ -89,7 +98,7 @@ export const registerLeagueEvents = (io: Server) => {
 
   eventEmitter.on("draft.counter", (data: DraftCounterPayload) => {
     sendLeagueNotification(io, data.tournamentId, "league.draft.counter", {
-      divisionId: data.divisionId,
+      draftId: data.draftId,
       currentPick: data.currentPick,
       nextTeam: data.nextTeam,
       canDraftTeams: data.canDraftTeams,
@@ -98,7 +107,7 @@ export const registerLeagueEvents = (io: Server) => {
 
   eventEmitter.on("draft.status", (data: DraftStatusPayload) => {
     sendLeagueNotification(io, data.tournamentId, "league.draft.status", {
-      divisionId: data.divisionId,
+      draftId: data.draftId,
       status: data.status,
       currentPick: data.currentPick,
     });
@@ -106,7 +115,7 @@ export const registerLeagueEvents = (io: Server) => {
 
   eventEmitter.on("league.draft.skip", (data: DraftSkipPayload) => {
     sendLeagueNotification(io, data.tournamentId, "league.draft.skip", {
-      divisionId: data.divisionId,
+      draftId: data.draftId,
       teamName: data.teamName,
     });
   });

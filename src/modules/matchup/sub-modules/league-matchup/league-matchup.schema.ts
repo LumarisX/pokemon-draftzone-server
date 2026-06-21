@@ -1,4 +1,3 @@
-import { DivisionEntity } from "@modules/division/division.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
@@ -108,13 +107,20 @@ export type LeagueMatchupDocument = HydratedDocument<LeagueMatchupEntity>;
   collection: "leaguematchups",
 })
 export class LeagueMatchupEntity {
-  // References a subdocument _id inside DivisionEntity.stages[], not a
+  // References a subdocument _id inside StageEntity.rounds[], not a
   // top-level collection — same as the legacy schema, intentionally no ref.
   @Prop({ type: Types.ObjectId, index: true })
   round?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: DivisionEntity.name, index: true })
-  division?: Types.ObjectId;
+  // Ref name is a literal string to avoid pulling stage.schema.ts into the
+  // matchup/stage/team import chain unnecessarily.
+  @Prop({ type: Types.ObjectId, ref: "StageEntity", index: true })
+  stage?: Types.ObjectId;
+
+  // Denormalized copy of StagePoolEntity.poolKey — lets matchup queries
+  // filter by pool without cross-referencing team membership.
+  @Prop()
+  pool?: string;
 
   @Prop({ type: MatchSideSchema, required: true })
   side1!: MatchSideEntity;
