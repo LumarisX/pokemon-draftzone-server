@@ -12,7 +12,7 @@ class SkillLevelRange {
   to!: string;
 }
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: "leagueads" })
 export class ExternalTournamentAdEntity {
   @Prop({ required: true, trim: true })
   leagueName!: string;

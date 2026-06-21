@@ -16,7 +16,7 @@ export type Format = {
   layout: "1" | "2" | "3";
 };
 
-const Formats: { [key: string]: { [key: string]: Format } } = {
+export const Formats: { [key: string]: { [key: string]: Format } } = {
   Singles: {
     Standard: {
       name: "Singles",

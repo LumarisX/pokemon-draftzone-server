@@ -42,22 +42,19 @@ async function bootstrap() {
   app.useGlobalFilters(new BusinessExceptionFilter());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const nodeEnv = configService.get<string>("NODE_ENV") || "development";
-  if (nodeEnv === "development") {
-    const config = new DocumentBuilder()
-      .setTitle("Pokémon DraftZone API")
-      .setDescription("The backend API documentation for Pokémon DraftZone")
-      .setVersion("4.0")
-      .addBearerAuth(
-        { type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
-        "JWT-auth",
-      )
-      .build();
+  const config = new DocumentBuilder()
+    .setTitle("Pokémon DraftZone API")
+    .setDescription("The backend API documentation for Pokémon DraftZone")
+    .setVersion("4.0")
+    .addBearerAuth(
+      { type: "http", scheme: "bearer", bearerFormat: "JWT", in: "header" },
+      "JWT-auth",
+    )
+    .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup("docs", app, document);
-    bootstrapLogger.log("Swagger UI initialized on /docs");
-  }
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup("docs", app, document);
+  bootstrapLogger.log("Swagger UI initialized on /docs");
 
   const port = configService.get<number>("PORT") || 9960;
   await app.listen(port);

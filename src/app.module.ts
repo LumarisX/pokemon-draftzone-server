@@ -1,4 +1,10 @@
-import { ExternalTournamentAdModule } from "@modules/tournament-ad/sub-modules/external-tournament-ad/external-tournament-ad.module";
+import { DataModule } from "@modules/data/data.module";
+import { LeagueModule } from "@modules/league/league.modules";
+import { MatchupModule } from "@modules/matchup/matchup.module";
+import { PlannerModule } from "@modules/planner/planner.module";
+import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
+import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
+import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
 import { UserModule } from "@modules/user/user.module";
 import { WebhookModule } from "@modules/webhook/webhook.module";
@@ -7,10 +13,8 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
-import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
-import { MatchupModule } from "@modules/matchup/matchup.module";
-import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
-import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
+import { TierListModule } from "@modules/tier-list/tier-list.module";
+import { DivisionModule } from "@modules/division/division.modules";
 
 @Module({
   imports: [
@@ -63,12 +67,17 @@ import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legac
         };
       },
     }),
+    AuthModule,
+    DataModule,
+    DivisionModule,
+    LeagueModule,
+    MatchupModule,
+    PlannerModule,
     ReplayAnalysisModule,
     ReplayLegacyModule,
-    TournamentModule,
-    MatchupModule,
+    TierListModule,
     TournamentAdModule,
-    AuthModule,
+    TournamentModule,
     UserModule,
     WebhookModule,
   ],

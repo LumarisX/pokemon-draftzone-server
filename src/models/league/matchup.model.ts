@@ -204,6 +204,11 @@ export const leagueMatchupSchema: Schema<
   { timestamps: true },
 );
 
+leagueMatchupSchema.index({ division: 1 });
+leagueMatchupSchema.index({ round: 1 });
+leagueMatchupSchema.index({ "side1.team": 1 });
+leagueMatchupSchema.index({ "side2.team": 1 });
+
 // leagueMatchupSchema.method(
 //   "getScore",
 //   function (this: LeagueMatchupData, team: "team1" | "team2") {

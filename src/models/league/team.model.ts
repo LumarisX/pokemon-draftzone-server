@@ -102,6 +102,8 @@ const LeagueTeamSchema: Schema<LeagueTeam, LeagueTeamModel, TeamMethods> =
     skipCount: { type: Number, default: 0 },
   });
 
+LeagueTeamSchema.index({ coach: 1 }, { unique: true });
+
 LeagueTeamSchema.methods.incrementSkipCount = async function (
   session?: ClientSession,
 ) {

@@ -96,7 +96,7 @@ export class ExternalMatchupMapper {
       },
       bTeam: {
         id: matchupDoc._id,
-        team: tournamentDoc.team.map((pokemon) =>
+        team: matchupDoc.bTeam.team.map((pokemon) =>
           DraftPokemonMapper.fromDatabase(pokemon, ruleset),
         ),
         teamName: matchupDoc.bTeam.teamName,

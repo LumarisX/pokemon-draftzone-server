@@ -7,7 +7,7 @@ import {
   Types,
 } from "mongoose";
 import z from "zod";
-import { LEAGUE_COACH_COLLECTION } from ".";
+import { LEAGUE_COACH_COLLECTION, LEAGUE_TOURNAMENT_COLLECTION } from ".";
 
 export const signUpSchema = z
   .object({
@@ -117,7 +117,7 @@ const LeagueCoachSchema: Schema<
     gameName: { type: String, required: true },
     tournamentId: {
       type: Schema.Types.ObjectId,
-      ref: "League",
+      ref: LEAGUE_TOURNAMENT_COLLECTION,
       required: true,
     },
     teamName: { type: String, required: true },
@@ -135,6 +135,9 @@ const LeagueCoachSchema: Schema<
   },
   { timestamps: true },
 );
+
+LeagueCoachSchema.index({ auth0Id: 1, tournamentId: 1 }, { unique: true });
+LeagueCoachSchema.index({ tournamentId: 1 });
 
 LeagueCoachSchema.query.approved = function () {
   return this.where({ status: "approved" });

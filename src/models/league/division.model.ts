@@ -231,6 +231,7 @@ const LeagueDivisionSchema: Schema<
 );
 
 LeagueDivisionSchema.index({ tournament: 1, divisionKey: 1 }, { unique: true });
+LeagueDivisionSchema.index({ teams: 1 }, { unique: true });
 
 LeagueDivisionSchema.query.forTournament = function (
   tournamentId: Types.ObjectId | string,

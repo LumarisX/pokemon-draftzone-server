@@ -36,8 +36,8 @@ export async function calculateDivisionPokemonStandings(
   for (const matchup of matchups) {
     const team1Doc = matchup.side1.team;
     const team2Doc = matchup.side2.team;
-    const team1Coach = team1Doc.coach?.teamName || "Unknown Coach";
-    const team2Coach = team2Doc.coach?.teamName || "Unknown Coach";
+    const team1Coach = team1Doc.teamName || "Unknown Coach";
+    const team2Coach = team2Doc.teamName || "Unknown Coach";
     const team1Key = team1Doc._id.toString();
     const team2Key = team2Doc._id.toString();
     if (!matchup.results) continue;
@@ -52,7 +52,7 @@ export async function calculateDivisionPokemonStandings(
               id: pokemonId,
               name: getName(pokemonId),
               coach: team1Coach,
-              teamName: team1Doc.coach?.teamName,
+              teamName: team1Doc.teamName,
               teamId: team1Key,
               brought: 0,
               kills: 0,
@@ -86,7 +86,7 @@ export async function calculateDivisionPokemonStandings(
               id: pokemonId,
               name: getName(pokemonId),
               coach: team2Coach,
-              teamName: team2Doc.coach?.teamName,
+              teamName: team2Doc.teamName,
               teamId: team2Key,
               brought: 0,
               kills: 0,
@@ -189,10 +189,10 @@ function createCoachStanding(
   const coach = team.coach as LeagueCoachDocument;
 
   return {
-    name: coach.teamName,
+    name: team.teamName,
     results: Array(stageCount).fill(null),
     coach: coach.name,
-    logo: coach.logo,
+    logo: team.logo,
     wins: 0,
     losses: 0,
     pokemonDiff: 0,

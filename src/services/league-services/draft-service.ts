@@ -276,7 +276,7 @@ export async function buildDraftBoards(
   for (let i = 0; i < pickOrder.length; i++) {
     const team = pickOrder[i];
     const draftPick: DraftPick = {
-      teamName: team.coach.teamName,
+      teamName: team.teamName,
     };
 
     const teamId = team._id.toString();
@@ -383,9 +383,9 @@ export async function getTeamsWithCoachStatus(
 
         return {
           id: team._id.toString(),
-          name: coach.teamName,
+          name: team.teamName,
           draft,
-          logo: coach.logo,
+          logo: team.logo,
           isCoach,
           picks,
           pointTotal,
@@ -826,14 +826,14 @@ export async function draftPokemon(
           },
           team: {
             id: currentTeamId,
-            name: coach.teamName,
+            name: currentTeam.teamName,
           },
           division: currentDivision.name,
         },
         canDraftTeams,
         team: {
           id: currentTeamId,
-          name: coach.teamName,
+          name: currentTeam.teamName,
           draft,
         },
         currentPick: calculateCurrentPick(currentDivision),
@@ -899,7 +899,7 @@ export async function draftPokemon(
         sendDiscordMessage(currentDivision.draft.channelId, {
           content: messageContent,
           embed: {
-            title: `${coach.teamName} drafted ${pokemon.name}!`,
+            title: `${currentTeam.teamName} drafted ${pokemon.name}!`,
             color,
             url: `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/divisions/${currentDivision.divisionKey}/draft`,
             fields,
@@ -1248,7 +1248,7 @@ export async function skipCurrentPick(
   const fullTeam = await LeagueTeamModel.findById(team._id).populate<{
     coach: LeagueCoachDocument;
   }>("coach");
-  const teamName = fullTeam?.coach?.teamName || "Unknown Team";
+  const teamName = fullTeam?.teamName || "Unknown Team";
 
   if (fullTeam) {
     fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
