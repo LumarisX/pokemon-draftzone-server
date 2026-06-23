@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -136,6 +137,21 @@ export class HostedTournamentController {
       coachId,
       sub,
       body,
+    );
+  }
+
+  @Get(":tournamentKey/teams/:teamId")
+  async getTeam(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("teamId") teamId: string,
+    @Query("stageId") stageId?: string,
+  ) {
+    return this.tournamentService.getTeam(
+      leagueKey,
+      tournamentKey,
+      teamId,
+      stageId,
     );
   }
 

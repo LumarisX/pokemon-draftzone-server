@@ -1,8 +1,8 @@
 import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
-import * as RRDex from "../../../mods/radicalred";
-import * as InsDex from "../../../mods/insurgance";
 import * as ChampionsData from "../../../data/champions-data";
+import * as InsDex from "../../../mods/insurgance";
+import * as RRDex from "../../../mods/radicalred";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Pichu-Spiky-eared",

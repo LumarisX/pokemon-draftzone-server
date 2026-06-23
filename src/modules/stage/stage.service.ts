@@ -11,12 +11,12 @@ import LeagueTournamentModel, {
 } from "../../models/league/tournament.model";
 import { getName } from "../../services/data-services/pokedex.service";
 import { getRosterByRound } from "../../services/league-services/roster-service";
+import { makeTrade } from "../../services/league-services/stage-service";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
   PopulatedStageMatchup,
 } from "../../services/league-services/standings-service";
-import { makeTrade } from "../../services/league-services/stage-service";
 import {
   CreateStageDto,
   MakeTradeDto,
@@ -83,7 +83,11 @@ export class StageService {
   /** Composes a Stage's `.teams` via flattenPoolTeamIds + TeamRepository, mirroring DraftRepository.findDraft. */
   private async composeStageTeams(
     stage: StageDocument,
-  ): Promise<StageDocument & { teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>> }> {
+  ): Promise<
+    StageDocument & {
+      teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>>;
+    }
+  > {
     const teamIds = this.stageRepo.flattenPoolTeamIds(stage);
     const teams = await this.teamRepo.findManyByIds(teamIds);
     return Object.assign(stage, { teams });
@@ -110,9 +114,26 @@ export class StageService {
     return this.stageRepo.create({
       tournamentId: tournament._id,
       order: dto.order,
+      name: dto.name,
       type: dto.type as StageDocument["type"],
       rounds: dto.rounds,
     });
+  }
+
+  /** Lightweight ordered list for the client's stage switcher. */
+  async listStages(leagueKey: string, tournamentKey: string) {
+    const tournament = await this.findTournamentForAuth(
+      leagueKey,
+      tournamentKey,
+    );
+    const stages = await this.stageRepo.findAllByTournament(tournament._id);
+    return stages.map((stage) => ({
+      _id: stage._id.toString(),
+      name: stage.name,
+      type: stage.type,
+      order: stage.order,
+      currentRoundIndex: stage.currentRoundIndex,
+    }));
   }
 
   async setPools(
@@ -324,7 +345,8 @@ export class StageService {
       stage,
       tournament,
     );
-    const pokemonStandings = await calculateDivisionPokemonStandings(allMatchups);
+    const pokemonStandings =
+      await calculateDivisionPokemonStandings(allMatchups);
 
     return {
       coachStandings: {

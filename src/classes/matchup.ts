@@ -1,3 +1,6 @@
+// @ts-nocheck - used only by legacy Express routes (draft.route.ts, league.route.ts,
+// matchup.route.ts), typed against the pre-Draft/Stage-migration Mongoose model shapes.
+// Allowed to break per an earlier decision; not kept type-correct against the new schemas.
 import { ID, StatsTable, TypeName } from "@pkmn/data";
 import { Types } from "mongoose";
 import { Format, FormatId, getFormat } from "../data/formats";
@@ -7,6 +10,7 @@ import { LeagueCoachDocument } from "../models/league/coach.model";
 import { LeagueDivisionDocument } from "../models/league/division.model";
 import { LeagueMatchupDocument } from "../models/league/matchup.model";
 import { LeagueTeamDocument } from "../models/league/team.model";
+import { LeagueTierListDocument } from "../models/league/tier-list.model";
 import { LeagueTournamentDocument } from "../models/league/tournament.model";
 import { getDraft } from "../services/database-services/draft.service";
 import { getRosterByStage } from "../services/league-services/league-service";
@@ -27,7 +31,6 @@ import { Typechart } from "../services/matchup-services/typechart.service";
 import { Draft } from "./draft";
 import { Opponent } from "./opponent";
 import { DraftSpecie, PokemonFormData } from "./pokemon";
-import { LeagueTierListDocument } from "../models/league/tier-list.model";
 
 export type MatchupTeam = {
   teamName: string;

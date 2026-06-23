@@ -1,9 +1,10 @@
-import { TierListModule } from "@modules/tier-list/tier-list.module";
-import { TeamModule } from "@modules/team/team.module";
 import { CoachModule } from "@modules/coach/coach.module";
+import { DiscordModule } from "@modules/discord/discord.module";
 import { DraftModule } from "@modules/draft/draft.module";
-import { StageModule } from "@modules/stage/stage.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
+import { StageModule } from "@modules/stage/stage.module";
+import { TeamModule } from "@modules/team/team.module";
+import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { HostedTournamentController } from "./hosted-tournament.controller";
@@ -22,6 +23,7 @@ import { HostedTournamentService } from "./hosted-tournament.service";
     TierListModule,
     TeamModule,
     CoachModule,
+    DiscordModule,
     DraftModule,
     StageModule,
     LeagueMatchupModule,

@@ -49,23 +49,6 @@ export class DraftController {
     );
   }
 
-  @Get("teams/:teamId")
-  async getTeam(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
-    @Param("teamId") teamId: string,
-    @Query("stageId") stageId?: string,
-  ) {
-    return this.draftService.getTeam(
-      leagueKey,
-      tournamentKey,
-      draftKey,
-      teamId,
-      stageId,
-    );
-  }
-
   @Get("picks")
   async getPicks(
     @Param("leagueKey") leagueKey: string,
@@ -176,11 +159,6 @@ export class DraftController {
     @Param("draftKey") draftKey: string,
     @User() sub: string,
   ) {
-    return this.draftService.skipPick(
-      leagueKey,
-      tournamentKey,
-      draftKey,
-      sub,
-    );
+    return this.draftService.skipPick(leagueKey, tournamentKey, draftKey, sub);
   }
 }

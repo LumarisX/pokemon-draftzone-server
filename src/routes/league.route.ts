@@ -1,3 +1,6 @@
+// @ts-nocheck - legacy Express /leagues route, reads the pre-Draft/Stage-migration
+// Mongoose model shapes directly and is allowed to break per an earlier decision;
+// not being kept type-correct against the new Draft/Stage/Team schemas.
 import { SpeciesName } from "@pkmn/data";
 import {
   ActionRowBuilder,

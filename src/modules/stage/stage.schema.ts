@@ -25,16 +25,14 @@ export const StageTradePokemonSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class StageTradeSideEntity {
-  // Ref name is a literal string to avoid a circular import with team.schema.ts.
   @Prop({ type: Types.ObjectId, ref: "TeamEntity" })
   team?: Types.ObjectId;
 
   @Prop({ type: [StageTradePokemonSchema], required: true })
   pokemon!: StageTradePokemonEntity[];
 }
-export const StageTradeSideSchema = SchemaFactory.createForClass(
-  StageTradeSideEntity,
-);
+export const StageTradeSideSchema =
+  SchemaFactory.createForClass(StageTradeSideEntity);
 
 @Schema({ _id: false })
 export class StageTradeEntity {
@@ -61,10 +59,6 @@ export const StageTradeSchema = SchemaFactory.createForClass(StageTradeEntity);
 
 @Schema()
 export class StageRoundEntity {
-  // Not a @Prop() — Mongoose adds this to array subdocuments automatically
-  // unless `_id: false` is set; declared here only so TS knows it exists.
-  // LeagueMatchup.round points at this id, so it must be preserved exactly
-  // whenever round data is migrated/copied from elsewhere.
   _id!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -89,7 +83,6 @@ export class StagePoolEntity {
   @Prop({ required: true })
   name!: string;
 
-  // Ref name is a literal string to avoid a circular import with team.schema.ts.
   @Prop({ type: [Types.ObjectId], ref: "TeamEntity", default: [] })
   teamIds!: Types.ObjectId[];
 }
@@ -112,6 +105,9 @@ export class StageEntity {
 
   @Prop({ required: true })
   order!: number;
+
+  @Prop({ required: true })
+  name!: string;
 
   @Prop({ type: String, enum: STAGE_TYPES, required: true })
   type!: StageType;

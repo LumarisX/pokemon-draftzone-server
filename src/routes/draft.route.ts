@@ -2,7 +2,7 @@ import { z } from "zod";
 import { Draft } from "../classes/draft";
 import { GameTime, Matchup, Score } from "../classes/matchup";
 import { Opponent } from "../classes/opponent";
-import { getRuleset } from "../core/data/rulesets/rulesets";
+import { getRuleset } from "../data/rulesets";
 import { MatchupData, MatchupDocument } from "../models/draft/matchup.model";
 import {
   createDraft,
