@@ -1,42 +1,36 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { getTeamCoverage } from "@modules/matchup/domain/coverage";
+import { getTeamMoves } from "@modules/matchup/domain/movechart";
+import { summarizeTeam } from "@modules/matchup/domain/summary";
+import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
-import { PopulatedStageMatchup } from "../../services/league-services/standings-service";
-import { StageDocument } from "@modules/stage/stage.schema";
 import { StageRepository } from "@modules/stage/stage.repository";
+import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
-import { DraftSpecie } from "../../classes/pokemon";
+import { getName } from "../../services/data-services/pokedex.service";
 import {
   draftPokemon,
   getDraftDetails,
   getDraftOrder,
   isCoach,
-  skipCurrentPick,
   setDraftState,
+  skipCurrentPick,
 } from "../../services/league-services/draft-service";
 import { getRosterByRound } from "../../services/league-services/roster-service";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
-  calculateTeamScore,
+  PopulatedStageMatchup,
 } from "../../services/league-services/standings-service";
 import { getTierList } from "../../services/tier-lists-services/tier-list-service";
-import { getName } from "../../services/data-services/pokedex.service";
-import { plannerCoverage } from "../../services/matchup-services/coverage.service";
-import { movechart } from "../../services/matchup-services/movechart.service";
-import { SummaryClass } from "../../services/matchup-services/summary.service";
-import { Typechart } from "../../services/matchup-services/typechart.service";
-import {
-  DraftPickDto,
-  SetDraftStateDto,
-  SetPicksDto,
-} from "./draft.dto";
+import { DraftPickDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
 import {
   DraftRepository,
-  PopulatedDraft,
   PopulatedTeam,
   PopulatedTournament,
 } from "./draft.repository";
@@ -233,16 +227,17 @@ export class DraftService {
         const teamRaw = team.pickLog.map((pickItem) => ({
           id: pickItem.pokemon.id,
         }));
-        const draftTeam = DraftSpecie.getTeam(teamRaw, ruleset);
-        const typechart = new Typechart(draftTeam);
-        const summary = new SummaryClass(draftTeam);
+        const draftTeam = teamRaw.map(
+          (pokemon) => new DraftPokemon(pokemon, ruleset),
+        );
+        const typechart = getTeamTypechart(draftTeam);
+        const summary = summarizeTeam(draftTeam);
         return {
           info: { name: team.teamName, index, id: team._id.toString() },
-          typechart: typechart.toJson(),
-          recommended: typechart.recommended(),
-          summary: summary.toJson(),
-          movechart: await movechart(draftTeam, ruleset),
-          coverage: await plannerCoverage(draftTeam),
+          typechart,
+          summary,
+          movechart: await getTeamMoves(draftTeam),
+          coverage: await getTeamCoverage(draftTeam),
         };
       }),
     );
@@ -379,7 +374,8 @@ export class DraftService {
       stage._id,
     )) as unknown as PopulatedStageMatchup[];
 
-    const pokemonStandings = await calculateDivisionPokemonStandings(allMatchups);
+    const pokemonStandings =
+      await calculateDivisionPokemonStandings(allMatchups);
     const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
       allMatchups,
       stage,
@@ -418,90 +414,6 @@ export class DraftService {
     });
 
     return { teams };
-  }
-
-  async getTeam(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
-    teamId: string,
-    stageId?: string,
-  ) {
-    const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
-    );
-    const team = await this.draftRepo.findTeamById(teamId);
-
-    const stageDoc = await this.resolveStage(draft.tournamentId, stageId);
-    const coach = team.coach;
-
-    if (!stageDoc) {
-      const roster = getRosterByRound(team, undefined).map((pokemon) => ({
-        id: pokemon.id,
-        name: getName(pokemon.id),
-        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-      }));
-      return {
-        name: team.teamName,
-        timezone: coach.timezone,
-        coach: coach.name,
-        logo: team.logo,
-        draft: roster,
-        matchups: [],
-      };
-    }
-
-    const stage = await this.composeStageTeams(stageDoc);
-
-    const draftRoster: ({
-      id: string;
-      name: string;
-      cost: number | undefined;
-    } & { record?: unknown })[] = getRosterByRound(team, stage).map(
-      (pokemon) => ({
-        id: pokemon.id,
-        name: getName(pokemon.id),
-        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-      }),
-    );
-
-    const teamMatchups = (await this.matchupRepo.findByStage(stage._id, {
-      teamIds: [team._id],
-    })) as unknown as PopulatedStageMatchup[];
-
-    const pokemonStandings = await calculateDivisionPokemonStandings(
-      teamMatchups,
-      team._id.toString(),
-    );
-
-    pokemonStandings.forEach((pokemon) => {
-      const draftPokemonEntry = draftRoster.find((p) => p.id === pokemon.id);
-      if (draftPokemonEntry) draftPokemonEntry.record = pokemon.record;
-    });
-
-    const teamRecord = await calculateTeamScore(
-      teamMatchups,
-      stage.rounds,
-      team,
-      tournament.forfeit,
-    );
-
-    return {
-      name: team.teamName,
-      timezone: coach.timezone,
-      coach: coach.name,
-      logo: team.logo,
-      draft: draftRoster,
-      matchups: teamMatchups,
-      record: {
-        wins: teamRecord.wins,
-        losses: teamRecord.losses,
-        pokemonDiff: teamRecord.pokemonDiff,
-        gameDiff: teamRecord.gameDiff,
-      },
-    };
   }
 
   async getPokemonList(

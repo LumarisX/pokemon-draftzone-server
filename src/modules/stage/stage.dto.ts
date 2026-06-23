@@ -124,6 +124,10 @@ export class CreateStageDto {
   @IsNumber()
   order!: number;
 
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
   @IsIn(["round-robin", "single-elimination", "double-elimination", "swiss", "custom"])
   type!: string;
 

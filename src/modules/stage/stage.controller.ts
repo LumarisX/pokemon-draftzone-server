@@ -19,23 +19,26 @@ import {
 import { StageService } from "./stage.service";
 
 @Controller("leagues/:leagueKey/tournaments/:tournamentKey/stages")
-@UseGuards(JwtAuthGuard)
 export class StageController {
   constructor(private readonly stageService: StageService) {}
 
+  @Get()
+  async listStages(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+  ) {
+    return this.stageService.listStages(leagueKey, tournamentKey);
+  }
+
   @Post()
+  @UseGuards(JwtAuthGuard)
   async createStage(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,
     @User() sub: string,
     @Body() body: CreateStageDto,
   ) {
-    return this.stageService.createStage(
-      leagueKey,
-      tournamentKey,
-      sub,
-      body,
-    );
+    return this.stageService.createStage(leagueKey, tournamentKey, sub, body);
   }
 
   @Get(":stageId/schedule")
@@ -61,6 +64,7 @@ export class StageController {
   }
 
   @Post(":stageId/trades")
+  @UseGuards(JwtAuthGuard)
   async createTrade(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,
@@ -78,6 +82,7 @@ export class StageController {
   }
 
   @Post(":stageId/matchups/:matchupId")
+  @UseGuards(JwtAuthGuard)
   async updateMatchup(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,
@@ -97,6 +102,7 @@ export class StageController {
   }
 
   @Post(":stageId/pools")
+  @UseGuards(JwtAuthGuard)
   async setPools(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,
@@ -114,6 +120,7 @@ export class StageController {
   }
 
   @Post(":stageId/current-round")
+  @UseGuards(JwtAuthGuard)
   async advanceCurrentRound(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,

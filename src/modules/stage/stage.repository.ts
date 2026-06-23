@@ -13,6 +13,7 @@ import {
 export type CreateStageInput = {
   tournamentId: Types.ObjectId | string;
   order: number;
+  name: string;
   type: StageType;
   rounds?: { name: string; matchDeadline?: Date; tradeDeadline?: Date; bestOf?: number }[];
   pools?: { poolKey: string; name: string; teamIds: (Types.ObjectId | string)[] }[];
@@ -63,6 +64,7 @@ export class StageRepository {
     const stage = new this.stageModel({
       tournamentId: data.tournamentId,
       order: data.order,
+      name: data.name,
       type: data.type,
       rounds: data.rounds ?? [],
       pools: data.pools ?? [],

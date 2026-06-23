@@ -1,3 +1,4 @@
+import { Ruleset } from "@core/data/rulesets/rulesets";
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
@@ -19,7 +20,6 @@ import {
 } from "@pkmn/dex-types";
 import { LRUCache } from "lru-cache";
 import { abilityModifiers } from "../data/pokedex/abilities";
-import { Ruleset } from "../data/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 import { PokemonData } from "../models/pokemon.schema";

@@ -1,7 +1,7 @@
 import { ID } from "@pkmn/data";
 import z from "zod";
 import { DraftSpecie } from "../classes/pokemon";
-import { getRuleset } from "../core/data/rulesets/rulesets";
+import { getRuleset } from "../data/rulesets";
 import { plannerCoverage } from "../services/matchup-services/coverage.service";
 import { movechart } from "../services/matchup-services/movechart.service";
 import { SummaryClass } from "../services/matchup-services/summary.service";

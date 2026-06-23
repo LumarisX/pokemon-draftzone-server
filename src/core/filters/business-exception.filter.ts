@@ -1,7 +1,7 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
 } from "@nestjs/common";
 import { Response } from "express";
@@ -14,19 +14,17 @@ export class BusinessExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const status = exception.getStatus();
     const exceptionResponse: any = exception.getResponse();
+    const pdzError = exceptionResponse?.error;
 
-    // Routes with no matching controller never reach our code, so Nest
-    // throws its own NotFoundException (no `.code`) instead of a PDZError.
-    // Map that case to our SYS-005 shape for a consistent error contract.
-    const isUnroutedRequest = status === 404 && !exceptionResponse?.code;
+    const isUnroutedRequest = status === 404 && !pdzError?.code;
     const notFound = ErrorCodes.SYSTEM.NOT_FOUND;
 
     const errorCode = isUnroutedRequest
       ? notFound.code
-      : exceptionResponse.code || `ERR-${status}`;
+      : pdzError?.code || `ERR-${status}`;
     const errorMessage = isUnroutedRequest
       ? notFound.message
-      : exceptionResponse.message || exception.message;
+      : pdzError?.message || exceptionResponse?.message || exception.message;
 
     response.status(status).json({
       error: {

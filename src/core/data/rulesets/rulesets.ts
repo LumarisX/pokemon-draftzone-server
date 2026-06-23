@@ -1,8 +1,8 @@
 import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
-import * as RRDex from "../../../mods/radicalred";
-import * as InsDex from "../../../mods/insurgance";
 import * as ChampionsData from "../../../data/champions-data";
+import * as InsDex from "../../../mods/insurgance";
+import * as RRDex from "../../../mods/radicalred";
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Pichu-Spiky-eared",
@@ -146,6 +146,7 @@ function DRAFT_EXISTS(d: Data) {
 
 const RULESET_IDS = {
   CHAMP_MA: "Champions MA",
+  CHAMP_MB: "Champions MB",
   ZA_NATDEX: "ZA NatDex",
   GEN9_NATDEX: "Gen9 NatDex",
   PALDEA_DEX: "Paldea Dex",
@@ -204,6 +205,19 @@ export const Rulesets: {
             (d.kind === "Species" && d.forme === "Gmax")
           ),
         RULESET_IDS.CHAMP_MA,
+      ),
+    },
+    "M-B": {
+      id: RULESET_IDS.CHAMP_MB,
+      desc: "Only Pokémon allowed in Champions M-B ruleset.",
+      ruleset: new Ruleset(
+        Dex.forGen(9),
+        (d: Data) =>
+          !(
+            !CHAMPIONS_EXISTS(d) ||
+            (d.kind === "Species" && d.forme === "Gmax")
+          ),
+        RULESET_IDS.CHAMP_MB,
       ),
     },
   },

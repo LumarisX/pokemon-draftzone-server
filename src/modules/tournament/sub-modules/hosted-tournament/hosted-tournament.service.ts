@@ -1,30 +1,33 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { Injectable, Logger } from "@nestjs/common";
-import { EmbedBuilder, TextChannel } from "discord.js";
-import { Types } from "mongoose";
-import {
-  client,
-  findDiscordMemberInIndex,
-  getDiscordMemberInGuild,
-  getDiscordMemberIndex,
-} from "../../../../discord";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
+import { DiscordService } from "@modules/discord/discord.service";
 import { DraftRepository } from "@modules/draft/draft.repository";
-import { StageRepository } from "@modules/stage/stage.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
-import { TeamRepository } from "@modules/team/team.repository";
+import { StageRepository } from "@modules/stage/stage.repository";
+import { StageDocument } from "@modules/stage/stage.schema";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { Injectable, Logger } from "@nestjs/common";
+import { EmbedBuilder } from "discord.js";
+import { Types } from "mongoose";
 import FileUploadModel from "../../../../models/file-upload.model";
+import { getName } from "../../../../services/data-services/pokedex.service";
+import { getRosterByRound } from "../../../../services/league-services/roster-service";
+import {
+  calculateDivisionPokemonStandings,
+  calculateTeamScore,
+  PopulatedStageMatchup,
+} from "../../../../services/league-services/standings-service";
 import { s3Service } from "../../../../services/s3.service";
+import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import {
   CoachAssignmentDto,
   RuleSectionDto,
   SignUpDto,
   UpdateCoachLogoDto,
 } from "./hosted-tournament.dto";
-import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 
@@ -44,20 +47,146 @@ export class HostedTournamentService {
     private readonly draftRepo: DraftRepository,
     private readonly stageRepo: StageRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
+    private readonly discordService: DiscordService,
   ) {}
 
+  /**
+   * Not draft-scoped — a team belongs to at most one draft within a
+   * tournament, so it can be looked up by id alone. This lets undrafted
+   * teams (no draftId yet) have a team page too, just with an empty
+   * roster/matchups until they're assigned.
+   */
+  async getTeam(
+    leagueKey: string,
+    tournamentKey: string,
+    teamId: string,
+    stageId?: string,
+  ) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueKey,
+      tournamentKey,
+    );
+    const team = await this.teamRepo.findById(teamId);
+
+    const stageDoc = await this.resolveStage(tournament._id, stageId);
+    const coach = team.coach;
+
+    if (!stageDoc) {
+      const roster = getRosterByRound(team, undefined).map((pokemon) => ({
+        id: pokemon.id,
+        name: getName(pokemon.id),
+        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+      }));
+      return {
+        name: team.teamName,
+        timezone: coach.timezone,
+        coach: coach.name,
+        logo: team.logo,
+        draft: roster,
+        matchups: [],
+      };
+    }
+
+    const stage = await this.composeStageTeams(stageDoc);
+
+    const draftRoster: ({
+      id: string;
+      name: string;
+      cost: number | undefined;
+    } & { record?: unknown })[] = getRosterByRound(team, stage).map(
+      (pokemon) => ({
+        id: pokemon.id,
+        name: getName(pokemon.id),
+        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+      }),
+    );
+
+    const teamMatchups = (await this.matchupRepo.findByStage(stage._id, {
+      teamIds: [team._id],
+    })) as unknown as PopulatedStageMatchup[];
+
+    const pokemonStandings = await calculateDivisionPokemonStandings(
+      teamMatchups,
+      team._id.toString(),
+    );
+
+    pokemonStandings.forEach((pokemon) => {
+      const draftPokemonEntry = draftRoster.find((p) => p.id === pokemon.id);
+      if (draftPokemonEntry) draftPokemonEntry.record = pokemon.record;
+    });
+
+    const teamRecord = await calculateTeamScore(
+      teamMatchups,
+      stage.rounds,
+      team,
+      tournament.forfeit,
+    );
+
+    return {
+      name: team.teamName,
+      timezone: coach.timezone,
+      coach: coach.name,
+      logo: team.logo,
+      draft: draftRoster,
+      matchups: teamMatchups,
+      record: {
+        wins: teamRecord.wins,
+        losses: teamRecord.losses,
+        pokemonDiff: teamRecord.pokemonDiff,
+        gameDiff: teamRecord.gameDiff,
+      },
+    };
+  }
+
+  /**
+   * Resolves the Stage to use for the mixed (roster + record) views.
+   * - `stageId` explicit: resolve it directly.
+   * - omitted: auto-resolve if the tournament has exactly one Stage; return
+   *   undefined (roster-only) if it has zero; throw if it has more than one
+   *   (organizer must disambiguate via `?stageId=`).
+   */
+  private async resolveStage(
+    tournamentId: Types.ObjectId,
+    stageId?: string,
+  ): Promise<StageDocument | undefined> {
+    if (stageId) return this.stageRepo.findById(stageId);
+
+    const stages = await this.stageRepo.findAllByTournament(tournamentId);
+    if (stages.length === 0) return undefined;
+    if (stages.length === 1) return stages[0];
+
+    throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+      reason: "Multiple stages exist for this tournament; pass stageId",
+    });
+  }
+
+  /** Composes `.teams` onto a Stage the same way DraftRepository does for Draft. */
+  private async composeStageTeams(
+    stage: StageDocument,
+  ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
+    const teamIds = this.stageRepo.flattenPoolTeamIds(stage);
+    const teams = await this.teamRepo.findManyByIds(teamIds);
+    return Object.assign(stage, { teams }) as StageDocument & {
+      teams: PopulatedTeam[];
+    };
+  }
+
   async getTournament(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     return HostedTournamentMapper.toClientPayload(tournament);
   }
 
   async getInfo(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
 
-    const drafts = await this.draftRepo.findPublicByTournament(
-      tournament.id,
-    );
+    const drafts = await this.draftRepo.findPublicByTournament(tournament.id);
 
     return {
       name: tournament.name,
@@ -81,7 +210,10 @@ export class HostedTournamentService {
   }
 
   async getBracket(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     const playoffsStage = tournament.getPlayoffsStage();
 
     if (!playoffsStage) {
@@ -124,7 +256,7 @@ export class HostedTournamentService {
       _id: matchup._id.toString(),
       round: matchup.round?.toString() ?? null,
       roundName: matchup.round
-        ? roundIdToName.get(matchup.round.toString()) ?? null
+        ? (roundIdToName.get(matchup.round.toString()) ?? null)
         : null,
       a: matchup.side1.slot
         ? {
@@ -170,7 +302,10 @@ export class HostedTournamentService {
     tournamentKey: string,
     sub: string | undefined,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     return tournament.getRoles(sub);
   }
 
@@ -187,7 +322,10 @@ export class HostedTournamentService {
   }
 
   async getSignup(leagueKey: string, tournamentKey: string, sub: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
 
     const signup = await this.findSignupForTournament(sub, tournament.id);
     if (!signup)
@@ -202,10 +340,10 @@ export class HostedTournamentService {
       if (d) draft = { draftKey: d.draftKey, name: d.name };
     }
 
-    const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
-    const member = memberIndex
-      ? findDiscordMemberInIndex(memberIndex, coach.discordName)
-      : await getDiscordMemberInGuild(DISCORD_GUILD_ID, coach.discordName);
+    const member = await this.discordService.findMember(
+      DISCORD_GUILD_ID,
+      coach.discordName,
+    );
     const inDiscordServer = Boolean(member);
 
     return {
@@ -229,7 +367,10 @@ export class HostedTournamentService {
     sub: string,
     dto: SignUpDto,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
 
     if (dto.droppedBefore && !dto.droppedWhy.trim()) {
       throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
@@ -295,12 +436,16 @@ export class HostedTournamentService {
     tournamentKey: string,
     sub: string | undefined,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
 
     if (!tournament.isOrganizer(sub)) {
       return teams.map((team) => ({
         id: team.coach._id.toString(),
+        teamId: team._id.toString(),
         teamName: team.teamName,
         coachName: team.coach.name,
         logo: team.logo,
@@ -315,7 +460,6 @@ export class HostedTournamentService {
     const draftIdToKey = new Map(
       drafts.map((d) => [d._id.toString(), d.draftKey]),
     );
-    const memberIndex = await getDiscordMemberIndex(DISCORD_GUILD_ID);
 
     const signups = await Promise.all(
       teams.map(async (team) => {
@@ -323,15 +467,17 @@ export class HostedTournamentService {
         const draft = team.draftId
           ? draftIdToKey.get(team.draftId.toString())
           : undefined;
-        const member = memberIndex
-          ? findDiscordMemberInIndex(memberIndex, coach.discordName)
-          : await getDiscordMemberInGuild(DISCORD_GUILD_ID, coach.discordName);
+        const member = await this.discordService.findMember(
+          DISCORD_GUILD_ID,
+          coach.discordName,
+        );
         const inDiscordServer = Boolean(member);
         const hasDiscordRole = Boolean(
-          member && member.roles.cache.has(SIGNUP_COACH_ROLE_ID),
+          member?.roleIds.includes(SIGNUP_COACH_ROLE_ID),
         );
         return {
           id: coach._id.toString(),
+          teamId: team._id.toString(),
           name: coach.name,
           gameName: coach.gameName,
           discordName: coach.discordName,
@@ -365,13 +511,14 @@ export class HostedTournamentService {
     sub: string,
     assignments: CoachAssignmentDto[],
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     if (!tournament.isOrganizer(sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
-    const drafts = await this.draftRepo.findAllByTournament(
-      tournament.id,
-    );
+    const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftsByKey = new Map(drafts.map((d) => [d.draftKey, d]));
 
     for (const assignment of assignments) {
@@ -405,12 +552,16 @@ export class HostedTournamentService {
   }
 
   async getCoach(leagueKey: string, tournamentKey: string, coachId: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
     const coach = await this.coachRepo.findById(coachId).catch(() => null);
-    if (!coach) throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+    if (!coach)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournament.id)
@@ -432,12 +583,16 @@ export class HostedTournamentService {
     sub: string,
     dto: UpdateCoachLogoDto,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
     const coach = await this.coachRepo.findById(coachId).catch(() => null);
-    if (!coach) throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+    if (!coach)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournament.id)
@@ -466,7 +621,10 @@ export class HostedTournamentService {
   }
 
   async getRules(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     return tournament.rules;
   }
 
@@ -476,7 +634,10 @@ export class HostedTournamentService {
     sub: string,
     ruleSections: RuleSectionDto[],
   ) {
-    const tournament = await this.tournamentRepo.findByKey(leagueKey, tournamentKey);
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
     if (!tournament.isOrganizer(sub)) {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
     }
@@ -489,94 +650,51 @@ export class HostedTournamentService {
   }
 
   private async notifySignup(tournament: HostedTournament, dto: SignUpDto) {
-    if (!client) return;
     try {
-      const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
-      if (!guild) return;
-
       const discordName = dto.discordName?.trim();
       if (discordName) {
-        const normalized = discordName.replace(/^@/, "").trim();
-        const target = normalized.toLowerCase();
-        const targetUsername = normalized.includes("#")
-          ? normalized.split("#")[0].toLowerCase()
-          : target;
-        const matchesMember = (m: {
-          user: { username?: string };
-          displayName?: string;
-        }) => {
-          const username = m.user.username?.toLowerCase();
-          const display = m.displayName?.toLowerCase();
-          return (
-            username === target ||
-            username === targetUsername ||
-            display === target ||
-            display === targetUsername
-          );
-        };
-
-        let member = guild.members.cache.find(matchesMember);
-
-        if (!member) {
-          const fetched = await guild.members.fetch({
-            query: targetUsername,
-            limit: 10,
-          });
-          member = fetched.find(matchesMember);
-        }
-
-        if (!member && target !== targetUsername) {
-          const fetched = await guild.members.fetch({
-            query: target,
-            limit: 10,
-          });
-          member = fetched.find(matchesMember);
-        }
-
+        const member = await this.discordService.findMember(
+          DISCORD_GUILD_ID,
+          discordName,
+        );
         if (member) {
-          const role = guild.roles.cache.get(SIGNUP_COACH_ROLE_ID);
-          if (role && !member.roles.cache.has(role.id)) {
-            await member.roles.add(role);
-          }
+          await this.discordService.grantRole(
+            DISCORD_GUILD_ID,
+            member.id,
+            SIGNUP_COACH_ROLE_ID,
+          );
         }
       }
 
-      const channel = guild.channels.cache.get(
-        SIGNUP_CHANNEL_ID,
-      ) as TextChannel;
-      if (channel && channel.isTextBased()) {
-        const totalCoaches = await this.teamRepo.countByTournament(
-          tournament.id,
+      const totalCoaches = await this.teamRepo.countByTournament(tournament.id);
+
+      const clamp = (value: string, limit: number) =>
+        value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
+
+      const embed = new EmbedBuilder()
+        .setTitle(clamp(dto.name, 256))
+        .setColor("#2F80ED")
+        .setTimestamp(new Date())
+        .addFields(
+          { name: "Team Name", value: dto.teamName, inline: true },
+          { name: "In-Game Name", value: dto.gameName, inline: true },
+          { name: "Discord Name", value: dto.discordName, inline: true },
+          { name: "Timezone", value: dto.timezone, inline: true },
+          {
+            name: "Experience",
+            value: clamp(dto.experience, 1024),
+            inline: false,
+          },
         );
 
-        const clamp = (value: string, limit: number) =>
-          value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
-
-        const embed = new EmbedBuilder()
-          .setTitle(clamp(dto.name, 256))
-          .setColor("#2F80ED")
-          .setTimestamp(new Date())
-          .addFields(
-            { name: "Team Name", value: dto.teamName, inline: true },
-            { name: "In-Game Name", value: dto.gameName, inline: true },
-            { name: "Discord Name", value: dto.discordName, inline: true },
-            { name: "Timezone", value: dto.timezone, inline: true },
-            {
-              name: "Experience",
-              value: clamp(dto.experience, 1024),
-              inline: false,
-            },
-          );
-
-        if (dto.logo && s3Service.isEnabled()) {
-          embed.setImage(s3Service.getPublicUrl(dto.logo));
-        }
-
-        channel.send({
-          content: `There's a new sign up for **${tournament.name}**! Total sign ups: ${totalCoaches}`,
-          embeds: [embed],
-        });
+      if (dto.logo && s3Service.isEnabled()) {
+        embed.setImage(s3Service.getPublicUrl(dto.logo));
       }
+
+      await this.discordService.sendMessage(SIGNUP_CHANNEL_ID, {
+        content: `There's a new sign up for **${tournament.name}**! Total sign ups: ${totalCoaches}`,
+        embeds: [embed],
+      });
     } catch (discordError) {
       this.logger.warn("Failed to send Discord notification", discordError);
     }
