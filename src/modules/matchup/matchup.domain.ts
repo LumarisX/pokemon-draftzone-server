@@ -1,23 +1,7 @@
-import { Format, FormatId } from "@core/data/formats/formats";
-import { Ruleset, RulesetId } from "@core/data/rulesets/rulesets";
-import { DraftPokemonDto } from "@modules/draft-pokemon/draft-pokemon.dto";
-import { StatsTable, TypeName } from "@pkmn/data";
-import {
-  coveragechart,
-  Coveragechart,
-} from "../../services/matchup-services/coverage.service";
-import {
-  movechart,
-  Movechart,
-} from "../../services/matchup-services/movechart.service";
-import {
-  Speedchart,
-  speedchart,
-} from "../../services/matchup-services/speedchart.service";
-import { SummaryClass } from "../../services/matchup-services/summary.service";
-import { Typechart } from "../../services/matchup-services/typechart.service";
-import { ExternalMatch } from "./sub-modules/external-matchup/external-matchup-match/external-matchup-match.domain";
+import { Format } from "@core/data/formats/formats";
+import { Ruleset } from "@core/data/rulesets/rulesets";
 import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { ExternalMatch } from "./sub-modules/external-matchup/external-matchup-match/external-matchup-match.domain";
 
 export interface MatchupSide {
   team: DraftPokemon[];
