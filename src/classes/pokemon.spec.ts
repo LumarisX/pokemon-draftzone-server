@@ -1,5 +1,5 @@
-import { ID, ItemName } from "@pkmn/data";
-import { getRuleset } from "../core/data/rulesets/rulesets";
+import { ID } from "@pkmn/data";
+import { getRuleset } from "../data/rulesets";
 import { PokemonData } from "../models/pokemon.schema";
 import { DraftSpecie } from "./pokemon";
 

@@ -1,5 +1,5 @@
+import { DraftMove } from "@modules/draft-move/draft-move.domain";
 import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftMove } from "../../../classes/move";
 import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 
 export async function getTeamMoves(team: DraftPokemon[]) {

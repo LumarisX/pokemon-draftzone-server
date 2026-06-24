@@ -2,13 +2,12 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import mongoSanitize from "express-mongo-sanitize";
-import fs from "fs";
 import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
-import { config } from "./config";
+import { createAppLogger } from "./core/logging/winston-logger.factory";
 import { ErrorCodes } from "./errors/error-codes";
 import { errorHandler } from "./errors/error-handler";
 import { PDZError } from "./errors/pdz-error";
@@ -27,44 +26,10 @@ import { StatisticsRoute } from "./routes/statistics.route";
 import { SupporterRoute } from "./routes/supporters.route";
 import { TeambuilderRoute } from "./routes/teambuilder.route";
 import { UserRoute } from "./routes/user.route";
-import { TierListRoute } from "./routes/tier-list.route";
 
 const logDir = path.join(__dirname, "../logs");
-if (!fs.existsSync(logDir)) {
-  try {
-    fs.mkdirSync(logDir);
-    console.log(`Log directory created: ${logDir}`);
-  } catch (err) {
-    console.error(`Could not create log directory: ${logDir}`, err);
-  }
-}
 
-export const logger = winston.createLogger({
-  level: config.NODE_ENV === "development" ? "debug" : "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.splat(),
-    winston.format.json(),
-  ),
-  transports: [
-    new winston.transports.DailyRotateFile({
-      filename: path.join(logDir, "app-%DATE%.log"),
-      datePattern: "YYYY-MM-DD",
-      zippedArchive: true,
-      maxSize: "20m",
-      maxFiles: "14d",
-    }),
-    new winston.transports.DailyRotateFile({
-      filename: path.join(logDir, "app-error-%DATE%.log"),
-      datePattern: "YYYY-MM-DD",
-      zippedArchive: true,
-      maxSize: "20m",
-      maxFiles: "30d",
-      level: "error",
-    }),
-  ],
-});
+export const logger = createAppLogger(logDir);
 
 const routerLogger = winston.createLogger({
   format: winston.format.combine(
@@ -86,35 +51,6 @@ const routerLogger = winston.createLogger({
     }),
   ],
 });
-
-if (config.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        winston.format.printf(
-          (info) =>
-            `${info.timestamp} ${info.level}: ${info.message} ${
-              info.stack || ""
-            }`,
-        ),
-      ),
-    }),
-  );
-} else {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.errors({ stack: true }),
-        winston.format.splat(),
-        winston.format.json(),
-      ),
-      stderrLevels: ["error"],
-    }),
-  );
-}
 
 export const app = express();
 
@@ -222,7 +158,6 @@ export const ROUTES: { [path: string]: Route } = {
   "/draft": DraftRoute,
   "/file": FileRoute,
   "/leagues": LeagueRoute,
-  "/tier-lists": TierListRoute,
   "/matchup": MatchupRoute,
   "/news": NewsRoute,
   "/planner": PlannerRoute,

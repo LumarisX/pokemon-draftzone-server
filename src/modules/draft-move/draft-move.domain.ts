@@ -1,4 +1,7 @@
-import { ID, TypeName, Move } from "@pkmn/data";
+import { Ruleset } from "@core/data/rulesets/rulesets";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import { ID, Move, TypeName } from "@pkmn/data";
 import {
   As,
   BoostsTable,
@@ -11,9 +14,6 @@ import {
   SpeciesName,
   StatusName,
 } from "@pkmn/dex-types";
-import { ErrorCodes } from "../errors/error-codes";
-import { PDZError } from "../errors/pdz-error";
-import { Ruleset } from "../data/rulesets";
 
 const moveList: { [key: string]: string[] } = {
   afteryou: ["Speed Control"],

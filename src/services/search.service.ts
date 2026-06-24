@@ -1,7 +1,7 @@
 import { ID } from "@pkmn/data";
 import { DraftSpecie, Pokemon } from "../classes/pokemon";
-import { getRuleset } from "../core/data/rulesets/rulesets";
 import { LRUCache } from "lru-cache";
+import { getRuleset } from "../data/rulesets";
 
 type Token = { type: string; value: string };
 type ASTNode = {

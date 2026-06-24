@@ -356,4 +356,5 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.MATCHUP
   | keyof typeof ErrorCodes.REPLAY
   | keyof typeof ErrorCodes.PARAMS
-  | keyof typeof ErrorCodes.FORMAT;
+  | keyof typeof ErrorCodes.FORMAT
+  | keyof typeof ErrorCodes.FILE;

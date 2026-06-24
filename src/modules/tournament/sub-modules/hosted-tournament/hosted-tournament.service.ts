@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { S3Service } from "@core/storage/s3.service";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { DiscordService } from "@modules/discord/discord.service";
@@ -12,7 +13,6 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
-import FileUploadModel from "../../../../models/file-upload.model";
 import { getName } from "../../../../services/data-services/pokedex.service";
 import { getRosterByRound } from "../../../../services/league-services/roster-service";
 import {
@@ -20,7 +20,6 @@ import {
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "../../../../services/league-services/standings-service";
-import { s3Service } from "../../../../services/s3.service";
 import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import {
   CoachAssignmentDto,
@@ -48,6 +47,7 @@ export class HostedTournamentService {
     private readonly stageRepo: StageRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly discordService: DiscordService,
+    private readonly s3Service: S3Service,
   ) {}
 
   /**
@@ -389,6 +389,11 @@ export class HostedTournamentService {
         tournamentId: tournament.id,
       });
 
+    if (dto.logo && this.s3Service.isEnabled()) {
+      const { exists } = await this.s3Service.headObject(dto.logo);
+      if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
+    }
+
     // Pre-generate both ids so Team.coach and Coach.teamId (both required)
     // can be set correctly on first insert, with neither side left dangling.
     const coachId = new Types.ObjectId();
@@ -487,7 +492,10 @@ export class HostedTournamentService {
           status: team.status,
           teamName: team.teamName,
           signedUpAt: coach.signedUpAt,
-          logo: team.logo ? s3Service.getPublicUrl(team.logo) : undefined,
+          logo:
+            team.logo && this.s3Service.isEnabled()
+              ? this.s3Service.getPublicUrl(team.logo)
+              : undefined,
           draft,
           inDiscordServer,
           hasDiscordRole,
@@ -602,20 +610,12 @@ export class HostedTournamentService {
     const isSelf = isOwnedBy(coach, sub);
     if (!isOrganizer && !isSelf) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
-    const uploadRecord = await FileUploadModel.findOne({
-      key: dto.fileKey,
-      uploadedBy: sub,
-      uploadType: "league-logo",
-      status: "confirmed",
-    });
-    if (!uploadRecord) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
+    if (this.s3Service.isEnabled()) {
+      const { exists } = await this.s3Service.headObject(dto.fileKey);
+      if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
+    }
 
     await this.teamRepo.update(team._id, { logo: dto.fileKey });
-
-    await FileUploadModel.findOneAndUpdate(
-      { key: dto.fileKey },
-      { relatedEntityId: team._id.toString() },
-    );
 
     return { message: "Logo updated.", logo: dto.fileKey };
   }
@@ -687,8 +687,8 @@ export class HostedTournamentService {
           },
         );
 
-      if (dto.logo && s3Service.isEnabled()) {
-        embed.setImage(s3Service.getPublicUrl(dto.logo));
+      if (dto.logo && this.s3Service.isEnabled()) {
+        embed.setImage(this.s3Service.getPublicUrl(dto.logo));
       }
 
       await this.discordService.sendMessage(SIGNUP_CHANNEL_ID, {

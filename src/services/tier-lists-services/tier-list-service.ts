@@ -1,12 +1,12 @@
 import { ID } from "@pkmn/data";
 import { Types } from "mongoose";
 import { DraftSpecie } from "../../classes/pokemon";
-import { getRuleset } from "../../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
 import tierListModel, {
   TierListPokemonAddon,
 } from "../../models/league/tier-list.model";
+import { getRuleset } from "../../data/rulesets";
 
 export const UNTIERED_TIER_NAME = "Untiered";
 export async function getTierList(

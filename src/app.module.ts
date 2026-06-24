@@ -1,11 +1,16 @@
+import { StorageModule } from "@core/storage/storage.module";
 import { DataModule } from "@modules/data/data.module";
+import { DraftModule } from "@modules/draft/draft.module";
 import { LeagueModule } from "@modules/league/league.modules";
 import { MatchupModule } from "@modules/matchup/matchup.module";
 import { PlannerModule } from "@modules/planner/planner.module";
 import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
 import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
+import { StageModule } from "@modules/stage/stage.module";
+import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
+import { UploadsModule } from "@modules/uploads/uploads.module";
 import { UserModule } from "@modules/user/user.module";
 import { WebhookModule } from "@modules/webhook/webhook.module";
 import { Logger, Module } from "@nestjs/common";
@@ -13,9 +18,6 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
-import { TierListModule } from "@modules/tier-list/tier-list.module";
-import { DraftModule } from "@modules/draft/draft.module";
-import { StageModule } from "@modules/stage/stage.module";
 
 @Module({
   imports: [
@@ -77,9 +79,11 @@ import { StageModule } from "@modules/stage/stage.module";
     PlannerModule,
     ReplayAnalysisModule,
     ReplayLegacyModule,
+    StorageModule,
     TierListModule,
     TournamentAdModule,
     TournamentModule,
+    UploadsModule,
     UserModule,
     WebhookModule,
   ],
