@@ -24,7 +24,6 @@ import { ReplayRoute } from "./routes/replay.route";
 import { Route } from "./routes/route-builder";
 import { StatisticsRoute } from "./routes/statistics.route";
 import { SupporterRoute } from "./routes/supporters.route";
-import { TeambuilderRoute } from "./routes/teambuilder.route";
 import { UserRoute } from "./routes/user.route";
 
 const logDir = path.join(__dirname, "../logs");
@@ -164,7 +163,6 @@ export const ROUTES: { [path: string]: Route } = {
   "/replay": ReplayRoute,
   "/statistics": StatisticsRoute,
   "/supporters": SupporterRoute,
-  "/teambuilder": TeambuilderRoute,
   "/user": UserRoute,
 };
 

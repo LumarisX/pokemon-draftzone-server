@@ -1,6 +1,5 @@
 import { Server, Socket } from "socket.io";
 import { leagueWsGroup } from "./league";
-import { teambuilderWsGroup } from "./teambuilder";
 import { JsonRpcRequest } from "../services/websocket.service";
 
 export type SocketListener = (request: JsonRpcRequest) => void | Promise<void>;
@@ -14,10 +13,7 @@ export type WSRouteGroup = {
   registerEvents?: (io: Server) => void;
 };
 
-export const wsRouteGroups: WSRouteGroup[] = [
-  leagueWsGroup,
-  teambuilderWsGroup,
-];
+export const wsRouteGroups: WSRouteGroup[] = [leagueWsGroup];
 
 export const registerWsEvents = (io: Server) => {
   for (const group of wsRouteGroups) {

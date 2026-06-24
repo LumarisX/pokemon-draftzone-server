@@ -213,7 +213,6 @@ function buildScenarios(
   preset: SpeedTierPreset,
 ): SpeedScenario[] {
   const isItemLocked = Boolean(pokemon.requiredItem || pokemon.requiredItems);
-  const requiredItem = pokemon.requiredItem || pokemon.requiredItems?.[0];
 
   const statuses = preset.statuses.filter(
     (status) =>
@@ -228,10 +227,9 @@ function buildScenarios(
     preset.sides.flatMap((side) =>
       spreads.flatMap((spread) =>
         preset.additional.flatMap((additional) => {
-          const items = additional.noItem
-            ? [{ addStages: [-1, 1, 2] }]
-            : isItemLocked
-              ? [{ addStages: [-1, 1, 2], item: requiredItem }]
+          const items =
+            additional.noItem || isItemLocked
+              ? [{ addStages: [-1, 1, 2] }]
               : preset.items;
 
           return items.flatMap((item) => {
