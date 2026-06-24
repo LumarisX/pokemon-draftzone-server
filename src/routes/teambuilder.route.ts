@@ -1,11 +1,9 @@
-import { toID } from "@pkmn/data";
-import fs from "fs";
 import { z } from "zod";
 import { DraftSpecie } from "../classes/pokemon";
-import { getRuleset } from "../core/data/rulesets/rulesets";
 import { ErrorCodes } from "../errors/error-codes";
 import { PDZError } from "../errors/pdz-error";
 // import { PikalyticData, testSet } from "../services/pats-services/test-set";
+import { getRuleset } from "../data/rulesets";
 import { createRoute } from "./route-builder";
 
 export const TeambuilderRoute = createRoute()((r) => {

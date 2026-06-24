@@ -1,15 +1,23 @@
 import { BusinessExceptionFilter } from "@core/filters/business-exception.filter";
+import { createAppLogger } from "@core/logging/winston-logger.factory";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { WinstonModule } from "nest-winston";
+import path from "path";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
+  const logDir = path.join(__dirname, "../logs");
+  const winstonLogger = createAppLogger(logDir);
+
   const bootstrapLogger = new Logger("Bootstrap");
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger({ instance: winstonLogger }),
+  });
 
   app.enableShutdownHooks();
 

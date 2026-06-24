@@ -1,5 +1,4 @@
 import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { typeWeak } from "../../../services/data-services/type.services";
 import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
 
 export function getTeamTypechart(team: DraftPokemon[]) {
@@ -9,7 +8,10 @@ export function getTeamTypechart(team: DraftPokemon[]) {
   return {
     team: team.map((pokemon) => ({
       ...DraftPokemonMapper.toClientPayload(pokemon),
-      weak: [pokemon.typechart(), typeWeak(pokemon.types, pokemon.ruleset)],
+      weak: [
+        pokemon.typechart(),
+        DraftPokemon.typeWeak(pokemon.types, pokemon.ruleset),
+      ],
       types: pokemon.types,
     })),
     teraTypes: teraTypes,

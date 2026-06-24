@@ -1,6 +1,6 @@
-import { typeWeak } from "./type.services";
-import { getRuleset, Ruleset } from "../../core/data/rulesets/rulesets";
 import { TypeName } from "@pkmn/data";
+import { getRuleset, Ruleset } from "../../data/rulesets";
+import { typeWeak } from "./type.services";
 
 describe("typeWeak", () => {
   let ruleset: Ruleset;

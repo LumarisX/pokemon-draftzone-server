@@ -1,4 +1,3 @@
-import { Ruleset } from "@core/data/rulesets/rulesets";
 import { ID, Specie, toID, TypeName } from "@pkmn/data";
 import {
   AbilityName,
@@ -31,6 +30,7 @@ import {
 } from "../services/matchup-services/coverage.service";
 import { DraftMove } from "./move";
 import { getBST, getCST } from "./specieUtil";
+import { Ruleset } from "../data/rulesets";
 
 export type PokemonOptions = {
   shiny?: boolean;

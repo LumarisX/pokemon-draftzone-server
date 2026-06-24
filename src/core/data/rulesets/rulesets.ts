@@ -171,16 +171,21 @@ export class Ruleset extends Generation {
   name: RulesetId;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
   isNatDex: boolean;
+  useStatPoints: boolean;
   constructor(
     dex: ModdedDex,
     exists: (d: Data) => boolean,
     name: RulesetId,
-    options?: { restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea" },
+    options?: {
+      useStatPoints?: boolean;
+      restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+    },
   ) {
     super(dex, exists);
     this.name = name;
     this.restriction = options?.restriction;
     this.isNatDex = this.exists === NATDEX_EXISTS;
+    this.useStatPoints = options?.useStatPoints ?? false;
   }
 }
 
@@ -205,6 +210,7 @@ export const Rulesets: {
             (d.kind === "Species" && d.forme === "Gmax")
           ),
         RULESET_IDS.CHAMP_MA,
+        { useStatPoints: true },
       ),
     },
     "M-B": {
@@ -218,6 +224,7 @@ export const Rulesets: {
             (d.kind === "Species" && d.forme === "Gmax")
           ),
         RULESET_IDS.CHAMP_MB,
+        { useStatPoints: true },
       ),
     },
   },

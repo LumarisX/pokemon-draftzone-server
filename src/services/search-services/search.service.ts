@@ -1,5 +1,5 @@
 import { DraftSpecie } from "../../classes/pokemon";
-import { Ruleset } from "../../core/data/rulesets/rulesets";
+import { Ruleset } from "../../data/rulesets";
 
 type Primitive = string | number | boolean;
 type SearchValue = Primitive | Primitive[];

@@ -1,4 +1,5 @@
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { S3Service } from "@core/storage/s3.service";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { DiscordService } from "@modules/discord/discord.service";
 import { DraftRepository } from "@modules/draft/draft.repository";
@@ -83,6 +84,11 @@ describe("HostedTournamentService signup", () => {
       grantRole: jest.fn().mockResolvedValue(true),
       sendMessage: jest.fn().mockResolvedValue(true),
     } as unknown as jest.Mocked<DiscordService>;
+    const s3Service = {
+      isEnabled: jest.fn().mockReturnValue(false),
+      headObject: jest.fn(),
+      getPublicUrl: jest.fn(),
+    } as unknown as jest.Mocked<S3Service>;
 
     service = new HostedTournamentService(
       tournamentRepo,
@@ -93,6 +99,7 @@ describe("HostedTournamentService signup", () => {
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       discordService,
+      s3Service,
     );
   });
 

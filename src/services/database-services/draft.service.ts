@@ -1,7 +1,6 @@
 import { ID, toID } from "@pkmn/data";
 import { LRUCache } from "lru-cache";
 import { ClientSession, Types } from "mongoose";
-import { Ruleset } from "../../core/data/rulesets/rulesets";
 import {
   DraftData,
   DraftDocument,
@@ -12,6 +11,7 @@ import { getName } from "../data-services/pokedex.service";
 import { getMatchupsByDraftId } from "./matchup.service";
 import { ErrorCodes } from "../../errors/error-codes";
 import { PDZError } from "../../errors/pdz-error";
+import { Ruleset } from "../../data/rulesets";
 
 type PokemonStatTotals = {
   pokemon: { id: ID; name: string };

@@ -1,12 +1,7 @@
 import { ID, toID } from "@pkmn/data";
 import { LRUCache } from "lru-cache";
 import { DraftSpecie } from "../classes/pokemon";
-import {
-  getRuleset,
-  getRulesets,
-  Ruleset,
-  Rulesets,
-} from "../core/data/rulesets/rulesets";
+import { Ruleset, getRulesets, getRuleset, Rulesets } from "../data/rulesets";
 
 const DEFAULT_RULESET_ID = "Gen9 NatDex";
 const MAX_SPECIES_CONTEXT = 4;

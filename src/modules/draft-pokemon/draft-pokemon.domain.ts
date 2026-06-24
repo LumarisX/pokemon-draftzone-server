@@ -1,4 +1,7 @@
 import { Ruleset } from "@core/data/rulesets/rulesets";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftMove } from "@modules/draft-move/draft-move.domain";
 import {
   CoverageMove,
   FullCoverageMove,
@@ -22,13 +25,9 @@ import {
   StatsTable,
   Tier,
 } from "@pkmn/dex-types";
-import { DraftMove } from "../../classes/move";
 import { getBST, getCST } from "../../classes/specieUtil";
 import { abilityModifiers } from "../../data/pokedex/abilities";
 import { getEffectivePower } from "../../services/data-services/move.service";
-import { typeWeak } from "../../services/data-services/type.services";
-import { PDZError } from "@core/pdz-error";
-import { ErrorCodes } from "@core/pdz-error-codes";
 
 export type DraftOptions = {
   shiny?: boolean;
@@ -266,12 +265,23 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
   }
 
   //Type functions
+
+  static typeWeak(types: [TypeName] | [TypeName, TypeName], ruleset: Ruleset) {
+    return Array.from(ruleset.types).reduce(
+      (acc, type) => {
+        acc[type.name] = type.totalEffectiveness(types);
+        return acc;
+      },
+      {} as Record<TypeName, number>,
+    );
+  }
+
   private $typechart?: {
     [key: string]: number;
   };
   typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
-    const weak = typeWeak(this.types, this.ruleset);
+    const weak = DraftPokemon.typeWeak(this.types, this.ruleset);
     this.getAbilities().forEach((abilityName) => {
       const modifier = abilityModifiers[abilityName as AbilityName];
       if (modifier) {

@@ -31,12 +31,11 @@ type SpeedScenario = {
   modifiers: string[];
 };
 
-type Configurations = {
+type SpeedTierPreset = {
   stages: number[];
   additional: { modifier?: string; mult: number; noItem?: true }[];
   statuses: { status: StatusName | ""; modifier?: string }[];
   sides: { tailwind?: boolean; modifiers: string[] }[];
-  fields: { modifiers: string[] }[];
   items: { addStages?: number[]; item?: string }[];
   spreads: {
     evs?: { spe: number };
@@ -50,13 +49,63 @@ const LEGACY_BOOSTS = [
   25, 28, 33, 40, 50, 66, 100, 150, 200, 250, 300, 350, 400,
 ];
 
-function roundDown(value: number): number {
+const MAX_EVS = 252;
+const MAX_SPS = 32;
+
+function maxInvestmentLabel(useStatPoints: boolean): string {
+  return String(useStatPoints ? MAX_SPS : MAX_EVS);
+}
+
+type AbilitySpeedRule =
+  | { kind: "multiplier"; mult: number; noItem?: true }
+  | { kind: "stages"; stages: number[] };
+
+const ABILITY_SPEED_RULES: Partial<Record<string, AbilitySpeedRule>> = {
+  Unburden: { kind: "multiplier", mult: 2, noItem: true },
+  Chlorophyll: { kind: "multiplier", mult: 2 },
+  "Sand Rush": { kind: "multiplier", mult: 2 },
+  "Slush Rush": { kind: "multiplier", mult: 2 },
+  "Swift Swim": { kind: "multiplier", mult: 2 },
+  "Surge Surfer": { kind: "multiplier", mult: 2 },
+  "Quick Feet": { kind: "multiplier", mult: 1.5, noItem: true },
+  "Quark Drive": { kind: "multiplier", mult: 1.5 },
+  Protosynthesis: { kind: "multiplier", mult: 1.5 },
+  "Speed Boost": { kind: "stages", stages: [3, 4, 5, 6] },
+  "Steam Engine": { kind: "stages", stages: [6] },
+  "Bull Rush": { kind: "multiplier", mult: 1.5 },
+};
+
+function abilitySpeedModifiers(abilities: string[]): {
+  additional: { modifier: string; mult: number; noItem?: true }[];
+  stages: number[];
+} {
+  const additional: { modifier: string; mult: number; noItem?: true }[] = [];
+  const stages: number[] = [];
+
+  for (const ability of abilities) {
+    const rule = ABILITY_SPEED_RULES[ability];
+    if (!rule) continue;
+
+    if (rule.kind === "multiplier") {
+      additional.push({
+        modifier: ability,
+        mult: rule.mult,
+        noItem: rule.noItem,
+      });
+    } else {
+      stages.push(...rule.stages);
+    }
+  }
+
+  return { additional, stages };
+}
+
+function pokeRound(value: number): number {
   return value % 1 > 0.5 ? Math.ceil(value) : Math.floor(value);
 }
 
 function applySpeedModifier(speed: number, mod: number): number {
-  // Keep Showdown-style fixed point modifier behavior for speed changes.
-  return roundDown(((speed * mod) >>> 0) / 0x1000);
+  return pokeRound(((speed * mod) >>> 0) / 0x1000);
 }
 
 function applySpeedBoost(speed: number, stage: number, genNum: number): number {
@@ -98,95 +147,54 @@ function applyScenarioSpeedEffects(
     : Math.min(speed, 10000);
 }
 
-function getSpeedTiers(pokemon: DraftPokemon, level: number) {
-  const fastConfigurations: Configurations = {
-    stages: [0],
-    additional: [{ mult: 1 }],
+function getSpeedTierPresets(pokemon: DraftPokemon): SpeedTierPreset[] {
+  const useStatPoints = pokemon.ruleset.useStatPoints;
+  const maxLabel = maxInvestmentLabel(useStatPoints);
+  const abilityModifiers = abilitySpeedModifiers(pokemon.getAbilities());
+
+  const fast: SpeedTierPreset = {
+    stages: [0, ...abilityModifiers.stages],
+    additional: [{ mult: 1 }, ...abilityModifiers.additional],
     statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
     items: [
       { addStages: [-1, 1, 2] },
       { addStages: [-1], item: "Choice Scarf" },
     ],
     spreads: [
-      { evs: { spe: 252 }, modifiers: ["252"] },
-      { evs: { spe: 252 }, nature: "Timid", modifiers: ["252+"] },
+      { evs: { spe: MAX_EVS }, modifiers: [maxLabel] },
+      { evs: { spe: MAX_EVS }, nature: "Timid", modifiers: [`${maxLabel}+`] },
     ],
-    fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
   };
 
-  const baseConfigurations: Configurations = {
+  const base: SpeedTierPreset = {
     stages: [0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
     items: [{}],
     spreads: [{ evs: { spe: 0 }, modifiers: ["0"] }],
-    fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
 
-  const slowConfigurations: Configurations = {
+  const slow: SpeedTierPreset = {
     stages: [-1, 0],
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }],
     items: [{}, { item: "Iron Ball" }],
     spreads: [
-      {
-        evs: { spe: 0 },
-        ivs: { spe: 0 },
-        nature: "Brave",
-        modifiers: ["0- 0ivs"],
-      },
+      useStatPoints
+        ? { evs: { spe: 0 }, nature: "Brave", modifiers: ["0-"] }
+        : {
+            evs: { spe: 0 },
+            ivs: { spe: 0 },
+            nature: "Brave",
+            modifiers: ["0- 0ivs"],
+          },
     ],
-    fields: [{ modifiers: [] }],
     sides: [{ modifiers: [] }],
   };
-  pokemon.getAbilities().forEach((ability) => {
-    switch (ability) {
-      case "Unburden":
-        fastConfigurations.additional.push({
-          modifier: ability,
-          mult: 2,
-          noItem: true,
-        });
-        break;
-      case "Chlorophyll":
-      case "Sand Rush":
-      case "Slush Rush":
-      case "Swift Swim":
-      case "Surge Surfer":
-        fastConfigurations.additional.push({ modifier: ability, mult: 2 });
-        break;
-      case "Quick Feet":
-        fastConfigurations.additional.push({
-          modifier: ability,
-          mult: 1.5,
-          noItem: true,
-        });
-        break;
-      case "Quark Drive":
-      case "Protosynthesis":
-        fastConfigurations.additional.push({ modifier: ability, mult: 1.5 });
-        break;
-      case "Speed Boost":
-        fastConfigurations.stages.push(3, 4, 5, 6);
-        break;
-      case "Steam Engine":
-        fastConfigurations.stages.push(6);
-        break;
-      case "Bull Rush":
-        fastConfigurations.additional.push({
-          modifier: ability,
-          mult: 1.5,
-        });
-        break;
-    }
-  });
-  return [
-    ...generateTiers(pokemon, level, fastConfigurations),
-    ...generateTiers(pokemon, level, baseConfigurations),
-    ...generateTiers(pokemon, level, slowConfigurations),
-  ];
+
+  return [fast, base, slow];
 }
 
 function tierModifiers(teams: Speedchart["teams"]): string[] {
@@ -202,63 +210,59 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
 
 function buildScenarios(
   pokemon: DraftPokemon,
-  configurations: Configurations,
+  preset: SpeedTierPreset,
 ): SpeedScenario[] {
-  const scenarios: SpeedScenario[] = [];
+  const isItemLocked = Boolean(pokemon.requiredItem || pokemon.requiredItems);
+  const requiredItem = pokemon.requiredItem || pokemon.requiredItems?.[0];
 
-  for (const status of configurations.statuses) {
-    if (status.status === "par" && pokemon.types.includes("Electric")) continue;
+  const statuses = preset.statuses.filter(
+    (status) =>
+      !(status.status === "par" && pokemon.types.includes("Electric")),
+  );
+  const spreads = preset.spreads.filter(
+    (spread) =>
+      !(pokemon.ruleset.useStatPoints && spread.ivs && spread.ivs.spe !== 31),
+  );
 
-    for (const sConfig of configurations.sides) {
-      for (const fConfig of configurations.fields) {
-        for (const pConfig of configurations.spreads) {
-          for (const additional of configurations.additional) {
-            // Species with a required item are always held-item locked — treat
-            // them as no-item choices so the item slot isn't double-applied.
-            const itemList =
-              additional.noItem || pokemon.requiredItem || pokemon.requiredItems
-                ? [{ addStages: [-1, 1, 2] }]
-                : configurations.items;
+  return statuses.flatMap((status) =>
+    preset.sides.flatMap((side) =>
+      spreads.flatMap((spread) =>
+        preset.additional.flatMap((additional) => {
+          const items = additional.noItem
+            ? [{ addStages: [-1, 1, 2] }]
+            : isItemLocked
+              ? [{ addStages: [-1, 1, 2], item: requiredItem }]
+              : preset.items;
 
-            for (const item of itemList) {
-              const stages = [
-                ...configurations.stages,
-                ...(item.addStages ?? []),
-              ];
+          return items.flatMap((item) => {
+            const stages = [...preset.stages, ...(item.addStages ?? [])];
 
-              for (const stage of stages) {
-                const modifiers = [
-                  ...(pConfig.modifiers ?? []),
-                  ...(sConfig.modifiers ?? []),
-                  ...(fConfig.modifiers ?? []),
-                ];
+            return stages.map((stage): SpeedScenario => {
+              const modifiers = [...spread.modifiers, ...side.modifiers];
 
-                if (stage !== 0)
-                  modifiers.push(stage >= 0 ? `+${stage}` : `${stage}`);
-                if (status.modifier) modifiers.push(status.modifier);
-                if (item.item) modifiers.push(item.item);
-                if (additional.modifier) modifiers.push(additional.modifier);
+              if (stage !== 0)
+                modifiers.push(stage >= 0 ? `+${stage}` : `${stage}`);
+              if (status.modifier) modifiers.push(status.modifier);
+              if (item.item) modifiers.push(item.item);
+              if (additional.modifier) modifiers.push(additional.modifier);
 
-                scenarios.push({
-                  evs: pConfig.evs,
-                  ivs: pConfig.ivs,
-                  nature: pConfig.nature,
-                  item: item.item,
-                  stage,
-                  status: status.status,
-                  isTailwind: sConfig.tailwind ?? false,
-                  additionalMult: additional.mult,
-                  modifiers,
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return scenarios;
+              return {
+                evs: spread.evs,
+                ivs: spread.ivs,
+                nature: spread.nature,
+                item: item.item,
+                stage,
+                status: status.status,
+                isTailwind: side.tailwind ?? false,
+                additionalMult: additional.mult,
+                modifiers,
+              };
+            });
+          });
+        }),
+      ),
+    ),
+  );
 }
 
 function evaluateScenario(
@@ -266,7 +270,6 @@ function evaluateScenario(
   level: number,
   scenario: SpeedScenario,
 ): Tier | null {
-  // aegislash speed is derived from the shield forme
   const id =
     pokemon.id === "aegislash" ? ("aegislash-shield" as ID) : pokemon.id;
 
@@ -304,11 +307,27 @@ function evaluateScenario(
 function generateTiers(
   pokemon: DraftPokemon,
   level: number,
-  configurations: Configurations,
+  preset: SpeedTierPreset,
 ): Tier[] {
-  return buildScenarios(pokemon, configurations)
+  const tiers = buildScenarios(pokemon, preset)
     .map((scenario) => evaluateScenario(pokemon, level, scenario))
     .filter((tier): tier is Tier => tier !== null);
+
+  const seenTiers = new Set<string>();
+  return tiers.filter((tier) => {
+    const sortedModifierKey = [...tier.modifiers].sort().join(",");
+    const uniquenessKey = `${tier.speed}::${sortedModifierKey}`;
+
+    if (seenTiers.has(uniquenessKey)) return false;
+    seenTiers.add(uniquenessKey);
+    return true;
+  });
+}
+
+function getSpeedTiers(pokemon: DraftPokemon, level: number): Tier[] {
+  return getSpeedTierPresets(pokemon).flatMap((preset) =>
+    generateTiers(pokemon, level, preset),
+  );
 }
 
 export function speedchart(
