@@ -1,0 +1,7827 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`speedchart matches the recorded baseline across ability/item/ruleset combinations 1`] = `
+{
+  "level": 100,
+  "modifiers": [
+    "252",
+    "-1",
+    "+1",
+    "+2",
+    "Choice Scarf",
+    "252+",
+    "Tailwind",
+    "0",
+    "0- 0ivs",
+    "Iron Ball",
+    "Chlorophyll",
+    "Paralysis",
+    "Unburden",
+    "Quick Feet",
+    "Quark Drive",
+    "+3",
+    "+4",
+    "+5",
+    "+6",
+    "32",
+    "32+",
+    "0-",
+  ],
+  "teams": [
+    [
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "pikachu",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Pikachu",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 90,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 186,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 372,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1116,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 110,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 166,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 55,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 83,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "venusaur",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Venusaur",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 80,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 688,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 1552,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 2072,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1552,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1032,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 756,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 1704,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 2272,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1704,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1132,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 129,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 86,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 194,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 194,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 129,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 142,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 94,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 213,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 213,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 141,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 188,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 282,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 196,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 98,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 98,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 148,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 49,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 74,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "hawlucha",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Hawlucha",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 118,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 335,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 223,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 502,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 502,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 334,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Unburden",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Unburden",
+            ],
+            "speed": 446,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Unburden",
+            ],
+            "speed": 1004,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Unburden",
+            ],
+            "speed": 1340,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 368,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 245,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 552,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 552,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 367,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Unburden",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Unburden",
+            ],
+            "speed": 490,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Unburden",
+            ],
+            "speed": 1104,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Unburden",
+            ],
+            "speed": 1472,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 446,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 1004,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1340,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 1004,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 668,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Unburden",
+            ],
+            "speed": 1340,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Unburden",
+            ],
+            "speed": 892,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Unburden",
+            ],
+            "speed": 2008,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Unburden",
+            ],
+            "speed": 2680,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 490,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 1104,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1472,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 1104,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 734,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Unburden",
+            ],
+            "speed": 1472,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Unburden",
+            ],
+            "speed": 980,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Unburden",
+            ],
+            "speed": 2208,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Unburden",
+            ],
+            "speed": 2944,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 167,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 111,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 251,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 335,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 251,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 167,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 334,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 222,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 502,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 184,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 122,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 276,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 368,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 276,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 183,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 368,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 244,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 552,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 335,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 223,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 502,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 502,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 334,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 670,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 446,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 1004,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 1340,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 368,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 245,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 552,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 552,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 367,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 736,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 490,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 1104,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Unburden",
+            ],
+            "speed": 1472,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 272,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 136,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 144,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 72,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 108,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "ursaring",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Ursaring",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 55,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 209,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 139,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 208,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Quick Feet",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 208,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 469,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 627,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 229,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 152,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 458,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 228,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Quick Feet",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 228,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 514,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 687,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 278,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 626,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 626,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 416,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Quick Feet",
+            ],
+            "speed": 627,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 417,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 939,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 1254,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 458,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 304,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 686,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 916,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 686,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 456,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Quick Feet",
+            ],
+            "speed": 687,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 456,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 1029,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 1374,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 104,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 69,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 209,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 104,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 103,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 234,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 114,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 76,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 171,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 229,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 171,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 114,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 171,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 114,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 256,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 209,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 139,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 208,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 313,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 208,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 469,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 627,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 229,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 152,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 458,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 228,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 343,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 228,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 514,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 687,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 146,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 73,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 68,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 103,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 34,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 51,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "ironbundle",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Iron Bundle",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 136,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 371,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 247,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 742,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 370,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Quark Drive",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Quark Drive",
+            ],
+            "speed": 370,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Quark Drive",
+            ],
+            "speed": 834,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Quark Drive",
+            ],
+            "speed": 1113,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 834,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 555,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 272,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 816,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Quark Drive",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Quark Drive",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Quark Drive",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Quark Drive",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 742,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 494,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 1112,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1484,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 1112,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 740,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Quark Drive",
+            ],
+            "speed": 1113,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Quark Drive",
+            ],
+            "speed": 741,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Quark Drive",
+            ],
+            "speed": 1668,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Quark Drive",
+            ],
+            "speed": 2226,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 1668,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 1110,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 816,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 544,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1632,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 816,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Quark Drive",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Quark Drive",
+            ],
+            "speed": 816,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Quark Drive",
+            ],
+            "speed": 1836,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Quark Drive",
+            ],
+            "speed": 2448,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 1836,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 185,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 123,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 278,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 371,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 278,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 185,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 277,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 184,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 417,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 417,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 277,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 136,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 371,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 247,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 742,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 370,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 556,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 370,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 834,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 1113,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 834,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 555,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 272,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 816,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quark Drive",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Quark Drive",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 308,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 154,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 166,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 249,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 83,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 124,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "yanmega",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Yanmega",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 95,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 289,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+3",
+            ],
+            "speed": 722,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+4",
+            ],
+            "speed": 867,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+5",
+            ],
+            "speed": 1011,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+            ],
+            "speed": 1156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 192,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 433,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 578,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 433,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+3",
+              "Choice Scarf",
+            ],
+            "speed": 1083,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+4",
+              "Choice Scarf",
+            ],
+            "speed": 1300,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+5",
+              "Choice Scarf",
+            ],
+            "speed": 1516,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 1734,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 288,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 317,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+3",
+            ],
+            "speed": 792,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+4",
+            ],
+            "speed": 951,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+5",
+            ],
+            "speed": 1109,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+            ],
+            "speed": 1268,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 211,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 475,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 634,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 475,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+3",
+              "Choice Scarf",
+            ],
+            "speed": 1188,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+4",
+              "Choice Scarf",
+            ],
+            "speed": 1426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+5",
+              "Choice Scarf",
+            ],
+            "speed": 1663,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 1902,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 316,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 578,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+3",
+            ],
+            "speed": 1444,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+4",
+            ],
+            "speed": 1734,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+5",
+            ],
+            "speed": 2022,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+            ],
+            "speed": 2312,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 384,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 866,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 866,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+3",
+              "Choice Scarf",
+            ],
+            "speed": 2166,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+4",
+              "Choice Scarf",
+            ],
+            "speed": 2600,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+5",
+              "Choice Scarf",
+            ],
+            "speed": 3032,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 3468,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 576,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 634,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+3",
+            ],
+            "speed": 1584,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+4",
+            ],
+            "speed": 1902,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+5",
+            ],
+            "speed": 2218,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+            ],
+            "speed": 2536,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 422,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 950,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1268,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 950,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+3",
+              "Choice Scarf",
+            ],
+            "speed": 2376,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+4",
+              "Choice Scarf",
+            ],
+            "speed": 2852,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+5",
+              "Choice Scarf",
+            ],
+            "speed": 3326,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 3804,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 632,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 144,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+3",
+              "Paralysis",
+            ],
+            "speed": 361,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+4",
+              "Paralysis",
+            ],
+            "speed": 433,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+5",
+              "Paralysis",
+            ],
+            "speed": 505,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 578,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 96,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 289,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+3",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 541,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+4",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 650,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+5",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 758,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 867,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 144,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 158,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+3",
+              "Paralysis",
+            ],
+            "speed": 396,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+4",
+              "Paralysis",
+            ],
+            "speed": 475,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+5",
+              "Paralysis",
+            ],
+            "speed": 554,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 634,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 105,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 237,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 317,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 237,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+3",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 594,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+4",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 713,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+5",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 831,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 951,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 158,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 289,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+3",
+              "Paralysis",
+            ],
+            "speed": 722,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+4",
+              "Paralysis",
+            ],
+            "speed": 867,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+5",
+              "Paralysis",
+            ],
+            "speed": 1011,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 1156,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 192,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 433,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 578,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 433,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+3",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1083,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+4",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1300,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+5",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1516,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1734,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 288,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 317,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+3",
+              "Paralysis",
+            ],
+            "speed": 792,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+4",
+              "Paralysis",
+            ],
+            "speed": 951,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+5",
+              "Paralysis",
+            ],
+            "speed": 1109,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 1268,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 211,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 475,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 634,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 475,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+3",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1188,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+4",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1426,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+5",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1663,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1902,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 316,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 226,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 113,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 116,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 175,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 58,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 87,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "coalossal",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Coalossal",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 30,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+            ],
+            "speed": 636,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 106,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 238,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 238,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 954,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 174,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+            ],
+            "speed": 696,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 116,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 261,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 348,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 261,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 1044,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 174,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+            ],
+            "speed": 1272,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 212,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 476,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 636,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 476,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 1908,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 348,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+            ],
+            "speed": 1392,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 232,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 522,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 696,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 522,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Choice Scarf",
+            ],
+            "speed": 2088,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 348,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 79,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 53,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 119,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 119,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 477,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 79,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 87,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 348,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 58,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 130,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 174,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 130,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 522,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 87,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 636,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 106,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 238,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 238,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 954,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 174,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+            ],
+            "speed": 696,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 116,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 261,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 348,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 261,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+6",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 1044,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 174,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 96,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 48,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 38,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 58,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 19,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 29,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "giratinaorigin",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Giratina-Origin",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 90,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 186,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 372,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1116,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 139,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 93,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 209,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 153,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 102,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 229,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 186,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "0",
+              "-1",
+            ],
+            "speed": 144,
+          },
+          {
+            "modifiers": [
+              "0",
+              "+1",
+            ],
+            "speed": 324,
+          },
+          {
+            "modifiers": [
+              "0",
+              "+2",
+            ],
+            "speed": 432,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 108,
+          },
+          {
+            "modifiers": [
+              "0",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 72,
+          },
+          {
+            "modifiers": [
+              "0",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 162,
+          },
+          {
+            "modifiers": [
+              "0",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 110,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 166,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "+1",
+            ],
+            "speed": 249,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "+2",
+            ],
+            "speed": 332,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "aegislash",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Aegislash",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 60,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 219,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 146,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 328,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 438,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 328,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 219,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 240,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 160,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 360,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 480,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 360,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 240,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 438,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 292,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 656,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 876,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 656,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 438,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 480,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 320,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 720,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 960,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 720,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 480,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 109,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 73,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 164,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 219,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 164,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 109,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 120,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 80,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 180,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 240,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 180,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 120,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 219,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 146,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 328,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 438,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 328,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 219,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 240,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 160,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 360,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 480,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 360,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 240,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 156,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 78,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 74,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 112,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 37,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 56,
+          },
+        ],
+      },
+    ],
+    [
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "venusaur",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Venusaur",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 80,
+        "tiers": [
+          {
+            "modifiers": [
+              "32",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+1",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+2",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Choice Scarf",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "32+",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+1",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+2",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Choice Scarf",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 688,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 1552,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 2072,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1552,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1032,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Chlorophyll",
+            ],
+            "speed": 756,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+1",
+              "Chlorophyll",
+            ],
+            "speed": 1704,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+2",
+              "Chlorophyll",
+            ],
+            "speed": 2272,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1704,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 1132,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Paralysis",
+            ],
+            "speed": 129,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 86,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 194,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 194,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 129,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Paralysis",
+            ],
+            "speed": 142,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 94,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 213,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 213,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 141,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 188,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 282,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 259,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 172,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 388,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 258,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 518,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 344,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 1036,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 776,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 516,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 284,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 426,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 568,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Chlorophyll",
+            ],
+            "speed": 1136,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 852,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+              "Chlorophyll",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 196,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 98,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "-1",
+            ],
+            "speed": 117,
+          },
+          {
+            "modifiers": [
+              "0-",
+            ],
+            "speed": 176,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 58,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "Iron Ball",
+            ],
+            "speed": 88,
+          },
+        ],
+      },
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "pikachu",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Pikachu",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 90,
+        "tiers": [
+          {
+            "modifiers": [
+              "32",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+            ],
+            "speed": 186,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+1",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "32",
+              "+2",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Choice Scarf",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "32",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 279,
+          },
+          {
+            "modifiers": [
+              "32+",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+            ],
+            "speed": 204,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+1",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "+2",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Choice Scarf",
+            ],
+            "speed": 459,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 306,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 372,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1116,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 836,
+          },
+          {
+            "modifiers": [
+              "32",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 558,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 408,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 1224,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 918,
+          },
+          {
+            "modifiers": [
+              "32+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 612,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 216,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "-1",
+            ],
+            "speed": 129,
+          },
+          {
+            "modifiers": [
+              "0-",
+            ],
+            "speed": 194,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 64,
+          },
+          {
+            "modifiers": [
+              "0-",
+              "Iron Ball",
+            ],
+            "speed": 97,
+          },
+        ],
+      },
+    ],
+    [
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "granbull",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Granbull",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 45,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 126,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Quick Feet",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 424,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 567,
+          },
+          {
+            "modifiers": [
+              "252+",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+            ],
+            "speed": 138,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+            ],
+            "speed": 414,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Choice Scarf",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Quick Feet",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 465,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 621,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 252,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 756,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 566,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Quick Feet",
+            ],
+            "speed": 567,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 849,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 1134,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+            ],
+            "speed": 414,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 276,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 620,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 828,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Choice Scarf",
+            ],
+            "speed": 620,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Choice Scarf",
+            ],
+            "speed": 414,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Quick Feet",
+            ],
+            "speed": 621,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Quick Feet",
+            ],
+            "speed": 414,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Quick Feet",
+            ],
+            "speed": 930,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Quick Feet",
+            ],
+            "speed": 1242,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 94,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 63,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 141,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 141,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 94,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 141,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 94,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 211,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+            ],
+            "speed": 103,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 69,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 155,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 155,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 103,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 154,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 103,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 232,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 126,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 378,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 283,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 189,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 424,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 567,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 138,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 414,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Choice Scarf",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 310,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 207,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 465,
+          },
+          {
+            "modifiers": [
+              "252+",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+              "Quick Feet",
+            ],
+            "speed": 621,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 126,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 63,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+            ],
+            "speed": 56,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+            ],
+            "speed": 85,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "-1",
+              "Iron Ball",
+            ],
+            "speed": 28,
+          },
+          {
+            "modifiers": [
+              "0- 0ivs",
+              "Iron Ball",
+            ],
+            "speed": 42,
+          },
+        ],
+      },
+    ],
+    [
+      {
+        "capt": {
+          "dmax": undefined,
+          "tera": undefined,
+          "z": undefined,
+        },
+        "draftFormes": undefined,
+        "id": "tauros",
+        "modifiers": {
+          "abilities": undefined,
+          "moves": undefined,
+        },
+        "name": "Tauros",
+        "nickname": undefined,
+        "shiny": undefined,
+        "spe": 110,
+        "tiers": [
+          {
+            "modifiers": [
+              "252",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+            ],
+            "speed": 209,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+            ],
+            "speed": 477,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+            ],
+            "speed": 636,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+            ],
+            "speed": 636,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+            ],
+            "speed": 418,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+            ],
+            "speed": 954,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+            ],
+            "speed": 999,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Paralysis",
+            ],
+            "speed": 79,
+          },
+          {
+            "modifiers": [
+              "252",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 52,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 119,
+          },
+          {
+            "modifiers": [
+              "252",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "Paralysis",
+            ],
+            "speed": 159,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "-1",
+              "Paralysis",
+            ],
+            "speed": 104,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+1",
+              "Paralysis",
+            ],
+            "speed": 238,
+          },
+          {
+            "modifiers": [
+              "252",
+              "Tailwind",
+              "+2",
+              "Paralysis",
+            ],
+            "speed": 318,
+          },
+          {
+            "modifiers": [
+              "0",
+            ],
+            "speed": 255,
+          },
+          {
+            "modifiers": [
+              "0",
+              "Paralysis",
+            ],
+            "speed": 64,
+          },
+        ],
+      },
+    ],
+  ],
+}
+`;

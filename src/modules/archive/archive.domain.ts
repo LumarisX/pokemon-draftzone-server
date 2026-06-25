@@ -1,11 +1,7 @@
-import { FormatId } from "@core/data/formats/formats";
-import { RulesetId } from "@core/data/rulesets/rulesets";
+import { getRuleset } from "@core/data/rulesets/rulesets";
+import { PokemonEntity } from "@modules/draft-pokemon/draft-pokemon.schema";
+import { ExternalMatchupDocument } from "@modules/matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ID, toID } from "@pkmn/data";
-import { Types } from "mongoose";
-import { DraftData } from "../../models/draft/draft.model";
-import { MatchupDocument } from "../../models/draft/matchup.model";
-import { PokemonData } from "../../models/pokemon.schema";
-import { getName } from "../../services/data-services/pokedex.service";
 
 export class Stat {
   indirect?: number;
@@ -46,7 +42,10 @@ function toStatRow(pid: string, stat: Stat): ArchivePokemonStat {
   const indirect = stat.indirect ?? 0;
   const deaths = stat.deaths ?? 0;
   return {
-    pokemon: { id: toID(pid), name: getName(pid) },
+    pokemon: {
+      id: toID(pid),
+      name: getRuleset("Gen9 NatDex").species.get(pid)?.name ?? "",
+    },
     kills,
     brought,
     indirect,
@@ -226,7 +225,7 @@ function computeMatchupStats(matches: ArchiveMatchV2[]): ArchiveMatchupStats {
 export class ArchiveMatchupV2 {
   teamName?: string;
   coach?: string;
-  team: PokemonData[];
+  team: PokemonEntity[];
   paste?: string;
   pastes: { aTeam?: string; bTeam?: string };
   stage: string;
@@ -236,7 +235,7 @@ export class ArchiveMatchupV2 {
   constructor(props: {
     teamName?: string;
     coach?: string;
-    team: PokemonData[];
+    team: PokemonEntity[];
     paste?: string;
     pastes: { aTeam?: string; bTeam?: string };
     stage: string;
@@ -254,7 +253,7 @@ export class ArchiveMatchupV2 {
   }
 
   /** Ports the per-matchup aggregation that used to live in classes/archive.ts's matchupStats/teamStats helpers. */
-  static fromMatchup(matchup: MatchupDocument): ArchiveMatchupV2 {
+  static fromMatchup(matchup: ExternalMatchupDocument): ArchiveMatchupV2 {
     const normalizeWinner = (winner?: string): "a" | "b" | undefined =>
       winner === "a" || winner === "b" ? winner : undefined;
 
@@ -439,30 +438,6 @@ export class ArchiveV2 {
         toStatRow(pid, stat),
       ),
     };
-  }
-
-  /** Ports the archive-creation logic that used to live in classes/archive.ts, for when draft-to-archive conversion is reactivated. */
-  static fromDraft(
-    draft: DraftData & { _id: Types.ObjectId },
-    matchups: MatchupDocument[],
-  ): ArchiveV2 {
-    const archiveMatchups = matchups.map((matchup) =>
-      ArchiveMatchupV2.fromMatchup(matchup),
-    );
-
-    return new ArchiveV2({
-      leagueName: draft.leagueName,
-      leagueId: draft.leagueId,
-      format: draft.format as FormatId,
-      teamName: draft.teamName,
-      ruleset: draft.ruleset as RulesetId,
-      owner: draft.owner,
-      doc: draft.doc,
-      team: draft.team.map((pokemon) => pokemon.id),
-      matchups: archiveMatchups,
-      stats: computeLeagueStats(archiveMatchups),
-      score: computeLeagueScore(archiveMatchups),
-    });
   }
 }
 

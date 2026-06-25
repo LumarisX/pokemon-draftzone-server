@@ -3,20 +3,17 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { PokemonResultStatsEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { TeamRepository } from "@modules/team/team.repository";
+import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
+import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
-import LeagueModel from "../../models/league/league.model";
-import LeagueTournamentModel, {
-  LeagueTournamentDocument,
-} from "../../models/league/tournament.model";
-import { getName } from "../../services/data-services/pokedex.service";
-import { getRosterByRound } from "../../services/league-services/roster-service";
-import { makeTrade } from "../../services/league-services/stage-service";
+import { getName } from "@modules/data/domain/pokedex";
+import { getRosterByRound } from "./domain/roster";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
   PopulatedStageMatchup,
-} from "../../services/league-services/standings-service";
+} from "./domain/standings";
 import {
   CreateStageDto,
   MakeTradeDto,
@@ -25,7 +22,7 @@ import {
   UpdateMatchupDto,
 } from "./stage.dto";
 import { StageRepository } from "./stage.repository";
-import { StageDocument } from "./stage.schema";
+import { StageDocument, StageTradeSideEntity } from "./stage.schema";
 
 @Injectable()
 export class StageService {
@@ -33,57 +30,20 @@ export class StageService {
     private readonly stageRepo: StageRepository,
     private readonly teamRepo: TeamRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
+    private readonly hostedTournamentRepo: HostedTournamentRepository,
   ) {}
 
-  private isOrganizer(
-    tournament: { owner: string; organizers: string[] },
-    sub: string,
-  ): boolean {
+  private isOrganizer(tournament: HostedTournament, sub: string): boolean {
     return tournament.owner === sub || tournament.organizers.includes(sub);
   }
 
-  private assertOrganizer(
-    tournament: { owner: string; organizers: string[] },
-    sub: string,
-  ) {
+  private assertOrganizer(tournament: HostedTournament, sub: string) {
     if (!this.isOrganizer(tournament, sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
-  /**
-   * Resolves the tournament for the organizer-auth check on stage-mutating
-   * endpoints. StageController is addressed purely by Stage `_id` (no
-   * `:draftKey` coupling to a specific Draft), but it does still mount under
-   * `leagues/:leagueKey/tournaments/:tournamentKey/...`. This duplicates
-   * (rather than reuses via DI) the same lookup DraftRepository.findTournament
-   * performs against the legacy league/tournament Mongoose models, because
-   * StageModule must not depend on DraftModule — the plan calls for a
-   * one-directional Draft -> Stage module relationship (DraftService needs
-   * StageRepository for its mixed stageId-aware methods), and importing
-   * DraftModule here to reuse DraftRepository would create a cycle. Both
-   * repositories are thin wrappers over the same plain Mongoose models, so
-   * this is a small, intentional duplication rather than a new pattern.
-   */
-  private async findTournamentForAuth(
-    leagueKey: string,
-    tournamentKey: string,
-  ): Promise<LeagueTournamentDocument> {
-    const league = await LeagueModel.findOne({ leagueKey }).exec();
-    if (!league) throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey });
-
-    const tournament = await LeagueTournamentModel.findOne({
-      tournamentKey,
-      league: league._id,
-    }).exec();
-    if (!tournament)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentKey });
-    return tournament;
-  }
-
   /** Composes a Stage's `.teams` via flattenPoolTeamIds + TeamRepository, mirroring DraftRepository.findDraft. */
-  private async composeStageTeams(
-    stage: StageDocument,
-  ): Promise<
+  private async composeStageTeams(stage: StageDocument): Promise<
     StageDocument & {
       teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>>;
     }
@@ -105,14 +65,14 @@ export class StageService {
     sub: string,
     dto: CreateStageDto,
   ) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
     this.assertOrganizer(tournament, sub);
 
     return this.stageRepo.create({
-      tournamentId: tournament._id,
+      tournamentId: tournament.id,
       order: dto.order,
       name: dto.name,
       type: dto.type as StageDocument["type"],
@@ -122,11 +82,11 @@ export class StageService {
 
   /** Lightweight ordered list for the client's stage switcher. */
   async listStages(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
-    const stages = await this.stageRepo.findAllByTournament(tournament._id);
+    const stages = await this.stageRepo.findAllByTournament(tournament.id);
     return stages.map((stage) => ({
       _id: stage._id.toString(),
       name: stage.name,
@@ -143,7 +103,7 @@ export class StageService {
     sub: string,
     dto: SetStagePoolsDto,
   ) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
@@ -175,7 +135,7 @@ export class StageService {
     sub: string,
     dto: SetCurrentRoundDto,
   ) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
@@ -200,13 +160,9 @@ export class StageService {
     // same way the old division.controller.ts schedule view did — resolved
     // by tournamentId for the same reason as getStandings (Stage is
     // addressed purely by `_id`).
-    const tournament = await LeagueTournamentModel.findById(
+    const tournament = await this.hostedTournamentRepo.findById(
       stageDoc.tournamentId,
-    ).exec();
-    if (!tournament)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-        tournamentId: stageDoc.tournamentId.toString(),
-      });
+    );
 
     const currentRoundOnly = roundFilter?.toLowerCase() === "current";
     const hasTeamFilter = teamId !== undefined;
@@ -322,18 +278,9 @@ export class StageService {
     const stageDoc = await this.stageRepo.findById(stageId);
     const stage = await this.composeStageTeams(stageDoc);
 
-    // Stage has no diffMode/forfeit config of its own — both live on the
-    // owning HostedTournament (legacy LeagueTournamentModel, same model
-    // DraftRepository.findTournament reads). Resolved here by tournamentId
-    // rather than by leagueKey/tournamentKey so getStandings can stay
-    // addressed purely by Stage `_id`, matching the rest of StageController.
-    const tournament = await LeagueTournamentModel.findById(
+    const tournament = await this.hostedTournamentRepo.findById(
       stage.tournamentId,
-    ).exec();
-    if (!tournament)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-        tournamentId: stage.tournamentId.toString(),
-      });
+    );
 
     const allMatchups = (await this.matchupRepo.findByRoundsInStage(
       stage._id,
@@ -436,7 +383,7 @@ export class StageService {
     sub: string,
     dto: MakeTradeDto,
   ) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
@@ -468,8 +415,73 @@ export class StageService {
       })),
     };
 
-    await makeTrade(stageDoc, side1Trade, side2Trade, dto.roundIndex);
+    await this.makeTrade(stageDoc, side1Trade, side2Trade, dto.roundIndex);
     return { message: "Trade processed successfully." };
+  }
+
+  /**
+   * Records a trade between two teams in the same Stage, validating that
+   * each side's offered Pokemon actually exist on that team's current
+   * roster (post any earlier trades, walked via getRosterByRound) before
+   * approving it.
+   */
+  private async makeTrade(
+    stage: StageDocument,
+    side1: StageTradeSideEntity,
+    side2: StageTradeSideEntity,
+    activeRoundIndex: number,
+  ) {
+    if (side1.team === undefined && side2.team === undefined) return;
+
+    const team1 = side1.team
+      ? await this.teamRepo.findByIdOrNull(side1.team)
+      : null;
+    if (side1.team && !team1)
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: side1.team });
+
+    const team2 = side2.team
+      ? await this.teamRepo.findByIdOrNull(side2.team)
+      : null;
+    if (side2.team && !team2)
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: side2.team });
+
+    if (team1) {
+      const draftedPokemonIds = new Set(
+        getRosterByRound(team1, stage).map((pokemon) => pokemon.id),
+      );
+      for (const pokemon of side1.pokemon) {
+        if (!draftedPokemonIds.has(pokemon.id)) {
+          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
+            pokemonId: pokemon.id,
+            teamId: team1._id.toString(),
+          });
+        }
+      }
+    }
+
+    if (team2) {
+      const draftedPokemonIds = new Set(
+        getRosterByRound(team2, stage).map((pokemon) => pokemon.id),
+      );
+      for (const pokemon of side2.pokemon) {
+        if (!draftedPokemonIds.has(pokemon.id)) {
+          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
+            pokemonId: pokemon.id,
+            teamId: team2._id.toString(),
+          });
+        }
+      }
+    }
+
+    stage.trades.push({
+      side1,
+      side2,
+      timestamp: new Date(),
+      activeRound: activeRoundIndex,
+      status: "APPROVED",
+    });
+
+    await stage.save();
   }
 
   async updateMatchup(
@@ -480,7 +492,7 @@ export class StageService {
     sub: string,
     dto: UpdateMatchupDto,
   ) {
-    const tournament = await this.findTournamentForAuth(
+    const tournament = await this.hostedTournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );

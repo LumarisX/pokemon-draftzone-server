@@ -13,13 +13,13 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
-import { getName } from "../../../../services/data-services/pokedex.service";
-import { getRosterByRound } from "../../../../services/league-services/roster-service";
+import { getName } from "@modules/data/domain/pokedex";
+import { getRosterByRound } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
   calculateTeamScore,
   PopulatedStageMatchup,
-} from "../../../../services/league-services/standings-service";
+} from "@modules/stage/domain/standings";
 import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import {
   CoachAssignmentDto,
@@ -68,7 +68,7 @@ export class HostedTournamentService {
     );
     const team = await this.teamRepo.findById(teamId);
 
-    const stageDoc = await this.resolveStage(tournament._id, stageId);
+    const stageDoc = await this.resolveStage(tournament.id, stageId);
     const coach = team.coach;
 
     if (!stageDoc) {
@@ -146,7 +146,7 @@ export class HostedTournamentService {
    *   (organizer must disambiguate via `?stageId=`).
    */
   private async resolveStage(
-    tournamentId: Types.ObjectId,
+    tournamentId: Types.ObjectId | string,
     stageId?: string,
   ): Promise<StageDocument | undefined> {
     if (stageId) return this.stageRepo.findById(stageId);

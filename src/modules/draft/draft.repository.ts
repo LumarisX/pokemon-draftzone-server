@@ -1,27 +1,21 @@
+import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
+import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { TierList } from "@modules/tier-list/tier-list.domain";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import LeagueModel from "../../models/league/league.model";
-import { LeagueTierListDocument } from "../../models/league/tier-list.model";
-import LeagueTournamentModel, {
-  LeagueTournamentDocument,
-} from "../../models/league/tournament.model";
 import { DraftDocument, DraftEntity } from "./draft.schema";
 
 export type { PopulatedTeam } from "@modules/team/team.repository";
 
-export type PopulatedTournament = LeagueTournamentDocument & {
-  tierList: LeagueTierListDocument;
+export type PopulatedTournament = HostedTournament & {
+  tierList: TierList;
 };
 
-/**
- * `teams` is composed in memory from a separate Team query, not a real schema
- * field on DraftEntity. It's attached here so the shared draft/standings
- * logic in services/league-services/*.ts keeps working against one object.
- */
 export type PopulatedDraft = DraftDocument & {
   teams: PopulatedTeam[];
 };
@@ -32,22 +26,20 @@ export class DraftRepository {
     @InjectModel(DraftEntity.name)
     private readonly draftModel: Model<DraftDocument>,
     private readonly teamRepo: TeamRepository,
+    private readonly hostedTournamentRepo: HostedTournamentRepository,
+    private readonly tierListRepo: TierListRepository,
   ) {}
 
   async findTournament(
     leagueKey: string,
     tournamentKey: string,
   ): Promise<PopulatedTournament> {
-    const league = await LeagueModel.findOne({ leagueKey }).exec();
-    if (!league) throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey });
-
-    const tournament = await LeagueTournamentModel.findOne({
+    const tournament = await this.hostedTournamentRepo.findByKey(
+      leagueKey,
       tournamentKey,
-      league: league._id,
-    }).populate<{ tierList: LeagueTierListDocument }>("tierList");
-    if (!tournament)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentKey });
-    return tournament as PopulatedTournament;
+    );
+    const tierList = await this.tierListRepo.findById(tournament.tierListId);
+    return Object.assign(tournament, { tierList }) as PopulatedTournament;
   }
 
   async findDraft(
@@ -55,13 +47,26 @@ export class DraftRepository {
     draftKey: string,
   ): Promise<PopulatedDraft> {
     const draft = await this.draftModel
-      .findOne({ tournamentId: tournament._id, draftKey })
+      .findOne({ tournamentId: tournament.id, draftKey })
       .exec();
 
     if (!draft)
       throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
         draftKey,
         tournamentKey: tournament.tournamentKey,
+      });
+
+    const teams = await this.teamRepo.findAllByDraft(draft._id);
+    return Object.assign(draft, { teams }) as PopulatedDraft;
+  }
+
+  async findPopulatedById(
+    draftId: Types.ObjectId | string,
+  ): Promise<PopulatedDraft> {
+    const draft = await this.draftModel.findById(draftId).exec();
+    if (!draft)
+      throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND, {
+        draftId: draftId.toString(),
       });
 
     const teams = await this.teamRepo.findAllByDraft(draft._id);

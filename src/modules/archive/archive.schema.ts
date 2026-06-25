@@ -1,6 +1,9 @@
+import {
+  PokemonEntity,
+  PokemonSchema,
+} from "@modules/draft-pokemon/draft-pokemon.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { PokemonData, pokemonSchema } from "../../models/pokemon.schema";
 
 export const ARCHIVE_COLLECTION = "archives";
 
@@ -52,9 +55,8 @@ export class ArchiveMatchV1Entity {
   @Prop()
   replay?: string;
 }
-export const ArchiveMatchV1Schema = SchemaFactory.createForClass(
-  ArchiveMatchV1Entity,
-);
+export const ArchiveMatchV1Schema =
+  SchemaFactory.createForClass(ArchiveMatchV1Entity);
 
 @Schema({ _id: false })
 export class ArchiveMatchTeamV2Entity {
@@ -82,9 +84,8 @@ export class ArchiveMatchV2Entity {
   @Prop({ enum: ["a", "b"] })
   winner?: "a" | "b";
 }
-export const ArchiveMatchV2Schema = SchemaFactory.createForClass(
-  ArchiveMatchV2Entity,
-);
+export const ArchiveMatchV2Schema =
+  SchemaFactory.createForClass(ArchiveMatchV2Entity);
 
 @Schema({ _id: false })
 export class ArchiveMatchupStatsTeamEntity {
@@ -136,8 +137,8 @@ export class ArchiveMatchupV2Entity {
   @Prop()
   coach?: string;
 
-  @Prop({ type: [pokemonSchema] })
-  team!: PokemonData[];
+  @Prop({ type: [PokemonSchema] })
+  team!: PokemonEntity[];
 
   @Prop()
   paste?: string;
@@ -169,9 +170,8 @@ export class ArchiveScoreEntity {
   @Prop({ required: true, default: "0" })
   diff!: string;
 }
-export const ArchiveScoreSchema = SchemaFactory.createForClass(
-  ArchiveScoreEntity,
-);
+export const ArchiveScoreSchema =
+  SchemaFactory.createForClass(ArchiveScoreEntity);
 
 export type ArchiveDocument = HydratedDocument<ArchiveEntity>;
 

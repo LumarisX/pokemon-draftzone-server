@@ -1,4 +1,5 @@
 import { StorageModule } from "@core/storage/storage.module";
+import { AgendaModule } from "@modules/agenda/agenda.module";
 import { ArchiveModule } from "@modules/archive/archive.module";
 import { DataModule } from "@modules/data/data.module";
 import { DraftModule } from "@modules/draft/draft.module";
@@ -17,6 +18,7 @@ import { UserModule } from "@modules/user/user.module";
 import { WebhookModule } from "@modules/webhook/webhook.module";
 import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MongooseModule } from "@nestjs/mongoose";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -24,6 +26,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
 
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -72,6 +75,7 @@ import { AuthModule } from "./modules/auth/auth.module";
         };
       },
     }),
+    AgendaModule,
     ArchiveModule,
     AuthModule,
     DataModule,

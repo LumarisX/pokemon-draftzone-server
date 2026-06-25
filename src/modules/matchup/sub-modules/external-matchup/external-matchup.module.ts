@@ -1,7 +1,7 @@
 import { DraftPokemonModule } from "@modules/draft-pokemon/draft-pokemon.module";
+import { ExternalTournamentModule } from "@modules/tournament/sub-modules/external-tournament/external-tournament.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ExternalTournamentModule } from "../../../tournament/sub-modules/external-tournament/external-tournament.module";
 import {
   ExternalTournamentEntity,
   ExternalTournamentSchema,

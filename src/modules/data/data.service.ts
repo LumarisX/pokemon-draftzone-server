@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { PokemonDataDto } from "./dto/pokemon-data.dto";
-import { PokemonDataMapper } from "./mapper/pokemon-data.mapper";
-import { RulesetQueryRepository } from "./ports/ruleset-query.repository";
+import { PokemonDataDto } from "./pokemon-data.dto";
+import { DataRepository } from "./data.repository";
+import { PokemonDataMapper } from "./pokemon-data.mapper";
 
 @Injectable()
 export class DataService {
-  constructor(private readonly dataRepository: RulesetQueryRepository) {}
+  constructor(private readonly dataRepository: DataRepository) {}
 
   async getFormats() {
     return this.dataRepository.getFormats();
