@@ -12,7 +12,6 @@ import { ErrorCodes } from "./errors/error-codes";
 import { errorHandler } from "./errors/error-handler";
 import { PDZError } from "./errors/pdz-error";
 import { loggingContext } from "./middleware/loggingContext";
-import { ArchiveRoute } from "./routes/archive.route";
 import { DataRoute } from "./routes/data.route";
 import { DraftRoute } from "./routes/draft.route";
 import { FileRoute } from "./routes/file.route";
@@ -152,7 +151,6 @@ const routerStream = {
 app.use(morgan(morganJSONFormat, { stream: routerStream }));
 
 export const ROUTES: { [path: string]: Route } = {
-  "/archive": ArchiveRoute,
   "/data": DataRoute,
   "/draft": DraftRoute,
   "/file": FileRoute,
