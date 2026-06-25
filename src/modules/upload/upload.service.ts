@@ -1,8 +1,8 @@
 import { S3Service } from "@core/storage/s3.service";
 import { Injectable, Logger } from "@nestjs/common";
 import { FileUploadRepository } from "./file-upload.repository";
-import { PRESIGNED_UPLOAD_EXPIRY_SECONDS } from "./uploads.constants";
-import { RequestUploadUrlDto } from "./uploads.dto";
+import { PRESIGNED_UPLOAD_EXPIRY_SECONDS } from "./upload.constants";
+import { RequestUploadUrlDto } from "./upload.dto";
 
 export type PresignedUpload = {
   url: string;

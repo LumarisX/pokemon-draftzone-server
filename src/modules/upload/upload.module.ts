@@ -3,17 +3,15 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { FileUploadEntity, FileUploadSchema } from "./file-upload.schema";
 import { FileUploadRepository } from "./file-upload.repository";
-import { UploadsController } from "./uploads.controller";
-import { UploadsService } from "./uploads.service";
-import { UploadsThrottlerGuard } from "./uploads-throttler.guard";
+import { UploadsController } from "./upload.controller";
+import { UploadsService } from "./upload.service";
+import { UploadsThrottlerGuard } from "./upload-throttler.guard";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: FileUploadEntity.name, schema: FileUploadSchema },
     ]),
-    // 20 presign requests per minute per user is generous for real usage
-    // while still capping a spamming/compromised account.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
   ],
   controllers: [UploadsController],

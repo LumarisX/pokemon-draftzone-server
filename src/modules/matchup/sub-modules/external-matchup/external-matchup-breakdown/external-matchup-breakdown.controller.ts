@@ -2,7 +2,7 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { Types } from "mongoose";
 import { ExternalMatchupBreakdownService } from "./external-matchup-breakdown.service";
-import { OptionalAuth } from "@modules/auth/optional-auth.dectorator";
+import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { ExternalMatchup } from "../external-matchup.domain";

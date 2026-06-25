@@ -83,7 +83,15 @@ export class ExternalMatchupService {
     externalmatchupId: string,
     owner: string,
   ) {
-    return await this.matchupRepo.findById(externalmatchupId);
+    const tournament = await this.tournamentRepo.findByKeyAndOwner(
+      tournamentId,
+      owner,
+    );
+    const matchup = await this.matchupRepo.findById(externalmatchupId);
+    if (matchup.aTeam.id?.toString() !== tournament._id?.toString()) {
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
+    }
+    return matchup;
   }
 
   async updateExternalMatchupOpponent(
@@ -116,7 +124,7 @@ export class ExternalMatchupService {
     const matchup = await this.matchupRepo.findById(externalmatchupId);
     return {
       gameTime: matchup.gameTime,
-      reminder: undefined,
+      reminder: matchup.reminder,
     };
   }
 

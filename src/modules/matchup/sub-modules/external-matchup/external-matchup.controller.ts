@@ -133,7 +133,7 @@ export class ExternalMatchupController {
   @Patch("matchups/:matchupId/schedule")
   async updateExternalMatchupSchedule(
     @Param("tournamentKey") tournamentKey: string,
-    @Param("externalmatchupId") matchupId: string,
+    @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: SchedulePatchDto,
   ) {

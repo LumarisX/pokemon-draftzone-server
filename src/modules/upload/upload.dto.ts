@@ -7,7 +7,7 @@ import {
   MinLength,
 } from "class-validator";
 import { UploadFolder } from "./upload-folder.enum";
-import { ALLOWED_IMAGE_CONTENT_TYPES } from "./uploads.constants";
+import { ALLOWED_IMAGE_CONTENT_TYPES } from "./upload.constants";
 
 export class RequestUploadUrlDto {
   @IsEnum(UploadFolder)

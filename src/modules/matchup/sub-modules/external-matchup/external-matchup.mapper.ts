@@ -81,6 +81,8 @@ export class ExternalMatchupMapper {
       format,
       tournamentName: tournamentDoc.leagueName,
       stage: matchupDoc.stage,
+      gameTime: matchupDoc.gameTime ? new Date(matchupDoc.gameTime) : undefined,
+      reminder: matchupDoc.reminder,
       matches: matchupDoc.matches
         ? matchupDoc.matches.map((m) => MatchMapper.fromDatabase(m))
         : [],

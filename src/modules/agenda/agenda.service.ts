@@ -8,7 +8,7 @@ import { DraftDocument } from "@modules/draft/draft.schema";
 import { DiscordService } from "@modules/discord/discord.service";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { UploadsService } from "@modules/uploads/uploads.service";
+import { UploadsService } from "@modules/upload/upload.service";
 import {
   forwardRef,
   Inject,
@@ -175,7 +175,9 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       .findPopulatedById(draftId)
       .catch(() => null);
     if (!draft) {
-      this.logger.error(`Draft not found: ${draftId} in league ${tournamentId}`);
+      this.logger.error(
+        `Draft not found: ${draftId} in league ${tournamentId}`,
+      );
       return;
     }
 
@@ -214,7 +216,10 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async scheduleSkipPick(tournament: PopulatedTournament, draft: DraftDocument) {
+  async scheduleSkipPick(
+    tournament: PopulatedTournament,
+    draft: DraftDocument,
+  ) {
     await this.agenda.start();
     const now = new Date();
     now.setSeconds(now.getSeconds() + draft.timerLength!);

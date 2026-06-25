@@ -13,7 +13,7 @@ import { TeambuilderModule } from "@modules/teambuilder/teambuilder.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
-import { UploadsModule } from "@modules/uploads/uploads.module";
+import { UploadsModule } from "@modules/upload/upload.module";
 import { UserModule } from "@modules/user/user.module";
 import { WebhookModule } from "@modules/webhook/webhook.module";
 import { Logger, Module } from "@nestjs/common";
