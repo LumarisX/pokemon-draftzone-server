@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuthGuard } from "@nestjs/passport";
-import { IS_OPTIONAL_AUTH } from "./optional-auth.dectorator";
+import { IS_OPTIONAL_AUTH } from "./optional-auth.decorator";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard("jwt") {

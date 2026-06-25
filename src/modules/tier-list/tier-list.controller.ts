@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import { TierListService } from "./tier-list.service";
-import { OptionalAuth } from "@modules/auth/optional-auth.dectorator";
+import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 
 @Controller("tier-lists")
 @UseGuards(JwtAuthGuard)

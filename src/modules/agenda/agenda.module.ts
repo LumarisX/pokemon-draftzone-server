@@ -3,7 +3,7 @@ import { DiscordModule } from "@modules/discord/discord.module";
 import { DraftModule } from "@modules/draft/draft.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
-import { UploadsModule } from "@modules/uploads/uploads.module";
+import { UploadsModule } from "@modules/upload/upload.module";
 import { forwardRef, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Agenda } from "agenda";

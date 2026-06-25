@@ -27,6 +27,7 @@ export class ExternalMatchup {
   matches: ExternalMatch[];
   stage?: string;
   gameTime?: Date;
+  reminder?: number;
   tournamentName?: string;
   constructor(props: {
     aTeam: MatchupSide;
@@ -35,12 +36,16 @@ export class ExternalMatchup {
     format: Format;
     matches?: ExternalMatch[];
     stage?: string;
+    gameTime?: Date;
+    reminder?: number;
     tournamentName?: string;
   }) {
     this.ruleset = props.ruleset;
     this.format = props.format;
     this.matches = props.matches ?? [];
     this.stage = props.stage;
+    this.gameTime = props.gameTime;
+    this.reminder = props.reminder;
     this.tournamentName = props.tournamentName;
     this.aTeam = props.aTeam;
     this.bTeam = props.bTeam;

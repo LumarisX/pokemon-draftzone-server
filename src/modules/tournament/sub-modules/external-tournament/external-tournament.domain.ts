@@ -43,6 +43,7 @@ export class ExternalTournament {
     this.key = props.key;
     this.owner = props.owner;
     this.team = props.team;
+    this.doc = props.doc;
     this.matchups = matchups;
   }
 }
