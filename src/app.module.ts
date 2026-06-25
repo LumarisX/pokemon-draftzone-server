@@ -1,4 +1,5 @@
 import { StorageModule } from "@core/storage/storage.module";
+import { ArchiveModule } from "@modules/archive/archive.module";
 import { DataModule } from "@modules/data/data.module";
 import { DraftModule } from "@modules/draft/draft.module";
 import { LeagueModule } from "@modules/league/league.modules";
@@ -71,6 +72,7 @@ import { AuthModule } from "./modules/auth/auth.module";
         };
       },
     }),
+    ArchiveModule,
     AuthModule,
     DataModule,
     DraftModule,
