@@ -1,6 +1,6 @@
 import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
-import * as ChampionsData from "../../../data/champions-data";
+import * as ChampionsData from "../champions-data";
 import * as InsDex from "../../../mods/insurgance";
 import * as RRDex from "../../../mods/radicalred";
 

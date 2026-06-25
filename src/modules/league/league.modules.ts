@@ -1,22 +1,14 @@
-import { HostedTournamentModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.module";
+import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { Module } from "@nestjs/common";
 import { LeagueService } from "./league.service";
-import { LeagueRepository } from "./league.repository";
 import { LeagueController } from "./league.controller";
-import { MongooseModule } from "@nestjs/mongoose";
-import { LeagueEntity, LeagueSchema } from "./league.schema";
+import { LeagueCoreModule } from "./league-core.module";
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: LeagueEntity.name, schema: LeagueSchema },
-    ]),
-    HostedTournamentModule,
-    TierListModule,
-  ],
+  imports: [LeagueCoreModule, HostedTournamentCoreModule, TierListModule],
   controllers: [LeagueController],
-  providers: [LeagueService, LeagueRepository],
-  exports: [LeagueService, LeagueRepository],
+  providers: [LeagueService],
+  exports: [LeagueService, LeagueCoreModule],
 })
 export class LeagueModule {}

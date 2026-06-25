@@ -1,24 +1,26 @@
+import { AgendaModule } from "@modules/agenda/agenda.module";
+import { DiscordModule } from "@modules/discord/discord.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { StageModule } from "@modules/stage/stage.module";
 import { TeamModule } from "@modules/team/team.module";
-import { Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
+import { forwardRef, Module } from "@nestjs/common";
+import { DraftCoreModule } from "./draft-core.module";
+import { DraftEngineService } from "./draft-engine.service";
+import { DraftEventsService } from "./draft-events.service";
 import { DraftController } from "./draft.controller";
-import { DraftEntity, DraftSchema } from "./draft.schema";
-import { DraftRepository } from "./draft.repository";
 import { DraftService } from "./draft.service";
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: DraftEntity.name, schema: DraftSchema },
-    ]),
+    DraftCoreModule,
     TeamModule,
     StageModule,
     LeagueMatchupModule,
+    DiscordModule,
+    forwardRef(() => AgendaModule),
   ],
   controllers: [DraftController],
-  providers: [DraftService, DraftRepository],
-  exports: [DraftRepository],
+  providers: [DraftService, DraftEngineService, DraftEventsService],
+  exports: [DraftCoreModule, DraftEngineService],
 })
 export class DraftModule {}

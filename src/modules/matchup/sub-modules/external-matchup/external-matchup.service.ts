@@ -1,9 +1,9 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { TournamentScore } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
+import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
 import { Injectable } from "@nestjs/common";
-import { TournamentScore } from "../../../tournament/sub-modules/external-tournament/external-tournament.domain";
-import { ExternalTournamentRepository } from "../../../tournament/sub-modules/external-tournament/external-tournament.repository";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import {
@@ -11,8 +11,8 @@ import {
   SchedulePatchDto,
   ScorePatchDto,
 } from "./external-matchup.dto";
-import { ExternalMatchupRepository } from "./external-matchup.repository";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
+import { ExternalMatchupRepository } from "./external-matchup.repository";
 
 @Injectable()
 export class ExternalMatchupService {

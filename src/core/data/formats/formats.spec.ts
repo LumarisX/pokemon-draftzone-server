@@ -1,5 +1,5 @@
+import { PDZError } from "@core/pdz-error";
 import { getFormat, getFormats } from "./formats";
-import { PDZError } from "../../../errors/pdz-error";
 
 describe("getFormat", () => {
   it("should return the correct format for a valid ID", () => {

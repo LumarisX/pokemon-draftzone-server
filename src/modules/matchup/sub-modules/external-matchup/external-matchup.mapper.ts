@@ -1,7 +1,7 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
-import { ExternalTournamentDocument } from "../../../tournament/sub-modules/external-tournament/external-tournament.schema";
+import { ExternalTournamentDocument } from "@modules/tournament/sub-modules/external-tournament/external-tournament.schema";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupDto } from "./external-matchup.dto";

@@ -25,9 +25,9 @@ import {
   StatsTable,
   Tier,
 } from "@pkmn/dex-types";
-import { getBST, getCST } from "../../classes/specieUtil";
-import { abilityModifiers } from "../../data/pokedex/abilities";
-import { getEffectivePower } from "../../services/data-services/move.service";
+import { abilityModifiers } from "@modules/data/domain/ability-modifiers";
+import { getEffectivePower } from "@modules/data/domain/move-power";
+import { getBST, getCST } from "@modules/data/domain/specie-stats";
 
 export type DraftOptions = {
   shiny?: boolean;

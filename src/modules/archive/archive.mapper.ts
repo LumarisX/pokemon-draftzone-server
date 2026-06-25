@@ -1,4 +1,4 @@
-import { getName } from "../../services/data-services/pokedex.service";
+import { getRuleset } from "@core/data/rulesets/rulesets";
 import {
   Archive,
   ArchiveMatchTeamV2,
@@ -129,7 +129,10 @@ export class ArchiveMapper {
       owner: archive.owner,
       format: archive.format,
       ruleset: archive.ruleset,
-      team: archive.team.map((id) => ({ id, name: getName(id) })),
+      team: archive.team.map((id) => ({
+        id,
+        name: getRuleset("Gen9 NatDex").species.get(id)?.name ?? "",
+      })),
       score: archive.archiveType === "ArchiveV2" ? archive.score : undefined,
     };
   }
@@ -156,11 +159,15 @@ export class ArchiveMapper {
         stage: matchup.stage,
         matches: matchup.matches.map((match) => ({
           aTeam: {
-            stats: Array.from(match.aTeam.stats.entries()) as ArchiveStatTuple[],
+            stats: Array.from(
+              match.aTeam.stats.entries(),
+            ) as ArchiveStatTuple[],
             score: match.aTeam.score,
           },
           bTeam: {
-            stats: Array.from(match.bTeam.stats.entries()) as ArchiveStatTuple[],
+            stats: Array.from(
+              match.bTeam.stats.entries(),
+            ) as ArchiveStatTuple[],
             score: match.bTeam.score,
           },
           replay: match.replay,

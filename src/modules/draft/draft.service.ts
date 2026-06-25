@@ -1,6 +1,7 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { getName } from "@modules/data/domain/pokedex";
 import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
@@ -12,22 +13,15 @@ import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
-import { getName } from "../../services/data-services/pokedex.service";
-import {
-  draftPokemon,
-  getDraftDetails,
-  getDraftOrder,
-  isCoach,
-  setDraftState,
-  skipCurrentPick,
-} from "../../services/league-services/draft-service";
-import { getRosterByRound } from "../../services/league-services/roster-service";
+import { getRosterByRound } from "../stage/domain/roster";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
   PopulatedStageMatchup,
-} from "../../services/league-services/standings-service";
-import { getTierList } from "../../services/tier-lists-services/tier-list-service";
+} from "../stage/domain/standings";
+import { DraftEngineService } from "./draft-engine.service";
+import { getDraftOrder } from "./domain/pick-order";
+import { getDraftDetails, isCoach } from "./domain/team-summary";
 import { DraftPickDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
 import {
   DraftRepository,
@@ -42,6 +36,7 @@ export class DraftService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly stageRepo: StageRepository,
     private readonly teamRepo: TeamRepository,
+    private readonly draftEngine: DraftEngineService,
   ) {}
 
   private async loadContext(
@@ -265,7 +260,7 @@ export class DraftService {
         reason: "User is not a coach on this team or a tournament organizer",
       });
 
-    await draftPokemon(tournament, draft, team, dto);
+    await this.draftEngine.draftPokemon(tournament, draft, team, dto);
     return { message: "Drafted successfully." };
   }
 
@@ -308,7 +303,7 @@ export class DraftService {
     );
     this.assertOrganizer(tournament, sub);
 
-    await setDraftState(tournament, draft, dto.state);
+    await this.draftEngine.setDraftState(tournament, draft, dto.state);
     return { message: "Timer set successfully." };
   }
 
@@ -325,7 +320,7 @@ export class DraftService {
     );
     this.assertOrganizer(tournament, sub);
 
-    await skipCurrentPick(tournament, draft);
+    await this.draftEngine.skipCurrentPick(tournament, draft);
     return { message: "Skip successful." };
   }
 
@@ -434,7 +429,6 @@ export class DraftService {
     const stage = stageDoc ? await this.composeStageTeams(stageDoc) : undefined;
 
     const rawTierList = tournament.tierList;
-    const tierList = await getTierList(tournament.tierList._id);
 
     const drafted = draft.teams
       .map((team: PopulatedTeam) => ({
@@ -460,21 +454,22 @@ export class DraftService {
       .filter((team) => team.roster.length > 0);
 
     const undrafted = {
-      roster: tierList
+      roster: rawTierList.tiers
         .filter((tier) => tier.cost)
         .flatMap((tier) =>
-          tier.pokemon
+          Array.from(rawTierList.pokemon.entries())
+            .filter(([, pokemon]) => pokemon.tier === tier.name)
             .filter(
-              (pokemon) =>
+              ([id]) =>
                 !drafted.some((team) =>
-                  team.roster.some((p) => p.id === pokemon.id),
+                  team.roster.some((p) => p.id === id),
                 ),
             )
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
+            .map(([id, pokemon]) => ({
+              id,
+              name: pokemon.name,
               cost: tier.cost,
-              addons: p.addons,
+              addons: pokemon.addons,
             })),
         ),
     };

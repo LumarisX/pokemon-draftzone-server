@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { DataService } from "./data.service";
-import { PokemonDataDto } from "./dto/pokemon-data.dto";
+import { PokemonDataDto } from "./pokemon-data.dto";
 
 @Controller("data")
 export class DataController {

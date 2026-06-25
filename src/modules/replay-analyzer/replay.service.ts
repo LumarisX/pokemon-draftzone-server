@@ -1,4 +1,3 @@
-import { Injectable } from "@nestjs/common";
 import {
   Data,
   Generation,
@@ -9,7 +8,6 @@ import {
   toID,
 } from "@pkmn/data";
 import { Dex } from "@pkmn/dex";
-import { deprecate } from "util";
 
 const replayExists: (d: Data) => boolean = (d) => d.exists === true;
 

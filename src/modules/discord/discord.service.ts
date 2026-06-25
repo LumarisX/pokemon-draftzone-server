@@ -125,6 +125,39 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Resolves a coach's Discord name to a `<@id>` mention, looked up within
+   * the guild of the given channel. Falls back to `@name` (or null if no
+   * name was given) when the integration is disabled or no match is found.
+   */
+  async resolveMention(
+    channelId: string,
+    discordName?: string,
+  ): Promise<string | null> {
+    const trimmed = discordName?.trim();
+    if (!trimmed) return null;
+
+    if (MENTION_PATTERN.test(trimmed)) return trimmed;
+    const numericId = trimmed.replace(/^@/, "");
+    if (SNOWFLAKE_PATTERN.test(numericId)) return `<@${numericId}>`;
+
+    const fallback = `@${trimmed.replace(/^@/, "")}`;
+    if (!this.isEnabled()) return fallback;
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      const guildId =
+        channel && "guild" in channel ? channel.guild?.id : undefined;
+      if (!guildId) return fallback;
+
+      const member = await this.findMember(guildId, trimmed);
+      return member ? `<@${member.id}>` : fallback;
+    } catch (error) {
+      this.logger.warn(`Failed to resolve mention in channel ${channelId}`, error);
+      return fallback;
+    }
+  }
+
   private async getMemberIndex(guildId: string): Promise<MemberIndex | null> {
     const cached = this.memberIndexCache.get(guildId);
     if (cached && cached.expiresAt > Date.now()) return cached.index;

@@ -1,7 +1,7 @@
+import { PokemonEntity, PokemonSchema } from "@modules/draft-pokemon/draft-pokemon.schema";
+import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
-import { PokemonData, pokemonSchema } from "../../models/pokemon.schema";
-import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 
 @Schema({ _id: false })
 export class TeamPickEntity {
@@ -15,8 +15,8 @@ export const TeamPickSchema = SchemaFactory.createForClass(TeamPickEntity);
 
 @Schema({ _id: false })
 export class PickLogEntity {
-  @Prop({ type: pokemonSchema, required: true })
-  pokemon!: PokemonData;
+  @Prop({ type: PokemonSchema, required: true })
+  pokemon!: PokemonEntity;
 
   @Prop({ type: [String], default: undefined })
   addons?: string[];
