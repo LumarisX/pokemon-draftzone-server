@@ -723,11 +723,14 @@ export class DraftEngineService {
       },
     };
 
-    if (!Object.prototype.hasOwnProperty.call(statusActions, state)) {
+    if (state !== "play" && state !== "pause") {
       return;
     }
 
-    const action = statusActions[state as keyof typeof statusActions];
+    const action = statusActions[state];
+    if (typeof action !== "function") {
+      return;
+    }
 
     await action();
     await draft.save();
