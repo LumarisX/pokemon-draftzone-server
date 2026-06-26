@@ -61,7 +61,7 @@ export class TeamRepository {
     coachId: Types.ObjectId | string,
   ): Promise<PopulatedTeam | null> {
     const team = await this.teamModel
-      .findOne({ coach: coachId })
+      .findOne({ coach: { $eq: coachId } })
       .populate<{ coach: CoachDocument }>("coach")
       .exec();
     return team as unknown as PopulatedTeam | null;
