@@ -39,8 +39,20 @@ export class CoachRepository {
     private readonly coachModel: Model<CoachDocument>,
   ) {}
 
+  private toObjectId(coachId: Types.ObjectId | string): Types.ObjectId {
+    if (coachId instanceof Types.ObjectId) return coachId;
+    if (typeof coachId !== "string" || !Types.ObjectId.isValid(coachId)) {
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_FIELD, {
+        field: "coachId",
+        value: coachId,
+      });
+    }
+    return new Types.ObjectId(coachId);
+  }
+
   async findById(coachId: Types.ObjectId | string): Promise<CoachDocument> {
-    const coach = await this.coachModel.findById(coachId).exec();
+    const safeCoachId = this.toObjectId(coachId);
+    const coach = await this.coachModel.findById(safeCoachId).exec();
     if (!coach) throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
     return coach;
   }
@@ -63,8 +75,9 @@ export class CoachRepository {
     coachId: Types.ObjectId | string,
     data: UpdateCoachInput,
   ): Promise<CoachDocument> {
+    const safeCoachId = this.toObjectId(coachId);
     const coach = await this.coachModel.findByIdAndUpdate(
-      coachId,
+      safeCoachId,
       { $set: data },
       { new: true },
     );
@@ -73,7 +86,8 @@ export class CoachRepository {
   }
 
   async delete(coachId: Types.ObjectId | string): Promise<void> {
-    const result = await this.coachModel.findByIdAndDelete(coachId);
+    const safeCoachId = this.toObjectId(coachId);
+    const result = await this.coachModel.findByIdAndDelete(safeCoachId);
     if (!result) throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
   }
 }
