@@ -15,7 +15,9 @@ export class UserRepository {
   ) {}
 
   async getUserBySub(sub: string): Promise<User> {
-    const userDoc = await this.userModel.findOne({ auth0Sub: sub }).exec();
+    const userDoc = await this.userModel
+      .findOne({ auth0Sub: { $eq: sub } })
+      .exec();
     if (!userDoc) throw new PDZError(ErrorCodes.USER.NOT_FOUND);
     return UserMapper.fromDatabase(userDoc);
   }
@@ -23,7 +25,7 @@ export class UserRepository {
   async updateUser(user: User): Promise<UserDocument> {
     return await this.userModel
       .findOneAndUpdate(
-        { auth0Sub: user.sub },
+        { auth0Sub: { $eq: user.sub } },
         {
           $set: {
             lastLogin: user.lastLogin,
@@ -45,7 +47,7 @@ export class UserRepository {
   ): Promise<UserDocument> {
     const user = await this.userModel
       .findOneAndUpdate(
-        { auth0Sub: sub },
+        { auth0Sub: { $eq: sub } },
         { $set: { settings: settingsPayload } },
         { new: true },
       )
