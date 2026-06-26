@@ -30,11 +30,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
   "teams": [
     [
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "pikachu",
         "modifiers": {
@@ -263,11 +259,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "venusaur",
         "modifiers": {
@@ -1139,11 +1131,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "hawlucha",
         "modifiers": {
@@ -1863,11 +1851,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "ursaring",
         "modifiers": {
@@ -2587,11 +2571,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "ironbundle",
         "modifiers": {
@@ -3463,11 +3443,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "yanmega",
         "modifiers": {
@@ -4451,11 +4427,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "coalossal",
         "modifiers": {
@@ -5031,11 +5003,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "giratinaorigin",
         "modifiers": {
@@ -5383,11 +5351,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "aegislash",
         "modifiers": {
@@ -5829,11 +5793,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
     ],
     [
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "venusaur",
         "modifiers": {
@@ -6705,11 +6665,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
         ],
       },
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "pikachu",
         "modifiers": {
@@ -6940,11 +6896,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
     ],
     [
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "granbull",
         "modifiers": {
@@ -7666,11 +7618,7 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
     ],
     [
       {
-        "capt": {
-          "dmax": undefined,
-          "tera": undefined,
-          "z": undefined,
-        },
+        "capt": undefined,
         "draftFormes": undefined,
         "id": "tauros",
         "modifiers": {

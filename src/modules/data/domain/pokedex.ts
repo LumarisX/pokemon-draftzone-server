@@ -32,8 +32,8 @@ const FINAL_TIER_FALLBACKS = ["UNTIERED", "NFE"];
 function normalizeTierName(tier?: string): string {
   if (!tier) return "";
   const normalized = tier
-    .replace(/^\(|\)$/g, "")
     .trim()
+    .replace(/^\(|\)$/g, "")
     .toUpperCase();
   return TIER_ALIASES[normalized] ?? normalized;
 }

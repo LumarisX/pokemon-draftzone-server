@@ -110,5 +110,5 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": ["src/**/*.ts"], // Specify the directory containing your TypeScript source files
-  "exclude": ["node_modules", "dist", "src/scripts/generate-matchups.ts"] // Exclude output directories or files that don't need to be compiled; generate-matchups.ts is a standalone dev script (not imported anywhere) left on the pre-migration Division shape
+  "exclude": ["node_modules", "dist", "src/scripts"] // Exclude output directories or files that don't need to be compiled
 }

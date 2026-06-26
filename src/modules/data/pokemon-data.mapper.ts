@@ -9,8 +9,9 @@ export class PokemonDataMapper {
     tox: "Badly Poisoned",
     brn: "Burn",
     frz: "Freeze",
-    sand: "Sandstorm",
-    prankster: "Prankster",
+    sandstorm: "Sandstorm",
+    hail: "Hail",
+    powder: "Powder",
   };
 
   public static async toDto(specie: DraftPokemon): Promise<PokemonDataDto> {

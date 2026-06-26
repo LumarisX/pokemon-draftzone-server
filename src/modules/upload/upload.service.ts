@@ -29,6 +29,7 @@ export class UploadsService {
 
   async createPresignedUpload(
     dto: RequestUploadUrlDto,
+    uploadedBy: string,
   ): Promise<PresignedUpload> {
     const key = this.s3Service.buildKey(dto.folder, dto.fileName);
     const url = await this.s3Service.getPresignedUploadUrl(
@@ -36,10 +37,30 @@ export class UploadsService {
       dto.contentType,
       PRESIGNED_UPLOAD_EXPIRY_SECONDS,
     );
+
+    try {
+      await this.fileUploadRepo.create({
+        key,
+        uploadedBy,
+        uploadType: dto.folder,
+        fileName: dto.fileName,
+        contentType: dto.contentType,
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to record pending upload ${key}: ${error}`);
+    }
+
     return { url, key, expiresIn: PRESIGNED_UPLOAD_EXPIRY_SECONDS };
   }
 
-  /** Deletes uploads left "pending" too long (abandoned client uploads) and old "deleted" records. */
+  async confirmUpload(key: string): Promise<void> {
+    try {
+      await this.fileUploadRepo.markConfirmed(key);
+    } catch (error) {
+      this.logger.warn(`Failed to confirm upload ${key}: ${error}`);
+    }
+  }
+
   async cleanupOrphanedUploads(): Promise<UploadCleanupResult> {
     const orphanedUploads = await this.fileUploadRepo.findOrphaned(
       new Date(Date.now() - ORPHAN_AGE_MS),

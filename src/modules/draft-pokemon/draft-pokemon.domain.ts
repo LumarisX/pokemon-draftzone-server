@@ -232,7 +232,7 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
           name: item.name,
           id: item.id,
           pngId: `https://play.pokemonshowdown.com/sprites/itemicons/${item.name
-            .replace(" ", "-")
+            .replaceAll(" ", "-")
             .toLowerCase()}.png`,
           desc: item.shortDesc,
           tags,

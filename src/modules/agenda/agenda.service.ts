@@ -67,8 +67,14 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       this.logger.log("Skipping recurring jobs in development mode");
       return;
     }
-    await this.agenda.every("0 3 * * *", "cleanup-file-uploads");
-    this.logger.log("Scheduled recurring file upload cleanup job");
+
+    // TEMPORARILY DISABLED: nothing yet calls UploadsService.confirmUpload()
+    // when a key is actually saved/used (e.g. as a team logo), so every
+    // upload record stays "pending" forever. Re-enabling this would delete
+    // ALL uploads older than 24h, not just abandoned ones. Re-enable once
+    // confirmUpload() is wired into the modules that persist upload keys.
+    // await this.agenda.every("0 3 * * *", "cleanup-file-uploads");
+    // this.logger.log("Scheduled recurring file upload cleanup job");
   }
 
   async onModuleDestroy() {

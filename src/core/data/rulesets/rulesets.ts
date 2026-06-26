@@ -179,12 +179,13 @@ export class Ruleset extends Generation {
     options?: {
       useStatPoints?: boolean;
       restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+      isNatDex?: boolean;
     },
   ) {
     super(dex, exists);
     this.name = name;
     this.restriction = options?.restriction;
-    this.isNatDex = this.exists === NATDEX_EXISTS;
+    this.isNatDex = options?.isNatDex ?? false;
     this.useStatPoints = options?.useStatPoints ?? false;
   }
 }
@@ -237,6 +238,7 @@ export const Rulesets: {
         (d: Data) =>
           !(!NATDEX_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
         RULESET_IDS.GEN9_NATDEX,
+        { isNatDex: true },
       ),
     },
     "Paldea Dex": {
@@ -268,7 +270,9 @@ export const Rulesets: {
       id: RULESET_IDS.GEN8_NATDEX,
       desc: "All Pokémon available in Generation 8 and before",
       get ruleset() {
-        return new Ruleset(Dex.forGen(8), NATDEX_EXISTS, this.id);
+        return new Ruleset(Dex.forGen(8), NATDEX_EXISTS, this.id, {
+          isNatDex: true,
+        });
       },
     },
     "Sword/Shield": {
@@ -385,8 +389,8 @@ export function getRuleset(rulesetId: string): Ruleset {
 }
 
 export function getRulesets() {
-  return [Rulesets["Gen 9"], Rulesets["Gen 8"], Rulesets["Older Gens"]].flatMap(
-    (rulesetgroup) => Object.values(rulesetgroup).map((ruleset) => ruleset.id),
+  return Object.values(Rulesets).flatMap((rulesetgroup) =>
+    Object.values(rulesetgroup).map((ruleset) => ruleset.id),
   );
 }
 

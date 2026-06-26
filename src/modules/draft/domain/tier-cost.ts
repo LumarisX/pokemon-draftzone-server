@@ -58,11 +58,12 @@ export function getPickCost(
   tierList: TierList,
   pick: { pokemonId: string; addons?: string[] },
 ): number {
+  const baseCost = getBaseTierCost(tierList, pick.pokemonId);
   if (pick.addons?.length) {
-    return getAddonCost(tierList, pick.pokemonId, pick.addons);
+    return baseCost + getAddonCost(tierList, pick.pokemonId, pick.addons);
   }
 
-  return getBaseTierCost(tierList, pick.pokemonId);
+  return baseCost;
 }
 
 export function areAddonsValid(

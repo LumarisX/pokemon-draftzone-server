@@ -78,7 +78,9 @@ export class DraftPokemonMapper {
       shiny: pokemon.shiny,
       draftFormes: pokemon.draftFormes,
       modifiers: pokemon.modifiers,
-      capt: Object.values(capt).length ? capt : undefined,
+      capt: Object.values(capt).some((value) => value !== undefined)
+        ? capt
+        : undefined,
     };
   }
 

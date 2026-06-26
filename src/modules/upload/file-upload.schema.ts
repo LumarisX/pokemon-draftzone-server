@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
+import { UploadFolder } from "./upload-folder.enum";
 
 export type FileUploadDocument = HydratedDocument<FileUploadEntity>;
 
@@ -13,16 +14,18 @@ export class FileUploadEntity {
 
   @Prop({
     type: String,
-    enum: ["league-logo", "team-logo", "other"],
+    enum: Object.values(UploadFolder),
     required: true,
   })
-  uploadType!: "league-logo" | "team-logo" | "other";
+  uploadType!: UploadFolder;
 
   @Prop({ required: true })
   fileName!: string;
 
-  @Prop({ required: true })
-  fileSize!: number;
+  // Unknown until the client finishes uploading directly to S3 - the
+  // presigned-URL request that creates this record happens beforehand.
+  @Prop()
+  fileSize?: number;
 
   @Prop({ required: true })
   contentType!: string;
