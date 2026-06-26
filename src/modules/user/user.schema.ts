@@ -1,6 +1,12 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
 
+export enum UserRole {
+  OWNER = "owner",
+  ADMIN = "admin",
+  DEV = "dev",
+}
+
 export type UserDocument = HydratedDocument<UserEntity>;
 
 @Schema({ _id: false })
@@ -27,6 +33,12 @@ export const UserSettingsSchema =
 export class UserEntity {
   @Prop({ type: String, required: true, trim: true })
   auth0Sub!: string;
+
+  @Prop({ type: String, trim: true })
+  username?: string;
+
+  @Prop({ type: [String], enum: UserRole, default: [] })
+  roles!: UserRole[];
 
   @Prop({ type: Date, required: true })
   joined!: Date;

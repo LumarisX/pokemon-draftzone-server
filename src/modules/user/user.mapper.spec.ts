@@ -34,11 +34,12 @@ describe("UserMapper.fromAuth0", () => {
     } as Auth0UserDto;
   }
 
-  it("parses the auth0Sub, joined, and lastLogin fields into a User", () => {
+  it("parses the auth0Sub, username, joined, and lastLogin fields into a User", () => {
     const result = UserMapper.fromAuth0(buildAuth0Dto());
 
     expect(result).toBeInstanceOf(User);
     expect(result.sub).toBe("auth0|user-1");
+    expect(result.username).toBe("ash");
     expect(result.joined).toEqual(new Date("2026-01-01T00:00:00.000Z"));
     expect(result.lastLogin).toEqual(new Date("2026-02-01T00:00:00.000Z"));
   });

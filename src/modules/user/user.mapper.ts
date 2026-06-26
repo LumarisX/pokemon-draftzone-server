@@ -1,11 +1,20 @@
 import { User, UserSettings } from "./user.domain";
 import { Auth0UserDto, UserSettingsDto } from "./user.dto";
-import { UserEntity, UserSettingsEntity } from "./user.schema";
+import { UserEntity, UserRole, UserSettingsEntity } from "./user.schema";
+
+const KNOWN_ROLES = new Set<string>(Object.values(UserRole));
+
+function toUserRoles(roles?: string[]): UserRole[] | undefined {
+  if (roles === undefined) return undefined;
+  return roles.filter((role): role is UserRole => KNOWN_ROLES.has(role));
+}
 
 export class UserMapper {
   static toClientPayload(user: User) {
     return {
       sub: user.sub,
+      username: user.username,
+      roles: user.roles,
       settings: user.settings,
       joined: user.joined,
       lastLogin: user.lastLogin,
@@ -16,6 +25,8 @@ export class UserMapper {
   static fromAuth0(data: Auth0UserDto): User {
     return new User({
       sub: data.auth0Sub,
+      username: data.username,
+      roles: toUserRoles(data.roles),
       lastLogin: new Date(data.lastLogin),
       joined: new Date(data.joined),
     });
@@ -24,6 +35,8 @@ export class UserMapper {
   static fromDatabase(entity: UserEntity): User {
     return new User({
       sub: entity.auth0Sub,
+      username: entity.username,
+      roles: entity.roles ?? [],
       settings: UserSettingsMapper.fromDatabase(entity.settings),
       joined: entity.joined,
       lastLogin: entity.lastLogin,

@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsEmail,
   IsOptional,
+  IsArray,
 } from "class-validator";
 
 export class UserSettingsDto {
@@ -47,6 +48,11 @@ export class Auth0UserDto {
   @IsString()
   @IsNotEmpty()
   username!: string;
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  roles?: string[];
 
   @IsEmail()
   @IsOptional()

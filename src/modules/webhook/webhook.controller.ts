@@ -1,8 +1,8 @@
-import { Controller, Post, Body, UseGuards } from "@nestjs/common";
-import { WebhookGuard } from "./webhook.guard";
-import { UserService } from "@modules/user/user.service";
 import { Auth0UserDto } from "@modules/user/user.dto";
 import { UserMapper } from "@modules/user/user.mapper";
+import { UserService } from "@modules/user/user.service";
+import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { WebhookGuard } from "./webhook.guard";
 
 @Controller("webhooks")
 export class WebhookController {

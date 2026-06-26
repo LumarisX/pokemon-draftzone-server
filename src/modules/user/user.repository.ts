@@ -23,14 +23,21 @@ export class UserRepository {
   }
 
   async updateUser(user: User): Promise<UserDocument> {
+    const setFields: Partial<UserEntity> = {
+      username: user.username,
+      lastLogin: user.lastLogin,
+      settings: user.settings,
+    };
+    // Omitted (vs. an empty array) means the caller didn't report roles at
+    // all - e.g. an older Action payload - so leave any existing value alone
+    // rather than wiping it out.
+    if (user.roles !== undefined) setFields.roles = user.roles;
+
     return await this.userModel
       .findOneAndUpdate(
         { auth0Sub: { $eq: user.sub } },
         {
-          $set: {
-            lastLogin: user.lastLogin,
-            settings: user.settings,
-          },
+          $set: setFields,
           $setOnInsert: {
             joined: user.joined,
             lastCheckedAdsAt: new Date(0),

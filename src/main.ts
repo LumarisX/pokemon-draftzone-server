@@ -1,6 +1,6 @@
 import { BusinessExceptionFilter } from "@core/filters/business-exception.filter";
 import { createAppLogger } from "@core/logging/winston-logger.factory";
-import { Logger, ValidationPipe } from "@nestjs/common";
+import { BadRequestException, Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
@@ -48,7 +48,19 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.useGlobalFilters(new BusinessExceptionFilter());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      exceptionFactory: (errors) => {
+        const validationLogger = new Logger("ValidationPipe");
+        validationLogger.error(
+          `Request validation failed: ${JSON.stringify(errors)}`,
+        );
+        return new BadRequestException(errors);
+      },
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle("Pokémon DraftZone API")

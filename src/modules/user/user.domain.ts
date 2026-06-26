@@ -1,3 +1,5 @@
+import { UserRole } from "./user.schema";
+
 export class UserSettings {
   shinyUnlock?: boolean;
   spriteSet?: string;
@@ -12,6 +14,8 @@ export class UserSettings {
 
 export class User {
   readonly sub: string;
+  username?: string;
+  roles?: UserRole[];
   settings?: UserSettings;
   joined: Date;
   lastLogin: Date;
@@ -20,10 +24,14 @@ export class User {
     sub: string;
     joined: Date;
     lastLogin: Date;
+    username?: string;
+    roles?: UserRole[];
     settings?: UserSettings;
     lastCheckedAdsAt?: Date;
   }) {
     this.sub = props.sub;
+    this.username = props.username;
+    this.roles = props.roles;
     this.settings = props.settings;
     this.joined = props.joined;
     this.lastLogin = props.lastLogin;
