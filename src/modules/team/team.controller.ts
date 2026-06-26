@@ -45,7 +45,7 @@ export class TeamController {
       typeof body.coachId !== "string" ||
       !Types.ObjectId.isValid(body.coachId)
     ) {
-      throw new PDZError(ErrorCodes.VALIDATION.INVALID_FIELD, {
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
         field: "coachId",
         value: body.coachId,
       });
