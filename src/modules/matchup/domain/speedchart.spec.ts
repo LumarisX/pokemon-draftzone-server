@@ -34,7 +34,10 @@ describe("speedchart", () => {
       mon("giratinaorigin"),
       mon("aegislash"),
     ];
-    const statPointsTeam = [mon("venusaur", CHAMPIONS_MA), mon("pikachu", CHAMPIONS_MA)];
+    const statPointsTeam = [
+      mon("venusaur", CHAMPIONS_MA),
+      mon("pikachu", CHAMPIONS_MA),
+    ];
     const moddedTeam = [mon("granbull", RADICAL_RED)];
     const gen1Team = [mon("tauros", GEN_1)];
 

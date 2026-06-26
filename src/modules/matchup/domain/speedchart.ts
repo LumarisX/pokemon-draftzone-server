@@ -4,6 +4,7 @@ import { State } from "../../../../dmg/state";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
+import { PDZPokemonSet } from "@modules/pokemon-set/pokemon-set.domain";
 
 export type Speedchart = {
   teams: (PokemonDto & {
@@ -22,6 +23,7 @@ type Tier = {
 type SpeedScenario = {
   evs?: { spe: number };
   ivs?: { spe: number };
+  sps?: { spe: number };
   nature?: string;
   item?: string;
   stage: number;
@@ -40,6 +42,7 @@ type SpeedTierPreset = {
   spreads: {
     evs?: { spe: number };
     ivs?: { spe: number };
+    sps?: { spe: number };
     nature?: string;
     modifiers: string[];
   }[];
@@ -51,6 +54,7 @@ const LEGACY_BOOSTS = [
 
 const MAX_EVS = 252;
 const MAX_SPS = 32;
+const MIN_SPS = 0;
 
 function maxInvestmentLabel(useStatPoints: boolean): string {
   return String(useStatPoints ? MAX_SPS : MAX_EVS);
@@ -161,8 +165,13 @@ function getSpeedTierPresets(pokemon: PDZPokemon): SpeedTierPreset[] {
       { addStages: [-1], item: "Choice Scarf" },
     ],
     spreads: [
-      { evs: { spe: MAX_EVS }, modifiers: [maxLabel] },
-      { evs: { spe: MAX_EVS }, nature: "Timid", modifiers: [`${maxLabel}+`] },
+      { evs: { spe: MAX_EVS }, sps: { spe: MAX_SPS }, modifiers: [maxLabel] },
+      {
+        evs: { spe: MAX_EVS },
+        sps: { spe: MAX_SPS },
+        nature: "Timid",
+        modifiers: [`${maxLabel}+`],
+      },
     ],
     sides: [{ modifiers: [] }, { tailwind: true, modifiers: ["Tailwind"] }],
   };
@@ -172,7 +181,7 @@ function getSpeedTierPresets(pokemon: PDZPokemon): SpeedTierPreset[] {
     additional: [{ mult: 1 }],
     statuses: [{ status: "" }, { status: "par", modifier: "Paralysis" }],
     items: [{}],
-    spreads: [{ evs: { spe: 0 }, modifiers: ["0"] }],
+    spreads: [{ evs: { spe: 0 }, sps: { spe: MIN_SPS }, modifiers: ["0"] }],
     sides: [{ modifiers: [] }],
   };
 
@@ -183,7 +192,7 @@ function getSpeedTierPresets(pokemon: PDZPokemon): SpeedTierPreset[] {
     items: [{}, { item: "Iron Ball" }],
     spreads: [
       useStatPoints
-        ? { evs: { spe: 0 }, nature: "Brave", modifiers: ["0-"] }
+        ? { sps: { spe: MIN_SPS }, nature: "Brave", modifiers: ["0-"] }
         : {
             evs: { spe: 0 },
             ivs: { spe: 0 },
@@ -218,14 +227,10 @@ function buildScenarios(
     (status) =>
       !(status.status === "par" && pokemon.types.includes("Electric")),
   );
-  const spreads = preset.spreads.filter(
-    (spread) =>
-      !(pokemon.ruleset.useStatPoints && spread.ivs && spread.ivs.spe !== 31),
-  );
 
   return statuses.flatMap((status) =>
     preset.sides.flatMap((side) =>
-      spreads.flatMap((spread) =>
+      preset.spreads.flatMap((spread) =>
         preset.additional.flatMap((additional) => {
           const items =
             additional.noItem || isItemLocked
@@ -247,6 +252,7 @@ function buildScenarios(
               return {
                 evs: spread.evs,
                 ivs: spread.ivs,
+                sps: spread.sps,
                 nature: spread.nature,
                 item: item.item,
                 stage,
@@ -274,10 +280,25 @@ function evaluateScenario(
   try {
     const dmgGeneration = pokemon.ruleset;
 
+    const set = new PDZPokemonSet(
+      {
+        id,
+        level,
+        evs: scenario.evs,
+        ivs: scenario.ivs,
+        sps: scenario.sps,
+      },
+      dmgGeneration,
+    );
+
     const pokemonState = State.createPokemon(dmgGeneration, id, {
-      level,
-      evs: scenario.evs,
-      ivs: scenario.ivs,
+      level: set.level,
+      evs: set.evs,
+      ivs: set.ivs,
+      // Nature and item are intentionally NOT resolved through PDZPokemonSet: that resolution is
+      // lenient (unknown name -> undefined), but dmg/state.ts deliberately throws when a nature or
+      // item doesn't exist yet in this generation/ruleset, which speedchart relies on to drop
+      // impossible scenarios (e.g. a nature or Choice Scarf in Generation 1).
       nature: scenario.nature,
       item: scenario.item,
       status: scenario.status || undefined,

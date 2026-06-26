@@ -29,7 +29,6 @@ import { AuthModule } from "./modules/auth/auth.module";
     EventEmitterModule.forRoot(),
 
     MongooseModule.forRootAsync({
-      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const dbLogger = new Logger("Database");
