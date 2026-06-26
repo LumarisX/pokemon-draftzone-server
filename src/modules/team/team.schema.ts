@@ -1,4 +1,4 @@
-import { PokemonEntity, PokemonSchema } from "@modules/draft-pokemon/draft-pokemon.schema";
+import { PokemonEntity, PokemonSchema } from "@modules/pokemon/pokemon.schema";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";

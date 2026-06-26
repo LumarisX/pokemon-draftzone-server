@@ -1,10 +1,10 @@
 import { Format } from "@core/data/formats/formats";
 import { Ruleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { ExternalMatch } from "./sub-modules/external-matchup/external-matchup-match/external-matchup-match.domain";
 
 export interface MatchupSide {
-  team: DraftPokemon[];
+  team: PDZPokemon[];
   teamName: string;
   coach?: string;
   owner?: string;

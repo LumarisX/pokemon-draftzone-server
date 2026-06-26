@@ -1,7 +1,7 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { Injectable } from "@nestjs/common";
 import { ID } from "@pkmn/data";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
@@ -119,7 +119,7 @@ export class TierListService {
         const pokemon = await Promise.all(
           pokemonEntries.map(async ([pokemonId, data]) => {
             assignedPokemon.add(pokemonId);
-            const specie = new DraftPokemon(pokemonId as ID, ruleset);
+            const specie = new PDZPokemon(pokemonId as ID, ruleset);
             return this.toPokemonView(specie, data, tierList.banned);
           }),
         );
@@ -132,7 +132,7 @@ export class TierListService {
       const untieredPokemon = Array.from(ruleset.species)
         .filter((specie) => !assignedPokemon.has(specie.id))
         .map((specie) => {
-          const draftSpecie = new DraftPokemon(specie.id as ID, ruleset);
+          const draftSpecie = new PDZPokemon(specie.id as ID, ruleset);
           const data = tierList.pokemon.get(specie.id);
           return {
             id: specie.id,
@@ -152,7 +152,7 @@ export class TierListService {
   }
 
   private async toPokemonView(
-    specie: DraftPokemon,
+    specie: PDZPokemon,
     data: TierListPokemon,
     banned: { moves: string[]; abilities: string[] },
   ): Promise<TierPokemonView> {

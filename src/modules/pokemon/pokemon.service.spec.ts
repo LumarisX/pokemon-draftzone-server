@@ -1,17 +1,17 @@
 import { getFormat } from "@core/data/formats/formats";
 import { Rulesets } from "@core/data/rulesets/rulesets";
-import { DraftPokemonService } from "./draft-pokemon.service";
+import { PokemonService } from "./pokemon.service";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 const PALDEA_DEX = Rulesets["Gen 9"]["Paldea Dex"].ruleset;
 const SINGLES = getFormat("Singles");
 const VGC = getFormat("VGC");
 
-describe("DraftPokemonService", () => {
-  let service: DraftPokemonService;
+describe("PokemonService", () => {
+  let service: PokemonService;
 
   beforeEach(() => {
-    service = new DraftPokemonService();
+    service = new PokemonService();
   });
 
   describe("normalizeTierName", () => {

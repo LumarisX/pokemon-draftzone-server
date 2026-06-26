@@ -1,10 +1,10 @@
-import { DraftPokemonDto } from "@modules/draft-pokemon/draft-pokemon.dto";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { Types } from "mongoose";
 import { ExternalMatchupBreakdownController } from "./external-matchup-breakdown.controller";
 import { ExternalMatchupBreakdownService } from "./external-matchup-breakdown.service";
 
-function buildPokemon(id: string, name: string): DraftPokemonDto {
-  return { id, name } as DraftPokemonDto;
+function buildPokemon(id: string, name: string): PokemonDto {
+  return { id, name } as PokemonDto;
 }
 
 describe("ExternalMatchupBreakdownController", () => {

@@ -1,12 +1,12 @@
-import { DraftMove } from "@modules/draft-move/draft-move.domain";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PDZMove } from "@modules/move/move.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
-export async function getTeamMoves(team: DraftPokemon[]) {
+export async function getTeamMoves(team: PDZPokemon[]) {
   const combinedLearnset = new Map<
     string,
     {
-      move: DraftMove;
+      move: PDZMove;
       pokemon: string[];
     }
   >();
@@ -45,7 +45,7 @@ export async function getTeamMoves(team: DraftPokemon[]) {
 
   return {
     moves,
-    pokemon: team.map(DraftPokemonMapper.toClientPayload),
+    pokemon: team.map(PokemonMapper.toClientPayload),
     tags: Array.from(allTags).sort(),
   };
 }

@@ -1,5 +1,5 @@
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ID } from "@pkmn/data";
 
 export type CoverageMove = {
@@ -26,13 +26,13 @@ export type FullCoverageMove = {
 };
 
 export async function getMatchupCoverage(
-  team: DraftPokemon[],
-  oppTeam: DraftPokemon[],
+  team: PDZPokemon[],
+  oppTeam: PDZPokemon[],
 ) {
   return Promise.all(
     team.map(async (pokemon) => {
       const data: {
-        species: DraftPokemon;
+        species: PDZPokemon;
         coverage: {
           [key: string]: CoverageMove[];
         };
@@ -57,14 +57,14 @@ export async function getMatchupCoverage(
       }
 
       return {
-        ...DraftPokemonMapper.toClientPayload(data.species),
+        ...PokemonMapper.toClientPayload(data.species),
         coverage: data.coverage,
       };
     }),
   );
 }
 
-export async function getTeamCoverage(team: DraftPokemon[]) {
+export async function getTeamCoverage(team: PDZPokemon[]) {
   const teamCoverage = await Promise.all(
     team.map(async (pokemon) => ({
       id: pokemon.id,

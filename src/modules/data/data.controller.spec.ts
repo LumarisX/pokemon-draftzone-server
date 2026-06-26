@@ -12,6 +12,9 @@ describe("DataController", () => {
       getRulesets: jest.fn(),
       getRulesetsLegacy: jest.fn(),
       getPokemonList: jest.fn(),
+      getRandomPokemon: jest.fn(),
+      getPokemonMoves: jest.fn(),
+      getPokemonFormes: jest.fn(),
     } as unknown as jest.Mocked<DataService>;
     controller = new DataController(service);
   });
@@ -52,5 +55,107 @@ describe("DataController", () => {
 
     expect(service.getPokemonList).toHaveBeenCalledWith("Gen9 NatDex");
     expect(result).toBe(pokemonList);
+  });
+
+  describe("getRandom", () => {
+    it("parses count and forwards a tier/banned list to the service", async () => {
+      const pokemon = [{ id: "pikachu" }] as any;
+      service.getRandomPokemon.mockResolvedValue(pokemon);
+
+      const result = await controller.getRandom(
+        "5",
+        "Gen9 NatDex",
+        "Singles",
+        "S",
+        ["mewtwo", "arceus"],
+      );
+
+      expect(service.getRandomPokemon).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        5,
+        "Singles",
+        { tier: "S", banned: ["mewtwo", "arceus"] },
+      );
+      expect(result).toBe(pokemon);
+    });
+
+    it("normalizes a single banned id (string) into a one-item array", async () => {
+      service.getRandomPokemon.mockResolvedValue([]);
+
+      await controller.getRandom("3", "Gen9 NatDex", "Singles", undefined, "mewtwo");
+
+      expect(service.getRandomPokemon).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        3,
+        "Singles",
+        { tier: undefined, banned: ["mewtwo"] },
+      );
+    });
+
+    it("clamps count to a minimum of 1 when missing or invalid", async () => {
+      service.getRandomPokemon.mockResolvedValue([]);
+
+      await controller.getRandom("not-a-number", "Gen9 NatDex", "Singles");
+
+      expect(service.getRandomPokemon).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        1,
+        "Singles",
+        { tier: undefined, banned: [] },
+      );
+    });
+
+    it("throws when ruleset is missing", async () => {
+      await expect(
+        controller.getRandom("5", undefined, "Singles"),
+      ).rejects.toThrow();
+    });
+
+    it("throws when format is missing", async () => {
+      await expect(
+        controller.getRandom("5", "Gen9 NatDex", undefined),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("getPokemonMoves", () => {
+    it("forwards pokemonId and the ruleset query param to the service", async () => {
+      const moves = [{ id: "thunderbolt" }] as any;
+      service.getPokemonMoves.mockResolvedValue(moves);
+
+      const result = await controller.getPokemonMoves(
+        "pikachu",
+        "Gen9 NatDex",
+      );
+
+      expect(service.getPokemonMoves).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        "pikachu",
+      );
+      expect(result).toBe(moves);
+    });
+
+    it("throws when ruleset is missing", async () => {
+      await expect(controller.getPokemonMoves("pikachu", undefined)).rejects.toThrow();
+    });
+  });
+
+  describe("getFormes", () => {
+    it("forwards pokemonId and the ruleset query param to the service", async () => {
+      const formes = [{ id: "venusaurmega" }] as any;
+      service.getPokemonFormes.mockResolvedValue(formes);
+
+      const result = await controller.getFormes("venusaur", "Gen9 NatDex");
+
+      expect(service.getPokemonFormes).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        "venusaur",
+      );
+      expect(result).toBe(formes);
+    });
+
+    it("throws when ruleset is missing", async () => {
+      await expect(controller.getFormes("venusaur", undefined)).rejects.toThrow();
+    });
   });
 });

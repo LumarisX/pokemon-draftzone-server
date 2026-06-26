@@ -1,5 +1,5 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { PokemonEntity } from "@modules/draft-pokemon/draft-pokemon.schema";
+import { PokemonEntity } from "@modules/pokemon/pokemon.schema";
 import { ExternalMatchupDocument } from "@modules/matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ID, toID } from "@pkmn/data";
 

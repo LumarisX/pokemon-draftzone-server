@@ -7,7 +7,7 @@ dist/
 coverage/
 src/tests/
 /logs/*
-src/scripts/
+scripts/
 cache/*
 reports/*
 vendor/

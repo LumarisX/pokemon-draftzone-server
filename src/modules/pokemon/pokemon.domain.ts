@@ -1,7 +1,7 @@
 import { Ruleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { DraftMove } from "@modules/draft-move/draft-move.domain";
+import { PDZMove } from "@modules/move/move.domain";
 import {
   CoverageMove,
   FullCoverageMove,
@@ -68,7 +68,7 @@ type FullCoverage = {
   special: { [key: string]: FullCoverageMove[] };
 };
 
-export class DraftPokemon implements Specie, Pokemon, DraftOptions {
+export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   effectType!: "Pokemon";
   kind!: "Species";
   baseSpecies!: SpeciesName;
@@ -281,7 +281,7 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
   };
   typechart(): { [key: string]: number } {
     if (this.$typechart) return this.$typechart;
-    const weak = DraftPokemon.typeWeak(this.types, this.ruleset);
+    const weak = PDZPokemon.typeWeak(this.types, this.ruleset);
     this.getAbilities().forEach((abilityName) => {
       const modifier = abilityModifiers[abilityName as AbilityName];
       if (modifier) {
@@ -419,14 +419,14 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
 
     const learnset = await this.learnset();
     const coverage: {
-      physical: { [key: string]: DraftMove[] };
-      special: { [key: string]: DraftMove[] };
+      physical: { [key: string]: PDZMove[] };
+      special: { [key: string]: PDZMove[] };
     } = { physical: {}, special: {} };
 
     if (learnset) {
       const addMove = (
-        list: { [key: string]: DraftMove[] },
-        move: DraftMove,
+        list: { [key: string]: PDZMove[] },
+        move: PDZMove,
         type: TypeName,
       ) => {
         if (!(type in list)) list[type] = [];
@@ -448,7 +448,7 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
     }
 
     const formatMoves = (movesByType: {
-      [key: string]: DraftMove[];
+      [key: string]: PDZMove[];
     }): { [key: string]: FullCoverageMove[] } => {
       return Object.fromEntries(
         Object.entries(movesByType).map(([type, moves]) => [
@@ -525,7 +525,7 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
     return finalCoverage;
   }
 
-  async bestCoverage(oppTeam: DraftPokemon[]) {
+  async bestCoverage(oppTeam: PDZPokemon[]) {
     const coverage = await this.coverage();
     const recommendedCoverage: Coverage = JSON.parse(JSON.stringify(coverage));
     const allMoves = [
@@ -597,7 +597,7 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
     return recommendedCoverage;
   }
 
-  async learnset(): Promise<DraftMove[]> {
+  async learnset(): Promise<PDZMove[]> {
     const learnsetPromise = (async () => {
       const learnset = await this.ruleset.learnsets.learnable(
         this.id,
@@ -605,8 +605,8 @@ export class DraftPokemon implements Specie, Pokemon, DraftOptions {
       );
       if (!learnset) return [];
 
-      const moves: DraftMove[] = Object.keys(learnset).map(
-        (move) => new DraftMove(move as ID, this.ruleset),
+      const moves: PDZMove[] = Object.keys(learnset).map(
+        (move) => new PDZMove(move as ID, this.ruleset),
       );
       return moves;
     })();

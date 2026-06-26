@@ -1,7 +1,7 @@
 import {
   PokemonEntity,
   PokemonSchema,
-} from "@modules/draft-pokemon/draft-pokemon.schema";
+} from "@modules/pokemon/pokemon.schema";
 import { ExternalTournamentEntity } from "@modules/tournament/sub-modules/external-tournament/external-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";

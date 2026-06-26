@@ -1,5 +1,11 @@
+import { getFormat } from "@core/data/formats/formats";
 import { Injectable } from "@nestjs/common";
-import { PokemonDataDto } from "./pokemon-data.dto";
+import {
+  PokemonDataDto,
+  PokemonFormeDto,
+  PokemonMoveDto,
+  RandomPokemonDto,
+} from "./pokemon-data.dto";
 import { DataRepository } from "./data.repository";
 import { PokemonDataMapper } from "./pokemon-data.mapper";
 
@@ -30,5 +36,57 @@ export class DataService {
     return Promise.all(
       speciesInstances.map((specie) => PokemonDataMapper.toDto(specie)),
     );
+  }
+
+  async getRandomPokemon(
+    rulesetId: string,
+    count: number,
+    formatId: string,
+    options: { tier?: string; banned?: string[] } = {},
+  ): Promise<RandomPokemonDto[]> {
+    const format = getFormat(formatId);
+    const species = this.dataRepository.getRandomSpecies(
+      rulesetId,
+      count,
+      options,
+    );
+
+    return species.map((specie) =>
+      PokemonDataMapper.toRandomDto(specie, format.level),
+    );
+  }
+
+  async getPokemonMoves(
+    rulesetId: string,
+    pokemonId: string,
+  ): Promise<PokemonMoveDto[]> {
+    const learnset = await this.dataRepository.getMovesForPokemon(
+      rulesetId,
+      pokemonId,
+    );
+
+    return learnset.map((move) => ({
+      id: move.id,
+      name: move.name,
+      type: move.type,
+      category: move.category,
+      basePower: move.basePower,
+      accuracy: move.accuracy,
+      pp: move.pp,
+      priority: move.priority,
+      target: move.target,
+    }));
+  }
+
+  async getPokemonFormes(
+    rulesetId: string,
+    pokemonId: string,
+  ): Promise<PokemonFormeDto[]> {
+    const formes = this.dataRepository.getFormesForPokemon(
+      rulesetId,
+      pokemonId,
+    );
+
+    return formes.map((forme) => PokemonDataMapper.toFormeDto(forme));
   }
 }

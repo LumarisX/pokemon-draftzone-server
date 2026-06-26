@@ -1,12 +1,12 @@
 import { ID, StatusName } from "@pkmn/data";
 import { computeStats } from "../../../../dmg/stats";
 import { State } from "../../../../dmg/state";
-import { DraftPokemonDto } from "@modules/draft-pokemon/draft-pokemon.dto";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
 export type Speedchart = {
-  teams: (DraftPokemonDto & {
+  teams: (PokemonDto & {
     spe: number;
     tiers: Tier[];
   })[][];
@@ -147,7 +147,7 @@ function applyScenarioSpeedEffects(
     : Math.min(speed, 10000);
 }
 
-function getSpeedTierPresets(pokemon: DraftPokemon): SpeedTierPreset[] {
+function getSpeedTierPresets(pokemon: PDZPokemon): SpeedTierPreset[] {
   const useStatPoints = pokemon.ruleset.useStatPoints;
   const maxLabel = maxInvestmentLabel(useStatPoints);
   const abilityModifiers = abilitySpeedModifiers(pokemon.getAbilities());
@@ -209,7 +209,7 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
 }
 
 function buildScenarios(
-  pokemon: DraftPokemon,
+  pokemon: PDZPokemon,
   preset: SpeedTierPreset,
 ): SpeedScenario[] {
   const isItemLocked = Boolean(pokemon.requiredItem || pokemon.requiredItems);
@@ -264,7 +264,7 @@ function buildScenarios(
 }
 
 function evaluateScenario(
-  pokemon: DraftPokemon,
+  pokemon: PDZPokemon,
   level: number,
   scenario: SpeedScenario,
 ): Tier | null {
@@ -303,7 +303,7 @@ function evaluateScenario(
 }
 
 function generateTiers(
-  pokemon: DraftPokemon,
+  pokemon: PDZPokemon,
   level: number,
   preset: SpeedTierPreset,
 ): Tier[] {
@@ -322,19 +322,19 @@ function generateTiers(
   });
 }
 
-function getSpeedTiers(pokemon: DraftPokemon, level: number): Tier[] {
+function getSpeedTiers(pokemon: PDZPokemon, level: number): Tier[] {
   return getSpeedTierPresets(pokemon).flatMap((preset) =>
     generateTiers(pokemon, level, preset),
   );
 }
 
 export function speedchart(
-  teamsRaw: DraftPokemon[][],
+  teamsRaw: PDZPokemon[][],
   level: number,
 ): Speedchart {
   const teams = teamsRaw.map((team) =>
     team.map((pokemon) => ({
-      ...DraftPokemonMapper.toClientPayload(pokemon),
+      ...PokemonMapper.toClientPayload(pokemon),
       spe: pokemon.baseStats.spe,
       tiers: getSpeedTiers(pokemon, level),
     })),

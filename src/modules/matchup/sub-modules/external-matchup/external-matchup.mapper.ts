@@ -1,6 +1,6 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournamentDocument } from "@modules/tournament/sub-modules/external-tournament/external-tournament.schema";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
@@ -17,7 +17,7 @@ export class ExternalMatchupMapper {
       stage: matchup.stage,
       teamName: matchup.bTeam.teamName,
       coach: matchup.bTeam.coach,
-      team: matchup.bTeam.team.map(DraftPokemonMapper.toClientPayload),
+      team: matchup.bTeam.team.map(PokemonMapper.toClientPayload),
       score: matchup.calculateScore(),
       matches: matchup.matches,
       paste: matchup.bTeam.paste,
@@ -33,7 +33,7 @@ export class ExternalMatchupMapper {
       bTeam: {
         teamName: matchup.bTeam.teamName,
         coach: matchup.bTeam.coach ?? undefined,
-        team: matchup.bTeam.team.map(DraftPokemonMapper.toDatabasePayload),
+        team: matchup.bTeam.team.map(PokemonMapper.toDatabasePayload),
         paste: matchup.bTeam.paste,
       },
       stage: matchup.stage ?? "",
@@ -61,7 +61,7 @@ export class ExternalMatchupMapper {
         team: data.team
           .filter((pokemonData) => pokemonData.id)
           .map((pokemonData) =>
-            DraftPokemonMapper.fromForm(pokemonData, existing.ruleset),
+            PokemonMapper.fromForm(pokemonData, existing.ruleset),
           ),
         teamName: data.teamName,
         coach: data.coach,
@@ -89,7 +89,7 @@ export class ExternalMatchupMapper {
       aTeam: {
         id: tournamentDoc._id,
         team: tournamentDoc.team.map((pokemon) =>
-          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+          PokemonMapper.fromDatabase(pokemon, ruleset),
         ),
         teamName: tournamentDoc.teamName,
         owner: tournamentDoc.owner,
@@ -99,7 +99,7 @@ export class ExternalMatchupMapper {
       bTeam: {
         id: matchupDoc._id,
         team: matchupDoc.bTeam.team.map((pokemon) =>
-          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+          PokemonMapper.fromDatabase(pokemon, ruleset),
         ),
         teamName: matchupDoc.bTeam.teamName,
         coach: matchupDoc.bTeam.coach,

@@ -145,7 +145,7 @@ const moveList: { [key: string]: string[] } = {
   instruct: ["Support"],
 };
 
-export class DraftMove implements Move {
+export class PDZMove implements Move {
   effectType!: "Move";
   kind!: "Move";
   secondaries!: SecondaryEffect[];

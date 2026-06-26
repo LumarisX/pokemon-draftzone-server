@@ -1,12 +1,12 @@
 import { Rulesets } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { ID } from "@pkmn/data";
 import { PokemonDataMapper } from "./pokemon-data.mapper";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 
 function mon(id: string) {
-  return new DraftPokemon(id as ID, NAT_DEX);
+  return new PDZPokemon(id as ID, NAT_DEX);
 }
 
 describe("PokemonDataMapper.toDto", () => {
@@ -137,5 +137,40 @@ describe("PokemonDataMapper.toDto", () => {
 
     expect(dto.immunities).toContain("Hail");
     expect(dto.immunities).not.toContain("hail");
+  });
+});
+
+describe("PokemonDataMapper.toRandomDto", () => {
+  it("maps the identity, tier, typing, stat, and ability fields", () => {
+    const pikachu = mon("pikachu");
+
+    const dto = PokemonDataMapper.toRandomDto(pikachu, 100);
+
+    expect(dto).toEqual({
+      id: "pikachu",
+      name: "Pikachu",
+      tier: pikachu.tier,
+      types: ["Electric"],
+      baseStats: pikachu.baseStats,
+      abilities: pikachu.getAbilities(),
+      level: "100",
+    });
+  });
+
+  it("stringifies the given level", () => {
+    const pikachu = mon("pikachu");
+
+    expect(PokemonDataMapper.toRandomDto(pikachu, 50).level).toBe("50");
+  });
+});
+
+describe("PokemonDataMapper.toFormeDto", () => {
+  it("maps only id and name", () => {
+    const charizardMegaX = mon("charizardmegax");
+
+    expect(PokemonDataMapper.toFormeDto(charizardMegaX)).toEqual({
+      id: "charizardmegax",
+      name: "Charizard-Mega-X",
+    });
   });
 });

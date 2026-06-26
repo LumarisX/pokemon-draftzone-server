@@ -1,11 +1,11 @@
 import { Rulesets } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getMatchupCoverage, getTeamCoverage } from "./coverage";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 
 function mon(id: string) {
-  return new DraftPokemon({ id }, NAT_DEX);
+  return new PDZPokemon({ id }, NAT_DEX);
 }
 
 /** The sort comparator in getMatchupCoverage groups all STAB moves before

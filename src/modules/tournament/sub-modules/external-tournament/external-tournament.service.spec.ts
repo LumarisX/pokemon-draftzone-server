@@ -1,4 +1,4 @@
-import { DraftPokemonService } from "@modules/draft-pokemon/draft-pokemon.service";
+import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
@@ -30,7 +30,7 @@ function buildMatch(
 
 describe("ExternalTournamentService", () => {
   let tournamentRepo: jest.Mocked<ExternalTournamentRepository>;
-  let pokedexService: jest.Mocked<DraftPokemonService>;
+  let pokedexService: jest.Mocked<PokemonService>;
   let service: ExternalTournamentService;
 
   beforeEach(() => {
@@ -44,7 +44,7 @@ describe("ExternalTournamentService", () => {
     } as unknown as jest.Mocked<ExternalTournamentRepository>;
     pokedexService = {
       getName: jest.fn().mockReturnValue("Pikachu"),
-    } as unknown as jest.Mocked<DraftPokemonService>;
+    } as unknown as jest.Mocked<PokemonService>;
 
     service = new ExternalTournamentService(tournamentRepo, pokedexService);
   });

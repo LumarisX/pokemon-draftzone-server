@@ -1,4 +1,4 @@
-import { DraftPokemonService } from "@modules/draft-pokemon/draft-pokemon.service";
+import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
 import { ClientSession } from "mongoose";
@@ -10,7 +10,7 @@ import { ExternalTournamentRepository } from "./external-tournament.repository";
 export class ExternalTournamentService {
   constructor(
     private readonly tournamentRepository: ExternalTournamentRepository,
-    private readonly pokedexService: DraftPokemonService,
+    private readonly pokedexService: PokemonService,
   ) {}
 
   async getTournaments(sub: string): Promise<ExternalTournament[]> {

@@ -1,11 +1,11 @@
 import { Rulesets } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getTeamMoves } from "./movechart";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 
 function mon(id: string) {
-  return new DraftPokemon({ id }, NAT_DEX);
+  return new PDZPokemon({ id }, NAT_DEX);
 }
 
 describe("getTeamMoves", () => {
@@ -46,7 +46,7 @@ describe("getTeamMoves", () => {
     expect(new Set(result.tags).size).toBe(result.tags.length);
   });
 
-  it("includes each move's display data via DraftMove.toData(), without a raw id field", async () => {
+  it("includes each move's display data via Move.toData(), without a raw id field", async () => {
     const result = await getTeamMoves([mon("pikachu")]);
 
     const voltTackle = result.moves.find((m) => m.name === "Volt Tackle")!;

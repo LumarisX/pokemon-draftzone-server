@@ -1,6 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { TournamentScore } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
 import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
 import { Injectable } from "@nestjs/common";
@@ -62,8 +62,8 @@ export class ExternalMatchupService {
         team: dto.team
           .filter((p) => p.id)
           .map((p) =>
-            DraftPokemonMapper.toDatabasePayload(
-              DraftPokemonMapper.fromForm(p, tournament.ruleset),
+            PokemonMapper.toDatabasePayload(
+              PokemonMapper.fromForm(p, tournament.ruleset),
             ),
           ),
       },
