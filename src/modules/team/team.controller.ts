@@ -15,6 +15,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { Types } from "mongoose";
 import { CreateTeamDto, UpdateTeamDto } from "./team.dto";
 import { TeamService } from "./team.service";
 
@@ -40,6 +41,16 @@ export class TeamController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createTeam(@User() sub: string, @Body() body: CreateTeamDto) {
+    if (
+      typeof body.coachId !== "string" ||
+      !Types.ObjectId.isValid(body.coachId)
+    ) {
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_FIELD, {
+        field: "coachId",
+        value: body.coachId,
+      });
+    }
+
     const canCreate = await this.teamService.canCreateTeamForCoach(
       body.coachId,
       sub,
