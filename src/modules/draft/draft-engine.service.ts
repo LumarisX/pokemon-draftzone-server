@@ -688,7 +688,7 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     state: string,
   ) {
-    const statusActions: { [key: string]: () => Promise<void> } = {
+    const statusActions: Record<"play" | "pause", () => Promise<void>> = {
       play: async () => {
         draft.status = "IN_PROGRESS";
         const newSkipTime = new Date();
@@ -723,30 +723,32 @@ export class DraftEngineService {
       },
     };
 
-    const action = statusActions[state];
+    if (!Object.prototype.hasOwnProperty.call(statusActions, state)) {
+      return;
+    }
 
-    if (action) {
-      await action();
-      await draft.save();
-      this.draftEvents.emitDraftStatus({
-        tournamentId: tournament.tournamentKey,
-        draftId: draft.draftKey,
-        status: draft.status,
-        currentPick: calculateCurrentPick(draft),
+    const action = statusActions[state as keyof typeof statusActions];
+
+    await action();
+    await draft.save();
+    this.draftEvents.emitDraftStatus({
+      tournamentId: tournament.tournamentKey,
+      draftId: draft.draftKey,
+      status: draft.status,
+      currentPick: calculateCurrentPick(draft),
+    });
+
+    const statusLabel =
+      draft.status === "IN_PROGRESS"
+        ? "started"
+        : draft.status === "PAUSED"
+          ? "paused"
+          : draft.status.toLowerCase();
+
+    if (draft.channelId) {
+      this.discordService.sendMessage(draft.channelId, {
+        content: `The draft is now ${statusLabel}.`,
       });
-
-      const statusLabel =
-        draft.status === "IN_PROGRESS"
-          ? "started"
-          : draft.status === "PAUSED"
-            ? "paused"
-            : draft.status.toLowerCase();
-
-      if (draft.channelId) {
-        this.discordService.sendMessage(draft.channelId, {
-          content: `The draft is now ${statusLabel}.`,
-        });
-      }
     }
   }
 }
