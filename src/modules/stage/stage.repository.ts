@@ -27,7 +27,19 @@ export class StageRepository {
   ) {}
 
   async findById(stageId: Types.ObjectId | string): Promise<StageDocument> {
-    const stage = await this.stageModel.findById(stageId).exec();
+    const normalizedStageId =
+      typeof stageId === "string"
+        ? (() => {
+            if (!Types.ObjectId.isValid(stageId)) {
+              throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+                stageId,
+              });
+            }
+            return new Types.ObjectId(stageId);
+          })()
+        : stageId;
+
+    const stage = await this.stageModel.findById(normalizedStageId).exec();
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
     return stage;
   }
