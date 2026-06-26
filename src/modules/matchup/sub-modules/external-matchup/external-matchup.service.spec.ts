@@ -1,4 +1,4 @@
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournament } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
 import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
 import { Types } from "mongoose";
@@ -9,8 +9,8 @@ import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
 import { ExternalMatchupService } from "./external-matchup.service";
 
-jest.mock("@modules/draft-pokemon/draft-pokemon.mapper", () => ({
-  DraftPokemonMapper: {
+jest.mock("@modules/pokemon/pokemon.mapper", () => ({
+  PokemonMapper: {
     fromForm: jest.fn(),
     toDatabasePayload: jest.fn(),
   },
@@ -27,8 +27,8 @@ jest.mock("./external-matchup-match/external-matchup-match.mapper", () => ({
   },
 }));
 
-const mockedDraftPokemonMapper = DraftPokemonMapper as jest.Mocked<
-  typeof DraftPokemonMapper
+const mockedPokemonMapper = PokemonMapper as jest.Mocked<
+  typeof PokemonMapper
 >;
 const mockedExternalMatchupMapper = ExternalMatchupMapper as jest.Mocked<
   typeof ExternalMatchupMapper
@@ -225,10 +225,10 @@ describe("ExternalMatchupService", () => {
     it("filters out team entries without an id and maps the rest with the tournament's ruleset", async () => {
       const tournament = buildTournament();
       tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
-      mockedDraftPokemonMapper.fromForm.mockImplementation(
+      mockedPokemonMapper.fromForm.mockImplementation(
         (p: any) => ({ id: p.id, fromForm: true }) as any,
       );
-      mockedDraftPokemonMapper.toDatabasePayload.mockImplementation(
+      mockedPokemonMapper.toDatabasePayload.mockImplementation(
         (p: any) => ({ id: p.id, toDatabasePayload: true }) as any,
       );
       const dto = buildDto({
@@ -237,8 +237,8 @@ describe("ExternalMatchupService", () => {
 
       await service.createExternalMatchup("springleague", "auth0|owner", dto);
 
-      expect(mockedDraftPokemonMapper.fromForm).toHaveBeenCalledTimes(1);
-      expect(mockedDraftPokemonMapper.fromForm).toHaveBeenCalledWith(
+      expect(mockedPokemonMapper.fromForm).toHaveBeenCalledTimes(1);
+      expect(mockedPokemonMapper.fromForm).toHaveBeenCalledWith(
         dto.team[1],
         tournament.ruleset,
       );

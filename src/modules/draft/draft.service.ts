@@ -2,7 +2,7 @@ import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { getName } from "@modules/data/domain/pokedex";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
@@ -223,7 +223,7 @@ export class DraftService {
           id: pickItem.pokemon.id,
         }));
         const draftTeam = teamRaw.map(
-          (pokemon) => new DraftPokemon(pokemon, ruleset),
+          (pokemon) => new PDZPokemon(pokemon, ruleset),
         );
         const typechart = getTeamTypechart(draftTeam);
         const summary = summarizeTeam(draftTeam);

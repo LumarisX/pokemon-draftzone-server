@@ -1,6 +1,6 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentDto } from "./external-tournament.dto";
 import { ExternalTournamentMapper } from "./external-tournament.mapper";
@@ -12,8 +12,8 @@ jest.mock("@core/data/formats/formats", () => ({
 jest.mock("@core/data/rulesets/rulesets", () => ({
   getRuleset: jest.fn(),
 }));
-jest.mock("@modules/draft-pokemon/draft-pokemon.mapper", () => ({
-  DraftPokemonMapper: {
+jest.mock("@modules/pokemon/pokemon.mapper", () => ({
+  PokemonMapper: {
     fromForm: jest.fn(),
     fromDatabase: jest.fn(),
     toDatabasePayload: jest.fn(),
@@ -23,8 +23,8 @@ jest.mock("@modules/draft-pokemon/draft-pokemon.mapper", () => ({
 
 const mockedGetFormat = getFormat as jest.Mock;
 const mockedGetRuleset = getRuleset as jest.Mock;
-const mockedDraftPokemonMapper = DraftPokemonMapper as jest.Mocked<
-  typeof DraftPokemonMapper
+const mockedPokemonMapper = PokemonMapper as jest.Mocked<
+  typeof PokemonMapper
 >;
 
 const RULESET = { name: "Gen9 NatDex" } as any;
@@ -51,16 +51,16 @@ describe("ExternalTournamentMapper", () => {
   beforeEach(() => {
     mockedGetFormat.mockReturnValue(FORMAT);
     mockedGetRuleset.mockReturnValue(RULESET);
-    mockedDraftPokemonMapper.fromForm.mockImplementation(
+    mockedPokemonMapper.fromForm.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, fromForm: true }) as any,
     );
-    mockedDraftPokemonMapper.fromDatabase.mockImplementation(
+    mockedPokemonMapper.fromDatabase.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, fromDatabase: true }) as any,
     );
-    mockedDraftPokemonMapper.toDatabasePayload.mockImplementation(
+    mockedPokemonMapper.toDatabasePayload.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, toDatabasePayload: true }) as any,
     );
-    mockedDraftPokemonMapper.toClientPayload.mockImplementation(
+    mockedPokemonMapper.toClientPayload.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, toClientPayload: true }) as any,
     );
   });
@@ -83,7 +83,7 @@ describe("ExternalTournamentMapper", () => {
         team: [{ id: "pikachu", toDatabasePayload: true }],
       });
       expect(
-        mockedDraftPokemonMapper.toDatabasePayload.mock.calls[0][0],
+        mockedPokemonMapper.toDatabasePayload.mock.calls[0][0],
       ).toBe(pokemon[0]);
     });
   });
@@ -178,8 +178,8 @@ describe("ExternalTournamentMapper", () => {
 
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
 
-      expect(mockedDraftPokemonMapper.fromForm).toHaveBeenCalledTimes(1);
-      expect(mockedDraftPokemonMapper.fromForm).toHaveBeenCalledWith(
+      expect(mockedPokemonMapper.fromForm).toHaveBeenCalledTimes(1);
+      expect(mockedPokemonMapper.fromForm).toHaveBeenCalledWith(
         dto.team[1],
         RULESET,
       );
@@ -226,7 +226,7 @@ describe("ExternalTournamentMapper", () => {
 
       const result = ExternalTournamentMapper.fromDatabase(doc, []);
 
-      expect(mockedDraftPokemonMapper.fromDatabase).toHaveBeenCalledWith(
+      expect(mockedPokemonMapper.fromDatabase).toHaveBeenCalledWith(
         doc.team[0],
         RULESET,
       );

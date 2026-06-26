@@ -1,15 +1,15 @@
 import { Rulesets } from "@core/data/rulesets/rulesets";
 import { ID } from "@pkmn/data";
-import { DraftPokemon } from "./draft-pokemon.domain";
+import { PDZPokemon } from "./pokemon.domain";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 const ALOLA_DEX = Rulesets["Older Gens"]["Generation 7"].ruleset;
 
 function mon(data: string | ({ id: string } & Record<string, any>)) {
-  return new DraftPokemon(data as ID, NAT_DEX);
+  return new PDZPokemon(data as ID, NAT_DEX);
 }
 
-describe("DraftPokemon", () => {
+describe("PDZPokemon", () => {
   describe("constructor", () => {
     it("populates species fields from the ruleset for a valid id", () => {
       const pikachu = mon("pikachu");
@@ -72,7 +72,7 @@ describe("DraftPokemon", () => {
 
     it("only exposes abilities 0, 1, and S when the hidden ability is unreleased", () => {
       // Heatran's Hidden Ability (Flame Body) wasn't released yet as of Gen 7 Alola.
-      const heatran = new DraftPokemon("heatran" as ID, ALOLA_DEX);
+      const heatran = new PDZPokemon("heatran" as ID, ALOLA_DEX);
 
       expect(heatran.unreleasedHidden).toBe(true);
       expect(heatran.abilities).toEqual({
@@ -109,7 +109,7 @@ describe("DraftPokemon", () => {
     });
 
     it("matches the static typeWeak helper for the same types", () => {
-      const direct = DraftPokemon.typeWeak(["Fire", "Flying"], NAT_DEX);
+      const direct = PDZPokemon.typeWeak(["Fire", "Flying"], NAT_DEX);
 
       expect(direct.Ground).toBe(0);
       expect(direct.Bug).toBeCloseTo(0.25);

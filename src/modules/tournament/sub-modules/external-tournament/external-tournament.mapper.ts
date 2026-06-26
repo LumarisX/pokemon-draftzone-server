@@ -7,8 +7,8 @@ import {
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
 export class ExternalTournamentMapper {
   static toDatabasePayload(
@@ -22,7 +22,7 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       owner: tournament.owner,
       doc: tournament.doc,
-      team: tournament.team.map(DraftPokemonMapper.toDatabasePayload),
+      team: tournament.team.map(PokemonMapper.toDatabasePayload),
     };
   }
 
@@ -35,7 +35,7 @@ export class ExternalTournamentMapper {
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
-      team: tournament.team.map(DraftPokemonMapper.toClientPayload),
+      team: tournament.team.map(PokemonMapper.toClientPayload),
     };
   }
 
@@ -45,7 +45,7 @@ export class ExternalTournamentMapper {
     const format = getFormat(dto.format);
     const mappedTeam = dto.team
       .filter((pokemon) => pokemon.id)
-      .map((pokemon) => DraftPokemonMapper.fromForm(pokemon, ruleset));
+      .map((pokemon) => PokemonMapper.fromForm(pokemon, ruleset));
 
     return new ExternalTournament(
       {
@@ -78,7 +78,7 @@ export class ExternalTournamentMapper {
         key: tournamentDoc.leagueId,
         owner: tournamentDoc.owner,
         team: tournamentDoc.team.map((pokemon) =>
-          DraftPokemonMapper.fromDatabase(pokemon, ruleset),
+          PokemonMapper.fromDatabase(pokemon, ruleset),
         ),
         doc: tournamentDoc.doc,
       },

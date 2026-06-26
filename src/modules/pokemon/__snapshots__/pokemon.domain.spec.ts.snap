@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`DraftPokemon coverage matches the recorded baseline for a Pokemon with no Tera type set 1`] = `
+exports[`PDZPokemon coverage matches the recorded baseline for a Pokemon with no Tera type set 1`] = `
 {
   "physical": [
     {
@@ -171,7 +171,7 @@ exports[`DraftPokemon coverage matches the recorded baseline for a Pokemon with 
 }
 `;
 
-exports[`DraftPokemon fullcoverage matches the recorded baseline grouping moves by type 1`] = `
+exports[`PDZPokemon fullcoverage matches the recorded baseline grouping moves by type 1`] = `
 {
   "physical": {
     "Dark": [

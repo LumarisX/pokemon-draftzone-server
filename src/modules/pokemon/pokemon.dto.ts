@@ -36,7 +36,7 @@ export class PokemonCapt {
   dmax?: boolean;
 }
 
-export class DraftPokemonDto {
+export class PokemonDto {
   @IsString()
   id!: string;
 

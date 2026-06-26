@@ -1,12 +1,12 @@
 import { Ruleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "./draft-pokemon.domain";
-import { DraftPokemonDto } from "./draft-pokemon.dto";
-import { PokemonEntity } from "./draft-pokemon.schema";
+import { PDZPokemon } from "./pokemon.domain";
+import { PokemonDto } from "./pokemon.dto";
+import { PokemonEntity } from "./pokemon.schema";
 import { ID, TypeName } from "@pkmn/data";
 
-export class DraftPokemonMapper {
-  static fromDatabase(data: PokemonEntity, ruleset: Ruleset): DraftPokemon {
-    return new DraftPokemon(
+export class PokemonMapper {
+  static fromDatabase(data: PokemonEntity, ruleset: Ruleset): PDZPokemon {
+    return new PDZPokemon(
       {
         id: data.id,
         shiny: data.shiny,
@@ -30,8 +30,8 @@ export class DraftPokemonMapper {
     );
   }
 
-  static fromForm(data: DraftPokemonDto, ruleset: Ruleset): DraftPokemon {
-    return new DraftPokemon(
+  static fromForm(data: PokemonDto, ruleset: Ruleset): PDZPokemon {
+    return new PDZPokemon(
       {
         id: data.id,
         shiny: data.shiny,
@@ -55,7 +55,7 @@ export class DraftPokemonMapper {
     );
   }
 
-  static toClientPayload(pokemon: DraftPokemon): DraftPokemonDto {
+  static toClientPayload(pokemon: PDZPokemon): PokemonDto {
     const TYPES = Array.from(pokemon.ruleset.types).map((type) => type.name);
     const ZTYPES = TYPES.filter((name) => name !== "Stellar");
     const capt = {
@@ -84,7 +84,7 @@ export class DraftPokemonMapper {
     };
   }
 
-  static toDatabasePayload(pokemon: DraftPokemon): PokemonEntity {
+  static toDatabasePayload(pokemon: PDZPokemon): PokemonEntity {
     return {
       id: pokemon.id,
       nickname: pokemon.nickname,

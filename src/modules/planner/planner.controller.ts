@@ -1,7 +1,7 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { PlannerService } from "./planner.service";
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { ID } from "@pkmn/data";
 import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
@@ -20,7 +20,7 @@ export class PlannerController {
     const ruleset = getRuleset(rulesetId);
     const team = teamString
       .split(",")
-      .map((id: string) => new DraftPokemon(id as ID, ruleset));
+      .map((id: string) => new PDZPokemon(id as ID, ruleset));
     const summary = summarizeTeam(team);
     return {
       typechart: getTeamTypechart(team),

@@ -1,14 +1,14 @@
 import { Rulesets } from "@core/data/rulesets/rulesets";
 import { ID } from "@pkmn/data";
-import { DraftMove } from "./draft-move.domain";
+import { PDZMove } from "./move.domain";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
 
 function move(id: string) {
-  return new DraftMove(id as ID, NAT_DEX);
+  return new PDZMove(id as ID, NAT_DEX);
 }
 
-describe("DraftMove", () => {
+describe("PDZMove", () => {
   describe("constructor", () => {
     it("populates move fields from the ruleset for a valid id", () => {
       const tackle = move("tackle");
@@ -32,7 +32,7 @@ describe("DraftMove", () => {
     it("accepts an already-resolved Move object instead of an id", () => {
       const tackleData = NAT_DEX.moves.get("tackle")!;
 
-      const tackle = new DraftMove(tackleData, NAT_DEX);
+      const tackle = new PDZMove(tackleData, NAT_DEX);
 
       expect(tackle.name).toBe("Tackle");
     });

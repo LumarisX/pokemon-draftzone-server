@@ -1,6 +1,6 @@
 import { Format } from "@core/data/formats/formats";
 import { Ruleset } from "@core/data/rulesets/rulesets";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getMatchupCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
 import { speedchart } from "@modules/matchup/domain/speedchart";
@@ -11,7 +11,7 @@ import { ExternalMatch } from "./external-matchup-match/external-matchup-match.d
 
 export interface MatchupSide {
   id?: Types.ObjectId;
-  team: DraftPokemon[];
+  team: PDZPokemon[];
   teamName: string;
   coach?: string;
   owner?: string;

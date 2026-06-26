@@ -1,8 +1,8 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
-import { DraftMove } from "@modules/draft-move/draft-move.domain";
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
+import { PDZMove } from "@modules/move/move.domain";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getPowerModifier } from "@modules/data/domain/move-power";
 import { Injectable, Logger } from "@nestjs/common";
 import { ID, Move, TypeName } from "@pkmn/data";
@@ -45,8 +45,8 @@ function isStab(
 }
 
 function pdzCalculateStrength(
-  pokemon: DraftPokemon,
-  move: DraftMove,
+  pokemon: PDZPokemon,
+  move: PDZMove,
   isStabMove: boolean,
 ): number {
   if (!move) return 0;
@@ -75,7 +75,7 @@ export class TeambuilderService {
     const specie = ruleset.species.get(id);
     if (!specie) throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, { id });
 
-    const pokemon = new DraftPokemon(specie, ruleset);
+    const pokemon = new PDZPokemon(specie, ruleset);
     return pokemon.toTeambuilder();
   }
 
@@ -133,7 +133,7 @@ export class TeambuilderService {
       }
 
       const ruleset = getRuleset(rulesetId);
-      const specie = new DraftPokemon(pokemon.id, ruleset);
+      const specie = new PDZPokemon(pokemon.id, ruleset);
 
       const learnset = await specie.learnset();
       return learnset

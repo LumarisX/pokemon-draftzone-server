@@ -1,5 +1,9 @@
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { PokemonDataDto } from "./pokemon-data.dto";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import {
+  PokemonDataDto,
+  PokemonFormeDto,
+  RandomPokemonDto,
+} from "./pokemon-data.dto";
 
 export class PokemonDataMapper {
   private static readonly IMMUNITY_LABEL_MAP: Record<string, string> = {
@@ -14,7 +18,7 @@ export class PokemonDataMapper {
     powder: "Powder",
   };
 
-  public static async toDto(specie: DraftPokemon): Promise<PokemonDataDto> {
+  public static async toDto(specie: PDZPokemon): Promise<PokemonDataDto> {
     const coverage = await specie.coverage();
     const baseStats = specie.baseStats;
     const learnset = await specie.learnset();
@@ -67,5 +71,24 @@ export class PokemonDataMapper {
       bst: specie.bst,
       cst: specie.cst,
     };
+  }
+
+  public static toRandomDto(
+    specie: PDZPokemon,
+    level: number,
+  ): RandomPokemonDto {
+    return {
+      id: specie.id,
+      name: specie.name,
+      tier: specie.tier,
+      types: [...specie.types],
+      baseStats: specie.baseStats,
+      abilities: specie.getAbilities(),
+      level: level.toString(),
+    };
+  }
+
+  public static toFormeDto(specie: PDZPokemon): PokemonFormeDto {
+    return { id: specie.id, name: specie.name };
   }
 }

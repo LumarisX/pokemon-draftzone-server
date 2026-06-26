@@ -4,7 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { Specie, SpeciesName, TypeName } from "@pkmn/data";
 
 @Injectable()
-export class DraftPokemonService {
+export class PokemonService {
   constructor() {}
 
   SINGLES_TIER_HIERARCHY = ["AG", "UBER", "OU", "UU", "RU", "NU", "PU", "ZU"];

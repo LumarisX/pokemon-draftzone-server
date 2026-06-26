@@ -3,7 +3,7 @@ import { HydratedDocument } from "mongoose";
 import {
   PokemonEntity,
   PokemonSchema,
-} from "@modules/draft-pokemon/draft-pokemon.schema";
+} from "@modules/pokemon/pokemon.schema";
 import { FormatId } from "@core/data/formats/formats";
 import { RulesetId } from "@core/data/rulesets/rulesets";
 

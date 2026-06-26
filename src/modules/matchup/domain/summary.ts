@@ -1,5 +1,5 @@
-import { DraftPokemon } from "@modules/draft-pokemon/draft-pokemon.domain";
-import { DraftPokemonMapper } from "@modules/draft-pokemon/draft-pokemon.mapper";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { StatID } from "@pkmn/data";
 
 type StatKey = StatID | "bst" | "cst";
@@ -41,7 +41,7 @@ function computeStats(collections: Record<StatKey, number[]>): TeamStatistics {
 }
 
 export function summarizeTeam(
-  team: DraftPokemon[],
+  team: PDZPokemon[],
   teamName?: string,
   coach?: string,
 ) {
@@ -68,7 +68,7 @@ export function summarizeTeam(
     teamName,
     coach,
     team: team.map((pokemon, index) => ({
-      ...DraftPokemonMapper.toClientPayload(pokemon),
+      ...PokemonMapper.toClientPayload(pokemon),
       abilities: pokemon.getAbilities(),
       baseStats: pokemon.baseStats,
       bst: pokemon.bst,
