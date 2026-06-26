@@ -322,7 +322,7 @@ export class DraftMove implements Move {
   }
 
   get expectedPower(): number {
-    return this.expectedPower * this.accuracyPercent;
+    return this.basePower * this.accuracyPercent;
   }
 
   get tags(): Set<string> {

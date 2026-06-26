@@ -1,13 +1,35 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { getName, getRandom } from "./pokedex";
+import { getName, getRandom, getSpecies } from "./pokedex";
 
-jest.mock("../../../data/rulesets", () => ({
+jest.mock("@core/data/rulesets/rulesets", () => ({
   getRuleset: jest.fn(),
 }));
 
 describe("Pokedex Domain", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("getSpecies", () => {
+    it("looks up the species against the Gen9 NatDex ruleset specifically", () => {
+      const pikachu = { id: "pikachu", name: "Pikachu" };
+      const mockSpeciesGet = jest.fn().mockReturnValue(pikachu);
+      (getRuleset as jest.Mock).mockReturnValue({ species: { get: mockSpeciesGet } });
+
+      const result = getSpecies("pikachu");
+
+      expect(result).toBe(pikachu);
+      expect(getRuleset).toHaveBeenCalledWith("Gen9 NatDex");
+      expect(mockSpeciesGet).toHaveBeenCalledWith("pikachu");
+    });
+
+    it("returns undefined when the species doesn't exist", () => {
+      (getRuleset as jest.Mock).mockReturnValue({
+        species: { get: jest.fn().mockReturnValue(undefined) },
+      });
+
+      expect(getSpecies("notarealpokemon")).toBeUndefined();
+    });
   });
 
   describe("getName", () => {
@@ -90,6 +112,17 @@ describe("Pokedex Domain", () => {
       expect(result).toHaveLength(1);
       expect(result[0].tier).toBe("UU");
       expect(result[0].id).toBe("uumon");
+    });
+
+    it("normalizes a whitespace-padded, parenthesized tier (e.g. ' (OU) ') before matching", () => {
+      const ruleset = makeMockRuleset([makeMockSpecies("oumon", "OU")]);
+
+      const result = getRandom(1, ruleset as never, { layout: "1" } as never, {
+        tier: " (OU) ",
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("oumon");
     });
 
     it("falls back to the next lower doubles tier when requested tier is unavailable", () => {

@@ -20,8 +20,8 @@ export class DraftPokemonService {
   normalizeTierName(tier?: string): string {
     if (!tier) return "";
     const normalized = tier
-      .replace(/^\(|\)$/g, "")
       .trim()
+      .replace(/^\(|\)$/g, "")
       .toUpperCase();
     return this.TIER_ALIASES[normalized] ?? normalized;
   }

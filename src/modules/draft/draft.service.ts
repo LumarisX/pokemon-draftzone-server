@@ -163,7 +163,7 @@ export class DraftService {
 
     const orderProgression = draft.orderProgression;
     const numberOfRounds = tournament.tierList.draftCount.max;
-    const initialTeamOrder = draft.teams;
+    const initialTeamOrder = getDraftOrder(draft);
 
     type DraftPick = {
       teamName: string;

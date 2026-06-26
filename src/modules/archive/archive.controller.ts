@@ -4,8 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
   UseGuards,
 } from "@nestjs/common";
@@ -22,7 +20,6 @@ export class ArchiveController {
   }
 
   @Delete(":teamId")
-  @HttpCode(HttpStatus.CREATED)
   async deleteArchive(@Param("teamId") teamId: string) {
     await this.archiveService.deleteArchive(teamId);
     return { message: "Draft deleted" };

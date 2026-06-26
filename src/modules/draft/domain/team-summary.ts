@@ -5,6 +5,7 @@ import {
   PopulatedTeam,
   PopulatedTournament,
 } from "@modules/draft/draft.repository";
+import { TypeName } from "@pkmn/data";
 import {
   calculateCanDraft,
   calculateCurrentPick,
@@ -17,10 +18,24 @@ import { createPokemonTierMap, getPickCost } from "./tier-cost";
 export type TeamWithCoachStatus = {
   id: string;
   name: string;
-  draft: { id: string; name: string; tier: string | undefined }[];
+  draft: {
+    id: string;
+    name: string;
+    tier: string | undefined;
+    cost: number;
+    types: TypeName[];
+    capt: { tera: boolean | undefined };
+  }[];
   logo?: string;
   isCoach: boolean;
-  picks: { id: string; name: string; tier: string | undefined }[][];
+  picks: {
+    id: string;
+    name: string;
+    tier: string | undefined;
+    cost: number;
+    addons: string[] | undefined;
+  }[][];
+  pointTotal: number;
   timezone?: string;
   skipCount: number;
 };

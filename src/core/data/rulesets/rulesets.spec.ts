@@ -33,7 +33,19 @@ describe('getRuleset', () => {
   });
 
   it('should throw an error for an invalid ruleset ID', () => {
-    expect(() => getRuleset('InvalidRuleset')).toThrowError('Ruleset Id not found: InvalidRuleset');
+    expect(() => getRuleset('InvalidRuleset')).toThrow('Ruleset Id not found: InvalidRuleset');
+  });
+
+  it('resolves every id advertised by getRulesets() without throwing', () => {
+    for (const rulesetId of getRulesets()) {
+      expect(getRuleset(rulesetId).name).toBe(rulesetId);
+    }
+  });
+
+  it('marks the National Dex rulesets (and only those) as isNatDex', () => {
+    expect(getRuleset('Gen9 NatDex').isNatDex).toBe(true);
+    expect(getRuleset('Gen8 NatDex').isNatDex).toBe(true);
+    expect(getRuleset('Paldea Dex').isNatDex).toBe(false);
   });
 });
 
@@ -54,6 +66,14 @@ describe('getRulesets', () => {
     expect(rulesets).toContain('Hoenn Dex');
     expect(rulesets).toContain('Johto Dex');
     expect(rulesets).toContain('Kanto Dex');
+  });
+
+  it('includes every group, not just Gen 9/Gen 8/Older Gens (e.g. Champions and Rom Hacks)', () => {
+    const rulesets = getRulesets();
+    expect(rulesets).toContain('Champions MA');
+    expect(rulesets).toContain('Champions MB');
+    expect(rulesets).toContain('radicalred');
+    expect(rulesets).toContain('insurgance');
   });
 });
 
