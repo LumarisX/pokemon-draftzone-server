@@ -15,8 +15,17 @@ export type CreateStageInput = {
   order: number;
   name: string;
   type: StageType;
-  rounds?: { name: string; matchDeadline?: Date; tradeDeadline?: Date; bestOf?: number }[];
-  pools?: { poolKey: string; name: string; teamIds: (Types.ObjectId | string)[] }[];
+  rounds?: {
+    name: string;
+    matchDeadline?: Date;
+    tradeDeadline?: Date;
+    bestOf?: number;
+  }[];
+  pools?: {
+    poolKey: string;
+    name: string;
+    teamIds: (Types.ObjectId | string)[];
+  }[];
 };
 
 @Injectable()
@@ -31,7 +40,7 @@ export class StageRepository {
     fieldName: string,
   ): Types.ObjectId {
     if (id instanceof Types.ObjectId) return id;
-    if (!Types.ObjectId.isValid(id)) {
+    if (typeof id !== "string" || !Types.ObjectId.isValid(id)) {
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
         [fieldName]: id,
       });
@@ -49,7 +58,9 @@ export class StageRepository {
   async findById(stageId: Types.ObjectId | string): Promise<StageDocument> {
     const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
 
-    const stage = await this.stageModel.findById(normalizedStageId).exec();
+    const stage = await this.stageModel
+      .findOne({ _id: { $eq: normalizedStageId } })
+      .exec();
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
     return stage;
   }
@@ -58,13 +69,16 @@ export class StageRepository {
     stageId: Types.ObjectId | string,
   ): Promise<StageDocument | null> {
     const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
-    return this.stageModel.findById(normalizedStageId).exec();
+    return this.stageModel.findOne({ _id: { $eq: normalizedStageId } }).exec();
   }
 
   async findManyByIds(
     stageIds: (Types.ObjectId | string)[],
   ): Promise<StageDocument[]> {
-    const normalizedStageIds = this.normalizeObjectIdArray(stageIds, "stageIds");
+    const normalizedStageIds = this.normalizeObjectIdArray(
+      stageIds,
+      "stageIds",
+    );
     return this.stageModel.find({ _id: { $in: normalizedStageIds } }).exec();
   }
 
@@ -75,7 +89,10 @@ export class StageRepository {
       tournamentId,
       "tournamentId",
     );
-    return this.stageModel.find({ tournamentId: normalizedTournamentId }).sort({ order: 1 }).exec();
+    return this.stageModel
+      .find({ tournamentId: { $eq: normalizedTournamentId } })
+      .sort({ order: 1 })
+      .exec();
   }
 
   /** What stage/pool is this team currently grouped under, if any. */
@@ -83,8 +100,16 @@ export class StageRepository {
     tournamentId: Types.ObjectId | string,
     teamId: Types.ObjectId | string,
   ): Promise<StageDocument | null> {
+    const normalizedTournamentId = this.normalizeObjectId(
+      tournamentId,
+      "tournamentId",
+    );
+    const normalizedTeamId = this.normalizeObjectId(teamId, "teamId");
     return this.stageModel
-      .findOne({ tournamentId, "pools.teamIds": teamId })
+      .findOne({
+        tournamentId: { $eq: normalizedTournamentId },
+        "pools.teamIds": { $eq: normalizedTeamId },
+      })
       .exec();
   }
 
@@ -105,10 +130,15 @@ export class StageRepository {
 
   async setPools(
     stageId: Types.ObjectId | string,
-    pools: { poolKey: string; name: string; teamIds: (Types.ObjectId | string)[] }[],
+    pools: {
+      poolKey: string;
+      name: string;
+      teamIds: (Types.ObjectId | string)[];
+    }[],
   ): Promise<StageDocument> {
-    const stage = await this.stageModel.findByIdAndUpdate(
-      stageId,
+    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
+    const stage = await this.stageModel.findOneAndUpdate(
+      { _id: { $eq: normalizedStageId } },
       { $set: { pools } },
       { new: true },
     );
@@ -120,8 +150,9 @@ export class StageRepository {
     stageId: Types.ObjectId | string,
     currentRoundIndex: number,
   ): Promise<StageDocument> {
-    const stage = await this.stageModel.findByIdAndUpdate(
-      stageId,
+    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
+    const stage = await this.stageModel.findOneAndUpdate(
+      { _id: { $eq: normalizedStageId } },
       { $set: { currentRoundIndex } },
       { new: true },
     );
