@@ -26,18 +26,28 @@ export class StageRepository {
     private readonly stageModel: Model<StageDocument>,
   ) {}
 
+  private normalizeObjectId(
+    id: Types.ObjectId | string,
+    fieldName: string,
+  ): Types.ObjectId {
+    if (id instanceof Types.ObjectId) return id;
+    if (!Types.ObjectId.isValid(id)) {
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        [fieldName]: id,
+      });
+    }
+    return new Types.ObjectId(id);
+  }
+
+  private normalizeObjectIdArray(
+    ids: (Types.ObjectId | string)[],
+    fieldName: string,
+  ): Types.ObjectId[] {
+    return ids.map((id) => this.normalizeObjectId(id, fieldName));
+  }
+
   async findById(stageId: Types.ObjectId | string): Promise<StageDocument> {
-    const normalizedStageId =
-      typeof stageId === "string"
-        ? (() => {
-            if (!Types.ObjectId.isValid(stageId)) {
-              throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-                stageId,
-              });
-            }
-            return new Types.ObjectId(stageId);
-          })()
-        : stageId;
+    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
 
     const stage = await this.stageModel.findById(normalizedStageId).exec();
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
@@ -47,19 +57,25 @@ export class StageRepository {
   async findByIdOrNull(
     stageId: Types.ObjectId | string,
   ): Promise<StageDocument | null> {
-    return this.stageModel.findById(stageId).exec();
+    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
+    return this.stageModel.findById(normalizedStageId).exec();
   }
 
   async findManyByIds(
     stageIds: (Types.ObjectId | string)[],
   ): Promise<StageDocument[]> {
-    return this.stageModel.find({ _id: { $in: stageIds } }).exec();
+    const normalizedStageIds = this.normalizeObjectIdArray(stageIds, "stageIds");
+    return this.stageModel.find({ _id: { $in: normalizedStageIds } }).exec();
   }
 
   async findAllByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<StageDocument[]> {
-    return this.stageModel.find({ tournamentId }).sort({ order: 1 }).exec();
+    const normalizedTournamentId = this.normalizeObjectId(
+      tournamentId,
+      "tournamentId",
+    );
+    return this.stageModel.find({ tournamentId: normalizedTournamentId }).sort({ order: 1 }).exec();
   }
 
   /** What stage/pool is this team currently grouped under, if any. */
