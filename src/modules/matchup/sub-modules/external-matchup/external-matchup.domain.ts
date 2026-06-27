@@ -52,8 +52,8 @@ export class ExternalMatchup {
   }
 
   async analyze(sub?: string) {
-    const aTeam = this.aTeam.owner === sub ? this.aTeam : this.bTeam;
-    const bTeam = this.aTeam.owner === sub ? this.bTeam : this.aTeam;
+    const aTeam = this.bTeam.owner === sub ? this.bTeam : this.aTeam;
+    const bTeam = this.bTeam.owner === sub ? this.aTeam : this.bTeam;
     const [aCoverageChart, bCoverageChart, aMoveChart, bMoveChart] =
       await Promise.all([
         getMatchupCoverage(aTeam.team, bTeam.team),
