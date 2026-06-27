@@ -1,4 +1,5 @@
 import { StorageModule } from "@core/storage/storage.module";
+import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
 import { ArchiveModule } from "@modules/archive/archive.module";
 import { DataModule } from "@modules/data/data.module";
@@ -74,6 +75,7 @@ import { AuthModule } from "./modules/auth/auth.module";
         };
       },
     }),
+    AdminModule,
     AgendaModule,
     ArchiveModule,
     AuthModule,
