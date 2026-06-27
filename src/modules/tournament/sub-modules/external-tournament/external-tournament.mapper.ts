@@ -7,7 +7,6 @@ import {
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
-import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
 export class ExternalTournamentMapper {
@@ -27,6 +26,9 @@ export class ExternalTournamentMapper {
   }
 
   static toClientPayload(tournament: ExternalTournament) {
+    const unresolved = tournament.unresolvedTeam.map(
+      PokemonMapper.toUnresolvedClientPayload,
+    );
     return {
       id: tournament._id?.toString(),
       leagueName: tournament.leagueName,
@@ -36,7 +38,13 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
       score: tournament.getScore(),
-      team: tournament.team.map(PokemonMapper.toClientPayload),
+      team: [
+        ...tournament.team.map(PokemonMapper.toClientPayload),
+        ...unresolved,
+      ],
+      ...(unresolved.length > 0 && {
+        unresolvedPokemon: unresolved.map((pokemon) => pokemon.id),
+      }),
     };
   }
 
@@ -69,6 +77,14 @@ export class ExternalTournamentMapper {
   ): ExternalTournament {
     const ruleset = getRuleset(tournamentDoc.ruleset);
     const format = getFormat(tournamentDoc.format);
+
+    // A pokemon that can't be resolved against the stored ruleset (e.g. the
+    // wrong ruleset was selected) must not crash mapping for the whole
+    // tournament — that would lock the user out of every draft. Collect the
+    // failures separately so they can be surfaced as a warning and fixed.
+    const { resolved: team, unresolved: unresolvedTeam } =
+      PokemonMapper.fromDatabaseTeam(tournamentDoc.team, ruleset);
+
     return new ExternalTournament(
       {
         _id: tournamentDoc._id,
@@ -78,9 +94,8 @@ export class ExternalTournamentMapper {
         teamName: tournamentDoc.teamName,
         key: tournamentDoc.leagueId,
         owner: tournamentDoc.owner,
-        team: tournamentDoc.team.map((pokemon) =>
-          PokemonMapper.fromDatabase(pokemon, ruleset),
-        ),
+        team,
+        unresolvedTeam,
         doc: tournamentDoc.doc,
       },
       matchups,

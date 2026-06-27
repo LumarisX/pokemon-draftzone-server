@@ -3,6 +3,7 @@ import { Ruleset } from "@core/data/rulesets/rulesets";
 import { Types } from "mongoose";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PokemonEntity } from "@modules/pokemon/pokemon.schema";
 
 export interface TournamentScore {
   wins: number;
@@ -19,6 +20,7 @@ export class ExternalTournament {
   key: string;
   owner: string;
   team: PDZPokemon[];
+  unresolvedTeam: PokemonEntity[];
   doc?: string;
   matchups: ExternalMatchup[];
   constructor(
@@ -31,6 +33,7 @@ export class ExternalTournament {
       key: string;
       owner: string;
       team: PDZPokemon[];
+      unresolvedTeam?: PokemonEntity[];
       doc?: string;
     },
     matchups: ExternalMatchup[],
@@ -43,6 +46,7 @@ export class ExternalTournament {
     this.key = props.key;
     this.owner = props.owner;
     this.team = props.team;
+    this.unresolvedTeam = props.unresolvedTeam ?? [];
     this.doc = props.doc;
     this.matchups = matchups;
   }

@@ -5,6 +5,22 @@ import { PokemonEntity } from "./pokemon.schema";
 import { ID, TypeName } from "@pkmn/data";
 
 export class PokemonMapper {
+  static fromDatabaseTeam(
+    team: PokemonEntity[],
+    ruleset: Ruleset,
+  ): { resolved: PDZPokemon[]; unresolved: PokemonEntity[] } {
+    const resolved: PDZPokemon[] = [];
+    const unresolved: PokemonEntity[] = [];
+    for (const pokemon of team) {
+      try {
+        resolved.push(PokemonMapper.fromDatabase(pokemon, ruleset));
+      } catch {
+        unresolved.push(pokemon);
+      }
+    }
+    return { resolved, unresolved };
+  }
+
   static fromDatabase(data: PokemonEntity, ruleset: Ruleset): PDZPokemon {
     return new PDZPokemon(
       {
@@ -81,6 +97,24 @@ export class PokemonMapper {
       capt: Object.values(capt).some((value) => value !== undefined)
         ? capt
         : undefined,
+    };
+  }
+
+  /**
+   * Client payload for a stored entry that couldn't be resolved against the
+   * ruleset. The id is preserved (so an edit can fix it / it can be greyed out)
+   * but the name falls back to the id since the species isn't known.
+   */
+  static toUnresolvedClientPayload(pokemon: PokemonEntity) {
+    return {
+      id: pokemon.id,
+      name: pokemon.id,
+      nickname: pokemon.nickname,
+      shiny: pokemon.shiny,
+      draftFormes: pokemon.draftFormes,
+      modifiers: pokemon.modifiers,
+      capt: pokemon.capt,
+      unresolved: true as const,
     };
   }
 

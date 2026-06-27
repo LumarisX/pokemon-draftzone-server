@@ -17,11 +17,24 @@ export class ExternalMatchupMapper {
       stage: matchup.stage,
       teamName: matchup.bTeam.teamName,
       coach: matchup.bTeam.coach,
-      team: matchup.bTeam.team.map(PokemonMapper.toClientPayload),
+      team: ExternalMatchupMapper.teamPayload(matchup.bTeam),
       score: matchup.calculateScore(),
       matches: matchup.matches,
       paste: matchup.bTeam.paste,
     };
+  }
+
+  /**
+   * Resolved team members plus any unresolved entries (greyed out client-side),
+   * so a wrong-ruleset species is shown rather than silently dropped.
+   */
+  private static teamPayload(side: ExternalMatchup["bTeam"]) {
+    return [
+      ...side.team.map(PokemonMapper.toClientPayload),
+      ...(side.unresolvedTeam ?? []).map(
+        PokemonMapper.toUnresolvedClientPayload,
+      ),
+    ];
   }
 
   static toScorePayload(matchup: ExternalMatchup) {
@@ -32,13 +45,13 @@ export class ExternalMatchupMapper {
       score: matchup.calculateScore(),
       aTeam: {
         teamName: matchup.aTeam.teamName,
-        team: matchup.aTeam.team.map(PokemonMapper.toClientPayload),
+        team: ExternalMatchupMapper.teamPayload(matchup.aTeam),
         paste: matchup.aTeam.paste,
       },
       bTeam: {
         teamName: matchup.bTeam.teamName,
         coach: matchup.bTeam.coach,
-        team: matchup.bTeam.team.map(PokemonMapper.toClientPayload),
+        team: ExternalMatchupMapper.teamPayload(matchup.bTeam),
         paste: matchup.bTeam.paste,
       },
       matches: matchup.matches.map(MatchMapper.toClientPayload),
@@ -97,6 +110,12 @@ export class ExternalMatchupMapper {
   ): ExternalMatchup {
     const ruleset = getRuleset(tournamentDoc.ruleset);
     const format = getFormat(tournamentDoc.format);
+
+    // Isolate species that don't resolve against the ruleset so a bad matchup
+    // can't crash the list; they're kept to be shown greyed out.
+    const aTeam = PokemonMapper.fromDatabaseTeam(tournamentDoc.team, ruleset);
+    const bTeam = PokemonMapper.fromDatabaseTeam(matchupDoc.bTeam.team, ruleset);
+
     return new ExternalMatchup({
       ruleset,
       format,
@@ -109,9 +128,8 @@ export class ExternalMatchupMapper {
         : [],
       aTeam: {
         id: tournamentDoc._id,
-        team: tournamentDoc.team.map((pokemon) =>
-          PokemonMapper.fromDatabase(pokemon, ruleset),
-        ),
+        team: aTeam.resolved,
+        unresolvedTeam: aTeam.unresolved,
         teamName: tournamentDoc.teamName,
         owner: tournamentDoc.owner,
         paste: matchupDoc.aTeam?.paste,
@@ -119,9 +137,8 @@ export class ExternalMatchupMapper {
       },
       bTeam: {
         id: matchupDoc._id,
-        team: matchupDoc.bTeam.team.map((pokemon) =>
-          PokemonMapper.fromDatabase(pokemon, ruleset),
-        ),
+        team: bTeam.resolved,
+        unresolvedTeam: bTeam.unresolved,
         teamName: matchupDoc.bTeam.teamName,
         coach: matchupDoc.bTeam.coach,
         paste: matchupDoc.bTeam.paste,
