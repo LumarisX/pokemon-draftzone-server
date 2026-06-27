@@ -1,3 +1,4 @@
+import { User } from "@core/decorators/user.decorator";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { Types } from "mongoose";
@@ -56,9 +57,12 @@ export class ExternalMatchupBreakdownController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   @Get(":matchupId")
-  async getAnalyzedMatchup(@Param("matchupId") matchupId: Types.ObjectId) {
+  async getAnalyzedMatchup(
+    @Param("matchupId") matchupId: Types.ObjectId,
+    @User() sub?: string,
+  ) {
     const matchup =
       await this.matchupBreakdownService.getMatchupById(matchupId);
-    return matchup.analyze();
+    return matchup.analyze(sub);
   }
 }

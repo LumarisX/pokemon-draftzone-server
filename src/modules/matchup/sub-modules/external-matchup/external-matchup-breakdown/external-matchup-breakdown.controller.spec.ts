@@ -54,11 +54,21 @@ describe("ExternalMatchupBreakdownController", () => {
       service.getMatchupById.mockResolvedValue({ analyze } as any);
       const matchupId = new Types.ObjectId();
 
-      const result = await controller.getAnalyzedMatchup(matchupId);
+      const result = await controller.getAnalyzedMatchup(matchupId, "auth0|abc");
 
       expect(service.getMatchupById).toHaveBeenCalledWith(matchupId);
-      expect(analyze).toHaveBeenCalled();
+      expect(analyze).toHaveBeenCalledWith("auth0|abc");
       expect(result).toEqual({ analyzed: true });
+    });
+
+    it("passes an undefined sub through for unauthenticated requests", async () => {
+      const analyze = jest.fn().mockResolvedValue({ analyzed: true });
+      service.getMatchupById.mockResolvedValue({ analyze } as any);
+      const matchupId = new Types.ObjectId();
+
+      await controller.getAnalyzedMatchup(matchupId, undefined);
+
+      expect(analyze).toHaveBeenCalledWith(undefined);
     });
   });
 });
