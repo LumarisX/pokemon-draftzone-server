@@ -6,6 +6,7 @@ import { ExternalMatchupService } from "./external-matchup.service";
 jest.mock("./external-matchup.mapper", () => ({
   ExternalMatchupMapper: {
     toClientPayload: jest.fn(),
+    toScorePayload: jest.fn(),
   },
 }));
 
@@ -92,10 +93,10 @@ describe("ExternalMatchupController", () => {
   });
 
   describe("getExternalMatchup", () => {
-    it("fetches by matchup id and returns the client payload", async () => {
+    it("fetches by matchup id and returns the score payload", async () => {
       const matchup = { stage: "a" } as any;
       service.getExternalMatchup.mockResolvedValue(matchup);
-      mockedMapper.toClientPayload.mockReturnValue({ id: "a" } as any);
+      mockedMapper.toScorePayload.mockReturnValue({ id: "a" } as any);
 
       const result = await controller.getExternalMatchup(
         "springleague",
@@ -103,8 +104,12 @@ describe("ExternalMatchupController", () => {
         "auth0|coach-1",
       );
 
-      expect(service.getExternalMatchup).toHaveBeenCalledWith("matchup-1");
-      expect(mockedMapper.toClientPayload).toHaveBeenCalledWith(matchup);
+      expect(service.getExternalMatchup).toHaveBeenCalledWith(
+        "springleague",
+        "matchup-1",
+        "auth0|coach-1",
+      );
+      expect(mockedMapper.toScorePayload).toHaveBeenCalledWith(matchup);
       expect(result).toEqual({ id: "a" });
     });
   });
@@ -145,6 +150,7 @@ describe("ExternalMatchupController", () => {
       );
 
       expect(service.updateExternalMatchupOpponent).toHaveBeenCalledWith(
+        "springleague",
         "matchup-1",
         "auth0|coach-1",
         body,
@@ -158,7 +164,7 @@ describe("ExternalMatchupController", () => {
   });
 
   describe("updateExternalMatchupScore", () => {
-    it("forwards the matchup id and body to the service", async () => {
+    it("forwards the tournament key, matchup id, sub, and body to the service", async () => {
       const body = { matches: [] } as ScorePatchDto;
 
       const result = await controller.updateExternalMatchupScore(
@@ -169,7 +175,9 @@ describe("ExternalMatchupController", () => {
       );
 
       expect(service.updateExternalMatchupScore).toHaveBeenCalledWith(
+        "springleague",
         "matchup-1",
+        "auth0|coach-1",
         body,
       );
       expect(result).toEqual({ message: "Score Updated" });
@@ -188,7 +196,9 @@ describe("ExternalMatchupController", () => {
       );
 
       expect(service.getExternalMatchupSchedule).toHaveBeenCalledWith(
+        "springleague",
         "matchup-1",
+        "auth0|coach-1",
       );
       expect(result).toBe(schedule);
     });
@@ -206,7 +216,9 @@ describe("ExternalMatchupController", () => {
       );
 
       expect(service.updateExternalMatchupSchedule).toHaveBeenCalledWith(
+        "springleague",
         "matchup-1",
+        "auth0|coach-1",
         body,
       );
       expect(result).toEqual({ message: "Schedule Updated" });

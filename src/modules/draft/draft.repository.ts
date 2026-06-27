@@ -102,6 +102,15 @@ export class DraftRepository {
     return this.draftModel.find({ tournamentId }).exec();
   }
 
+  async findOldestByTournament(
+    tournamentId: Types.ObjectId | string,
+  ): Promise<DraftDocument | null> {
+    return this.draftModel
+      .findOne({ tournamentId })
+      .sort({ createdAt: 1 })
+      .exec();
+  }
+
   async findTeamInDraftOrThrow(
     draft: PopulatedDraft,
     teamId: string,

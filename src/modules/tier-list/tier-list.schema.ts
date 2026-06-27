@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
 export class TierListPokemonAddonEntity {
@@ -102,7 +102,7 @@ export class TierListEntity {
   // Self-reference (a tier list copied from another tier list) — literal
   // string since the class can't reference its own name from within its
   // own member decorator while still being defined.
-  @Prop({ type: Types.ObjectId, ref: "TierListEntity" })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TierListEntity" })
   copiedFrom?: Types.ObjectId;
 
   @Prop({ type: Map, of: TierListPokemonSchema, default: {} })

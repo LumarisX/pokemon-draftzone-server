@@ -46,4 +46,39 @@ export class ExternalTournament {
     this.doc = props.doc;
     this.matchups = matchups;
   }
+
+  getScore(): TournamentScore {
+    const score: TournamentScore = { wins: 0, losses: 0, diff: "+0" };
+    let numDiff = 0;
+    const seriesScoring = this.matchups.some(
+      (matchup) => (matchup.matches?.length ?? 0) > 1,
+    );
+
+    if (seriesScoring) {
+      for (const matchup of this.matchups) {
+        let matchupWins = 0;
+        let matchupLosses = 0;
+        for (const match of matchup.matches ?? []) {
+          if (match.winner === "a") matchupWins++;
+          else if (match.winner === "b") matchupLosses++;
+        }
+        if (matchupWins > matchupLosses) score.wins++;
+        else if (matchupLosses > matchupWins) score.losses++;
+        numDiff += matchupWins - matchupLosses;
+      }
+    } else {
+      for (const matchup of this.matchups) {
+        const match = matchup.matches?.[0];
+        if (!match) continue;
+        const aScore = match.aTeam?.score ?? 0;
+        const bScore = match.bTeam?.score ?? 0;
+        if (aScore > bScore) score.wins++;
+        else if (aScore < bScore) score.losses++;
+        numDiff += aScore - bScore;
+      }
+    }
+
+    score.diff = (numDiff < 0 ? "" : "+") + numDiff;
+    return score;
+  }
 }

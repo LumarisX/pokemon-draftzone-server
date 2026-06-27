@@ -68,9 +68,12 @@ export class ExternalMatchupController {
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
-    const matchup =
-      await this.externalmatchupService.getExternalMatchup(matchupId);
-    return ExternalMatchupMapper.toClientPayload(matchup);
+    const matchup = await this.externalmatchupService.getExternalMatchup(
+      tournamentKey,
+      matchupId,
+      sub,
+    );
+    return ExternalMatchupMapper.toScorePayload(matchup);
   }
 
   @Get("matchups/:matchupId/opponent")
@@ -97,6 +100,7 @@ export class ExternalMatchupController {
   ) {
     const updatedMatchup =
       await this.externalmatchupService.updateExternalMatchupOpponent(
+        tournamentKey,
         matchupId,
         sub,
         body,
@@ -115,7 +119,9 @@ export class ExternalMatchupController {
     @Body() body: ScorePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupScore(
+      tournamentKey,
       matchupId,
+      sub,
       body,
     );
     return { message: "Score Updated" };
@@ -127,7 +133,11 @@ export class ExternalMatchupController {
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
-    return this.externalmatchupService.getExternalMatchupSchedule(matchupId);
+    return this.externalmatchupService.getExternalMatchupSchedule(
+      tournamentKey,
+      matchupId,
+      sub,
+    );
   }
 
   @Patch("matchups/:matchupId/schedule")
@@ -138,7 +148,9 @@ export class ExternalMatchupController {
     @Body() body: SchedulePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupSchedule(
+      tournamentKey,
       matchupId,
+      sub,
       body,
     );
     return { message: "Schedule Updated" };

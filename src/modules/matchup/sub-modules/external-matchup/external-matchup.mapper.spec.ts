@@ -28,6 +28,7 @@ jest.mock("./external-matchup-match/external-matchup-match.mapper", () => ({
     fromForm: jest.fn(),
     fromDatabase: jest.fn(),
     toDatabasePayload: jest.fn(),
+    toClientPayload: jest.fn(),
   },
 }));
 
@@ -76,6 +77,9 @@ describe("ExternalMatchupMapper", () => {
     mockedMatchMapper.toDatabasePayload.mockImplementation(
       (m: any) => ({ ...m, toDatabasePayload: true }) as any,
     );
+    mockedMatchMapper.toClientPayload.mockImplementation(
+      (m: any) => ({ ...m, toClientPayload: true }) as any,
+    );
   });
 
   describe("toClientPayload", () => {
@@ -98,6 +102,45 @@ describe("ExternalMatchupMapper", () => {
         score: null,
         matches: [],
         paste: "b-paste",
+      });
+    });
+  });
+
+  describe("toScorePayload", () => {
+    it("maps both teams plus the calculated score and per-match client payloads", () => {
+      const aPokemon = [{ id: "pikachu" }] as any;
+      const bPokemon = [{ id: "charizard" }] as any;
+      const storedMatch = { winner: "a" } as any;
+      const matchup = buildMatchup({
+        tournamentName: "Spring Cup",
+        aTeam: buildSide({ id: "a-id" as any, teamName: "Team Rocket", team: aPokemon, paste: "a-paste" }),
+        bTeam: buildSide({ id: "matchup-1" as any, teamName: "Challenger", team: bPokemon, coach: "coach-1", paste: "b-paste" }),
+        stage: "Round 1",
+        matches: [storedMatch],
+      });
+
+      const result = ExternalMatchupMapper.toScorePayload(matchup);
+
+      // called via matches.map, so storedMatch is the first arg of the call
+      expect(mockedMatchMapper.toClientPayload.mock.calls[0][0]).toBe(storedMatch);
+      expect(result).toEqual({
+        _id: "matchup-1",
+        leagueName: "Spring Cup",
+        stage: "Round 1",
+        // single match with no stats => 0 alive Pokémon on each side
+        score: [0, 0],
+        aTeam: {
+          teamName: "Team Rocket",
+          team: [{ id: "pikachu", toClientPayload: true }],
+          paste: "a-paste",
+        },
+        bTeam: {
+          teamName: "Challenger",
+          coach: "coach-1",
+          team: [{ id: "charizard", toClientPayload: true }],
+          paste: "b-paste",
+        },
+        matches: [{ winner: "a", toClientPayload: true }],
       });
     });
   });

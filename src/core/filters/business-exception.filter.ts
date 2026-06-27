@@ -25,11 +25,13 @@ export class BusinessExceptionFilter implements ExceptionFilter {
     const errorMessage = isUnroutedRequest
       ? notFound.message
       : pdzError?.message || exceptionResponse?.message || exception.message;
+    const errorDetails = isUnroutedRequest ? undefined : pdzError?.details;
 
     response.status(status).json({
       error: {
         code: errorCode,
         message: errorMessage,
+        ...(errorDetails && { details: errorDetails }),
       },
       meta: {
         timestamp: new Date().toISOString(),

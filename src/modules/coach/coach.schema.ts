@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 export type CoachDocument = HydratedDocument<CoachEntity>;
 
@@ -37,7 +37,7 @@ export class CoachEntity {
 
   // Ref name is a literal string (not TeamEntity.name) to avoid a circular
   // import with team.schema.ts, which refs back to CoachEntity.
-  @Prop({ type: Types.ObjectId, ref: "TeamEntity", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity", required: true })
   teamId!: Types.ObjectId;
 
   @Prop({ default: () => new Date() })

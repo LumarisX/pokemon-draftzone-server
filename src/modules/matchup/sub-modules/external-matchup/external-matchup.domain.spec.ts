@@ -159,7 +159,7 @@ describe("ExternalMatchup.analyze", () => {
     );
   });
 
-  it("defaults to treating bTeam as the perspective team when sub matches neither owner", async () => {
+  it("keeps aTeam as the perspective team when sub matches neither owner", async () => {
     const aTeam = buildSide({ owner: "auth0|a", teamName: "A Team" });
     const bTeam = buildSide({ owner: "auth0|b", teamName: "B Team" });
     const matchup = buildMatchup({ aTeam, bTeam });
@@ -168,8 +168,23 @@ describe("ExternalMatchup.analyze", () => {
 
     expect(mockedSummarizeTeam).toHaveBeenNthCalledWith(
       1,
-      bTeam.team,
-      "B Team",
+      aTeam.team,
+      "A Team",
+      undefined,
+    );
+  });
+
+  it("keeps aTeam as the perspective team when no sub is provided and owners are unset", async () => {
+    const aTeam = buildSide({ owner: undefined, teamName: "A Team" });
+    const bTeam = buildSide({ owner: undefined, teamName: "B Team" });
+    const matchup = buildMatchup({ aTeam, bTeam });
+
+    await matchup.analyze();
+
+    expect(mockedSummarizeTeam).toHaveBeenNthCalledWith(
+      1,
+      aTeam.team,
+      "A Team",
       undefined,
     );
   });

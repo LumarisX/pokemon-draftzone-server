@@ -22,9 +22,9 @@ export class MatchMapper {
     return {
       winner: match.winner,
       replay: match.replay,
-      aTeam: this.mapTeamToDatabase(match.aTeam),
+      aTeam: MatchMapper.mapTeamToDatabase(match.aTeam),
       bTeam: match.bTeam
-        ? this.mapTeamToDatabase(match.bTeam)
+        ? MatchMapper.mapTeamToDatabase(match.bTeam)
         : { stats: [], score: 0 },
     };
   }
@@ -33,8 +33,8 @@ export class MatchMapper {
     return new ExternalMatch({
       winner: dto.winner,
       replay: dto.replay,
-      aTeam: this.mapTeamToDomain(dto.aTeam),
-      bTeam: dto.bTeam ? this.mapTeamToDomain(dto.bTeam) : undefined,
+      aTeam: MatchMapper.mapTeamToDomain(dto.aTeam),
+      bTeam: dto.bTeam ? MatchMapper.mapTeamToDomain(dto.bTeam) : undefined,
     });
   }
 
@@ -42,10 +42,10 @@ export class MatchMapper {
     return new ExternalMatch({
       winner: entity.winner,
       replay: entity.replay,
-      aTeam: this.mapTeamToDomain(entity.aTeam),
+      aTeam: MatchMapper.mapTeamToDomain(entity.aTeam),
       bTeam:
         entity.bTeam.stats.length > 0
-          ? this.mapTeamToDomain(entity.bTeam)
+          ? MatchMapper.mapTeamToDomain(entity.bTeam)
           : undefined,
     });
   }

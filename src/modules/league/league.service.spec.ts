@@ -33,11 +33,16 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 
-function buildTierList(overrides: Record<string, unknown> = {}) {
+function buildTierList(
+  overrides: { format?: string; ruleset?: string } & Record<string, unknown> = {},
+) {
+  const { format = "Singles", ruleset = "Gen9 NatDex", ...rest } = overrides;
+  // Mirror the TierList domain, which resolves format/ruleset to objects;
+  // the service only sends their `name` to the client.
   return {
-    format: "Singles",
-    ruleset: "Gen9 NatDex",
-    ...overrides,
+    format: { name: format },
+    ruleset: { name: ruleset },
+    ...rest,
   } as any;
 }
 

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 const MATCH_SIDES = ["side1", "side2"] as const;
 const MATCH_WINNERS = [...MATCH_SIDES, "draw"] as const;
@@ -86,7 +86,7 @@ export const MatchSideSlotSchema = SchemaFactory.createForClass(
 export class MatchSideEntity {
   // Ref name is a literal string to avoid pulling team.schema.ts into the
   // matchup/division/team import chain unnecessarily.
-  @Prop({ type: Types.ObjectId, ref: "TeamEntity" })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
   team?: Types.ObjectId;
 
   @Prop({ type: MatchSideSlotSchema })
@@ -109,12 +109,12 @@ export type LeagueMatchupDocument = HydratedDocument<LeagueMatchupEntity>;
 export class LeagueMatchupEntity {
   // References a subdocument _id inside StageEntity.rounds[], not a
   // top-level collection — same as the legacy schema, intentionally no ref.
-  @Prop({ type: Types.ObjectId, index: true })
+  @Prop({ type: SchemaTypes.ObjectId, index: true })
   round?: Types.ObjectId;
 
   // Ref name is a literal string to avoid pulling stage.schema.ts into the
   // matchup/stage/team import chain unnecessarily.
-  @Prop({ type: Types.ObjectId, ref: "StageEntity", index: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "StageEntity", index: true })
   stage?: Types.ObjectId;
 
   // Denormalized copy of StagePoolEntity.poolKey — lets matchup queries

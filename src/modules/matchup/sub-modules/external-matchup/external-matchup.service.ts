@@ -73,9 +73,11 @@ export class ExternalMatchupService {
     await this.matchupRepo.create(payload);
   }
   async getExternalMatchup(
+    tournamentKey: string,
     externalmatchupId: string,
+    owner: string,
   ): Promise<ExternalMatchup> {
-    return this.matchupRepo.findById(externalmatchupId);
+    return this.getOwnedMatchup(tournamentKey, externalmatchupId, owner);
   }
 
   async getExternalMatchupOpponent(
@@ -83,8 +85,21 @@ export class ExternalMatchupService {
     externalmatchupId: string,
     owner: string,
   ) {
+    return this.getOwnedMatchup(tournamentId, externalmatchupId, owner);
+  }
+
+  /**
+   * Fetches a matchup only if it belongs to a tournament the caller owns.
+   * Throws MATCHUP.NOT_FOUND otherwise, so callers can't read or mutate
+   * matchups by guessing ids (IDOR guard for the by-matchupId endpoints).
+   */
+  private async getOwnedMatchup(
+    tournamentKey: string,
+    externalmatchupId: string,
+    owner: string,
+  ): Promise<ExternalMatchup> {
     const tournament = await this.tournamentRepo.findByKeyAndOwner(
-      tournamentId,
+      tournamentKey,
       owner,
     );
     const matchup = await this.matchupRepo.findById(externalmatchupId);
@@ -95,11 +110,16 @@ export class ExternalMatchupService {
   }
 
   async updateExternalMatchupOpponent(
+    tournamentKey: string,
     externalmatchupId: string,
     owner: string,
     dto: ExternalMatchupDto,
   ): Promise<ExternalMatchup> {
-    const existing = await this.matchupRepo.findById(externalmatchupId);
+    const existing = await this.getOwnedMatchup(
+      tournamentKey,
+      externalmatchupId,
+      owner,
+    );
     const updated = ExternalMatchupMapper.fromForm(dto, existing);
     await this.matchupRepo.update(
       externalmatchupId,
@@ -109,19 +129,30 @@ export class ExternalMatchupService {
   }
 
   async updateExternalMatchupScore(
+    tournamentKey: string,
     externalmatchupId: string,
+    owner: string,
     dto: ScorePatchDto,
   ): Promise<void> {
+    await this.getOwnedMatchup(tournamentKey, externalmatchupId, owner);
     await this.matchupRepo.updateScore(
       externalmatchupId,
-      dto.matches.map(MatchMapper.fromForm),
+      dto.matches.map((match) => MatchMapper.fromForm(match)),
       dto.aTeamPaste,
       dto.bTeamPaste,
     );
   }
 
-  async getExternalMatchupSchedule(externalmatchupId: string) {
-    const matchup = await this.matchupRepo.findById(externalmatchupId);
+  async getExternalMatchupSchedule(
+    tournamentKey: string,
+    externalmatchupId: string,
+    owner: string,
+  ) {
+    const matchup = await this.getOwnedMatchup(
+      tournamentKey,
+      externalmatchupId,
+      owner,
+    );
     return {
       gameTime: matchup.gameTime,
       reminder: matchup.reminder,
@@ -129,9 +160,12 @@ export class ExternalMatchupService {
   }
 
   async updateExternalMatchupSchedule(
+    tournamentKey: string,
     externalmatchupId: string,
+    owner: string,
     dto: SchedulePatchDto,
   ): Promise<void> {
+    await this.getOwnedMatchup(tournamentKey, externalmatchupId, owner);
     await this.matchupRepo.update(externalmatchupId, {
       gameTime: dto.dateTime,
       reminder: dto.emailTime,

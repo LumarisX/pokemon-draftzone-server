@@ -1,6 +1,6 @@
 import { LeagueEntity } from "@modules/league/league.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
 export class TournamentRuleEntity {
@@ -56,13 +56,13 @@ export class HostedTournamentEntity {
   @Prop()
   seasonEnd?: Date;
 
-  @Prop({ type: Types.ObjectId, ref: LeagueEntity.name, required: true, index: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: LeagueEntity.name, required: true, index: true })
   league!: Types.ObjectId;
 
   @Prop({ type: [String], default: [] })
   organizers!: string[];
 
-  @Prop({ type: Types.ObjectId })
+  @Prop({ type: SchemaTypes.ObjectId })
   tierList?: Types.ObjectId;
 
   @Prop({ type: [TournamentRuleSchema], default: [] })
@@ -79,7 +79,7 @@ export class HostedTournamentEntity {
   // tournament's stage sequence is this array's order, not derived from
   // each Stage's own `order` field (that field is informational/for
   // queries that only have a Stage, not the owning tournament, in hand).
-  @Prop({ type: [Types.ObjectId], ref: "StageEntity", default: [] })
+  @Prop({ type: [SchemaTypes.ObjectId], ref: "StageEntity", default: [] })
   stages!: Types.ObjectId[];
 
   @Prop({ default: -1 })

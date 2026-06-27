@@ -55,7 +55,7 @@ export class TierListService {
     return {
       tierList: tiers,
       divisions: {},
-      ruleset: tierList.ruleset,
+      ruleset: tierList.ruleset.name,
       name: tierList.name,
       description: tierList.description,
       draftCount: tierList.draftCount,
@@ -107,7 +107,7 @@ export class TierListService {
     tierList: TierList,
     showAll: boolean,
   ): Promise<TierView[]> {
-    const ruleset = getRuleset(tierList.ruleset);
+    const ruleset = tierList.ruleset;
     const assignedPokemon = new Set<string>();
 
     const tiers: TierView[] = await Promise.all(

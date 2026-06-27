@@ -24,6 +24,27 @@ export class ExternalMatchupMapper {
     };
   }
 
+  static toScorePayload(matchup: ExternalMatchup) {
+    return {
+      _id: matchup.bTeam.id,
+      leagueName: matchup.tournamentName,
+      stage: matchup.stage,
+      score: matchup.calculateScore(),
+      aTeam: {
+        teamName: matchup.aTeam.teamName,
+        team: matchup.aTeam.team.map(PokemonMapper.toClientPayload),
+        paste: matchup.aTeam.paste,
+      },
+      bTeam: {
+        teamName: matchup.bTeam.teamName,
+        coach: matchup.bTeam.coach,
+        team: matchup.bTeam.team.map(PokemonMapper.toClientPayload),
+        paste: matchup.bTeam.paste,
+      },
+      matches: matchup.matches.map(MatchMapper.toClientPayload),
+    };
+  }
+
   static toDatabasePayload(matchup: ExternalMatchup): ExternalMatchupEntity {
     return {
       aTeam: {

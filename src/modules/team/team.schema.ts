@@ -1,7 +1,7 @@
 import { PokemonEntity, PokemonSchema } from "@modules/pokemon/pokemon.schema";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
 export class TeamPickEntity {
@@ -26,7 +26,7 @@ export class PickLogEntity {
 
   // Ref name is a literal string (not CoachEntity.name) to avoid a circular
   // import with coach.schema.ts, which refs back to TeamEntity.
-  @Prop({ type: Types.ObjectId, ref: "CoachEntity", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity", required: true })
   picker!: Types.ObjectId;
 }
 export const PickLogSchema = SchemaFactory.createForClass(PickLogEntity);
@@ -39,7 +39,7 @@ export type TeamDocument = HydratedDocument<TeamEntity>;
 })
 export class TeamEntity {
   @Prop({
-    type: Types.ObjectId,
+    type: SchemaTypes.ObjectId,
     ref: HostedTournamentEntity.name,
     required: true,
     index: true,
@@ -48,12 +48,12 @@ export class TeamEntity {
 
   // Ref name is a literal string to avoid pulling draft.schema.ts into the
   // team/draft/stage import chain unnecessarily.
-  @Prop({ type: Types.ObjectId, ref: "DraftEntity", index: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "DraftEntity", index: true })
   draftId?: Types.ObjectId;
 
   // Ref name is a literal string (not CoachEntity.name) to avoid a circular
   // import with coach.schema.ts, which refs back to TeamEntity.
-  @Prop({ type: Types.ObjectId, ref: "CoachEntity", required: true, unique: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity", required: true, unique: true })
   coach!: Types.ObjectId;
 
   @Prop({ required: true })

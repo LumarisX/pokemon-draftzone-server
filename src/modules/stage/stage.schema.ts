@@ -1,6 +1,6 @@
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 const STAGE_TYPES = [
   "round-robin",
@@ -25,7 +25,7 @@ export const StageTradePokemonSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class StageTradeSideEntity {
-  @Prop({ type: Types.ObjectId, ref: "TeamEntity" })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
   team?: Types.ObjectId;
 
   @Prop({ type: [StageTradePokemonSchema], required: true })
@@ -83,7 +83,7 @@ export class StagePoolEntity {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ type: [Types.ObjectId], ref: "TeamEntity", default: [] })
+  @Prop({ type: [SchemaTypes.ObjectId], ref: "TeamEntity", default: [] })
   teamIds!: Types.ObjectId[];
 }
 export const StagePoolSchema = SchemaFactory.createForClass(StagePoolEntity);
@@ -96,7 +96,7 @@ export type StageDocument = HydratedDocument<StageEntity>;
 })
 export class StageEntity {
   @Prop({
-    type: Types.ObjectId,
+    type: SchemaTypes.ObjectId,
     ref: HostedTournamentEntity.name,
     required: true,
     index: true,

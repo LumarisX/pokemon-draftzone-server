@@ -31,7 +31,7 @@ describe("BusinessExceptionFilter", () => {
     filter = new BusinessExceptionFilter();
   });
 
-  it("uses the PDZError's own code/message and status", () => {
+  it("uses the PDZError's own code/message/details and status", () => {
     const response = buildResponse();
     const exception = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey: "spring" });
 
@@ -39,7 +39,11 @@ describe("BusinessExceptionFilter", () => {
 
     expect(response.status).toHaveBeenCalledWith(404);
     expect(response.json).toHaveBeenCalledWith({
-      error: { code: "LR-001", message: "League not found" },
+      error: {
+        code: "LR-001",
+        message: "League not found",
+        details: { leagueKey: "spring" },
+      },
       meta: { timestamp: expect.any(String) },
     });
   });

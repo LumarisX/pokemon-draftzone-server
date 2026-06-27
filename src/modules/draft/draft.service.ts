@@ -216,7 +216,7 @@ export class DraftService {
       draftKey,
     );
 
-    const ruleset = getRuleset(tournament.tierList.ruleset);
+    const ruleset = tournament.tierList.ruleset;
     const teams = await Promise.all(
       draft.teams.map(async (team: PopulatedTeam, index) => {
         const teamRaw = team.pickLog.map((pickItem) => ({
@@ -461,9 +461,7 @@ export class DraftService {
             .filter(([, pokemon]) => pokemon.tier === tier.name)
             .filter(
               ([id]) =>
-                !drafted.some((team) =>
-                  team.roster.some((p) => p.id === id),
-                ),
+                !drafted.some((team) => team.roster.some((p) => p.id === id)),
             )
             .map(([id, pokemon]) => ({
               id,

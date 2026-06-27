@@ -42,11 +42,14 @@ export class HostedTournamentController {
   }
 
   @Get(":tournamentKey/info")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async getTournamentInfo(
     @Param("leagueKey") leagueKey: string,
     @Param("tournamentKey") tournamentKey: string,
+    @User() sub: string | undefined,
   ) {
-    return this.tournamentService.getInfo(leagueKey, tournamentKey);
+    return this.tournamentService.getInfo(leagueKey, tournamentKey, sub);
   }
 
   @Get(":tournamentKey/roles")

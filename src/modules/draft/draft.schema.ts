@@ -1,6 +1,6 @@
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
 export class DraftEventLogEntity {
@@ -35,7 +35,7 @@ export class DraftEntity {
   name!: string;
 
   @Prop({
-    type: Types.ObjectId,
+    type: SchemaTypes.ObjectId,
     ref: HostedTournamentEntity.name,
     required: true,
     index: true,

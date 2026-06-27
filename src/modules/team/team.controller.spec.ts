@@ -2,6 +2,8 @@ import { CreateTeamDto, UpdateTeamDto } from "./team.dto";
 import { TeamController } from "./team.controller";
 import { TeamService } from "./team.service";
 
+const COACH_ID = "507f191e810c19729de860ea";
+
 describe("TeamController", () => {
   let service: jest.Mocked<TeamService>;
   let controller: TeamController;
@@ -58,7 +60,7 @@ describe("TeamController", () => {
       service.canCreateTeamForCoach.mockResolvedValue(false);
       const body = {
         tournamentId: "tournament-1",
-        coachId: "coach-1",
+        coachId: COACH_ID,
         teamName: "Team Rocket",
       } as CreateTeamDto;
 
@@ -74,7 +76,7 @@ describe("TeamController", () => {
       service.createTeam.mockResolvedValue(createdTeam);
       const body = {
         tournamentId: "tournament-1",
-        coachId: "coach-1",
+        coachId: COACH_ID,
         teamName: "Team Rocket",
         logo: "logo-key",
       } as CreateTeamDto;
@@ -82,12 +84,12 @@ describe("TeamController", () => {
       const result = await controller.createTeam("auth0|coach-1", body);
 
       expect(service.canCreateTeamForCoach).toHaveBeenCalledWith(
-        "coach-1",
+        COACH_ID,
         "auth0|coach-1",
       );
       expect(service.createTeam).toHaveBeenCalledWith({
         tournamentId: "tournament-1",
-        coach: "coach-1",
+        coach: COACH_ID,
         teamName: "Team Rocket",
         logo: "logo-key",
       });

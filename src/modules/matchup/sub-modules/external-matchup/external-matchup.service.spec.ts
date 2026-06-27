@@ -267,14 +267,41 @@ describe("ExternalMatchupService", () => {
   });
 
   describe("getExternalMatchup", () => {
-    it("delegates to the repository by id", async () => {
-      const matchup = { stage: "Round 1" } as unknown as ExternalMatchup;
+    it("returns the matchup when it belongs to the caller's tournament", async () => {
+      const tournament = buildTournament();
+      const matchup = {
+        stage: "Round 1",
+        aTeam: { id: tournament._id },
+      } as unknown as ExternalMatchup;
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue(matchup);
 
-      const result = await service.getExternalMatchup("matchup-1");
+      const result = await service.getExternalMatchup(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+      );
 
+      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+        "springleague",
+        "auth0|owner",
+      );
       expect(matchupRepo.findById).toHaveBeenCalledWith("matchup-1");
       expect(result).toBe(matchup);
+    });
+
+    it("rejects when the matchup belongs to a different tournament than the caller's", async () => {
+      const tournament = buildTournament();
+      const matchup = {
+        stage: "Round 1",
+        aTeam: { id: new Types.ObjectId() },
+      } as unknown as ExternalMatchup;
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue(matchup);
+
+      await expect(
+        service.getExternalMatchup("springleague", "matchup-1", "auth0|owner"),
+      ).rejects.toMatchObject({ code: "MU-001" });
     });
   });
 
@@ -337,10 +364,15 @@ describe("ExternalMatchupService", () => {
   });
 
   describe("updateExternalMatchupOpponent", () => {
-    it("merges the form data onto the existing matchup and persists it", async () => {
-      const existing = { stage: "Round 1" } as unknown as ExternalMatchup;
+    it("merges the form data onto the owned matchup and persists it", async () => {
+      const tournament = buildTournament();
+      const existing = {
+        stage: "Round 1",
+        aTeam: { id: tournament._id },
+      } as unknown as ExternalMatchup;
       const updated = { stage: "Round 1", teamName: "Updated" } as unknown as ExternalMatchup;
       const refetched = { stage: "Round 1", teamName: "Updated", refetched: true } as unknown as ExternalMatchup;
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById
         .mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(refetched);
@@ -351,11 +383,16 @@ describe("ExternalMatchupService", () => {
       const dto = { teamName: "Updated" } as ExternalMatchupDto;
 
       const result = await service.updateExternalMatchupOpponent(
+        "springleague",
         "matchup-1",
         "auth0|owner",
         dto,
       );
 
+      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+        "springleague",
+        "auth0|owner",
+      );
       expect(mockedExternalMatchupMapper.fromForm).toHaveBeenCalledWith(
         dto,
         existing,
@@ -368,10 +405,34 @@ describe("ExternalMatchupService", () => {
       });
       expect(result).toBe(refetched);
     });
+
+    it("rejects and does not write when the matchup is owned by a different tournament", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        stage: "Round 1",
+        aTeam: { id: new Types.ObjectId() },
+      } as unknown as ExternalMatchup);
+
+      await expect(
+        service.updateExternalMatchupOpponent(
+          "springleague",
+          "matchup-1",
+          "auth0|stranger",
+          { teamName: "Updated" } as ExternalMatchupDto,
+        ),
+      ).rejects.toMatchObject({ code: "MU-001" });
+      expect(matchupRepo.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("updateExternalMatchupScore", () => {
-    it("maps the form matches and forwards both team pastes to the repository", async () => {
+    it("verifies ownership, maps the form matches, and forwards both team pastes to the repository", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: tournament._id },
+      } as unknown as ExternalMatchup);
       mockedMatchMapper.fromForm.mockImplementation(
         (m: any) => ({ mapped: m }) as any,
       );
@@ -381,8 +442,17 @@ describe("ExternalMatchupService", () => {
         matches: [{ winner: "a" } as any],
       };
 
-      await service.updateExternalMatchupScore("matchup-1", dto);
+      await service.updateExternalMatchupScore(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+        dto,
+      );
 
+      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+        "springleague",
+        "auth0|owner",
+      );
       expect(matchupRepo.updateScore).toHaveBeenCalledWith(
         "matchup-1",
         [{ mapped: dto.matches[0] }],
@@ -390,43 +460,121 @@ describe("ExternalMatchupService", () => {
         "b-paste",
       );
     });
+
+    it("rejects and does not write when the matchup is owned by a different tournament", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: new Types.ObjectId() },
+      } as unknown as ExternalMatchup);
+      const dto: ScorePatchDto = { matches: [] };
+
+      await expect(
+        service.updateExternalMatchupScore(
+          "springleague",
+          "matchup-1",
+          "auth0|stranger",
+          dto,
+        ),
+      ).rejects.toMatchObject({ code: "MU-001" });
+      expect(matchupRepo.updateScore).not.toHaveBeenCalled();
+    });
   });
 
   describe("getExternalMatchupSchedule", () => {
-    it("returns the stored game time and reminder lead time", async () => {
-      const gameTime = new Date("2026-02-01");
+    function mockOwnedMatchup(matchup: Partial<ExternalMatchup>) {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
-        gameTime,
-        reminder: 60,
+        aTeam: { id: tournament._id },
+        ...matchup,
       } as unknown as ExternalMatchup);
+    }
 
-      const result = await service.getExternalMatchupSchedule("matchup-1");
+    it("returns the stored game time and reminder lead time for an owned matchup", async () => {
+      const gameTime = new Date("2026-02-01");
+      mockOwnedMatchup({ gameTime, reminder: 60 });
 
+      const result = await service.getExternalMatchupSchedule(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+      );
+
+      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+        "springleague",
+        "auth0|owner",
+      );
       expect(result).toEqual({ gameTime, reminder: 60 });
     });
 
     it("returns an undefined reminder when none was set", async () => {
-      matchupRepo.findById.mockResolvedValue({
-        gameTime: undefined,
-        reminder: undefined,
-      } as unknown as ExternalMatchup);
+      mockOwnedMatchup({ gameTime: undefined, reminder: undefined });
 
-      const result = await service.getExternalMatchupSchedule("matchup-1");
+      const result = await service.getExternalMatchupSchedule(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+      );
 
       expect(result).toEqual({ gameTime: undefined, reminder: undefined });
+    });
+
+    it("rejects when the matchup belongs to a different tournament", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: new Types.ObjectId() },
+      } as unknown as ExternalMatchup);
+
+      await expect(
+        service.getExternalMatchupSchedule(
+          "springleague",
+          "matchup-1",
+          "auth0|stranger",
+        ),
+      ).rejects.toMatchObject({ code: "MU-001" });
     });
   });
 
   describe("updateExternalMatchupSchedule", () => {
-    it("persists the new date/time and reminder lead time", async () => {
+    it("persists the new date/time and reminder lead time for an owned matchup", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: tournament._id },
+      } as unknown as ExternalMatchup);
       const dto: SchedulePatchDto = { dateTime: "2026-02-01T00:00:00Z", emailTime: 60 };
 
-      await service.updateExternalMatchupSchedule("matchup-1", dto);
+      await service.updateExternalMatchupSchedule(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+        dto,
+      );
 
       expect(matchupRepo.update).toHaveBeenCalledWith("matchup-1", {
         gameTime: dto.dateTime,
         reminder: dto.emailTime,
       });
+    });
+
+    it("rejects and does not write when the matchup is owned by a different tournament", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: new Types.ObjectId() },
+      } as unknown as ExternalMatchup);
+
+      await expect(
+        service.updateExternalMatchupSchedule(
+          "springleague",
+          "matchup-1",
+          "auth0|stranger",
+          { dateTime: "2026-02-01T00:00:00Z" } as SchedulePatchDto,
+        ),
+      ).rejects.toMatchObject({ code: "MU-001" });
+      expect(matchupRepo.update).not.toHaveBeenCalled();
     });
   });
 });

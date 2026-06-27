@@ -179,21 +179,31 @@ export class HostedTournamentService {
     return HostedTournamentMapper.toClientPayload(tournament);
   }
 
-  async getInfo(leagueKey: string, tournamentKey: string) {
+  async getInfo(leagueKey: string, tournamentKey: string, sub?: string) {
     const tournament = await this.tournamentRepo.findByKey(
       leagueKey,
       tournamentKey,
     );
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
 
-    const drafts = await this.draftRepo.findPublicByTournament(tournament.id);
+    // Members (signed-up coaches and organizers) can see every draft,
+    // including ones the organizer hasn't published yet; everyone else only
+    // sees drafts explicitly marked public.
+    const canSeeAllDrafts = sub
+      ? tournament.isOrganizer(sub) ||
+        (await this.findSignupForTournament(sub, tournament.id)) !== null
+      : false;
+
+    const drafts = canSeeAllDrafts
+      ? await this.draftRepo.findAllByTournament(tournament.id)
+      : await this.draftRepo.findPublicByTournament(tournament.id);
 
     return {
       name: tournament.name,
       tournamentKey: tournament.tournamentKey,
       description: tournament.description,
-      format: tierList.format,
-      ruleset: tierList.ruleset,
+      format: tierList.format.name,
+      ruleset: tierList.ruleset.name,
       signUpDeadline: tournament.signUpDeadline,
       draftStart: tournament.draftStart,
       draftEnd: tournament.draftEnd,
@@ -394,6 +404,15 @@ export class HostedTournamentService {
       if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
     }
 
+    // Every tournament is expected to have exactly one draft; sign-ups
+    // auto-join it instead of waiting on a manual assignCoaches() call.
+    const draft = await this.draftRepo.findOldestByTournament(tournament.id);
+    if (!draft) {
+      throw new PDZError(ErrorCodes.DRAFT.NOT_CONFIGURED, {
+        tournamentId: tournament.id,
+      });
+    }
+
     // Pre-generate both ids so Team.coach and Coach.teamId (both required)
     // can be set correctly on first insert, with neither side left dangling.
     const coachId = new Types.ObjectId();
@@ -402,6 +421,7 @@ export class HostedTournamentService {
     await this.teamRepo.create({
       _id: teamId,
       tournamentId: tournament.id,
+      draftId: draft._id,
       coach: coachId,
       teamName: dto.teamName,
       logo: dto.logo,

@@ -104,6 +104,53 @@ describe("MatchMapper", () => {
     });
   });
 
+  // Regression: these statics used to call `this.mapTeam*`, which threw
+  // ("Cannot read properties of undefined") when the method was passed as an
+  // unbound callback to Array.map — exactly how the service/repository use them.
+  describe("unbound usage as an Array.map callback", () => {
+    it("fromForm survives being passed by reference to map", () => {
+      const dtos: ExternalMatchDto[] = [
+        {
+          winner: "b",
+          aTeam: { score: 0, stats: [] },
+          bTeam: { score: 0, stats: [] },
+        },
+      ];
+
+      expect(() => dtos.map(MatchMapper.fromForm)).not.toThrow();
+      const [result] = dtos.map(MatchMapper.fromForm);
+      expect(result).toBeInstanceOf(ExternalMatch);
+    });
+
+    it("toDatabasePayload survives being passed by reference to map", () => {
+      const matches = [
+        new ExternalMatch({
+          winner: "a",
+          aTeam: { score: 1, stats: [["pikachu", { kills: 1 }]] },
+          bTeam: { score: 0, stats: [] },
+        }),
+      ];
+
+      expect(() => matches.map(MatchMapper.toDatabasePayload)).not.toThrow();
+      const [result] = matches.map(MatchMapper.toDatabasePayload);
+      expect(result.aTeam.stats).toEqual([
+        ["pikachu", { kills: 1, deaths: undefined, indirect: undefined, brought: undefined }],
+      ]);
+    });
+
+    it("fromDatabase survives being passed by reference to map", () => {
+      const entities: ExternalMatchEntity[] = [
+        {
+          winner: "a",
+          aTeam: { score: 1, stats: [["pikachu", { kills: 1 }]] },
+          bTeam: { score: 0, stats: [] },
+        },
+      ];
+
+      expect(() => entities.map(MatchMapper.fromDatabase)).not.toThrow();
+    });
+  });
+
   describe("fromDatabase", () => {
     function buildEntity(overrides: Partial<ExternalMatchEntity> = {}): ExternalMatchEntity {
       return {

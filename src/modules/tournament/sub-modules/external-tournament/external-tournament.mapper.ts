@@ -35,6 +35,7 @@ export class ExternalTournamentMapper {
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
+      score: tournament.getScore(),
       team: tournament.team.map(PokemonMapper.toClientPayload),
     };
   }

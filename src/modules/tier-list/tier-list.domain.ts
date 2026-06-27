@@ -1,3 +1,6 @@
+import { getFormat, Format } from "@core/data/formats/formats";
+import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
+
 export const UNTIERED_TIER_NAME = "Untiered";
 
 export class TierListPokemonAddon {
@@ -91,8 +94,8 @@ export class TierList {
   banned: { moves: string[]; abilities: string[] };
   pointTotal?: number;
   draftCount: DraftCount;
-  format: string;
-  ruleset: string;
+  format: Format;
+  ruleset: Ruleset;
   settings: TierListSettings;
   collaborators: string[];
 
@@ -122,8 +125,8 @@ export class TierList {
     this.banned = props.banned;
     this.pointTotal = props.pointTotal;
     this.draftCount = props.draftCount;
-    this.format = props.format;
-    this.ruleset = props.ruleset;
+    this.format = getFormat(props.format);
+    this.ruleset = getRuleset(props.ruleset);
     this.settings = props.settings;
     this.collaborators = props.collaborators;
   }
@@ -137,10 +140,7 @@ export class TierList {
     return this.tiers.find((tier) => tier.name === tierName);
   }
 
-  getPokemonCost(
-    pokemonId: string,
-    addonNames?: string[],
-  ): number | undefined {
+  getPokemonCost(pokemonId: string, addonNames?: string[]): number | undefined {
     const pokemon = this.pokemon.get(pokemonId);
     if (!pokemon) return undefined;
 

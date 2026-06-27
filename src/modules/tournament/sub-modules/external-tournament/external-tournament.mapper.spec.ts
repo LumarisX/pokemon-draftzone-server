@@ -107,6 +107,7 @@ describe("ExternalTournamentMapper", () => {
         format: "Singles",
         ruleset: "Gen9 NatDex",
         doc: "doc-key",
+        score: { wins: 0, losses: 0, diff: "+0" },
         team: [{ id: "charizard", toClientPayload: true }],
       });
     });

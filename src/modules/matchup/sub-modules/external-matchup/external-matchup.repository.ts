@@ -62,7 +62,7 @@ export class ExternalMatchupRepository {
     bTeamPaste?: string,
   ): Promise<void> {
     const setData: { [key: string]: unknown } = {
-      matches: matches.map(MatchMapper.toDatabasePayload),
+      matches: matches.map((match) => MatchMapper.toDatabasePayload(match)),
     };
     if (aTeamPaste !== undefined) setData["aTeam.paste"] = aTeamPaste;
     if (bTeamPaste !== undefined) setData["bTeam.paste"] = bTeamPaste;

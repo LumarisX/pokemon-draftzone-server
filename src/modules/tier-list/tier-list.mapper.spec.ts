@@ -52,8 +52,8 @@ describe("TierListMapper.fromDatabase", () => {
     expect(result.name).toBe("Spring Tier List");
     expect(result.description).toBe("A spring tier list");
     expect(result.createdBy).toBe("auth0|owner");
-    expect(result.format).toBe("Singles");
-    expect(result.ruleset).toBe("Gen9 NatDex");
+    expect(result.format.name).toBe("Singles");
+    expect(result.ruleset.name).toBe("Gen9 NatDex");
     expect(result.pointTotal).toBe(100);
   });
 
