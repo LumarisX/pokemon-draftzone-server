@@ -188,10 +188,10 @@ export class AdminRepository {
   }
 
   async settingsDistributions(): Promise<SettingsDistributions> {
-    const distinctStage = (field: string, fallback: string) => [
+    const distinctStage = (field: string) => [
       {
         $group: {
-          _id: { $ifNull: [`$settings.${field}`, fallback] },
+          _id: { $ifNull: [`$settings.${field}`, "unset"] },
           count: { $sum: 1 },
         },
       },
@@ -206,8 +206,8 @@ export class AdminRepository {
       }>([
         {
           $facet: {
-            theme: distinctStage("theme", "classic"),
-            spriteSet: distinctStage("spriteSet", "home"),
+            theme: distinctStage("theme"),
+            spriteSet: distinctStage("spriteSet"),
             shinyUnlock: [
               {
                 $group: {
