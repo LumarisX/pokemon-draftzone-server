@@ -4,6 +4,7 @@ import { AgendaModule } from "@modules/agenda/agenda.module";
 import { ArchiveModule } from "@modules/archive/archive.module";
 import { DataModule } from "@modules/data/data.module";
 import { DraftModule } from "@modules/draft/draft.module";
+import { ErrorReportModule } from "@modules/error-report/error-report.module";
 import { LeagueModule } from "@modules/league/league.modules";
 import { MatchupModule } from "@modules/matchup/matchup.module";
 import { PlannerModule } from "@modules/planner/planner.module";
@@ -21,6 +22,7 @@ import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MongooseModule } from "@nestjs/mongoose";
+import { ThrottlerModule } from "@nestjs/throttler";
 import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
 
@@ -28,6 +30,7 @@ import { AuthModule } from "./modules/auth/auth.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
 
     MongooseModule.forRootAsync({
       inject: [ConfigService],
@@ -81,6 +84,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     AuthModule,
     DataModule,
     DraftModule,
+    ErrorReportModule,
     StageModule,
     LeagueModule,
     MatchupModule,

@@ -20,14 +20,14 @@ import { ExternalTournamentMapper } from "./external-tournament.mapper";
 export class ExternalTournamentController {
   constructor(private readonly tournamentService: ExternalTournamentService) {}
 
-  @Get()
-  async getTournaments(@User() sub: string) {
-    const tournaments = await this.tournamentService.getTournaments(sub);
-    return {
-      drafts: tournaments.map(ExternalTournamentMapper.toClientPayload),
-      tournaments: [],
-    };
-  }
+  // @Get()
+  // async getTournaments(@User() sub: string) {
+  //   const tournaments = await this.tournamentService.getTournaments(sub);
+  //   return {
+  //     drafts: tournaments.map(ExternalTournamentMapper.toClientPayload),
+  //     tournaments: [],
+  //   };
+  // }
 
   @Post()
   @HttpCode(201)
