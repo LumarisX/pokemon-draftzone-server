@@ -17,6 +17,7 @@ jest.mock('@pkmn/data', () => ({
 jest.mock('@pkmn/dex', () => ({
   Dex: {
     forGen: jest.fn(() => ({})),
+    mod: jest.fn(() => ({})),
   },
   ModdedDex: jest.fn(() => ({})),
 }));
@@ -70,10 +71,22 @@ describe('getRulesets', () => {
 
   it('includes every group, not just Gen 9/Gen 8/Older Gens (e.g. Champions and Rom Hacks)', () => {
     const rulesets = getRulesets();
-    expect(rulesets).toContain('Champions MA');
-    expect(rulesets).toContain('Champions MB');
+    expect(rulesets).toContain('Champions');
     expect(rulesets).toContain('radicalred');
     expect(rulesets).toContain('insurgance');
+  });
+
+  it('does not advertise the legacy Champions MA/MB ids', () => {
+    const rulesets = getRulesets();
+    expect(rulesets).not.toContain('Champions MA');
+    expect(rulesets).not.toContain('Champions MB');
+  });
+});
+
+describe('legacy ruleset id aliases', () => {
+  it('resolves the retired Champions MA/MB ids to the current Champions ruleset', () => {
+    expect(getRuleset('Champions MA').name).toBe('Champions');
+    expect(getRuleset('Champions MB').name).toBe('Champions');
   });
 });
 

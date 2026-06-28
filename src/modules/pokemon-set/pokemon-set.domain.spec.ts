@@ -3,7 +3,7 @@ import { ID } from "@pkmn/data";
 import { PDZPokemonSet } from "./pokemon-set.domain";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
-const CHAMPIONS_MA = Rulesets["Champions"]["M-A"].ruleset;
+const CHAMPIONS_MA = Rulesets["Gen 9"]["Champions"].ruleset;
 
 function set(
   data: string | ({ id: string } & Record<string, any>),

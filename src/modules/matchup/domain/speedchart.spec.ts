@@ -4,7 +4,7 @@ import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { speedchart } from "./speedchart";
 
 const NAT_DEX = Rulesets["Gen 9"]["National Dex"].ruleset;
-const CHAMPIONS_MA = Rulesets.Champions["M-A"].ruleset;
+const CHAMPIONS_MA = Rulesets["Gen 9"]["Champions"].ruleset;
 const RADICAL_RED = Rulesets["Rom Hacks"]["Radical Red"].ruleset;
 const GEN_1 = Rulesets["Older Gens"]["Generation 1"].ruleset;
 
