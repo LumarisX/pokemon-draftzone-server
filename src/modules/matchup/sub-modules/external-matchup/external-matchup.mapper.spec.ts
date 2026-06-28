@@ -19,8 +19,10 @@ jest.mock("@modules/pokemon/pokemon.mapper", () => ({
   PokemonMapper: {
     fromForm: jest.fn(),
     fromDatabase: jest.fn(),
+    fromDatabaseTeam: jest.fn(),
     toDatabasePayload: jest.fn(),
     toClientPayload: jest.fn(),
+    toUnresolvedClientPayload: jest.fn(),
   },
 }));
 jest.mock("./external-matchup-match/external-matchup-match.mapper", () => ({
@@ -68,6 +70,16 @@ describe("ExternalMatchupMapper", () => {
     mockedPokemonMapper.fromDatabase.mockImplementation(
       (p: any) => ({ id: p.id, fromDatabase: true }) as any,
     );
+    mockedPokemonMapper.fromDatabaseTeam.mockImplementation(
+      (team: any) =>
+        ({
+          resolved: team.map((p: any) => ({ id: p.id, fromDatabase: true })),
+          unresolved: [],
+        }) as any,
+    );
+    mockedPokemonMapper.toUnresolvedClientPayload.mockImplementation(
+      (p: any) => ({ id: p.id, unresolved: true }) as any,
+    );
     mockedPokemonMapper.toDatabasePayload.mockImplementation(
       (p: any) => ({ id: p.id, toDatabasePayload: true }) as any,
     );
@@ -103,6 +115,27 @@ describe("ExternalMatchupMapper", () => {
         matches: [],
         paste: "b-paste",
       });
+    });
+
+    it("appends unresolved entries (greyed out client-side) after the resolved team", () => {
+      const matchup = buildMatchup({
+        bTeam: buildSide({
+          id: "matchup-1" as any,
+          team: [{ id: "pikachu" }] as any,
+          unresolvedTeam: [{ id: "missingno" }] as any,
+          coach: "coach-1",
+          paste: "b-paste",
+        }),
+        stage: "Round 1",
+        matches: [],
+      });
+
+      const result = ExternalMatchupMapper.toClientPayload(matchup);
+
+      expect(result.team).toEqual([
+        { id: "pikachu", toClientPayload: true },
+        { id: "missingno", unresolved: true },
+      ]);
     });
   });
 
@@ -336,13 +369,14 @@ describe("ExternalMatchupMapper", () => {
       expect(result.aTeam).toEqual({
         id: tournamentDoc._id,
         team: [{ id: "bulbasaur", fromDatabase: true }],
+        unresolvedTeam: [],
         teamName: "Team Rocket",
         owner: "auth0|owner",
         paste: "a-paste",
         notes: "a-notes",
       });
-      expect(mockedPokemonMapper.fromDatabase).toHaveBeenCalledWith(
-        tournamentDoc.team[0],
+      expect(mockedPokemonMapper.fromDatabaseTeam).toHaveBeenCalledWith(
+        tournamentDoc.team,
         RULESET,
       );
     });
@@ -358,6 +392,7 @@ describe("ExternalMatchupMapper", () => {
       expect(result.bTeam).toEqual({
         id: matchupDoc._id,
         team: [{ id: "wartortle", fromDatabase: true }],
+        unresolvedTeam: [],
         teamName: "Challenger",
         coach: "coach-1",
         paste: "b-paste",

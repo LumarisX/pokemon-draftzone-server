@@ -16,8 +16,10 @@ jest.mock("@modules/pokemon/pokemon.mapper", () => ({
   PokemonMapper: {
     fromForm: jest.fn(),
     fromDatabase: jest.fn(),
+    fromDatabaseTeam: jest.fn(),
     toDatabasePayload: jest.fn(),
     toClientPayload: jest.fn(),
+    toUnresolvedClientPayload: jest.fn(),
   },
 }));
 
@@ -56,6 +58,19 @@ describe("ExternalTournamentMapper", () => {
     );
     mockedPokemonMapper.fromDatabase.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, fromDatabase: true }) as any,
+    );
+    mockedPokemonMapper.fromDatabaseTeam.mockImplementation(
+      (team: any) =>
+        ({
+          resolved: team.map((pokemon: any) => ({
+            id: pokemon.id,
+            fromDatabase: true,
+          })),
+          unresolved: [],
+        }) as any,
+    );
+    mockedPokemonMapper.toUnresolvedClientPayload.mockImplementation(
+      (pokemon: any) => ({ id: pokemon.id, unresolved: true }) as any,
     );
     mockedPokemonMapper.toDatabasePayload.mockImplementation(
       (pokemon: any) => ({ id: pokemon.id, toDatabasePayload: true }) as any,
@@ -118,6 +133,29 @@ describe("ExternalTournamentMapper", () => {
       const result = ExternalTournamentMapper.toClientPayload(tournament);
 
       expect(result.id).toBeUndefined();
+    });
+
+    it("appends unresolved entries to the team and lists their ids", () => {
+      const tournament = buildTournament({
+        team: [{ id: "charizard" }] as any,
+        unresolvedTeam: [{ id: "missingno" }] as any,
+      });
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.team).toEqual([
+        { id: "charizard", toClientPayload: true },
+        { id: "missingno", unresolved: true },
+      ]);
+      expect(result.unresolvedPokemon).toEqual(["missingno"]);
+    });
+
+    it("omits unresolvedPokemon when every species resolves", () => {
+      const tournament = buildTournament({ team: [{ id: "charizard" }] as any });
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.unresolvedPokemon).toBeUndefined();
     });
   });
 
@@ -227,8 +265,8 @@ describe("ExternalTournamentMapper", () => {
 
       const result = ExternalTournamentMapper.fromDatabase(doc, []);
 
-      expect(mockedPokemonMapper.fromDatabase).toHaveBeenCalledWith(
-        doc.team[0],
+      expect(mockedPokemonMapper.fromDatabaseTeam).toHaveBeenCalledWith(
+        doc.team,
         RULESET,
       );
       expect(result.team).toEqual([{ id: "squirtle", fromDatabase: true }]);
