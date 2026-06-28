@@ -3,7 +3,7 @@ import {
   PokemonSchema,
 } from "@modules/pokemon/pokemon.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument } from "mongoose";
+import { HydratedDocument, Schema as MongooseSchema } from "mongoose";
 
 export const ARCHIVE_COLLECTION = "archives";
 
@@ -46,7 +46,12 @@ export class ArchiveMatchV1Entity {
   @Prop({ required: true })
   stage!: string;
 
-  @Prop({ type: [[String, ArchiveStatSchema]] })
+  // TODO(migrate-to-map): stored as `[pokemonId, stats]` tuples. Mongoose has
+  // no tuple element schema (`[[String, Schema]]` silently drops the data on
+  // read/save and throws a CastError on `$set` updates), so this is typed as
+  // Mixed and the tuple shape is enforced by the mapper. Migrate to
+  // `Map<string, ArchiveStatEntity>` once existing documents are converted.
+  @Prop({ type: [MongooseSchema.Types.Mixed] })
   stats!: ArchiveStatTuple[];
 
   @Prop({ type: [Number, Number], required: true, default: [0, 0] })
@@ -60,7 +65,10 @@ export const ArchiveMatchV1Schema =
 
 @Schema({ _id: false })
 export class ArchiveMatchTeamV2Entity {
-  @Prop({ type: [[String, ArchiveStatSchema]], required: true })
+  // TODO(migrate-to-map): see ArchiveMatchV1Entity.stats above. Stored as
+  // `[pokemonId, stats]` tuples via Mixed because Mongoose cannot model tuple
+  // element schemas; migrate to `Map<string, ArchiveStatEntity>`.
+  @Prop({ type: [MongooseSchema.Types.Mixed], required: true })
   stats!: ArchiveStatTuple[];
 
   @Prop({ default: 0 })

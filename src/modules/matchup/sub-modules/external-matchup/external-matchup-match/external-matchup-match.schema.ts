@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Schema as MongooseSchema } from "mongoose";
 
 @Schema({ _id: false })
 export class PokemonStatsEntity {
@@ -14,11 +15,15 @@ export class PokemonStatsEntity {
   @Prop({ type: Number })
   brought?: number;
 }
-const PokemonStatsSchema = SchemaFactory.createForClass(PokemonStatsEntity);
 
 @Schema({ _id: false })
 export class ExternalMatchTeamEntity {
-  @Prop({ type: [[String, PokemonStatsSchema]], required: true })
+  // TODO(migrate-to-map): stored as `[pokemonId, stats]` tuples. Mongoose has
+  // no tuple element schema (`[[String, Schema]]` silently drops the data on
+  // read/save and throws a CastError on `$set` updates), so this is typed as
+  // Mixed and the tuple shape is enforced by the mapper. Migrate to
+  // `Map<string, PokemonStatsEntity>` once existing documents are converted.
+  @Prop({ type: [MongooseSchema.Types.Mixed], required: true })
   stats!: [string, PokemonStatsEntity][];
 
   @Prop({ type: Number, default: 0 })
