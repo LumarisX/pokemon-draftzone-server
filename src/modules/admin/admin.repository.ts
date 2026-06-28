@@ -187,10 +187,6 @@ export class AdminRepository {
     return rows.map((row) => ({ key: row._id, count: row.count }));
   }
 
-  /**
-   * Distributions of user settings in a single pass via `$facet`. Missing
-   * values fall back to the same defaults the client applies.
-   */
   async settingsDistributions(): Promise<SettingsDistributions> {
     const distinctStage = (field: string, fallback: string) => [
       {
@@ -215,7 +211,7 @@ export class AdminRepository {
             shinyUnlock: [
               {
                 $group: {
-                  _id: { $ifNull: ["$settings.shinyUnlock", true] },
+                  _id: { $ifNull: ["$settings.shinyUnlock", false] },
                   count: { $sum: 1 },
                 },
               },
