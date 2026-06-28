@@ -33,15 +33,21 @@ const COSMETIC_SPECIES = [
   "Pikachu-World",
   "Vivillon-Pokeball",
   "Vivillon-Fancy",
-  "Cramorant-Gorging",
-  "Ogerpon-Teal-Tera",
-  "Ogerpon-Hearthflame-Tera",
-  "Ogerpon-Cornerstone-Tera",
-  "Ogerpon-Wellspring-Tera",
   "Tatsugiri-Stretchy",
   "Tatsugiri-Droopy",
   "Tatsugiri-Stretchy-Mega",
   "Tatsugiri-Droopy-Mega",
+];
+
+const IRRELEVANT_BATTLE_ONLY_SPECIES = [
+  "Morpeko-Hangry",
+  "Mimikyu-Busted",
+  "Cramorant-Gorging",
+  "Cramorant-Gulping",
+  "Ogerpon-Teal-Tera",
+  "Ogerpon-Hearthflame-Tera",
+  "Ogerpon-Cornerstone-Tera",
+  "Ogerpon-Wellspring-Tera",
 ];
 
 type ExistFilter = {
@@ -49,6 +55,7 @@ type ExistFilter = {
   species?: {
     unobtainable?: string[];
     cosmetic?: string[];
+    irrelevant?: string[];
   };
 };
 
@@ -79,6 +86,11 @@ function _exists(d: Data, filters: ExistFilter = {}) {
         return false;
       if (filters.species.cosmetic && filters.species.cosmetic.includes(d.name))
         return false;
+      if (
+        filters.species.irrelevant &&
+        filters.species.irrelevant.includes(d.name)
+      )
+        return false;
     }
   }
 
@@ -105,7 +117,10 @@ function CHAMPIONS_EXISTS(d: Data) {
   if (
     !_exists(d, {
       nonstandard: ["CAP", "Custom", "Future"],
-      species: { cosmetic: COSMETIC_SPECIES },
+      species: {
+        cosmetic: COSMETIC_SPECIES,
+        irrelevant: IRRELEVANT_BATTLE_ONLY_SPECIES,
+      },
     })
   )
     return false;
@@ -119,6 +134,7 @@ function NATDEX_EXISTS(d: Data) {
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
+      irrelevant: IRRELEVANT_BATTLE_ONLY_SPECIES,
     },
   });
 }
@@ -129,6 +145,7 @@ function ZA_EXISTS(d: Data) {
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
+      irrelevant: IRRELEVANT_BATTLE_ONLY_SPECIES,
     },
   });
 }
@@ -139,6 +156,7 @@ function CAP_EXISTS(d: Data) {
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
+      irrelevant: IRRELEVANT_BATTLE_ONLY_SPECIES,
     },
   });
 }
