@@ -96,6 +96,39 @@ describe("ArchiveMapper.fromDatabase", () => {
     expect(result.matches[0].stats.get("pikachu")).toEqual(new Stat({ kills: 2 }));
   });
 
+  it("tolerates a v1 document with missing matches/team (legacy/raw-inserted docs)", () => {
+    const doc = buildV1Doc({ matches: undefined, team: undefined });
+
+    const result = ArchiveMapper.fromDatabase(doc) as ArchiveV1;
+
+    expect(result.matches).toEqual([]);
+    expect(result.team).toEqual([]);
+  });
+
+  it("tolerates a v1 match with missing stat tuples", () => {
+    const doc = buildV1Doc({
+      matches: [{ stage: "Round 1", score: [0, 0] }],
+    });
+
+    const result = ArchiveMapper.fromDatabase(doc) as ArchiveV1;
+
+    expect(result.matches[0].stats).toEqual(new Map());
+  });
+
+  it("tolerates a v2 document with missing stats/score/matchups", () => {
+    const doc = buildV2Doc({
+      stats: undefined,
+      score: undefined,
+      matchups: undefined,
+    });
+
+    const result = ArchiveMapper.fromDatabase(doc) as ArchiveV2;
+
+    expect(result.stats).toEqual(new Map());
+    expect(result.score).toEqual({ wins: 0, losses: 0, diff: "0" });
+    expect(result.matchups).toEqual([]);
+  });
+
   it("maps v2 stats/score/matchups, converting the stats Map's values to Stat instances", () => {
     const doc = buildV2Doc();
 

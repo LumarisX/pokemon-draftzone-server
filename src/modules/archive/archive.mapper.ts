@@ -20,13 +20,20 @@ import {
   ArchiveV2Document,
 } from "./archive.schema";
 
-function statTuplesToMap(tuples: ArchiveStatTuple[]): Map<string, Stat> {
+// Legacy/raw-inserted archive docs (see migration history) can have missing or
+// malformed stat collections, so these helpers tolerate nullish input rather
+// than letting a single bad document throw and 500 the whole archives list.
+function statTuplesToMap(
+  tuples: ArchiveStatTuple[] | null | undefined,
+): Map<string, Stat> {
+  if (!Array.isArray(tuples)) return new Map();
   return new Map(tuples.map(([pid, stat]) => [pid, new Stat(stat)]));
 }
 
 function statEntityMapToDomain(
-  map: Map<string, ArchiveStatEntity>,
+  map: Map<string, ArchiveStatEntity> | null | undefined,
 ): Map<string, Stat> {
+  if (!map) return new Map();
   return new Map(
     Array.from(map.entries()).map(([pid, stat]) => [pid, new Stat(stat)]),
   );
@@ -48,7 +55,7 @@ export class ArchiveMapper {
       owner: doc.owner,
       format: doc.format,
       ruleset: doc.ruleset,
-      team: doc.team.map((pokemon) => pokemon.id),
+      team: (doc.team ?? []).map((pokemon) => pokemon.id),
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };
@@ -57,7 +64,7 @@ export class ArchiveMapper {
   private static v1FromDocument(doc: ArchiveV1Document): ArchiveV1 {
     return new ArchiveV1({
       ...ArchiveMapper.identityFromDocument(doc),
-      matches: doc.matches.map(
+      matches: (doc.matches ?? []).map(
         (match) =>
           new ArchiveMatchV1({
             winner: match.winner,
@@ -77,8 +84,8 @@ export class ArchiveMapper {
       leagueId: doc.leagueId,
       doc: doc.doc,
       stats: statEntityMapToDomain(doc.stats),
-      score: new ArchiveScore(doc.score),
-      matchups: doc.matchups.map(
+      score: new ArchiveScore(doc.score ?? { wins: 0, losses: 0, diff: "0" }),
+      matchups: (doc.matchups ?? []).map(
         (matchup) =>
           new ArchiveMatchupV2({
             teamName: matchup.teamName,
@@ -87,32 +94,32 @@ export class ArchiveMapper {
             paste: matchup.paste,
             pastes: matchup.pastes,
             stage: matchup.stage,
-            matches: matchup.matches.map(
+            matches: (matchup.matches ?? []).map(
               (match) =>
                 new ArchiveMatchV2({
                   aTeam: new ArchiveMatchTeamV2({
-                    stats: statTuplesToMap(match.aTeam.stats),
-                    score: match.aTeam.score,
+                    stats: statTuplesToMap(match.aTeam?.stats),
+                    score: match.aTeam?.score ?? 0,
                   }),
                   bTeam: new ArchiveMatchTeamV2({
-                    stats: statTuplesToMap(match.bTeam.stats),
-                    score: match.bTeam.score,
+                    stats: statTuplesToMap(match.bTeam?.stats),
+                    score: match.bTeam?.score ?? 0,
                   }),
                   replay: match.replay,
                   winner: match.winner,
                 }),
             ),
             stats: new ArchiveMatchupStats({
-              winner: matchup.stats.winner,
+              winner: matchup.stats?.winner,
               aTeam: new ArchiveMatchupStatsTeam({
-                wins: matchup.stats.aTeam.wins,
-                stats: statEntityMapToDomain(matchup.stats.aTeam.stats),
-                differential: matchup.stats.aTeam.differential,
+                wins: matchup.stats?.aTeam?.wins ?? 0,
+                stats: statEntityMapToDomain(matchup.stats?.aTeam?.stats),
+                differential: matchup.stats?.aTeam?.differential ?? 0,
               }),
               bTeam: new ArchiveMatchupStatsTeam({
-                wins: matchup.stats.bTeam.wins,
-                stats: statEntityMapToDomain(matchup.stats.bTeam.stats),
-                differential: matchup.stats.bTeam.differential,
+                wins: matchup.stats?.bTeam?.wins ?? 0,
+                stats: statEntityMapToDomain(matchup.stats?.bTeam?.stats),
+                differential: matchup.stats?.bTeam?.differential ?? 0,
               }),
             }),
           }),
