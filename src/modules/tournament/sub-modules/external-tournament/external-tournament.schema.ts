@@ -50,4 +50,5 @@ ExternalTournamentSchema.virtual("matchups", {
   ref: "ExternalMatchupEntity",
   localField: "_id",
   foreignField: "aTeam._id",
+  options: { sort: { createdAt: -1 } },
 });
