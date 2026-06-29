@@ -172,6 +172,15 @@ export class ExternalMatchupService {
     });
   }
 
+  async deleteExternalMatchup(
+    tournamentKey: string,
+    externalmatchupId: string,
+    owner: string,
+  ): Promise<void> {
+    await this.getOwnedMatchup(tournamentKey, externalmatchupId, owner);
+    await this.matchupRepo.delete(externalmatchupId);
+  }
+
   private calculateScore(matchups: ExternalMatchup[]): TournamentScore {
     let wins = 0;
     let losses = 0;

@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -154,5 +155,19 @@ export class ExternalMatchupController {
       body,
     );
     return { message: "Schedule Updated" };
+  }
+
+  @Delete("matchups/:matchupId")
+  async deleteExternalMatchup(
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub: string,
+  ) {
+    await this.externalmatchupService.deleteExternalMatchup(
+      tournamentKey,
+      matchupId,
+      sub,
+    );
+    return { message: "ExternalMatchup Deleted" };
   }
 }

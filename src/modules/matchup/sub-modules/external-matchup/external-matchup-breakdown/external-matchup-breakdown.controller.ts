@@ -65,4 +65,28 @@ export class ExternalMatchupBreakdownController {
       await this.matchupBreakdownService.getMatchupById(matchupId);
     return matchup.analyze(sub);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(":matchupId/check-ownership")
+  async checkOwnership(
+    @Param("matchupId") matchupId: Types.ObjectId,
+    @User() sub: string,
+  ) {
+    const isOwner = await this.matchupBreakdownService.isOwner(
+      matchupId,
+      sub,
+    );
+    return { isOwner };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(":matchupId/update-notes")
+  async updateNotes(
+    @Param("matchupId") matchupId: Types.ObjectId,
+    @User() sub: string,
+    @Body() body: { notes: string },
+  ) {
+    await this.matchupBreakdownService.updateNotes(matchupId, sub, body.notes);
+    return { success: true, message: "Notes updated" };
+  }
 }

@@ -71,4 +71,8 @@ export class ExternalMatchupRepository {
       .findByIdAndUpdate(id, { $set: setData }, { new: true })
       .exec();
   }
+
+  async delete(id: string): Promise<void> {
+    await this.externalmatchupModel.findByIdAndDelete(id).exec();
+  }
 }
