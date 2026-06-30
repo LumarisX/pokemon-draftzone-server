@@ -1,4 +1,19 @@
+import { getFormat, Format } from "@core/data/formats/formats";
+import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { StageDocument } from "@modules/stage/stage.schema";
+import { DraftCount, TierList } from "@modules/tier-list/tier-list.domain";
+
+export class TierRequirement {
+  tierName: string;
+  required: number;
+
+  constructor(props: { tierName: string; required: number }) {
+    this.tierName = props.tierName;
+    this.required = props.required;
+  }
+}
 
 export class TournamentRule {
   title: string;
@@ -40,6 +55,11 @@ export class HostedTournament {
   stages: StageDocument[];
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
+  format: Format;
+  ruleset: Ruleset;
+  draftCount: DraftCount;
+  pointTotal?: number;
+  tierRequirements: TierRequirement[];
 
   constructor(props: {
     id: string;
@@ -61,6 +81,11 @@ export class HostedTournament {
     stages: StageDocument[];
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
+    format: string;
+    ruleset: string;
+    draftCount: DraftCount;
+    pointTotal?: number;
+    tierRequirements: TierRequirement[];
   }) {
     this.id = props.id;
     this.name = props.name;
@@ -81,6 +106,26 @@ export class HostedTournament {
     this.stages = props.stages;
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
+    this.format = getFormat(props.format);
+    this.ruleset = getRuleset(props.ruleset);
+    this.draftCount = props.draftCount;
+    this.pointTotal = props.pointTotal;
+    this.tierRequirements = props.tierRequirements;
+  }
+
+  validateTierListMatch(tierList: TierList): void {
+    if (tierList.format.name !== this.format.name) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.FORMAT_MISMATCH, {
+        tournamentFormat: this.format.name,
+        tierListFormat: tierList.format.name,
+      });
+    }
+    if (tierList.ruleset.name !== this.ruleset.name) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.RULESET_MISMATCH, {
+        tournamentRuleset: this.ruleset.name,
+        tierListRuleset: tierList.ruleset.name,
+      });
+    }
   }
 
   getRoles(sub: string | undefined): string[] {
@@ -96,15 +141,11 @@ export class HostedTournament {
     return this.getRoles(sub).includes("organizer");
   }
 
-  /**
-   * Resolves the playoffs/bracket stage by `type` rather than by name (no
-   * more bespoke "Playoffs" stage name to match on). If more than one
-   * bracket-typed stage exists, prefers the one with the highest `order`.
-   */
   getPlayoffsStage(): StageDocument | undefined {
     const bracketStages = this.stages.filter(
       (stage) =>
-        stage.type === "single-elimination" || stage.type === "double-elimination",
+        stage.type === "single-elimination" ||
+        stage.type === "double-elimination",
     );
     if (bracketStages.length === 0) return undefined;
     return bracketStages.reduce((highest, stage) =>

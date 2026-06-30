@@ -240,7 +240,7 @@ export class DraftEngineService {
         currentTeamId,
       );
 
-      const numberOfRounds = tournament.tierList.draftCount.max;
+      const numberOfRounds = tournament.draftCount.max;
       const initialTeamOrder = getDraftOrder(currentDraft);
 
       const pickOrder = generatePickOrder(
@@ -427,8 +427,7 @@ export class DraftEngineService {
     session?: ClientSession,
   ) {
     try {
-      const tierList = tournament.tierList;
-      const numberOfRounds = tierList.draftCount.max;
+      const numberOfRounds = tournament.draftCount.max;
       const initialTeamOrder = getDraftOrder(draft);
       const pickOrder = generatePickOrder(
         initialTeamOrder,

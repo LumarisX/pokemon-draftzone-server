@@ -1,18 +1,14 @@
 import { StageDocument } from "@modules/stage/stage.schema";
+import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
   HostedTournament,
+  TierRequirement,
   TournamentForfeit,
   TournamentRule,
 } from "./hosted-tournament.domain";
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
 
 export class HostedTournamentMapper {
-  /**
-   * `stages` must already be resolved (and ordered to match `doc.stages`'
-   * ObjectId order — that order IS the tournament's stage sequence) by the
-   * caller, since `doc.stages` is now a plain `ObjectId[]` and no longer
-   * embeds stage data directly.
-   */
   static fromDatabase(
     doc: HostedTournamentDocument,
     ownerAuth0Id: string,
@@ -43,6 +39,20 @@ export class HostedTournamentMapper {
         pokemonDiff: doc.forfeit.pokemonDiff,
       }),
       diffMode: doc.diffMode,
+      format: doc.format,
+      ruleset: doc.ruleset,
+      draftCount: new DraftCount({
+        min: doc.draftCount.min,
+        max: doc.draftCount.max,
+      }),
+      pointTotal: doc.pointTotal,
+      tierRequirements: doc.tierRequirements.map(
+        (req) =>
+          new TierRequirement({
+            tierName: req.tierName,
+            required: req.required,
+          }),
+      ),
     });
   }
 
@@ -60,6 +70,19 @@ export class HostedTournamentMapper {
       logo: tournament.logo,
       discord: tournament.discord,
       tierListId: tournament.tierListId,
+      format: tournament.format.name,
+      ruleset: tournament.ruleset.name,
+    };
+  }
+
+  static toSettingsPayload(tournament: HostedTournament) {
+    return {
+      tierListId: tournament.tierListId,
+      format: tournament.format.name,
+      ruleset: tournament.ruleset.name,
+      draftCount: tournament.draftCount,
+      pointTotal: tournament.pointTotal,
+      tierRequirements: tournament.tierRequirements,
     };
   }
 }

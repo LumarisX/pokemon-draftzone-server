@@ -91,4 +91,24 @@ export class HostedTournamentRepository {
     if (!result)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentKey });
   }
+
+  async updateSettings(
+    tournamentId: Types.ObjectId | string,
+    update: Partial<{
+      tierList: Types.ObjectId;
+      format: string;
+      ruleset: string;
+      draftCount: { min: number; max: number };
+      pointTotal: number;
+      tierRequirements: { tierName: string; required: number }[];
+    }>,
+  ): Promise<void> {
+    const result = await this.hostedTournamentModel
+      .findByIdAndUpdate(tournamentId, { $set: update })
+      .exec();
+    if (!result)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+        tournamentId: tournamentId.toString(),
+      });
+  }
 }

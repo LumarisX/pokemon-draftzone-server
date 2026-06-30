@@ -1,5 +1,4 @@
 import {
-  DraftCount,
   Tier,
   TierList,
   TierListPokemon,
@@ -51,11 +50,6 @@ export class TierListMapper {
         moves: [...doc.banned.moves],
         abilities: [...doc.banned.abilities],
       },
-      pointTotal: doc.pointTotal,
-      draftCount: new DraftCount({
-        min: doc.draftCount.min,
-        max: doc.draftCount.max,
-      }),
       format: doc.format,
       ruleset: doc.ruleset,
       settings: new TierListSettings({
@@ -70,8 +64,6 @@ export class TierListMapper {
     return {
       name: tierList.name,
       description: tierList.description,
-      pointTotal: tierList.pointTotal,
-      draftCount: tierList.draftCount,
     };
   }
 

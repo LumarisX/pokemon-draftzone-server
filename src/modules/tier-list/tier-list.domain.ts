@@ -92,8 +92,6 @@ export class TierList {
   pokemon: Map<string, TierListPokemon>;
   tiers: Tier[];
   banned: { moves: string[]; abilities: string[] };
-  pointTotal?: number;
-  draftCount: DraftCount;
   format: Format;
   ruleset: Ruleset;
   settings: TierListSettings;
@@ -108,8 +106,6 @@ export class TierList {
     pokemon: Map<string, TierListPokemon>;
     tiers: Tier[];
     banned: { moves: string[]; abilities: string[] };
-    pointTotal?: number;
-    draftCount: DraftCount;
     format: string;
     ruleset: string;
     settings: TierListSettings;
@@ -123,8 +119,6 @@ export class TierList {
     this.pokemon = props.pokemon;
     this.tiers = props.tiers;
     this.banned = props.banned;
-    this.pointTotal = props.pointTotal;
-    this.draftCount = props.draftCount;
     this.format = getFormat(props.format);
     this.ruleset = getRuleset(props.ruleset);
     this.settings = props.settings;

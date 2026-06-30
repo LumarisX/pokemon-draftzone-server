@@ -25,8 +25,6 @@ export class TierListRepository {
     update: Partial<{
       name: string;
       description: string;
-      pointTotal: number;
-      draftCount: { min: number; max: number };
     }>,
   ): Promise<TierList> {
     const doc = await this.tierListModel

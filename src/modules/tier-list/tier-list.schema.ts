@@ -99,9 +99,6 @@ export class TierListEntity {
   @Prop({ required: true })
   createdBy!: string;
 
-  // Self-reference (a tier list copied from another tier list) — literal
-  // string since the class can't reference its own name from within its
-  // own member decorator while still being defined.
   @Prop({ type: SchemaTypes.ObjectId, ref: "TierListEntity" })
   copiedFrom?: Types.ObjectId;
 
@@ -116,12 +113,6 @@ export class TierListEntity {
     default: () => ({ moves: [], abilities: [] }),
   })
   banned!: TierListBannedEntity;
-
-  @Prop()
-  pointTotal?: number;
-
-  @Prop({ type: DraftCountSchema, required: true })
-  draftCount!: DraftCountEntity;
 
   @Prop({ required: true })
   format!: string;

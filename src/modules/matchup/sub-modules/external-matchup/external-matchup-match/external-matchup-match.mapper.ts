@@ -44,8 +44,8 @@ export class MatchMapper {
       replay: entity.replay,
       aTeam: MatchMapper.mapTeamToDomain(entity.aTeam),
       bTeam:
-        entity.bTeam.stats.length > 0
-          ? MatchMapper.mapTeamToDomain(entity.bTeam)
+        (entity.bTeam?.stats?.length ?? 0) > 0
+          ? MatchMapper.mapTeamToDomain(entity.bTeam!)
           : undefined,
     });
   }
@@ -56,7 +56,7 @@ export class MatchMapper {
     return {
       score: team.score,
 
-      stats: team.stats.map(([pokemonId, stats]) => [
+      stats: (team.stats ?? []).map(([pokemonId, stats]) => [
         pokemonId,
         {
           brought: stats.brought,

@@ -145,7 +145,7 @@ export async function getDraftDetails(
   draft: PopulatedDraft,
   userId: string,
 ) {
-  const numberOfRounds = tournament.tierList.draftCount.max;
+  const numberOfRounds = tournament.draftCount.max;
   const initialTeamOrder = getDraftOrder(draft);
   const pickOrder = generatePickOrder(
     initialTeamOrder,
@@ -163,8 +163,6 @@ export async function getDraftDetails(
   const canDraft = calculateCanDraft(draft, pickOrder);
   const currentPick = calculateCurrentPick(draft);
 
-  const tierList = tournament.tierList;
-
   return {
     leagueName: tournament.name,
     draftName: draft.name,
@@ -179,7 +177,7 @@ export async function getDraftDetails(
     skipTime: draft.skipTime,
     status: draft.status,
     canDraft,
-    points: tierList.pointTotal,
+    points: tournament.pointTotal,
     logo: tournament.logo,
   };
 }

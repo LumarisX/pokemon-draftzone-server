@@ -29,16 +29,6 @@ export class UpdateTierListSettingsDto {
   @IsString()
   @IsOptional()
   description?: string;
-
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  pointTotal?: number;
-
-  @ValidateNested()
-  @Type(() => DraftCountDto)
-  @IsOptional()
-  draftCount?: DraftCountDto;
 }
 
 export class TierListPokemonInputDto {

@@ -1,9 +1,12 @@
+import { DraftCountDto } from "@modules/tier-list/tier-list.dto";
 import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsInt,
   IsOptional,
   IsString,
+  Min,
   MinLength,
   ValidateNested,
 } from "class-validator";
@@ -84,4 +87,45 @@ export class UpdateRulesDto {
   @ValidateNested({ each: true })
   @Type(() => RuleSectionDto)
   ruleSections!: RuleSectionDto[];
+}
+
+export class TierRequirementDto {
+  @IsString()
+  @MinLength(1)
+  tierName!: string;
+
+  @IsInt()
+  @Min(0)
+  required!: number;
+}
+
+export class UpdateHostedTournamentSettingsDto {
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  tierListId?: string;
+
+  @IsString()
+  @IsOptional()
+  format?: string;
+
+  @IsString()
+  @IsOptional()
+  ruleset?: string;
+
+  @ValidateNested()
+  @Type(() => DraftCountDto)
+  @IsOptional()
+  draftCount?: DraftCountDto;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  pointTotal?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TierRequirementDto)
+  @IsOptional()
+  tierRequirements?: TierRequirementDto[];
 }

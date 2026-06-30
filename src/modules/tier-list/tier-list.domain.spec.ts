@@ -15,7 +15,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     pokemon: new Map(),
     tiers: [],
     banned: { moves: [], abilities: [] },
-    draftCount: { min: 1, max: 6 },
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },

@@ -118,16 +118,56 @@ export async function teamHasEnoughPoints(
   if (!tierList.pokemon.has(pick.pokemonId)) return false;
 
   const pickCost = getPickCost(tierList, pick);
-  const maxPoints = tierList.pointTotal;
+  const maxPoints = tournament.pointTotal;
   if (!maxPoints) return true;
 
   const currentTeamPoints = await getTeamPoints(tournament, team);
   const projectedPoints = currentTeamPoints + pickCost;
   const picksAfterThis = team.pickLog.length + 1;
-  const minPicksRequired = Math.max(tierList.draftCount.min, picksAfterThis);
+  const minPicksRequired = Math.max(tournament.draftCount.min, picksAfterThis);
   const pickCeiling = maxPoints + picksAfterThis - minPicksRequired;
 
   return projectedPoints <= pickCeiling;
+}
+
+function countPicksByTier(
+  tournament: PopulatedTournament,
+  team: PopulatedTeam,
+): Map<string, number> {
+  const tierList = tournament.tierList;
+  const counts = new Map<string, number>();
+  for (const draftPick of team.pickLog) {
+    const pokemonId = getPokemonIdFromDraft(draftPick);
+    const tierName = tierList.pokemon.get(pokemonId)?.tier;
+    if (!tierName) continue;
+    counts.set(tierName, (counts.get(tierName) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function tierRequirementsAreFeasible(
+  tournament: PopulatedTournament,
+  team: PopulatedTeam,
+  pick: { pokemonId: string },
+): boolean {
+  const requirements = tournament.tierRequirements;
+  if (!requirements?.length) return true;
+
+  const picksByTier = countPicksByTier(tournament, team);
+  const pickedTier = tournament.tierList.pokemon.get(pick.pokemonId)?.tier;
+  if (pickedTier) {
+    picksByTier.set(pickedTier, (picksByTier.get(pickedTier) ?? 0) + 1);
+  }
+
+  const picksAfterThis = team.pickLog.length + 1;
+  const slotsRemaining = tournament.draftCount.max - picksAfterThis;
+
+  const totalShortfall = requirements.reduce((sum, req) => {
+    const have = picksByTier.get(req.tierName) ?? 0;
+    return sum + Math.max(0, req.required - have);
+  }, 0);
+
+  return totalShortfall <= slotsRemaining;
 }
 
 export async function canBeDrafted(
@@ -145,6 +185,7 @@ export async function canBeDrafted(
 
   return (
     !isAlreadyDrafted(draft, pick.pokemonId) &&
+    tierRequirementsAreFeasible(tournament, team, pick) &&
     (await teamHasEnoughPoints(tournament, draft, team, pick))
   );
 }
@@ -174,6 +215,14 @@ export async function canBeDraftedWithReason(
     };
   }
 
+  if (!tierRequirementsAreFeasible(tournament, team, pick)) {
+    return {
+      canDraft: false,
+      reason:
+        "Drafting this Pokemon would make it impossible to meet tier requirements",
+    };
+  }
+
   if (!(await teamHasEnoughPoints(tournament, draft, team, pick))) {
     return {
       canDraft: false,
@@ -189,18 +238,20 @@ export async function isTeamDoneDrafting(
   draft: PopulatedDraft,
   team: PopulatedTeam,
 ): Promise<boolean> {
-  const tierList = tournament.tierList;
-  if (team.pickLog.length >= tierList.draftCount.max) return true;
+  if (team.pickLog.length >= tournament.draftCount.max) return true;
 
   const teamPoints = await getTeamPoints(tournament, team);
-  if (tierList.pointTotal !== undefined && teamPoints >= tierList.pointTotal)
+  if (
+    tournament.pointTotal !== undefined &&
+    teamPoints >= tournament.pointTotal
+  )
     return true;
 
-  const picksRemaining = tierList.draftCount.max - team.pickLog.length;
+  const picksRemaining = tournament.draftCount.max - team.pickLog.length;
   if (picksRemaining <= 0) return true;
 
-  if (tierList.pointTotal !== undefined) {
-    const pointsRemaining = tierList.pointTotal - teamPoints;
+  if (tournament.pointTotal !== undefined) {
+    const pointsRemaining = tournament.pointTotal - teamPoints;
     if (pointsRemaining < 1) return true;
   }
 
@@ -211,13 +262,12 @@ export function isDraftComplete(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
 ): boolean {
-  const tierList = tournament.tierList;
-  const totalPicksNeeded = draft.teams.length * tierList.draftCount.max;
+  const totalPicksNeeded = draft.teams.length * tournament.draftCount.max;
 
   if (draft.counter >= totalPicksNeeded) return true;
 
   const allTeamsDone = draft.teams.every(
-    (team: PopulatedTeam) => team.pickLog.length >= tierList.draftCount.max,
+    (team: PopulatedTeam) => team.pickLog.length >= tournament.draftCount.max,
   );
 
   return allTeamsDone;

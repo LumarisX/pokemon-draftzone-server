@@ -4,6 +4,7 @@ import {
   TierList,
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
+// DraftCount lives on the tournament, not TierList — imported for tournament fixture use.
 import { Types } from "mongoose";
 import { getDraftDetails, getTeamsWithCoachStatus, isCoach } from "./team-summary";
 
@@ -18,8 +19,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     ]),
     tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
-    pointTotal: 100,
-    draftCount: new DraftCount({ min: 1, max: 3 }),
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },
@@ -42,10 +41,14 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
 }
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
+  const tierList = (overrides.tierList as TierList | undefined) ?? buildTierList();
   return {
     name: "Spring League",
     logo: "league-logo",
-    tierList: buildTierList(),
+    tierList,
+    draftCount: new DraftCount({ min: 1, max: 3 }),
+    pointTotal: 100,
+    tierRequirements: [],
     ...overrides,
   } as any;
 }

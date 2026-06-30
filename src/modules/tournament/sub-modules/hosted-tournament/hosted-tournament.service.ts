@@ -1,3 +1,5 @@
+import { getFormat } from "@core/data/formats/formats";
+import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { S3Service } from "@core/storage/s3.service";
@@ -26,6 +28,7 @@ import {
   RuleSectionDto,
   SignUpDto,
   UpdateCoachLogoDto,
+  UpdateHostedTournamentSettingsDto,
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
@@ -50,12 +53,6 @@ export class HostedTournamentService {
     private readonly s3Service: S3Service,
   ) {}
 
-  /**
-   * Not draft-scoped — a team belongs to at most one draft within a
-   * tournament, so it can be looked up by id alone. This lets undrafted
-   * teams (no draftId yet) have a team page too, just with an empty
-   * roster/matchups until they're assigned.
-   */
   async getTeam(
     leagueKey: string,
     tournamentKey: string,
@@ -137,14 +134,6 @@ export class HostedTournamentService {
       },
     };
   }
-
-  /**
-   * Resolves the Stage to use for the mixed (roster + record) views.
-   * - `stageId` explicit: resolve it directly.
-   * - omitted: auto-resolve if the tournament has exactly one Stage; return
-   *   undefined (roster-only) if it has zero; throw if it has more than one
-   *   (organizer must disambiguate via `?stageId=`).
-   */
   private async resolveStage(
     tournamentId: Types.ObjectId | string,
     stageId?: string,
@@ -160,7 +149,6 @@ export class HostedTournamentService {
     });
   }
 
-  /** Composes `.teams` onto a Stage the same way DraftRepository does for Draft. */
   private async composeStageTeams(
     stage: StageDocument,
   ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
@@ -184,11 +172,7 @@ export class HostedTournamentService {
       leagueKey,
       tournamentKey,
     );
-    const tierList = await this.tierListRepo.findById(tournament.tierListId);
 
-    // Members (signed-up coaches and organizers) can see every draft,
-    // including ones the organizer hasn't published yet; everyone else only
-    // sees drafts explicitly marked public.
     const canSeeAllDrafts = sub
       ? tournament.isOrganizer(sub) ||
         (await this.findSignupForTournament(sub, tournament.id)) !== null
@@ -202,8 +186,8 @@ export class HostedTournamentService {
       name: tournament.name,
       tournamentKey: tournament.tournamentKey,
       description: tournament.description,
-      format: tierList.format.name,
-      ruleset: tierList.ruleset.name,
+      format: tournament.format.name,
+      ruleset: tournament.ruleset.name,
       signUpDeadline: tournament.signUpDeadline,
       draftStart: tournament.draftStart,
       draftEnd: tournament.draftEnd,
@@ -233,11 +217,6 @@ export class HostedTournamentService {
     const roundIds = playoffsStage.rounds.map((round) => round._id.toString());
     const bracketMatchups = await this.matchupRepo.findByRounds(roundIds);
 
-    // Brackets now only ever belong to a single Stage (the resolved
-    // playoffsStage), so there's no longer a need to resolve a per-matchup
-    // or per-team "divisionKey" the way the old code resolved multiple
-    // divisions across matchups/teams. The team list comes straight from
-    // this stage's own pools.
     const teamObjIds = this.stageRepo.flattenPoolTeamIds(playoffsStage);
 
     const teamDocs = await this.teamRepo.findManyByIds(teamObjIds);
@@ -319,7 +298,6 @@ export class HostedTournamentService {
     return tournament.getRoles(sub);
   }
 
-  /** Finds the coach + team belonging to `sub` within this tournament, if any. A person may have signed up for other tournaments too, each producing its own Coach/Team pair. */
   private async findSignupForTournament(sub: string, tournamentId: string) {
     const coaches = await this.coachRepo.findByAuth0Id(sub);
     for (const coach of coaches) {
@@ -404,8 +382,6 @@ export class HostedTournamentService {
       if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
     }
 
-    // Every tournament is expected to have exactly one draft; sign-ups
-    // auto-join it instead of waiting on a manual assignCoaches() call.
     const draft = await this.draftRepo.findOldestByTournament(tournament.id);
     if (!draft) {
       throw new PDZError(ErrorCodes.DRAFT.NOT_CONFIGURED, {
@@ -413,8 +389,6 @@ export class HostedTournamentService {
       });
     }
 
-    // Pre-generate both ids so Team.coach and Coach.teamId (both required)
-    // can be set correctly on first insert, with neither side left dangling.
     const coachId = new Types.ObjectId();
     const teamId = new Types.ObjectId();
 
@@ -451,11 +425,6 @@ export class HostedTournamentService {
     };
   }
 
-  /**
-   * Organizers/owners get the full admin roster view (Discord membership,
-   * dropped reason, draft assignment); everyone else gets the minimal
-   * public-safe shape. One endpoint instead of a separate "manage" copy.
-   */
   async getCoaches(
     leagueKey: string,
     tournamentKey: string,
@@ -667,6 +636,95 @@ export class HostedTournamentService {
     );
     await this.tournamentRepo.updateRules(tournamentKey, rules);
     return { message: "Rules updated successfully" };
+  }
+
+  async getSettings(
+    leagueKey: string,
+    tournamentKey: string,
+    sub: string | undefined,
+  ) {
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
+    if (!tournament.isOrganizer(sub)) {
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    }
+    return HostedTournamentMapper.toSettingsPayload(tournament);
+  }
+
+  async updateSettings(
+    leagueKey: string,
+    tournamentKey: string,
+    sub: string,
+    dto: UpdateHostedTournamentSettingsDto,
+  ) {
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
+    if (!tournament.isOrganizer(sub)) {
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    }
+
+    const targetTierListId = dto.tierListId ?? tournament.tierListId;
+    const tierList = await this.tierListRepo.findById(targetTierListId);
+
+    const targetFormat = getFormat(dto.format ?? tournament.format.name);
+    const targetRuleset = getRuleset(dto.ruleset ?? tournament.ruleset.name);
+
+    if (targetFormat.name !== tierList.format.name) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.FORMAT_MISMATCH, {
+        tournamentFormat: targetFormat.name,
+        tierListFormat: tierList.format.name,
+      });
+    }
+    if (targetRuleset.name !== tierList.ruleset.name) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.RULESET_MISMATCH, {
+        tournamentRuleset: targetRuleset.name,
+        tierListRuleset: tierList.ruleset.name,
+      });
+    }
+
+    const effectiveMax = dto.draftCount?.max ?? tournament.draftCount.max;
+    if (dto.tierRequirements) {
+      const tierNames = new Set(tierList.tiers.map((tier) => tier.name));
+      const unknownTier = dto.tierRequirements.find(
+        (req) => !tierNames.has(req.tierName),
+      );
+      if (unknownTier) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: `Tier "${unknownTier.tierName}" does not exist on this tier list`,
+        });
+      }
+      const totalRequired = dto.tierRequirements.reduce(
+        (sum, req) => sum + req.required,
+        0,
+      );
+      if (totalRequired > effectiveMax) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: `Required picks (${totalRequired}) exceed the maximum roster size (${effectiveMax})`,
+        });
+      }
+    }
+
+    const update: Record<string, unknown> = {};
+    if (dto.tierListId !== undefined) {
+      if (!Types.ObjectId.isValid(dto.tierListId))
+        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+          tierListId: dto.tierListId,
+        });
+      update["tierList"] = new Types.ObjectId(dto.tierListId);
+    }
+    if (dto.format !== undefined) update["format"] = targetFormat.name;
+    if (dto.ruleset !== undefined) update["ruleset"] = targetRuleset.name;
+    if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
+    if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
+    if (dto.tierRequirements !== undefined)
+      update["tierRequirements"] = dto.tierRequirements;
+
+    await this.tournamentRepo.updateSettings(tournament.id, update);
+    return { success: true };
   }
 
   private async notifySignup(tournament: HostedTournament, dto: SignUpDto) {

@@ -39,6 +39,7 @@ export class DraftRepository {
       tournamentKey,
     );
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
+    tournament.validateTierListMatch(tierList);
     return Object.assign(tournament, { tierList }) as PopulatedTournament;
   }
 

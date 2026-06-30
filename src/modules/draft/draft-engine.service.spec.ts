@@ -37,7 +37,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     ]),
     tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
-    draftCount: new DraftCount({ min: 1, max: 1 }),
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },
@@ -47,9 +46,13 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
 }
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
+  const tierList = (overrides.tierList as TierList | undefined) ?? buildTierList();
   return {
     tournamentKey: "spring-cup",
-    tierList: buildTierList(),
+    tierList,
+    draftCount: new DraftCount({ min: 1, max: 1 }),
+    pointTotal: undefined,
+    tierRequirements: [],
     ...overrides,
   } as any;
 }
@@ -192,9 +195,9 @@ describe("DraftEngineService", () => {
 
   describe("draftPokemon success", () => {
     it("appends the pick to pickLog and persists the team", async () => {
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList });
+      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team] });
 
       await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
@@ -210,14 +213,14 @@ describe("DraftEngineService", () => {
       // engine's own auto-draft-on-turn behavior (which would otherwise
       // consume teamB's queue the moment it becomes their turn) doesn't
       // interfere with observing the snipe-removal in isolation.
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tierList = buildTierList();
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });
       const teamC = buildTeam({
         teamName: "C",
         picks: [[{ pokemonId: "pikachu" }, { pokemonId: "charizard" }]],
       });
-      const tournament = buildTournament({ tierList });
+      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [teamA, teamB, teamC] });
 
       await engine.draftPokemon(tournament, draft, teamA, { pokemonId: "pikachu" });
@@ -227,9 +230,9 @@ describe("DraftEngineService", () => {
     });
 
     it("emits a draft.added event with the pick/team summary", async () => {
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList });
+      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team] });
 
       await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
@@ -246,9 +249,9 @@ describe("DraftEngineService", () => {
     });
 
     it("doesn't send a Discord message when the draft has no channelId", async () => {
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList });
+      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team], channelId: undefined });
 
       await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
@@ -257,9 +260,9 @@ describe("DraftEngineService", () => {
     });
 
     it("sends a Discord announcement when the draft has a channelId", async () => {
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList });
+      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team], channelId: "channel-1" });
 
       await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
@@ -272,7 +275,7 @@ describe("DraftEngineService", () => {
     });
 
     it("completes the draft once the last required pick is made", async () => {
-      const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 1 }) });
+      const tierList = buildTierList();
       const team = buildTeam();
       const tournament = buildTournament({ tierList });
       const draft = buildDraft({ teams: [team], counter: 0 });
@@ -305,9 +308,7 @@ describe("DraftEngineService", () => {
     it("increments the picking team's skipCount and logs a SKIP event", async () => {
       const team = buildTeam({ skipCount: 0 });
       teamRepo.findByIdOrNull.mockResolvedValue(team);
-      const tournament = buildTournament({
-        tierList: buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) }),
-      });
+      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team], counter: 0 });
 
       const result = await engine.skipCurrentPick(tournament, draft);
@@ -326,9 +327,7 @@ describe("DraftEngineService", () => {
     it("sends a Discord message naming the skipped team when channelId is set", async () => {
       const team = buildTeam();
       teamRepo.findByIdOrNull.mockResolvedValue(team);
-      const tournament = buildTournament({
-        tierList: buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) }),
-      });
+      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team], counter: 0, channelId: "channel-1" });
 
       await engine.skipCurrentPick(tournament, draft);
@@ -343,9 +342,7 @@ describe("DraftEngineService", () => {
   describe("setDraftState", () => {
     it("play: marks the draft IN_PROGRESS, sets a skip timer, and resumes the agenda timer", async () => {
       const team = buildTeam();
-      const tournament = buildTournament({
-        tierList: buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) }),
-      });
+      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
       const draft = buildDraft({ teams: [team], status: "PAUSED", counter: 0 });
 
       await engine.setDraftState(tournament, draft, "play");

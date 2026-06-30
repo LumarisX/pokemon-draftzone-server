@@ -14,7 +14,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     pokemon: new Map(),
     tiers: [],
     banned: { moves: [], abilities: [] },
-    draftCount: { min: 1, max: 6 },
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },
@@ -69,7 +68,6 @@ describe("TierListService", () => {
       expect(result.ruleset).toBe("Gen9 NatDex");
       expect(result.name).toBe("Spring Tier List");
       expect(result.description).toBe("desc");
-      expect(result.draftCount).toEqual({ min: 1, max: 6 });
       expect(result.divisions).toEqual({});
       expect(result.tierList).toEqual([
         {
@@ -268,12 +266,12 @@ describe("TierListService", () => {
 
       await service.updateSettings("tierlist-1", "auth0|owner", {
         name: "New Name",
-        pointTotal: 120,
+        description: "New Description",
       } as UpdateTierListSettingsDto);
 
       expect(tierListRepo.updateSettings).toHaveBeenCalledWith("tierlist-1", {
         name: "New Name",
-        pointTotal: 120,
+        description: "New Description",
       });
     });
   });

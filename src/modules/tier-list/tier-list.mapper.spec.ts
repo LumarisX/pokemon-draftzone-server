@@ -1,6 +1,5 @@
 import { Types } from "mongoose";
 import {
-  DraftCount,
   Tier,
   TierList,
   TierListPokemon,
@@ -31,8 +30,6 @@ function buildDoc(overrides: Record<string, unknown> = {}): TierListDocument {
     ]),
     tiers: [{ name: "S", cost: 30, color: "#ff0000" }],
     banned: { moves: ["Explosion"], abilities: ["Static"] },
-    pointTotal: 100,
-    draftCount: { min: 1, max: 6 },
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true, shareToken: "token-123" },
@@ -54,7 +51,6 @@ describe("TierListMapper.fromDatabase", () => {
     expect(result.createdBy).toBe("auth0|owner");
     expect(result.format.name).toBe("Singles");
     expect(result.ruleset.name).toBe("Gen9 NatDex");
-    expect(result.pointTotal).toBe(100);
   });
 
   it("converts copiedFrom to a string when present, and leaves it undefined otherwise", () => {
@@ -103,10 +99,9 @@ describe("TierListMapper.fromDatabase", () => {
     expect(result.banned.abilities).not.toBe(doc.banned.abilities);
   });
 
-  it("maps draftCount and settings", () => {
+  it("maps settings", () => {
     const result = TierListMapper.fromDatabase(buildDoc());
 
-    expect(result.draftCount).toEqual(new DraftCount({ min: 1, max: 6 }));
     expect(result.settings).toEqual(
       new TierListSettings({ isPublic: true, shareToken: "token-123" }),
     );
@@ -122,14 +117,12 @@ describe("TierListMapper.fromDatabase", () => {
 });
 
 describe("TierListMapper.toSettingsPayload", () => {
-  it("exposes only name/description/pointTotal/draftCount", () => {
+  it("exposes only name/description", () => {
     const tierList = TierListMapper.fromDatabase(buildDoc());
 
     expect(TierListMapper.toSettingsPayload(tierList)).toEqual({
       name: "Spring Tier List",
       description: "A spring tier list",
-      pointTotal: 100,
-      draftCount: new DraftCount({ min: 1, max: 6 }),
     });
   });
 });

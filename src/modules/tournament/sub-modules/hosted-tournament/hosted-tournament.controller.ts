@@ -17,6 +17,7 @@ import {
   AssignCoachesDto,
   SignUpDto,
   UpdateCoachLogoDto,
+  UpdateHostedTournamentSettingsDto,
   UpdateRulesDto,
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
@@ -155,6 +156,32 @@ export class HostedTournamentController {
       tournamentKey,
       teamId,
       stageId,
+    );
+  }
+
+  @Get(":tournamentKey/settings")
+  @UseGuards(JwtAuthGuard)
+  async getTournamentSettings(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @User() sub: string | undefined,
+  ) {
+    return this.tournamentService.getSettings(leagueKey, tournamentKey, sub);
+  }
+
+  @Patch(":tournamentKey/settings")
+  @UseGuards(JwtAuthGuard)
+  async updateTournamentSettings(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @User() sub: string,
+    @Body() body: UpdateHostedTournamentSettingsDto,
+  ) {
+    return this.tournamentService.updateSettings(
+      leagueKey,
+      tournamentKey,
+      sub,
+      body,
     );
   }
 

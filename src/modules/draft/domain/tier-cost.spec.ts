@@ -36,7 +36,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     ]),
     tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
-    draftCount: new DraftCount({ min: 6, max: 6 }),
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },
@@ -45,8 +44,17 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
   });
 }
 
-function buildTournament(tierList: TierList) {
-  return { tierList } as any;
+function buildTournament(
+  tierList: TierList,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    tierList,
+    draftCount: new DraftCount({ min: 1, max: 6 }),
+    pointTotal: undefined,
+    tierRequirements: [],
+    ...overrides,
+  } as any;
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
@@ -202,8 +210,8 @@ describe("teamHasEnoughPoints", () => {
     ).resolves.toBe(false);
   });
 
-  it("returns true (no budget constraint) when the tier list has no pointTotal", async () => {
-    const tierList = buildTierList({ pointTotal: undefined });
+  it("returns true (no budget constraint) when the tournament has no pointTotal", async () => {
+    const tierList = buildTierList();
     const tournament = buildTournament(tierList);
     const draft = buildDraft();
     const team = buildTeam();
@@ -217,11 +225,12 @@ describe("teamHasEnoughPoints", () => {
     // pointTotal 20, draftCount.min 4, no picks yet (this is pick #1):
     // pickCeiling = 20 + 1 - max(4, 1) = 17.
     const tierList = buildTierList({
-      pointTotal: 20,
-      draftCount: new DraftCount({ min: 4, max: 6 }),
       tiers: [new Tier({ name: "S", cost: 17 })],
     });
-    const tournament = buildTournament(tierList);
+    const tournament = buildTournament(tierList, {
+      pointTotal: 20,
+      draftCount: new DraftCount({ min: 4, max: 6 }),
+    });
     const draft = buildDraft();
     const team = buildTeam();
 
@@ -232,11 +241,12 @@ describe("teamHasEnoughPoints", () => {
 
   it("rejects a pick that would exceed the reserved-for-minimum-picks ceiling", async () => {
     const tierList = buildTierList({
-      pointTotal: 20,
-      draftCount: new DraftCount({ min: 4, max: 6 }),
       tiers: [new Tier({ name: "S", cost: 18 })],
     });
-    const tournament = buildTournament(tierList);
+    const tournament = buildTournament(tierList, {
+      pointTotal: 20,
+      draftCount: new DraftCount({ min: 4, max: 6 }),
+    });
     const draft = buildDraft();
     const team = buildTeam();
 
@@ -249,11 +259,12 @@ describe("teamHasEnoughPoints", () => {
     // 4 existing picks already meets draftCount.min (4); this 5th pick can
     // use the full remaining budget without reservation.
     const tierList = buildTierList({
-      pointTotal: 20,
-      draftCount: new DraftCount({ min: 4, max: 6 }),
       tiers: [new Tier({ name: "S", cost: 16 })],
     });
-    const tournament = buildTournament(tierList);
+    const tournament = buildTournament(tierList, {
+      pointTotal: 20,
+      draftCount: new DraftCount({ min: 4, max: 6 }),
+    });
     const draft = buildDraft();
     const team = buildTeam({
       pickLog: [
@@ -270,7 +281,7 @@ describe("teamHasEnoughPoints", () => {
 
 describe("canBeDrafted / canBeDraftedWithReason", () => {
   function setup() {
-    const tierList = buildTierList({ pointTotal: undefined });
+    const tierList = buildTierList();
     const tournament = buildTournament(tierList);
     const draft = buildDraft({ teams: [] });
     const team = buildTeam();
@@ -313,11 +324,11 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
   });
 
   it("rejects a pick the team can't afford", async () => {
-    const tierList = buildTierList({
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
       pointTotal: 5,
       draftCount: new DraftCount({ min: 1, max: 1 }),
     });
-    const tournament = buildTournament(tierList);
     const draft = buildDraft({ teams: [] });
     const team = buildTeam();
     const pick = { pokemonId: "pikachu" } as any; // costs 10, budget is 5
@@ -342,11 +353,8 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
 
 describe("isTeamDoneDrafting", () => {
   it("is done once pickLog reaches draftCount.max", async () => {
-    const tierList = buildTierList({
-      pointTotal: undefined,
-      draftCount: new DraftCount({ min: 1, max: 2 }),
-    });
-    const tournament = buildTournament(tierList);
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
     const draft = buildDraft();
     const team = buildTeam({
       pickLog: [{ pokemon: { id: "pikachu" } }, { pokemon: { id: "charizard" } }],
@@ -355,12 +363,12 @@ describe("isTeamDoneDrafting", () => {
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
   });
 
-  it("is done once the team's points reach the tier list's pointTotal", async () => {
-    const tierList = buildTierList({
+  it("is done once the team's points reach the tournament's pointTotal", async () => {
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
       pointTotal: 10,
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
-    const tournament = buildTournament(tierList);
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10
 
@@ -368,11 +376,11 @@ describe("isTeamDoneDrafting", () => {
   });
 
   it("is not done when under both the pick-count and point limits", async () => {
-    const tierList = buildTierList({
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
       pointTotal: 100,
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
-    const tournament = buildTournament(tierList);
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10 of 100
 
@@ -380,11 +388,11 @@ describe("isTeamDoneDrafting", () => {
   });
 
   it("is done when fewer than 1 point remains, even if not exactly exhausted", async () => {
-    const tierList = buildTierList({
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
       pointTotal: 10.5,
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
-    const tournament = buildTournament(tierList);
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10, 0.5 remains
 
@@ -394,16 +402,16 @@ describe("isTeamDoneDrafting", () => {
 
 describe("isDraftComplete", () => {
   it("is complete once the counter reaches the total picks needed", () => {
-    const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
-    const tournament = buildTournament(tierList);
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
     const draft = buildDraft({ counter: 4, teams: [buildTeam(), buildTeam()] });
 
     expect(isDraftComplete(tournament, draft)).toBe(true);
   });
 
   it("is complete when every team has reached draftCount.max, even if the counter lags", () => {
-    const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
-    const tournament = buildTournament(tierList);
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
     const teams = [
       buildTeam({ pickLog: [{}, {}] }),
       buildTeam({ pickLog: [{}, {}] }),
@@ -414,11 +422,68 @@ describe("isDraftComplete", () => {
   });
 
   it("is not complete while any team is still under draftCount.max and the counter hasn't caught up", () => {
-    const tierList = buildTierList({ draftCount: new DraftCount({ min: 1, max: 2 }) });
-    const tournament = buildTournament(tierList);
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
     const teams = [buildTeam({ pickLog: [{}] }), buildTeam({ pickLog: [] })];
     const draft = buildDraft({ counter: 1, teams });
 
     expect(isDraftComplete(tournament, draft)).toBe(false);
+  });
+});
+
+describe("tier requirement feasibility (canBeDrafted / canBeDraftedWithReason)", () => {
+  function buildRequirementTierList() {
+    return buildTierList({
+      pokemon: new Map([
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+        ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+        ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tier: "A" })],
+      ]),
+    });
+  }
+
+  it("rejects a pick that would leave no roster slots to meet a required tier", async () => {
+    const tierList = buildRequirementTierList();
+    const tournament = buildTournament(tierList, {
+      draftCount: new DraftCount({ min: 1, max: 2 }),
+      tierRequirements: [{ tierName: "S", required: 1 }],
+    });
+    const draft = buildDraft({ teams: [] });
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+
+    await expect(
+      canBeDrafted(tournament, draft, team, { pokemonId: "bulbasaur" } as any),
+    ).resolves.toBe(false);
+    await expect(
+      canBeDraftedWithReason(tournament, draft, team, { pokemonId: "bulbasaur" } as any),
+    ).resolves.toEqual({
+      canDraft: false,
+      reason: "Drafting this Pokemon would make it impossible to meet tier requirements",
+    });
+  });
+
+  it("allows a pick that fills the only remaining required-tier slot", async () => {
+    const tierList = buildRequirementTierList();
+    const tournament = buildTournament(tierList, {
+      draftCount: new DraftCount({ min: 1, max: 2 }),
+      tierRequirements: [{ tierName: "S", required: 1 }],
+    });
+    const draft = buildDraft({ teams: [] });
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+
+    await expect(
+      canBeDrafted(tournament, draft, team, { pokemonId: "pikachu" } as any),
+    ).resolves.toBe(true);
+  });
+
+  it("is a no-op when no tier requirements are configured", async () => {
+    const tierList = buildRequirementTierList();
+    const tournament = buildTournament(tierList, { tierRequirements: [] });
+    const draft = buildDraft({ teams: [] });
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+
+    await expect(
+      canBeDrafted(tournament, draft, team, { pokemonId: "bulbasaur" } as any),
+    ).resolves.toBe(true);
   });
 });

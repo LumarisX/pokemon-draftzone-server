@@ -162,7 +162,7 @@ export class DraftService {
     );
 
     const orderProgression = draft.orderProgression;
-    const numberOfRounds = tournament.tierList.draftCount.max;
+    const numberOfRounds = tournament.draftCount.max;
     const initialTeamOrder = getDraftOrder(draft);
 
     type DraftPick = {

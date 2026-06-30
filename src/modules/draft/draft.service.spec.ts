@@ -56,7 +56,6 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     pokemon: new Map([["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })]]),
     tiers: [new Tier({ name: "S", cost: 10 })],
     banned: { moves: [], abilities: [] },
-    draftCount: new DraftCount({ min: 1, max: 2 }),
     format: "Singles",
     ruleset: "Gen9 NatDex",
     settings: { isPublic: true },
@@ -66,11 +65,15 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
 }
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
+  const tierList = (overrides.tierList as TierList | undefined) ?? buildTierList();
   return {
     id: "tournament-1",
     owner: "auth0|owner",
     organizers: [],
-    tierList: buildTierList(),
+    tierList,
+    draftCount: new DraftCount({ min: 1, max: 2 }),
+    pointTotal: undefined,
+    tierRequirements: [],
     ...overrides,
   } as any;
 }

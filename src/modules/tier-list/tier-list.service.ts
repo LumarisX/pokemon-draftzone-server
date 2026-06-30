@@ -58,7 +58,6 @@ export class TierListService {
       ruleset: tierList.ruleset.name,
       name: tierList.name,
       description: tierList.description,
-      draftCount: tierList.draftCount,
     };
   }
 
@@ -80,8 +79,6 @@ export class TierListService {
     const update: Record<string, unknown> = {};
     if (dto.name !== undefined) update["name"] = dto.name;
     if (dto.description !== undefined) update["description"] = dto.description;
-    if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
-    if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
 
     await this.tierListRepo.updateSettings(tierListId, update);
     return { success: true };

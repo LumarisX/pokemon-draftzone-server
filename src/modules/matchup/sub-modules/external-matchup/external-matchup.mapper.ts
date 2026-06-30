@@ -111,10 +111,11 @@ export class ExternalMatchupMapper {
     const ruleset = getRuleset(tournamentDoc.ruleset);
     const format = getFormat(tournamentDoc.format);
 
-    // Isolate species that don't resolve against the ruleset so a bad matchup
-    // can't crash the list; they're kept to be shown greyed out.
     const aTeam = PokemonMapper.fromDatabaseTeam(tournamentDoc.team, ruleset);
-    const bTeam = PokemonMapper.fromDatabaseTeam(matchupDoc.bTeam.team, ruleset);
+    const bTeam = PokemonMapper.fromDatabaseTeam(
+      matchupDoc.bTeam?.team ?? [],
+      ruleset,
+    );
 
     return new ExternalMatchup({
       ruleset,
@@ -139,9 +140,9 @@ export class ExternalMatchupMapper {
         id: matchupDoc._id,
         team: bTeam.resolved,
         unresolvedTeam: bTeam.unresolved,
-        teamName: matchupDoc.bTeam.teamName,
-        coach: matchupDoc.bTeam.coach,
-        paste: matchupDoc.bTeam.paste,
+        teamName: matchupDoc.bTeam?.teamName ?? "",
+        coach: matchupDoc.bTeam?.coach,
+        paste: matchupDoc.bTeam?.paste,
       },
     });
   }

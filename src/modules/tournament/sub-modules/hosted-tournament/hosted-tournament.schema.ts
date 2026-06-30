@@ -1,6 +1,22 @@
 import { LeagueEntity } from "@modules/league/league.schema";
+import {
+  DraftCountEntity,
+  DraftCountSchema,
+} from "@modules/tier-list/tier-list.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
+
+@Schema({ _id: false })
+export class TierRequirementEntity {
+  @Prop({ required: true })
+  tierName!: string;
+
+  @Prop({ required: true })
+  required!: number;
+}
+export const TierRequirementSchema = SchemaFactory.createForClass(
+  TierRequirementEntity,
+);
 
 @Schema({ _id: false })
 export class TournamentRuleEntity {
@@ -56,7 +72,12 @@ export class HostedTournamentEntity {
   @Prop()
   seasonEnd?: Date;
 
-  @Prop({ type: SchemaTypes.ObjectId, ref: LeagueEntity.name, required: true, index: true })
+  @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: LeagueEntity.name,
+    required: true,
+    index: true,
+  })
   league!: Types.ObjectId;
 
   @Prop({ type: [String], default: [] })
@@ -74,11 +95,6 @@ export class HostedTournamentEntity {
   @Prop()
   discord?: string;
 
-  // Ref name is a literal string to avoid pulling stage.schema.ts into the
-  // tournament/stage import chain unnecessarily. Ordered list — a
-  // tournament's stage sequence is this array's order, not derived from
-  // each Stage's own `order` field (that field is informational/for
-  // queries that only have a Stage, not the owning tournament, in hand).
   @Prop({ type: [SchemaTypes.ObjectId], ref: "StageEntity", default: [] })
   stages!: Types.ObjectId[];
 
@@ -90,6 +106,21 @@ export class HostedTournamentEntity {
 
   @Prop({ type: String, enum: ["pokemon", "game"], required: true })
   diffMode!: "pokemon" | "game";
+
+  @Prop({ required: true })
+  format!: string;
+
+  @Prop({ required: true })
+  ruleset!: string;
+
+  @Prop({ type: DraftCountSchema, required: true })
+  draftCount!: DraftCountEntity;
+
+  @Prop()
+  pointTotal?: number;
+
+  @Prop({ type: [TierRequirementSchema], default: [] })
+  tierRequirements!: TierRequirementEntity[];
 }
 
 export const HostedTournamentSchema = SchemaFactory.createForClass(

@@ -6,6 +6,11 @@ import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { TeamRepository } from "@modules/team/team.repository";
+import {
+  DraftCount,
+  Tier,
+  TierList,
+} from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Types } from "mongoose";
 import { HostedTournament } from "./hosted-tournament.domain";
@@ -33,6 +38,10 @@ function buildTournament(
     stages: [],
     forfeit: { gameDiff: 1, pokemonDiff: 6 },
     diffMode: "pokemon",
+    format: "Singles",
+    ruleset: "Gen9 NatDex",
+    draftCount: new DraftCount({ min: 1, max: 6 }),
+    tierRequirements: [],
     ...overrides,
   });
 }
@@ -336,6 +345,139 @@ describe("HostedTournamentService signup", () => {
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).resolves.toMatchObject({ message: "Sign up successful." });
+    });
+  });
+});
+
+function buildSettingsTierList(
+  overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {},
+) {
+  return new TierList({
+    id: "tier-1",
+    name: "Spring Tier List",
+    createdBy: "auth0|owner",
+    pokemon: new Map(),
+    tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
+    banned: { moves: [], abilities: [] },
+    format: "Singles",
+    ruleset: "Gen9 NatDex",
+    settings: { isPublic: true },
+    collaborators: [],
+    ...overrides,
+  });
+}
+
+describe("HostedTournamentService settings", () => {
+  let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let tierListRepo: jest.Mocked<TierListRepository>;
+  let service: HostedTournamentService;
+  let tournament: HostedTournament;
+
+  beforeEach(() => {
+    tournament = buildTournament();
+
+    tournamentRepo = {
+      findByKey: jest.fn().mockResolvedValue(tournament),
+      updateSettings: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<HostedTournamentRepository>;
+    tierListRepo = {
+      findById: jest.fn().mockResolvedValue(buildSettingsTierList()),
+    } as unknown as jest.Mocked<TierListRepository>;
+
+    service = new HostedTournamentService(
+      tournamentRepo,
+      tierListRepo,
+      {} as TeamRepository,
+      {} as CoachRepository,
+      {} as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+    );
+  });
+
+  describe("getSettings", () => {
+    it("throws FORBIDDEN for a non-organizer", async () => {
+      await expect(
+        service.getSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|stranger"),
+      ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    });
+
+    it("returns the current settings for the organizer", async () => {
+      const result = await service.getSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+      );
+
+      expect(result).toMatchObject({
+        tierListId: "tier-1",
+        format: "Singles",
+        ruleset: "Gen9 NatDex",
+        draftCount: { min: 1, max: 6 },
+      });
+    });
+  });
+
+  describe("updateSettings", () => {
+    it("throws FORBIDDEN for a non-organizer", async () => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|stranger", {}),
+      ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects a format that doesn't match the linked tier list", async () => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          format: "Doubles",
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.FORMAT_MISMATCH.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects tierRequirements naming a tier that doesn't exist on the tier list", async () => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          tierRequirements: [{ tierName: "Nonexistent", required: 1 }],
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects tierRequirements whose total exceeds the effective roster max", async () => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          draftCount: { min: 1, max: 2 },
+          tierRequirements: [{ tierName: "S", required: 3 }],
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("persists only the provided keys on a valid update", async () => {
+      const result = await service.updateSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+        { pointTotal: 100, tierRequirements: [{ tierName: "S", required: 1 }] },
+      );
+
+      expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
+        tournament.id,
+        {
+          pointTotal: 100,
+          tierRequirements: [{ tierName: "S", required: 1 }],
+        },
+      );
+      expect(result).toEqual({ success: true });
     });
   });
 });

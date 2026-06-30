@@ -342,6 +342,23 @@ export const ErrorCodes = {
       message: "File not found",
     },
   },
+  TOURNAMENT: {
+    FORMAT_MISMATCH: {
+      code: "TRN-001",
+      status: 400,
+      message: "Tournament format does not match its tier list's format",
+    },
+    RULESET_MISMATCH: {
+      code: "TRN-002",
+      status: 400,
+      message: "Tournament ruleset does not match its tier list's ruleset",
+    },
+    INVALID_SETTINGS: {
+      code: "TRN-003",
+      status: 400,
+      message: "Invalid tournament settings",
+    },
+  },
 } as const;
 
 export type ErrorCodePath =
@@ -362,4 +379,5 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.REPLAY
   | keyof typeof ErrorCodes.PARAMS
   | keyof typeof ErrorCodes.FORMAT
-  | keyof typeof ErrorCodes.FILE;
+  | keyof typeof ErrorCodes.FILE
+  | keyof typeof ErrorCodes.TOURNAMENT;
