@@ -127,6 +127,11 @@ export const ErrorCodes = {
       status: 500,
       message: "Tournament has no draft configured",
     },
+    INVALID_NAME: {
+      code: "DR-010",
+      status: 400,
+      message: "League name must contain at least one letter or number",
+    },
   },
   STAGE: {
     NOT_FOUND: {

@@ -1,5 +1,7 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentDto } from "./external-tournament.dto";
 import {
@@ -49,7 +51,13 @@ export class ExternalTournamentMapper {
   }
 
   static fromForm(dto: ExternalTournamentDto, sub: string): ExternalTournament {
-    const computedId = dto.leagueName.toLowerCase().trim().replace(/\W/gi, "");
+    const computedId = dto.leagueName
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\p{N}]+/gu, "");
+    if (!computedId) {
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_NAME);
+    }
     const ruleset = getRuleset(dto.ruleset);
     const format = getFormat(dto.format);
     const mappedTeam = dto.team

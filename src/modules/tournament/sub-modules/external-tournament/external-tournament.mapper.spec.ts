@@ -1,5 +1,6 @@
 import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
+import { PDZError } from "@core/pdz-error";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentDto } from "./external-tournament.dto";
@@ -177,6 +178,22 @@ describe("ExternalTournamentMapper", () => {
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
 
       expect(result.key).toBe("springsleague2026");
+    });
+
+    it("derives the tournament key from unicode letters, not just ASCII word characters", () => {
+      const dto = buildDto({ leagueName: "リーグ 2026" });
+
+      const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
+
+      expect(result.key).toBe("リーグ2026");
+    });
+
+    it("throws when the league name has no letters or numbers to derive a key from", () => {
+      const dto = buildDto({ leagueName: "!!! 🔥🔥🔥" });
+
+      expect(() => ExternalTournamentMapper.fromForm(dto, "auth0|owner")).toThrow(
+        PDZError,
+      );
     });
 
     it("trims teamName, leagueName, and doc", () => {
