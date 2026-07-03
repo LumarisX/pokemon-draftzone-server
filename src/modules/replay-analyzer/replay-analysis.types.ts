@@ -82,6 +82,7 @@ export const REPLAY_ACTIONS = [
   "replace",
   "request",
   "rule",
+  "showteam",
   "start",
   "swap",
   "switch",
@@ -148,10 +149,6 @@ export type USER = string;
 export type USERNAME = string;
 export type WEATHER = string;
 
-export type MoveData = ["move", POKEMON, MOVE, TARGET];
-export type DamageData = ["-damage", POKEMON, HPSTATUS];
-export type SetHPData = ["-sethp", POKEMON, HP];
-
 export type ReplayData = string[];
 
 export type ParsedArgs = {
@@ -173,6 +170,10 @@ export type ParsedArgs = {
   megaStone?: MEGASTONE;
   message?: MESSAGE;
   move?: MOVE;
+  /** Block name on |uhtml|NAME|HTML lines. */
+  name?: string;
+  /** Effect-specific extra arg on -start/-activate (typechange type, Disable move, ...). */
+  effectDetail?: string;
   num?: NUM;
   number?: NUMBER;
   player?: PLAYER;
@@ -202,6 +203,20 @@ export type MajorArg = {
   from?: EFFECT;
   of?: POKEMON;
   wisher?: DETAILS;
+  spread?: string;
   miss?: true;
   silent?: true;
+  still?: true;
+  upkeep?: true;
+  msg?: true;
+  anim?: true;
+  fatigue?: true;
+  eat?: true;
+  weaken?: true;
+  damage?: true;
+  partiallytrapped?: true;
+  notarget?: true;
+  zeffect?: true;
+  sourceTag?: true;
+  fromitem?: true;
 };

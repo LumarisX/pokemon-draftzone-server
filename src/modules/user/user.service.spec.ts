@@ -1,3 +1,5 @@
+import { AppCacheService } from "@core/cache/app-cache.service";
+import { createCache } from "cache-manager";
 import { User, UserSettings } from "./user.domain";
 import { UserSettingsDto } from "./user.dto";
 import { UserRepository } from "./user.repository";
@@ -22,7 +24,7 @@ describe("UserService", () => {
       updateSettings: jest.fn(),
       updateUser: jest.fn(),
     } as unknown as jest.Mocked<UserRepository>;
-    service = new UserService(userRepo);
+    service = new UserService(userRepo, new AppCacheService(createCache()));
   });
 
   describe("getSettings", () => {
@@ -73,6 +75,20 @@ describe("UserService", () => {
         theme: "dark",
       });
     });
+
+    it("invalidates the cached user so the next read is fresh", async () => {
+      userRepo.getUserBySub.mockResolvedValue(
+        buildUser({ settings: new UserSettings({ theme: "dark" }) }),
+      );
+      userRepo.updateSettings.mockResolvedValue({ settings: { theme: "classic" } } as any);
+
+      await service.getMe("auth0|user-1");
+      await service.updateSettings("auth0|user-1", { theme: "classic" });
+      await service.getMe("auth0|user-1");
+
+      // getMe (miss), updateSettings' own read, then getMe again post-invalidation
+      expect(userRepo.getUserBySub).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe("syncUser", () => {
@@ -86,6 +102,18 @@ describe("UserService", () => {
       expect(userRepo.updateUser).toHaveBeenCalledWith(user);
       expect(result).toBe(updatedDoc);
     });
+
+    it("invalidates the cached user so the next read is fresh", async () => {
+      const user = buildUser();
+      userRepo.getUserBySub.mockResolvedValue(user);
+      userRepo.updateUser.mockResolvedValue({} as any);
+
+      await service.getMe(user.sub);
+      await service.syncUser(user);
+      await service.getMe(user.sub);
+
+      expect(userRepo.getUserBySub).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("getMe", () => {
@@ -97,6 +125,26 @@ describe("UserService", () => {
 
       expect(userRepo.getUserBySub).toHaveBeenCalledWith("auth0|user-1");
       expect(result).toBe(user);
+    });
+
+    it("serves repeated reads from the cache", async () => {
+      const user = buildUser();
+      userRepo.getUserBySub.mockResolvedValue(user);
+
+      await service.getMe("auth0|user-1");
+      const second = await service.getMe("auth0|user-1");
+
+      expect(second).toBe(user);
+      expect(userRepo.getUserBySub).toHaveBeenCalledTimes(1);
+    });
+
+    it("caches users independently per sub", async () => {
+      userRepo.getUserBySub.mockImplementation(async (sub) => buildUser({ sub }));
+
+      await service.getMe("auth0|user-1");
+      await service.getMe("auth0|user-2");
+
+      expect(userRepo.getUserBySub).toHaveBeenCalledTimes(2);
     });
   });
 });

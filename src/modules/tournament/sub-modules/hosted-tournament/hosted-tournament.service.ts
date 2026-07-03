@@ -6,7 +6,11 @@ import { S3Service } from "@core/storage/s3.service";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { DiscordService } from "@modules/discord/discord.service";
-import { DraftRepository } from "@modules/draft/draft.repository";
+import {
+  DraftRepository,
+  PopulatedTournament,
+} from "@modules/draft/draft.repository";
+import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
@@ -457,6 +461,11 @@ export class HostedTournamentService {
       drafts.map((d) => [d._id.toString(), d.draftKey]),
     );
 
+    const tierList = await this.tierListRepo.findById(tournament.tierListId);
+    const populatedTournament = Object.assign(tournament, {
+      tierList,
+    }) as PopulatedTournament;
+
     const signups = await Promise.all(
       teams.map(async (team) => {
         const coach = team.coach;
@@ -471,6 +480,7 @@ export class HostedTournamentService {
         const hasDiscordRole = Boolean(
           member?.roleIds.includes(SIGNUP_COACH_ROLE_ID),
         );
+        const hasValidTeam = await isTeamRosterValid(populatedTournament, team);
         return {
           id: coach._id.toString(),
           teamId: team._id.toString(),
@@ -490,6 +500,7 @@ export class HostedTournamentService {
           draft,
           inDiscordServer,
           hasDiscordRole,
+          hasValidTeam,
         };
       }),
     );

@@ -38,8 +38,23 @@ export type ParsedReplayLog = {
 
 type MajorArgHandler = (majorActions: MajorArgs, value?: string) => void;
 
-type MajorArgValueKey = "from" | "of" | "wisher";
-type MajorArgFlagKey = "miss" | "silent";
+type MajorArgValueKey = "from" | "of" | "wisher" | "spread";
+type MajorArgFlagKey =
+  | "miss"
+  | "silent"
+  | "still"
+  | "upkeep"
+  | "msg"
+  | "anim"
+  | "fatigue"
+  | "eat"
+  | "weaken"
+  | "damage"
+  | "partiallytrapped"
+  | "notarget"
+  | "zeffect"
+  | "sourceTag"
+  | "fromitem";
 
 function majorMap(key: MajorArgValueKey) {
   return (majorActions: MajorArgs, value?: string) => {
@@ -55,15 +70,29 @@ function majorFlag(key: MajorArgFlagKey) {
   };
 }
 
-const MAJOR_ARG_HANDLERS: Record<keyof MajorArgs, MajorArgHandler> = {
+const MAJOR_ARG_HANDLERS: Record<string, MajorArgHandler> = {
   from: majorMap("from"),
   of: majorMap("of"),
   wisher: majorMap("wisher"),
+  spread: majorMap("spread"),
   miss: majorFlag("miss"),
   silent: majorFlag("silent"),
+  still: majorFlag("still"),
+  upkeep: majorFlag("upkeep"),
+  msg: majorFlag("msg"),
+  anim: majorFlag("anim"),
+  fatigue: majorFlag("fatigue"),
+  eat: majorFlag("eat"),
+  weaken: majorFlag("weaken"),
+  damage: majorFlag("damage"),
+  partiallytrapped: majorFlag("partiallytrapped"),
+  notarget: majorFlag("notarget"),
+  zeffect: majorFlag("zeffect"),
+  source: majorFlag("sourceTag"),
+  fromitem: majorFlag("fromitem"),
 };
 
-function isMajorArgKey(key: string): key is keyof MajorArgs {
+function isMajorArgKey(key: string): boolean {
   return key in MAJOR_ARG_HANDLERS;
 }
 
@@ -77,9 +106,11 @@ function extractMajorActions(args: string[]) {
     }
 
     const [rawKey, value] = arg.split("] ");
-    const key = rawKey.slice(1);
+    const key = rawKey.replace(/\]$/, "").slice(1);
     if (isMajorArgKey(key)) {
       MAJOR_ARG_HANDLERS[key](majorActions, value);
+    } else {
+      remainingArgs.push(arg);
     }
   }
   return { majorActions, remainingArgs };
@@ -89,8 +120,8 @@ export const ACTION_PARSE_ARGS: Record<
   (typeof REPLAY_ACTIONS)[number],
   readonly (keyof ParsedArgs)[]
 > = {
-  "-ability": ["pokemon", "ability"],
-  "-activate": ["pokemon", "effect"],
+  "-ability": ["pokemon", "ability", "effect"],
+  "-activate": ["pokemon", "effect", "effectDetail"],
   "-anim": [],
   "-block": ["pokemon", "effect", "move", "attacker"],
   "-boost": ["pokemon", "stat", "amount"],
@@ -110,7 +141,7 @@ export const ACTION_PARSE_ARGS: Record<
   "-endability": ["pokemon"],
   "-enditem": ["pokemon", "item"],
   "-fail": ["pokemon", "action"],
-  "-fieldactivate": [],
+  "-fieldactivate": ["condition"],
   "-fieldend": ["condition"],
   "-fieldstart": ["condition"],
   "-formechange": ["pokemon", "details", "hpStatus"],
@@ -120,7 +151,7 @@ export const ACTION_PARSE_ARGS: Record<
   "-immune": ["pokemon"],
   "-invertboost": ["pokemon"],
   "-item": ["pokemon", "item"],
-  "-mega": ["pokemon", "megaStone"],
+  "-mega": ["pokemon", "species", "megaStone"],
   "-message": ["message"],
   "-miss": ["source", "target"],
   "-mustrecharge": ["pokemon"],
@@ -134,7 +165,7 @@ export const ACTION_PARSE_ARGS: Record<
   "-sidestart": ["side", "condition"],
   "-singlemove": ["pokemon", "move"],
   "-singleturn": ["pokemon", "move"],
-  "-start": ["pokemon", "effect"],
+  "-start": ["pokemon", "effect", "effectDetail"],
   "-status": ["pokemon", "status"],
   "-supereffective": ["pokemon"],
   "-swapboost": ["source", "target", "stats"],
@@ -172,6 +203,7 @@ export const ACTION_PARSE_ARGS: Record<
   replace: ["pokemon", "details", "hpStatus"],
   request: ["request"],
   rule: ["rule"],
+  showteam: ["player"],
   start: [],
   swap: ["pokemon", "position"],
   switch: ["pokemon", "details", "hpStatus"],
@@ -181,7 +213,7 @@ export const ACTION_PARSE_ARGS: Record<
   tie: [],
   tier: ["formatName"],
   turn: ["turn"],
-  uhtml: ["message"],
+  uhtml: ["name", "message"],
   upkeep: [],
   win: ["winner"],
 };
@@ -211,12 +243,15 @@ const mapArgs =
     return parsedArgs;
   };
 
+const FREE_FORM_ACTIONS = new Set(["showteam"]);
+
 function validateArgCount(
   lineId: string,
   action: string,
   args: string[],
 ): ArgValidationWarning | undefined {
   if (!isKnownReplayAction(action)) return undefined;
+  if (FREE_FORM_ACTIONS.has(action)) return undefined;
   if (args.length > 0)
     return {
       lineId,
@@ -267,9 +302,12 @@ export class ReplayParseService {
       const raw = normalized.split("|").map((segment) => segment.trim());
       const action = raw[0] ?? "";
       const args = raw.slice(1);
-      const { parsedArgs, remainingArgs } = parseActionArgs(action, args);
-      const { majorActions, remainingArgs: majorRemainingArgs } =
-        extractMajorActions(remainingArgs);
+      const { majorActions, remainingArgs: positionalArgs } =
+        extractMajorActions(args);
+      const { parsedArgs, remainingArgs } = parseActionArgs(
+        action,
+        positionalArgs,
+      );
       const id = `:${index}`;
       return {
         id,
@@ -277,19 +315,20 @@ export class ReplayParseService {
         raw,
         action,
         args: { ...parsedArgs, ...majorActions },
-        argValidation: validateArgCount(id, action, majorRemainingArgs),
+        argValidation: validateArgCount(id, action, remainingArgs),
         turnNumber: -1,
       };
     });
 
     const parentLines: ReplayLine[] = lines.reduce((parents, line) => {
-      if (line.action.startsWith("-")) {
+      if (line.action.startsWith("-") || line.action === "debug") {
         const parent = parents[parents.length - 1];
         if (!parent) return parents;
         if (!parent.children) parent.children = [];
         parent.children.push(line);
       } else {
-        parents.push({ ...line, children: [] });
+        line.children = [];
+        parents.push(line);
       }
       return parents;
     }, [] as ReplayLine[]);
@@ -300,9 +339,9 @@ export class ReplayParseService {
       (turns, line) => {
         if (line.action === "turn") {
           turns.push({
-            number: parseTurnNumber(line),
+            number: parseTurnNumber(line) ?? turns.length,
             lines: [],
-          } as ParsedTurn);
+          });
           currentTurnId = 1;
         } else {
           const lastTurn = turns[turns.length - 1];

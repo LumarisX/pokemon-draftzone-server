@@ -3,6 +3,8 @@ import { Dex, ModData, ModdedDex } from "@pkmn/dex";
 import * as ChampionsDex from "@pkmn/mods/champions";
 import * as InsDex from "../../../mods/insurgance";
 import * as RRDex from "../../../mods/radicalred";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 
 const championsDex = Dex.mod(
   "champions" as ID,
@@ -399,7 +401,7 @@ export function getRuleset(rulesetId: string): Ruleset {
         return Rulesets[groupKey][rulesetKey].ruleset;
     }
   }
-  throw new Error(`Ruleset Id not found: ${rulesetId}`);
+  throw new PDZError(ErrorCodes.RULESET.NOT_FOUND, { ruleset: rulesetId });
 }
 
 export function getRulesets() {

@@ -318,6 +318,13 @@ export const ErrorCodes = {
       message: "Required parameter is missing",
     },
   },
+  RULESET: {
+    NOT_FOUND: {
+      code: "RUL-001",
+      status: 400,
+      message: "Ruleset not found",
+    },
+  },
   FORMAT: {
     NOT_FOUND: {
       code: "FMT-001",

@@ -1,3 +1,4 @@
+import { AppCacheModule } from "@core/cache/app-cache.module";
 import { StorageModule } from "@core/storage/storage.module";
 import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
@@ -29,6 +30,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    AppCacheModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
 

@@ -264,6 +264,31 @@ export async function isTeamDoneDrafting(
   return false;
 }
 
+export async function isTeamRosterValid(
+  tournament: PopulatedTournament,
+  team: PopulatedTeam,
+): Promise<boolean> {
+  const pickCount = team.pickLog.length;
+  if (pickCount < tournament.draftCount.min) return false;
+  if (pickCount > tournament.draftCount.max) return false;
+
+  if (tournament.pointTotal !== undefined) {
+    const teamPoints = await getTeamPoints(tournament, team);
+    if (teamPoints > tournament.pointTotal) return false;
+  }
+
+  const requirements = tournament.tierRequirements;
+  if (requirements?.length) {
+    const picksByTier = countPicksByTier(tournament, team);
+    const meetsAll = requirements.every(
+      (req) => (picksByTier.get(req.tierName) ?? 0) >= req.required,
+    );
+    if (!meetsAll) return false;
+  }
+
+  return true;
+}
+
 export function isDraftComplete(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,

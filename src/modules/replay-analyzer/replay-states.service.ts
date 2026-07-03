@@ -39,13 +39,17 @@ export type DamageData = {
   hpAfter: number;
 };
 
+export type HealData = {
+  turnNumber: number;
+  amount: number;
+  source?: string;
+};
+
 export type CritLuckEvent = {
   turnNumber: number;
   move: string;
   target?: string;
-  /** Probability (0-1) this hit would crit, derived from the move's critRatio. */
   expected: number;
-  /** Whether a -crit line was actually observed for this hit. */
   hit: boolean;
 };
 
@@ -53,10 +57,14 @@ export type MissLuckEvent = {
   turnNumber: number;
   move: string;
   target?: string;
-  /** Probability (0-1) this hit would land, derived from the move's accuracy. */
   expected: number;
-  /** Whether the move actually landed (false if a -miss line was observed). */
   hit: boolean;
+};
+
+export type StatusLuckEvent = {
+  turnNumber: number;
+  expected: number;
+  fullyParalyzed: boolean;
 };
 
 export type FaintState = {
@@ -69,7 +77,7 @@ export type FaintState = {
   indirect?: boolean;
 };
 
-export type PokemonKey = string; // Format: `${sideId}: ${speciesId}`
+export type PokemonKey = string;
 
 export type Pokemon = {
   key: PokemonKey;
@@ -82,8 +90,11 @@ export type Pokemon = {
   moveset: string[];
   moveHistory: Record<string, MoveData[]>;
   damageHistory: DamageData[];
+  healHistory: HealData[];
   critHistory: CritLuckEvent[];
   missHistory: MissLuckEvent[];
+  fullParalysisHistory: StatusLuckEvent[];
+  faints: FaintState[];
   details?: string;
   hp: HPState;
   status?: SetterState;
@@ -93,6 +104,7 @@ export type Pokemon = {
   teraType?: string;
   shiny?: true;
   gender?: GenderName;
+  everActive?: boolean;
   boosts: Boosts;
   flags: {
     destinyBond?: string;
@@ -123,9 +135,11 @@ export type Field = {
   timestampEnd?: number;
   gameType?: string;
   genNum?: number;
-  weather?: string;
+  weather?: ConditionState;
   winner?: string;
+  tie?: boolean;
   conditions: ConditionState[];
+  messages: { turnNumber: number; message: string }[];
   sides: Record<SideId, Side>;
 };
 
@@ -161,14 +175,66 @@ export type BoostState = {
 
 export type Boosts = Record<BoostStat, BoostState>;
 
-export type TurnState = {
+export type TurnSnapshot = {
   turnNumber: number;
-  field: Field;
+  sides: Record<
+    SideId,
+    Record<PokemonKey, { hpPercent: number; fainted: boolean }>
+  >;
 };
+
+export type BuildWarning = {
+  lineId: string;
+  action: string;
+  message: string;
+};
+
+export type ReplayBuildResult = {
+  field: Field;
+  turns: TurnSnapshot[];
+  warnings: BuildWarning[];
+};
+
+type BuildContext = {
+  field: Field;
+
+  pendingMoveLuck: Map<
+    string,
+    { crit?: CritLuckEvent; miss?: MissLuckEvent }[]
+  >;
+
+  pendingCrit: Map<string, number>;
+
+  lastEndedCondition?: {
+    condition: ConditionState;
+    pokemonKey?: PokemonKey;
+    turnNumber: number;
+  };
+  lastMove?: {
+    attackerKey: PokemonKey;
+    moveId: string;
+    moveRaw: string;
+    turnNumber: number;
+  };
+  lineSeq: number;
+
+  lastAbilityActivation?: {
+    pokemonKey: PokemonKey;
+    lineSeq: number;
+  };
+  warnings: BuildWarning[];
+};
+
+type ActionHandler = (
+  line: ReplayLine,
+  ctx: BuildContext,
+  parentLine?: ReplayLine,
+) => void;
 
 type PokemonRef = {
   sideId: SideId;
   positionId: PositionId;
+  hasPosition: boolean;
   nickname: string;
   canonicalKey: string;
 };
@@ -182,6 +248,15 @@ const BOOST_STATS: readonly BoostStat[] = [
   "accuracy",
   "evasion",
 ];
+
+const FULL_PARALYSIS_CHANCE = 0.25;
+
+const STATUS_DAMAGE_IDS = new Set(["psn", "tox", "brn"]);
+
+const DELAYED_DAMAGE_EFFECTS = new Set([
+  "move: Future Sight",
+  "move: Doom Desire",
+]);
 
 function defaultBoosts(): Boosts {
   return {
@@ -226,94 +301,13 @@ function defaultField(): Field {
   return {
     turnNumber: 0,
     conditions: [],
+    messages: [],
     sides: {
       p1: defaultSide("p1"),
       p2: defaultSide("p2"),
       p3: defaultSide("p3"),
       p4: defaultSide("p4"),
     },
-  };
-}
-
-function cloneState(field: Field): Field {
-  return {
-    turnNumber: field.turnNumber,
-    timestampStart: field.timestampStart,
-    timestampEnd: field.timestampEnd,
-    gameType: field.gameType,
-    genNum: field.genNum,
-    weather: field.weather,
-    winner: field.winner,
-    conditions: field.conditions.map((condition) => ({ ...condition })),
-    sides: {
-      p1: cloneSide(field.sides.p1),
-      p2: cloneSide(field.sides.p2),
-      p3: cloneSide(field.sides.p3),
-      p4: cloneSide(field.sides.p4),
-    },
-  };
-}
-
-function cloneSide(side: Side): Side {
-  const pokemon = Object.fromEntries(
-    Object.entries(side.pokemon).map(([key, value]) => [
-      key,
-      {
-        ...value,
-        speciesHistory: [...value.speciesHistory],
-        detailsHistory: [...value.detailsHistory],
-        moveset: [...value.moveset],
-        moveHistory: Object.fromEntries(
-          Object.entries(value.moveHistory).map(([moveId, history]) => [
-            moveId,
-            [...history],
-          ]),
-        ),
-        damageHistory: value.damageHistory.map((damageData) => ({
-          ...damageData,
-        })),
-        critHistory: value.critHistory.map((critEvent) => ({
-          ...critEvent,
-        })),
-        missHistory: value.missHistory.map((missEvent) => ({
-          ...missEvent,
-        })),
-        fainted: value.fainted ? { ...value.fainted } : undefined,
-        hp: { ...value.hp },
-        boosts: Object.fromEntries(
-          Object.entries(value.boosts).map(([stat, boostState]) => [
-            stat,
-            { ...boostState },
-          ]),
-        ) as Boosts,
-        flags: { ...value.flags },
-      },
-    ]),
-  );
-
-  const clonePosition = (position: Position): Position => {
-    const pokemonKey = position.pokemon?.key;
-    return {
-      ...position,
-      pokemon: pokemonKey ? pokemon[pokemonKey] : undefined,
-      conditions: position.conditions.map((condition) => ({
-        ...condition,
-      })),
-    };
-  };
-
-  return {
-    id: side.id,
-    username: side.username,
-    teamSize: side.teamSize,
-    stats: { ...side.stats },
-    conditions: side.conditions.map((condition) => ({ ...condition })),
-    positions: {
-      a: clonePosition(side.positions.a),
-      b: clonePosition(side.positions.b),
-      c: clonePosition(side.positions.c),
-    },
-    pokemon,
   };
 }
 
@@ -333,13 +327,10 @@ function parsePokemonRef(pokemon: string | undefined): PokemonRef | undefined {
   return {
     sideId,
     positionId,
+    hasPosition: Boolean(position),
     nickname: canonicalNickname,
     canonicalKey: `${sideId}: ${canonicalNickname}`,
   };
-}
-
-function toPositionVictimKey(pokemonRef: PokemonRef): string {
-  return `${pokemonRef.sideId}${pokemonRef.positionId}`;
 }
 
 function parseSideId(side: string | undefined): SideId | undefined {
@@ -349,10 +340,6 @@ function parseSideId(side: string | undefined): SideId | undefined {
   return parsed[1] as SideId;
 }
 
-// Index = move.critRatio (1-6+); value = probability of a crit on that hit.
-// Ratio 0/undefined means the move cannot crit at all (callers must guard
-// for that separately, since "no chance" and "guaranteed" are both edge
-// cases here).
 const CRIT_CHANCES = [0, 0.0416667, 0.125, 0.5, 1, 1];
 
 function getMoveCritChance(
@@ -376,10 +363,6 @@ function getMoveAccuracy(moveId: string, genNum?: number): number | undefined {
   return move.accuracy === true ? 1 : move.accuracy / 100;
 }
 
-// Move.target values that hit more than one position at once. Single-target
-// values ("normal", "any", etc.) and non-attacking values ("self") are
-// intentionally excluded here, since they're handled by the count===1
-// fallback in countMoveTargets.
 const SPREAD_MOVE_TARGETS = new Set([
   "allAdjacent",
   "allAdjacentFoes",
@@ -389,15 +372,10 @@ const SPREAD_MOVE_TARGETS = new Set([
   "allyTeam",
 ]);
 
-/**
- * Best-effort count of how many Pokemon a move's targeting hits, used to
- * size the optimistic crit/miss luck queue. For single-target moves this
- * is always 1. For spread moves, it's the number of currently-occupied
- * opposing positions (the common case) - "allySide"/"allyTeam" targets are
- * non-damaging field effects and don't produce per-target damage/miss
- * lines, so they fall back to 1 as well since no luck queue claiming
- * happens for them in practice.
- */
+function isTargetablePosition(position: Position): boolean {
+  return Boolean(position.pokemon && !position.pokemon.fainted);
+}
+
 function countMoveTargets(
   moveId: string,
   attacker: Pokemon,
@@ -414,32 +392,26 @@ function countMoveTargets(
     return SIDE_IDS.reduce(
       (count, sideId) =>
         count +
-        Object.values(field.sides[sideId].positions).filter((position) =>
-          Boolean(position.pokemon),
+        Object.values(field.sides[sideId].positions).filter(
+          isTargetablePosition,
         ).length,
       0,
     );
   }
 
-  // allAdjacent / allAdjacentFoes: count occupied positions on opposing
-  // side(s). We don't have exact adjacency (left/right) modeling here, so
-  // this counts all occupied foe positions, which is correct for doubles
-  // and an overcount only in triples for moves that should skip the
-  // non-adjacent corner - an acceptable approximation given replay logs
-  // don't expose grid adjacency directly.
   const foeSideIds = SIDE_IDS.filter((sideId) => sideId !== attacker.sideId);
   let count = foeSideIds.reduce(
     (sum, sideId) =>
       sum +
-      Object.values(field.sides[sideId].positions).filter((position) =>
-        Boolean(position.pokemon),
-      ).length,
+      Object.values(field.sides[sideId].positions).filter(isTargetablePosition)
+        .length,
     0,
   );
   if (move.target === "allAdjacent") {
     count += Object.values(field.sides[attacker.sideId].positions).filter(
       (position) =>
-        Boolean(position.pokemon) && position.pokemon?.key !== attacker.key,
+        isTargetablePosition(position) &&
+        position.pokemon?.key !== attacker.key,
     ).length;
   }
   return Math.max(count, 1);
@@ -515,10 +487,8 @@ function parseHpStatus(hpStatus: string | undefined): HPState | undefined {
   const normalized = hpStatus.trim();
   if (normalized.startsWith("[")) return undefined;
 
-  const [hpRaw, statusRaw] = normalized.split(/\s+/, 2);
-  const hp = parseHpState(hpRaw);
-  const status = statusRaw?.trim();
-  return hp;
+  const [hpRaw] = normalized.split(/\s+/, 2);
+  return parseHpState(hpRaw);
 }
 
 function upsertPokemon(side: Side, key: string, nickname: string): Pokemon {
@@ -534,8 +504,11 @@ function upsertPokemon(side: Side, key: string, nickname: string): Pokemon {
     moveset: [],
     moveHistory: {},
     damageHistory: [],
+    healHistory: [],
     critHistory: [],
     missHistory: [],
+    fullParalysisHistory: [],
+    faints: [],
     hp: {
       raw: "100/100",
       current: 100,
@@ -562,6 +535,16 @@ function conditionVariants(condition: string): Set<string> {
   return new Set([condition, normalized, toID(condition), toID(normalized)]);
 }
 
+function conditionMatcher(
+  condition: string,
+): (value: ConditionState) => boolean {
+  const variants = conditionVariants(condition);
+  return (value) =>
+    variants.has(value.raw) ||
+    variants.has(value.name) ||
+    variants.has(value.id);
+}
+
 function ensureConditionInList(
   values: ConditionState[],
   condition: ConditionState,
@@ -582,15 +565,10 @@ function ensureConditionInList(
 function removeConditionFromList(
   values: ConditionState[],
   condition: string,
-): void {
-  const variants = conditionVariants(condition);
-  const index = values.findIndex(
-    (value) =>
-      variants.has(value.raw) ||
-      variants.has(value.name) ||
-      variants.has(value.id),
-  );
-  if (index >= 0) values.splice(index, 1);
+): ConditionState | undefined {
+  const index = values.findIndex(conditionMatcher(condition));
+  if (index >= 0) return values.splice(index, 1)[0];
+  return undefined;
 }
 
 function pushUnique(values: string[], value: string | undefined): void {
@@ -598,69 +576,69 @@ function pushUnique(values: string[], value: string | undefined): void {
   if (!values.includes(value)) values.push(value);
 }
 
+function getHpPercent(pokemon: Pokemon): number {
+  if (typeof pokemon.hp?.percent === "number") return pokemon.hp.percent;
+  return pokemon.fainted ? 0 : 100;
+}
+
+function snapshotTurn(field: Field, turnNumber: number): TurnSnapshot {
+  const sides = {} as TurnSnapshot["sides"];
+  SIDE_IDS.forEach((sideId) => {
+    sides[sideId] = Object.fromEntries(
+      Object.values(field.sides[sideId].pokemon).map((pokemon) => [
+        pokemon.key,
+        {
+          hpPercent: getHpPercent(pokemon),
+          fainted: Boolean(pokemon.fainted),
+        },
+      ]),
+    );
+  });
+  return { turnNumber, sides };
+}
+
+function isDelayedDamageEffect(effect: string | undefined): boolean {
+  return Boolean(effect && DELAYED_DAMAGE_EFFECTS.has(effect));
+}
+
+const STATUS_DISPLAY_NAMES: Record<string, string> = {
+  psn: "Poison",
+  tox: "Toxic",
+  brn: "Burn",
+  par: "Paralysis",
+  frz: "Freeze",
+  slp: "Sleep",
+};
+
+function prettifyCause(
+  cause: string | undefined,
+  genNum?: number,
+): string | undefined {
+  if (!cause) return undefined;
+  const name = normalizeConditionName(cause);
+  const statusName = STATUS_DISPLAY_NAMES[toID(name)];
+  if (statusName) return statusName;
+  const move = gens.get(genNum ?? 9).moves.get(toID(name));
+  if (move?.exists) return move.name;
+  return name;
+}
+
 @Injectable()
 export class ReplayStatesService {
-  /**
-   * Per-move queue of not-yet-claimed optimistic crit/miss luck records,
-   * keyed by `${attackerKey}|${moveId}|${turnNumber}`. Populated when a
-   * `move` line fires (one entry pair per expected target), then drained
-   * FIFO as -damage/-miss/-immune children name their actual target.
-   * Reset at the start of every build() call so state never leaks between
-   * separate replays processed by this (singleton) service.
-   */
-  private pendingMoveLuck = new Map<
-    string,
-    { crit?: CritLuckEvent; miss?: MissLuckEvent }[]
-  >();
-
-  /**
-   * Set by -crit (which only names the target, not the attacker context
-   * needed to claim a queue entry) and consumed by the sibling -damage
-   * line for the same attacker/move/turn, which does the actual claim.
-   */
-  private pendingCrit = new Set<string>();
-
-  private readonly actionFns: Record<
-    string,
-    (line: ReplayLine, field: Field, parentLine?: ReplayLine) => void
-  > = {
-    detailschange: (line, field) => this.applyDetailsTransformLike(line, field),
-    drag: (line, field) => this.applySwitchLike(line, field),
-    faint: (line, field, _parentLine) => {
+  private readonly actionFns: Record<string, ActionHandler> = {
+    detailschange: (line, ctx) =>
+      this.applyDetailsTransformLike(line, ctx.field),
+    drag: (line, ctx) => this.applySwitchLike(line, ctx.field),
+    faint: (line, ctx) => {
+      const field = ctx.field;
       const position = this.getPositionFromArgs(line.args.pokemon, field);
-      const pokemon = position?.pokemon;
+      const pokemon =
+        position?.pokemon ?? this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
-      const lastDamage =
-        pokemon.damageHistory[pokemon.damageHistory.length - 1];
 
-      let fainted = {
-        turnNumber: line.turnNumber,
-        sourceAction: line.action,
-        attackerSideId:
-          lastDamage?.attackerSideId ?? parseSideId(lastDamage?.attacker),
-        attackerPokemon: lastDamage?.attacker,
-        move: lastDamage?.move,
-        cause: lastDamage?.cause,
-        indirect: lastDamage?.indirect,
-      };
-
-      if (pokemon.flags.destinyBond) {
-        const attacker = this.getPokemonFromArgs(
-          pokemon.flags.destinyBond,
-          field,
-        );
-        fainted = {
-          turnNumber: line.turnNumber,
-          sourceAction: "destinybond",
-          attackerSideId: attacker?.sideId,
-          attackerPokemon: attacker?.key,
-          move: "Destiny Bond",
-          cause: "Destiny Bond",
-          indirect: true,
-        };
-      }
-
+      const fainted = this.resolveFaintContext(line, ctx, pokemon, position);
       pokemon.fainted = fainted;
+      pokemon.faints.push(fainted);
       if (pokemon.hp?.max) {
         pokemon.hp = {
           raw: `0/${pokemon.hp.max}`,
@@ -670,12 +648,13 @@ export class ReplayStatesService {
         };
       }
     },
-    player: (line, field) => {
+    player: (line, ctx) => {
       const sideId = parseSideId(line.args.player);
       if (!sideId || !line.args.username) return;
-      field.sides[sideId].username = line.args.username;
+      ctx.field.sides[sideId].username = line.args.username;
     },
-    poke: (line, field) => {
+    poke: (line, ctx) => {
+      const field = ctx.field;
       const sideId = parseSideId(line.args.player);
       if (!sideId || !line.args.details) return;
       const { speciesId, baseSpeciesId, gender, shiny } = parseSpeciesDetails(
@@ -699,15 +678,30 @@ export class ReplayStatesService {
           setter: pokemon.key,
         };
     },
-    gametype: (line, field) => {
-      if (line.args.gameType) field.gameType = line.args.gameType;
+    gametype: (line, ctx) => {
+      if (line.args.gameType) ctx.field.gameType = line.args.gameType;
     },
-    gen: (line, field) => {
+    gen: (line, ctx) => {
       const genNum = line.args.genNum ? Number(line.args.genNum) : NaN;
       if (!Number.isFinite(genNum)) return;
-      field.genNum = genNum;
+      ctx.field.genNum = genNum;
     },
-    move: (line, field) => {
+    message: (line, ctx) => {
+      if (!line.args.message) return;
+      ctx.field.messages.push({
+        turnNumber: line.turnNumber,
+        message: line.args.message,
+      });
+    },
+    "-message": (line, ctx) => {
+      if (!line.args.message) return;
+      ctx.field.messages.push({
+        turnNumber: line.turnNumber,
+        message: line.args.message,
+      });
+    },
+    move: (line, ctx) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(
         line.args.attacker ?? line.args.pokemon,
         field,
@@ -726,46 +720,94 @@ export class ReplayStatesService {
       });
       pokemon.moveHistory[moveId] = history;
 
-      this.recordMoveLuck(pokemon, moveId, line, field);
+      ctx.lastMove = {
+        attackerKey: pokemon.key,
+        moveId,
+        moveRaw: line.args.move,
+        turnNumber: line.turnNumber,
+      };
+
+      if (pokemon.status?.raw === "par") {
+        pokemon.fullParalysisHistory.push({
+          turnNumber: line.turnNumber,
+          expected: FULL_PARALYSIS_CHANCE,
+          fullyParalyzed: false,
+        });
+      }
+
+      this.recordMoveLuck(pokemon, moveId, line, ctx);
     },
-    replace: (line, field) => this.applySwitchLike(line, field),
-    switch: (line, field) => {
+    cant: (line, ctx) => {
+      if (line.args.reason !== "par") return;
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
+      pokemon?.fullParalysisHistory.push({
+        turnNumber: line.turnNumber,
+        expected: FULL_PARALYSIS_CHANCE,
+        fullyParalyzed: true,
+      });
+    },
+    replace: (line, ctx) =>
+      this.applySwitchLike(line, ctx.field, { clearVolatiles: false }),
+    switch: (line, ctx) => {
       const pokemonRef = parsePokemonRef(line.args.pokemon);
       if (pokemonRef) {
-        field.sides[pokemonRef.sideId].stats.switches++;
+        ctx.field.sides[pokemonRef.sideId].stats.switches++;
       }
-      this.applySwitchLike(line, field);
+      this.applySwitchLike(line, ctx.field);
     },
-    "t:": (line, field) => {
+    swap: (line, ctx) => {
+      const pokemonRef = parsePokemonRef(line.args.pokemon);
+      const positionIndex = Number(line.args.position);
+      const targetPositionId = POSITION_IDS[positionIndex];
+      if (!pokemonRef || !targetPositionId) return;
+      if (targetPositionId === pokemonRef.positionId) return;
+
+      const side = ctx.field.sides[pokemonRef.sideId];
+      const from = side.positions[pokemonRef.positionId];
+      const to = side.positions[targetPositionId];
+      side.positions[pokemonRef.positionId] = {
+        ...to,
+        id: pokemonRef.positionId,
+      };
+      side.positions[targetPositionId] = { ...from, id: targetPositionId };
+    },
+    "t:": (line, ctx) => {
+      const field = ctx.field;
       const timestamp = line.args.timestamp ? Number(line.args.timestamp) : NaN;
       if (!Number.isFinite(timestamp)) return;
       if (field.timestampStart === undefined) field.timestampStart = timestamp;
       field.timestampEnd = timestamp;
     },
-    teamsize: (line, field) => {
+    teamsize: (line, ctx) => {
       const sideId = parseSideId(line.args.player);
       const teamSize = line.args.number ? Number(line.args.number) : NaN;
       if (!sideId || !Number.isFinite(teamSize)) return;
-      field.sides[sideId].teamSize = teamSize;
+      ctx.field.sides[sideId].teamSize = teamSize;
     },
-    win: (line, field) => {
-      if (line.args.winner) field.winner = line.args.winner;
+    win: (line, ctx) => {
+      if (line.args.winner) ctx.field.winner = line.args.winner;
     },
-    "-boost": (line, field) => {
+    tie: (line, ctx) => {
+      ctx.field.tie = true;
+    },
+    "-boost": (line, ctx) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon || !isBoostStat(line.args.stat) || !line.args.amount) return;
       const amount = Number(line.args.amount);
       if (!Number.isFinite(amount)) return;
       this.applyBoostDelta(pokemon, line.args.stat, amount, line, field);
     },
-    "-unboost": (line, field) => {
+    "-unboost": (line, ctx) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon || !isBoostStat(line.args.stat) || !line.args.amount) return;
       const amount = Number(line.args.amount);
       if (!Number.isFinite(amount)) return;
       this.applyBoostDelta(pokemon, line.args.stat, -amount, line, field);
     },
-    "-setboost": (line, field) => {
+    "-setboost": (line, ctx) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon || !isBoostStat(line.args.stat) || !line.args.amount) return;
       const amount = Number(line.args.amount);
@@ -777,13 +819,13 @@ export class ReplayStatesService {
         sourceEffect: line.args.from,
       };
     },
-    "-clearboost": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-clearboost": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       pokemon.boosts = defaultBoosts();
     },
-    "-clearnegativeboost": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-clearnegativeboost": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       BOOST_STATS.forEach((stat) => {
         if (pokemon.boosts[stat].stage < 0) {
@@ -791,10 +833,8 @@ export class ReplayStatesService {
         }
       });
     },
-    "-clearpositiveboost": (line, field) => {
-      // Protocol: |-clearpositiveboost|TARGET|POKEMON|EFFECT
-      // TARGET is the Pokemon whose positive boosts are cleared; POKEMON is
-      // the one whose effect caused it (e.g. the Spectral Thief user).
+    "-clearpositiveboost": (line, ctx) => {
+      const field = ctx.field;
       const target = this.getPokemonFromArgs(line.args.target, field);
       const source = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!target) return;
@@ -808,14 +848,15 @@ export class ReplayStatesService {
         }
       });
     },
-    "-clearallboost": (line, field) => {
+    "-clearallboost": (line, ctx) => {
       SIDE_IDS.forEach((sideId) => {
-        Object.values(field.sides[sideId].pokemon).forEach((pokemon) => {
+        Object.values(ctx.field.sides[sideId].pokemon).forEach((pokemon) => {
           pokemon.boosts = defaultBoosts();
         });
       });
     },
-    "-copyboost": (line, field) => {
+    "-copyboost": (line, ctx) => {
+      const field = ctx.field;
       const source = this.getPokemonFromArgs(line.args.source, field);
       const target = this.getPokemonFromArgs(line.args.target, field);
       if (!source || !target) return;
@@ -827,7 +868,8 @@ export class ReplayStatesService {
         };
       });
     },
-    "-swapboost": (line, field) => {
+    "-swapboost": (line, ctx) => {
+      const field = ctx.field;
       const source = this.getPokemonFromArgs(line.args.source, field);
       const target = this.getPokemonFromArgs(line.args.target, field);
       if (!source || !target || !line.args.stats) return;
@@ -842,8 +884,8 @@ export class ReplayStatesService {
         target.boosts[stat] = sourceBoost;
       });
     },
-    "-invertboost": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-invertboost": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       BOOST_STATS.forEach((stat) => {
         pokemon.boosts[stat] = {
@@ -852,10 +894,8 @@ export class ReplayStatesService {
         };
       });
     },
-    "-immune": (line, field, parentLine) => {
-      // An immune target still resolves the accuracy roll (the move
-      // connected, it just had no effect) but can never crit. Claim the
-      // queue entry so it doesn't leak into a later target's outcome.
+    "-immune": (line, ctx, parentLine) => {
+      const field = ctx.field;
       if (!parentLine || parentLine.action !== "move" || !parentLine.args.move)
         return;
       const attacker = this.getPokemonFromArgs(
@@ -866,6 +906,7 @@ export class ReplayStatesService {
       if (!attacker) return;
       const moveId = toID(parentLine.args.move);
       const claimed = this.claimMoveLuckEntry(
+        ctx,
         attacker.key,
         moveId,
         line.turnNumber,
@@ -878,9 +919,10 @@ export class ReplayStatesService {
         claimed.crit.target = target?.key ?? claimed.crit.target;
         claimed.crit.hit = false;
       }
-      this.consumePendingCrit(attacker.key, moveId, line.turnNumber);
+      this.consumePendingCrit(ctx, attacker.key, moveId, line.turnNumber);
     },
-    "-miss": (line, field, parentLine) => {
+    "-miss": (line, ctx, parentLine) => {
+      const field = ctx.field;
       const attacker = this.getPokemonFromArgs(line.args.source, field);
       const target = this.getPokemonFromArgs(line.args.target, field);
       if (!attacker) return;
@@ -890,26 +932,31 @@ export class ReplayStatesService {
           ? toID(parentLine.args.move)
           : undefined;
       const claimed = moveId
-        ? this.claimMoveLuckEntry(attacker.key, moveId, line.turnNumber)
+        ? this.claimMoveLuckEntry(ctx, attacker.key, moveId, line.turnNumber)
         : undefined;
 
       if (claimed?.miss) {
         claimed.miss.target = target?.key ?? claimed.miss.target;
         claimed.miss.hit = false;
       }
-      // A missed move can't crit; consume any pending crit flag so it
-      // doesn't incorrectly carry over to a later hit this same turn.
       if (moveId)
-        this.consumePendingCrit(attacker.key, moveId, line.turnNumber);
+        this.consumePendingCrit(ctx, attacker.key, moveId, line.turnNumber);
     },
-    "-ability": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-ability": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon || !line.args.ability) return;
       pokemon.ability = line.args.ability;
     },
-    "-activate": (line, field) => {
+    "-activate": (line, ctx) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
+      if (line.args.effect?.startsWith("ability:")) {
+        ctx.lastAbilityActivation = {
+          pokemonKey: pokemon.key,
+          lineSeq: ctx.lineSeq,
+        };
+      }
       const effectName = line.args.effect?.replace(/^move:\s*/i, "");
       if (effectName === "Destiny Bond") {
         const lastDamage =
@@ -919,12 +966,8 @@ export class ReplayStatesService {
         if (attacker) attacker.flags.destinyBond = pokemon.key;
       }
     },
-    "-crit": (line, field, parentLine) => {
-      // -crit's own arg is the target being hit; the attacker only appears
-      // on the parent move line. -crit always precedes its sibling
-      // -damage line for the same target, so rather than claiming a luck
-      // queue entry here, we set a flag that the next -damage claim for
-      // this attacker/move/turn will consume to mark that hit as a crit.
+    "-crit": (line, ctx, parentLine) => {
+      const field = ctx.field;
       if (!parentLine || parentLine.action !== "move") return;
       const attacker = this.getPokemonFromArgs(
         parentLine.args.attacker ?? parentLine.args.pokemon,
@@ -932,243 +975,555 @@ export class ReplayStatesService {
       );
       if (!attacker || !parentLine.args.move) return;
       const moveId = toID(parentLine.args.move);
-      this.setPendingCrit(attacker.key, moveId, line.turnNumber);
+      this.setPendingCrit(ctx, attacker.key, moveId, line.turnNumber);
     },
-    "-curestatus": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-curestatus": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       pokemon.status = {
         raw: "healthy",
       };
     },
-    "-damage": (line, field, parentLine) => {
+    "-damage": (line, ctx, parentLine) => {
+      const field = ctx.field;
       const damaged = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!damaged) return;
 
-      if (line.args.from) {
-        console.log(line.args.from);
-      }
       const source = line.args.from
-        ? this.findConditionSource(field, damaged.sideId, line.args.from)
+        ? this.findDamageSource(field, damaged, line.args.from)
         : undefined;
-      const target = this.getPokemonFromArgs(parentLine?.args.target, field);
-      const attackerRef =
-        source?.setterPokemon ??
-        parentLine?.args.attacker ??
-        parentLine?.args.pokemon ??
-        line.args.of;
-      const attacker = this.getPokemonFromArgs(attackerRef, field);
-
-      const indirect = target !== damaged || Boolean(source || line.args.from);
-
-      const hp = parseHpStatus(line.args.hpStatus);
-
-      const hpDelta =
-        hp?.current !== undefined && damaged.hp?.current !== undefined
-          ? damaged.hp.current - hp.current
+      const endedCondition =
+        !line.args.from &&
+        parentLine?.action !== "move" &&
+        ctx.lastEndedCondition?.pokemonKey === damaged.key &&
+        ctx.lastEndedCondition.turnNumber === line.turnNumber &&
+        isDelayedDamageEffect(ctx.lastEndedCondition.condition.raw)
+          ? ctx.lastEndedCondition.condition
           : undefined;
+      if (endedCondition) ctx.lastEndedCondition = undefined;
+
+      const isChildOfMove = parentLine?.action === "move";
+      const hasEffectSource = Boolean(line.args.from || endedCondition);
+      const indirect =
+        Boolean(line.args.from) || (!isChildOfMove && !endedCondition);
+      const parentMoveAttacker = isChildOfMove
+        ? this.getPokemonFromArgs(
+            parentLine.args.attacker ?? parentLine.args.pokemon,
+            field,
+          )
+        : undefined;
+      const selfInflictedCost =
+        hasEffectSource && parentMoveAttacker?.key === damaged.key
+          ? damaged
+          : undefined;
+      const attacker =
+        this.getPokemonFromArgs(
+          line.args.of ??
+            source?.setterPokemon ??
+            endedCondition?.setterPokemon,
+          field,
+        ) ??
+        selfInflictedCost ??
+        (!hasEffectSource ? parentMoveAttacker : undefined);
+
+      const hpBefore = getHpPercent(damaged);
+      const parsedHp = parseHpStatus(line.args.hpStatus);
+      const hpAfter = parsedHp?.percent ?? hpBefore;
 
       const damageContext: DamageData = {
         turnNumber: line.turnNumber,
-        damageTaken: hpDelta ?? 0,
-        hpBefore: damaged.hp.current ?? 100,
-        hpAfter: hp?.current ?? 100,
+        damageTaken: Math.max(hpBefore - hpAfter, 0),
+        hpBefore,
+        hpAfter,
         indirect,
-        move: parentLine?.args.move ?? source?.sourceMove ?? line.args.from,
-        cause: source?.name ?? line.args.from ?? parentLine?.action,
+        selfInflicted: attacker ? attacker.key === damaged.key : undefined,
+        friendlyFire: attacker
+          ? attacker.sideId === damaged.sideId && attacker.key !== damaged.key
+          : undefined,
+        move:
+          isChildOfMove && !hasEffectSource
+            ? parentLine.args.move
+            : (source?.sourceMove ?? endedCondition?.sourceMove),
+        cause: prettifyCause(
+          source?.name ??
+            endedCondition?.name ??
+            line.args.from ??
+            (isChildOfMove ? parentLine.args.move : parentLine?.action),
+          field.genNum,
+        ),
         attacker: attacker?.key,
-        attackerSideId: attacker?.sideId ?? source?.setterSideId,
+        attackerSideId:
+          attacker?.sideId ??
+          source?.setterSideId ??
+          endedCondition?.setterSideId,
       };
 
       this.applyHpStatus(damaged, line.args.hpStatus, damageContext);
-
-      // A direct move hit claims one entry from the attacker's pending
-      // crit/miss luck queue for this move - "this target took the hit"
-      // resolves both the accuracy check (it landed) and the crit check
-      // (confirmed or not, via the pending crit flag -crit may have set).
-      if (parentLine?.action === "move" && attacker && parentLine.args.move) {
-        const moveId = toID(parentLine.args.move);
-        const claimed = this.claimMoveLuckEntry(
-          attacker.key,
-          moveId,
-          line.turnNumber,
+      if (isChildOfMove && !hasEffectSource && parentLine.args.move) {
+        const moveAttacker = this.getPokemonFromArgs(
+          parentLine.args.attacker ?? parentLine.args.pokemon,
+          field,
         );
-        if (claimed?.crit) {
-          claimed.crit.target = damaged.key;
-          claimed.crit.hit = this.consumePendingCrit(
-            attacker.key,
+        if (moveAttacker) {
+          const moveId = toID(parentLine.args.move);
+          const claimed = this.claimMoveLuckEntry(
+            ctx,
+            moveAttacker.key,
             moveId,
             line.turnNumber,
           );
-        }
-        if (claimed?.miss) {
-          claimed.miss.target = damaged.key;
-          claimed.miss.hit = true;
+          if (claimed?.crit) {
+            claimed.crit.target = damaged.key;
+            claimed.crit.hit = this.consumePendingCrit(
+              ctx,
+              moveAttacker.key,
+              moveId,
+              line.turnNumber,
+            );
+          }
+          if (claimed?.miss) {
+            claimed.miss.target = damaged.key;
+            claimed.miss.hit = true;
+          }
         }
       }
     },
-    "-endability": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-endability": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       pokemon.ability = undefined;
     },
-    "-enditem": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-enditem": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
       pokemon.item = undefined;
     },
-    "-fieldend": (line, field) => {
-      if (!line.args.condition) return;
-      removeConditionFromList(field.conditions, line.args.condition);
+    "-end": (line, ctx) => {
+      const field = ctx.field;
+      if (!line.args.pokemon || !line.args.effect) return;
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+      const position = this.getPositionFromArgs(line.args.pokemon, field);
+      const sideId = parseSideId(line.args.pokemon);
+
+      let removed = position
+        ? removeConditionFromList(position.conditions, line.args.effect)
+        : undefined;
+      if (!removed && sideId) {
+        removed = removeConditionFromList(
+          field.sides[sideId].conditions,
+          line.args.effect,
+        );
+      }
+      if (!removed) return;
+      ctx.lastEndedCondition = {
+        condition: removed,
+        pokemonKey: pokemon?.key,
+        turnNumber: line.turnNumber,
+      };
     },
-    "-fieldstart": (line, field, parentLine) => {
+    "-start": (line, ctx, parentLine) => {
+      const field = ctx.field;
+      if (!line.args.pokemon || !line.args.effect) return;
+
+      if (/^perish\d+$/.test(line.args.effect)) {
+        const position = this.getPositionFromArgs(line.args.pokemon, field);
+        if (!position) return;
+        const existing = position.conditions.find((condition) =>
+          /^perish\d+$/.test(condition.id),
+        );
+        if (existing) {
+          existing.raw = line.args.effect;
+          existing.name = line.args.effect;
+          existing.id = toID(line.args.effect);
+          return;
+        }
+        const perishCondition = this.createConditionState(
+          line.args.effect,
+          line,
+          ctx,
+          parentLine,
+        );
+        perishCondition.sourceMove = "Perish Song";
+        position.conditions.push(perishCondition);
+        return;
+      }
+
+      const condition = this.createConditionState(
+        line.args.effect,
+        line,
+        ctx,
+        parentLine,
+      );
+
+      if (isDelayedDamageEffect(line.args.effect)) {
+        if (!condition.setterPokemon) {
+          const user = this.getPokemonFromArgs(line.args.pokemon, field);
+          condition.setterPokemon = user?.key;
+          condition.setterSideId = user?.sideId;
+        }
+        const targetRef =
+          parentLine?.action === "move"
+            ? (parentLine.args.target ?? line.args.pokemon)
+            : line.args.pokemon;
+        const targetSideId = parseSideId(targetRef);
+        if (!targetSideId) return;
+        ensureConditionInList(field.sides[targetSideId].conditions, condition);
+        return;
+      }
+
+      const position = this.getPositionFromArgs(line.args.pokemon, field);
+      if (!position) return;
+      ensureConditionInList(position.conditions, condition);
+    },
+    "-fieldend": (line, ctx) => {
+      if (!line.args.condition) return;
+      removeConditionFromList(ctx.field.conditions, line.args.condition);
+    },
+    "-fieldstart": (line, ctx, parentLine) => {
       if (!line.args.condition) return;
       ensureConditionInList(
-        field.conditions,
-        this.createConditionState(
-          line.args.condition,
-          field,
-          parentLine,
-          line.turnNumber,
-        ),
+        ctx.field.conditions,
+        this.createConditionState(line.args.condition, line, ctx, parentLine),
       );
     },
-    "-formechange": (line, field) =>
-      this.applyDetailsTransformLike(line, field),
-    "-heal": (line, field, parentLine) => {
-      const position = this.getPositionFromArgs(line.args.pokemon, field);
-      const pokemon = position?.pokemon;
+    "-formechange": (line, ctx) =>
+      this.applyDetailsTransformLike(line, ctx.field),
+    "-heal": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon) return;
-      this.applyHpStatus(pokemon, line.args.hpStatus);
+      this.applyHpStatus(pokemon, line.args.hpStatus, undefined, {
+        turnNumber: line.turnNumber,
+        source: line.args.from,
+      });
     },
-    "-item": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-hitcount": (line, ctx, parentLine) => {
+      const field = ctx.field;
+      const hitCount = Number(line.args.num);
+      if (!Number.isFinite(hitCount) || hitCount <= 1) return;
+
+      const moveInfo =
+        parentLine?.action === "move" && parentLine.args.move
+          ? {
+              attackerRef: parentLine.args.attacker ?? parentLine.args.pokemon,
+              moveId: toID(parentLine.args.move),
+              moveRaw: parentLine.args.move,
+            }
+          : ctx.lastMove
+            ? {
+                attackerRef: ctx.lastMove.attackerKey,
+                moveId: ctx.lastMove.moveId,
+                moveRaw: ctx.lastMove.moveRaw,
+              }
+            : undefined;
+      if (!moveInfo) return;
+      const attacker = this.getPokemonFromArgs(moveInfo.attackerRef, field);
+      if (!attacker) return;
+
+      const accuracyExpected = getMoveAccuracy(moveInfo.moveId, field.genNum);
+      const critExpected = getMoveCritChance(moveInfo.moveId, field.genNum);
+      const target = this.getPokemonFromArgs(line.args.pokemon, field)?.key;
+
+      const extraCritEvents: CritLuckEvent[] = [];
+      for (let hit = 1; hit < hitCount; hit++) {
+        if (accuracyExpected !== undefined) {
+          attacker.missHistory.push({
+            turnNumber: line.turnNumber,
+            move: moveInfo.moveRaw,
+            target,
+            expected: accuracyExpected,
+            hit: true,
+          });
+        }
+        if (critExpected !== undefined) {
+          const critEvent: CritLuckEvent = {
+            turnNumber: line.turnNumber,
+            move: moveInfo.moveRaw,
+            target,
+            expected: critExpected,
+            hit: false,
+          };
+          attacker.critHistory.push(critEvent);
+          extraCritEvents.push(critEvent);
+        }
+      }
+
+      while (
+        extraCritEvents.length > 0 &&
+        this.consumePendingCrit(
+          ctx,
+          attacker.key,
+          moveInfo.moveId,
+          line.turnNumber,
+        )
+      ) {
+        const critEvent = extraCritEvents.pop();
+        if (critEvent) critEvent.hit = true;
+      }
+    },
+    "-item": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon || !line.args.item) return;
       pokemon.item = {
         raw: line.args.item,
       };
     },
-    "-sethp": (line, field) => {
+    "-sethp": (line, ctx, parentLine) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon || !line.args.hp) return;
-      const parsedHp = parseHpState(line.args.hp);
-      if (parsedHp) {
-        pokemon.hp = {
-          ...pokemon.hp,
-          ...parsedHp,
-        };
-      }
+      const hpBefore = getHpPercent(pokemon);
+      const parsedHp = parseHpStatus(line.args.hp);
+      const hpAfter = parsedHp?.percent ?? hpBefore;
+      const moveAttacker =
+        parentLine?.action === "move"
+          ? this.getPokemonFromArgs(
+              parentLine.args.attacker ?? parentLine.args.pokemon,
+              field,
+            )
+          : undefined;
+      const attacker =
+        this.getPokemonFromArgs(line.args.of, field) ??
+        (moveAttacker && moveAttacker.key !== pokemon.key
+          ? moveAttacker
+          : undefined);
+      this.applyHpStatus(
+        pokemon,
+        line.args.hp,
+        {
+          turnNumber: line.turnNumber,
+          damageTaken: Math.max(hpBefore - hpAfter, 0),
+          hpBefore,
+          hpAfter,
+          indirect: true,
+          cause: prettifyCause(
+            line.args.from ?? parentLine?.args.move,
+            field.genNum,
+          ),
+          attacker: attacker?.key,
+          attackerSideId: attacker?.sideId,
+        },
+        { turnNumber: line.turnNumber, source: line.args.from },
+      );
     },
-    "-sideend": (line, field) => {
+    "-sideend": (line, ctx) => {
       const sideId = parseSideId(line.args.side);
       if (!sideId || !line.args.condition) return;
       removeConditionFromList(
-        field.sides[sideId].conditions,
+        ctx.field.sides[sideId].conditions,
         line.args.condition,
       );
     },
-    "-sidestart": (line, field, parentLine) => {
+    "-sidestart": (line, ctx, parentLine) => {
       const sideId = parseSideId(line.args.side);
       if (!sideId || !line.args.condition) return;
       ensureConditionInList(
-        field.sides[sideId].conditions,
-        this.createConditionState(
-          line.args.condition,
-          field,
-          parentLine,
-          line.turnNumber,
-        ),
+        ctx.field.sides[sideId].conditions,
+        this.createConditionState(line.args.condition, line, ctx, parentLine),
       );
     },
-    "-singlemove": (line, field, parentLine) =>
-      this.applySingleTurnCondition(line, field, parentLine),
-    "-singleturn": (line, field, parentLine) =>
-      this.applySingleTurnCondition(line, field, parentLine),
-    "-status": (line, field, parentLine) => {
+    "-singlemove": (line, ctx, parentLine) =>
+      this.applySingleTurnCondition(line, ctx, parentLine),
+    "-singleturn": (line, ctx, parentLine) =>
+      this.applySingleTurnCondition(line, ctx, parentLine),
+    "-status": (line, ctx, parentLine) => {
+      const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon || !line.args.status) return;
       pokemon.status = {
         raw: line.args.status,
-        setter: this.getPokemonFromArgs(line.args.pokemon, field)?.key,
+        setter: this.resolveStatusSetter(line, field, pokemon, parentLine)?.key,
       };
     },
-    "-transform": (line, field) => this.applyDetailsTransformLike(line, field),
-    "-terastallize": (line, field) => {
-      const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
+    "-transform": (line, ctx) =>
+      this.applyDetailsTransformLike(line, ctx.field),
+    "-terastallize": (line, ctx) => {
+      const pokemon = this.getPokemonFromArgs(line.args.pokemon, ctx.field);
       if (!pokemon || !line.args.type) return;
       pokemon.teraType = line.args.type;
     },
-    "-weather": (line, field) => {
-      field.weather =
-        line.args.weather && line.args.weather !== "none"
-          ? line.args.weather
-          : undefined;
+    "-weather": (line, ctx, parentLine) => {
+      const field = ctx.field;
+      const weather = line.args.weather;
+      if (!weather || weather === "none") {
+        field.weather = undefined;
+        return;
+      }
+      if (line.args.upkeep && field.weather?.raw === weather) return;
+      field.weather = this.createConditionState(weather, line, ctx, parentLine);
     },
   };
 
-  build(parsedLogs: ParsedReplayLog): TurnState[] {
-    this.pendingMoveLuck = new Map();
-    this.pendingCrit = new Set();
-    const { turns } = parsedLogs;
-    const field = defaultField();
+  build(parsedLogs: ParsedReplayLog): ReplayBuildResult {
+    const ctx: BuildContext = {
+      field: defaultField(),
+      pendingMoveLuck: new Map(),
+      pendingCrit: new Map(),
+      lineSeq: 0,
+      warnings: [],
+    };
 
-    return turns.map((turn) => {
-      field.turnNumber = turn.number;
+    const turns = parsedLogs.turns.map((turn) => {
+      ctx.field.turnNumber = turn.number;
 
       turn.lines.forEach((line) => {
-        this.actionFns[line.action]?.(line, field);
-        line.children?.forEach((child) => {
-          this.actionFns[child.action]?.(child, field, line);
-        });
+        this.executeLine(line, ctx);
+        line.children?.forEach((child) => this.executeLine(child, ctx, line));
       });
 
-      const turnState: TurnState = {
-        turnNumber: turn.number,
-        field: cloneState(field),
-      };
+      const snapshot = snapshotTurn(ctx.field, turn.number);
+
       SIDE_IDS.forEach((sideId) => {
         POSITION_IDS.forEach((positionId) => {
-          field.sides[sideId].positions[positionId].conditions = field.sides[
-            sideId
-          ].positions[positionId].conditions.filter(
+          const position = ctx.field.sides[sideId].positions[positionId];
+          position.conditions = position.conditions.filter(
             (condition) => !condition.singleTurn,
           );
         });
-        Object.values(field.sides[sideId].pokemon).forEach((pokemon) => {
+        Object.values(ctx.field.sides[sideId].pokemon).forEach((pokemon) => {
           delete pokemon.flags.destinyBond;
         });
       });
-      return turnState;
+
+      return snapshot;
     });
+
+    return { field: ctx.field, turns, warnings: ctx.warnings };
+  }
+
+  private resolveFaintContext(
+    line: ReplayLine,
+    ctx: BuildContext,
+    pokemon: Pokemon,
+    position: Position | undefined,
+  ): FaintState {
+    const field = ctx.field;
+
+    if (pokemon.flags.destinyBond) {
+      const attacker = this.getPokemonFromArgs(
+        pokemon.flags.destinyBond,
+        field,
+      );
+      return {
+        turnNumber: line.turnNumber,
+        sourceAction: "destinybond",
+        attackerSideId: attacker?.sideId,
+        attackerPokemon: attacker?.key,
+        move: "Destiny Bond",
+        cause: "Destiny Bond",
+        indirect: true,
+      };
+    }
+
+    if (
+      ctx.lastMove &&
+      ctx.lastMove.attackerKey === pokemon.key &&
+      ctx.lastMove.turnNumber === line.turnNumber
+    ) {
+      const move = gens.get(field.genNum ?? 9).moves.get(ctx.lastMove.moveId);
+      if (move?.exists && move.selfdestruct) {
+        return {
+          turnNumber: line.turnNumber,
+          sourceAction: "selfdestruct",
+          attackerSideId: pokemon.sideId,
+          attackerPokemon: pokemon.key,
+          move: move.name,
+          cause: move.name,
+        };
+      }
+    }
+
+    const perishCondition = position?.conditions.find(
+      (condition) => condition.id === "perish0",
+    );
+    if (perishCondition) {
+      const setter = this.getPokemonFromArgs(
+        perishCondition.setterPokemon,
+        field,
+      );
+      return {
+        turnNumber: line.turnNumber,
+        sourceAction: "perishsong",
+        attackerSideId: setter?.sideId ?? perishCondition.setterSideId,
+        attackerPokemon: perishCondition.setterPokemon,
+        move: "Perish Song",
+        cause: "Perish Song",
+        indirect: true,
+      };
+    }
+
+    const lastDamage = pokemon.damageHistory[pokemon.damageHistory.length - 1];
+    return {
+      turnNumber: line.turnNumber,
+      sourceAction: line.action,
+      attackerSideId:
+        lastDamage?.attackerSideId ?? parseSideId(lastDamage?.attacker),
+      attackerPokemon: lastDamage?.attacker,
+      move: lastDamage?.move,
+      cause: lastDamage?.cause,
+      indirect: lastDamage?.indirect,
+    };
+  }
+
+  private executeLine(
+    line: ReplayLine,
+    ctx: BuildContext,
+    parentLine?: ReplayLine,
+  ): void {
+    ctx.lineSeq++;
+    const handler = this.actionFns[line.action];
+    if (!handler) return;
+    try {
+      handler(line, ctx, parentLine);
+    } catch (error) {
+      ctx.warnings.push({
+        lineId: line.id,
+        action: line.action,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private createConditionState(
     condition: string,
-    field: Field,
+    line: ReplayLine,
+    ctx: BuildContext,
     parentLine?: ReplayLine,
-    turnNumber?: number,
     singleTurn?: boolean,
   ): ConditionState {
+    const field = ctx.field;
     const name = normalizeConditionName(condition);
-    const sourceMove =
-      parentLine?.action === "move"
-        ? parentLine.args.move
-        : condition.startsWith("move: ")
-          ? name
-          : undefined;
-    const setterPokemonRef =
-      parentLine?.action === "move"
-        ? (parentLine.args.attacker ?? parentLine.args.pokemon)
+    const conditionSourceMove = condition.startsWith("move: ")
+      ? name
+      : undefined;
+    const parentSourceMove =
+      parentLine?.action === "move" ? parentLine.args.move : undefined;
+
+    const ofPokemon = this.getPokemonFromArgs(line.args.of, field);
+    const abilityActivation =
+      ctx.lastAbilityActivation?.lineSeq === ctx.lineSeq - 1
+        ? this.getPokemonFromArgs(ctx.lastAbilityActivation.pokemonKey, field)
         : undefined;
+    const parentMoveAttacker =
+      parentLine?.action === "move"
+        ? this.getPokemonFromArgs(
+            parentLine.args.attacker ?? parentLine.args.pokemon,
+            field,
+          )
+        : undefined;
+    const sourceMove = abilityActivation
+      ? conditionSourceMove
+      : (parentSourceMove ?? conditionSourceMove);
     const setterPokemon =
-      this.getPokemonFromArgs(setterPokemonRef, field) ??
-      this.findMoveUser(field, sourceMove, turnNumber);
-    const setterSideId = setterPokemon?.sideId;
+      ofPokemon ??
+      abilityActivation ??
+      parentMoveAttacker ??
+      this.findMoveUser(field, sourceMove, line.turnNumber);
+
     return {
       raw: condition,
       name,
       id: toID(name),
-      setterSideId,
+      setterSideId: setterPokemon?.sideId,
       setterPokemon: setterPokemon?.key,
       sourceMove,
       singleTurn,
@@ -1208,7 +1563,7 @@ export class ReplayStatesService {
 
   private applySingleTurnCondition(
     line: ReplayLine,
-    field: Field,
+    ctx: BuildContext,
     parentLine?: ReplayLine,
   ): void {
     const sideId = parseSideId(line.args.pokemon);
@@ -1217,44 +1572,101 @@ export class ReplayStatesService {
     const positionId = parsePokemonRef(line.args.pokemon)?.positionId;
     if (!positionId) return;
 
-    const position = field.sides[sideId].positions[positionId];
+    const position = ctx.field.sides[sideId].positions[positionId];
     if (!position) return;
 
-    const condition = this.createConditionState(
-      line.args.move,
-      field,
-      parentLine,
-      line.turnNumber,
-      true,
+    position.conditions.push(
+      this.createConditionState(line.args.move, line, ctx, parentLine, true),
     );
-    position.conditions.push(condition);
   }
 
-  private findConditionSource(
+  private resolveStatusSetter(
+    line: ReplayLine,
     field: Field,
-    victimSideId: SideId,
-    cause: string,
-  ): ConditionState | undefined {
-    const variants = conditionVariants(cause);
-    const victimSide = field.sides[victimSideId];
+    victim: Pokemon,
+    parentLine?: ReplayLine,
+  ): Pokemon | undefined {
+    if (line.args.from?.startsWith("item:")) return victim;
 
-    const sideCondition = victimSide.conditions.find(
-      (condition) =>
-        variants.has(condition.raw) ||
-        variants.has(condition.name) ||
-        variants.has(condition.id),
-    );
-    if (sideCondition) return sideCondition;
+    const ofPokemon = this.getPokemonFromArgs(line.args.of, field);
+    if (ofPokemon) return ofPokemon;
 
-    const fieldCondition = field.conditions.find(
-      (condition) =>
-        variants.has(condition.raw) ||
-        variants.has(condition.name) ||
-        variants.has(condition.id),
-    );
-    if (fieldCondition) return fieldCondition;
+    if (parentLine?.action === "move") {
+      return this.getPokemonFromArgs(
+        parentLine.args.attacker ?? parentLine.args.pokemon,
+        field,
+      );
+    }
+
+    const isSwitchLike =
+      parentLine !== undefined &&
+      ["switch", "drag", "replace"].includes(parentLine.action);
+    if (
+      isSwitchLike &&
+      (line.args.status === "psn" || line.args.status === "tox")
+    ) {
+      const toxicSpikes = field.sides[victim.sideId].conditions.find(
+        (condition) => condition.id === "toxicspikes",
+      );
+      return this.getPokemonFromArgs(toxicSpikes?.setterPokemon, field);
+    }
 
     return undefined;
+  }
+
+  private findDamageSource(
+    field: Field,
+    damaged: Pokemon,
+    cause: string,
+  ): ConditionState | undefined {
+    const causeId = toID(cause);
+
+    if (STATUS_DAMAGE_IDS.has(causeId)) {
+      return {
+        raw: cause,
+        name: cause,
+        id: causeId,
+        setterPokemon: damaged.status?.setter,
+        setterSideId: parseSideId(damaged.status?.setter),
+      };
+    }
+
+    if (causeId === "recoil" || cause.startsWith("item:")) {
+      return {
+        raw: cause,
+        name: normalizeConditionName(cause),
+        id: causeId,
+        setterPokemon: damaged.key,
+        setterSideId: damaged.sideId,
+      };
+    }
+
+    if (cause.startsWith("ability:")) return undefined;
+
+    const matches = conditionMatcher(cause);
+
+    const position = this.findPositionOfPokemon(field, damaged);
+    const positionCondition = position?.conditions.find(matches);
+    if (positionCondition) return positionCondition;
+
+    const sideCondition = field.sides[damaged.sideId].conditions.find(matches);
+    if (sideCondition) return sideCondition;
+
+    const fieldCondition = field.conditions.find(matches);
+    if (fieldCondition) return fieldCondition;
+
+    if (field.weather && matches(field.weather)) return field.weather;
+
+    return undefined;
+  }
+
+  private findPositionOfPokemon(
+    field: Field,
+    pokemon: Pokemon,
+  ): Position | undefined {
+    return Object.values(field.sides[pokemon.sideId].positions).find(
+      (position) => position.pokemon?.key === pokemon.key,
+    );
   }
 
   private applyBoostDelta(
@@ -1266,9 +1678,6 @@ export class ReplayStatesService {
   ): void {
     const setter = this.resolveBoostSetter(line, field, pokemon);
     const current = pokemon.boosts[stat].stage;
-    // Showdown's AMOUNT already reflects the applied delta (e.g. boosting
-    // past +6 sends a truncated amount), so this clamp is a defensive
-    // safety net rather than primary clamping logic.
     const nextStage = Math.max(-6, Math.min(6, current + delta));
     pokemon.boosts[stat] = {
       stage: nextStage,
@@ -1282,40 +1691,20 @@ export class ReplayStatesService {
     field: Field,
     boostedPokemon: Pokemon,
   ): Pokemon | undefined {
-    // [of] explicitly names the setter (e.g. Intimidate: [from] ability:
-    // Intimidate|[of] p1a: Gyarados). Fall back to the boosted Pokemon
-    // itself for self-inflicted boosts (Swords Dance, Dragon Dance, etc).
     const ofPokemon = this.getPokemonFromArgs(line.args.of, field);
     if (ofPokemon) return ofPokemon;
     if (line.args.from) return boostedPokemon;
     return undefined;
   }
 
-  /**
-   * Records the expected crit/accuracy probability for a single move-use,
-   * optimistically assuming the move both hits and doesn't crit. The
-   * "-miss" and "-crit" handlers correct the `hit` flag on these records
-   * once the actual outcome is known. This mirrors v1's
-   * recordMoveUsageLuck, but as per-event history rather than running
-   * counters, so expected-vs-actual can be aggregated however the
-   * analysis layer wants later (overall, per-move, per-turn, etc).
-   */
-  /**
-   * Records expected crit/accuracy probability for a move-use, one entry
-   * per expected target (singles: always 1; spread moves: one per
-   * currently-occupied target position). Each entry optimistically
-   * assumes a hit / no-crit. The pushed entries are also queued so that
-   * per-target outcome lines (-damage/-miss/-immune/-crit) that follow as
-   * children of this move can claim and correct one entry each, rather
-   * than all targets sharing a single record.
-   */
   private recordMoveLuck(
     pokemon: Pokemon,
     moveId: string,
     line: ReplayLine,
-    field: Field,
+    ctx: BuildContext,
   ): void {
     if (!line.args.move) return;
+    const field = ctx.field;
 
     const targetCount = countMoveTargets(moveId, pokemon, field, field.genNum);
     const accuracyExpected = getMoveAccuracy(moveId, field.genNum);
@@ -1359,7 +1748,11 @@ export class ReplayStatesService {
       queue.push(entry);
     }
 
-    this.pendingMoveLuck.set(queueKey, queue);
+    const existing = ctx.pendingMoveLuck.get(queueKey);
+    ctx.pendingMoveLuck.set(
+      queueKey,
+      existing ? [...existing, ...queue] : queue,
+    );
   }
 
   private moveLuckQueueKey(
@@ -1370,48 +1763,40 @@ export class ReplayStatesService {
     return `${attackerKey}|${moveId}|${turnNumber}`;
   }
 
-  /**
-   * Claims the next unclaimed optimistic luck entry for an attacker's
-   * move this turn, so a -damage/-miss/-immune child line can attribute
-   * its outcome to a specific target rather than leaving every target on
-   * a move sharing one record. Returns undefined if there's no pending
-   * entry (e.g. the action isn't a child of a tracked move).
-   */
   private claimMoveLuckEntry(
+    ctx: BuildContext,
     attackerKey: PokemonKey,
     moveId: string,
     turnNumber: number,
   ): { crit?: CritLuckEvent; miss?: MissLuckEvent } | undefined {
     const queueKey = this.moveLuckQueueKey(attackerKey, moveId, turnNumber);
-    const queue = this.pendingMoveLuck.get(queueKey);
+    const queue = ctx.pendingMoveLuck.get(queueKey);
     if (!queue || queue.length === 0) return undefined;
     return queue.shift();
   }
 
   private setPendingCrit(
+    ctx: BuildContext,
     attackerKey: PokemonKey,
     moveId: string,
     turnNumber: number,
   ): void {
-    this.pendingCrit.add(
-      this.moveLuckQueueKey(attackerKey, moveId, turnNumber),
-    );
+    const key = this.moveLuckQueueKey(attackerKey, moveId, turnNumber);
+    ctx.pendingCrit.set(key, (ctx.pendingCrit.get(key) ?? 0) + 1);
   }
 
-  /**
-   * Returns whether a -crit was flagged for this attacker/move/turn and
-   * clears the flag either way, so it can't leak into a later hit. Safe
-   * to call even when no -crit was seen (returns false).
-   */
   private consumePendingCrit(
+    ctx: BuildContext,
     attackerKey: PokemonKey,
     moveId: string,
     turnNumber: number,
   ): boolean {
     const key = this.moveLuckQueueKey(attackerKey, moveId, turnNumber);
-    const wasPending = this.pendingCrit.has(key);
-    this.pendingCrit.delete(key);
-    return wasPending;
+    const count = ctx.pendingCrit.get(key) ?? 0;
+    if (count <= 0) return false;
+    if (count === 1) ctx.pendingCrit.delete(key);
+    else ctx.pendingCrit.set(key, count - 1);
+    return true;
   }
 
   private getPokemonFromArgs(
@@ -1437,7 +1822,7 @@ export class ReplayStatesService {
     if (!pokemonRefRaw) return undefined;
 
     const pokemonRef = parsePokemonRef(pokemonRefRaw);
-    if (pokemonRef) {
+    if (pokemonRef?.hasPosition) {
       return field.sides[pokemonRef.sideId].positions[pokemonRef.positionId];
     }
 
@@ -1445,13 +1830,20 @@ export class ReplayStatesService {
     if (!sideId) return undefined;
 
     const side = field.sides[sideId];
-    const byKey = Object.values(side.positions).find(
-      (position) => position.pokemon?.key === pokemonRefRaw,
+    const pokemon = this.getPokemonFromArgs(pokemonRefRaw, field);
+    return Object.values(side.positions).find(
+      (position) =>
+        position.pokemon &&
+        (position.pokemon.key === pokemonRefRaw ||
+          position.pokemon.key === pokemon?.key),
     );
-    return byKey;
   }
 
-  private applySwitchLike(line: ReplayLine, field: Field): void {
+  private applySwitchLike(
+    line: ReplayLine,
+    field: Field,
+    options: { clearVolatiles?: boolean } = {},
+  ): void {
     const pokemonRef = parsePokemonRef(line.args.pokemon);
     if (!pokemonRef) return;
 
@@ -1481,6 +1873,7 @@ export class ReplayStatesService {
 
     const pokemon = upsertPokemon(side, pokemonKey, pokemonRef.nickname);
     pokemon.nickname = pokemonRef.nickname;
+    pokemon.everActive = true;
     if (speciesId) pokemon.species = speciesId;
     if (baseSpeciesId) pokemon.baseSpecies = baseSpeciesId;
     pushUnique(pokemon.speciesHistory, speciesId);
@@ -1490,9 +1883,25 @@ export class ReplayStatesService {
     pushUnique(pokemon.detailsHistory, line.args.details);
 
     const hp = parseHpStatus(line.args.hpStatus);
-    if (hp) pokemon.hp = hp;
+    if (hp) {
+      const previousPercent = pokemon.hp?.percent;
+      if (
+        typeof previousPercent === "number" &&
+        typeof hp.percent === "number" &&
+        hp.percent > previousPercent
+      ) {
+        pokemon.healHistory.push({
+          turnNumber: line.turnNumber,
+          amount: hp.percent - previousPercent,
+          source: "switch",
+        });
+      }
+      pokemon.hp = hp;
+    }
 
-    side.positions[pokemonRef.positionId].pokemon = pokemon;
+    const position = side.positions[pokemonRef.positionId];
+    if (options.clearVolatiles !== false) position.conditions = [];
+    position.pokemon = pokemon;
   }
 
   private resolvePokemonByRef(
@@ -1501,8 +1910,10 @@ export class ReplayStatesService {
   ): Pokemon | undefined {
     const side = field.sides[pokemonRef.sideId];
 
-    const activePokemon = side.positions[pokemonRef.positionId].pokemon;
-    if (activePokemon) return activePokemon;
+    if (pokemonRef.hasPosition) {
+      const activePokemon = side.positions[pokemonRef.positionId].pokemon;
+      if (activePokemon) return activePokemon;
+    }
 
     const direct = side.pokemon[pokemonRef.canonicalKey];
     if (direct) return direct;
@@ -1513,15 +1924,15 @@ export class ReplayStatesService {
   }
 
   private applyHpStatus(
-    pokemon?: Pokemon,
-    hpStatus?: HPSTATUS | HP,
+    pokemon: Pokemon | undefined,
+    hpStatus: HPSTATUS | HP | undefined,
     damageContext?: DamageData,
+    healContext?: { turnNumber: number; source?: string },
   ): void {
     if (!pokemon || !hpStatus) return;
     const previousPercent =
       typeof pokemon.hp?.percent === "number" ? pokemon.hp.percent : undefined;
     const hp = parseHpStatus(hpStatus);
-    hp;
     if (hp)
       pokemon.hp = {
         ...pokemon.hp,
@@ -1535,18 +1946,17 @@ export class ReplayStatesService {
         : undefined;
     if (hpDelta === undefined) return;
     if (hpDelta > 0) {
-      this.applyDamage(pokemon, damageContext);
+      if (damageContext) pokemon.damageHistory.push(damageContext);
     } else if (hpDelta < 0) {
-      this.applyHealing(pokemon);
+      pokemon.fainted = undefined;
+      if (healContext) {
+        pokemon.healHistory.push({
+          turnNumber: healContext.turnNumber,
+          amount: -hpDelta,
+          source: healContext.source,
+        });
+      }
     }
-  }
-
-  private applyDamage(damaged: Pokemon, damageContext?: DamageData): void {
-    if (damageContext) damaged.damageHistory.push(damageContext);
-  }
-
-  private applyHealing(healed: Pokemon): void {
-    healed.fainted = undefined;
   }
 
   private applyDetailsTransformLike(line: ReplayLine, field: Field): void {
