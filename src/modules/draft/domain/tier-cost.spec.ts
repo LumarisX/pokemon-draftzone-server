@@ -404,7 +404,7 @@ describe("isDraftComplete", () => {
   it("is complete once the counter reaches the total picks needed", () => {
     const tierList = buildTierList();
     const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
-    const draft = buildDraft({ counter: 4, teams: [buildTeam(), buildTeam()] });
+    const draft = buildDraft({ counter: 4, teams: [buildTeam(), buildTeam()], sequentialTurns: true });
 
     expect(isDraftComplete(tournament, draft)).toBe(true);
   });

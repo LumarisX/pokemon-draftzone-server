@@ -18,6 +18,7 @@ export type DraftAddedEvent = {
     draft: string;
   };
   canDraftTeams: string[];
+  canDraftCounts: Record<string, number>;
   team: {
     id: string;
     name: string;
@@ -32,6 +33,7 @@ export type DraftCounterEvent = {
   currentPick: ReturnType<typeof calculateCurrentPick>;
   nextTeam: string;
   canDraftTeams: string[];
+  canDraftCounts: Record<string, number>;
 };
 
 export type DraftCompletedEvent = {

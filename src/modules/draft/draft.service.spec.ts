@@ -22,7 +22,7 @@ import { TeamRepository } from "../team/team.repository";
 import { getDraftOrder } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import { DraftEngineService } from "./draft-engine.service";
-import { DraftPickDto, SetPicksDto } from "./draft.dto";
+import { DraftDto, SetPicksDto } from "./draft.dto";
 import { DraftRepository } from "./draft.repository";
 import { DraftService } from "./draft.service";
 
@@ -127,6 +127,7 @@ describe("DraftService", () => {
     teamRepo = { findManyByIds: jest.fn() } as unknown as jest.Mocked<TeamRepository>;
     draftEngine = {
       draftPokemon: jest.fn(),
+      batchDraftPokemon: jest.fn(),
       setDraftState: jest.fn(),
       skipCurrentPick: jest.fn(),
     } as unknown as jest.Mocked<DraftEngineService>;
@@ -279,12 +280,12 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       draftRepo.findTeamInDraftOrThrow.mockResolvedValue(team);
       mockedIsCoach.mockResolvedValue(false);
-      const dto = { pokemonId: "pikachu" } as DraftPickDto;
+      const dto = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
 
       await expect(
         service.draftPick("league-1", "tournament-1", "draft-1", "team-1", "auth0|stranger", dto),
       ).rejects.toMatchObject({ code: "AUTH-002" });
-      expect(draftEngine.draftPokemon).not.toHaveBeenCalled();
+      expect(draftEngine.batchDraftPokemon).not.toHaveBeenCalled();
     });
 
     it("allows the team's own coach to draft", async () => {
@@ -295,14 +296,16 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       draftRepo.findTeamInDraftOrThrow.mockResolvedValue(team);
       mockedIsCoach.mockResolvedValue(true);
-      const dto = { pokemonId: "pikachu" } as DraftPickDto;
+      const dto = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
+      const details = { leagueName: "Test League" };
+      mockedGetDraftDetails.mockResolvedValue(details);
 
       const result = await service.draftPick(
         "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
-      expect(draftEngine.draftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
-      expect(result).toEqual({ message: "Drafted successfully." });
+      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
+      expect(result).toBe(details);
     });
 
     it("allows a tournament organizer to draft on behalf of a team they don't coach", async () => {
@@ -313,13 +316,14 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       draftRepo.findTeamInDraftOrThrow.mockResolvedValue(team);
       mockedIsCoach.mockResolvedValue(false);
-      const dto = { pokemonId: "pikachu" } as DraftPickDto;
+      const dto = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
+      mockedGetDraftDetails.mockResolvedValue({});
 
       await service.draftPick(
         "league-1", "tournament-1", "draft-1", "team-1", "auth0|owner-2", dto,
       );
 
-      expect(draftEngine.draftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
+      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
     });
   });
 

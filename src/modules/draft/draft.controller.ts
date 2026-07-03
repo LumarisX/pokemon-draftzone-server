@@ -3,13 +3,14 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { DraftPickDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
+import { DraftDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
 @Controller("leagues/:leagueKey/tournaments/:tournamentKey/drafts/:draftKey")
@@ -104,7 +105,7 @@ export class DraftController {
     @Param("draftKey") draftKey: string,
     @Param("teamId") teamId: string,
     @User() sub: string,
-    @Body() body: DraftPickDto,
+    @Body() body: DraftDto,
   ) {
     return this.draftService.draftPick(
       leagueKey,
@@ -149,6 +150,25 @@ export class DraftController {
       draftKey,
       sub,
       body,
+    );
+  }
+
+  @Delete("teams/:teamId/draft/:pokemonId")
+  async removeDraftPick(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("draftKey") draftKey: string,
+    @Param("teamId") teamId: string,
+    @Param("pokemonId") pokemonId: string,
+    @User() sub: string,
+  ) {
+    return this.draftService.removeDraftPick(
+      leagueKey,
+      tournamentKey,
+      draftKey,
+      teamId,
+      sub,
+      pokemonId,
     );
   }
 

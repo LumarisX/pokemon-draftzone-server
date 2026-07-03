@@ -85,7 +85,7 @@ export const ErrorCodes = {
     NOT_YOUR_TURN: {
       code: "DR-001",
       status: 400,
-      message: "It is not your turn to draft",
+      message: "It is not this team's turn to draft.",
     },
     NOT_FOUND: {
       code: "DR-005",
@@ -110,7 +110,7 @@ export const ErrorCodes = {
     TEAM_ID_NOT_FOUND: {
       code: "DR-006",
       status: 404,
-      message: "Draft team ID not found",
+      message: "Team not found in draft.",
     },
     NOT_IN_LEAGUE: {
       code: "DR-007",

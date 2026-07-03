@@ -1,3 +1,5 @@
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { DiscordService } from "@modules/discord/discord.service";
 import { getName, getSpecies } from "@modules/data/domain/pokedex";
@@ -10,12 +12,15 @@ import { TeamPickEntity } from "@modules/team/team.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { AgendaService } from "@modules/agenda/agenda.service";
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
 import { EmbedBuilder, EmbedField } from "discord.js";
-import mongoose, { ClientSession } from "mongoose";
+import { ClientSession, Connection } from "mongoose";
+import { DraftDto } from "./draft.dto";
 import { DraftEventsService } from "./draft-events.service";
 import {
   calculateCanDraft,
+  calculateCanDraftCounts,
   calculateCurrentPick,
   calculateTeamTimer,
   cancelSkipTime,
@@ -89,30 +94,10 @@ function clearSideEffects(session: ClientSession) {
   sessionSideEffects.delete(session);
 }
 
-/**
- * The stateful draft "engine": the mutating, transactional, side-effecting
- * (Discord notifications, websocket events, Agenda skip timers) operations
- * that move a draft forward. Pure read/computation logic lives in ./domain
- * instead, importable without Nest DI (the legacy /leagues route relies on
- * that).
- *
- * Needs Nest DI (TeamRepository) to re-fetch a team mid-flow without the
- * raw-Mongoose-model workaround the free-function predecessor of this class
- * used. AgendaModule and DraftModule depend on each other (this service
- * calls into AgendaService for skip timers; AgendaService's skip-draft-pick
- * job handler calls back into this service) — forwardRef() on both sides
- * resolves that cycle. The one remaining non-Nest caller
- * (routes/league.route.ts) reaches this through the nest-app-context bridge
- * instead of constructor injection.
- *
- * Discord notifications go through the Nest DiscordService, and draft
- * lifecycle events go through DraftEventsService, an anti-corruption layer
- * around the EventEmitter2 bus that a future websocket gateway will
- * subscribe to.
- */
 @Injectable()
 export class DraftEngineService {
   constructor(
+    @InjectConnection() private readonly connection: Connection,
     private readonly teamRepo: TeamRepository,
     private readonly discordService: DiscordService,
     private readonly draftEvents: DraftEventsService,
@@ -159,7 +144,7 @@ export class DraftEngineService {
   ) {
     let newSession = false;
     if (!session) {
-      session = await mongoose.startSession();
+      session = await this.connection.startSession();
       session.startTransaction();
       newSession = true;
     }
@@ -168,20 +153,22 @@ export class DraftEngineService {
     let currentTeam = team;
 
     try {
-      if (draft.status === "IN_PROGRESS") {
-        currentDraft.status = "IN_PROGRESS";
-      }
-
       const dbTeam = currentDraft.teams.find((t: PopulatedTeam) =>
         t._id.equals(team._id),
       );
       if (!dbTeam) {
-        throw new Error("Team not found in draft.");
+        throw new PDZError(ErrorCodes.DRAFT.TEAM_ID_NOT_FOUND);
       }
       currentTeam = dbTeam;
 
+      if (currentDraft.status !== "IN_PROGRESS") {
+        throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+          reason: `Draft is currently ${currentDraft.status.toLowerCase().replace("_", " ")}.`,
+        });
+      }
+
       if (!(await canTeamDraft(currentDraft, currentTeam))) {
-        throw new Error("It is not this team's turn to draft.");
+        throw new PDZError(ErrorCodes.DRAFT.NOT_YOUR_TURN);
       }
 
       const draftCheck = await canBeDraftedWithReason(
@@ -191,14 +178,14 @@ export class DraftEngineService {
         pick,
       );
       if (!draftCheck.canDraft)
-        throw new Error(draftCheck.reason || "Pokemon cannot be drafted.");
+        throw new PDZError(ErrorCodes.DRAFT.INVALID_POKEMON, {
+          reason: draftCheck.reason,
+        });
 
       const picker = currentTeam.coach?._id || currentTeam.coach;
 
       currentTeam.pickLog.push({
-        pokemon: {
-          id: toID(pick.pokemonId),
-        },
+        pokemon: { id: toID(pick.pokemonId) },
         picker,
         addons: pick.addons,
         timestamp: new Date(),
@@ -218,7 +205,6 @@ export class DraftEngineService {
         "coach",
       )) as unknown as PopulatedTeam;
 
-      const coach = currentTeam.coach;
       const currentTeamId = currentTeam._id.toString();
 
       const teamIndex = currentDraft.teams.findIndex(
@@ -240,30 +226,28 @@ export class DraftEngineService {
         currentTeamId,
       );
 
-      const numberOfRounds = tournament.draftCount.max;
       const initialTeamOrder = getDraftOrder(currentDraft);
-
       const pickOrder = generatePickOrder(
         initialTeamOrder,
-        numberOfRounds,
+        tournament.draftCount.max,
         currentDraft.orderProgression,
       );
       const canDraftTeams = calculateCanDraft(currentDraft, pickOrder);
-      const pokemonSpecie = getSpecies(pick.pokemonId)!;
+      const canDraftCounts = calculateCanDraftCounts(currentDraft, pickOrder);
 
       const pokemonTierMap = createPokemonTierMap(tournament);
-
       const draftPicks = await Promise.all(
-        currentTeam.pickLog.map(async (pick) => ({
-          id: getPokemonIdFromDraft(pick),
-          name: getName(getPokemonIdFromDraft(pick)),
-          tier: pokemonTierMap.get(getPokemonIdFromDraft(pick)),
+        currentTeam.pickLog.map(async (p) => ({
+          id: getPokemonIdFromDraft(p),
+          name: getName(getPokemonIdFromDraft(p)),
+          tier: pokemonTierMap.get(getPokemonIdFromDraft(p)),
           cost: getPickCost(tournament.tierList, {
-            pokemonId: getPokemonIdFromDraft(pick),
-            addons: pick.addons,
+            pokemonId: getPokemonIdFromDraft(p),
+            addons: p.addons,
           }),
         })),
       );
+
       queueSideEffect(session, () => {
         this.draftEvents.emitDraftAdded({
           tournamentId: tournament.tournamentKey,
@@ -271,17 +255,15 @@ export class DraftEngineService {
           pick: {
             pokemon: {
               id: pick.pokemonId,
-              name: pokemonSpecie.name,
+              name: getName(pick.pokemonId),
               tier: tier?.name,
               cost: tier?.cost,
             },
-            team: {
-              id: currentTeamId,
-              name: currentTeam.teamName,
-            },
+            team: { id: currentTeamId, name: currentTeam.teamName },
             draft: currentDraft.name,
           },
           canDraftTeams,
+          canDraftCounts,
           team: {
             id: currentTeamId,
             name: currentTeam.teamName,
@@ -291,81 +273,22 @@ export class DraftEngineService {
         });
       });
 
-      if (currentDraft.channelId) {
-        const channelId = currentDraft.channelId;
-        const pokemon = {
-          name: pokemonSpecie.name,
-          id: pick.pokemonId,
-        };
+      await this.queueDiscordDraftPick(
+        tournament,
+        currentDraft,
+        currentTeam,
+        pick,
+        tier,
+        snipeCount,
+        session,
+      );
 
-        await currentTeam.populate<{
-          coach: CoachDocument;
-        }>("coach");
-
-        const coachMention = await this.discordService.resolveMention(
-          channelId,
-          currentTeam.coach?.discordName,
-        );
-        const messageContent = `${pokemon.name} was drafted by ${
-          coachMention ?? "a coach"
-        }.`;
-
-        const currentRound = getCurrentRound(currentDraft);
-        const currentPositionInRound = getCurrentPositionInRound(currentDraft);
-
-        const color = typeColorMap.get(pokemonSpecie.types[0]);
-
-        const fields: EmbedField[] = [
-          {
-            name: "Round",
-            value: `${currentRound + 1}`,
-            inline: true,
-          },
-          {
-            name: "Position",
-            value: `${currentPositionInRound + 1}`,
-            inline: true,
-          },
-          {
-            name: "Cost",
-            value: tier ? tier.cost.toString() : "Banned",
-            inline: true,
-          },
-        ];
-        if (pick.addons?.length)
-          fields.push({
-            name: "Captain",
-            value: "Tera",
-            inline: true,
-          });
-        if (snipeCount)
-          fields.push({
-            name: "Sniped Teams",
-            value: snipeCount.toString(),
-            inline: true,
-          });
-        queueSideEffect(session, () => {
-          const embed = new EmbedBuilder()
-            .setTitle(`${currentTeam.teamName} drafted ${pokemon.name}!`)
-            .setColor(color ?? 0xffde00)
-            // Best-guess server-side rename; the Angular client's
-            // /divisions/ route isn't updated this pass (see plan Section 0).
-            .setURL(
-              `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/drafts/${currentDraft.draftKey}/draft`,
-            )
-            .addFields(fields)
-            .setImage(
-              `https://play.pokemonshowdown.com/sprites/gen5/${pokemon.id}.png`,
-            )
-            .setTimestamp();
-          this.discordService.sendMessage(channelId, {
-            content: messageContent,
-            embeds: [embed],
-          });
-        });
-      }
-
-      await this.checkCounterIncrease(tournament, currentDraft, currentTeam, session);
+      await this.handlePostPickState(
+        tournament,
+        currentDraft,
+        currentTeam,
+        session,
+      );
 
       Object.assign(draft, currentDraft.toObject());
       Object.assign(team, currentTeam.toObject());
@@ -421,141 +344,231 @@ export class DraftEngineService {
     return teamsWithPick.length;
   }
 
-  private async increaseCounter(
+  private async queueDiscordDraftPick(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    pick: TeamPickEntity,
+    tier: { cost: number; name?: string } | undefined,
+    snipeCount: number,
+    session: ClientSession | undefined,
+  ): Promise<void> {
+    if (!draft.channelId) return;
+
+    const channelId = draft.channelId;
+    const pokemonName = getName(pick.pokemonId);
+    const pokemonSpecie = getSpecies(pick.pokemonId);
+
+    await team.populate<{ coach: CoachDocument }>("coach");
+
+    const coachMention = await this.discordService.resolveMention(
+      channelId,
+      team.coach?.discordName,
+    );
+    const messageContent = `${pokemonName} was drafted by ${coachMention ?? "a coach"}.`;
+
+    const color = pokemonSpecie?.types[0]
+      ? typeColorMap.get(pokemonSpecie.types[0])
+      : undefined;
+
+    const fields: EmbedField[] = [
+      { name: "Round", value: `${getCurrentRound(draft) + 1}`, inline: true },
+      {
+        name: "Position",
+        value: `${getCurrentPositionInRound(draft) + 1}`,
+        inline: true,
+      },
+      {
+        name: "Cost",
+        value: tier ? tier.cost.toString() : "Banned",
+        inline: true,
+      },
+    ];
+    if (pick.addons?.length)
+      fields.push({ name: "Captain", value: "Tera", inline: true });
+    if (snipeCount)
+      fields.push({
+        name: "Sniped Teams",
+        value: snipeCount.toString(),
+        inline: true,
+      });
+
+    queueSideEffect(session, () => {
+      const embed = new EmbedBuilder()
+        .setTitle(`${team.teamName} drafted ${pokemonName}!`)
+        .setColor(color ?? 0xffde00)
+        .setURL(
+          `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/drafts/${draft.draftKey}/draft`,
+        )
+        .addFields(fields)
+        .setImage(
+          `https://play.pokemonshowdown.com/sprites/gen5/${pick.pokemonId}.png`,
+        )
+        .setTimestamp();
+      this.discordService.sendMessage(channelId, {
+        content: messageContent,
+        embeds: [embed],
+      });
+    });
+  }
+
+  private async handlePostPickState(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    session?: ClientSession,
+  ) {
+    if (!tournament.draftCount.max) return;
+
+    if (isDraftComplete(tournament, draft)) {
+      await this.completeDraft(tournament, draft, session);
+      return;
+    }
+
+    if (!draft.sequentialTurns) return;
+
+    const currentRound = Math.floor(draft.counter / draft.teams.length);
+    const currentPickingTeam = getCurrentPickingTeam(draft);
+    if (
+      !currentPickingTeam ||
+      !currentPickingTeam._id.equals(team._id) ||
+      currentPickingTeam.pickLog.length < currentRound + 1
+    )
+      return;
+
+    await this.advanceSequentialCounter(tournament, draft, session);
+  }
+
+  private async skipToNextActiveTeam(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    pickOrder: PopulatedTeam[],
+    session?: ClientSession,
+  ): Promise<PopulatedTeam | null> {
+    let nextTeam = getCurrentPickingTeam(draft);
+    if (!nextTeam) return null;
+
+    let skippedTeams = 0;
+    const maxSkips = draft.teams.length;
+
+    while (await isTeamDoneDrafting(tournament, draft, nextTeam)) {
+      skippedTeams++;
+      if (skippedTeams > maxSkips || draft.counter >= pickOrder.length - 1)
+        return null;
+
+      const fullTeam = await this.teamRepo.findByIdOrNull(nextTeam._id);
+      if (fullTeam) {
+        fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
+        await fullTeam.save({ session });
+        const teamIndex = draft.teams.findIndex((t) =>
+          t._id.equals(fullTeam._id),
+        );
+        if (teamIndex !== -1) draft.teams[teamIndex] = fullTeam;
+      }
+
+      draft.counter++;
+      nextTeam = getCurrentPickingTeam(draft);
+      if (!nextTeam) return null;
+    }
+
+    await nextTeam.populate<{ coach: CoachDocument }>("coach");
+    return nextTeam;
+  }
+
+  private async advanceSequentialCounter(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
     session?: ClientSession,
   ) {
-    try {
-      const numberOfRounds = tournament.draftCount.max;
-      const initialTeamOrder = getDraftOrder(draft);
-      const pickOrder = generatePickOrder(
-        initialTeamOrder,
-        numberOfRounds,
-        draft.orderProgression,
+    const initialTeamOrder = getDraftOrder(draft);
+    const pickOrder = generatePickOrder(
+      initialTeamOrder,
+      tournament.draftCount.max,
+      draft.orderProgression,
+    );
+
+    if (draft.status !== "IN_PROGRESS") return;
+
+    draft.counter++;
+
+    if (draft.counter >= pickOrder.length) {
+      await this.completeDraft(tournament, draft, session);
+      return;
+    }
+
+    if (session) {
+      queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft));
+    }
+
+    const nextTeam = await this.skipToNextActiveTeam(
+      tournament,
+      draft,
+      pickOrder,
+      session,
+    );
+    if (!nextTeam) {
+      await this.completeDraft(tournament, draft, session);
+      return;
+    }
+
+    const newSkipTime = new Date();
+    newSkipTime.setSeconds(
+      newSkipTime.getSeconds() +
+        calculateTeamTimer(draft.timerLength, nextTeam.skipCount || 0),
+    );
+    draft.skipTime = newSkipTime;
+
+    if (session) {
+      queueSideEffect(session, () =>
+        this.agendaService.resumeSkipPick(tournament, draft),
       );
+    } else {
+      await this.agendaService.cancelSkipPick(draft);
+      await this.agendaService.resumeSkipPick(tournament, draft);
+    }
 
-      if (draft.status !== "IN_PROGRESS") return;
-
-      if (isDraftComplete(tournament, draft)) {
-        await this.completeDraft(tournament, draft, session);
-        return;
-      }
-
-      draft.counter++;
-
-      if (draft.counter >= pickOrder.length) {
-        await this.completeDraft(tournament, draft, session);
-        return;
-      }
-
-      if (session) {
-        queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft as any));
-      }
-      let nextTeam = getCurrentPickingTeam(draft);
-
-      if (!nextTeam) {
-        await this.completeDraft(tournament, draft, session);
-        return;
-      }
-
-      let skippedTeams = 0;
-      const maxSkips = initialTeamOrder.length;
-
-      while (await isTeamDoneDrafting(tournament, draft, nextTeam)) {
-        skippedTeams++;
-
-        if (skippedTeams > maxSkips || draft.counter >= pickOrder.length - 1) {
-          await this.completeDraft(tournament, draft, session);
-          return;
-        }
-
-        const fullTeam = await this.teamRepo.findByIdOrNull(nextTeam._id);
-        if (fullTeam) {
-          fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
-          await fullTeam.save({ session });
-          const teamIndex = draft.teams.findIndex((t) =>
-            t._id.equals(fullTeam._id),
-          );
-          if (teamIndex !== -1) {
-            draft.teams[teamIndex] = fullTeam;
-          }
-        }
-        draft.counter++;
-        const newNextTeam = getCurrentPickingTeam(draft);
-        if (!newNextTeam) {
-          await this.completeDraft(tournament, draft, session);
-          return;
-        }
-        nextTeam = newNextTeam;
-      }
-
-      if (session) {
-        const newSkipTime = new Date();
-        const teamTimer = calculateTeamTimer(
-          draft.timerLength,
-          nextTeam.skipCount || 0,
-        );
-        newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-        draft.skipTime = newSkipTime;
-        queueSideEffect(session, () =>
-          this.agendaService.resumeSkipPick(tournament, draft as any),
-        );
-      } else {
-        const newSkipTime = new Date();
-        const teamTimer = calculateTeamTimer(
-          draft.timerLength,
-          nextTeam.skipCount || 0,
-        );
-        newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-        draft.skipTime = newSkipTime;
-        await this.agendaService.cancelSkipPick(draft as any);
-        await this.agendaService.resumeSkipPick(tournament, draft as any);
-      }
-
-      await nextTeam.populate<{
-        coach: CoachDocument;
-      }>("coach");
-
-      const nextTeamPicks = await this.currentTeamPicks(
+    const nextTeamPicks = await this.currentTeamPicks(
+      tournament,
+      draft,
+      nextTeam,
+      session,
+    );
+    if (nextTeamPicks) {
+      await draft.save({ session });
+      await this.draftPokemon(
         tournament,
         draft,
         nextTeam,
+        nextTeamPicks[0],
         session,
       );
-      if (nextTeamPicks) {
-        await draft.save({ session });
-        await this.draftPokemon(tournament, draft, nextTeam, nextTeamPicks[0], session);
-      } else {
-        queueSideEffect(session, async () => {
-          this.draftEvents.emitDraftCounter({
-            tournamentId: tournament.tournamentKey,
-            draftId: draft.draftKey,
-            currentPick: calculateCurrentPick(draft),
-            nextTeam: nextTeam._id.toString(),
-            canDraftTeams: calculateCanDraft(draft, pickOrder),
-          });
-
-          if (draft.channelId) {
-            const channelId = draft.channelId;
-            const nextCoachMention = await this.discordService.resolveMention(
-              channelId,
-              nextTeam.coach.discordName,
-            );
-            const mentionText = nextCoachMention
-              ? `${nextCoachMention}, it is now your turn!`
-              : "It is now your turn!";
-            await this.discordService.sendMessage(channelId, {
-              content: mentionText,
-            });
-          }
+    } else {
+      queueSideEffect(session, async () => {
+        this.draftEvents.emitDraftCounter({
+          tournamentId: tournament.tournamentKey,
+          draftId: draft.draftKey,
+          currentPick: calculateCurrentPick(draft),
+          nextTeam: nextTeam._id.toString(),
+          canDraftTeams: calculateCanDraft(draft, pickOrder),
+          canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
         });
 
-        await draft.save({ session });
-      }
-    } catch (error) {
-      console.error("Error in increaseCounter:", error);
-      throw error;
+        if (draft.channelId) {
+          const channelId = draft.channelId;
+          const nextCoachMention = await this.discordService.resolveMention(
+            channelId,
+            nextTeam.coach.discordName,
+          );
+          const mentionText = nextCoachMention
+            ? `${nextCoachMention}, it is now your turn!`
+            : "It is now your turn!";
+          await this.discordService.sendMessage(channelId, {
+            content: mentionText,
+          });
+        }
+      });
+
+      await draft.save({ session });
     }
   }
 
@@ -567,7 +580,7 @@ export class DraftEngineService {
     if (draft.status === "COMPLETED") return;
 
     draft.status = "COMPLETED";
-    queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft as any));
+    queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft));
     draft.skipTime = undefined;
     draft.remainingTime = undefined;
 
@@ -583,8 +596,6 @@ export class DraftEngineService {
       if (draft.channelId) {
         const embed = new EmbedBuilder()
           .setTitle(`${draft.name} Draft Complete`)
-          // Best-guess server-side rename; the Angular client's
-          // /divisions/ route isn't updated this pass (see plan Section 0).
           .setURL(
             `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/drafts/${draft.draftKey}/draft`,
           )
@@ -599,27 +610,6 @@ export class DraftEngineService {
         });
       }
     });
-  }
-
-  private async checkCounterIncrease(
-    tournament: PopulatedTournament,
-    draft: PopulatedDraft,
-    team: PopulatedTeam,
-    session?: ClientSession,
-  ) {
-    const currentRound = Math.floor(draft.counter / draft.teams.length);
-    const currentPickingTeam = getCurrentPickingTeam(draft);
-    if (!currentPickingTeam) {
-      await this.completeDraft(tournament, draft, session);
-      return;
-    }
-
-    if (
-      currentPickingTeam._id.equals(team._id) &&
-      currentPickingTeam.pickLog.length >= currentRound + 1
-    ) {
-      await this.increaseCounter(tournament, draft, session);
-    }
   }
 
   async skipCurrentPick(
@@ -640,7 +630,9 @@ export class DraftEngineService {
 
       await fullTeam.save();
 
-      const teamIndex = draft.teams.findIndex((t) => t._id.equals(fullTeam._id));
+      const teamIndex = draft.teams.findIndex((t) =>
+        t._id.equals(fullTeam._id),
+      );
       if (teamIndex !== -1) {
         draft.teams[teamIndex] = fullTeam;
       }
@@ -677,9 +669,92 @@ export class DraftEngineService {
       });
     }
 
-    await this.increaseCounter(tournament, draft);
+    await this.advanceSequentialCounter(tournament, draft);
 
     return true;
+  }
+
+  async undraftPokemon(
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    pokemonId: string,
+  ) {
+    if (draft.sequentialTurns && !draft.allowRemovals)
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "Draft does not allow removals.",
+      });
+
+    const pickIndex = team.pickLog.findIndex(
+      (p) => getPokemonIdFromDraft(p) === pokemonId,
+    );
+    if (pickIndex === -1)
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_POKEMON, {
+        reason: "Pokemon not found in pick log.",
+      });
+
+    team.pickLog.splice(pickIndex, 1);
+    await team.save();
+  }
+
+  async batchDraftPokemon(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    dto: DraftDto,
+  ) {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+    try {
+      const teamIndex = draft.teams.findIndex((t) => t._id.equals(team._id));
+      let currentTeam: PopulatedTeam =
+        teamIndex !== -1 ? (draft.teams[teamIndex] as PopulatedTeam) : team;
+
+      // Removes first — frees points before adds are validated
+      if (dto.remove?.length) {
+        if (draft.sequentialTurns && !draft.allowRemovals)
+          throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+            reason: "Draft does not allow removals.",
+          });
+
+        for (const pokemonId of dto.remove) {
+          const pickIndex = currentTeam.pickLog.findIndex(
+            (p) => getPokemonIdFromDraft(p) === pokemonId,
+          );
+          if (pickIndex === -1)
+            throw new PDZError(ErrorCodes.DRAFT.INVALID_POKEMON, {
+              reason: `Pokemon ${pokemonId} not found in pick log.`,
+            });
+          currentTeam.pickLog.splice(pickIndex, 1);
+        }
+        await currentTeam.save({ session });
+        if (teamIndex !== -1) draft.teams[teamIndex] = currentTeam;
+      }
+
+      // Adds — each call validates, mutates draft.teams in-memory, and queues WS events
+      if (dto.add?.length) {
+        for (const pick of dto.add) {
+          await this.draftPokemon(
+            tournament,
+            draft,
+            currentTeam,
+            pick,
+            session,
+          );
+          // draftPokemon() updates draft.teams[teamIndex] in-memory; refresh reference
+          if (teamIndex !== -1)
+            currentTeam = draft.teams[teamIndex] as PopulatedTeam;
+        }
+      }
+
+      await session.commitTransaction();
+      await flushSideEffects(session);
+    } catch (err) {
+      await session.abortTransaction();
+      clearSideEffects(session);
+      throw err;
+    } finally {
+      session.endSession();
+    }
   }
 
   async setDraftState(
@@ -694,7 +769,7 @@ export class DraftEngineService {
         const currentTeam = getCurrentPickingTeam(draft);
         const teamTimer = currentTeam
           ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
-          : draft.timerLength ?? 30;
+          : (draft.timerLength ?? 30);
         const secondsToAdd = draft.remainingTime ?? teamTimer;
         newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
         draft.skipTime = newSkipTime;
@@ -702,23 +777,30 @@ export class DraftEngineService {
 
         await draft.save();
 
-        if (!currentTeam) {
-          return;
-        }
+        if (!currentTeam) return;
 
-        const queuedPicks = await this.currentTeamPicks(tournament, draft, currentTeam);
+        const queuedPicks = await this.currentTeamPicks(
+          tournament,
+          draft,
+          currentTeam,
+        );
         if (queuedPicks?.length) {
-          await this.draftPokemon(tournament, draft, currentTeam, queuedPicks[0]);
+          await this.draftPokemon(
+            tournament,
+            draft,
+            currentTeam,
+            queuedPicks[0],
+          );
           return;
         }
 
-        await this.agendaService.resumeSkipPick(tournament, draft as any);
+        await this.agendaService.resumeSkipPick(tournament, draft);
       },
       pause: async () => {
         draft.status = "PAUSED";
         cancelSkipTime(draft);
         draft.skipTime = undefined;
-        await this.agendaService.cancelSkipPick(draft as any);
+        await this.agendaService.cancelSkipPick(draft);
       },
     };
 

@@ -22,7 +22,7 @@ import {
 import { DraftEngineService } from "./draft-engine.service";
 import { getDraftOrder } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
-import { DraftPickDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
+import { DraftDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
 import {
   DraftRepository,
   PopulatedTeam,
@@ -246,8 +246,13 @@ export class DraftService {
     draftKey: string,
     teamId: string,
     sub: string,
-    dto: DraftPickDto,
+    dto: DraftDto,
   ) {
+    if (!dto.add?.length && !dto.remove?.length && dto.picks === undefined)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Must include at least one add, remove, or picks update.",
+      });
+
     const { tournament, draft } = await this.loadContext(
       leagueKey,
       tournamentKey,
@@ -260,8 +265,17 @@ export class DraftService {
         reason: "User is not a coach on this team or a tournament organizer",
       });
 
-    await this.draftEngine.draftPokemon(tournament, draft, team, dto);
-    return { message: "Drafted successfully." };
+    if (dto.add?.length || dto.remove?.length)
+      await this.draftEngine.batchDraftPokemon(tournament, draft, team, dto);
+
+    if (dto.picks !== undefined) {
+      team.picks = dto.picks;
+      await team.save();
+    }
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueKey, tournamentKey, draftKey);
+    return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async setPicks(
@@ -305,6 +319,30 @@ export class DraftService {
 
     await this.draftEngine.setDraftState(tournament, draft, dto.state);
     return { message: "Timer set successfully." };
+  }
+
+  async removeDraftPick(
+    leagueKey: string,
+    tournamentKey: string,
+    draftKey: string,
+    teamId: string,
+    sub: string,
+    pokemonId: string,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueKey,
+      tournamentKey,
+      draftKey,
+    );
+    const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
+
+    if (!this.isOrganizer(tournament, sub) && !(await isCoach(team, sub)))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
+        reason: "User is not a coach on this team or a tournament organizer",
+      });
+
+    await this.draftEngine.undraftPokemon(draft, team, pokemonId);
+    return { message: "Pick removed successfully." };
   }
 
   async skipPick(

@@ -3,7 +3,9 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 export class DraftPickDto {
   @IsString()
@@ -14,6 +16,23 @@ export class DraftPickDto {
   @IsString({ each: true })
   @IsOptional()
   addons?: string[];
+}
+
+export class DraftDto {
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => DraftPickDto)
+  add?: DraftPickDto[];
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  remove?: string[];
+
+  @IsArray()
+  @IsOptional()
+  picks?: DraftPickDto[][];
 }
 
 export class SetPicksDto {

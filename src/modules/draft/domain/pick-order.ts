@@ -1,8 +1,5 @@
 import { getName } from "@modules/data/domain/pokedex";
-import {
-  PopulatedDraft,
-  PopulatedTeam,
-} from "@modules/draft/draft.repository";
+import { PopulatedDraft, PopulatedTeam } from "@modules/draft/draft.repository";
 import { PickLogEntity } from "@modules/team/team.schema";
 import mongoose from "mongoose";
 
@@ -167,11 +164,62 @@ export function calculateCanDraft(
   return canDraft;
 }
 
-/**
- * Calculates the current pick number and round.
- * @param draft - The draft document.
- * @returns An object with the current round and position.
- */
+export function calculateCanDraftCounts(
+  draft: PopulatedDraft,
+  pickOrder: PopulatedTeam[],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (draft.status !== "IN_PROGRESS") return counts;
+
+  if (!draft.sequentialTurns) {
+    const roundsPerTeam = new Map<string, number>();
+    for (const team of pickOrder) {
+      const teamId = team._id.toString();
+      roundsPerTeam.set(teamId, (roundsPerTeam.get(teamId) || 0) + 1);
+    }
+    const seenTeams = new Map<string, PopulatedTeam>();
+    for (const team of pickOrder) seenTeams.set(team._id.toString(), team);
+
+    for (const [teamId, totalRounds] of roundsPerTeam) {
+      const team = seenTeams.get(teamId)!;
+      const deficit = totalRounds - team.pickLog.length;
+      if (deficit > 0) counts[teamId] = deficit;
+    }
+    return counts;
+  }
+
+  if (draft.orderProgression === "snake") {
+    const initialTeamOrder = getDraftOrder(draft);
+    if (!initialTeamOrder || initialTeamOrder.length === 0) return counts;
+
+    const picksExpected = new Map<string, number>();
+    const counterLimit = Math.min(draft.counter, pickOrder.length);
+    for (let i = 0; i < counterLimit; i++) {
+      const teamId = pickOrder[i]._id.toString();
+      picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
+    }
+
+    const currentPickingTeamId =
+      draft.counter < pickOrder.length
+        ? pickOrder[draft.counter]._id.toString()
+        : undefined;
+
+    for (const team of initialTeamOrder) {
+      const teamId = team._id.toString();
+      let expected = picksExpected.get(teamId) || 0;
+      if (teamId === currentPickingTeamId) expected += 1;
+      const deficit = expected - team.pickLog.length;
+      if (deficit > 0) counts[teamId] = deficit;
+    }
+
+    return counts;
+  }
+
+  // Todo: Add support for linear draft
+
+  return counts;
+}
+
 export function calculateCurrentPick(draft: PopulatedDraft) {
   return {
     round: Math.floor(draft.counter / draft.teams.length),
@@ -209,16 +257,6 @@ export function getCurrentPickingTeam(
   return pickingOrder[currentPositionInRound];
 }
 
-/**
- * Calculates the timer length for a team based on their skip count.
- * Timer is halved for each skip: baseTimer / (2^skipCount)
- * @param baseTimerLength - The base timer length in seconds. `Draft.timerLength`
- *   is an optional field (no schema default) — undefined falls back to the
- *   same 30s floor this function already clamps to, rather than guessing at
- *   a product-level default.
- * @param skipCount - The number of times this team has been skipped
- * @returns The calculated timer length in seconds (minimum 30 seconds)
- */
 export function calculateTeamTimer(
   baseTimerLength: number | undefined,
   skipCount: number,
@@ -234,6 +272,8 @@ export async function canTeamDraft(
   if (draft.status !== "IN_PROGRESS") {
     return false;
   }
+
+  if (!draft.sequentialTurns) return true;
 
   const teams = getDraftOrder(draft);
   const teamsCount = teams.length;

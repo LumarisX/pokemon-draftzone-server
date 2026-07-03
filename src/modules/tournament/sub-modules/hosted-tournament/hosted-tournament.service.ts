@@ -200,6 +200,8 @@ export class HostedTournamentService {
       })),
       discord: tournament.discord,
       tierListId: tournament.tierListId,
+      draftCount: tournament.draftCount,
+      pointTotal: tournament.pointTotal,
     };
   }
 

@@ -12,7 +12,7 @@ import {
   TierList,
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
-import mongoose, { ClientSession, Types } from "mongoose";
+import mongoose, { ClientSession, Connection, Types } from "mongoose";
 import { DraftEngineService } from "./draft-engine.service";
 import { DraftEventsService } from "./draft-events.service";
 import { TeamRepository } from "../team/team.repository";
@@ -26,7 +26,9 @@ function buildFakeSession(): jest.Mocked<ClientSession> {
   } as unknown as jest.Mocked<ClientSession>;
 }
 
-function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
+function buildTierList(
+  overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {},
+) {
   return new TierList({
     id: "tierlist-1",
     name: "Spring Tier List",
@@ -35,7 +37,10 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
       ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
       ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
     ]),
-    tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
+    tiers: [
+      new Tier({ name: "S", cost: 10 }),
+      new Tier({ name: "A", cost: 5 }),
+    ],
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -46,7 +51,8 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
 }
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
-  const tierList = (overrides.tierList as TierList | undefined) ?? buildTierList();
+  const tierList =
+    (overrides.tierList as TierList | undefined) ?? buildTierList();
   return {
     tournamentKey: "spring-cup",
     tierList,
@@ -102,9 +108,12 @@ describe("DraftEngineService", () => {
   let agendaService: jest.Mocked<AgendaService>;
   let engine: DraftEngineService;
   let fakeSession: jest.Mocked<ClientSession>;
+  let fakeConnection: jest.Mocked<Connection>;
 
   beforeEach(() => {
-    teamRepo = { findByIdOrNull: jest.fn() } as unknown as jest.Mocked<TeamRepository>;
+    teamRepo = {
+      findByIdOrNull: jest.fn(),
+    } as unknown as jest.Mocked<TeamRepository>;
     discordService = {
       resolveMention: jest.fn().mockResolvedValue(null),
       sendMessage: jest.fn().mockResolvedValue(undefined),
@@ -120,10 +129,19 @@ describe("DraftEngineService", () => {
       cancelSkipPick: jest.fn().mockResolvedValue(undefined),
       resumeSkipPick: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AgendaService>;
-    engine = new DraftEngineService(teamRepo, discordService, draftEvents, agendaService);
+    fakeConnection = {
+      startSession: jest.fn(),
+    } as unknown as jest.Mocked<Connection>;
+    engine = new DraftEngineService(
+      fakeConnection,
+      teamRepo,
+      discordService,
+      draftEvents,
+      agendaService,
+    );
 
     fakeSession = buildFakeSession();
-    jest.spyOn(mongoose, "startSession").mockResolvedValue(fakeSession);
+    fakeConnection.startSession.mockResolvedValue(fakeSession);
   });
 
   afterEach(() => {
@@ -184,12 +202,18 @@ describe("DraftEngineService", () => {
       const externalSession = buildFakeSession();
 
       await expect(
-        engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" }, externalSession),
+        engine.draftPokemon(
+          tournament,
+          draft,
+          team,
+          { pokemonId: "pikachu" },
+          externalSession,
+        ),
       ).rejects.toThrow();
 
       expect(externalSession.abortTransaction).not.toHaveBeenCalled();
       expect(externalSession.endSession).not.toHaveBeenCalled();
-      expect(mongoose.startSession).not.toHaveBeenCalled();
+      expect(fakeConnection.startSession).not.toHaveBeenCalled();
     });
   });
 
@@ -197,10 +221,15 @@ describe("DraftEngineService", () => {
     it("appends the pick to pickLog and persists the team", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team] });
 
-      await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
 
       expect(team.pickLog).toHaveLength(1);
       expect(team.pickLog[0].pokemon.id).toBe("pikachu");
@@ -220,10 +249,15 @@ describe("DraftEngineService", () => {
         teamName: "C",
         picks: [[{ pokemonId: "pikachu" }, { pokemonId: "charizard" }]],
       });
-      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [teamA, teamB, teamC] });
 
-      await engine.draftPokemon(tournament, draft, teamA, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, teamA, {
+        pokemonId: "pikachu",
+      });
 
       expect(teamC.picks[0]).toEqual([{ pokemonId: "charizard" }]);
       expect(teamC.save).toHaveBeenCalled();
@@ -232,17 +266,27 @@ describe("DraftEngineService", () => {
     it("emits a draft.added event with the pick/team summary", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team] });
 
-      await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
 
       expect(draftEvents.emitDraftAdded).toHaveBeenCalledWith(
         expect.objectContaining({
           tournamentId: "spring-cup",
           draftId: "spring-draft",
           pick: expect.objectContaining({
-            pokemon: expect.objectContaining({ id: "pikachu", name: "Pikachu", tier: "S", cost: 10 }),
+            pokemon: expect.objectContaining({
+              id: "pikachu",
+              name: "Pikachu",
+              tier: "S",
+              cost: 10,
+            }),
           }),
         }),
       );
@@ -251,10 +295,15 @@ describe("DraftEngineService", () => {
     it("doesn't send a Discord message when the draft has no channelId", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team], channelId: undefined });
 
-      await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
 
       expect(discordService.sendMessage).not.toHaveBeenCalled();
     });
@@ -262,15 +311,25 @@ describe("DraftEngineService", () => {
     it("sends a Discord announcement when the draft has a channelId", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
-      const tournament = buildTournament({ tierList, draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team], channelId: "channel-1" });
 
-      await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
 
-      expect(discordService.resolveMention).toHaveBeenCalledWith("channel-1", "ash#1234");
+      expect(discordService.resolveMention).toHaveBeenCalledWith(
+        "channel-1",
+        "ash#1234",
+      );
       expect(discordService.sendMessage).toHaveBeenCalledWith(
         "channel-1",
-        expect.objectContaining({ content: expect.stringContaining("Pikachu was drafted") }),
+        expect.objectContaining({
+          content: expect.stringContaining("Pikachu was drafted"),
+        }),
       );
     });
 
@@ -280,11 +339,16 @@ describe("DraftEngineService", () => {
       const tournament = buildTournament({ tierList });
       const draft = buildDraft({ teams: [team], counter: 0 });
 
-      await engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" });
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
 
       expect(draft.status).toBe("COMPLETED");
       expect(draftEvents.emitDraftCompleted).toHaveBeenCalledWith(
-        expect.objectContaining({ tournamentId: "spring-cup", draftId: "spring-draft" }),
+        expect.objectContaining({
+          tournamentId: "spring-cup",
+          draftId: "spring-draft",
+        }),
       );
       expect(agendaService.cancelSkipPick).toHaveBeenCalled();
     });
@@ -295,20 +359,27 @@ describe("DraftEngineService", () => {
       const tournament = buildTournament();
       const draft = buildDraft({ status: "PAUSED" });
 
-      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(false);
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        false,
+      );
     });
 
     it("returns false when there is no current picking team", async () => {
       const tournament = buildTournament();
       const draft = buildDraft({ teams: [] });
 
-      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(false);
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        false,
+      );
     });
 
     it("increments the picking team's skipCount and logs a SKIP event", async () => {
       const team = buildTeam({ skipCount: 0 });
       teamRepo.findByIdOrNull.mockResolvedValue(team);
-      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team], counter: 0 });
 
       const result = await engine.skipCurrentPick(tournament, draft);
@@ -317,7 +388,10 @@ describe("DraftEngineService", () => {
       expect(team.skipCount).toBe(1);
       expect(team.save).toHaveBeenCalled();
       expect(draft.eventLog).toEqual([
-        expect.objectContaining({ eventType: "SKIP", details: "Team Rocket was skipped" }),
+        expect.objectContaining({
+          eventType: "SKIP",
+          details: "Team Rocket was skipped",
+        }),
       ]);
       expect(draftEvents.emitDraftSkip).toHaveBeenCalledWith(
         expect.objectContaining({ teamName: "Team Rocket", skipCount: 1 }),
@@ -327,14 +401,23 @@ describe("DraftEngineService", () => {
     it("sends a Discord message naming the skipped team when channelId is set", async () => {
       const team = buildTeam();
       teamRepo.findByIdOrNull.mockResolvedValue(team);
-      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
-      const draft = buildDraft({ teams: [team], counter: 0, channelId: "channel-1" });
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        counter: 0,
+        channelId: "channel-1",
+      });
 
       await engine.skipCurrentPick(tournament, draft);
 
       expect(discordService.sendMessage).toHaveBeenCalledWith(
         "channel-1",
-        expect.objectContaining({ content: expect.stringContaining("Team Rocket") }),
+        expect.objectContaining({
+          content: expect.stringContaining("Team Rocket"),
+        }),
       );
     });
   });
@@ -342,14 +425,20 @@ describe("DraftEngineService", () => {
   describe("setDraftState", () => {
     it("play: marks the draft IN_PROGRESS, sets a skip timer, and resumes the agenda timer", async () => {
       const team = buildTeam();
-      const tournament = buildTournament({ tierList: buildTierList(), draftCount: new DraftCount({ min: 1, max: 2 }) });
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
       const draft = buildDraft({ teams: [team], status: "PAUSED", counter: 0 });
 
       await engine.setDraftState(tournament, draft, "play");
 
       expect(draft.status).toBe("IN_PROGRESS");
       expect(draft.save).toHaveBeenCalled();
-      expect(agendaService.resumeSkipPick).toHaveBeenCalledWith(tournament, draft);
+      expect(agendaService.resumeSkipPick).toHaveBeenCalledWith(
+        tournament,
+        draft,
+      );
       expect(draftEvents.emitDraftStatus).toHaveBeenCalledWith(
         expect.objectContaining({ status: "IN_PROGRESS" }),
       );

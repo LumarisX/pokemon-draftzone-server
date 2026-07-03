@@ -20,6 +20,7 @@ export class PDZError extends HttpException {
     this.code = errorDef.code;
     this.details = details;
     this.timestamp = new Date();
+    this.message = details?.reason ?? errorDef.message;
   }
 }
 

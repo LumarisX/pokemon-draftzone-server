@@ -8,6 +8,7 @@ import {
 import { TypeName } from "@pkmn/data";
 import {
   calculateCanDraft,
+  calculateCanDraftCounts,
   calculateCurrentPick,
   generatePickOrder,
   getDraftOrder,
@@ -40,14 +41,6 @@ export type TeamWithCoachStatus = {
   skipCount: number;
 };
 
-/**
- * Gathers and processes team information, including coach status and picks.
- * @param draft - The draft document with composed teams and coach.
- * @param tournament - The league document.
- * @param userId - The auth0Id of the user making the request.
- * @param numberOfRounds - The total number of draft rounds.
- * @returns A promise that resolves to an array of team data.
- */
 export async function getTeamsWithCoachStatus(
   draft: PopulatedDraft,
   tournament: PopulatedTournament,
@@ -161,6 +154,7 @@ export async function getDraftDetails(
   );
 
   const canDraft = calculateCanDraft(draft, pickOrder);
+  const canDraftCounts = calculateCanDraftCounts(draft, pickOrder);
   const currentPick = calculateCurrentPick(draft);
 
   return {
@@ -172,11 +166,13 @@ export async function getDraftDetails(
     allowRemovals: draft.allowRemovals,
     teamOrder: initialTeamOrder.map((team) => team._id),
     rounds: numberOfRounds,
+    minDraftCount: tournament.draftCount.min,
     teams: teams,
     currentPick,
     skipTime: draft.skipTime,
     status: draft.status,
     canDraft,
+    canDraftCounts,
     points: tournament.pointTotal,
     logo: tournament.logo,
   };

@@ -183,8 +183,11 @@ export async function canBeDrafted(
     return false;
   }
 
+  const alreadyTaken =
+    draft.sequentialTurns !== false && isAlreadyDrafted(draft, pick.pokemonId);
+
   return (
-    !isAlreadyDrafted(draft, pick.pokemonId) &&
+    !alreadyTaken &&
     tierRequirementsAreFeasible(tournament, team, pick) &&
     (await teamHasEnoughPoints(tournament, draft, team, pick))
   );
@@ -208,7 +211,10 @@ export async function canBeDraftedWithReason(
     };
   }
 
-  if (isAlreadyDrafted(draft, pick.pokemonId)) {
+  if (
+    draft.sequentialTurns !== false &&
+    isAlreadyDrafted(draft, pick.pokemonId)
+  ) {
     return {
       canDraft: false,
       reason: "Pokemon has already been drafted by another team",
@@ -262,9 +268,12 @@ export function isDraftComplete(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
 ): boolean {
-  const totalPicksNeeded = draft.teams.length * tournament.draftCount.max;
+  if (!tournament.draftCount.max) return false;
 
-  if (draft.counter >= totalPicksNeeded) return true;
+  if (draft.sequentialTurns) {
+    const totalPicksNeeded = draft.teams.length * tournament.draftCount.max;
+    if (draft.counter >= totalPicksNeeded) return true;
+  }
 
   const allTeamsDone = draft.teams.every(
     (team: PopulatedTeam) => team.pickLog.length >= tournament.draftCount.max,

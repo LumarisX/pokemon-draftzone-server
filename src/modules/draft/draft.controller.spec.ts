@@ -5,7 +5,7 @@
 jest.mock("agenda", () => ({}));
 
 import { DraftController } from "./draft.controller";
-import { DraftPickDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
+import { DraftDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
 describe("DraftController", () => {
@@ -101,9 +101,9 @@ describe("DraftController", () => {
   });
 
   it("draftPick forwards leagueKey/tournamentKey/draftKey/teamId/sub/body", async () => {
-    const response = { message: "Drafted successfully." };
+    const response = { leagueName: "Test League" } as any;
     service.draftPick.mockResolvedValue(response);
-    const body = { pokemonId: "pikachu" } as DraftPickDto;
+    const body = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
 
     const result = await controller.draftPick(
       "league-1", "tournament-1", "draft-1", "team-1", "auth0|sub", body,

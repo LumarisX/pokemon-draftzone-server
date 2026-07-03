@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import {
   buildDraftBoards,
   calculateCanDraft,
+  calculateCanDraftCounts,
   calculateCurrentPick,
   calculateTeamTimer,
   cancelSkipTime,
@@ -251,6 +252,101 @@ describe("calculateCanDraft", () => {
   });
 });
 
+describe("calculateCanDraftCounts", () => {
+  it("returns an empty map when the draft isn't in progress", () => {
+    const teams = [buildTeam(), buildTeam()];
+    const draft = buildDraft({ teams, status: "PAUSED" });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({});
+  });
+
+  it("gives every team every remaining round at once when turns aren't sequential", () => {
+    const teamA = buildTeam({ teamName: "A" });
+    const teamB = buildTeam({ teamName: "B" });
+    const teams = [teamA, teamB];
+    const draft = buildDraft({ teams, sequentialTurns: false });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    // No turn order to wait on, so both of A and B's 2 rounds are draftable now.
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 2,
+      [teamB._id.toString()]: 2,
+    });
+  });
+
+  it("excludes a team that has used all its rounds when turns aren't sequential", () => {
+    const teamA = buildTeam({
+      teamName: "A",
+      pickLog: [pick("pikachu")],
+    });
+    const teamB = buildTeam({ teamName: "B", pickLog: [] });
+    const teams = [teamA, teamB];
+    const draft = buildDraft({ teams, sequentialTurns: false });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 1,
+      [teamB._id.toString()]: 2,
+    });
+  });
+
+  it("gives the current picker a count of 1 with no backlog", () => {
+    const teamA = buildTeam({ teamName: "A" });
+    const teamB = buildTeam({ teamName: "B" });
+    const teamC = buildTeam({ teamName: "C" });
+    const teams = [teamA, teamB, teamC];
+    const draft = buildDraft({ teams, counter: 0 });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 1,
+    });
+  });
+
+  it("gives a lagging team a count of 2 to catch up on a full backlog", () => {
+    // order: A, B, C, C, B, A. Counter is at 5 (A's 2nd turn), but A never
+    // recorded its round-0 pick, so it owes 2 picks; B and C kept up.
+    const teamA = buildTeam({ teamName: "A", pickLog: [] });
+    const teamB = buildTeam({
+      teamName: "B",
+      pickLog: [pick("squirtle"), pick("wartortle")],
+    });
+    const teamC = buildTeam({
+      teamName: "C",
+      pickLog: [pick("charmander"), pick("charmeleon")],
+    });
+    const teams = [teamA, teamB, teamC];
+    const draft = buildDraft({ teams, counter: 5 });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 2,
+    });
+  });
+
+  it("excludes a team that has already used its expected pick(s)", () => {
+    const teamA = buildTeam({ teamName: "A", pickLog: [pick("pikachu")] });
+    const teamB = buildTeam({ teamName: "B", pickLog: [] });
+    const teamC = buildTeam({ teamName: "C", pickLog: [] });
+    const teams = [teamA, teamB, teamC];
+    const draft = buildDraft({ teams, counter: 1 });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamB._id.toString()]: 1,
+    });
+  });
+
+  it("returns an empty map for linear progression (not yet implemented)", () => {
+    const teams = [buildTeam(), buildTeam()];
+    const draft = buildDraft({ teams, orderProgression: "linear" });
+    const pickOrder = generatePickOrder(teams, 2, "linear");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({});
+  });
+});
+
 describe("calculateCurrentPick / getCurrentRound / getCurrentPositionInRound", () => {
   it("derives round and position from counter and team count", () => {
     const teams = [buildTeam(), buildTeam(), buildTeam()];
@@ -341,6 +437,12 @@ describe("canTeamDraft", () => {
   it("disallows a team whose turn in this round hasn't come up yet", async () => {
     const draft = buildDraft({ teams, counter: 1 });
     await expect(canTeamDraft(draft, teamC)).resolves.toBe(false);
+  });
+
+  it("allows any team immediately when turns aren't sequential", async () => {
+    const draft = buildDraft({ teams, sequentialTurns: false });
+    await expect(canTeamDraft(draft, teamA)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, teamC)).resolves.toBe(true);
   });
 
   it("allows a team that's behind to catch up", async () => {
