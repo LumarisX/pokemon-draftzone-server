@@ -1,6 +1,7 @@
 import { BusinessExceptionFilter } from "@core/filters/business-exception.filter";
 import { createAppLogger } from "@core/logging/winston-logger.factory";
 import { BadRequestException, Logger, ValidationPipe } from "@nestjs/common";
+import { ValidationError } from "class-validator";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
@@ -9,6 +10,24 @@ import helmet from "helmet";
 import { WinstonModule } from "nest-winston";
 import path from "path";
 import { AppModule } from "./app.module";
+
+function collectValidationMessages(
+  errors: ValidationError[],
+  parentPath = "",
+): string[] {
+  return errors.flatMap((error) => {
+    const path = parentPath
+      ? `${parentPath}.${error.property}`
+      : error.property;
+    const messages = Object.values(error.constraints ?? {}).map((message) =>
+      parentPath ? `${path}: ${message}` : message,
+    );
+    return [
+      ...messages,
+      ...collectValidationMessages(error.children ?? [], path),
+    ];
+  });
+}
 
 async function bootstrap() {
   const logDir = path.join(__dirname, "../logs");
@@ -57,7 +76,10 @@ async function bootstrap() {
         validationLogger.error(
           `Request validation failed: ${JSON.stringify(errors)}`,
         );
-        return new BadRequestException(errors);
+        const messages = collectValidationMessages(errors);
+        return new BadRequestException(
+          messages.length ? messages.join("; ") : "Request validation failed",
+        );
       },
     }),
   );

@@ -1,5 +1,5 @@
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsNumber,
@@ -78,6 +78,7 @@ export class ExternalMatchupDto {
   @MinLength(1)
   teamName!: string;
 
+  @Transform(({ value }) => (value === "" ? undefined : value))
   @IsString()
   @MinLength(1)
   @IsOptional()
