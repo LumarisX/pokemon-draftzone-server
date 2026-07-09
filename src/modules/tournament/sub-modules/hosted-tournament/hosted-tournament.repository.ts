@@ -1,7 +1,9 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
 import { StageRepository } from "@modules/stage/stage.repository";
+import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -19,6 +21,8 @@ export class HostedTournamentRepository {
     private readonly hostedTournamentModel: Model<HostedTournamentDocument>,
     private readonly stageRepo: StageRepository,
     private readonly leagueRepo: LeagueRepository,
+    private readonly coachRepo: CoachRepository,
+    private readonly teamRepo: TeamRepository,
   ) {}
 
   async findByKey(
@@ -64,7 +68,45 @@ export class HostedTournamentRepository {
     );
   }
 
-  /** Resolves a tournament's stage ObjectIds in-order (array order is the tournament's stage sequence). */
+  async findByParticipant(sub: string): Promise<HostedTournament[]> {
+    const coaches = await this.coachRepo.findByAuth0Id(sub);
+    if (coaches.length === 0) return [];
+
+    const teams = await this.teamRepo.findManyByIds(
+      coaches.map((coach) => coach.teamId),
+    );
+    const tournamentIds = [
+      ...new Set(teams.map((team) => team.tournamentId.toString())),
+    ];
+    if (tournamentIds.length === 0) return [];
+
+    const docs = await this.hostedTournamentModel
+      .find({ _id: { $in: tournamentIds }, archived: { $ne: true } })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const leagueIds = [...new Set(docs.map((doc) => doc.league.toString()))];
+    const ownersByLeague = new Map(
+      await Promise.all(
+        leagueIds.map(async (leagueId) => {
+          const league = await this.leagueRepo.findById(leagueId);
+          return [leagueId, league.owner] as const;
+        }),
+      ),
+    );
+
+    return Promise.all(
+      docs.map(async (doc) => {
+        const stages = await this.resolveStages(doc.stages);
+        return HostedTournamentMapper.fromDatabase(
+          doc,
+          ownersByLeague.get(doc.league.toString())!,
+          stages,
+        );
+      }),
+    );
+  }
+
   private async resolveStages(stageIds: Types.ObjectId[]) {
     const stages = await Promise.all(
       stageIds.map((id) => this.stageRepo.findByIdOrNull(id)),

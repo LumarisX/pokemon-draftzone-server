@@ -25,7 +25,6 @@ export class ExternalTournamentController {
     const tournaments = await this.tournamentService.getTournaments(sub);
     return {
       drafts: tournaments.map(ExternalTournamentMapper.toClientPayload),
-      tournaments: [],
     };
   }
 

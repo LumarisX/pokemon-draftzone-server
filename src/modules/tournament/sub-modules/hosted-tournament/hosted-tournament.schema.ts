@@ -121,6 +121,9 @@ export class HostedTournamentEntity {
 
   @Prop({ type: [TierRequirementSchema], default: [] })
   tierRequirements!: TierRequirementEntity[];
+
+  @Prop()
+  archived?: boolean;
 }
 
 export const HostedTournamentSchema = SchemaFactory.createForClass(

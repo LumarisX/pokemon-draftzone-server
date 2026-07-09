@@ -122,6 +122,22 @@ export class LeagueMatchupEntity {
   @Prop()
   pool?: string;
 
+  // Bracket layout metadata, set at generation time. `section` groups
+  // matches into visual groups (winners/losers/finals for double elim);
+  // `bracketRound`/`position` are the column/row within that section. Flat
+  // schedule views ignore all three.
+  @Prop()
+  section?: string;
+
+  @Prop()
+  bracketRound?: number;
+
+  @Prop()
+  position?: number;
+
+  @Prop({ trim: true })
+  label?: string;
+
   @Prop({ type: MatchSideSchema, required: true })
   side1!: MatchSideEntity;
 

@@ -20,6 +20,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
+import { buildBracketView } from "@modules/stage/domain/bracket-view";
 import { getRosterByRound } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
@@ -209,6 +210,24 @@ export class HostedTournamentService {
     };
   }
 
+  /** Flat team list for organizer tooling (e.g. picking bracket participants). */
+  async listTeams(leagueKey: string, tournamentKey: string) {
+    const tournament = await this.tournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
+    const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    return {
+      teams: teams.map((team) => ({
+        id: team._id.toString(),
+        teamName: team.teamName,
+        coachName: team.coach.name,
+        logo: team.logo,
+        pickCount: team.pickLog?.length ?? 0,
+      })),
+    };
+  }
+
   async getBracket(leagueKey: string, tournamentKey: string) {
     const tournament = await this.tournamentRepo.findByKey(
       leagueKey,
@@ -217,79 +236,17 @@ export class HostedTournamentService {
     const playoffsStage = tournament.getPlayoffsStage();
 
     if (!playoffsStage) {
-      return { format: null, teams: [], rounds: [], matches: [] };
+      return { format: null, seeding: null, teams: [], rounds: [], matches: [] };
     }
 
-    const roundIds = playoffsStage.rounds.map((round) => round._id.toString());
-    const bracketMatchups = await this.matchupRepo.findByRounds(roundIds);
-
-    const teamObjIds = this.stageRepo.flattenPoolTeamIds(playoffsStage);
-
-    const teamDocs = await this.teamRepo.findManyByIds(teamObjIds);
-
-    const teamsArray = teamObjIds
-      .map((teamId, idx) => {
-        const teamDoc = teamDocs.find(
-          (t) => t._id.toString() === teamId.toString(),
-        );
-        if (!teamDoc) return null;
-        return {
-          seed: idx + 1,
-          teamName: teamDoc.teamName,
-          coachName: teamDoc.coach.name,
-          logo: teamDoc.logo,
-          teamId: teamDoc._id.toString(),
-        };
-      })
-      .filter((t): t is NonNullable<typeof t> => t !== null);
-
-    const roundIdToName = new Map(
-      playoffsStage.rounds.map((round) => [round._id.toString(), round.name]),
+    const bracketMatchups = await this.matchupRepo.findByRounds(
+      playoffsStage.rounds.map((round) => round._id.toString()),
     );
+    const teamObjIds = playoffsStage.pools.flatMap((pool) => pool.teamIds);
+    const teamDocs =
+      teamObjIds.length > 0 ? await this.teamRepo.findManyByIds(teamObjIds) : [];
 
-    const matches = bracketMatchups.map((matchup) => ({
-      _id: matchup._id.toString(),
-      round: matchup.round?.toString() ?? null,
-      roundName: matchup.round
-        ? (roundIdToName.get(matchup.round.toString()) ?? null)
-        : null,
-      a: matchup.side1.slot
-        ? {
-            type: matchup.side1.slot.type,
-            ...(matchup.side1.slot.type === "seed"
-              ? { seed: matchup.side1.slot.seed }
-              : { from: (matchup.side1.slot as { matchId: string }).matchId }),
-          }
-        : null,
-      b: matchup.side2.slot
-        ? {
-            type: matchup.side2.slot.type,
-            ...(matchup.side2.slot.type === "seed"
-              ? { seed: matchup.side2.slot.seed }
-              : { from: (matchup.side2.slot as { matchId: string }).matchId }),
-          }
-        : null,
-      winner:
-        matchup.winner === "side1"
-          ? 0
-          : matchup.winner === "side2"
-            ? 1
-            : undefined,
-      replay: matchup.results?.[0]?.replay,
-    }));
-
-    const rounds = playoffsStage.rounds.map((round) => ({
-      _id: round._id.toString(),
-      name: round.name,
-      matchDeadline: round.matchDeadline ?? null,
-    }));
-
-    return {
-      format: playoffsStage.type,
-      teams: teamsArray,
-      rounds,
-      matches,
-    };
+    return buildBracketView(playoffsStage, bracketMatchups, teamDocs);
   }
 
   async getRoles(

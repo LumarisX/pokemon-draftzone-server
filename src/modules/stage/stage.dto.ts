@@ -128,7 +128,13 @@ export class CreateStageDto {
   @MinLength(1)
   name!: string;
 
-  @IsIn(["round-robin", "single-elimination", "double-elimination", "swiss", "custom"])
+  @IsIn([
+    "round-robin",
+    "single-elimination",
+    "double-elimination",
+    "swiss",
+    "custom",
+  ])
   type!: string;
 
   @IsArray()
@@ -162,4 +168,74 @@ export class SetStagePoolsDto {
 export class SetCurrentRoundDto {
   @IsNumber()
   currentRoundIndex!: number;
+}
+
+export class BracketSlotDto {
+  @IsIn(["seed", "winner", "loser"])
+  type!: "seed" | "winner" | "loser";
+
+  @IsNumber()
+  @IsOptional()
+  seed?: number;
+
+  @IsString()
+  @IsOptional()
+  from?: string;
+}
+
+export class BracketMatchDto {
+  @IsString()
+  @MinLength(1)
+  key!: string;
+
+  @IsNumber()
+  roundIndex!: number;
+
+  @IsString()
+  @IsOptional()
+  section?: string;
+
+  @IsNumber()
+  @IsOptional()
+  bracketRound?: number;
+
+  @IsNumber()
+  @IsOptional()
+  position?: number;
+
+  @IsString()
+  @IsOptional()
+  label?: string;
+
+  @ValidateNested()
+  @Type(() => BracketSlotDto)
+  a!: BracketSlotDto;
+
+  @ValidateNested()
+  @Type(() => BracketSlotDto)
+  b!: BracketSlotDto;
+}
+
+export class GenerateBracketDto {
+  @IsIn(["certified-random", "manual"])
+  seedingMethod!: "certified-random" | "manual";
+
+  /**
+   * Participant team ids. For "manual" this order IS the seeding (index 0 =
+   * seed 1); for "certified-random" the order is ignored — the server
+   * canonicalizes and shuffles.
+   */
+  @IsArray()
+  @IsString({ each: true })
+  teamIds!: string[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateStageRoundDto)
+  rounds!: CreateStageRoundDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BracketMatchDto)
+  matches!: BracketMatchDto[];
 }

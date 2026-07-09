@@ -144,6 +144,14 @@ export class HostedTournamentController {
     );
   }
 
+  @Get(":tournamentKey/teams")
+  async listTeams(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+  ) {
+    return this.tournamentService.listTeams(leagueKey, tournamentKey);
+  }
+
   @Get(":tournamentKey/teams/:teamId")
   async getTeam(
     @Param("leagueKey") leagueKey: string,

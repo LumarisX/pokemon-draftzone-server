@@ -149,6 +149,22 @@ export const ErrorCodes = {
       status: 400,
       message: "This stage has no pools defined yet",
     },
+    INVALID_BRACKET: {
+      code: "STG-004",
+      status: 400,
+      message: "Invalid bracket structure",
+    },
+    MATCHUPS_EXIST: {
+      code: "STG-005",
+      status: 409,
+      message: "This stage already has matchups generated",
+    },
+    SEEDING_LOCKED: {
+      code: "STG-006",
+      status: 409,
+      message:
+        "This stage's seeding is certified-random and can no longer be changed",
+    },
   },
   SYSTEM: {
     NO_CONTEXT: {

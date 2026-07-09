@@ -8,6 +8,12 @@ import { HostedTournamentRepository } from "@modules/tournament/sub-modules/host
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
+import {
+  BracketMatchInput,
+  certifiedRandomSeedOrder,
+  validateBracketStructure,
+} from "./domain/bracket";
+import { buildBracketView } from "./domain/bracket-view";
 import { getRosterByRound } from "./domain/roster";
 import {
   calculateDivisionCoachStandings,
@@ -16,6 +22,7 @@ import {
 } from "./domain/standings";
 import {
   CreateStageDto,
+  GenerateBracketDto,
   MakeTradeDto,
   SetCurrentRoundDto,
   SetStagePoolsDto,
@@ -23,6 +30,12 @@ import {
 } from "./stage.dto";
 import { StageRepository } from "./stage.repository";
 import { StageDocument, StageTradeSideEntity } from "./stage.schema";
+
+const BRACKET_STAGE_TYPES: StageDocument["type"][] = [
+  "single-elimination",
+  "double-elimination",
+  "custom",
+];
 
 @Injectable()
 export class StageService {
@@ -42,7 +55,6 @@ export class StageService {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
-  /** Composes a Stage's `.teams` via flattenPoolTeamIds + TeamRepository, mirroring DraftRepository.findDraft. */
   private async composeStageTeams(stage: StageDocument): Promise<
     StageDocument & {
       teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>>;
@@ -53,12 +65,6 @@ export class StageService {
     return Object.assign(stage, { teams });
   }
 
-  /**
-   * Brand-new endpoint, no DivisionController precedent. Gated the same way
-   * as the other stage-mutating endpoints (organizer/owner only) since
-   * creating a Stage is an organizer-level tournament-structure decision,
-   * not a player action.
-   */
   async createStage(
     leagueKey: string,
     tournamentKey: string,
@@ -109,6 +115,18 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
+    // Once a stage is certified-random and its bracket exists, pool order
+    // (= the seeding) is immutable — rewriting it would let an organizer
+    // fix a bracket that still displays the certified seal.
+    const stageDoc = await this.stageRepo.findById(stageId);
+    const latestSeeding = stageDoc.seedingLog[stageDoc.seedingLog.length - 1];
+    if (
+      latestSeeding?.method === "certified-random" &&
+      (await this.matchupRepo.countByStage(stageDoc._id)) > 0
+    ) {
+      throw new PDZError(ErrorCodes.STAGE.SEEDING_LOCKED, { stageId });
+    }
+
     for (const pool of dto.pools) {
       for (const teamId of pool.teamIds) {
         if (!isValidObjectId(teamId))
@@ -142,6 +160,196 @@ export class StageService {
     this.assertOrganizer(tournament, sub);
 
     return this.stageRepo.setCurrentRoundIndex(stageId, dto.currentRoundIndex);
+  }
+
+  /** Stage-scoped bracket read; tolerant of a stage with no pools/matchups yet. */
+  async getBracket(stageId: string) {
+    const stageDoc = await this.stageRepo.findById(stageId);
+    const matchups = await this.matchupRepo.findByRounds(
+      stageDoc.rounds.map((round) => round._id),
+    );
+    const teamObjIds = stageDoc.pools.flatMap((pool) => pool.teamIds);
+    const teamDocs =
+      teamObjIds.length > 0
+        ? await this.teamRepo.findManyByIds(teamObjIds)
+        : [];
+    return buildBracketView(stageDoc, matchups, teamDocs);
+  }
+
+  /**
+   * Persists a client-wired bracket in one shot: validates the match DAG,
+   * assigns teams to seed numbers, writes the stage's rounds/pools/seeding
+   * record, and bulk-inserts the matchups.
+   *
+   * Seed assignment is the integrity-sensitive step and always happens
+   * here, never client-side: "certified-random" shuffles server-side with
+   * a CSPRNG over the canonicalized participant list, exactly once — the
+   * organizer first sees the placements after they exist. "manual" trusts
+   * the submitted order but is labeled as organizer-seeded in the bracket
+   * view. Every seeding is appended to the stage's permanent seedingLog.
+   */
+  async generateBracket(
+    leagueKey: string,
+    tournamentKey: string,
+    stageId: string,
+    sub: string,
+    dto: GenerateBracketDto,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    if (!stageDoc.tournamentId.equals(tournament.id))
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+
+    if (!BRACKET_STAGE_TYPES.includes(stageDoc.type))
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: `Stage type "${stageDoc.type}" does not take a generated bracket`,
+      });
+
+    if ((await this.matchupRepo.countByStage(stageDoc._id)) > 0)
+      throw new PDZError(ErrorCodes.STAGE.MATCHUPS_EXIST, { stageId });
+
+    const teamIds = dto.teamIds;
+    if (teamIds.length < 2)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: "A bracket needs at least 2 teams",
+      });
+    if (new Set(teamIds).size !== teamIds.length)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: "Duplicate team ids in participant list",
+      });
+    for (const teamId of teamIds) {
+      if (!isValidObjectId(teamId))
+        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+          reason: `Invalid team ID "${teamId}"`,
+        });
+    }
+    const teamDocs = await this.teamRepo.findManyByIds(
+      teamIds.map((id) => new Types.ObjectId(id)),
+    );
+    if (teamDocs.length !== teamIds.length) {
+      const found = new Set(teamDocs.map((t) => t._id.toString()));
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+        teamId: teamIds.filter((id) => !found.has(id)).join(", "),
+      });
+    }
+
+    if (dto.rounds.length === 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: "Bracket has no rounds",
+      });
+    const structureErrors = validateBracketStructure(
+      dto.matches as BracketMatchInput[],
+      teamIds.length,
+      dto.rounds.length,
+    );
+    if (structureErrors.length > 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reasons: structureErrors,
+      });
+
+    let seedOrder: string[];
+    if (dto.seedingMethod === "certified-random") {
+      const shuffle = certifiedRandomSeedOrder(teamIds);
+      seedOrder = shuffle.seedOrder;
+      stageDoc.seedingLog.push({
+        method: "certified-random",
+        seededAt: new Date(),
+        seededBy: sub,
+        inputTeamsHash: shuffle.inputTeamsHash,
+        algorithmVersion: shuffle.algorithmVersion,
+      });
+    } else {
+      seedOrder = [...teamIds];
+      stageDoc.seedingLog.push({
+        method: "manual",
+        seededAt: new Date(),
+        seededBy: sub,
+      });
+    }
+
+    stageDoc.set("rounds", dto.rounds);
+    stageDoc.set("pools", [
+      { poolKey: "bracket", name: "Bracket", teamIds: seedOrder },
+    ]);
+    await stageDoc.save();
+
+    const idByKey = new Map(
+      dto.matches.map((match) => [match.key, new Types.ObjectId()]),
+    );
+    const toSide = (slot: BracketMatchInput["a"]) =>
+      slot.type === "seed"
+        ? {
+            team: new Types.ObjectId(seedOrder[slot.seed - 1]),
+            slot: { type: "seed" as const, seed: slot.seed },
+          }
+        : {
+            slot: {
+              type: slot.type,
+              matchId: idByKey.get(slot.from)!.toString(),
+            },
+          };
+
+    await this.matchupRepo.createMany(
+      dto.matches.map((match) => ({
+        _id: idByKey.get(match.key)!,
+        stage: stageDoc._id,
+        round: stageDoc.rounds[match.roundIndex]._id,
+        section: match.section,
+        bracketRound: match.bracketRound,
+        position: match.position,
+        label: match.label,
+        side1: toSide(match.a as BracketMatchInput["a"]),
+        side2: toSide(match.b as BracketMatchInput["b"]),
+        results: [],
+      })),
+    );
+
+    const seeding = stageDoc.seedingLog[stageDoc.seedingLog.length - 1];
+    return {
+      message: "Bracket generated.",
+      seeding: {
+        method: seeding.method,
+        seededAt: seeding.seededAt,
+        inputTeamsHash: seeding.inputTeamsHash ?? null,
+        algorithmVersion: seeding.algorithmVersion ?? null,
+        timesSeeded: stageDoc.seedingLog.length,
+      },
+      seedOrder,
+      matchIds: Object.fromEntries(
+        [...idByKey].map(([key, id]) => [key, id.toString()]),
+      ),
+    };
+  }
+
+  /**
+   * Clears a stage's matchups so a bracket can be regenerated. The
+   * seedingLog is intentionally left intact: a certified-random stage that
+   * gets torn down and re-randomized will honestly report every seeding
+   * it has ever had.
+   */
+  async deleteBracket(
+    leagueKey: string,
+    tournamentKey: string,
+    stageId: string,
+    sub: string,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findByKey(
+      leagueKey,
+      tournamentKey,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    if (!stageDoc.tournamentId.equals(tournament.id))
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+
+    const deleted = await this.matchupRepo.deleteByStage(stageDoc._id);
+    return { message: `Deleted ${deleted} matchups.` };
   }
 
   /**

@@ -1,3 +1,6 @@
+import { CoachRepository } from "@modules/coach/coach.repository";
+import { DraftRepository } from "@modules/draft/draft.repository";
+import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Types } from "mongoose";
@@ -50,6 +53,9 @@ describe("LeagueService.getLeagueSummary", () => {
   let leagueRepo: jest.Mocked<LeagueRepository>;
   let hostedTournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let coachRepo: jest.Mocked<CoachRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: LeagueService;
 
   beforeEach(() => {
@@ -58,7 +64,23 @@ describe("LeagueService.getLeagueSummary", () => {
       findAllByLeague: jest.fn(),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = { findById: jest.fn() } as unknown as jest.Mocked<TierListRepository>;
-    service = new LeagueService(leagueRepo, hostedTournamentRepo, tierListRepo);
+    coachRepo = {
+      findByAuth0Id: jest.fn(),
+    } as unknown as jest.Mocked<CoachRepository>;
+    teamRepo = {
+      findManyByIds: jest.fn(),
+    } as unknown as jest.Mocked<TeamRepository>;
+    draftRepo = {
+      findManyByIds: jest.fn(),
+    } as unknown as jest.Mocked<DraftRepository>;
+    service = new LeagueService(
+      leagueRepo,
+      hostedTournamentRepo,
+      tierListRepo,
+      coachRepo,
+      teamRepo,
+      draftRepo,
+    );
   });
 
   it("looks up tournaments using the league's id and owner", async () => {

@@ -45,17 +45,30 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
 }
 
 function buildStage(overrides: Record<string, unknown> = {}) {
-  return {
+  const stage: any = {
     _id: new Types.ObjectId(),
     tournamentId: new Types.ObjectId(),
+    type: "round-robin",
     rounds: [],
     pools: [],
     trades: [],
+    seedingLog: [],
     currentRoundIndex: 0,
     save: jest.fn().mockResolvedValue(undefined),
     populate: jest.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as any;
+  };
+  // Mimics mongoose subdocument casting: assigned rounds get _ids.
+  stage.set = jest.fn((key: string, value: unknown) => {
+    stage[key] =
+      key === "rounds"
+        ? (value as object[]).map((round) => ({
+            ...round,
+            _id: new Types.ObjectId(),
+          }))
+        : value;
+  });
+  return stage;
 }
 
 describe("StageService", () => {
@@ -71,7 +84,7 @@ describe("StageService", () => {
       findAllByTournament: jest.fn(),
       setPools: jest.fn(),
       setCurrentRoundIndex: jest.fn(),
-      findById: jest.fn(),
+      findById: jest.fn(async () => buildStage()),
       flattenPoolTeamIds: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
     teamRepo = {
@@ -80,7 +93,11 @@ describe("StageService", () => {
     } as unknown as jest.Mocked<TeamRepository>;
     matchupRepo = {
       findByRoundsInStage: jest.fn().mockResolvedValue([]),
+      findByRounds: jest.fn().mockResolvedValue([]),
       findByIdInStage: jest.fn(),
+      countByStage: jest.fn().mockResolvedValue(0),
+      createMany: jest.fn().mockResolvedValue([]),
+      deleteByStage: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     hostedTournamentRepo = {
       findByKey: jest.fn(),
@@ -795,6 +812,317 @@ describe("StageService", () => {
       );
 
       expect(result).toEqual({ message: "Schedule updated." });
+    });
+  });
+
+  describe("generateBracket", () => {
+    const teamIds = [
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+    ];
+
+    /** 3-team double elim wired by the client generator. */
+    const bracketDto = (seedingMethod: "certified-random" | "manual") =>
+      ({
+        seedingMethod,
+        teamIds,
+        rounds: [
+          { name: "WB Round 1" },
+          { name: "WB Finals" },
+          { name: "LB Finals" },
+          { name: "Grand Finals" },
+        ],
+        matches: [
+          {
+            key: "w1-1",
+            roundIndex: 0,
+            section: "winners",
+            bracketRound: 0,
+            position: 1,
+            a: { type: "seed", seed: 2 },
+            b: { type: "seed", seed: 3 },
+          },
+          {
+            key: "w2-0",
+            roundIndex: 1,
+            section: "winners",
+            bracketRound: 1,
+            position: 0,
+            a: { type: "seed", seed: 1 },
+            b: { type: "winner", from: "w1-1" },
+          },
+          {
+            key: "l2-0",
+            roundIndex: 2,
+            section: "losers",
+            bracketRound: 0,
+            position: 0,
+            a: { type: "loser", from: "w1-1" },
+            b: { type: "loser", from: "w2-0" },
+          },
+          {
+            key: "gf",
+            roundIndex: 3,
+            section: "finals",
+            bracketRound: 0,
+            position: 0,
+            label: "Grand Finals",
+            a: { type: "winner", from: "w2-0" },
+            b: { type: "winner", from: "l2-0" },
+          },
+        ],
+      }) as any;
+
+    function setupBracketStage() {
+      const tournamentId = new Types.ObjectId();
+      const tournament = buildTournament({ id: tournamentId.toString() });
+      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      const stage = buildStage({
+        tournamentId,
+        type: "double-elimination",
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      teamRepo.findManyByIds.mockResolvedValue(
+        teamIds.map((id) => buildTeam({ _id: new Types.ObjectId(id) })),
+      );
+      return stage;
+    }
+
+    it("persists a certified-random bracket: shuffled pools, seeding record, wired matchups", async () => {
+      const stage = setupBracketStage();
+
+      const result = await service.generateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        bracketDto("certified-random"),
+      );
+
+      // Pool order is a permutation of the participants, decided server-side.
+      expect(stage.pools).toHaveLength(1);
+      const poolIds = stage.pools[0].teamIds.map(String);
+      expect([...poolIds].sort()).toEqual([...teamIds].sort());
+      expect(stage.save).toHaveBeenCalled();
+
+      expect(stage.seedingLog).toHaveLength(1);
+      expect(stage.seedingLog[0]).toMatchObject({
+        method: "certified-random",
+        seededBy: "auth0|owner",
+        algorithmVersion: "fisher-yates-csprng-v1",
+      });
+      expect(stage.seedingLog[0].inputTeamsHash).toMatch(/^[0-9a-f]{64}$/);
+
+      const inserted = (matchupRepo.createMany as jest.Mock).mock.calls[0][0];
+      expect(inserted).toHaveLength(4);
+      const byKey = new Map(
+        (bracketDto("manual").matches as { key: string }[]).map((m, i) => [
+          m.key,
+          inserted[i],
+        ]),
+      );
+      // Winner/loser slots reference the pre-assigned _ids of their sources.
+      expect(byKey.get("gf").side1.slot).toEqual({
+        type: "winner",
+        matchId: byKey.get("w2-0")._id.toString(),
+      });
+      expect(byKey.get("l2-0").side1.slot).toEqual({
+        type: "loser",
+        matchId: byKey.get("w1-1")._id.toString(),
+      });
+      // Seed slots are materialized with the seeded team.
+      expect(byKey.get("w2-0").side1.slot).toEqual({ type: "seed", seed: 1 });
+      expect(byKey.get("w2-0").side1.team.toString()).toBe(poolIds[0]);
+      // Rounds map through the stage's newly-created subdocuments.
+      expect(byKey.get("gf").round).toBe(stage.rounds[3]._id);
+      expect(byKey.get("gf").section).toBe("finals");
+      expect(byKey.get("gf").label).toBe("Grand Finals");
+
+      expect(result.seeding.method).toBe("certified-random");
+      expect(result.seeding.timesSeeded).toBe(1);
+      expect(result.seedOrder).toEqual(poolIds);
+      expect(Object.keys(result.matchIds).sort()).toEqual([
+        "gf",
+        "l2-0",
+        "w1-1",
+        "w2-0",
+      ]);
+    });
+
+    it("persists a manual bracket with the submitted order as the seeding", async () => {
+      const stage = setupBracketStage();
+
+      const result = await service.generateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        bracketDto("manual"),
+      );
+
+      expect(result.seedOrder).toEqual(teamIds);
+      expect(stage.pools[0].teamIds.map(String)).toEqual(teamIds);
+      expect(stage.seedingLog[0]).toMatchObject({ method: "manual" });
+      expect(stage.seedingLog[0].inputTeamsHash).toBeUndefined();
+    });
+
+    it("rejects when the stage already has matchups", async () => {
+      setupBracketStage();
+      (matchupRepo.countByStage as jest.Mock).mockResolvedValue(4);
+
+      await expect(
+        service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          bracketDto("certified-random"),
+        ),
+      ).rejects.toMatchObject({ code: "STG-005" });
+      expect(matchupRepo.createMany).not.toHaveBeenCalled();
+    });
+
+    it("rejects a stage type that does not take a bracket", async () => {
+      const stage = setupBracketStage();
+      stage.type = "round-robin";
+
+      await expect(
+        service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          bracketDto("certified-random"),
+        ),
+      ).rejects.toMatchObject({ code: "STG-004" });
+    });
+
+    it("rejects invalid wiring with the structural reasons", async () => {
+      setupBracketStage();
+      const dto = bracketDto("manual");
+      dto.matches[3].a = { type: "winner", from: "ghost" };
+
+      await expect(
+        service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dto,
+        ),
+      ).rejects.toMatchObject({ code: "STG-004" });
+      expect(matchupRepo.createMany).not.toHaveBeenCalled();
+    });
+
+    it("rejects a stage belonging to a different tournament", async () => {
+      setupBracketStage();
+      stageRepo.findById.mockResolvedValue(
+        buildStage({ type: "double-elimination" }),
+      );
+
+      await expect(
+        service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          bracketDto("manual"),
+        ),
+      ).rejects.toMatchObject({ code: "STG-001" });
+    });
+
+    it("rejects a non-organizer", async () => {
+      setupBracketStage();
+
+      await expect(
+        service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|stranger",
+          bracketDto("certified-random"),
+        ),
+      ).rejects.toMatchObject({ code: "AUTH-002" });
+    });
+  });
+
+  describe("setPools seeding lock", () => {
+    it("rejects pool edits on a certified-random stage that has matchups", async () => {
+      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      stageRepo.findById.mockResolvedValue(
+        buildStage({
+          seedingLog: [
+            {
+              method: "certified-random",
+              seededAt: new Date(),
+              seededBy: "auth0|owner",
+            },
+          ],
+        }),
+      );
+      (matchupRepo.countByStage as jest.Mock).mockResolvedValue(4);
+
+      await expect(
+        service.setPools("league-1", "tournament-1", "stage-1", "auth0|owner", {
+          pools: [],
+        }),
+      ).rejects.toMatchObject({ code: "STG-006" });
+      expect(stageRepo.setPools).not.toHaveBeenCalled();
+    });
+
+    it("still allows pool edits on manually-seeded stages with matchups", async () => {
+      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      stageRepo.findById.mockResolvedValue(
+        buildStage({
+          seedingLog: [
+            { method: "manual", seededAt: new Date(), seededBy: "auth0|owner" },
+          ],
+        }),
+      );
+      (matchupRepo.countByStage as jest.Mock).mockResolvedValue(4);
+      stageRepo.setPools.mockResolvedValue(buildStage());
+
+      await service.setPools(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        { pools: [] },
+      );
+      expect(stageRepo.setPools).toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteBracket", () => {
+    it("clears matchups but never the seeding log", async () => {
+      const tournamentId = new Types.ObjectId();
+      hostedTournamentRepo.findByKey.mockResolvedValue(
+        buildTournament({ id: tournamentId.toString() }),
+      );
+      const stage = buildStage({
+        tournamentId,
+        seedingLog: [
+          {
+            method: "certified-random",
+            seededAt: new Date(),
+            seededBy: "auth0|owner",
+          },
+        ],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      (matchupRepo.deleteByStage as jest.Mock).mockResolvedValue(4);
+
+      const result = await service.deleteBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+      );
+
+      expect(matchupRepo.deleteByStage).toHaveBeenCalledWith(stage._id);
+      expect(stage.seedingLog).toHaveLength(1);
+      expect(result).toEqual({ message: "Deleted 4 matchups." });
     });
   });
 });

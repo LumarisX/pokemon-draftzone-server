@@ -71,6 +71,27 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
+  async countByStage(stageId: Types.ObjectId | string): Promise<number> {
+    return this.matchupModel.countDocuments({ stage: stageId }).exec();
+  }
+
+  /**
+   * Bulk-insert pre-built matchup documents (bracket generation). Callers
+   * are expected to have already assigned `_id`s so slot.matchId references
+   * between the inserted matchups resolve.
+   */
+  async createMany(
+    matchups: (Partial<LeagueMatchupEntity> & { _id: Types.ObjectId })[],
+  ): Promise<LeagueMatchupDocument[]> {
+    const inserted = await this.matchupModel.insertMany(matchups);
+    return inserted as unknown as LeagueMatchupDocument[];
+  }
+
+  async deleteByStage(stageId: Types.ObjectId | string): Promise<number> {
+    const result = await this.matchupModel.deleteMany({ stage: stageId }).exec();
+    return result.deletedCount;
+  }
+
   async findByIdInStage(
     matchupId: Types.ObjectId | string,
     stageId: Types.ObjectId | string,

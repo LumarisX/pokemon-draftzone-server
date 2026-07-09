@@ -88,6 +88,29 @@ export class StagePoolEntity {
 }
 export const StagePoolSchema = SchemaFactory.createForClass(StagePoolEntity);
 
+const SEEDING_METHODS = ["certified-random", "manual"] as const;
+export type SeedingMethod = (typeof SEEDING_METHODS)[number];
+
+@Schema({ _id: false })
+export class StageSeedingEntity {
+  @Prop({ type: String, enum: SEEDING_METHODS, required: true })
+  method!: SeedingMethod;
+
+  @Prop({ default: () => new Date(), required: true })
+  seededAt!: Date;
+
+  @Prop({ required: true })
+  seededBy!: string;
+
+  @Prop()
+  inputTeamsHash?: string;
+
+  @Prop()
+  algorithmVersion?: string;
+}
+export const StageSeedingSchema =
+  SchemaFactory.createForClass(StageSeedingEntity);
+
 export type StageDocument = HydratedDocument<StageEntity>;
 
 @Schema({
@@ -120,6 +143,9 @@ export class StageEntity {
 
   @Prop({ type: [StageTradeSchema], default: [] })
   trades!: StageTradeEntity[];
+
+  @Prop({ type: [StageSeedingSchema], default: [] })
+  seedingLog!: StageSeedingEntity[];
 
   @Prop({ default: -1 })
   currentRoundIndex!: number;

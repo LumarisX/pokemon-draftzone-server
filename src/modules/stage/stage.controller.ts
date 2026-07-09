@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -11,6 +12,7 @@ import {
 } from "@nestjs/common";
 import {
   CreateStageDto,
+  GenerateBracketDto,
   MakeTradeDto,
   SetCurrentRoundDto,
   SetStagePoolsDto,
@@ -48,6 +50,45 @@ export class StageController {
     @Query("round") round?: string,
   ) {
     return this.stageService.getSchedule(stageId, teamId, round);
+  }
+
+  @Get(":stageId/bracket")
+  async getBracket(@Param("stageId") stageId: string) {
+    return this.stageService.getBracket(stageId);
+  }
+
+  @Post(":stageId/bracket")
+  @UseGuards(JwtAuthGuard)
+  async generateBracket(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("stageId") stageId: string,
+    @User() sub: string,
+    @Body() body: GenerateBracketDto,
+  ) {
+    return this.stageService.generateBracket(
+      leagueKey,
+      tournamentKey,
+      stageId,
+      sub,
+      body,
+    );
+  }
+
+  @Delete(":stageId/bracket")
+  @UseGuards(JwtAuthGuard)
+  async deleteBracket(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("stageId") stageId: string,
+    @User() sub: string,
+  ) {
+    return this.stageService.deleteBracket(
+      leagueKey,
+      tournamentKey,
+      stageId,
+      sub,
+    );
   }
 
   @Get(":stageId/standings")
