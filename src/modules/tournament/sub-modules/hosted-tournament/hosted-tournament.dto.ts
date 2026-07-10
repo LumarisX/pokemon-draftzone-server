@@ -3,6 +3,8 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
+  IsDate,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -65,6 +67,10 @@ export class CoachAssignmentDto {
   @MinLength(1)
   @IsOptional()
   divisionKey?: string | null;
+
+  @IsIn(["approved", "pending", "denied"])
+  @IsOptional()
+  status?: "approved" | "pending" | "denied";
 }
 
 export class AssignCoachesDto {
@@ -99,7 +105,64 @@ export class TierRequirementDto {
   required!: number;
 }
 
+export class TournamentForfeitDto {
+  @IsInt()
+  @Min(0)
+  gameDiff!: number;
+
+  @IsInt()
+  @Min(0)
+  pokemonDiff!: number;
+}
+
 export class UpdateHostedTournamentSettingsDto {
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  signUpDeadline?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  draftStart?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  draftEnd?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  seasonStart?: Date;
+
+  @IsDate()
+  @Type(() => Date)
+  @IsOptional()
+  seasonEnd?: Date;
+
+  @IsString()
+  @IsOptional()
+  discord?: string;
+
+  @ValidateNested()
+  @Type(() => TournamentForfeitDto)
+  @IsOptional()
+  forfeit?: TournamentForfeitDto;
+
+  @IsIn(["pokemon", "game"])
+  @IsOptional()
+  diffMode?: "pokemon" | "game";
+
   @IsString()
   @MinLength(1)
   @IsOptional()

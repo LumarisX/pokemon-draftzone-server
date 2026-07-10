@@ -224,6 +224,7 @@ export class HostedTournamentService {
         coachName: team.coach.name,
         logo: team.logo,
         pickCount: team.pickLog?.length ?? 0,
+        status: team.status,
       })),
     };
   }
@@ -499,7 +500,10 @@ export class HostedTournamentService {
       if (!team || team.tournamentId.toString() !== tournament.id) continue;
 
       if (!assignment.divisionKey) {
-        await this.teamRepo.update(team._id, { draftId: null });
+        await this.teamRepo.update(team._id, {
+          draftId: null,
+          status: assignment.status,
+        });
         continue;
       }
 
@@ -512,6 +516,7 @@ export class HostedTournamentService {
 
       await this.teamRepo.update(team._id, {
         draftId: targetDraft._id,
+        status: assignment.status,
       });
     }
 
@@ -679,6 +684,17 @@ export class HostedTournamentService {
     }
 
     const update: Record<string, unknown> = {};
+    if (dto.name !== undefined) update["name"] = dto.name;
+    if (dto.description !== undefined) update["description"] = dto.description;
+    if (dto.signUpDeadline !== undefined)
+      update["signUpDeadline"] = dto.signUpDeadline;
+    if (dto.draftStart !== undefined) update["draftStart"] = dto.draftStart;
+    if (dto.draftEnd !== undefined) update["draftEnd"] = dto.draftEnd;
+    if (dto.seasonStart !== undefined) update["seasonStart"] = dto.seasonStart;
+    if (dto.seasonEnd !== undefined) update["seasonEnd"] = dto.seasonEnd;
+    if (dto.discord !== undefined) update["discord"] = dto.discord;
+    if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;
+    if (dto.diffMode !== undefined) update["diffMode"] = dto.diffMode;
     if (dto.tierListId !== undefined) {
       if (!Types.ObjectId.isValid(dto.tierListId))
         throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {

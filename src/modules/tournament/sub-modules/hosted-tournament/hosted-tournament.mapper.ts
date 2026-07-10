@@ -77,6 +77,16 @@ export class HostedTournamentMapper {
 
   static toSettingsPayload(tournament: HostedTournament) {
     return {
+      name: tournament.name,
+      description: tournament.description,
+      signUpDeadline: tournament.signUpDeadline,
+      draftStart: tournament.draftStart,
+      draftEnd: tournament.draftEnd,
+      seasonStart: tournament.seasonStart,
+      seasonEnd: tournament.seasonEnd,
+      discord: tournament.discord,
+      forfeit: tournament.forfeit,
+      diffMode: tournament.diffMode,
       tierListId: tournament.tierListId,
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
