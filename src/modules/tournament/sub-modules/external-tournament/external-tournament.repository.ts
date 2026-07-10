@@ -66,7 +66,15 @@ export class ExternalTournamentRepository {
     const tournamentDoc = new this.tournamentModel(
       ExternalTournamentMapper.toDatabasePayload(tournament),
     );
-    await tournamentDoc.save();
+    try {
+      await tournamentDoc.save();
+    } catch (error) {
+      if (this.isDuplicateLeagueIdError(error))
+        throw new PDZError(ErrorCodes.DRAFT.DUPLICATE_NAME, {
+          leagueName: tournament.leagueName,
+        });
+      throw error;
+    }
   }
 
   async updateByKeyAndOwner(
@@ -74,17 +82,35 @@ export class ExternalTournamentRepository {
     owner: string,
     tournament: ExternalTournament,
   ): Promise<void> {
-    const tournamentDoc = await this.tournamentModel
-      .findOneAndUpdate(
-        { owner: owner, leagueId: key },
-        ExternalTournamentMapper.toDatabasePayload(tournament),
-        {
-          new: true,
-          upsert: true,
-        },
-      )
-      .exec();
+    let tournamentDoc;
+    try {
+      tournamentDoc = await this.tournamentModel
+        .findOneAndUpdate(
+          { owner: owner, leagueId: key },
+          ExternalTournamentMapper.toDatabasePayload(tournament),
+          {
+            new: true,
+            upsert: true,
+          },
+        )
+        .exec();
+    } catch (error) {
+      if (this.isDuplicateLeagueIdError(error)) {
+        throw new PDZError(ErrorCodes.DRAFT.DUPLICATE_NAME, {
+          leagueName: tournament.leagueName,
+        });
+      }
+      throw error;
+    }
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+  }
+
+  private isDuplicateLeagueIdError(error: unknown): boolean {
+    return (
+      error instanceof mongoose.mongo.MongoServerError &&
+      error.code === 11000 &&
+      error.keyPattern?.leagueId !== undefined
+    );
   }
 
   async deleteByKeyAndOwner(

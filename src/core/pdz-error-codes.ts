@@ -132,6 +132,11 @@ export const ErrorCodes = {
       status: 400,
       message: "League name must contain at least one letter or number",
     },
+    DUPLICATE_NAME: {
+      code: "DR-011",
+      status: 409,
+      message: "You already have a draft with this league name",
+    },
   },
   STAGE: {
     NOT_FOUND: {
