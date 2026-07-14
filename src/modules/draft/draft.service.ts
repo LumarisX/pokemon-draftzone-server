@@ -383,8 +383,12 @@ export class DraftService {
 
     const stageDoc = await this.resolveStage(draft.tournamentId, stageId);
 
+    const approvedTeams = getDraftOrder(draft).filter(
+      (team) => team.status === "approved",
+    );
+
     if (!stageDoc) {
-      const teams = getDraftOrder(draft).map((team) => ({
+      const teams = approvedTeams.map((team) => ({
         id: team._id.toString(),
         coach: team.coach.name,
         logo: team.logo,
@@ -415,7 +419,7 @@ export class DraftService {
       tournament,
     );
 
-    const teams = getDraftOrder(draft).map((team) => {
+    const teams = approvedTeams.map((team) => {
       const standings = coachStandings.find(
         (c) => c.id === team._id.toString(),
       );

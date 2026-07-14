@@ -82,6 +82,7 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
   return {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
+    status: "approved",
     coach: { name: "Ash", auth0Id: "auth0|coach-1", timezone: "America/Los_Angeles" },
     pickLog: [],
     picks: [],
@@ -449,6 +450,23 @@ describe("DraftService", () => {
           timezone: "UTC",
         },
       ]);
+    });
+
+    it("excludes pending and denied teams from the public listing", async () => {
+      const approved = buildTeam({ teamName: "Approved" });
+      const pending = buildTeam({ teamName: "Pending", status: "pending" });
+      const denied = buildTeam({ teamName: "Denied", status: "denied" });
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [approved, pending, denied] });
+      draftRepo.findTournament.mockResolvedValue(tournament);
+      draftRepo.findDraft.mockResolvedValue(draft);
+      stageRepo.findAllByTournament.mockResolvedValue([]);
+      mockedGetDraftOrder.mockReturnValue([approved, pending, denied]);
+      mockedGetRosterByRound.mockReturnValue([]);
+
+      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub");
+
+      expect(result.teams.map((t: any) => t.name)).toEqual(["Approved"]);
     });
 
     it("throws INVALID_PARAMS when multiple stages exist and no stageId was given", async () => {
