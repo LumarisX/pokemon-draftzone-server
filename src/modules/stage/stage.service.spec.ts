@@ -14,6 +14,7 @@ jest.mock("./domain/roster", () => ({
   getRosterByRound: jest.fn(),
 }));
 jest.mock("./domain/standings", () => ({
+  ...jest.requireActual("./domain/standings"),
   calculateDivisionCoachStandings: jest.fn(),
   calculateDivisionPokemonStandings: jest.fn(),
 }));
@@ -321,6 +322,23 @@ describe("StageService", () => {
       expect(matchupRepo.findByRoundsInStage).toHaveBeenCalledWith(stage._id, [round0._id], {
         teamIds: [new Types.ObjectId(teamId)],
       });
+    });
+
+    it("omits rounds the filtered team has no matchups in", async () => {
+      const round0 = { _id: new Types.ObjectId(), name: "Week 1" };
+      const round1 = { _id: new Types.ObjectId(), name: "Week 2" };
+      const stage = buildStage({ rounds: [round0, round1] });
+      stageRepo.findById.mockResolvedValue(stage);
+      hostedTournamentRepo.findById.mockResolvedValue(buildTournament());
+      const team = buildTeam({ teamName: "Team A" });
+      matchupRepo.findByRoundsInStage.mockResolvedValue([
+        buildMatchup({ round: round1._id, side1: { team, score: 0 } }),
+      ]);
+      mockedGetRosterByRound.mockReturnValue([]);
+
+      const result = await service.getSchedule(stage._id.toString(), team._id.toString());
+
+      expect(result.rounds.map((r: any) => r.name)).toEqual(["Week 2"]);
     });
 
     it("transforms a matchup's score/winner/draft fields for a normal (non-forfeit) result", async () => {

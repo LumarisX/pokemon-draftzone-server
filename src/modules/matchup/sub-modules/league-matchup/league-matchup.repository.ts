@@ -103,4 +103,17 @@ export class LeagueMatchupRepository {
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
     return matchup;
   }
+
+  async findByIdInStagePopulated(
+    matchupId: Types.ObjectId | string,
+    stageId: Types.ObjectId | string,
+  ) {
+    const matchup = await this.matchupModel
+      .findOne({ _id: matchupId, stage: stageId })
+      .populate(TEAM_POPULATE)
+      .exec();
+    if (!matchup)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+    return matchup;
+  }
 }

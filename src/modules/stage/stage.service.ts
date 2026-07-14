@@ -1,8 +1,13 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import {
+  ExternalMatchup,
+  MatchupSide,
+} from "@modules/matchup/sub-modules/external-matchup/external-matchup.domain";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { PokemonResultStatsEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
-import { TeamRepository } from "@modules/team/team.repository";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
@@ -18,6 +23,7 @@ import { getRosterByRound } from "./domain/roster";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
+  hasResolvedSides,
   PopulatedStageMatchup,
 } from "./domain/standings";
 import {
@@ -403,7 +409,9 @@ export class StageService {
     const rounds = filteredRounds.map((roundDoc) => {
       const roundIndex = stageDoc.rounds.indexOf(roundDoc);
       const matchups = matchupsByRound.get(roundDoc._id.toString()) ?? [];
-      const transformedMatchups = matchups.map((matchup) => ({
+      // Bracket matchups with unresolved winner/loser slots have no teams to
+      // display yet, so they don't appear on the schedule.
+      const transformedMatchups = matchups.filter(hasResolvedSides).map((matchup) => ({
         id: matchup._id.toString(),
         team1: {
           name: matchup.side1.team.teamName,
@@ -479,7 +487,97 @@ export class StageService {
       };
     });
 
-    return { rounds, currentRoundIndex: stageDoc.currentRoundIndex };
+    // A team-scoped schedule only shows rounds the team actually plays in.
+    // (Safe to drop rounds here: only the unfiltered manage view indexes
+    // rounds by currentRoundIndex.)
+    const visibleRounds = hasTeamFilter
+      ? rounds.filter((round) => round.matchups.length > 0)
+      : rounds;
+
+    return {
+      rounds: visibleRounds,
+      currentRoundIndex: stageDoc.currentRoundIndex,
+    };
+  }
+
+  /**
+   * Full analysis view (summary/speed/coverage/type/move charts) for one
+   * league matchup, shaped like the external matchup breakdown payload so
+   * the client's matchup overview page can render either. `sub` only
+   * affects side order (a coach sees their own team first).
+   */
+  async getMatchupAnalysis(stageId: string, matchupId: string, sub?: string) {
+    if (!isValidObjectId(matchupId))
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Invalid matchup ID",
+        matchupId,
+      });
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    const tournament = await this.hostedTournamentRepo.findById(
+      stageDoc.tournamentId,
+    );
+
+    const matchupDoc = (await this.matchupRepo.findByIdInStagePopulated(
+      matchupId,
+      stageId,
+    )) as unknown as PopulatedStageMatchup;
+    // Bracket matchups with unresolved winner/loser slots have no teams to
+    // analyze yet — treat them like a missing matchup.
+    if (!hasResolvedSides(matchupDoc))
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+
+    const roundIndex = matchupDoc.round
+      ? stageDoc.rounds.findIndex((round) =>
+          round._id.equals(matchupDoc.round!),
+        )
+      : -1;
+    const roundDoc =
+      roundIndex === -1 ? undefined : stageDoc.rounds[roundIndex];
+
+    const toSide = (side: { team: PopulatedTeam }): MatchupSide => {
+      const roster = getRosterByRound(
+        side.team,
+        stageDoc,
+        roundIndex === -1 ? undefined : roundIndex,
+      );
+      const team: PDZPokemon[] = [];
+      for (const pokemon of roster) {
+        try {
+          team.push(
+            new PDZPokemon(
+              {
+                id: pokemon.id,
+                capt: pokemon.addons?.includes("Tera Captain")
+                  ? { tera: [] }
+                  : undefined,
+              },
+              tournament.ruleset,
+            ),
+          );
+        } catch {
+          // A species that no longer resolves against the ruleset is
+          // dropped from the analysis rather than failing the whole page.
+        }
+      }
+      return {
+        team,
+        teamName: side.team.teamName,
+        coach: side.team.coach.name,
+        owner: side.team.coach.auth0Id,
+      };
+    };
+
+    const matchup = new ExternalMatchup({
+      ruleset: tournament.ruleset,
+      format: tournament.format,
+      tournamentName: tournament.name,
+      stage: roundDoc?.name ?? stageDoc.name,
+      gameTime: matchupDoc.scheduledDate,
+      aTeam: toSide(matchupDoc.side1),
+      bTeam: toSide(matchupDoc.side2),
+    });
+    return matchup.analyze(sub);
   }
 
   async getStandings(stageId: string) {

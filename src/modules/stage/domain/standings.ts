@@ -11,9 +11,20 @@ import { getName } from "@modules/data/domain/pokedex";
  * migration doesn't touch.
  */
 export type PopulatedStageMatchup = LeagueMatchupDocument & {
+  // Absent on bracket matchups whose winner/loser slots are unresolved.
+  side1: { team?: PopulatedTeam };
+  side2: { team?: PopulatedTeam };
+};
+
+/** Both participants are known (i.e. not an unresolved bracket slot). */
+export function hasResolvedSides(
+  matchup: PopulatedStageMatchup,
+): matchup is PopulatedStageMatchup & {
   side1: { team: PopulatedTeam };
   side2: { team: PopulatedTeam };
-};
+} {
+  return Boolean(matchup.side1.team && matchup.side2.team);
+}
 
 export async function calculateDivisionPokemonStandings(
   matchups: PopulatedStageMatchup[],
@@ -34,6 +45,7 @@ export async function calculateDivisionPokemonStandings(
   >();
 
   for (const matchup of matchups) {
+    if (!hasResolvedSides(matchup)) continue;
     const team1Doc = matchup.side1.team;
     const team2Doc = matchup.side2.team;
     const team1Coach = team1Doc.teamName || "Unknown Coach";
@@ -359,6 +371,7 @@ export async function calculateDivisionCoachStandings(
   }
 
   for (const matchup of matchups) {
+    if (!hasResolvedSides(matchup)) continue;
     const team1Doc = matchup.side1.team;
     const team2Doc = matchup.side2.team;
     const team1Standing = getOrCreateCoachStanding(
@@ -459,8 +472,8 @@ export async function calculateTeamScore(
   let unplayed = 0;
 
   for (const matchup of matchups) {
-    const team1Id = matchup.side1.team._id.toString();
-    const team2Id = matchup.side2.team._id.toString();
+    const team1Id = matchup.side1.team?._id.toString();
+    const team2Id = matchup.side2.team?._id.toString();
     const teamSide =
       team1Id === teamId ? "side1" : team2Id === teamId ? "side2" : null;
 

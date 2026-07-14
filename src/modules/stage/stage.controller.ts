@@ -1,5 +1,6 @@
 import { User } from "@core/decorators/user.decorator";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
+import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
   Body,
   Controller,
@@ -120,6 +121,17 @@ export class StageController {
       sub,
       body,
     );
+  }
+
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get(":stageId/matchups/:matchupId")
+  async getMatchupAnalysis(
+    @Param("stageId") stageId: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub?: string,
+  ) {
+    return this.stageService.getMatchupAnalysis(stageId, matchupId, sub);
   }
 
   @Post(":stageId/matchups/:matchupId")

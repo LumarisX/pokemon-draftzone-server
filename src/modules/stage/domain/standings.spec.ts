@@ -82,6 +82,60 @@ describe("calculateDivisionCoachStandings", () => {
     expect(teamOneStanding?.results[0]).toEqual({ outcome: "ff", score: -6 });
     expect(teamTwoStanding?.results[0]).toEqual({ outcome: "ff", score: -6 });
   });
+
+  it("skips bracket matchups whose sides are unresolved", async () => {
+    const roundId = new Types.ObjectId();
+    const team1Id = new Types.ObjectId();
+
+    const team1 = {
+      _id: team1Id,
+      teamName: "Team One",
+      logo: "",
+      coach: {
+        name: "Coach One",
+      },
+    };
+
+    const stage = {
+      teams: [team1],
+      rounds: [{ _id: roundId }],
+    };
+
+    const tournament = {
+      diffMode: "pokemon",
+    };
+
+    // A bracket matchup whose participants aren't determined yet (winner/loser
+    // slots) has sides without a team.
+    const matchups = [
+      {
+        side1: {
+          team: team1,
+          score: 0,
+        },
+        side2: {
+          slot: { type: "winner", matchId: new Types.ObjectId().toString() },
+        },
+        round: roundId,
+        results: [],
+      },
+    ];
+
+    const { coachStandings } = await calculateDivisionCoachStandings(
+      matchups as any,
+      stage as any,
+      tournament as any,
+    );
+
+    const teamOneStanding = coachStandings.find(
+      (team) => team.name === "Team One",
+    );
+
+    expect(teamOneStanding).toBeDefined();
+    expect(teamOneStanding?.wins).toBe(0);
+    expect(teamOneStanding?.losses).toBe(0);
+    expect(teamOneStanding?.results[0]).toBeNull();
+  });
 });
 
 describe("calculateTeamScore", () => {
