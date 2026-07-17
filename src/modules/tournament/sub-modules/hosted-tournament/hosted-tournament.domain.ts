@@ -35,6 +35,22 @@ export class TournamentForfeit {
   }
 }
 
+export class TournamentDiscordSettings {
+  guildId?: string;
+  coachRoleId?: string;
+  signUpChannelId?: string;
+
+  constructor(props: {
+    guildId?: string;
+    coachRoleId?: string;
+    signUpChannelId?: string;
+  }) {
+    this.guildId = props.guildId;
+    this.coachRoleId = props.coachRoleId;
+    this.signUpChannelId = props.signUpChannelId;
+  }
+}
+
 export class HostedTournament {
   id: string;
   name: string;
@@ -52,6 +68,7 @@ export class HostedTournament {
   rules: TournamentRule[];
   logo?: string;
   discord?: string;
+  discordSettings?: TournamentDiscordSettings;
   stages: StageDocument[];
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
@@ -78,6 +95,7 @@ export class HostedTournament {
     rules: TournamentRule[];
     logo?: string;
     discord?: string;
+    discordSettings?: TournamentDiscordSettings;
     stages: StageDocument[];
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
@@ -103,6 +121,7 @@ export class HostedTournament {
     this.rules = props.rules;
     this.logo = props.logo;
     this.discord = props.discord;
+    this.discordSettings = props.discordSettings;
     this.stages = props.stages;
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;

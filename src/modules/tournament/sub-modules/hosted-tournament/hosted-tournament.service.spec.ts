@@ -37,6 +37,11 @@ function buildTournament(
     rules: [],
     stages: [],
     forfeit: { gameDiff: 1, pokemonDiff: 6 },
+    discordSettings: {
+      guildId: "guild-1",
+      coachRoleId: "role-1",
+      signUpChannelId: "channel-1",
+    },
     diffMode: "pokemon",
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -220,7 +225,7 @@ describe("HostedTournamentService signup", () => {
       expect(result.draft).toEqual({ draftKey: "draft-1", name: "Draft One" });
       expect(result.inDiscordServer).toBe(true);
       expect(discordService.findMember).toHaveBeenCalledWith(
-        expect.any(String),
+        "guild-1",
         "ash#1234",
       );
     });
@@ -334,6 +339,23 @@ describe("HostedTournamentService signup", () => {
       });
       expect(teamRepo.create).not.toHaveBeenCalled();
       expect(coachRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("skips Discord side effects when the tournament has no Discord settings", async () => {
+      tournamentRepo.findByKey.mockResolvedValue(
+        buildTournament({ discordSettings: undefined }),
+      );
+      coachRepo.findByAuth0Id.mockResolvedValue([]);
+      teamRepo.create.mockResolvedValue({} as any);
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await expect(
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
+      ).resolves.toMatchObject({ message: "Sign up successful." });
+
+      expect(discordService.findMember).not.toHaveBeenCalled();
+      expect(discordService.grantRole).not.toHaveBeenCalled();
+      expect(discordService.sendMessage).not.toHaveBeenCalled();
     });
 
     it("doesn't fail the signup when the Discord notification throws", async () => {

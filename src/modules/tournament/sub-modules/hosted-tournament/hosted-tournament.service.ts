@@ -38,10 +38,6 @@ import {
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 
-const DISCORD_GUILD_ID = "1183936734719922176";
-const SIGNUP_COACH_ROLE_ID = "1469151649070186576";
-const SIGNUP_CHANNEL_ID = "1303896194187132978";
-
 @Injectable()
 export class HostedTournamentService {
   private readonly logger = new Logger(HostedTournamentService.name);
@@ -292,10 +288,10 @@ export class HostedTournamentService {
       if (d) draft = { draftKey: d.draftKey, name: d.name };
     }
 
-    const member = await this.discordService.findMember(
-      DISCORD_GUILD_ID,
-      coach.discordName,
-    );
+    const guildId = tournament.discordSettings?.guildId;
+    const member = guildId
+      ? await this.discordService.findMember(guildId, coach.discordName)
+      : null;
     const inDiscordServer = Boolean(member);
 
     return {
@@ -424,19 +420,20 @@ export class HostedTournamentService {
       tierList,
     }) as PopulatedTournament;
 
+    const { guildId, coachRoleId } = tournament.discordSettings ?? {};
+
     const signups = await Promise.all(
       teams.map(async (team) => {
         const coach = team.coach;
         const draft = team.draftId
           ? draftIdToKey.get(team.draftId.toString())
           : undefined;
-        const member = await this.discordService.findMember(
-          DISCORD_GUILD_ID,
-          coach.discordName,
-        );
+        const member = guildId
+          ? await this.discordService.findMember(guildId, coach.discordName)
+          : null;
         const inDiscordServer = Boolean(member);
         const hasDiscordRole = Boolean(
-          member?.roleIds.includes(SIGNUP_COACH_ROLE_ID),
+          coachRoleId && member?.roleIds.includes(coachRoleId),
         );
         const hasValidTeam = await isTeamRosterValid(populatedTournament, team);
         return {
@@ -693,6 +690,8 @@ export class HostedTournamentService {
     if (dto.seasonStart !== undefined) update["seasonStart"] = dto.seasonStart;
     if (dto.seasonEnd !== undefined) update["seasonEnd"] = dto.seasonEnd;
     if (dto.discord !== undefined) update["discord"] = dto.discord;
+    if (dto.discordSettings !== undefined)
+      update["discordSettings"] = dto.discordSettings;
     if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;
     if (dto.diffMode !== undefined) update["diffMode"] = dto.diffMode;
     if (dto.tierListId !== undefined) {
@@ -715,20 +714,21 @@ export class HostedTournamentService {
 
   private async notifySignup(tournament: HostedTournament, dto: SignUpDto) {
     try {
+      const { guildId, coachRoleId, signUpChannelId } =
+        tournament.discordSettings ?? {};
+
       const discordName = dto.discordName?.trim();
-      if (discordName) {
+      if (discordName && guildId && coachRoleId) {
         const member = await this.discordService.findMember(
-          DISCORD_GUILD_ID,
+          guildId,
           discordName,
         );
         if (member) {
-          await this.discordService.grantRole(
-            DISCORD_GUILD_ID,
-            member.id,
-            SIGNUP_COACH_ROLE_ID,
-          );
+          await this.discordService.grantRole(guildId, member.id, coachRoleId);
         }
       }
+
+      if (!signUpChannelId) return;
 
       const totalCoaches = await this.teamRepo.countByTournament(tournament.id);
 
@@ -755,7 +755,7 @@ export class HostedTournamentService {
         embed.setImage(this.s3Service.getPublicUrl(dto.logo));
       }
 
-      await this.discordService.sendMessage(SIGNUP_CHANNEL_ID, {
+      await this.discordService.sendMessage(signUpChannelId, {
         content: `There's a new sign up for **${tournament.name}**! Total sign ups: ${totalCoaches}`,
         embeds: [embed],
       });

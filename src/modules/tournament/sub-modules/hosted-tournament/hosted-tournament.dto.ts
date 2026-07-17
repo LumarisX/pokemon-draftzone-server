@@ -105,6 +105,20 @@ export class TierRequirementDto {
   required!: number;
 }
 
+export class TournamentDiscordSettingsDto {
+  @IsString()
+  @IsOptional()
+  guildId?: string;
+
+  @IsString()
+  @IsOptional()
+  coachRoleId?: string;
+
+  @IsString()
+  @IsOptional()
+  signUpChannelId?: string;
+}
+
 export class TournamentForfeitDto {
   @IsInt()
   @Min(0)
@@ -153,6 +167,11 @@ export class UpdateHostedTournamentSettingsDto {
   @IsString()
   @IsOptional()
   discord?: string;
+
+  @ValidateNested()
+  @Type(() => TournamentDiscordSettingsDto)
+  @IsOptional()
+  discordSettings?: TournamentDiscordSettingsDto;
 
   @ValidateNested()
   @Type(() => TournamentForfeitDto)

@@ -3,6 +3,7 @@ import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
   HostedTournament,
   TierRequirement,
+  TournamentDiscordSettings,
   TournamentForfeit,
   TournamentRule,
 } from "./hosted-tournament.domain";
@@ -33,6 +34,13 @@ export class HostedTournamentMapper {
       ),
       logo: doc.logo,
       discord: doc.discord,
+      discordSettings: doc.discordSettings
+        ? new TournamentDiscordSettings({
+            guildId: doc.discordSettings.guildId,
+            coachRoleId: doc.discordSettings.coachRoleId,
+            signUpChannelId: doc.discordSettings.signUpChannelId,
+          })
+        : undefined,
       stages,
       forfeit: new TournamentForfeit({
         gameDiff: doc.forfeit.gameDiff,
@@ -85,6 +93,7 @@ export class HostedTournamentMapper {
       seasonStart: tournament.seasonStart,
       seasonEnd: tournament.seasonEnd,
       discord: tournament.discord,
+      discordSettings: tournament.discordSettings,
       forfeit: tournament.forfeit,
       diffMode: tournament.diffMode,
       tierListId: tournament.tierListId,

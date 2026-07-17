@@ -30,6 +30,21 @@ export const TournamentRuleSchema =
   SchemaFactory.createForClass(TournamentRuleEntity);
 
 @Schema({ _id: false })
+export class TournamentDiscordSettingsEntity {
+  @Prop()
+  guildId?: string;
+
+  @Prop()
+  coachRoleId?: string;
+
+  @Prop()
+  signUpChannelId?: string;
+}
+export const TournamentDiscordSettingsSchema = SchemaFactory.createForClass(
+  TournamentDiscordSettingsEntity,
+);
+
+@Schema({ _id: false })
 export class TournamentForfeitEntity {
   @Prop({ required: true, default: 0 })
   gameDiff!: number;
@@ -94,6 +109,9 @@ export class HostedTournamentEntity {
 
   @Prop()
   discord?: string;
+
+  @Prop({ type: TournamentDiscordSettingsSchema })
+  discordSettings?: TournamentDiscordSettingsEntity;
 
   @Prop({ type: [SchemaTypes.ObjectId], ref: "StageEntity", default: [] })
   stages!: Types.ObjectId[];
