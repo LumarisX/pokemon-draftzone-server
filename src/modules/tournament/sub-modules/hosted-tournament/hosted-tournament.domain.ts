@@ -51,6 +51,25 @@ export class TournamentDiscordSettings {
   }
 }
 
+export class TournamentAdSettings {
+  advertise: boolean;
+  skillLevelRange?: { from: string; to: string };
+  prizeValue?: "0" | "1" | "2" | "3" | "4";
+  platforms: string[];
+
+  constructor(props: {
+    advertise: boolean;
+    skillLevelRange?: { from: string; to: string };
+    prizeValue?: "0" | "1" | "2" | "3" | "4";
+    platforms?: string[];
+  }) {
+    this.advertise = props.advertise;
+    this.skillLevelRange = props.skillLevelRange;
+    this.prizeValue = props.prizeValue;
+    this.platforms = props.platforms ?? [];
+  }
+}
+
 export class HostedTournament {
   id: string;
   name: string;
@@ -77,6 +96,7 @@ export class HostedTournament {
   draftCount: DraftCount;
   pointTotal?: number;
   tierRequirements: TierRequirement[];
+  adSettings?: TournamentAdSettings;
 
   constructor(props: {
     id: string;
@@ -104,6 +124,7 @@ export class HostedTournament {
     draftCount: DraftCount;
     pointTotal?: number;
     tierRequirements: TierRequirement[];
+    adSettings?: TournamentAdSettings;
   }) {
     this.id = props.id;
     this.name = props.name;
@@ -130,6 +151,7 @@ export class HostedTournament {
     this.draftCount = props.draftCount;
     this.pointTotal = props.pointTotal;
     this.tierRequirements = props.tierRequirements;
+    this.adSettings = props.adSettings;
   }
 
   validateTierListMatch(tierList: TierList): void {

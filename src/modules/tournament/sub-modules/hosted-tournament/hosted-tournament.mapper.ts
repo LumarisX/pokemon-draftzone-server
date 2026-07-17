@@ -3,6 +3,7 @@ import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
   HostedTournament,
   TierRequirement,
+  TournamentAdSettings,
   TournamentDiscordSettings,
   TournamentForfeit,
   TournamentRule,
@@ -61,6 +62,19 @@ export class HostedTournamentMapper {
             required: req.required,
           }),
       ),
+      adSettings: doc.adSettings
+        ? new TournamentAdSettings({
+            advertise: doc.adSettings.advertise,
+            skillLevelRange: doc.adSettings.skillLevelRange
+              ? {
+                  from: doc.adSettings.skillLevelRange.from,
+                  to: doc.adSettings.skillLevelRange.to,
+                }
+              : undefined,
+            prizeValue: doc.adSettings.prizeValue,
+            platforms: [...doc.adSettings.platforms],
+          })
+        : undefined,
     });
   }
 
@@ -102,6 +116,7 @@ export class HostedTournamentMapper {
       draftCount: tournament.draftCount,
       pointTotal: tournament.pointTotal,
       tierRequirements: tournament.tierRequirements,
+      adSettings: tournament.adSettings,
     };
   }
 }

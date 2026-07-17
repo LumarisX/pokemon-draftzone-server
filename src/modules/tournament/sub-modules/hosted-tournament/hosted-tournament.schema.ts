@@ -45,6 +45,36 @@ export const TournamentDiscordSettingsSchema = SchemaFactory.createForClass(
 );
 
 @Schema({ _id: false })
+export class TournamentAdSkillLevelRangeEntity {
+  @Prop({ required: true })
+  from!: string;
+
+  @Prop({ required: true })
+  to!: string;
+}
+export const TournamentAdSkillLevelRangeSchema = SchemaFactory.createForClass(
+  TournamentAdSkillLevelRangeEntity,
+);
+
+@Schema({ _id: false })
+export class TournamentAdSettingsEntity {
+  @Prop({ required: true, default: false })
+  advertise!: boolean;
+
+  @Prop({ type: TournamentAdSkillLevelRangeSchema })
+  skillLevelRange?: TournamentAdSkillLevelRangeEntity;
+
+  @Prop({ type: String, enum: ["0", "1", "2", "3", "4"] })
+  prizeValue?: "0" | "1" | "2" | "3" | "4";
+
+  @Prop({ type: [String], default: [] })
+  platforms!: string[];
+}
+export const TournamentAdSettingsSchema = SchemaFactory.createForClass(
+  TournamentAdSettingsEntity,
+);
+
+@Schema({ _id: false })
 export class TournamentForfeitEntity {
   @Prop({ required: true, default: 0 })
   gameDiff!: number;
@@ -142,6 +172,11 @@ export class HostedTournamentEntity {
 
   @Prop()
   archived?: boolean;
+
+  @Prop({ type: TournamentAdSettingsSchema })
+  adSettings?: TournamentAdSettingsEntity;
+
+  createdAt?: Date;
 }
 
 export const HostedTournamentSchema = SchemaFactory.createForClass(

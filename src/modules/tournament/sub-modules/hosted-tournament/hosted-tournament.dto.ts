@@ -119,6 +119,33 @@ export class TournamentDiscordSettingsDto {
   signUpChannelId?: string;
 }
 
+export class AdSkillLevelRangeDto {
+  @IsString()
+  from!: string;
+
+  @IsString()
+  to!: string;
+}
+
+export class TournamentAdSettingsDto {
+  @IsBoolean()
+  advertise!: boolean;
+
+  @ValidateNested()
+  @Type(() => AdSkillLevelRangeDto)
+  @IsOptional()
+  skillLevelRange?: AdSkillLevelRangeDto;
+
+  @IsIn(["0", "1", "2", "3", "4"])
+  @IsOptional()
+  prizeValue?: "0" | "1" | "2" | "3" | "4";
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  platforms?: string[];
+}
+
 export class TournamentForfeitDto {
   @IsInt()
   @Min(0)
@@ -210,4 +237,9 @@ export class UpdateHostedTournamentSettingsDto {
   @Type(() => TierRequirementDto)
   @IsOptional()
   tierRequirements?: TierRequirementDto[];
+
+  @ValidateNested()
+  @Type(() => TournamentAdSettingsDto)
+  @IsOptional()
+  adSettings?: TournamentAdSettingsDto;
 }

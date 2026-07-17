@@ -707,6 +707,7 @@ export class HostedTournamentService {
     if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
     if (dto.tierRequirements !== undefined)
       update["tierRequirements"] = dto.tierRequirements;
+    if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
 
     await this.tournamentRepo.updateSettings(tournament.id, update);
     return { success: true };
