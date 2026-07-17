@@ -63,7 +63,7 @@ export class ExternalTournamentAdMapper {
       platforms: dto.platforms,
       formats: dto.formats,
       rulesets: dto.rulesets,
-      status: dto.status,
+      status: "Pending",
       signupLink: dto.signupLink,
       closesAt: dto.closesAt,
       seasonStart: dto.seasonStart,

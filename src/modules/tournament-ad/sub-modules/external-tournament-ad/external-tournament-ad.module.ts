@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { DiscordModule } from "@modules/discord/discord.module";
 import { ExternalTournamentAdController } from "./external-tournament-ad.controller";
 import {
   ExternalTournamentAdEntity,
@@ -16,6 +17,7 @@ import { ExternalTournamentAdRepository } from "./external-tournament-ad.reposit
         schema: ExternalTournamentAdSchema,
       },
     ]),
+    DiscordModule,
   ],
   controllers: [ExternalTournamentAdController],
   providers: [ExternalTournamentAdService, ExternalTournamentAdRepository],

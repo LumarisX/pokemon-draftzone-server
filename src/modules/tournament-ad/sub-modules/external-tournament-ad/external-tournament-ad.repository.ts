@@ -44,6 +44,16 @@ export class ExternalTournamentAdRepository {
     return ExternalTournamentAdMapper.fromDatabase(document);
   }
 
+  async updateStatus(
+    adId: string,
+    status: "Approved" | "Denied",
+  ): Promise<ExternalTournamentAd | null> {
+    const document = await this.externalTournamentAdModel
+      .findByIdAndUpdate(adId, { status }, { new: true })
+      .exec();
+    return document ? ExternalTournamentAdMapper.fromDatabase(document) : null;
+  }
+
   async deleteTournamentAd(adId: string, owner: string): Promise<number> {
     const result = await this.externalTournamentAdModel
       .deleteOne({ _id: adId, owner })

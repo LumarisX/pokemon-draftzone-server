@@ -6,7 +6,16 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Client, EmbedBuilder, GuildMember } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonInteraction,
+  Client,
+  EmbedBuilder,
+  GuildMember,
+  Interaction,
+  MessageFlags,
+} from "discord.js";
 import { DISCORD_CLIENT } from "./discord.constants";
 
 export type DiscordMemberSummary = {
@@ -17,7 +26,14 @@ export type DiscordMemberSummary = {
 type SendMessagePayload = {
   content?: string;
   embeds?: EmbedBuilder[];
+  components?: ActionRowBuilder<ButtonBuilder>[];
 };
+
+export type DiscordButtonHandler = (
+  action: string,
+  targetId: string,
+  interaction: ButtonInteraction,
+) => Promise<void>;
 
 type MemberIndex = Map<string, DiscordMemberSummary>;
 
@@ -38,6 +54,9 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     string,
     Promise<MemberIndex | null>
   >();
+
+  private readonly buttonHandlers = new Map<string, DiscordButtonHandler>();
+  private buttonListenerAttached = false;
 
   constructor(
     @Inject(DISCORD_CLIENT) private readonly client: Client,
@@ -109,6 +128,41 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  registerButtonHandler(scope: string, handler: DiscordButtonHandler): void {
+    this.buttonHandlers.set(scope, handler);
+    if (!this.buttonListenerAttached) {
+      this.buttonListenerAttached = true;
+      this.client.on("interactionCreate", (interaction) => {
+        void this.dispatchButtonInteraction(interaction);
+      });
+    }
+  }
+
+  private async dispatchButtonInteraction(
+    interaction: Interaction,
+  ): Promise<void> {
+    if (!interaction.isButton()) return;
+    const [scope, action, targetId] = interaction.customId.split(":");
+    const handler = this.buttonHandlers.get(scope);
+    if (!handler || !action || !targetId) return;
+    try {
+      await handler(action, targetId, interaction);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to handle button interaction ${interaction.customId}`,
+        error,
+      );
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction
+          .reply({
+            content: "Failed to process this action.",
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
+      }
+    }
+  }
+
   async sendMessage(
     channelId: string,
     payload: SendMessagePayload,
@@ -153,7 +207,10 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
       const member = await this.findMember(guildId, trimmed);
       return member ? `<@${member.id}>` : fallback;
     } catch (error) {
-      this.logger.warn(`Failed to resolve mention in channel ${channelId}`, error);
+      this.logger.warn(
+        `Failed to resolve mention in channel ${channelId}`,
+        error,
+      );
       return fallback;
     }
   }

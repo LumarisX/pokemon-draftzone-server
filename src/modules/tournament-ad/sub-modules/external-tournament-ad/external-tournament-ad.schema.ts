@@ -71,7 +71,7 @@ export class ExternalTournamentAdEntity {
   @Prop({
     type: String,
     enum: ["Approved", "Denied", "Pending"],
-    default: "Approved",
+    default: "Pending",
     required: true,
   })
   status!: "Approved" | "Denied" | "Pending";

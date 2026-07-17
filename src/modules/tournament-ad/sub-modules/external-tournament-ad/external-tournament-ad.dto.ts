@@ -4,12 +4,19 @@ import {
   IsOptional,
   IsUrl,
   IsArray,
-  IsIn,
   IsDate,
   IsNumber,
   ValidateNested,
 } from "class-validator";
 import { Type, Transform } from "class-transformer";
+
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  value === "" || value === null ? undefined : value;
+
+const emptyToUndefinedDate = ({ value }: { value: unknown }) =>
+  value === "" || value === null || value === undefined
+    ? undefined
+    : new Date(value as string | number | Date);
 
 export class SkillLevelRangeDto {
   @IsString()
@@ -31,10 +38,12 @@ export class ExternalTournamentAdDto {
   description!: string;
 
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsUrl({}, { message: "League document must be a valid URL" })
   leagueDoc?: string;
 
   @IsOptional()
+  @Transform(emptyToUndefined)
   @IsUrl({}, { message: "Server link must be a valid URL" })
   serverLink?: string;
 
@@ -61,10 +70,6 @@ export class ExternalTournamentAdDto {
   @IsString({ each: true })
   rulesets!: string[];
 
-  @IsOptional()
-  @IsIn(["Approved", "Pending", "Denied"], { message: "Invalid status value" })
-  status?: "Approved" | "Pending" | "Denied";
-
   @IsUrl({}, { message: "Signup link must be a valid URL" })
   signupLink!: string;
 
@@ -73,12 +78,12 @@ export class ExternalTournamentAdDto {
   closesAt!: Date;
 
   @IsOptional()
-  @Type(() => Date)
+  @Transform(emptyToUndefinedDate)
   @IsDate()
   seasonStart?: Date;
 
   @IsOptional()
-  @Type(() => Date)
+  @Transform(emptyToUndefinedDate)
   @IsDate()
   seasonEnd?: Date;
 }
