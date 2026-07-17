@@ -43,7 +43,7 @@ export class UserRepository {
             lastCheckedAdsAt: new Date(0),
           },
         },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: "after" },
       )
       .exec();
   }
@@ -56,7 +56,7 @@ export class UserRepository {
       .findOneAndUpdate(
         { auth0Sub: { $eq: sub } },
         { $set: { settings: settingsPayload } },
-        { new: true },
+        { returnDocument: "after" },
       )
       .exec();
 

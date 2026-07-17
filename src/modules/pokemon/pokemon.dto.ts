@@ -20,6 +20,17 @@ export class PokemonModifiers {
   moves?: string[];
 }
 
+/** Wire shape for a draft forme: the client works with `{ id, name }`
+ * objects, while the server stores and processes bare ids. */
+export class DraftFormeDto {
+  @IsString()
+  id!: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
+}
+
 export class PokemonCapt {
   @IsArray()
   @IsString({ each: true })
@@ -52,8 +63,10 @@ export class PokemonDto {
   nickname?: string;
 
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DraftFormeDto)
   @IsOptional()
-  draftFormes?: string[];
+  draftFormes?: DraftFormeDto[];
 
   @IsArray()
   @IsIn(["M", "F"], { each: true })

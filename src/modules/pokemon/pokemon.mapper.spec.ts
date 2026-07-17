@@ -38,6 +38,19 @@ describe("PokemonMapper", () => {
       expect(result.capt).toEqual({ tera: ["Water"], z: ["Fire"], dmax: true });
     });
 
+    it("normalizes legacy object-shaped draftFormes entries to ids", () => {
+      const result = PokemonMapper.fromDatabase(
+        buildEntity({
+          draftFormes: [
+            { id: "raichu", name: "Raichu" },
+          ] as unknown as string[],
+        }),
+        NAT_DEX,
+      );
+
+      expect(result.draftFormes).toEqual(["raichu"]);
+    });
+
     it("leaves capt/modifiers undefined when the entity has none", () => {
       const result = PokemonMapper.fromDatabase(
         buildEntity({ capt: undefined, modifiers: undefined }),
@@ -56,7 +69,7 @@ describe("PokemonMapper", () => {
         name: "Charizard",
         shiny: false,
         nickname: "Blaze",
-        draftFormes: ["charizardmegax"],
+        draftFormes: [{ id: "charizardmegax", name: "Charizard-Mega-X" }],
         modifiers: { abilities: ["Solar Power"] },
         capt: { tera: ["Water"], dmax: false },
         ...overrides,
@@ -104,6 +117,17 @@ describe("PokemonMapper", () => {
   });
 
   describe("toClientPayload", () => {
+    it("expands draftForme ids into { id, name } objects for the client", () => {
+      const pikachu = new PDZPokemon(
+        { id: "pikachu", draftFormes: ["raichu"] as ID[] },
+        NAT_DEX,
+      );
+
+      const result = PokemonMapper.toClientPayload(pikachu);
+
+      expect(result.draftFormes).toEqual([{ id: "raichu", name: "Raichu" }]);
+    });
+
     it("includes the resolved name and passes through a partial Tera type list as-is", () => {
       const pikachu = new PDZPokemon(
         { id: "pikachu", capt: { tera: ["Water"] } },

@@ -80,7 +80,7 @@ export class CoachRepository {
     const coach = await this.coachModel.findByIdAndUpdate(
       safeCoachId,
       { $set: data },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!coach)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });

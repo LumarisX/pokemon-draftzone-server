@@ -28,7 +28,7 @@ export class TierListRepository {
     }>,
   ): Promise<TierList> {
     const doc = await this.tierListModel
-      .findByIdAndUpdate(tierListId, { $set: update }, { new: true })
+      .findByIdAndUpdate(tierListId, { $set: update }, { returnDocument: "after" })
       .exec();
     if (!doc) throw new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND);
     return TierListMapper.fromDatabase(doc);

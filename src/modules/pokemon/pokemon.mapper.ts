@@ -5,6 +5,21 @@ import { PokemonEntity } from "./pokemon.schema";
 import { ID, TypeName } from "@pkmn/data";
 
 export class PokemonMapper {
+  /**
+   * Stored draftFormes should be bare id strings, but documents written by the
+   * legacy server may hold `{ id, name }` objects; normalize both to ids so a
+   * legacy doc doesn't break mapping.
+   */
+  private static normalizeDraftFormes(
+    draftFormes?: (string | { id?: string })[],
+  ): ID[] | undefined {
+    if (!draftFormes) return undefined;
+    const ids = draftFormes
+      .map((forme) => (typeof forme === "string" ? forme : forme?.id))
+      .filter((id): id is string => !!id);
+    return ids as ID[];
+  }
+
   static fromDatabaseTeam(
     team: PokemonEntity[],
     ruleset: Ruleset,
@@ -27,7 +42,7 @@ export class PokemonMapper {
         id: data.id,
         shiny: data.shiny,
         nickname: data.nickname,
-        draftFormes: data.draftFormes as ID[] | undefined,
+        draftFormes: PokemonMapper.normalizeDraftFormes(data.draftFormes),
         modifiers: data.modifiers
           ? {
               abilities: data.modifiers.abilities,
@@ -52,7 +67,7 @@ export class PokemonMapper {
         id: data.id,
         shiny: data.shiny,
         nickname: data.nickname,
-        draftFormes: data.draftFormes as ID[] | undefined,
+        draftFormes: PokemonMapper.normalizeDraftFormes(data.draftFormes),
         modifiers: data.modifiers
           ? {
               abilities: data.modifiers.abilities,
@@ -92,7 +107,10 @@ export class PokemonMapper {
       name: pokemon.name,
       nickname: pokemon.nickname,
       shiny: pokemon.shiny,
-      draftFormes: pokemon.draftFormes,
+      draftFormes: pokemon.draftFormes?.map((id) => ({
+        id,
+        name: pokemon.ruleset.species.get(id)?.name ?? id,
+      })),
       modifiers: pokemon.modifiers,
       capt: Object.values(capt).some((value) => value !== undefined)
         ? capt
@@ -111,7 +129,9 @@ export class PokemonMapper {
       name: pokemon.id,
       nickname: pokemon.nickname,
       shiny: pokemon.shiny,
-      draftFormes: pokemon.draftFormes,
+      draftFormes: PokemonMapper.normalizeDraftFormes(pokemon.draftFormes)?.map(
+        (id) => ({ id, name: id }),
+      ),
       modifiers: pokemon.modifiers,
       capt: pokemon.capt,
       unresolved: true as const,

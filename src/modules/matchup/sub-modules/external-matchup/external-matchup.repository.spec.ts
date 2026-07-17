@@ -48,7 +48,7 @@ describe("ExternalMatchupRepository", () => {
             matches: [{ persisted: matches[0] }, { persisted: matches[1] }],
           },
         },
-        { new: true },
+        { returnDocument: "after" },
       );
     });
 

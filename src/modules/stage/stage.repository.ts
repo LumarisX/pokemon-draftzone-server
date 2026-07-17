@@ -140,7 +140,7 @@ export class StageRepository {
     const stage = await this.stageModel.findOneAndUpdate(
       { _id: { $eq: normalizedStageId } },
       { $set: { pools } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
     return stage;
@@ -154,7 +154,7 @@ export class StageRepository {
     const stage = await this.stageModel.findOneAndUpdate(
       { _id: { $eq: normalizedStageId } },
       { $set: { currentRoundIndex } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
     return stage;

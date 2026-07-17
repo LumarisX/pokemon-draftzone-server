@@ -89,7 +89,7 @@ export class ExternalTournamentRepository {
           { owner: owner, leagueId: key },
           ExternalTournamentMapper.toDatabasePayload(tournament),
           {
-            new: true,
+            returnDocument: "after",
             upsert: true,
           },
         )

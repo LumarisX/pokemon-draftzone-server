@@ -51,7 +51,7 @@ export class ExternalMatchupRepository {
     updateData: Partial<ExternalMatchupEntity>,
   ): Promise<void> {
     await this.externalmatchupModel
-      .findByIdAndUpdate(id, { $set: updateData }, { new: true })
+      .findByIdAndUpdate(id, { $set: updateData }, { returnDocument: "after" })
       .exec();
   }
 
@@ -68,7 +68,7 @@ export class ExternalMatchupRepository {
     if (bTeamPaste !== undefined) setData["bTeam.paste"] = bTeamPaste;
 
     await this.externalmatchupModel
-      .findByIdAndUpdate(id, { $set: setData }, { new: true })
+      .findByIdAndUpdate(id, { $set: setData }, { returnDocument: "after" })
       .exec();
   }
 
