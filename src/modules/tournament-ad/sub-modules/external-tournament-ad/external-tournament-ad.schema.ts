@@ -84,6 +84,8 @@ export class ExternalTournamentAdEntity {
 
   @Prop()
   seasonEnd?: Date;
+
+  createdAt?: Date;
 }
 
 export const ExternalTournamentAdSchema = SchemaFactory.createForClass(

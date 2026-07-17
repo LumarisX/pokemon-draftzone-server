@@ -1,14 +1,10 @@
 import { ExternalTournamentAd } from "./external-tournament-ad.domain";
 import { ExternalTournamentAdDto } from "./external-tournament-ad.dto";
-import { ExternalTournamentAdEntity } from "./external-tournament-ad.schema";
+import { ExternalTournamentAdDocument } from "./external-tournament-ad.schema";
 export class ExternalTournamentAdMapper {
   constructor() {}
 
   static toDatabasePayload(tournamentAd: ExternalTournamentAd) {
-    return {};
-  }
-
-  static toClientPayload(tournamentAd: ExternalTournamentAd) {
     return {
       leagueName: tournamentAd.leagueName,
       owner: tournamentAd.owner,
@@ -16,7 +12,7 @@ export class ExternalTournamentAdMapper {
       leagueDoc: tournamentAd.leagueDoc,
       serverLink: tournamentAd.serverLink,
       skillLevelRange: tournamentAd.skillLevelRange,
-      prizeValue: tournamentAd.prizeValue,
+      prizeValue: String(tournamentAd.prizeValue) as "0" | "1" | "2" | "3" | "4",
       platforms: tournamentAd.platforms,
       formats: tournamentAd.formats,
       rulesets: tournamentAd.rulesets,
@@ -25,6 +21,30 @@ export class ExternalTournamentAdMapper {
       closesAt: tournamentAd.closesAt,
       seasonStart: tournamentAd.seasonStart,
       seasonEnd: tournamentAd.seasonEnd,
+    };
+  }
+
+  static toClientPayload(tournamentAd: ExternalTournamentAd) {
+    return {
+      _id: tournamentAd._id,
+      leagueName: tournamentAd.leagueName,
+      owner: tournamentAd.owner,
+      description: tournamentAd.description,
+      leagueDoc: tournamentAd.leagueDoc,
+      serverLink: tournamentAd.serverLink,
+      skillLevelRange: tournamentAd.skillLevelRange,
+      skillLevels: tournamentAd.skillLevels,
+      prizeValue: tournamentAd.prizeValue,
+      platforms: tournamentAd.platforms,
+      formats: tournamentAd.formats,
+      rulesets: tournamentAd.rulesets,
+      tags: tournamentAd.tags,
+      status: tournamentAd.status,
+      signupLink: tournamentAd.signupLink,
+      closesAt: tournamentAd.closesAt,
+      seasonStart: tournamentAd.seasonStart,
+      seasonEnd: tournamentAd.seasonEnd,
+      createdAt: tournamentAd.createdAt,
     };
   }
 
@@ -52,9 +72,10 @@ export class ExternalTournamentAdMapper {
   }
 
   static fromDatabase(
-    entity: ExternalTournamentAdEntity,
+    entity: ExternalTournamentAdDocument,
   ): ExternalTournamentAd {
     return new ExternalTournamentAd({
+      _id: entity._id.toString(),
       leagueName: entity.leagueName,
       owner: entity.owner,
       description: entity.description,
@@ -70,6 +91,7 @@ export class ExternalTournamentAdMapper {
       closesAt: entity.closesAt,
       seasonStart: entity.seasonStart,
       seasonEnd: entity.seasonEnd,
+      createdAt: entity.createdAt,
     });
   }
 }

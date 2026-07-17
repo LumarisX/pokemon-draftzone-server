@@ -44,37 +44,58 @@ describe("ExternalTournamentAdController", () => {
   });
 
   describe("getExternalTournamentAdsManage", () => {
-    it("forwards the sub and returns the service's result directly (unmapped)", async () => {
-      const ads = [{ leagueName: "Mine" }] as any;
-      service.getMyExternalTournamentAds.mockResolvedValue(ads);
+    it("forwards the sub and maps the user's ads to client payloads", async () => {
+      const ad = { leagueName: "Mine" } as any;
+      service.getMyExternalTournamentAds.mockResolvedValue([ad]);
+      mockedMapper.toClientPayload.mockReturnValueOnce({
+        leagueName: "Mine-mapped",
+      } as any);
 
       const result = await controller.getExternalTournamentAdsManage("auth0|owner");
 
       expect(service.getMyExternalTournamentAds).toHaveBeenCalledWith("auth0|owner");
-      expect(result).toBe(ads);
-      expect(mockedMapper.toClientPayload).not.toHaveBeenCalled();
+      expect(mockedMapper.toClientPayload.mock.calls[0][0]).toBe(ad);
+      expect(result).toEqual([{ leagueName: "Mine-mapped" }]);
     });
   });
 
   describe("createExternalTournamentAdsManage", () => {
-    it("delegates to the not-yet-implemented service stub", async () => {
-      service.createExternalTournamentAd.mockResolvedValue(undefined);
+    it("creates the ad for the authenticated user and returns its client payload", async () => {
+      const dto = { leagueName: "New" } as any;
+      const created = { leagueName: "New", _id: "abc" } as any;
+      service.createExternalTournamentAd.mockResolvedValue(created);
+      mockedMapper.toClientPayload.mockReturnValueOnce({
+        leagueName: "New-mapped",
+      } as any);
 
-      const result = await controller.createExternalTournamentAdsManage();
+      const result = await controller.createExternalTournamentAdsManage(
+        dto,
+        "auth0|owner",
+      );
 
-      expect(service.createExternalTournamentAd).toHaveBeenCalledWith();
-      expect(result).toBeUndefined();
+      expect(service.createExternalTournamentAd).toHaveBeenCalledWith(
+        dto,
+        "auth0|owner",
+      );
+      expect(mockedMapper.toClientPayload).toHaveBeenCalledWith(created);
+      expect(result).toEqual({ leagueName: "New-mapped" });
     });
   });
 
   describe("deleteExternalTournamentAd", () => {
-    it("delegates to the not-yet-implemented service stub", async () => {
+    it("deletes the ad scoped to the authenticated user", async () => {
       service.deleteExternalTournamentAd.mockResolvedValue(undefined);
 
-      const result = await controller.deleteExternalTournamentAd();
+      const result = await controller.deleteExternalTournamentAd(
+        "ad-id",
+        "auth0|owner",
+      );
 
-      expect(service.deleteExternalTournamentAd).toHaveBeenCalledWith();
-      expect(result).toBeUndefined();
+      expect(service.deleteExternalTournamentAd).toHaveBeenCalledWith(
+        "ad-id",
+        "auth0|owner",
+      );
+      expect(result).toEqual({ message: "Advertisement deleted." });
     });
   });
 });

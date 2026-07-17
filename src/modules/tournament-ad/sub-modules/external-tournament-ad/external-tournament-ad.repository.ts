@@ -34,4 +34,20 @@ export class ExternalTournamentAdRepository {
       .exec();
     return documents.map(ExternalTournamentAdMapper.fromDatabase);
   }
+
+  async createTournamentAd(
+    tournamentAd: ExternalTournamentAd,
+  ): Promise<ExternalTournamentAd> {
+    const document = await this.externalTournamentAdModel.create(
+      ExternalTournamentAdMapper.toDatabasePayload(tournamentAd),
+    );
+    return ExternalTournamentAdMapper.fromDatabase(document);
+  }
+
+  async deleteTournamentAd(adId: string, owner: string): Promise<number> {
+    const result = await this.externalTournamentAdModel
+      .deleteOne({ _id: adId, owner })
+      .exec();
+    return result.deletedCount;
+  }
 }

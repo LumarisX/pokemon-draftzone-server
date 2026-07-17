@@ -1,6 +1,7 @@
 import { getFormat } from "@core/data/formats/formats";
 
 export class ExternalTournamentAd {
+  _id?: string;
   leagueName: string;
   owner: string;
   description: string;
@@ -20,9 +21,11 @@ export class ExternalTournamentAd {
   closesAt: Date;
   seasonStart?: Date;
   seasonEnd?: Date;
+  createdAt?: Date;
   tags: string[];
 
   constructor(props: {
+    _id?: string;
     leagueName: string;
     owner: string;
     description: string;
@@ -41,7 +44,9 @@ export class ExternalTournamentAd {
     closesAt: Date;
     seasonStart?: Date;
     seasonEnd?: Date;
+    createdAt?: Date;
   }) {
+    this._id = props._id;
     this.leagueName = props.leagueName;
     this.owner = props.owner;
     this.description = props.description;
@@ -70,6 +75,7 @@ export class ExternalTournamentAd {
     this.closesAt = props.closesAt;
     this.seasonStart = props.seasonStart;
     this.seasonEnd = props.seasonEnd;
+    this.createdAt = props.createdAt;
 
     const tags: { [tag: string]: boolean } = {};
     const skillMin = Math.min(...this.skillLevels);
