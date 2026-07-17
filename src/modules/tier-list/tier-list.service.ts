@@ -6,6 +6,7 @@ import { Injectable } from "@nestjs/common";
 import { ID } from "@pkmn/data";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import {
+  BANNED_TIER_NAME,
   ClientTierInput,
   TierList,
   TierListPokemon,
@@ -107,10 +108,13 @@ export class TierListService {
     const ruleset = tierList.ruleset;
     const assignedPokemon = new Set<string>();
 
+    // In view-only mode banned pokemon are pulled out of their stored tier
+    // and shown in a leading "Banned" bucket instead (edit mode keeps them
+    // in place, flagged draftBanned, so the client can build its own panel).
     const tiers: TierView[] = await Promise.all(
       tierList.tiers.map(async (tier) => {
         const pokemonEntries = Array.from(tierList.pokemon.entries()).filter(
-          ([, data]) => data.tier === tier.name,
+          ([, data]) => data.tier === tier.name && (showAll || !data.banned),
         );
 
         const pokemon = await Promise.all(
@@ -143,6 +147,19 @@ export class TierListService {
         });
 
       tiers.push({ name: UNTIERED_TIER_NAME, pokemon: untieredPokemon });
+    } else {
+      const bannedEntries = Array.from(tierList.pokemon.entries()).filter(
+        ([, data]) => data.banned,
+      );
+      if (bannedEntries.length > 0) {
+        const bannedPokemon = await Promise.all(
+          bannedEntries.map(([pokemonId, data]) => {
+            const specie = new PDZPokemon(pokemonId as ID, ruleset);
+            return this.toPokemonView(specie, data, tierList.banned);
+          }),
+        );
+        tiers.unshift({ name: BANNED_TIER_NAME, pokemon: bannedPokemon });
+      }
     }
 
     return tiers;

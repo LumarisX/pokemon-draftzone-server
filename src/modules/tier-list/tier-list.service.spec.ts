@@ -1,4 +1,4 @@
-import { UNTIERED_TIER_NAME } from "./tier-list.domain";
+import { BANNED_TIER_NAME, UNTIERED_TIER_NAME } from "./tier-list.domain";
 import { Tier, TierList, TierListPokemon } from "./tier-list.domain";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import { TierListMapper } from "./tier-list.mapper";
@@ -128,21 +128,43 @@ describe("TierListService", () => {
       expect(pikachuView.banned).toBeUndefined();
     });
 
-    it("includes draftBanned only when the Pokemon is marked banned", async () => {
+    it("moves banned Pokemon out of their tier into a Banned bucket in view-only mode", async () => {
       const tierList = buildTierList({
         tiers: [new Tier({ name: "S", cost: 30 })],
         pokemon: new Map([
           ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S", banned: true })],
           ["raichu", new TierListPokemon({ name: "Raichu", tier: "S" })],
+          [
+            "bulbasaur",
+            new TierListPokemon({ name: "Bulbasaur", tier: UNTIERED_TIER_NAME, banned: true }),
+          ],
         ]),
       });
       tierListRepo.findById.mockResolvedValue(tierList);
 
       const result = await service.getTierList("tierlist-1", undefined, false);
 
-      const views = result.tierList[0].pokemon as any[];
-      expect(views.find((p) => p.id === "pikachu").draftBanned).toBe(true);
-      expect(views.find((p) => p.id === "raichu").draftBanned).toBeUndefined();
+      const sTier = result.tierList.find((t) => t.name === "S")!;
+      expect(sTier.pokemon.map((p) => p.id)).toEqual(["raichu"]);
+
+      const bannedTier = result.tierList[0];
+      expect(bannedTier.name).toBe(BANNED_TIER_NAME);
+      expect(bannedTier.pokemon.map((p) => p.id).sort()).toEqual(["bulbasaur", "pikachu"]);
+      expect(bannedTier.cost).toBeUndefined();
+    });
+
+    it("omits the Banned bucket in view-only mode when nothing is banned", async () => {
+      const tierList = buildTierList({
+        tiers: [new Tier({ name: "S", cost: 30 })],
+        pokemon: new Map([
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+        ]),
+      });
+      tierListRepo.findById.mockResolvedValue(tierList);
+
+      const result = await service.getTierList("tierlist-1", undefined, false);
+
+      expect(result.tierList.find((t) => t.name === BANNED_TIER_NAME)).toBeUndefined();
     });
 
     it("includes addons only when present and non-empty", async () => {
@@ -190,6 +212,25 @@ describe("TierListService", () => {
         const untieredIds = untieredTier!.pokemon.map((p) => p.id);
         expect(untieredIds).not.toContain("pikachu");
         expect(untieredIds).toContain("bulbasaur");
+      });
+
+      it("keeps banned Pokemon in their stored tier flagged draftBanned, with no Banned bucket", async () => {
+        const tierList = buildTierList({
+          createdBy: "auth0|owner",
+          tiers: [new Tier({ name: "S", cost: 30 })],
+          pokemon: new Map([
+            ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S", banned: true })],
+            ["raichu", new TierListPokemon({ name: "Raichu", tier: "S" })],
+          ]),
+        });
+        tierListRepo.findById.mockResolvedValue(tierList);
+
+        const result = await service.getTierList("tierlist-1", "auth0|owner", true);
+
+        const views = result.tierList.find((t) => t.name === "S")!.pokemon as any[];
+        expect(views.find((p) => p.id === "pikachu").draftBanned).toBe(true);
+        expect(views.find((p) => p.id === "raichu").draftBanned).toBeUndefined();
+        expect(result.tierList.find((t) => t.name === BANNED_TIER_NAME)).toBeUndefined();
       });
 
       it("marks a tracked-but-unassigned (e.g. previously banned-while-Untiered) Pokemon as draftBanned in the Untiered bucket", async () => {

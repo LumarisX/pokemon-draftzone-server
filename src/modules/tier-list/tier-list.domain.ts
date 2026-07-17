@@ -2,6 +2,7 @@ import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 
 export const UNTIERED_TIER_NAME = "Untiered";
+export const BANNED_TIER_NAME = "Banned";
 
 export class TierListPokemonAddon {
   name: string;
