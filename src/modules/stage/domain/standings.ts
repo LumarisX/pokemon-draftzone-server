@@ -127,6 +127,7 @@ export async function calculateDivisionPokemonStandings(
         name: pokemon.name,
         coach: pokemon.coach,
         teamName: pokemon.teamName,
+        teamId: pokemon.teamId,
         record: {
           brought: pokemon.brought,
           kills: pokemon.kills,
