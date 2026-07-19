@@ -83,7 +83,7 @@ describe("calculateDivisionCoachStandings", () => {
     expect(teamTwoStanding?.results[0]).toEqual({ outcome: "ff", score: -6 });
   });
 
-  it("skips bracket matchups whose sides are unresolved", async () => {
+  it("gives the known team a scheduled square when its opponent slot is unresolved", async () => {
     const roundId = new Types.ObjectId();
     const team1Id = new Types.ObjectId();
 
@@ -105,8 +105,9 @@ describe("calculateDivisionCoachStandings", () => {
       diffMode: "pokemon",
     };
 
-    // A bracket matchup whose participants aren't determined yet (winner/loser
-    // slots) has sides without a team.
+    // A bracket matchup can have one seeded team while the other side is an
+    // undetermined winner/loser slot; the seeded team is still scheduled to
+    // play that round.
     const matchups = [
       {
         side1: {
@@ -134,7 +135,7 @@ describe("calculateDivisionCoachStandings", () => {
     expect(teamOneStanding).toBeDefined();
     expect(teamOneStanding?.wins).toBe(0);
     expect(teamOneStanding?.losses).toBe(0);
-    expect(teamOneStanding?.results[0]).toBeNull();
+    expect(teamOneStanding?.results[0]).toEqual({ outcome: "t", score: 0 });
   });
 });
 

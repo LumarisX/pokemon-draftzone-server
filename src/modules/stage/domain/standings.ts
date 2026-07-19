@@ -371,27 +371,13 @@ export async function calculateDivisionCoachStandings(
   }
 
   for (const matchup of matchups) {
-    if (!hasResolvedSides(matchup)) continue;
-    const team1Doc = matchup.side1.team;
-    const team2Doc = matchup.side2.team;
-    const team1Standing = getOrCreateCoachStanding(
-      coachStandingsMap,
-      team1Doc,
-      stage.rounds.length,
-    );
     const roundIndex = stage.rounds.findIndex(
       (r) => matchup.round && r._id.equals(matchup.round),
-    );
-    const team2Standing = getOrCreateCoachStanding(
-      coachStandingsMap,
-      team2Doc,
-      stage.rounds.length,
     );
 
     const team1Score = matchup.side1.score ?? 0;
     const team2Score = matchup.side2.score ?? 0;
 
-    const team1StageDiff = team1Score - team2Score;
     const team1PokemonDiff = matchup.results.reduce(
       (sum, result) =>
         sum +
@@ -401,7 +387,6 @@ export async function calculateDivisionCoachStandings(
       0,
     );
 
-    const team2StageDiff = team2Score - team1Score;
     const team2PokemonDiff = matchup.results.reduce(
       (sum, result) =>
         sum +
@@ -411,25 +396,38 @@ export async function calculateDivisionCoachStandings(
       0,
     );
 
-    const team1Result = resolveTeamMatchupResult({
-      winner: matchup.winner,
-      forfeit: matchup.forfeit,
-      teamSide: "side1",
-      stageDiff: team1StageDiff,
-      pokemonDiff: team1PokemonDiff,
-      forfeitConfig: tournament.forfeit,
-    });
-    applyResolvedMatchupResult(team1Standing, roundIndex, diffMode, team1Result);
+    const sides = [
+      {
+        teamSide: "side1" as const,
+        team: matchup.side1.team,
+        stageDiff: team1Score - team2Score,
+        pokemonDiff: team1PokemonDiff,
+      },
+      {
+        teamSide: "side2" as const,
+        team: matchup.side2.team,
+        stageDiff: team2Score - team1Score,
+        pokemonDiff: team2PokemonDiff,
+      },
+    ];
 
-    const team2Result = resolveTeamMatchupResult({
-      winner: matchup.winner,
-      forfeit: matchup.forfeit,
-      teamSide: "side2",
-      stageDiff: team2StageDiff,
-      pokemonDiff: team2PokemonDiff,
-      forfeitConfig: tournament.forfeit,
-    });
-    applyResolvedMatchupResult(team2Standing, roundIndex, diffMode, team2Result);
+    for (const { teamSide, team, stageDiff, pokemonDiff } of sides) {
+      if (!team) continue;
+      const standing = getOrCreateCoachStanding(
+        coachStandingsMap,
+        team,
+        stage.rounds.length,
+      );
+      const result = resolveTeamMatchupResult({
+        winner: matchup.winner,
+        forfeit: matchup.forfeit,
+        teamSide,
+        stageDiff,
+        pokemonDiff,
+        forfeitConfig: tournament.forfeit,
+      });
+      applyResolvedMatchupResult(standing, roundIndex, diffMode, result);
+    }
   }
 
   return {
