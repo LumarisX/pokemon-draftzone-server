@@ -61,4 +61,39 @@ describe("summarizeTeam", () => {
     expect(result.stats).toBeUndefined();
     expect(result.team).toEqual([]);
   });
+
+  it("computes abilities, baseStats, bst, cst, and types for each draft forme", () => {
+    const pikachu = new PDZPokemon(
+      { id: "pikachu", draftFormes: ["raichu" as any] },
+      NAT_DEX,
+    );
+    const raichu = mon("raichu");
+
+    const result = summarizeTeam([pikachu]);
+
+    expect(result.team[0].draftFormes).toEqual([
+      {
+        id: "raichu",
+        name: raichu.name,
+        types: raichu.types,
+        abilities: raichu.getAbilities(),
+        baseStats: raichu.baseStats,
+        bst: raichu.bst,
+        cst: raichu.cst,
+      },
+    ]);
+  });
+
+  it("falls back to the bare id when a draft forme can't be resolved", () => {
+    const pikachu = new PDZPokemon(
+      { id: "pikachu", draftFormes: ["not-a-real-pokemon" as any] },
+      NAT_DEX,
+    );
+
+    const result = summarizeTeam([pikachu]);
+
+    expect(result.team[0].draftFormes).toEqual([
+      { id: "not-a-real-pokemon", name: "not-a-real-pokemon" },
+    ]);
+  });
 });

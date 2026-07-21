@@ -1,4 +1,5 @@
 import { PokemonModule } from "@modules/pokemon/pokemon.module";
+import { UserModule } from "@modules/user/user.module";
 import { ExternalTournamentModule } from "@modules/tournament/sub-modules/external-tournament/external-tournament.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -24,6 +25,7 @@ import { ExternalMatchupService } from "./external-matchup.service";
     ]),
     ExternalTournamentModule,
     PokemonModule,
+    UserModule,
   ],
   controllers: [ExternalMatchupController, ExternalMatchupBreakdownController],
   providers: [

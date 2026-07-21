@@ -7,12 +7,20 @@ import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { PDZPokemonSet } from "@modules/pokemon-set/pokemon-set.domain";
 
 export type Speedchart = {
-  teams: (PokemonDto & {
+  teams: (Omit<PokemonDto, "draftFormes"> & {
     spe: number;
     tiers: Tier[];
+    draftFormes?: SpeedchartForme[];
   })[][];
   level: number;
   modifiers: string[];
+};
+
+export type SpeedchartForme = {
+  id: string;
+  name: string;
+  spe?: number;
+  tiers?: Tier[];
 };
 
 type Tier = {
@@ -210,7 +218,10 @@ function tierModifiers(teams: Speedchart["teams"]): string[] {
   const uniqueModifiers: Set<string> = new Set(
     teams.flatMap((team) =>
       team.flatMap((pokemon) =>
-        pokemon.tiers.flatMap((tier) => tier.modifiers),
+        [
+          ...pokemon.tiers,
+          ...(pokemon.draftFormes?.flatMap((forme) => forme.tiers ?? []) ?? []),
+        ].flatMap((tier) => tier.modifiers),
       ),
     ),
   );
@@ -349,6 +360,21 @@ function getSpeedTiers(pokemon: PDZPokemon, level: number): Tier[] {
   );
 }
 
+function getFormeSpeedTiers(
+  id: ID,
+  ruleset: PDZPokemon["ruleset"],
+  level: number,
+): SpeedchartForme {
+  const forme = PDZPokemon.tryCreate(id, ruleset);
+  if (!forme) return { id, name: id };
+  return {
+    id,
+    name: forme.name,
+    spe: forme.baseStats.spe,
+    tiers: getSpeedTiers(forme, level),
+  };
+}
+
 export function speedchart(
   teamsRaw: PDZPokemon[][],
   level: number,
@@ -358,6 +384,9 @@ export function speedchart(
       ...PokemonMapper.toClientPayload(pokemon),
       spe: pokemon.baseStats.spe,
       tiers: getSpeedTiers(pokemon, level),
+      draftFormes: pokemon.draftFormes?.map((formeId) =>
+        getFormeSpeedTiers(formeId, pokemon.ruleset, level),
+      ),
     })),
   );
   const modifiers = tierModifiers(teams);

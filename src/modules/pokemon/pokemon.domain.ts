@@ -264,6 +264,14 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
     };
   }
 
+  static tryCreate(id: ID, ruleset: Ruleset): PDZPokemon | undefined {
+    try {
+      return new PDZPokemon(id, ruleset);
+    } catch {
+      return undefined;
+    }
+  }
+
   //Type functions
 
   static typeWeak(types: [TypeName] | [TypeName, TypeName], ruleset: Ruleset) {

@@ -51,4 +51,12 @@ export class UserService {
       () => this.userRepository.getUserBySub(sub),
     );
   }
+
+  async getUsername(sub: string): Promise<string | undefined> {
+    try {
+      return (await this.getMe(sub)).username;
+    } catch {
+      return undefined;
+    }
+  }
 }

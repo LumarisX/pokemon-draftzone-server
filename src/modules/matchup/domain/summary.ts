@@ -1,6 +1,7 @@
+import { Ruleset } from "@core/data/rulesets/rulesets";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
-import { StatID } from "@pkmn/data";
+import { ID, StatID } from "@pkmn/data";
 
 type StatKey = StatID | "bst" | "cst";
 
@@ -40,6 +41,20 @@ function computeStats(collections: Record<StatKey, number[]>): TeamStatistics {
   return stats;
 }
 
+function getFormeSummary(id: ID, ruleset: Ruleset) {
+  const forme = PDZPokemon.tryCreate(id, ruleset);
+  if (!forme) return { id, name: id };
+  return {
+    id,
+    name: forme.name,
+    types: forme.types,
+    abilities: forme.getAbilities(),
+    baseStats: forme.baseStats,
+    bst: forme.bst,
+    cst: forme.cst,
+  };
+}
+
 export function summarizeTeam(
   team: PDZPokemon[],
   teamName?: string,
@@ -75,6 +90,9 @@ export function summarizeTeam(
       cst: pokemon.cst,
       index,
       types: pokemon.types,
+      draftFormes: pokemon.draftFormes?.map((id) =>
+        getFormeSummary(id, pokemon.ruleset),
+      ),
     })),
     stats: team.length ? computeStats(collections) : undefined,
   };

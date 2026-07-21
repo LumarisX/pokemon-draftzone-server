@@ -45,4 +45,36 @@ describe("getTeamTypechart", () => {
 
     expect(result.teraTypes).toEqual({});
   });
+
+  it("computes types and a [typechart, raw type weakness] pair for each draft forme", () => {
+    const pikachu = new PDZPokemon(
+      { id: "pikachu", draftFormes: ["raichu" as any] },
+      NAT_DEX,
+    );
+    const raichu = mon("raichu");
+
+    const result = getTeamTypechart([pikachu]);
+
+    expect(result.team[0].draftFormes).toEqual([
+      {
+        id: "raichu",
+        name: raichu.name,
+        types: raichu.types,
+        weak: [raichu.typechart(), PDZPokemon.typeWeak(raichu.types, NAT_DEX)],
+      },
+    ]);
+  });
+
+  it("falls back to the bare id when a draft forme can't be resolved", () => {
+    const pikachu = new PDZPokemon(
+      { id: "pikachu", draftFormes: ["not-a-real-pokemon" as any] },
+      NAT_DEX,
+    );
+
+    const result = getTeamTypechart([pikachu]);
+
+    expect(result.team[0].draftFormes).toEqual([
+      { id: "not-a-real-pokemon", name: "not-a-real-pokemon" },
+    ]);
+  });
 });
