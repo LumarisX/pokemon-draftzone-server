@@ -325,6 +325,15 @@ export class PDZMove implements Move {
     return this.basePower * this.accuracyPercent;
   }
 
+  get isSpread(): boolean {
+    return (
+      this.target === "all" ||
+      this.target === "allAdjacent" ||
+      this.target === "allAdjacentFoes" ||
+      this.target === "foeSide"
+    );
+  }
+
   get tags(): Set<string> {
     const tags = new Set<string>(
       this.id in moveList ? [...moveList[this.id]] : [],
@@ -349,7 +358,7 @@ export class PDZMove implements Move {
       tags.add("Speed Control");
     if (this.weather || this.pseudoWeather || this.terrain)
       tags.add("Field Manipulation");
-
+    if (this.isSpread) tags.add("Spread");
     return tags;
   }
 
