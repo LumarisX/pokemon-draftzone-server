@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { ID } from "@pkmn/data";
 import {
   ExternalMatchup,
   MatchupSide,
@@ -10,6 +11,7 @@ import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
@@ -50,6 +52,7 @@ export class StageService {
     private readonly teamRepo: TeamRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly hostedTournamentRepo: HostedTournamentRepository,
+    private readonly tierListRepo: TierListRepository,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub: string): boolean {
@@ -517,6 +520,11 @@ export class StageService {
     const tournament = await this.hostedTournamentRepo.findById(
       stageDoc.tournamentId,
     );
+    // The tier list decides which alternate formes each pick may run; a missing
+    // or unresolvable tier list just means no formes are attached.
+    const tierList = await this.tierListRepo
+      .findById(tournament.tierListId)
+      .catch(() => undefined);
 
     const matchupDoc = (await this.matchupRepo.findByIdInStagePopulated(
       matchupId,
@@ -551,6 +559,9 @@ export class StageService {
                 capt: pokemon.addons?.includes("Tera Captain")
                   ? { tera: [] }
                   : undefined,
+                draftFormes: tierList?.getPokemonFormeIds(pokemon.id) as
+                  | ID[]
+                  | undefined,
               },
               tournament.ruleset,
             ),

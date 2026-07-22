@@ -74,6 +74,7 @@ export class HostedTournamentService {
         id: pokemon.id,
         name: getName(pokemon.id),
         cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+        draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
       }));
       return {
         name: team.teamName,
@@ -91,11 +92,13 @@ export class HostedTournamentService {
       id: string;
       name: string;
       cost: number | undefined;
+      draftFormes?: { id: string; name: string }[];
     } & { record?: unknown })[] = getRosterByRound(team, stage).map(
       (pokemon) => ({
         id: pokemon.id,
         name: getName(pokemon.id),
         cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+        draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
       }),
     );
 

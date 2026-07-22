@@ -32,6 +32,9 @@ export class TierListPokemonEntity {
 
   @Prop()
   banned?: boolean;
+
+  @Prop({ type: [String], default: undefined })
+  formes?: string[];
 }
 export const TierListPokemonSchema = SchemaFactory.createForClass(
   TierListPokemonEntity,

@@ -331,4 +331,64 @@ describe("TierList.applyTierUpdate", () => {
       expect(tierList.pokemon.size).toBe(0);
     });
   });
+
+  describe("legal formes", () => {
+    it("stores the formes submitted for a tiered pokemon", () => {
+      const tierList = buildTierList({ tiers: [] });
+
+      tierList.applyTierUpdate([
+        buildClientTier("S", 30, [
+          {
+            id: "charizard",
+            name: "Charizard",
+            formes: ["charizardmegax", "charizardmegay"],
+          },
+        ]),
+      ]);
+
+      expect(tierList.pokemon.get("charizard")?.formes).toEqual([
+        "charizardmegax",
+        "charizardmegay",
+      ]);
+    });
+
+    it("clears stored formes when the client submits none", () => {
+      const tierList = buildTierList({
+        tiers: [],
+        pokemon: new Map([
+          [
+            "charizard",
+            new TierListPokemon({
+              name: "Charizard",
+              tier: "S",
+              formes: ["charizardmegax"],
+            }),
+          ],
+        ]),
+      });
+
+      tierList.applyTierUpdate([
+        buildClientTier("S", 30, [{ id: "charizard", name: "Charizard", formes: [] }]),
+      ]);
+
+      expect(tierList.pokemon.get("charizard")?.formes).toBeUndefined();
+    });
+
+    it("keeps formes on a banned pokemon submitted through Untiered", () => {
+      const tierList = buildTierList({ tiers: [] });
+
+      tierList.applyTierUpdate([
+        buildClientTier("Untiered", 0, [
+          {
+            id: "charizard",
+            name: "Charizard",
+            banned: true,
+            formes: ["charizardmegax"],
+          },
+        ]),
+      ]);
+
+      expect(tierList.pokemon.get("charizard")?.formes).toEqual(["charizardmegax"]);
+    });
+  });
 });

@@ -50,6 +50,11 @@ export class TierListPokemonInputDto {
   @IsString({ each: true })
   @IsOptional()
   bannedAbilities?: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  formes?: string[];
 }
 
 export class TierListTierInputDto {

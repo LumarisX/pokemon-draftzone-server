@@ -29,6 +29,7 @@ type TierPokemonView = {
     moves?: string[];
     abilities?: string[];
   };
+  formes?: { id: string; name: string }[];
 };
 
 type TierView = {
@@ -193,6 +194,12 @@ export class TierListService {
       notes: data.notes,
       ...(data.banned && { draftBanned: true }),
       ...(data.addons?.length && { addons: data.addons }),
+      ...(data.formes?.length && {
+        formes: data.formes.map((formeId) => ({
+          id: formeId,
+          name: specie.ruleset.species.get(formeId)?.name ?? formeId,
+        })),
+      }),
       ...((bannedMoves.length || bannedAbilities.length) && {
         banned: {
           ...(bannedMoves.length && { moves: bannedMoves }),

@@ -22,6 +22,8 @@ export class TierListPokemon {
   notes?: string;
   addons?: TierListPokemonAddon[];
   banned?: boolean;
+  /** Ids of the alternate formes this entry is allowed to run. */
+  formes?: string[];
 
   constructor(props: {
     name: string;
@@ -29,12 +31,14 @@ export class TierListPokemon {
     notes?: string;
     addons?: TierListPokemonAddon[];
     banned?: boolean;
+    formes?: string[];
   }) {
     this.name = props.name;
     this.tier = props.tier;
     this.notes = props.notes;
     this.addons = props.addons;
     this.banned = props.banned;
+    this.formes = props.formes;
   }
 }
 
@@ -76,6 +80,7 @@ export type ClientTierPokemonInput = {
   banned?: boolean;
   notes?: string;
   bannedAbilities?: string[];
+  formes?: string[];
 };
 
 export type ClientTierInput = {
@@ -151,6 +156,26 @@ export class TierList {
     return Array.from(this.pokemon.keys());
   }
 
+  /** Ids of the alternate formes this tier-list entry is allowed to run. */
+  getPokemonFormeIds(pokemonId: string): string[] | undefined {
+    const formes = this.pokemon.get(pokemonId)?.formes;
+    return formes?.length ? [...formes] : undefined;
+  }
+
+  /**
+   * The alternate formes this tier-list entry is allowed to run, resolved to
+   * `{ id, name }` for display. Returns undefined when the entry has none, so
+   * callers can spread it without emitting an empty array.
+   */
+  getPokemonFormes(
+    pokemonId: string,
+  ): { id: string; name: string }[] | undefined {
+    return this.getPokemonFormeIds(pokemonId)?.map((formeId) => ({
+      id: formeId,
+      name: this.ruleset.species.get(formeId)?.name ?? formeId,
+    }));
+  }
+
   /**
    * Merges a client-submitted tier/pokemon layout into the current state,
    * preserving tier metadata (e.g. color) and pokemon addons that the client
@@ -189,6 +214,8 @@ export class TierList {
             banned: pokemon.banned,
             notes: pokemon.notes,
             addons: existingData?.addons,
+            // Client-authoritative, so an empty selection clears the formes.
+            formes: pokemon.formes?.length ? pokemon.formes : undefined,
           }),
         );
       }
@@ -212,6 +239,7 @@ export class TierList {
             banned: true,
             notes: pokemon.notes,
             addons: existingData?.addons,
+            formes: pokemon.formes?.length ? pokemon.formes : undefined,
           }),
         );
       }

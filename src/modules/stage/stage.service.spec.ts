@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "../team/team.repository";
 import { HostedTournamentRepository } from "../tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { TierListRepository } from "../tier-list/tier-list.repository";
 import { getRosterByRound } from "./domain/roster";
 import {
   calculateDivisionCoachStandings,
@@ -77,6 +78,7 @@ describe("StageService", () => {
   let teamRepo: jest.Mocked<TeamRepository>;
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let hostedTournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let tierListRepo: jest.Mocked<TierListRepository>;
   let service: StageService;
 
   beforeEach(() => {
@@ -104,7 +106,16 @@ describe("StageService", () => {
       findByKey: jest.fn(),
       findById: jest.fn(),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
-    service = new StageService(stageRepo, teamRepo, matchupRepo, hostedTournamentRepo);
+    tierListRepo = {
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<TierListRepository>;
+    service = new StageService(
+      stageRepo,
+      teamRepo,
+      matchupRepo,
+      hostedTournamentRepo,
+      tierListRepo,
+    );
 
     mockedGetRosterByRound.mockReturnValue([]);
     mockedCalculateDivisionCoachStandings.mockResolvedValue({

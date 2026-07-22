@@ -23,6 +23,7 @@ export class TierListMapper {
           tier: data.tier,
           notes: data.notes,
           banned: data.banned,
+          formes: data.formes ? [...data.formes] : undefined,
           addons: data.addons?.map(
             (addon) =>
               new TierListPokemonAddon({
@@ -85,6 +86,7 @@ export class TierListMapper {
         tier: data.tier,
         notes: data.notes,
         banned: data.banned,
+        formes: data.formes?.length ? [...data.formes] : undefined,
         addons: data.addons?.map(
           (addon): TierListPokemonAddonEntity => ({
             name: addon.name,
