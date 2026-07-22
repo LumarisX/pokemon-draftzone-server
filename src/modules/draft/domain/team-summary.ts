@@ -26,6 +26,7 @@ export type TeamWithCoachStatus = {
     cost: number;
     types: TypeName[];
     capt: { tera: boolean | undefined };
+    draftFormes: { id: string; name: string }[] | undefined;
   }[];
   logo?: string;
   isCoach: boolean;
@@ -35,6 +36,7 @@ export type TeamWithCoachStatus = {
     tier: string | undefined;
     cost: number;
     addons: string[] | undefined;
+    draftFormes: { id: string; name: string }[] | undefined;
   }[][];
   pointTotal: number;
   timezone?: string;
@@ -70,6 +72,7 @@ export async function getTeamsWithCoachStatus(
                   tier: pokemonTierMap.get(pick.pokemonId),
                   cost,
                   addons: pick.addons,
+                  draftFormes: tierList.getPokemonFormes(pick.pokemonId),
                 };
               }),
             ),
@@ -96,6 +99,7 @@ export async function getTeamsWithCoachStatus(
             capt: {
               tera: pick.addons?.includes("Tera Captain") || undefined,
             },
+            draftFormes: tierList.getPokemonFormes(pokemonId),
           };
         }),
       );

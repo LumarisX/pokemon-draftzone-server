@@ -44,10 +44,14 @@ export class LeagueService {
       tournaments.map(async (tournament) => {
         const team = teamsByTournament.get(tournament.id);
         if (!team) return null;
-        const league = await this.leagueRepo.findById(tournament.leagueId);
+        const [league, tierList] = await Promise.all([
+          this.leagueRepo.findById(tournament.leagueId),
+          this.tierListRepo.findById(tournament.tierListId),
+        ]);
         const roster = getRosterByRound(team, undefined).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
+          draftFormes: tierList.getPokemonFormes(pokemon.id),
         }));
         return {
           name: tournament.name,
