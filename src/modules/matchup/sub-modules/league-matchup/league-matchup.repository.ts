@@ -88,7 +88,9 @@ export class LeagueMatchupRepository {
   }
 
   async deleteByStage(stageId: Types.ObjectId | string): Promise<number> {
-    const result = await this.matchupModel.deleteMany({ stage: stageId }).exec();
+    const result = await this.matchupModel
+      .deleteMany({ stage: stageId })
+      .exec();
     return result.deletedCount;
   }
 
@@ -115,5 +117,48 @@ export class LeagueMatchupRepository {
     if (!matchup)
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
     return matchup;
+  }
+
+  async resolveDownstreamSlots(
+    stageId: Types.ObjectId | string,
+    sourceMatchupId: Types.ObjectId | string,
+    winnerTeamId?: Types.ObjectId,
+    loserTeamId?: Types.ObjectId,
+  ): Promise<void> {
+    const sourceMatchIdStr = sourceMatchupId.toString();
+    const updates: Promise<unknown>[] = [];
+
+    for (const side of ["side1", "side2"] as const) {
+      if (winnerTeamId) {
+        updates.push(
+          this.matchupModel
+            .updateMany(
+              {
+                stage: stageId,
+                [`${side}.slot.type`]: "winner",
+                [`${side}.slot.matchId`]: sourceMatchIdStr,
+              },
+              { $set: { [`${side}.team`]: winnerTeamId } },
+            )
+            .exec(),
+        );
+      }
+      if (loserTeamId) {
+        updates.push(
+          this.matchupModel
+            .updateMany(
+              {
+                stage: stageId,
+                [`${side}.slot.type`]: "loser",
+                [`${side}.slot.matchId`]: sourceMatchIdStr,
+              },
+              { $set: { [`${side}.team`]: loserTeamId } },
+            )
+            .exec(),
+        );
+      }
+    }
+
+    await Promise.all(updates);
   }
 }

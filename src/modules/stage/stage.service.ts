@@ -868,6 +868,34 @@ export class StageService {
     }
 
     await matchup.save();
+
+    // Bracket advancement: fill in the winner/loser side of any downstream
+    // matchup that references this one, so it becomes resolvable (visible
+    // on the schedule) as soon as this result is recorded.
+    if (dto.winner && matchup.stage) {
+      const winnerTeamId =
+        matchup.winner === "side1"
+          ? matchup.side1.team
+          : matchup.winner === "side2"
+            ? matchup.side2.team
+            : undefined;
+      const loserTeamId =
+        matchup.winner === "side1"
+          ? matchup.side2.team
+          : matchup.winner === "side2"
+            ? matchup.side1.team
+            : undefined;
+
+      if (winnerTeamId || loserTeamId) {
+        await this.matchupRepo.resolveDownstreamSlots(
+          matchup.stage,
+          matchup._id,
+          winnerTeamId,
+          loserTeamId,
+        );
+      }
+    }
+
     return { message: "Schedule updated." };
   }
 }

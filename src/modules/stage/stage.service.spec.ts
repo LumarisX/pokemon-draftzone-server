@@ -101,6 +101,7 @@ describe("StageService", () => {
       countByStage: jest.fn().mockResolvedValue(0),
       createMany: jest.fn().mockResolvedValue([]),
       deleteByStage: jest.fn().mockResolvedValue(0),
+      resolveDownstreamSlots: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     hostedTournamentRepo = {
       findByKey: jest.fn(),
@@ -841,6 +842,79 @@ describe("StageService", () => {
       );
 
       expect(result).toEqual({ message: "Schedule updated." });
+    });
+
+    it("propagates the winner/loser team into downstream bracket slots", async () => {
+      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      const stageId = new Types.ObjectId();
+      const matchupId = new Types.ObjectId();
+      const side1Team = new Types.ObjectId();
+      const side2Team = new Types.ObjectId();
+      const matchup = buildMatchupDoc({
+        _id: matchupId,
+        stage: stageId,
+        side1: { score: 0, team: side1Team },
+        side2: { score: 0, team: side2Team },
+      });
+      matchupRepo.findByIdInStage.mockResolvedValue(matchup);
+
+      await service.updateMatchup(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        matchupId.toString(),
+        "auth0|owner",
+        { matches: [], winner: "side1" } as any,
+      );
+
+      expect(matchupRepo.resolveDownstreamSlots).toHaveBeenCalledWith(
+        stageId,
+        matchupId,
+        side1Team,
+        side2Team,
+      );
+    });
+
+    it("does not propagate when dto.winner is absent", async () => {
+      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      const matchup = buildMatchupDoc({
+        _id: new Types.ObjectId(),
+        stage: new Types.ObjectId(),
+      });
+      matchupRepo.findByIdInStage.mockResolvedValue(matchup);
+
+      await service.updateMatchup(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        new Types.ObjectId().toString(),
+        "auth0|owner",
+        { matches: [] } as any,
+      );
+
+      expect(matchupRepo.resolveDownstreamSlots).not.toHaveBeenCalled();
+    });
+
+    it("does not propagate on a draw (no winner/loser team to resolve)", async () => {
+      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      const matchup = buildMatchupDoc({
+        _id: new Types.ObjectId(),
+        stage: new Types.ObjectId(),
+        side1: { score: 0, team: new Types.ObjectId() },
+        side2: { score: 0, team: new Types.ObjectId() },
+      });
+      matchupRepo.findByIdInStage.mockResolvedValue(matchup);
+
+      await service.updateMatchup(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        new Types.ObjectId().toString(),
+        "auth0|owner",
+        { matches: [], winner: "draw" } as any,
+      );
+
+      expect(matchupRepo.resolveDownstreamSlots).not.toHaveBeenCalled();
     });
   });
 
