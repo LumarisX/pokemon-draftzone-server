@@ -14,6 +14,7 @@ export type Format = {
   level: number;
   choose: number;
   layout: "1" | "2" | "3";
+  doubles?: boolean;
 };
 
 export const Formats: { [key: string]: { [key: string]: Format } } = {
@@ -47,6 +48,7 @@ export const Formats: { [key: string]: { [key: string]: Format } } = {
       choose: 4,
       layout: "2",
       desc: "2v2; Bring 6, choose 4; Level 50",
+      doubles: true,
     },
     Standard: {
       name: "Doubles",
@@ -54,6 +56,7 @@ export const Formats: { [key: string]: { [key: string]: Format } } = {
       choose: 6,
       layout: "2",
       desc: "2v2; Level 100",
+      doubles: true,
     },
     "LC VGC": {
       name: "LC VGC",
@@ -61,6 +64,7 @@ export const Formats: { [key: string]: { [key: string]: Format } } = {
       choose: 4,
       layout: "2",
       desc: "2v2; Bring 6, choose 4; Level 5",
+      doubles: true,
     },
   },
 };

@@ -114,6 +114,21 @@ describe("DataService", () => {
         service.getRandomPokemon("Gen9 NatDex", 5, "NotAFormat"),
       ).rejects.toThrow();
     });
+
+    it("passes doubles: true to the repository for doubles formats like VGC", async () => {
+      repository.getRandomSpecies.mockReturnValue([]);
+      mockedMapper.toRandomDto.mockReturnValue({} as any);
+
+      await service.getRandomPokemon("Gen9 NatDex", 3, "VGC", {
+        tier: "DOU",
+      });
+
+      expect(repository.getRandomSpecies).toHaveBeenCalledWith(
+        "Gen9 NatDex",
+        3,
+        { tier: "DOU", doubles: true },
+      );
+    });
   });
 
   describe("getPokemonMoves", () => {

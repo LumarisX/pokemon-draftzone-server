@@ -89,6 +89,24 @@ describe("DataRepository", () => {
 
       expect(result.some((p) => p.id === "arceus")).toBe(false);
     });
+
+    it("filters by doublesTier instead of tier when doubles is true", () => {
+      const result = repository.getRandomSpecies("Gen9 NatDex", 10, {
+        tier: "DOU",
+        doubles: true,
+      });
+
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.every((p) => p.doublesTier === "DOU")).toBe(true);
+    });
+
+    it("returns no results for a doubles tier label when doubles is not set", () => {
+      const result = repository.getRandomSpecies("Gen9 NatDex", 10, {
+        tier: "DOU",
+      });
+
+      expect(result.length).toBe(0);
+    });
   });
 
   describe("getMovesForPokemon", () => {

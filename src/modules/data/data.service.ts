@@ -45,11 +45,10 @@ export class DataService {
     options: { tier?: string; banned?: string[] } = {},
   ): Promise<RandomPokemonDto[]> {
     const format = getFormat(formatId);
-    const species = this.dataRepository.getRandomSpecies(
-      rulesetId,
-      count,
-      options,
-    );
+    const species = this.dataRepository.getRandomSpecies(rulesetId, count, {
+      ...options,
+      doubles: format.doubles,
+    });
 
     return species.map((specie) =>
       PokemonDataMapper.toRandomDto(specie, format.level),

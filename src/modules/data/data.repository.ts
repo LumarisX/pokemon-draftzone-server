@@ -36,10 +36,11 @@ export class DataRepository {
   getRandomSpecies(
     rulesetId: string,
     count: number,
-    options: { tier?: string; banned?: string[] } = {},
+    options: { tier?: string; banned?: string[]; doubles?: boolean } = {},
   ): PDZPokemon[] {
     const pool = this.getSpeciesForRuleset(rulesetId).filter((specie) => {
-      if (options.tier && specie.tier !== options.tier) return false;
+      const tier = options.doubles ? specie.doublesTier : specie.tier;
+      if (options.tier && tier !== options.tier) return false;
       if (options.banned?.includes(specie.id)) return false;
       return true;
     });
