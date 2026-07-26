@@ -74,11 +74,9 @@ describe("HostedTournamentService signup", () => {
   let discordService: jest.Mocked<DiscordService>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
-  let signupDraftId: Types.ObjectId;
 
   beforeEach(() => {
     tournament = buildTournament();
-    signupDraftId = new Types.ObjectId();
 
     tournamentRepo = {
       findByKey: jest.fn().mockResolvedValue(tournament),
@@ -94,9 +92,6 @@ describe("HostedTournamentService signup", () => {
     } as unknown as jest.Mocked<CoachRepository>;
     draftRepo = {
       findById: jest.fn(),
-      findOldestByTournament: jest
-        .fn()
-        .mockResolvedValue({ _id: signupDraftId } as any),
     } as unknown as jest.Mocked<DraftRepository>;
     discordService = {
       findMember: jest.fn().mockResolvedValue(null),
@@ -291,11 +286,11 @@ describe("HostedTournamentService signup", () => {
       const teamInput = teamRepo.create.mock.calls[0][0];
       expect(teamInput).toMatchObject({
         tournamentId: tournament.id,
-        draftId: signupDraftId,
         teamName: dto.teamName,
         logo: dto.logo,
         status: "pending",
       });
+      expect(teamInput!.draftId).toBeUndefined();
 
       expect(coachRepo.create).toHaveBeenCalledTimes(1);
       const coachInput = coachRepo.create.mock.calls[0][0];
@@ -326,19 +321,6 @@ describe("HostedTournamentService signup", () => {
       // and grant the role if the coach's Discord name resolves to a member.
       expect(discordService.sendMessage).toHaveBeenCalledTimes(1);
       expect(discordService.grantRole).not.toHaveBeenCalled();
-    });
-
-    it("throws DRAFT.NOT_CONFIGURED when the tournament has no draft yet", async () => {
-      coachRepo.findByAuth0Id.mockResolvedValue([]);
-      draftRepo.findOldestByTournament.mockResolvedValue(null);
-
-      await expect(
-        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
-      ).rejects.toMatchObject({
-        code: ErrorCodes.DRAFT.NOT_CONFIGURED.code,
-      });
-      expect(teamRepo.create).not.toHaveBeenCalled();
-      expect(coachRepo.create).not.toHaveBeenCalled();
     });
 
     it("skips Discord side effects when the tournament has no Discord settings", async () => {

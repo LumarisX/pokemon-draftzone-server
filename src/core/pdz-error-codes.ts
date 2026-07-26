@@ -122,11 +122,6 @@ export const ErrorCodes = {
       status: 400,
       message: "Invalid draft state",
     },
-    NOT_CONFIGURED: {
-      code: "DR-009",
-      status: 500,
-      message: "Tournament has no draft configured",
-    },
     INVALID_NAME: {
       code: "DR-010",
       status: 400,

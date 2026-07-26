@@ -345,20 +345,12 @@ export class HostedTournamentService {
       if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
     }
 
-    const draft = await this.draftRepo.findOldestByTournament(tournament.id);
-    if (!draft) {
-      throw new PDZError(ErrorCodes.DRAFT.NOT_CONFIGURED, {
-        tournamentId: tournament.id,
-      });
-    }
-
     const coachId = new Types.ObjectId();
     const teamId = new Types.ObjectId();
 
     await this.teamRepo.create({
       _id: teamId,
       tournamentId: tournament.id,
-      draftId: draft._id,
       coach: coachId,
       teamName: dto.teamName,
       logo: dto.logo,
