@@ -17,28 +17,37 @@ describe("DraftEventsService", () => {
     service = new DraftEventsService(eventEmitter);
   });
 
-  it("emitDraftAdded emits 'draft.added' with the payload", () => {
+  it("emitDraftAdded emits 'league.draft.added' with the payload", () => {
     const payload = { tournamentId: "t-1" } as DraftAddedEvent;
 
     service.emitDraftAdded(payload);
 
-    expect(eventEmitter.emit).toHaveBeenCalledWith("draft.added", payload);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      "league.draft.added",
+      payload,
+    );
   });
 
-  it("emitDraftCounter emits 'draft.counter' with the payload", () => {
+  it("emitDraftCounter emits 'league.draft.counter' with the payload", () => {
     const payload = { tournamentId: "t-1" } as DraftCounterEvent;
 
     service.emitDraftCounter(payload);
 
-    expect(eventEmitter.emit).toHaveBeenCalledWith("draft.counter", payload);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      "league.draft.counter",
+      payload,
+    );
   });
 
-  it("emitDraftCompleted emits 'draft.completed' with the payload", () => {
+  it("emitDraftCompleted emits 'league.draft.completed' with the payload", () => {
     const payload = { tournamentId: "t-1" } as DraftCompletedEvent;
 
     service.emitDraftCompleted(payload);
 
-    expect(eventEmitter.emit).toHaveBeenCalledWith("draft.completed", payload);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      "league.draft.completed",
+      payload,
+    );
   });
 
   it("emitDraftSkip emits 'league.draft.skip' with the payload", () => {
@@ -49,11 +58,14 @@ describe("DraftEventsService", () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith("league.draft.skip", payload);
   });
 
-  it("emitDraftStatus emits 'draft.status' with the payload", () => {
+  it("emitDraftStatus emits 'league.draft.status' with the payload", () => {
     const payload = { tournamentId: "t-1" } as DraftStatusEvent;
 
     service.emitDraftStatus(payload);
 
-    expect(eventEmitter.emit).toHaveBeenCalledWith("draft.status", payload);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      "league.draft.status",
+      payload,
+    );
   });
 });

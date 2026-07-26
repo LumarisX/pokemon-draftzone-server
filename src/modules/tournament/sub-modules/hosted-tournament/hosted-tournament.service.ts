@@ -410,10 +410,7 @@ export class HostedTournamentService {
       }));
     }
 
-    const draftIds = teams
-      .filter((team) => team.draftId)
-      .map((team) => team.draftId!);
-    const drafts = await this.draftRepo.findManyByIds(draftIds);
+    const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftIdToKey = new Map(
       drafts.map((d) => [d._id.toString(), d.draftKey]),
     );

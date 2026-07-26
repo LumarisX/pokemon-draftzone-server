@@ -68,15 +68,15 @@ export class DraftEventsService {
   constructor(private readonly eventEmitter: EventEmitter2) {}
 
   emitDraftAdded(payload: DraftAddedEvent): void {
-    this.eventEmitter.emit("draft.added", payload);
+    this.eventEmitter.emit("league.draft.added", payload);
   }
 
   emitDraftCounter(payload: DraftCounterEvent): void {
-    this.eventEmitter.emit("draft.counter", payload);
+    this.eventEmitter.emit("league.draft.counter", payload);
   }
 
   emitDraftCompleted(payload: DraftCompletedEvent): void {
-    this.eventEmitter.emit("draft.completed", payload);
+    this.eventEmitter.emit("league.draft.completed", payload);
   }
 
   emitDraftSkip(payload: DraftSkipEvent): void {
@@ -84,6 +84,6 @@ export class DraftEventsService {
   }
 
   emitDraftStatus(payload: DraftStatusEvent): void {
-    this.eventEmitter.emit("draft.status", payload);
+    this.eventEmitter.emit("league.draft.status", payload);
   }
 }
