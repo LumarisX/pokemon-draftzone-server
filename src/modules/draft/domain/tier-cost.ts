@@ -119,7 +119,7 @@ export async function teamHasEnoughPoints(
 
   const pickCost = getPickCost(tierList, pick);
   const maxPoints = tournament.pointTotal;
-  if (!maxPoints) return true;
+  if (maxPoints === undefined) return true;
 
   const currentTeamPoints = await getTeamPoints(tournament, team);
   const projectedPoints = currentTeamPoints + pickCost;

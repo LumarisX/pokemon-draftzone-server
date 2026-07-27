@@ -230,7 +230,9 @@ export class UpdateHostedTournamentSettingsDto {
   @IsInt()
   @Min(0)
   @IsOptional()
-  pointTotal?: number;
+  // `null` explicitly clears an existing point cap (vs. `undefined`, which
+  // leaves it untouched) - see HostedTournamentRepository.updateSettings.
+  pointTotal?: number | null;
 
   @IsArray()
   @ValidateNested({ each: true })

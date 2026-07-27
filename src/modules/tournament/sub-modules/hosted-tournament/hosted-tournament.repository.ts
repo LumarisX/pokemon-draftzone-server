@@ -141,12 +141,25 @@ export class HostedTournamentRepository {
       format: string;
       ruleset: string;
       draftCount: { min: number; max: number };
-      pointTotal: number;
+      pointTotal: number | null;
       tierRequirements: { tierName: string; required: number }[];
     }>,
   ): Promise<void> {
+    // `null` means "clear this field" (e.g. remove a point cap entirely,
+    // distinct from `undefined` which just leaves the stored value alone).
+    const setFields: Record<string, unknown> = {};
+    const unsetFields: Record<string, ""> = {};
+    for (const [key, value] of Object.entries(update)) {
+      if (value === null) unsetFields[key] = "";
+      else if (value !== undefined) setFields[key] = value;
+    }
+
+    const mongoUpdate: Record<string, unknown> = {};
+    if (Object.keys(setFields).length) mongoUpdate["$set"] = setFields;
+    if (Object.keys(unsetFields).length) mongoUpdate["$unset"] = unsetFields;
+
     const result = await this.hostedTournamentModel
-      .findByIdAndUpdate(tournamentId, { $set: update })
+      .findByIdAndUpdate(tournamentId, mongoUpdate)
       .exec();
     if (!result)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {

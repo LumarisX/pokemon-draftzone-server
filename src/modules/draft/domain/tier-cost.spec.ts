@@ -221,6 +221,33 @@ describe("teamHasEnoughPoints", () => {
     ).resolves.toBe(true);
   });
 
+  it("treats a pointTotal of exactly 0 as a real budget, not as unlimited", async () => {
+    // A tournament that deliberately has no point cap should leave pointTotal
+    // undefined (see test above), not 0 - a real 0 budget must still reject
+    // a pick that costs points.
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, { pointTotal: 0 });
+    const draft = buildDraft();
+    const team = buildTeam();
+
+    await expect(
+      teamHasEnoughPoints(tournament, draft, team, { pokemonId: "pikachu" } as any),
+    ).resolves.toBe(false);
+  });
+
+  it("allows a zero-cost pick under a pointTotal of 0", async () => {
+    const tierList = buildTierList({
+      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 5 })],
+    });
+    const tournament = buildTournament(tierList, { pointTotal: 0 });
+    const draft = buildDraft();
+    const team = buildTeam();
+
+    await expect(
+      teamHasEnoughPoints(tournament, draft, team, { pokemonId: "pikachu" } as any),
+    ).resolves.toBe(true);
+  });
+
   it("allows spending up to the budget minus what must be reserved for remaining minimum picks", async () => {
     // pointTotal 20, draftCount.min 4, no picks yet (this is pick #1):
     // pickCeiling = 20 + 1 - max(4, 1) = 17.
