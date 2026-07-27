@@ -141,6 +141,7 @@ export class DraftEngineService {
     team: PopulatedTeam,
     pick: TeamPickEntity,
     session?: ClientSession,
+    isOrganizerOverride = false,
   ) {
     let newSession = false;
     if (!session) {
@@ -161,13 +162,16 @@ export class DraftEngineService {
       }
       currentTeam = dbTeam;
 
-      if (currentDraft.status !== "IN_PROGRESS") {
+      if (!isOrganizerOverride && currentDraft.status !== "IN_PROGRESS") {
         throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
           reason: `Draft is currently ${currentDraft.status.toLowerCase().replace("_", " ")}.`,
         });
       }
 
-      if (!(await canTeamDraft(currentDraft, currentTeam))) {
+      if (
+        !isOrganizerOverride &&
+        !(await canTeamDraft(currentDraft, currentTeam))
+      ) {
         throw new PDZError(ErrorCodes.DRAFT.NOT_YOUR_TURN);
       }
 
@@ -511,20 +515,24 @@ export class DraftEngineService {
       return;
     }
 
-    const newSkipTime = new Date();
-    newSkipTime.setSeconds(
-      newSkipTime.getSeconds() +
-        calculateTeamTimer(draft.timerLength, nextTeam.skipCount || 0),
-    );
-    draft.skipTime = newSkipTime;
-
-    if (session) {
-      queueSideEffect(session, () =>
-        this.agendaService.resumeSkipPick(tournament, draft),
-      );
+    if (draft.noTimer) {
+      draft.skipTime = undefined;
     } else {
-      await this.agendaService.cancelSkipPick(draft);
-      await this.agendaService.resumeSkipPick(tournament, draft);
+      const newSkipTime = new Date();
+      newSkipTime.setSeconds(
+        newSkipTime.getSeconds() +
+          calculateTeamTimer(draft.timerLength, nextTeam.skipCount || 0),
+      );
+      draft.skipTime = newSkipTime;
+
+      if (session) {
+        queueSideEffect(session, () =>
+          this.agendaService.resumeSkipPick(tournament, draft),
+        );
+      } else {
+        await this.agendaService.cancelSkipPick(draft);
+        await this.agendaService.resumeSkipPick(tournament, draft);
+      }
     }
 
     const nextTeamPicks = await this.currentTeamPicks(
@@ -701,6 +709,7 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     team: PopulatedTeam,
     dto: DraftDto,
+    isOrganizerOverride = false,
   ) {
     const session = await this.connection.startSession();
     session.startTransaction();
@@ -739,6 +748,7 @@ export class DraftEngineService {
             currentTeam,
             pick,
             session,
+            isOrganizerOverride,
           );
           // draftPokemon() updates draft.teams[teamIndex] in-memory; refresh reference
           if (teamIndex !== -1)
@@ -765,15 +775,21 @@ export class DraftEngineService {
     const statusActions: Record<"play" | "pause", () => Promise<void>> = {
       play: async () => {
         draft.status = "IN_PROGRESS";
-        const newSkipTime = new Date();
         const currentTeam = getCurrentPickingTeam(draft);
-        const teamTimer = currentTeam
-          ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
-          : (draft.timerLength ?? 30);
-        const secondsToAdd = draft.remainingTime ?? teamTimer;
-        newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
-        draft.skipTime = newSkipTime;
-        draft.remainingTime = undefined;
+
+        if (draft.noTimer) {
+          draft.skipTime = undefined;
+          draft.remainingTime = undefined;
+        } else {
+          const newSkipTime = new Date();
+          const teamTimer = currentTeam
+            ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
+            : (draft.timerLength ?? 30);
+          const secondsToAdd = draft.remainingTime ?? teamTimer;
+          newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
+          draft.skipTime = newSkipTime;
+          draft.remainingTime = undefined;
+        }
 
         await draft.save();
 
@@ -794,7 +810,9 @@ export class DraftEngineService {
           return;
         }
 
-        await this.agendaService.resumeSkipPick(tournament, draft);
+        if (!draft.noTimer) {
+          await this.agendaService.resumeSkipPick(tournament, draft);
+        }
       },
       pause: async () => {
         draft.status = "PAUSED";
@@ -819,6 +837,7 @@ export class DraftEngineService {
       tournamentId: tournament.tournamentKey,
       draftId: draft.draftKey,
       status: draft.status,
+      noTimer: draft.noTimer,
       currentPick: calculateCurrentPick(draft),
     });
 
@@ -834,5 +853,40 @@ export class DraftEngineService {
         content: `The draft is now ${statusLabel}.`,
       });
     }
+  }
+
+  async setNoTimer(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    noTimer: boolean,
+  ) {
+    draft.noTimer = noTimer;
+
+    if (draft.status === "IN_PROGRESS") {
+      if (noTimer) {
+        draft.skipTime = undefined;
+        draft.remainingTime = undefined;
+        await this.agendaService.cancelSkipPick(draft);
+      } else {
+        const currentTeam = getCurrentPickingTeam(draft);
+        const teamTimer = currentTeam
+          ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
+          : (draft.timerLength ?? 30);
+        const newSkipTime = new Date();
+        newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
+        draft.skipTime = newSkipTime;
+        await this.agendaService.resumeSkipPick(tournament, draft);
+      }
+    }
+
+    await draft.save();
+
+    this.draftEvents.emitDraftStatus({
+      tournamentId: tournament.tournamentKey,
+      draftId: draft.draftKey,
+      status: draft.status,
+      noTimer: draft.noTimer,
+      currentPick: calculateCurrentPick(draft),
+    });
   }
 }

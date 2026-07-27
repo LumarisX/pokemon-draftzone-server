@@ -81,6 +81,9 @@ export class DraftEntity {
   @Prop()
   timerLength?: number;
 
+  @Prop({ default: false })
+  noTimer!: boolean;
+
   @Prop({ default: true })
   useRandomSeeding?: boolean;
 

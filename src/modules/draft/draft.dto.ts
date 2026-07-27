@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsOptional,
   IsString,
   MinLength,
@@ -44,4 +45,9 @@ export class SetDraftStateDto {
   @IsString()
   @MinLength(1)
   state!: string;
+}
+
+export class SetDraftTimerDto {
+  @IsBoolean()
+  noTimer!: boolean;
 }

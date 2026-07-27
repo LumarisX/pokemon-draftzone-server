@@ -10,7 +10,12 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { DraftDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
+import {
+  DraftDto,
+  SetDraftStateDto,
+  SetDraftTimerDto,
+  SetPicksDto,
+} from "./draft.dto";
 import { DraftService } from "./draft.service";
 
 @Controller("leagues/:leagueKey/tournaments/:tournamentKey/drafts/:draftKey")
@@ -145,6 +150,23 @@ export class DraftController {
     @Body() body: SetDraftStateDto,
   ) {
     return this.draftService.setState(
+      leagueKey,
+      tournamentKey,
+      draftKey,
+      sub,
+      body,
+    );
+  }
+
+  @Post("timer")
+  async setTimer(
+    @Param("leagueKey") leagueKey: string,
+    @Param("tournamentKey") tournamentKey: string,
+    @Param("draftKey") draftKey: string,
+    @User() sub: string,
+    @Body() body: SetDraftTimerDto,
+  ) {
+    return this.draftService.setTimerMode(
       leagueKey,
       tournamentKey,
       draftKey,

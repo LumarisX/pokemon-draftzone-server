@@ -54,6 +54,7 @@ export type DraftStatusEvent = {
   tournamentId: string;
   draftId: string;
   status: string;
+  noTimer?: boolean;
   currentPick: ReturnType<typeof calculateCurrentPick>;
 };
 

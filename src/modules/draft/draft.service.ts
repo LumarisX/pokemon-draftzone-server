@@ -22,7 +22,12 @@ import {
 import { DraftEngineService } from "./draft-engine.service";
 import { getDraftOrder } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
-import { DraftDto, SetDraftStateDto, SetPicksDto } from "./draft.dto";
+import {
+  DraftDto,
+  SetDraftStateDto,
+  SetDraftTimerDto,
+  SetPicksDto,
+} from "./draft.dto";
 import {
   DraftRepository,
   PopulatedTeam,
@@ -260,13 +265,20 @@ export class DraftService {
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
-    if (!this.isOrganizer(tournament, sub) && !(await isCoach(team, sub)))
+    const isOrganizerOverride = this.isOrganizer(tournament, sub);
+    if (!isOrganizerOverride && !(await isCoach(team, sub)))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
         reason: "User is not a coach on this team or a tournament organizer",
       });
 
     if (dto.add?.length || dto.remove?.length)
-      await this.draftEngine.batchDraftPokemon(tournament, draft, team, dto);
+      await this.draftEngine.batchDraftPokemon(
+        tournament,
+        draft,
+        team,
+        dto,
+        isOrganizerOverride,
+      );
 
     if (dto.picks !== undefined) {
       team.picks = dto.picks;
@@ -319,6 +331,24 @@ export class DraftService {
 
     await this.draftEngine.setDraftState(tournament, draft, dto.state);
     return { message: "Timer set successfully." };
+  }
+
+  async setTimerMode(
+    leagueKey: string,
+    tournamentKey: string,
+    draftKey: string,
+    sub: string,
+    dto: SetDraftTimerDto,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueKey,
+      tournamentKey,
+      draftKey,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    await this.draftEngine.setNoTimer(tournament, draft, dto.noTimer);
+    return { message: "Timer mode updated successfully." };
   }
 
   async removeDraftPick(
