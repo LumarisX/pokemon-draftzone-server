@@ -383,11 +383,13 @@ export class DraftEngineService {
         inline: true,
       },
       {
-        name: "Cost",
-        value: tier ? tier.cost.toString() : "Banned",
+        name: "Tier",
+        value: tier?.name ?? "Banned",
         inline: true,
       },
     ];
+    if (tier?.cost)
+      fields.push({ name: "Cost", value: tier.cost.toString(), inline: true });
     if (pick.addons?.length)
       fields.push({ name: "Captain", value: "Tera", inline: true });
     if (snipeCount)
