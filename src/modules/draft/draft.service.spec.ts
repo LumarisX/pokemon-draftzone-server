@@ -125,7 +125,10 @@ describe("DraftService", () => {
       findAllByTournament: jest.fn(),
       flattenPoolTeamIds: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
-    teamRepo = { findManyByIds: jest.fn() } as unknown as jest.Mocked<TeamRepository>;
+    teamRepo = {
+      findManyByIds: jest.fn(),
+      updatePicks: jest.fn(),
+    } as unknown as jest.Mocked<TeamRepository>;
     draftEngine = {
       draftPokemon: jest.fn(),
       batchDraftPokemon: jest.fn(),
@@ -305,7 +308,9 @@ describe("DraftService", () => {
         "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
-      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
+      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
+        tournament, draft, team, dto, false,
+      );
       expect(result).toBe(details);
     });
 
@@ -324,7 +329,9 @@ describe("DraftService", () => {
         "league-1", "tournament-1", "draft-1", "team-1", "auth0|owner-2", dto,
       );
 
-      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(tournament, draft, team, dto);
+      expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
+        tournament, draft, team, dto, true,
+      );
     });
   });
 
@@ -344,7 +351,7 @@ describe("DraftService", () => {
           { picks: [] } as SetPicksDto,
         ),
       ).rejects.toMatchObject({ code: "AUTH-002" });
-      expect(team.save).not.toHaveBeenCalled();
+      expect(teamRepo.updatePicks).not.toHaveBeenCalled();
     });
 
     it("sets and saves the team's queued picks for the coach", async () => {
@@ -361,8 +368,7 @@ describe("DraftService", () => {
         "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
-      expect(team.picks).toBe(dto.picks);
-      expect(team.save).toHaveBeenCalledWith();
+      expect(teamRepo.updatePicks).toHaveBeenCalledWith(team._id, dto.picks);
       expect(result).toEqual({ message: "Draft pick set successfully." });
     });
   });

@@ -119,13 +119,24 @@ export async function teamHasEnoughPoints(
 
   const pickCost = getPickCost(tierList, pick);
   const maxPoints = tournament.pointTotal;
-  if (maxPoints === undefined) return true;
+  // `null` (explicitly cleared by an organizer) means "no cap", same as
+  // `undefined` (never set) - only a real number is an enforceable budget.
+  if (maxPoints == null) return true;
 
   const currentTeamPoints = await getTeamPoints(tournament, team);
   const projectedPoints = currentTeamPoints + pickCost;
   const picksAfterThis = team.pickLog.length + 1;
   const minPicksRequired = Math.max(tournament.draftCount.min, picksAfterThis);
-  const pickCeiling = maxPoints + picksAfterThis - minPicksRequired;
+  const remainingRequired = minPicksRequired - picksAfterThis;
+  // Reserve 1 point per remaining required pick as a cheap safety margin —
+  // but never more than the tier list can actually charge. A tier list
+  // where every tier costs 0 (a free/BST-cap format) has nothing to
+  // reserve, so don't manufacture a budget deficit out of it.
+  const cheapestTierCost = tierList.tiers.length
+    ? Math.min(...tierList.tiers.map((tier) => tier.cost))
+    : 1;
+  const reservePerPick = Math.min(1, cheapestTierCost);
+  const pickCeiling = maxPoints - remainingRequired * reservePerPick;
 
   return projectedPoints <= pickCeiling;
 }
@@ -246,19 +257,20 @@ export async function isTeamDoneDrafting(
 ): Promise<boolean> {
   if (team.pickLog.length >= tournament.draftCount.max) return true;
 
-  const teamPoints = await getTeamPoints(tournament, team);
-  if (
-    tournament.pointTotal !== undefined &&
-    teamPoints >= tournament.pointTotal
-  )
-    return true;
-
   const picksRemaining = tournament.draftCount.max - team.pickLog.length;
   if (picksRemaining <= 0) return true;
 
-  if (tournament.pointTotal !== undefined) {
+  if (tournament.pointTotal != null) {
+    const teamPoints = await getTeamPoints(tournament, team);
     const pointsRemaining = tournament.pointTotal - teamPoints;
-    if (pointsRemaining < 1) return true;
+    // A team is only out of picks once it can no longer afford even the
+    // cheapest tier — not just once it has spent its whole (possibly 0)
+    // budget, since an all-zero-cost tier list has nothing to exhaust.
+    const tierList = tournament.tierList;
+    const cheapestTierCost = tierList.tiers.length
+      ? Math.min(...tierList.tiers.map((tier) => tier.cost))
+      : 0;
+    if (pointsRemaining < cheapestTierCost) return true;
   }
 
   return false;
@@ -272,7 +284,7 @@ export async function isTeamRosterValid(
   if (pickCount < tournament.draftCount.min) return false;
   if (pickCount > tournament.draftCount.max) return false;
 
-  if (tournament.pointTotal !== undefined) {
+  if (tournament.pointTotal != null) {
     const teamPoints = await getTeamPoints(tournament, team);
     if (teamPoints > tournament.pointTotal) return false;
   }

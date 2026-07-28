@@ -280,10 +280,8 @@ export class DraftService {
         isOrganizerOverride,
       );
 
-    if (dto.picks !== undefined) {
-      team.picks = dto.picks;
-      await team.save();
-    }
+    if (dto.picks !== undefined)
+      await this.teamRepo.updatePicks(team._id, dto.picks);
 
     const { tournament: freshTournament, draft: freshDraft } =
       await this.loadContext(leagueKey, tournamentKey, draftKey);
@@ -310,8 +308,7 @@ export class DraftService {
         reason: "User is not a coach on this team or a tournament organizer",
       });
 
-    team.picks = dto.picks;
-    await team.save();
+    await this.teamRepo.updatePicks(team._id, dto.picks);
     return { message: "Draft pick set successfully." };
   }
 

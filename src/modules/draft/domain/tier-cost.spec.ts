@@ -248,6 +248,26 @@ describe("teamHasEnoughPoints", () => {
     ).resolves.toBe(true);
   });
 
+  it("allows drafting in an all-zero-cost tier list even with several required picks remaining", async () => {
+    // Free/BST-cap formats set every tier's cost to 0 and leave pointTotal
+    // at 0. A flat "reserve 1 point per remaining pick" would push the
+    // ceiling negative here and block every pick, even though nothing
+    // actually costs points.
+    const tierList = buildTierList({
+      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 0 })],
+    });
+    const tournament = buildTournament(tierList, {
+      pointTotal: 0,
+      draftCount: new DraftCount({ min: 11, max: 11 }),
+    });
+    const draft = buildDraft();
+    const team = buildTeam();
+
+    await expect(
+      teamHasEnoughPoints(tournament, draft, team, { pokemonId: "pikachu" } as any),
+    ).resolves.toBe(true);
+  });
+
   it("allows spending up to the budget minus what must be reserved for remaining minimum picks", async () => {
     // pointTotal 20, draftCount.min 4, no picks yet (this is pick #1):
     // pickCeiling = 20 + 1 - max(4, 1) = 17.
@@ -424,6 +444,20 @@ describe("isTeamDoneDrafting", () => {
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10, 0.5 remains
 
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
+  });
+
+  it("is not done after a 0-cost pick in an all-zero-cost tier list, even with pointTotal 0", async () => {
+    const tierList = buildTierList({
+      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 0 })],
+    });
+    const tournament = buildTournament(tierList, {
+      pointTotal: 0,
+      draftCount: new DraftCount({ min: 11, max: 11 }),
+    });
+    const draft = buildDraft();
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 0
+
+    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(false);
   });
 });
 

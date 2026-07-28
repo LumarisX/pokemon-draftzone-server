@@ -109,6 +109,23 @@ export class TeamRepository {
     return this.teamModel.countDocuments({ tournamentId }).exec();
   }
 
+  /**
+   * Raw $set update instead of load+mutate+save — draftPick() may have just
+   * saved this same team document (via a different in-memory instance) inside
+   * batchDraftPokemon's transaction, so a versioned save() here would race
+   * against that __v bump and throw a VersionError, silently dropping picks.
+   */
+  async updatePicks(
+    teamId: Types.ObjectId | string,
+    picks: TeamEntity["picks"],
+  ): Promise<void> {
+    const result = await this.teamModel
+      .updateOne({ _id: teamId }, { $set: { picks } })
+      .exec();
+    if (result.matchedCount === 0)
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId });
+  }
+
   async update(
     teamId: Types.ObjectId | string,
     data: {
