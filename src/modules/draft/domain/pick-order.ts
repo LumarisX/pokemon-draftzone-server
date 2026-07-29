@@ -306,10 +306,16 @@ export function isAlreadyDrafted(draft: PopulatedDraft, pokemonId: string) {
   );
 }
 
+/**
+ * Banks the time left on the current turn so it can be handed back on unpause.
+ * Leaves `remainingTime` unset when there is no deadline to bank (timer off, or
+ * nothing scheduled) — a `0` there would make the next play skip immediately.
+ */
 export function cancelSkipTime(draft: PopulatedDraft) {
-  const now: Date = new Date();
-  const differenceInMs = draft.skipTime
-    ? draft.skipTime.getTime() - now.getTime()
-    : 0;
-  draft.remainingTime = differenceInMs / 1000;
+  if (!draft.skipTime) {
+    draft.remainingTime = undefined;
+    return;
+  }
+  const remainingMs = draft.skipTime.getTime() - Date.now();
+  draft.remainingTime = Math.max(0, Math.round(remainingMs / 1000));
 }

@@ -72,7 +72,7 @@ describe("ExternalMatchupService", () => {
       updateScore: jest.fn(),
     } as unknown as jest.Mocked<ExternalMatchupRepository>;
     tournamentRepo = {
-      findByKeyAndOwner: jest.fn(),
+      findBySlugAndOwner: jest.fn(),
     } as unknown as jest.Mocked<ExternalTournamentRepository>;
 
     service = new ExternalMatchupService(matchupRepo, tournamentRepo);
@@ -81,7 +81,7 @@ describe("ExternalMatchupService", () => {
   describe("getScore", () => {
     it("returns wins 0, losses 0, diff +0 when there are no matchups", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findByTournamentId.mockResolvedValue([]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -93,7 +93,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("skips matchups with no matches", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         { matches: [] } as unknown as ExternalMatchup,
         { matches: undefined } as unknown as ExternalMatchup,
@@ -105,7 +105,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("scores a single-game matchup by comparing aTeam/bTeam scores", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         { matches: [buildSingleMatch(3, 1)] } as unknown as ExternalMatchup,
         { matches: [buildSingleMatch(0, 2)] } as unknown as ExternalMatchup,
@@ -118,7 +118,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("defaults missing single-game scores to 0", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         {
           matches: [{ aTeam: undefined, bTeam: undefined } as any],
@@ -131,7 +131,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("scores a best-of series by majority of per-game winners", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         {
           matches: [
@@ -155,7 +155,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("doesn't credit a win or loss when a series is tied", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         {
           matches: [buildSeriesMatch("a"), buildSeriesMatch("b")],
@@ -168,7 +168,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("formats a negative net diff without a leading plus", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(buildTournament());
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
         { matches: [buildSingleMatch(0, 4)] } as unknown as ExternalMatchup,
       ]);
@@ -182,7 +182,7 @@ describe("ExternalMatchupService", () => {
   describe("getExternalMatchups", () => {
     it("returns the tournament's matchups", async () => {
       const matchups = [{ stage: "Round 1" }] as unknown as ExternalMatchup[];
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups }),
       );
 
@@ -191,7 +191,7 @@ describe("ExternalMatchupService", () => {
         "auth0|owner",
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -212,7 +212,7 @@ describe("ExternalMatchupService", () => {
     }
 
     it("throws when the tournament has no _id", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ _id: undefined }),
       );
 
@@ -224,7 +224,7 @@ describe("ExternalMatchupService", () => {
 
     it("filters out team entries without an id and maps the rest with the tournament's ruleset", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       mockedPokemonMapper.fromForm.mockImplementation(
         (p: any) => ({ id: p.id, fromForm: true }) as any,
       );
@@ -256,7 +256,7 @@ describe("ExternalMatchupService", () => {
 
     it("defaults coach to undefined when not provided", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       const dto = buildDto({ coach: undefined, team: [] });
 
       await service.createExternalMatchup("springleague", "auth0|owner", dto);
@@ -273,7 +273,7 @@ describe("ExternalMatchupService", () => {
         stage: "Round 1",
         aTeam: { id: tournament._id },
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue(matchup);
 
       const result = await service.getExternalMatchup(
@@ -282,7 +282,7 @@ describe("ExternalMatchupService", () => {
         "auth0|owner",
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -296,7 +296,7 @@ describe("ExternalMatchupService", () => {
         stage: "Round 1",
         aTeam: { id: new Types.ObjectId() },
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue(matchup);
 
       await expect(
@@ -312,7 +312,7 @@ describe("ExternalMatchupService", () => {
         stage: "Round 1",
         aTeam: { id: tournament._id },
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue(matchup);
 
       const result = await service.getExternalMatchupOpponent(
@@ -321,7 +321,7 @@ describe("ExternalMatchupService", () => {
         "auth0|owner",
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -335,7 +335,7 @@ describe("ExternalMatchupService", () => {
         stage: "Round 1",
         aTeam: { id: new Types.ObjectId() },
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue(matchup);
 
       await expect(
@@ -348,7 +348,7 @@ describe("ExternalMatchupService", () => {
     });
 
     it("propagates the not-found error when the caller doesn't own that tournament key", async () => {
-      tournamentRepo.findByKeyAndOwner.mockRejectedValue(
+      tournamentRepo.findBySlugAndOwner.mockRejectedValue(
         new Error("tournament not found"),
       );
 
@@ -372,7 +372,7 @@ describe("ExternalMatchupService", () => {
       } as unknown as ExternalMatchup;
       const updated = { stage: "Round 1", teamName: "Updated" } as unknown as ExternalMatchup;
       const refetched = { stage: "Round 1", teamName: "Updated", refetched: true } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById
         .mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(refetched);
@@ -389,7 +389,7 @@ describe("ExternalMatchupService", () => {
         dto,
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -408,7 +408,7 @@ describe("ExternalMatchupService", () => {
 
     it("rejects and does not write when the matchup is owned by a different tournament", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         stage: "Round 1",
         aTeam: { id: new Types.ObjectId() },
@@ -429,7 +429,7 @@ describe("ExternalMatchupService", () => {
   describe("updateExternalMatchupScore", () => {
     it("verifies ownership, maps the form matches, and forwards both team pastes to the repository", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: tournament._id },
       } as unknown as ExternalMatchup);
@@ -449,7 +449,7 @@ describe("ExternalMatchupService", () => {
         dto,
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -463,7 +463,7 @@ describe("ExternalMatchupService", () => {
 
     it("rejects and does not write when the matchup is owned by a different tournament", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: new Types.ObjectId() },
       } as unknown as ExternalMatchup);
@@ -484,7 +484,7 @@ describe("ExternalMatchupService", () => {
   describe("getExternalMatchupSchedule", () => {
     function mockOwnedMatchup(matchup: Partial<ExternalMatchup>) {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: tournament._id },
         ...matchup,
@@ -501,7 +501,7 @@ describe("ExternalMatchupService", () => {
         "auth0|owner",
       );
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -522,7 +522,7 @@ describe("ExternalMatchupService", () => {
 
     it("rejects when the matchup belongs to a different tournament", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: new Types.ObjectId() },
       } as unknown as ExternalMatchup);
@@ -540,7 +540,7 @@ describe("ExternalMatchupService", () => {
   describe("updateExternalMatchupSchedule", () => {
     it("persists the new date/time and reminder lead time for an owned matchup", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: tournament._id },
       } as unknown as ExternalMatchup);
@@ -561,7 +561,7 @@ describe("ExternalMatchupService", () => {
 
     it("rejects and does not write when the matchup is owned by a different tournament", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
       matchupRepo.findById.mockResolvedValue({
         aTeam: { id: new Types.ObjectId() },
       } as unknown as ExternalMatchup);

@@ -479,8 +479,17 @@ describe("cancelSkipTime", () => {
     expect(draft.remainingTime).toBe(30);
   });
 
-  it("sets remainingTime to 0 when there is no skipTime", () => {
-    const draft = buildDraft({ skipTime: undefined });
+  it("leaves remainingTime unset when there is no skipTime", () => {
+    // A banked 0 would make the next play() skip the coach immediately.
+    const draft = buildDraft({ skipTime: undefined, remainingTime: 42 });
+
+    cancelSkipTime(draft);
+
+    expect(draft.remainingTime).toBeUndefined();
+  });
+
+  it("clamps remainingTime to 0 when skipTime has already passed", () => {
+    const draft = buildDraft({ skipTime: new Date("2025-12-31T23:59:30.000Z") });
 
     cancelSkipTime(draft);
 

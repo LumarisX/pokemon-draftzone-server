@@ -13,8 +13,8 @@ export class LeagueController {
     return this.leagueService.getLeagues(sub);
   }
 
-  @Get(":leagueKey")
-  async getLeague(@Param("leagueKey") leagueKey: string) {
-    return this.leagueService.getLeagueSummary(leagueKey);
+  @Get(":leagueSlug")
+  async getLeague(@Param("leagueSlug") leagueSlug: string) {
+    return this.leagueService.getLeagueSummary(leagueSlug);
   }
 }

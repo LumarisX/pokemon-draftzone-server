@@ -12,9 +12,9 @@ export class LeagueRepository {
     private readonly leagueModel: Model<LeagueDocument>,
   ) {}
 
-  async findByKey(leagueKey: string): Promise<LeagueDocument> {
-    const league = await this.leagueModel.findOne({ leagueKey }).exec();
-    if (!league) throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey });
+  async findBySlug(leagueSlug: string): Promise<LeagueDocument> {
+    const league = await this.leagueModel.findOne({ slug: leagueSlug }).exec();
+    if (!league) throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueSlug });
     return league;
   }
 

@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { generateSlug } from "@core/slug";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import mongoose, { ClientSession, Model, Types } from "mongoose";
@@ -11,6 +12,9 @@ import {
   ExternalTournamentDocument,
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
+
+/** Five re-rolls against a 2.18e14 keyspace; exhausting them means a defect. */
+const SLUG_COLLISION_RETRIES = 5;
 
 @Injectable()
 export class ExternalTournamentRepository {
@@ -35,12 +39,12 @@ export class ExternalTournamentRepository {
     });
   }
 
-  async findByKeyAndOwner(
-    key: string,
+  async findBySlugAndOwner(
+    slug: string,
     owner: string,
   ): Promise<ExternalTournament> {
     const tournamentDoc = await this.tournamentModel
-      .findOne({ owner: owner, leagueId: key })
+      .findOne({ owner: owner, slug })
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
@@ -63,22 +67,30 @@ export class ExternalTournamentRepository {
   }
 
   async create(tournament: ExternalTournament): Promise<void> {
-    const tournamentDoc = new this.tournamentModel(
-      ExternalTournamentMapper.toDatabasePayload(tournament),
-    );
-    try {
-      await tournamentDoc.save();
-    } catch (error) {
-      if (this.isDuplicateLeagueIdError(error))
-        throw new PDZError(ErrorCodes.DRAFT.DUPLICATE_NAME, {
-          leagueName: tournament.leagueName,
-        });
-      throw error;
+    // Slugs are random base62(8), so a collision here is chance (~1 in 2.18e14
+    // per insert), not user error — re-roll and retry rather than failing the
+    // request. The unique index is what makes this safe under concurrency:
+    // two simultaneous inserts can't both win.
+    for (let attempt = 0; attempt < SLUG_COLLISION_RETRIES; attempt++) {
+      try {
+        await new this.tournamentModel(
+          ExternalTournamentMapper.toDatabasePayload(tournament),
+        ).save();
+        return;
+      } catch (error) {
+        if (!this.isDuplicateSlugError(error)) throw error;
+        tournament.slug = generateSlug();
+      }
     }
+    // Exhausting the retries means something is wrong with the generator or
+    // the index, not that the user picked a taken name.
+    throw new PDZError(ErrorCodes.DRAFT.SLUG_GENERATION_FAILED, {
+      attempts: SLUG_COLLISION_RETRIES,
+    });
   }
 
-  async updateByKeyAndOwner(
-    key: string,
+  async updateBySlugAndOwner(
+    slug: string,
     owner: string,
     tournament: ExternalTournament,
   ): Promise<void> {
@@ -86,7 +98,7 @@ export class ExternalTournamentRepository {
     try {
       tournamentDoc = await this.tournamentModel
         .findOneAndUpdate(
-          { owner: owner, leagueId: key },
+          { owner: owner, slug },
           ExternalTournamentMapper.toDatabasePayload(tournament),
           {
             returnDocument: "after",
@@ -95,30 +107,28 @@ export class ExternalTournamentRepository {
         )
         .exec();
     } catch (error) {
-      if (this.isDuplicateLeagueIdError(error)) {
-        throw new PDZError(ErrorCodes.DRAFT.DUPLICATE_NAME, {
-          leagueName: tournament.leagueName,
-        });
-      }
+      // No duplicate-slug branch here: the filter and the upserted document
+      // carry the same owner+slug, so anything the unique index would reject
+      // is something the filter would already have matched and updated.
       throw error;
     }
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
   }
 
-  private isDuplicateLeagueIdError(error: unknown): boolean {
+  private isDuplicateSlugError(error: unknown): boolean {
     return (
       error instanceof mongoose.mongo.MongoServerError &&
       error.code === 11000 &&
-      error.keyPattern?.leagueId !== undefined
+      error.keyPattern?.slug !== undefined
     );
   }
 
-  async deleteByKeyAndOwner(
-    leagueId: string,
+  async deleteBySlugAndOwner(
+    slug: string,
     ownerId: string,
     session?: ClientSession,
   ): Promise<mongoose.DeleteResult> {
-    const query = this.tournamentModel.deleteOne({ owner: ownerId, leagueId });
+    const query = this.tournamentModel.deleteOne({ owner: ownerId, slug });
     if (session) query.session(session);
     return query.exec();
   }

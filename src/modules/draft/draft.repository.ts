@@ -31,12 +31,12 @@ export class DraftRepository {
   ) {}
 
   async findTournament(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
   ): Promise<PopulatedTournament> {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
     tournament.validateTierListMatch(tierList);
@@ -45,16 +45,16 @@ export class DraftRepository {
 
   async findDraft(
     tournament: PopulatedTournament,
-    draftKey: string,
+    draftSlug: string,
   ): Promise<PopulatedDraft> {
     const draft = await this.draftModel
-      .findOne({ tournamentId: tournament.id, draftKey })
+      .findOne({ tournamentId: tournament.id, slug: draftSlug })
       .exec();
 
     if (!draft)
       throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
-        draftKey,
-        tournamentKey: tournament.tournamentKey,
+        draftSlug,
+        tournamentSlug: tournament.slug,
       });
 
     const teams = await this.teamRepo.findAllByDraft(draft._id);
@@ -112,7 +112,7 @@ export class DraftRepository {
     if (!teams.some((t: PopulatedTeam) => t._id.equals(team._id)))
       throw new PDZError(ErrorCodes.TEAM.NOT_IN_DRAFT, {
         teamId,
-        draftKey: draft.draftKey,
+        draftSlug: draft.slug,
       });
     return team;
   }

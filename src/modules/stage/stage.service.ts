@@ -75,14 +75,14 @@ export class StageService {
   }
 
   async createStage(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string,
     dto: CreateStageDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -96,10 +96,10 @@ export class StageService {
   }
 
   /** Lightweight ordered list for the client's stage switcher. */
-  async listStages(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async listStages(leagueSlug: string, tournamentSlug: string) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     const stages = await this.stageRepo.findAllByTournament(tournament.id);
     return stages.map((stage) => ({
@@ -112,15 +112,15 @@ export class StageService {
   }
 
   async setPools(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     sub: string,
     dto: SetStagePoolsDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -156,15 +156,15 @@ export class StageService {
   }
 
   async advanceCurrentRound(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     sub: string,
     dto: SetCurrentRoundDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -198,15 +198,15 @@ export class StageService {
    * view. Every seeding is appended to the stage's permanent seedingLog.
    */
   async generateBracket(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     sub: string,
     dto: GenerateBracketDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -342,14 +342,14 @@ export class StageService {
    * it has ever had.
    */
   async deleteBracket(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     sub: string,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -694,15 +694,15 @@ export class StageService {
   }
 
   async createTrade(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     sub: string,
     dto: MakeTradeDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -802,16 +802,16 @@ export class StageService {
   }
 
   async updateMatchup(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     stageId: string,
     matchupId: string,
     sub: string,
     dto: UpdateMatchupDto,
   ) {
-    const tournament = await this.hostedTournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
 

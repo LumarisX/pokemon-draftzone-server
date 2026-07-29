@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
 import {
@@ -21,8 +22,8 @@ export class ExternalTournamentEntity {
   @Prop({ required: true })
   teamName!: string;
 
-  @Prop({ required: true })
-  leagueId!: string;
+  @Prop({ required: true, default: generateSlug })
+  slug!: string;
 
   @Prop({ required: true, type: String })
   format!: FormatId;
@@ -44,7 +45,7 @@ export const ExternalTournamentSchema = SchemaFactory.createForClass(
   ExternalTournamentEntity,
 );
 
-ExternalTournamentSchema.index({ owner: 1, leagueId: 1 }, { unique: true });
+ExternalTournamentSchema.index({ owner: 1, slug: 1 }, { unique: true });
 
 ExternalTournamentSchema.virtual("matchups", {
   ref: "ExternalMatchupEntity",

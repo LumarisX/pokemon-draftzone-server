@@ -36,8 +36,8 @@ export class LeagueService {
     const drafts = await this.draftRepo.findManyByIds(
       teams.flatMap((team) => (team.draftId ? [team.draftId] : [])),
     );
-    const draftKeysById = new Map(
-      drafts.map((draft) => [draft._id.toString(), draft.draftKey]),
+    const draftSlugsById = new Map(
+      drafts.map((draft) => [draft._id.toString(), draft.slug]),
     );
 
     const details = await Promise.all(
@@ -59,11 +59,11 @@ export class LeagueService {
           tournamentName: tournament.name,
           logo: team.logo ?? tournament.logo,
           discord: tournament.discord,
-          tournamentKey: tournament.tournamentKey,
+          tournamentSlug: tournament.slug,
           leagueName: league.name,
-          leagueKey: league.leagueKey,
-          draftKey: team.draftId
-            ? draftKeysById.get(team.draftId.toString())
+          leagueSlug: league.slug,
+          draftSlug: team.draftId
+            ? draftSlugsById.get(team.draftId.toString())
             : undefined,
           teamId: team._id.toString(),
           draft: roster,
@@ -80,12 +80,9 @@ export class LeagueService {
     };
   }
 
-  async getLeagueSummary(leagueKey: string) {
-    const league = await this.leagueRepo.findByKey(leagueKey);
-    const tournaments = await this.hostedTournamentRepo.findAllByLeague(
-      league._id.toString(),
-      league.owner,
-    );
+  async getLeagueSummary(leagueSlug: string) {
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
+    const tournaments = await this.hostedTournamentRepo.findAllByLeague(league);
 
     const tournamentSummaries = await Promise.all(
       tournaments.map(async (tournament) => {
@@ -94,7 +91,7 @@ export class LeagueService {
         );
         return {
           name: tournament.name,
-          tournamentKey: tournament.tournamentKey,
+          tournamentSlug: tournament.slug,
           description: tournament.description,
           format: tierList.format.name,
           ruleset: tierList.ruleset.name,
@@ -111,7 +108,7 @@ export class LeagueService {
 
     return {
       name: league.name,
-      leagueKey: league.leagueKey,
+      leagueSlug: league.slug,
       description: league.description,
       logo: league.logo,
       tournaments: tournamentSummaries,

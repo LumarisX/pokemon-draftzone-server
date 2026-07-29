@@ -117,7 +117,7 @@ describe("ArchiveV2.computeStats", () => {
       format: "Singles",
       ruleset: "Gen9 NatDex",
       team: ["pikachu"],
-      leagueId: "league-1",
+      slug: "league-1",
       matchups: [],
       stats: new Map([["pikachu", new Stat({ kills: 3, brought: 2 })]]),
       score: { wins: 1, losses: 0, diff: "+1" },

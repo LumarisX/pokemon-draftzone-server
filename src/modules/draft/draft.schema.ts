@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
@@ -28,8 +29,8 @@ export type DraftDocument = HydratedDocument<DraftEntity>;
   collection: "leaguedrafts",
 })
 export class DraftEntity {
-  @Prop({ required: true })
-  draftKey!: string;
+  @Prop({ required: true, default: generateSlug })
+  slug!: string;
 
   @Prop({ required: true })
   name!: string;
@@ -96,4 +97,4 @@ export class DraftEntity {
 
 export const DraftSchema = SchemaFactory.createForClass(DraftEntity);
 
-DraftSchema.index({ tournamentId: 1, draftKey: 1 }, { unique: true });
+DraftSchema.index({ tournamentId: 1, slug: 1 }, { unique: true });

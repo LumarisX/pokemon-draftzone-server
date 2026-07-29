@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
 
@@ -11,8 +12,8 @@ export class LeagueEntity {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true, unique: true, index: true })
-  leagueKey!: string;
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
 
   @Prop()
   description?: string;

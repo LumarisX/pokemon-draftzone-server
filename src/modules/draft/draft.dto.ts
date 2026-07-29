@@ -41,6 +41,17 @@ export class SetPicksDto {
   picks!: DraftPickDto[][];
 }
 
+export class SetRoundPickDto {
+  @IsString()
+  @MinLength(1)
+  pokemonId!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  addons?: string[];
+}
+
 export class SetDraftStateDto {
   @IsString()
   @MinLength(1)

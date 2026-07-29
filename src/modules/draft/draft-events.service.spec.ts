@@ -18,7 +18,7 @@ describe("DraftEventsService", () => {
   });
 
   it("emitDraftAdded emits 'league.draft.added' with the payload", () => {
-    const payload = { tournamentId: "t-1" } as DraftAddedEvent;
+    const payload = { tournamentSlug: "t-1" } as DraftAddedEvent;
 
     service.emitDraftAdded(payload);
 
@@ -29,7 +29,7 @@ describe("DraftEventsService", () => {
   });
 
   it("emitDraftCounter emits 'league.draft.counter' with the payload", () => {
-    const payload = { tournamentId: "t-1" } as DraftCounterEvent;
+    const payload = { tournamentSlug: "t-1" } as DraftCounterEvent;
 
     service.emitDraftCounter(payload);
 
@@ -40,7 +40,7 @@ describe("DraftEventsService", () => {
   });
 
   it("emitDraftCompleted emits 'league.draft.completed' with the payload", () => {
-    const payload = { tournamentId: "t-1" } as DraftCompletedEvent;
+    const payload = { tournamentSlug: "t-1" } as DraftCompletedEvent;
 
     service.emitDraftCompleted(payload);
 
@@ -51,7 +51,7 @@ describe("DraftEventsService", () => {
   });
 
   it("emitDraftSkip emits 'league.draft.skip' with the payload", () => {
-    const payload = { tournamentId: "t-1" } as DraftSkipEvent;
+    const payload = { tournamentSlug: "t-1" } as DraftSkipEvent;
 
     service.emitDraftSkip(payload);
 
@@ -59,7 +59,7 @@ describe("DraftEventsService", () => {
   });
 
   it("emitDraftStatus emits 'league.draft.status' with the payload", () => {
-    const payload = { tournamentId: "t-1" } as DraftStatusEvent;
+    const payload = { tournamentSlug: "t-1" } as DraftStatusEvent;
 
     service.emitDraftStatus(payload);
 

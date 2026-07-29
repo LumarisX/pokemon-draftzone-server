@@ -73,7 +73,7 @@ export class TournamentAdSettings {
 export class HostedTournament {
   id: string;
   name: string;
-  tournamentKey: string;
+  slug: string;
   description?: string;
   signUpDeadline: Date;
   draftStart?: Date;
@@ -82,6 +82,8 @@ export class HostedTournament {
   seasonEnd?: Date;
   owner: string;
   leagueId: string;
+  /** The league's URL slug — needed to build client links (/leagues/:leagueSlug/...). */
+  leagueSlug: string;
   organizers: string[];
   tierListId: string;
   rules: TournamentRule[];
@@ -101,7 +103,7 @@ export class HostedTournament {
   constructor(props: {
     id: string;
     name: string;
-    tournamentKey: string;
+    slug: string;
     description?: string;
     signUpDeadline: Date;
     draftStart?: Date;
@@ -110,6 +112,7 @@ export class HostedTournament {
     seasonEnd?: Date;
     owner: string;
     leagueId: string;
+    leagueSlug: string;
     organizers: string[];
     tierListId: string;
     rules: TournamentRule[];
@@ -128,7 +131,7 @@ export class HostedTournament {
   }) {
     this.id = props.id;
     this.name = props.name;
-    this.tournamentKey = props.tournamentKey;
+    this.slug = props.slug;
     this.description = props.description;
     this.signUpDeadline = props.signUpDeadline;
     this.draftStart = props.draftStart;
@@ -137,6 +140,7 @@ export class HostedTournament {
     this.seasonEnd = props.seasonEnd;
     this.owner = props.owner;
     this.leagueId = props.leagueId;
+    this.leagueSlug = props.leagueSlug;
     this.organizers = props.organizers;
     this.tierListId = props.tierListId;
     this.rules = props.rules;

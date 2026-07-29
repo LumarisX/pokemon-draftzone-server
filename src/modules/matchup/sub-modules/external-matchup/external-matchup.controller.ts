@@ -18,7 +18,7 @@ import {
 import { ExternalMatchupService } from "./external-matchup.service";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 
-@Controller("external/tournaments/:tournamentKey")
+@Controller("external/tournaments/:tournamentSlug")
 @UseGuards(JwtAuthGuard)
 export class ExternalMatchupController {
   constructor(
@@ -27,11 +27,11 @@ export class ExternalMatchupController {
 
   @Get("score")
   async getScore(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
     const matchups = await this.externalmatchupService.getExternalMatchups(
-      tournamentKey,
+      tournamentSlug,
       sub,
     );
     return matchups.map(ExternalMatchupMapper.toClientPayload);
@@ -39,11 +39,11 @@ export class ExternalMatchupController {
 
   @Get("matchups")
   async getExternalMatchups(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
     const matchups = await this.externalmatchupService.getExternalMatchups(
-      tournamentKey,
+      tournamentSlug,
       sub,
     );
     return matchups.map(ExternalMatchupMapper.toClientPayload);
@@ -51,12 +51,12 @@ export class ExternalMatchupController {
 
   @Post("matchups")
   async createExternalMatchup(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: ExternalMatchupDto,
   ) {
     await this.externalmatchupService.createExternalMatchup(
-      tournamentKey,
+      tournamentSlug,
       sub,
       body,
     );
@@ -65,12 +65,12 @@ export class ExternalMatchupController {
 
   @Get("matchups/:matchupId")
   async getExternalMatchup(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
     const matchup = await this.externalmatchupService.getExternalMatchup(
-      tournamentKey,
+      tournamentSlug,
       matchupId,
       sub,
     );
@@ -79,13 +79,13 @@ export class ExternalMatchupController {
 
   @Get("matchups/:matchupId/opponent")
   async getExternalMatchupOpponent(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
     const matchup =
       await this.externalmatchupService.getExternalMatchupOpponent(
-        tournamentKey,
+        tournamentSlug,
         matchupId,
         sub,
       );
@@ -94,14 +94,14 @@ export class ExternalMatchupController {
 
   @Patch("matchups/:matchupId/opponent")
   async updateExternalMatchupOpponent(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: ExternalMatchupDto,
   ) {
     const updatedMatchup =
       await this.externalmatchupService.updateExternalMatchupOpponent(
-        tournamentKey,
+        tournamentSlug,
         matchupId,
         sub,
         body,
@@ -114,13 +114,13 @@ export class ExternalMatchupController {
 
   @Patch("matchups/:matchupId/score")
   async updateExternalMatchupScore(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: ScorePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupScore(
-      tournamentKey,
+      tournamentSlug,
       matchupId,
       sub,
       body,
@@ -130,12 +130,12 @@ export class ExternalMatchupController {
 
   @Get("matchups/:matchupId/schedule")
   async getExternalMatchupSchedule(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
     return this.externalmatchupService.getExternalMatchupSchedule(
-      tournamentKey,
+      tournamentSlug,
       matchupId,
       sub,
     );
@@ -143,13 +143,13 @@ export class ExternalMatchupController {
 
   @Patch("matchups/:matchupId/schedule")
   async updateExternalMatchupSchedule(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
     @Body() body: SchedulePatchDto,
   ) {
     await this.externalmatchupService.updateExternalMatchupSchedule(
-      tournamentKey,
+      tournamentSlug,
       matchupId,
       sub,
       body,
@@ -159,12 +159,12 @@ export class ExternalMatchupController {
 
   @Delete("matchups/:matchupId")
   async deleteExternalMatchup(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupId") matchupId: string,
     @User() sub: string,
   ) {
     await this.externalmatchupService.deleteExternalMatchup(
-      tournamentKey,
+      tournamentSlug,
       matchupId,
       sub,
     );

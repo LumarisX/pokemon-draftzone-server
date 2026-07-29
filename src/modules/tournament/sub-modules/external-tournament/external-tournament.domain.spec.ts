@@ -8,7 +8,7 @@ function buildTournament(matchups: Partial<ExternalMatchup>[]) {
       format: { name: "Singles" } as any,
       leagueName: "Spring League",
       teamName: "Team Rocket",
-      key: "springleague",
+      slug: "springleague",
       owner: "auth0|owner",
       team: [],
     },

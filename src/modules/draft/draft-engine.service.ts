@@ -12,6 +12,7 @@ import { TeamPickEntity } from "@modules/team/team.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { AgendaService } from "@modules/agenda/agenda.service";
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
 import { EmbedBuilder, EmbedField } from "discord.js";
@@ -66,6 +67,9 @@ const typeColorMap = new Map<TypeName, number>([
   ["Water", 0x2980ef],
 ]);
 
+/** Used when CLIENT_URL isn't configured, so production keeps working as-is. */
+const DEFAULT_CLIENT_URL = "https://pokemondraftzone.com";
+
 function queueSideEffect(
   session: ClientSession | undefined,
   effect: DeferredSideEffect,
@@ -103,7 +107,19 @@ export class DraftEngineService {
     private readonly draftEvents: DraftEventsService,
     @Inject(forwardRef(() => AgendaService))
     private readonly agendaService: AgendaService,
+    private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Link to a draft's live draft board on the client. Mirrors the Angular route
+   * `/leagues/:leagueSlug/tournaments/:tournamentSlug/drafts/:draftSlug/draft`.
+   */
+  private draftUrl(tournament: PopulatedTournament, draft: PopulatedDraft) {
+    const baseUrl = (
+      this.configService.get<string>("CLIENT_URL") ?? DEFAULT_CLIENT_URL
+    ).replace(/\/+$/, "");
+    return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/drafts/${draft.slug}/draft`;
+  }
 
   private async currentTeamPicks(
     tournament: PopulatedTournament,
@@ -254,8 +270,8 @@ export class DraftEngineService {
 
       queueSideEffect(session, () => {
         this.draftEvents.emitDraftAdded({
-          tournamentId: tournament.tournamentKey,
-          draftId: currentDraft.draftKey,
+          tournamentSlug: tournament.slug,
+          draftSlug: currentDraft.slug,
           pick: {
             pokemon: {
               id: pick.pokemonId,
@@ -403,9 +419,7 @@ export class DraftEngineService {
       const embed = new EmbedBuilder()
         .setTitle(`${team.teamName} drafted ${pokemonName}!`)
         .setColor(color ?? 0xffde00)
-        .setURL(
-          `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/drafts/${draft.draftKey}/draft`,
-        )
+        .setURL(this.draftUrl(tournament, draft))
         .addFields(fields)
         .setImage(
           `https://play.pokemonshowdown.com/sprites/gen5/${pick.pokemonId}.png`,
@@ -502,10 +516,6 @@ export class DraftEngineService {
       return;
     }
 
-    if (session) {
-      queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft));
-    }
-
     const nextTeam = await this.skipToNextActiveTeam(
       tournament,
       draft,
@@ -526,15 +536,19 @@ export class DraftEngineService {
           calculateTeamTimer(draft.timerLength, nextTeam.skipCount || 0),
       );
       draft.skipTime = newSkipTime;
+    }
+    // A leftover pause value would otherwise be restored the next time the
+    // draft is played, overriding this pick's fresh timer.
+    draft.remainingTime = undefined;
 
-      if (session) {
-        queueSideEffect(session, () =>
-          this.agendaService.resumeSkipPick(tournament, draft),
-        );
-      } else {
-        await this.agendaService.cancelSkipPick(draft);
-        await this.agendaService.resumeSkipPick(tournament, draft);
-      }
+    // resumeSkipPick() reconciles the stored jobs against draft.skipTime, so it
+    // covers the noTimer case (no skipTime -> jobs deleted) as well.
+    if (session) {
+      queueSideEffect(session, () =>
+        this.agendaService.resumeSkipPick(tournament, draft),
+      );
+    } else {
+      await this.agendaService.resumeSkipPick(tournament, draft);
     }
 
     const nextTeamPicks = await this.currentTeamPicks(
@@ -555,8 +569,8 @@ export class DraftEngineService {
     } else {
       queueSideEffect(session, async () => {
         this.draftEvents.emitDraftCounter({
-          tournamentId: tournament.tournamentKey,
-          draftId: draft.draftKey,
+          tournamentSlug: tournament.slug,
+          draftSlug: draft.slug,
           currentPick: calculateCurrentPick(draft),
           nextTeam: nextTeam._id.toString(),
           canDraftTeams: calculateCanDraft(draft, pickOrder),
@@ -590,7 +604,9 @@ export class DraftEngineService {
     if (draft.status === "COMPLETED") return;
 
     draft.status = "COMPLETED";
-    queueSideEffect(session, () => this.agendaService.cancelSkipPick(draft));
+    queueSideEffect(session, async () => {
+      await this.agendaService.cancelSkipPick(draft);
+    });
     draft.skipTime = undefined;
     draft.remainingTime = undefined;
 
@@ -598,17 +614,15 @@ export class DraftEngineService {
 
     queueSideEffect(session, () => {
       this.draftEvents.emitDraftCompleted({
-        tournamentId: tournament.tournamentKey,
-        draftId: draft.draftKey,
+        tournamentSlug: tournament.slug,
+        draftSlug: draft.slug,
         draftName: draft.name,
       });
 
       if (draft.channelId) {
         const embed = new EmbedBuilder()
           .setTitle(`${draft.name} Draft Complete`)
-          .setURL(
-            `https://pokemondraftzone.com/leagues/pdbl/tournaments/${tournament.tournamentKey}/drafts/${draft.draftKey}/draft`,
-          )
+          .setURL(this.draftUrl(tournament, draft))
           .setDescription(
             "All teams have finished drafting. Good luck in your matches!",
           )
@@ -661,8 +675,8 @@ export class DraftEngineService {
       : draft.timerLength;
 
     this.draftEvents.emitDraftSkip({
-      tournamentId: tournament.tournamentKey,
-      draftId: draft.draftKey,
+      tournamentSlug: tournament.slug,
+      draftSlug: draft.slug,
       teamName,
       skipCount: fullTeam?.skipCount || 1,
       newTimerLength,
@@ -688,8 +702,9 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     team: PopulatedTeam,
     pokemonId: string,
+    isOrganizerOverride = false,
   ) {
-    if (draft.sequentialTurns && !draft.allowRemovals)
+    if (!isOrganizerOverride && draft.sequentialTurns && !draft.allowRemovals)
       throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
         reason: "Draft does not allow removals.",
       });
@@ -704,6 +719,82 @@ export class DraftEngineService {
 
     team.pickLog.splice(pickIndex, 1);
     await team.save();
+  }
+
+  /**
+   * Organizer-only correction of a single turn: writes `pick` into the team's
+   * round-`round` slot instead of appending like a normal draft pick would.
+   * Replacing an earlier round is the whole point (a coach's round-2 pick was
+   * wrong), so this deliberately bypasses turn order and never touches the
+   * draft counter, timer, or Discord feed — it is an edit, not a pick.
+   */
+  async setPickAtRound(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    round: number,
+    pick: TeamPickEntity,
+  ) {
+    if (!Number.isInteger(round) || round < 0)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Round must be a non-negative integer.",
+      });
+
+    if (round >= tournament.draftCount.max)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: `Draft only has ${tournament.draftCount.max} rounds.`,
+      });
+
+    // canBeDraftedWithReason reads every roster off draft.teams, so mutate that
+    // instance rather than the separately-loaded copy the caller handed us —
+    // otherwise the slot we clear below is still "taken" during validation.
+    const currentTeam =
+      draft.teams.find((t: PopulatedTeam) => t._id.equals(team._id)) ?? team;
+
+    // pickLog is dense (index === round), so a slot past the end would leave a
+    // hole. Organizers fill rounds in order or replace an existing one.
+    if (round > currentTeam.pickLog.length)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: `Cannot set round ${round + 1} before round ${currentTeam.pickLog.length + 1} is filled.`,
+      });
+
+    // Validate against the roster *without* the pick being replaced, so a team
+    // at its point cap can still have that slot swapped.
+    const [replaced] =
+      round < currentTeam.pickLog.length
+        ? currentTeam.pickLog.splice(round, 1)
+        : [];
+
+    const check = await canBeDraftedWithReason(
+      tournament,
+      draft,
+      currentTeam,
+      pick,
+    );
+    if (!check.canDraft) {
+      if (replaced) currentTeam.pickLog.splice(round, 0, replaced);
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_POKEMON, {
+        reason: check.reason,
+      });
+    }
+
+    currentTeam.pickLog.splice(round, 0, {
+      pokemon: { id: toID(pick.pokemonId) },
+      picker: replaced?.picker ?? (currentTeam.coach?._id || currentTeam.coach),
+      addons: pick.addons,
+      timestamp: replaced?.timestamp ?? new Date(),
+    });
+
+    await currentTeam.save();
+
+    // A corrected pick can take a Pokemon out from under another team that had
+    // it queued — drop it from their queues the same way a live pick would.
+    await this.removePokemonFromPicks(
+      draft,
+      pick.pokemonId,
+      undefined,
+      currentTeam._id.toString(),
+    );
   }
 
   async batchDraftPokemon(
@@ -783,11 +874,13 @@ export class DraftEngineService {
           draft.skipTime = undefined;
           draft.remainingTime = undefined;
         } else {
-          const newSkipTime = new Date();
+          // Restore whatever the pause banked; fall back to a full turn when
+          // the draft was never paused (or was paused with the timer off).
           const teamTimer = currentTeam
             ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
             : (draft.timerLength ?? 30);
           const secondsToAdd = draft.remainingTime ?? teamTimer;
+          const newSkipTime = new Date();
           newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
           draft.skipTime = newSkipTime;
           draft.remainingTime = undefined;
@@ -795,14 +888,12 @@ export class DraftEngineService {
 
         await draft.save();
 
-        if (!currentTeam) return;
-
-        const queuedPicks = await this.currentTeamPicks(
-          tournament,
-          draft,
-          currentTeam,
-        );
-        if (queuedPicks?.length) {
+        const queuedPicks = currentTeam
+          ? await this.currentTeamPicks(tournament, draft, currentTeam)
+          : null;
+        if (currentTeam && queuedPicks?.length) {
+          // draftPokemon() advances the draft, which reschedules the timer
+          // itself.
           await this.draftPokemon(
             tournament,
             draft,
@@ -812,12 +903,12 @@ export class DraftEngineService {
           return;
         }
 
-        if (!draft.noTimer) {
-          await this.agendaService.resumeSkipPick(tournament, draft);
-        }
+        await this.agendaService.resumeSkipPick(tournament, draft);
       },
       pause: async () => {
         draft.status = "PAUSED";
+        // Bank the time left before clearing the deadline, so play can hand the
+        // coach back exactly what they had.
         cancelSkipTime(draft);
         draft.skipTime = undefined;
         await this.agendaService.cancelSkipPick(draft);
@@ -836,8 +927,8 @@ export class DraftEngineService {
     await action();
     await draft.save();
     this.draftEvents.emitDraftStatus({
-      tournamentId: tournament.tournamentKey,
-      draftId: draft.draftKey,
+      tournamentSlug: tournament.slug,
+      draftSlug: draft.slug,
       status: draft.status,
       noTimer: draft.noTimer,
       currentPick: calculateCurrentPick(draft),
@@ -868,7 +959,6 @@ export class DraftEngineService {
       if (noTimer) {
         draft.skipTime = undefined;
         draft.remainingTime = undefined;
-        await this.agendaService.cancelSkipPick(draft);
       } else {
         const currentTeam = getCurrentPickingTeam(draft);
         const teamTimer = currentTeam
@@ -877,15 +967,16 @@ export class DraftEngineService {
         const newSkipTime = new Date();
         newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
         draft.skipTime = newSkipTime;
-        await this.agendaService.resumeSkipPick(tournament, draft);
+        draft.remainingTime = undefined;
       }
+      await this.agendaService.resumeSkipPick(tournament, draft);
     }
 
     await draft.save();
 
     this.draftEvents.emitDraftStatus({
-      tournamentId: tournament.tournamentKey,
-      draftId: draft.draftKey,
+      tournamentSlug: tournament.slug,
+      draftSlug: draft.slug,
       status: draft.status,
       noTimer: draft.noTimer,
       currentPick: calculateCurrentPick(draft),

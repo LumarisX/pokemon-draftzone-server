@@ -11,7 +11,7 @@ function buildLeague(overrides: Record<string, unknown> = {}) {
   return {
     _id: new Types.ObjectId(),
     name: "Spring League",
-    leagueKey: "springleague",
+    slug: "springleague",
     description: "A friendly league",
     owner: "auth0|owner",
     logo: "league-logo",
@@ -22,7 +22,7 @@ function buildLeague(overrides: Record<string, unknown> = {}) {
 function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     name: "Spring Cup",
-    tournamentKey: "springcup",
+    slug: "springcup",
     description: "The spring cup",
     tierListId: "tierlist-1",
     signUpDeadline: new Date("2026-01-01"),
@@ -59,7 +59,7 @@ describe("LeagueService.getLeagueSummary", () => {
   let service: LeagueService;
 
   beforeEach(() => {
-    leagueRepo = { findByKey: jest.fn() } as unknown as jest.Mocked<LeagueRepository>;
+    leagueRepo = { findBySlug: jest.fn() } as unknown as jest.Mocked<LeagueRepository>;
     hostedTournamentRepo = {
       findAllByLeague: jest.fn(),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
@@ -83,30 +83,27 @@ describe("LeagueService.getLeagueSummary", () => {
     );
   });
 
-  it("looks up tournaments using the league's id and owner", async () => {
+  it("looks up tournaments using the resolved league", async () => {
     const league = buildLeague();
-    leagueRepo.findByKey.mockResolvedValue(league);
+    leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([]);
 
     await service.getLeagueSummary("springleague");
 
-    expect(leagueRepo.findByKey).toHaveBeenCalledWith("springleague");
-    expect(hostedTournamentRepo.findAllByLeague).toHaveBeenCalledWith(
-      league._id.toString(),
-      league.owner,
-    );
+    expect(leagueRepo.findBySlug).toHaveBeenCalledWith("springleague");
+    expect(hostedTournamentRepo.findAllByLeague).toHaveBeenCalledWith(league);
   });
 
   it("returns the league's own identity fields alongside an empty tournaments list", async () => {
     const league = buildLeague();
-    leagueRepo.findByKey.mockResolvedValue(league);
+    leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([]);
 
     const result = await service.getLeagueSummary("springleague");
 
     expect(result).toEqual({
       name: "Spring League",
-      leagueKey: "springleague",
+      leagueSlug: "springleague",
       description: "A friendly league",
       logo: "league-logo",
       tournaments: [],
@@ -117,7 +114,7 @@ describe("LeagueService.getLeagueSummary", () => {
     const league = buildLeague();
     const tournament = buildTournament();
     const tierList = buildTierList({ format: "VGC", ruleset: "Paldea Dex" });
-    leagueRepo.findByKey.mockResolvedValue(league);
+    leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([tournament]);
     tierListRepo.findById.mockResolvedValue(tierList);
 
@@ -127,7 +124,7 @@ describe("LeagueService.getLeagueSummary", () => {
     expect(result.tournaments).toEqual([
       {
         name: "Spring Cup",
-        tournamentKey: "springcup",
+        tournamentSlug: "springcup",
         description: "The spring cup",
         format: "VGC",
         ruleset: "Paldea Dex",
@@ -145,14 +142,14 @@ describe("LeagueService.getLeagueSummary", () => {
   it("processes multiple tournaments and preserves their order", async () => {
     const league = buildLeague();
     const tournamentA = buildTournament({
-      tournamentKey: "a",
+      slug: "a",
       tierListId: "tierlist-a",
     });
     const tournamentB = buildTournament({
-      tournamentKey: "b",
+      slug: "b",
       tierListId: "tierlist-b",
     });
-    leagueRepo.findByKey.mockResolvedValue(league);
+    leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([tournamentA, tournamentB]);
     tierListRepo.findById.mockImplementation((id) =>
       Promise.resolve(buildTierList({ format: id })),
@@ -160,7 +157,7 @@ describe("LeagueService.getLeagueSummary", () => {
 
     const result = await service.getLeagueSummary("springleague");
 
-    expect(result.tournaments.map((t) => t.tournamentKey)).toEqual(["a", "b"]);
+    expect(result.tournaments.map((t) => t.tournamentSlug)).toEqual(["a", "b"]);
     expect(result.tournaments[0].format).toBe("tierlist-a");
     expect(result.tournaments[1].format).toBe("tierlist-b");
   });

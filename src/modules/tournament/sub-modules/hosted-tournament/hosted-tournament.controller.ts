@@ -22,196 +22,196 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
 
-@Controller("leagues/:leagueKey/tournaments")
+@Controller("leagues/:leagueSlug/tournaments")
 export class HostedTournamentController {
   constructor(private readonly tournamentService: HostedTournamentService) {}
 
-  @Get(":tournamentKey")
+  @Get(":tournamentSlug")
   async getTournament(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
   ) {
-    return this.tournamentService.getTournament(leagueKey, tournamentKey);
+    return this.tournamentService.getTournament(leagueSlug, tournamentSlug);
   }
 
-  @Get(":tournamentKey/bracket")
+  @Get(":tournamentSlug/bracket")
   async getTournamentBracket(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
   ) {
-    return this.tournamentService.getBracket(leagueKey, tournamentKey);
+    return this.tournamentService.getBracket(leagueSlug, tournamentSlug);
   }
 
-  @Get(":tournamentKey/info")
+  @Get(":tournamentSlug/info")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getTournamentInfo(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string | undefined,
   ) {
-    return this.tournamentService.getInfo(leagueKey, tournamentKey, sub);
+    return this.tournamentService.getInfo(leagueSlug, tournamentSlug, sub);
   }
 
-  @Get(":tournamentKey/roles")
+  @Get(":tournamentSlug/roles")
   @UseGuards(JwtAuthGuard)
   async getTournamentRoles(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return this.tournamentService.getRoles(leagueKey, tournamentKey, sub);
+    return this.tournamentService.getRoles(leagueSlug, tournamentSlug, sub);
   }
 
-  @Get(":tournamentKey/signup")
+  @Get(":tournamentSlug/signup")
   @UseGuards(JwtAuthGuard)
   async getTournamentSignup(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return this.tournamentService.getSignup(leagueKey, tournamentKey, sub);
+    return this.tournamentService.getSignup(leagueSlug, tournamentSlug, sub);
   }
 
-  @Post(":tournamentKey/signup")
+  @Post(":tournamentSlug/signup")
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.CREATED)
   async createTournamentSignup(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: SignUpDto,
   ) {
     return this.tournamentService.createSignup(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       sub,
       body,
     );
   }
 
-  @Get(":tournamentKey/coaches")
+  @Get(":tournamentSlug/coaches")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getTournamentCoaches(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string | undefined,
   ) {
-    return this.tournamentService.getCoaches(leagueKey, tournamentKey, sub);
+    return this.tournamentService.getCoaches(leagueSlug, tournamentSlug, sub);
   }
 
-  @Patch(":tournamentKey/coaches")
+  @Patch(":tournamentSlug/coaches")
   @UseGuards(JwtAuthGuard)
   async assignTournamentCoaches(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: AssignCoachesDto,
   ) {
     return this.tournamentService.assignCoaches(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       sub,
       body.assignments,
     );
   }
 
-  @Get(":tournamentKey/coaches/:coachId")
+  @Get(":tournamentSlug/coaches/:coachId")
   async getTournamentCoach(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("coachId") coachId: string,
   ) {
-    return this.tournamentService.getCoach(leagueKey, tournamentKey, coachId);
+    return this.tournamentService.getCoach(leagueSlug, tournamentSlug, coachId);
   }
 
-  @Patch(":tournamentKey/coaches/:coachId/logo")
+  @Patch(":tournamentSlug/coaches/:coachId/logo")
   @UseGuards(JwtAuthGuard)
   async setTournamentCoachLogo(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("coachId") coachId: string,
     @User() sub: string,
     @Body() body: UpdateCoachLogoDto,
   ) {
     return this.tournamentService.setCoachLogo(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       coachId,
       sub,
       body,
     );
   }
 
-  @Get(":tournamentKey/teams")
+  @Get(":tournamentSlug/teams")
   async listTeams(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
   ) {
-    return this.tournamentService.listTeams(leagueKey, tournamentKey);
+    return this.tournamentService.listTeams(leagueSlug, tournamentSlug);
   }
 
-  @Get(":tournamentKey/teams/:teamId")
+  @Get(":tournamentSlug/teams/:teamId")
   async getTeam(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Param("teamId") teamId: string,
     @Query("stageId") stageId?: string,
   ) {
     return this.tournamentService.getTeam(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       teamId,
       stageId,
     );
   }
 
-  @Get(":tournamentKey/settings")
+  @Get(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
   async getTournamentSettings(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string | undefined,
   ) {
-    return this.tournamentService.getSettings(leagueKey, tournamentKey, sub);
+    return this.tournamentService.getSettings(leagueSlug, tournamentSlug, sub);
   }
 
-  @Patch(":tournamentKey/settings")
+  @Patch(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
   async updateTournamentSettings(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: UpdateHostedTournamentSettingsDto,
   ) {
     return this.tournamentService.updateSettings(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       sub,
       body,
     );
   }
 
-  @Get(":tournamentKey/rules")
+  @Get(":tournamentSlug/rules")
   async getTournamentRules(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
   ) {
-    return this.tournamentService.getRules(leagueKey, tournamentKey);
+    return this.tournamentService.getRules(leagueSlug, tournamentSlug);
   }
 
-  @Post(":tournamentKey/rules")
+  @Post(":tournamentSlug/rules")
   @UseGuards(JwtAuthGuard)
   async updateTournamentRules(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: UpdateRulesDto,
   ) {
     return this.tournamentService.updateRules(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
       sub,
       body.ruleSections,
     );

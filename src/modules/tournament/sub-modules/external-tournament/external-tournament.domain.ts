@@ -17,7 +17,7 @@ export class ExternalTournament {
   format: Format;
   leagueName: string;
   teamName: string;
-  key: string;
+  slug: string;
   owner: string;
   team: PDZPokemon[];
   unresolvedTeam: PokemonEntity[];
@@ -30,7 +30,7 @@ export class ExternalTournament {
       format: Format;
       leagueName: string;
       teamName: string;
-      key: string;
+      slug: string;
       owner: string;
       team: PDZPokemon[];
       unresolvedTeam?: PokemonEntity[];
@@ -43,7 +43,7 @@ export class ExternalTournament {
     this.format = props.format;
     this.leagueName = props.leagueName;
     this.teamName = props.teamName;
-    this.key = props.key;
+    this.slug = props.slug;
     this.owner = props.owner;
     this.team = props.team;
     this.unresolvedTeam = props.unresolvedTeam ?? [];

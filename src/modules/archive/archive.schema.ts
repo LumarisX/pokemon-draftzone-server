@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import {
   PokemonEntity,
   PokemonSchema,
@@ -229,8 +230,8 @@ export type ArchiveV2Document = HydratedDocument<ArchiveV2Entity>;
 
 @Schema()
 export class ArchiveV2Entity extends ArchiveEntity {
-  @Prop({ required: true })
-  leagueId!: string;
+  @Prop({ required: true, default: generateSlug })
+  slug!: string;
 
   @Prop()
   doc?: string;

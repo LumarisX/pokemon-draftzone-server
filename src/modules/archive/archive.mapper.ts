@@ -81,7 +81,7 @@ export class ArchiveMapper {
   private static v2FromDocument(doc: ArchiveV2Document): ArchiveV2 {
     return new ArchiveV2({
       ...ArchiveMapper.identityFromDocument(doc),
-      leagueId: doc.leagueId,
+      slug: doc.slug,
       doc: doc.doc,
       stats: statEntityMapToDomain(doc.stats),
       score: new ArchiveScore(doc.score ?? { wins: 0, losses: 0, diff: "0" }),
@@ -153,7 +153,7 @@ export class ArchiveMapper {
       format: archive.format,
       ruleset: archive.ruleset,
       team: archive.team.map((id) => ({ id })),
-      leagueId: archive.leagueId,
+      slug: archive.slug,
       doc: archive.doc,
       stats: archive.stats,
       score: archive.score,

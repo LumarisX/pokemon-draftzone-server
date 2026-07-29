@@ -98,7 +98,12 @@ describe("ExternalTournamentController", () => {
         "auth0|coach-1",
       );
 
-      expect(mockedMapper.fromForm).toHaveBeenCalledWith(body, "auth0|coach-1");
+      // The route's slug is threaded through so an edit doesn't re-roll the URL.
+      expect(mockedMapper.fromForm).toHaveBeenCalledWith(
+        body,
+        "auth0|coach-1",
+        "springleague",
+      );
       expect(service.updateTournament).toHaveBeenCalledWith(
         "springleague",
         "auth0|coach-1",

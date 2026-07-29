@@ -10,24 +10,28 @@ import {
 } from "./hosted-tournament.domain";
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
 
+/** The parts of the owning league a tournament needs to carry with it. */
+export type TournamentLeague = { owner: string; slug: string };
+
 export class HostedTournamentMapper {
   static fromDatabase(
     doc: HostedTournamentDocument,
-    ownerAuth0Id: string,
+    league: TournamentLeague,
     stages: StageDocument[],
   ): HostedTournament {
     return new HostedTournament({
       id: doc._id.toString(),
       name: doc.name,
-      tournamentKey: doc.tournamentKey,
+      slug: doc.slug,
       description: doc.description,
       signUpDeadline: doc.signUpDeadline,
       draftStart: doc.draftStart,
       draftEnd: doc.draftEnd,
       seasonStart: doc.seasonStart,
       seasonEnd: doc.seasonEnd,
-      owner: ownerAuth0Id,
+      owner: league.owner,
       leagueId: doc.league.toString(),
+      leagueSlug: league.slug,
       organizers: [...doc.organizers],
       tierListId: doc.tierList?.toString() ?? "",
       rules: doc.rules.map(
@@ -82,7 +86,7 @@ export class HostedTournamentMapper {
     return {
       id: tournament.id,
       name: tournament.name,
-      tournamentKey: tournament.tournamentKey,
+      tournamentSlug: tournament.slug,
       description: tournament.description,
       signUpDeadline: tournament.signUpDeadline,
       draftStart: tournament.draftStart,

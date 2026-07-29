@@ -36,11 +36,11 @@ describe("ExternalTournamentService", () => {
   beforeEach(() => {
     tournamentRepo = {
       findByOwner: jest.fn(),
-      findByKeyAndOwner: jest.fn(),
+      findBySlugAndOwner: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
-      updateByKeyAndOwner: jest.fn(),
-      deleteByKeyAndOwner: jest.fn(),
+      updateBySlugAndOwner: jest.fn(),
+      deleteBySlugAndOwner: jest.fn(),
     } as unknown as jest.Mocked<ExternalTournamentRepository>;
     pokedexService = {
       getName: jest.fn().mockReturnValue("Pikachu"),
@@ -64,11 +64,11 @@ describe("ExternalTournamentService", () => {
   describe("getTournament", () => {
     it("looks up the tournament by key and owner", async () => {
       const tournament = buildTournament();
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(tournament);
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
 
       const result = await service.getTournament("springleague", "auth0|owner");
 
-      expect(tournamentRepo.findByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
       );
@@ -92,7 +92,7 @@ describe("ExternalTournamentService", () => {
 
       await service.updateTournament("springleague", "auth0|owner", tournament);
 
-      expect(tournamentRepo.updateByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.updateBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
         tournament,
@@ -104,7 +104,7 @@ describe("ExternalTournamentService", () => {
     it("delegates to the repository without a session", async () => {
       await service.deleteTournament("springleague", "auth0|owner");
 
-      expect(tournamentRepo.deleteByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.deleteBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
         undefined,
@@ -116,7 +116,7 @@ describe("ExternalTournamentService", () => {
 
       await service.deleteTournament("springleague", "auth0|owner", session);
 
-      expect(tournamentRepo.deleteByKeyAndOwner).toHaveBeenCalledWith(
+      expect(tournamentRepo.deleteBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
         session,
@@ -126,7 +126,7 @@ describe("ExternalTournamentService", () => {
 
   describe("getTournamentStats", () => {
     it("returns an empty pokemon list when there are no matchups", async () => {
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [] }),
       );
 
@@ -142,7 +142,7 @@ describe("ExternalTournamentService", () => {
       const matchup = {
         matches: undefined,
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchup] }),
       );
 
@@ -164,7 +164,7 @@ describe("ExternalTournamentService", () => {
       const matchupTwo = {
         matches: [buildMatch([["pikachu", { kills: 0, brought: 1, deaths: 1 }]])],
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchupOne, matchupTwo] }),
       );
 
@@ -190,7 +190,7 @@ describe("ExternalTournamentService", () => {
           buildMatch([["pikachu", { kills: 5, indirect: 2, brought: 3, deaths: 3 }]]),
         ],
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchup] }),
       );
 
@@ -208,7 +208,7 @@ describe("ExternalTournamentService", () => {
           buildMatch([["pikachu", { kills: 4, indirect: 2, brought: 3, deaths: 0 }]]),
         ],
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchup] }),
       );
 
@@ -226,7 +226,7 @@ describe("ExternalTournamentService", () => {
           buildMatch([["pikachu", { kills: 0, brought: 0, deaths: 0 }]]),
         ],
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchup] }),
       );
 
@@ -247,7 +247,7 @@ describe("ExternalTournamentService", () => {
           ]),
         ],
       } as unknown as ExternalMatchup;
-      tournamentRepo.findByKeyAndOwner.mockResolvedValue(
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(
         buildTournament({ matchups: [matchup] }),
       );
 

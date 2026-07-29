@@ -127,10 +127,20 @@ export const ErrorCodes = {
       status: 400,
       message: "League name must contain at least one letter or number",
     },
+    /**
+     * Unreachable since slugs became random base62 rather than name-derived —
+     * two drafts may now share a league name. Kept so existing clients that
+     * branch on DR-011 keep compiling.
+     */
     DUPLICATE_NAME: {
       code: "DR-011",
       status: 409,
       message: "You already have a draft with this league name",
+    },
+    SLUG_GENERATION_FAILED: {
+      code: "DR-012",
+      status: 500,
+      message: "Could not generate a unique draft URL. Please try again.",
     },
   },
   STAGE: {

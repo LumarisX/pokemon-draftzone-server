@@ -38,47 +38,51 @@ export class ExternalTournamentController {
     return this.tournamentService.createTournament(tournament);
   }
 
-  @Get(":tournamentKey")
+  @Get(":tournamentSlug")
   async getTournament(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
     const tournament = await this.tournamentService.getTournament(
-      tournamentKey,
+      tournamentSlug,
       sub,
     );
     return ExternalTournamentMapper.toClientPayload(tournament);
   }
 
-  @Patch(":tournamentKey")
+  @Patch(":tournamentSlug")
   async updateTournament(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @Body() body: ExternalTournamentDto,
     @User() sub: string,
   ) {
-    const tournament = ExternalTournamentMapper.fromForm(body, sub);
+    const tournament = ExternalTournamentMapper.fromForm(
+      body,
+      sub,
+      tournamentSlug,
+    );
     const updated = await this.tournamentService.updateTournament(
-      tournamentKey,
+      tournamentSlug,
       sub,
       tournament,
     );
     return { message: "Tournament updated", tournament: updated };
   }
 
-  @Delete(":tournamentKey")
+  @Delete(":tournamentSlug")
   async deleteTournament(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    await this.tournamentService.deleteTournament(tournamentKey, sub);
+    await this.tournamentService.deleteTournament(tournamentSlug, sub);
     return { message: "Tournament deleted" };
   }
 
-  @Get(":tournamentKey/stats")
+  @Get(":tournamentSlug/stats")
   async getStats(
-    @Param("tournamentKey") tournamentKey: string,
+    @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return await this.tournamentService.getTournamentStats(tournamentKey, sub);
+    return await this.tournamentService.getTournamentStats(tournamentSlug, sub);
   }
 }

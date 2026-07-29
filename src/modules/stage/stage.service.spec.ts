@@ -104,7 +104,7 @@ describe("StageService", () => {
       resolveDownstreamSlots: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     hostedTournamentRepo = {
-      findByKey: jest.fn(),
+      findBySlug: jest.fn(),
       findById: jest.fn(),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {
@@ -129,7 +129,7 @@ describe("StageService", () => {
   describe("createStage", () => {
     it("creates the stage when sub is the tournament owner", async () => {
       const tournament = buildTournament({ owner: "auth0|owner" });
-      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
       const created = buildStage();
       stageRepo.create.mockResolvedValue(created);
 
@@ -151,7 +151,7 @@ describe("StageService", () => {
 
     it("allows an organizer (not just the owner) to create a stage", async () => {
       const tournament = buildTournament({ owner: "auth0|owner", organizers: ["auth0|deputy"] });
-      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
       stageRepo.create.mockResolvedValue(buildStage());
 
       await expect(
@@ -165,7 +165,7 @@ describe("StageService", () => {
 
     it("rejects a non-organizer, non-owner sub", async () => {
       const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
-      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       await expect(
         service.createStage("league-1", "tournament-1", "auth0|stranger", {
@@ -181,7 +181,7 @@ describe("StageService", () => {
   describe("listStages", () => {
     it("maps each stage to a lightweight summary", async () => {
       const tournament = buildTournament();
-      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
       const stage = buildStage({
         name: "Regular Season",
         type: "round-robin",
@@ -206,7 +206,7 @@ describe("StageService", () => {
 
   describe("setPools", () => {
     it("rejects an invalid team ID inside a pool before touching the repository", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
 
       await expect(
         service.setPools("league-1", "tournament-1", "stage-1", "auth0|owner", {
@@ -217,7 +217,7 @@ describe("StageService", () => {
     });
 
     it("converts valid team IDs to ObjectIds and forwards to the repository", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const teamId = new Types.ObjectId().toString();
       stageRepo.setPools.mockResolvedValue(buildStage());
 
@@ -231,7 +231,7 @@ describe("StageService", () => {
     });
 
     it("rejects a non-organizer", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ owner: "auth0|owner", organizers: [] }),
       );
 
@@ -245,7 +245,7 @@ describe("StageService", () => {
 
   describe("advanceCurrentRound", () => {
     it("forwards to the repository when sub is the organizer", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const updated = buildStage({ currentRoundIndex: 3 });
       stageRepo.setCurrentRoundIndex.mockResolvedValue(updated);
 
@@ -262,7 +262,7 @@ describe("StageService", () => {
     });
 
     it("rejects a non-organizer", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ owner: "auth0|owner", organizers: [] }),
       );
 
@@ -567,7 +567,7 @@ describe("StageService", () => {
     }
 
     it("rejects a non-organizer", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ owner: "auth0|owner", organizers: [] }),
       );
 
@@ -583,7 +583,7 @@ describe("StageService", () => {
     });
 
     it("rejects an invalid side1 team id", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       stageRepo.findById.mockResolvedValue(buildStage());
 
       await expect(
@@ -598,7 +598,7 @@ describe("StageService", () => {
     });
 
     it("rejects an invalid side2 team id", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       stageRepo.findById.mockResolvedValue(buildStage());
 
       await expect(
@@ -613,7 +613,7 @@ describe("StageService", () => {
     });
 
     it("does nothing (but still reports success) when neither side names a team", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const stage = buildStage();
       stageRepo.findById.mockResolvedValue(stage);
 
@@ -630,7 +630,7 @@ describe("StageService", () => {
     });
 
     it("throws TEAM.NOT_FOUND when side1's team doesn't exist", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       stageRepo.findById.mockResolvedValue(buildStage());
       teamRepo.findByIdOrNull.mockResolvedValue(null);
       const teamId = new Types.ObjectId().toString();
@@ -647,7 +647,7 @@ describe("StageService", () => {
     });
 
     it("throws SPECIES.NOT_FOUND when a side offers a Pokemon not on that team's current roster", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const stage = buildStage();
       stageRepo.findById.mockResolvedValue(stage);
       const team1 = buildTeam();
@@ -668,7 +668,7 @@ describe("StageService", () => {
     });
 
     it("records an APPROVED trade and saves the stage on a valid request", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const stage = buildStage();
       stageRepo.findById.mockResolvedValue(stage);
       const team1 = buildTeam();
@@ -714,7 +714,7 @@ describe("StageService", () => {
     }
 
     it("rejects a non-organizer", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ owner: "auth0|owner", organizers: [] }),
       );
 
@@ -731,7 +731,7 @@ describe("StageService", () => {
     });
 
     it("rejects an invalid matchup id", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
 
       await expect(
         service.updateMatchup(
@@ -746,7 +746,7 @@ describe("StageService", () => {
     });
 
     it("rebuilds results, dropping pokemon entries with a null/undefined status", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const matchup = buildMatchupDoc();
       matchupRepo.findByIdInStage.mockResolvedValue(matchup);
 
@@ -786,7 +786,7 @@ describe("StageService", () => {
     });
 
     it("applies dto.score to both sides when given", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const matchup = buildMatchupDoc();
       matchupRepo.findByIdInStage.mockResolvedValue(matchup);
 
@@ -811,7 +811,7 @@ describe("StageService", () => {
       ["side2ffw", { winner: "side2", forfeit: true }],
       ["dffl", { winner: "draw", forfeit: true }],
     ])("maps dto.winner %s to matchup {winner, forfeit}", async (dtoWinner, expected) => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const matchup = buildMatchupDoc();
       matchupRepo.findByIdInStage.mockResolvedValue(matchup);
 
@@ -829,7 +829,7 @@ describe("StageService", () => {
     });
 
     it("returns a confirmation message", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       matchupRepo.findByIdInStage.mockResolvedValue(buildMatchupDoc());
 
       const result = await service.updateMatchup(
@@ -845,7 +845,7 @@ describe("StageService", () => {
     });
 
     it("propagates the winner/loser team into downstream bracket slots", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const stageId = new Types.ObjectId();
       const matchupId = new Types.ObjectId();
       const side1Team = new Types.ObjectId();
@@ -876,7 +876,7 @@ describe("StageService", () => {
     });
 
     it("does not propagate when dto.winner is absent", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const matchup = buildMatchupDoc({
         _id: new Types.ObjectId(),
         stage: new Types.ObjectId(),
@@ -896,7 +896,7 @@ describe("StageService", () => {
     });
 
     it("does not propagate on a draw (no winner/loser team to resolve)", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       const matchup = buildMatchupDoc({
         _id: new Types.ObjectId(),
         stage: new Types.ObjectId(),
@@ -980,7 +980,7 @@ describe("StageService", () => {
     function setupBracketStage() {
       const tournamentId = new Types.ObjectId();
       const tournament = buildTournament({ id: tournamentId.toString() });
-      hostedTournamentRepo.findByKey.mockResolvedValue(tournament);
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
       const stage = buildStage({
         tournamentId,
         type: "double-elimination",
@@ -1152,7 +1152,7 @@ describe("StageService", () => {
 
   describe("setPools seeding lock", () => {
     it("rejects pool edits on a certified-random stage that has matchups", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       stageRepo.findById.mockResolvedValue(
         buildStage({
           seedingLog: [
@@ -1175,7 +1175,7 @@ describe("StageService", () => {
     });
 
     it("still allows pool edits on manually-seeded stages with matchups", async () => {
-      hostedTournamentRepo.findByKey.mockResolvedValue(buildTournament());
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
       stageRepo.findById.mockResolvedValue(
         buildStage({
           seedingLog: [
@@ -1200,7 +1200,7 @@ describe("StageService", () => {
   describe("deleteBracket", () => {
     it("clears matchups but never the seeding log", async () => {
       const tournamentId = new Types.ObjectId();
-      hostedTournamentRepo.findByKey.mockResolvedValue(
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ id: tournamentId.toString() }),
       );
       const stage = buildStage({

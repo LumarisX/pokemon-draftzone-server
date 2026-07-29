@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { LeagueEntity } from "@modules/league/league.schema";
 import {
   DraftCountEntity,
@@ -96,8 +97,8 @@ export class HostedTournamentEntity {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true, unique: true, index: true })
-  tournamentKey!: string;
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
 
   @Prop()
   description?: string;

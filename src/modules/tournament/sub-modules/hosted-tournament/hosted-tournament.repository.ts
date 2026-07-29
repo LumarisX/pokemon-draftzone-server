@@ -2,6 +2,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
+import { LeagueDocument } from "@modules/league/league.schema";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
@@ -25,19 +26,19 @@ export class HostedTournamentRepository {
     private readonly teamRepo: TeamRepository,
   ) {}
 
-  async findByKey(
-    leagueKey: string,
-    tournamentKey: string,
+  async findBySlug(
+    leagueSlug: string,
+    tournamentSlug: string,
   ): Promise<HostedTournament> {
-    const league = await this.leagueRepo.findByKey(leagueKey);
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
 
     const doc = await this.hostedTournamentModel
-      .findOne({ tournamentKey, league: league._id })
+      .findOne({ slug: tournamentSlug, league: league._id })
       .exec();
     if (!doc)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentKey });
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
     const stages = await this.resolveStages(doc.stages);
-    return HostedTournamentMapper.fromDatabase(doc, league.owner, stages);
+    return HostedTournamentMapper.fromDatabase(doc, league, stages);
   }
 
   async findById(
@@ -50,20 +51,17 @@ export class HostedTournamentRepository {
       });
     const league = await this.leagueRepo.findById(doc.league);
     const stages = await this.resolveStages(doc.stages);
-    return HostedTournamentMapper.fromDatabase(doc, league.owner, stages);
+    return HostedTournamentMapper.fromDatabase(doc, league, stages);
   }
 
-  async findAllByLeague(
-    leagueId: string,
-    ownerAuth0Id: string,
-  ): Promise<HostedTournament[]> {
+  async findAllByLeague(league: LeagueDocument): Promise<HostedTournament[]> {
     const docs = await this.hostedTournamentModel
-      .find({ league: leagueId })
+      .find({ league: league._id })
       .exec();
     return Promise.all(
       docs.map(async (doc) => {
         const stages = await this.resolveStages(doc.stages);
-        return HostedTournamentMapper.fromDatabase(doc, ownerAuth0Id, stages);
+        return HostedTournamentMapper.fromDatabase(doc, league, stages);
       }),
     );
   }
@@ -86,11 +84,11 @@ export class HostedTournamentRepository {
       .exec();
 
     const leagueIds = [...new Set(docs.map((doc) => doc.league.toString()))];
-    const ownersByLeague = new Map(
+    const leaguesById = new Map(
       await Promise.all(
         leagueIds.map(async (leagueId) => {
           const league = await this.leagueRepo.findById(leagueId);
-          return [leagueId, league.owner] as const;
+          return [leagueId, league] as const;
         }),
       ),
     );
@@ -100,7 +98,7 @@ export class HostedTournamentRepository {
         const stages = await this.resolveStages(doc.stages);
         return HostedTournamentMapper.fromDatabase(
           doc,
-          ownersByLeague.get(doc.league.toString())!,
+          leaguesById.get(doc.league.toString())!,
           stages,
         );
       }),
@@ -116,10 +114,10 @@ export class HostedTournamentRepository {
     );
   }
 
-  async updateRules(tournamentKey: string, rules: TournamentRule[]) {
+  async updateRules(tournamentSlug: string, rules: TournamentRule[]) {
     const result = await this.hostedTournamentModel
       .findOneAndUpdate(
-        { tournamentKey },
+        { slug: tournamentSlug },
         {
           $set: {
             rules: rules.map((rule) => ({
@@ -131,7 +129,7 @@ export class HostedTournamentRepository {
       )
       .exec();
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentKey });
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
   }
 
   async updateSettings(

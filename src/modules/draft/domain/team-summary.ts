@@ -11,6 +11,7 @@ import {
   calculateCanDraftCounts,
   calculateCurrentPick,
   generatePickOrder,
+  getDocumentId,
   getDraftOrder,
   getPokemonIdFromDraft,
 } from "./pick-order";
@@ -27,8 +28,11 @@ export type TeamWithCoachStatus = {
     types: TypeName[];
     capt: { tera: boolean | undefined };
     draftFormes: { id: string; name: string }[] | undefined;
+    picker: string | undefined;
+    timestamp: Date | undefined;
   }[];
   logo?: string;
+  coach: string;
   isCoach: boolean;
   picks: {
     id: string;
@@ -50,6 +54,15 @@ export async function getTeamsWithCoachStatus(
   numberOfRounds: number,
 ): Promise<TeamWithCoachStatus[]> {
   const pokemonTierMap = createPokemonTierMap(tournament);
+  // Every picker recorded so far is the coach of one of this draft's teams, and
+  // those coaches are already populated on the team documents — so resolving
+  // picker names off this map costs no extra queries.
+  const coachNames = new Map<string, string>(
+    draft.teams
+      .map((team: PopulatedTeam) => team.coach)
+      .filter((coach) => !!coach?._id)
+      .map((coach) => [coach._id.toString(), coach.name] as const),
+  );
 
   const teams = await Promise.all(
     draft.teams.map(async (team: PopulatedTeam) => {
@@ -100,6 +113,10 @@ export async function getTeamsWithCoachStatus(
               tera: pick.addons?.includes("Tera Captain") || undefined,
             },
             draftFormes: tierList.getPokemonFormes(pokemonId),
+            picker: pick.picker
+              ? coachNames.get(getDocumentId(pick.picker))
+              : undefined,
+            timestamp: pick.timestamp,
           };
         }),
       );
@@ -115,6 +132,7 @@ export async function getTeamsWithCoachStatus(
         name: team.teamName,
         draft: draftPicks,
         logo: team.logo,
+        coach: coach?.name ?? "",
         isCoach,
         picks,
         pointTotal,

@@ -28,10 +28,11 @@ function buildTournament(
   return new HostedTournament({
     id: "tournament-1",
     name: "Spring Cup",
-    tournamentKey: TOURNAMENT_KEY,
+    slug: TOURNAMENT_KEY,
     signUpDeadline: new Date("2026-01-01"),
     owner: "auth0|owner",
     leagueId: "league-1",
+    leagueSlug: "springleague",
     organizers: [],
     tierListId: "tier-1",
     rules: [],
@@ -79,7 +80,7 @@ describe("HostedTournamentService signup", () => {
     tournament = buildTournament();
 
     tournamentRepo = {
-      findByKey: jest.fn().mockResolvedValue(tournament),
+      findBySlug: jest.fn().mockResolvedValue(tournament),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     teamRepo = {
       findByIdOrNull: jest.fn(),
@@ -207,7 +208,7 @@ describe("HostedTournamentService signup", () => {
         draftId,
       } as any);
       draftRepo.findById.mockResolvedValue({
-        draftKey: "draft-1",
+        slug: "draft-1",
         name: "Draft One",
       } as any);
       discordService.findMember.mockResolvedValue({
@@ -217,7 +218,7 @@ describe("HostedTournamentService signup", () => {
 
       const result = await service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB);
 
-      expect(result.draft).toEqual({ draftKey: "draft-1", name: "Draft One" });
+      expect(result.draft).toEqual({ draftSlug: "draft-1", name: "Draft One" });
       expect(result.inDiscordServer).toBe(true);
       expect(discordService.findMember).toHaveBeenCalledWith(
         "guild-1",
@@ -324,7 +325,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("skips Discord side effects when the tournament has no Discord settings", async () => {
-      tournamentRepo.findByKey.mockResolvedValue(
+      tournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ discordSettings: undefined }),
       );
       coachRepo.findByAuth0Id.mockResolvedValue([]);
@@ -381,7 +382,7 @@ describe("HostedTournamentService settings", () => {
     tournament = buildTournament();
 
     tournamentRepo = {
-      findByKey: jest.fn().mockResolvedValue(tournament),
+      findBySlug: jest.fn().mockResolvedValue(tournament),
       updateSettings: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {

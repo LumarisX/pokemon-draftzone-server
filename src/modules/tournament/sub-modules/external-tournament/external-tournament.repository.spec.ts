@@ -16,11 +16,11 @@ const mockedMapper = ExternalTournamentMapper as jest.Mocked<
 >;
 
 function duplicateKeyError(
-  keyPattern: Record<string, number> = { leagueId: 1, owner: 1 },
+  keyPattern: Record<string, number> = { slug: 1, owner: 1 },
 ): Error {
   const error = new mongoose.mongo.MongoServerError({
     message:
-      "E11000 duplicate key error collection: draftzone.drafts index: owner_1_leagueId_1",
+      "E11000 duplicate key error collection: draftzone.drafts index: owner_1_slug_1",
   });
   error.code = 11000;
   error.keyPattern = keyPattern;
@@ -30,7 +30,7 @@ function duplicateKeyError(
 describe("ExternalTournamentRepository", () => {
   const tournament = {
     leagueName: "PPDL",
-    key: "ppdl",
+    slug: "ppdl",
   } as unknown as ExternalTournament;
 
   let save: jest.Mock;
@@ -59,15 +59,28 @@ describe("ExternalTournamentRepository", () => {
       expect(save).toHaveBeenCalled();
     });
 
-    it("translates a duplicate-key error into DR-011 (409)", async () => {
+    it("re-rolls the slug and retries when the generated one is already taken", async () => {
+      save
+        .mockRejectedValueOnce(duplicateKeyError())
+        .mockResolvedValueOnce(undefined);
+
+      await repository.create(tournament);
+
+      expect(save).toHaveBeenCalledTimes(2);
+      // The retry must carry a different slug, otherwise it just collides again.
+      expect(tournament.slug).not.toBe("ppdl");
+      expect(tournament.slug).toMatch(/^[0-9A-Za-z]{8}$/);
+    });
+
+    it("gives up with DR-012 once the retries are exhausted", async () => {
       save.mockRejectedValue(duplicateKeyError());
 
       const promise = repository.create(tournament);
       await expect(promise).rejects.toBeInstanceOf(PDZError);
       await promise.catch((error: PDZError) => {
-        expect(error.code).toBe("DR-011");
-        expect(error.getStatus()).toBe(409);
-        expect(error.details).toEqual({ leagueName: "PPDL" });
+        // Not DR-011: a collision here is chance, not a name the user already used.
+        expect(error.code).toBe("DR-012");
+        expect(error.getStatus()).toBe(500);
       });
     });
 
@@ -88,7 +101,7 @@ describe("ExternalTournamentRepository", () => {
     it("rethrows a plain error that merely carries code 11000", async () => {
       const impostor = Object.assign(new Error("not a mongo error"), {
         code: 11000,
-        keyPattern: { leagueId: 1 },
+        keyPattern: { slug: 1 },
       });
       save.mockRejectedValue(impostor);
 
@@ -96,18 +109,19 @@ describe("ExternalTournamentRepository", () => {
     });
   });
 
-  describe("updateByKeyAndOwner", () => {
-    it("translates a duplicate-key error into DR-011 (409)", async () => {
+  describe("updateBySlugAndOwner", () => {
+    it("rethrows a duplicate-key error rather than reinterpreting it", async () => {
+      // The filter and the upserted doc share owner+slug, so the unique index
+      // can only reject something the filter would have matched — reaching
+      // here means a genuine fault, not a name the user already used.
+      const duplicate = duplicateKeyError();
       findOneAndUpdate.mockReturnValue({
-        exec: jest.fn().mockRejectedValue(duplicateKeyError()),
+        exec: jest.fn().mockRejectedValue(duplicate),
       });
 
-      const promise = repository.updateByKeyAndOwner("old-key", "owner", tournament);
-      await expect(promise).rejects.toBeInstanceOf(PDZError);
-      await promise.catch((error: PDZError) => {
-        expect(error.code).toBe("DR-011");
-        expect(error.getStatus()).toBe(409);
-      });
+      await expect(
+        repository.updateBySlugAndOwner("old-key", "owner", tournament),
+      ).rejects.toBe(duplicate);
     });
   });
 });

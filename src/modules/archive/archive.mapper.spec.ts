@@ -33,7 +33,7 @@ function buildV2Doc(overrides: Record<string, unknown> = {}): ArchiveV2Document 
     format: "Singles",
     ruleset: "Gen9 NatDex",
     team: [{ id: "pikachu" }],
-    leagueId: "league-1",
+    slug: "league-1",
     doc: "doc-key",
     stats: new Map([["pikachu", { kills: 3, brought: 2 }]]),
     score: { wins: 1, losses: 0, diff: "+1" },
@@ -134,7 +134,7 @@ describe("ArchiveMapper.fromDatabase", () => {
 
     const result = ArchiveMapper.fromDatabase(doc) as ArchiveV2;
 
-    expect(result.leagueId).toBe("league-1");
+    expect(result.slug).toBe("league-1");
     expect(result.doc).toBe("doc-key");
     expect(result.score).toEqual({ wins: 1, losses: 0, diff: "+1" });
     expect(result.stats.get("pikachu")).toEqual(new Stat({ kills: 3, brought: 2 }));
@@ -189,7 +189,7 @@ describe("ArchiveMapper.toListItem", () => {
       format: "Singles",
       ruleset: "Gen9 NatDex",
       team: ["pikachu"],
-      leagueId: "league-1",
+      slug: "league-1",
       matchups: [],
       stats: new Map(),
       score: { wins: 1, losses: 0, diff: "+1" },
@@ -250,7 +250,7 @@ describe("ArchiveMapper.toV2EntityProps", () => {
       format: "Singles",
       ruleset: "Gen9 NatDex",
       team: ["pikachu", "charizard"],
-      leagueId: "league-1",
+      slug: "league-1",
       matchups: [],
       stats: new Map(),
       score: { wins: 0, losses: 0, diff: "0" },
@@ -270,7 +270,7 @@ describe("ArchiveMapper.toV2EntityProps", () => {
       format: "Singles",
       ruleset: "Gen9 NatDex",
       team: [],
-      leagueId: "league-1",
+      slug: "league-1",
       stats: new Map(),
       score: { wins: 0, losses: 0, diff: "0" },
       matchups: [

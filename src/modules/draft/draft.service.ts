@@ -27,6 +27,7 @@ import {
   SetDraftStateDto,
   SetDraftTimerDto,
   SetPicksDto,
+  SetRoundPickDto,
 } from "./draft.dto";
 import {
   DraftRepository,
@@ -45,15 +46,15 @@ export class DraftService {
   ) {}
 
   private async loadContext(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
     );
-    const draft = await this.draftRepo.findDraft(tournament, draftKey);
+    const draft = await this.draftRepo.findDraft(tournament, draftSlug);
     return { tournament, draft };
   }
 
@@ -100,24 +101,24 @@ export class DraftService {
   }
 
   async getDetails(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     return getDraftDetails(tournament, draft, sub);
   }
 
-  async getPicks(leagueKey: string, tournamentKey: string, draftKey: string) {
+  async getPicks(leagueSlug: string, tournamentSlug: string, draftSlug: string) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     // `teams` is composed in memory (not a real Draft schema path), so each
     // team document is populated individually rather than via
@@ -159,11 +160,11 @@ export class DraftService {
     return allPicks;
   }
 
-  async getOrder(leagueKey: string, tournamentKey: string, draftKey: string) {
+  async getOrder(leagueSlug: string, tournamentSlug: string, draftSlug: string) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
 
     const orderProgression = draft.orderProgression;
@@ -211,14 +212,14 @@ export class DraftService {
   }
 
   async getPowerRankings(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
   ): Promise<unknown[]> {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
 
     const ruleset = tournament.tierList.ruleset;
@@ -246,9 +247,9 @@ export class DraftService {
 
   /** A team's own coach, or a tournament organizer/owner overriding for them, may draft. */
   async draftPick(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     teamId: string,
     sub: string,
     dto: DraftDto,
@@ -259,9 +260,9 @@ export class DraftService {
       });
 
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
@@ -284,22 +285,51 @@ export class DraftService {
       await this.teamRepo.updatePicks(team._id, dto.picks);
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueKey, tournamentKey, draftKey);
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
+    return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  /** Organizer-only edit of one turn's pick; see DraftEngineService.setPickAtRound. */
+  async setRoundPick(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    teamId: string,
+    round: number,
+    sub: string,
+    dto: SetRoundPickDto,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
+
+    await this.draftEngine.setPickAtRound(tournament, draft, team, round, {
+      pokemonId: dto.pokemonId,
+      addons: dto.addons,
+    });
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async setPicks(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     teamId: string,
     sub: string,
     dto: SetPicksDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
@@ -313,16 +343,16 @@ export class DraftService {
   }
 
   async setState(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
     dto: SetDraftStateDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -331,16 +361,16 @@ export class DraftService {
   }
 
   async setTimerMode(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
     dto: SetDraftTimerDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -349,39 +379,48 @@ export class DraftService {
   }
 
   async removeDraftPick(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     teamId: string,
     sub: string,
     pokemonId: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
-    if (!this.isOrganizer(tournament, sub) && !(await isCoach(team, sub)))
+    const isOrganizerOverride = this.isOrganizer(tournament, sub);
+    if (!isOrganizerOverride && !(await isCoach(team, sub)))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
         reason: "User is not a coach on this team or a tournament organizer",
       });
 
-    await this.draftEngine.undraftPokemon(draft, team, pokemonId);
-    return { message: "Pick removed successfully." };
+    await this.draftEngine.undraftPokemon(
+      draft,
+      team,
+      pokemonId,
+      isOrganizerOverride,
+    );
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
+    return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async skipPick(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     this.assertOrganizer(tournament, sub);
 
@@ -396,16 +435,16 @@ export class DraftService {
    * `record` field if zero Stages exist; throws if more than one exists.
    */
   async getTeams(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
     stageId?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
 
     const stageDoc = await this.resolveStage(draft.tournamentId, stageId);
@@ -485,16 +524,16 @@ export class DraftService {
   }
 
   async getPokemonList(
-    leagueKey: string,
-    tournamentKey: string,
-    draftKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
     sub: string,
     stageId?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
     this.assertOrganizer(tournament, sub);
 

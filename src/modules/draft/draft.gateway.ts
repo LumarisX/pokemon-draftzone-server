@@ -37,9 +37,9 @@ interface JsonRpcResponse {
 }
 
 /**
- * Rooms are keyed by tournamentId (see league.subscribe/unsubscribe below),
+ * Rooms are keyed by tournamentSlug (see league.subscribe/unsubscribe below),
  * so a single "watch this tournament" subscription covers every draft,
- * matchup, etc. under it. Clients filter by draftId themselves.
+ * matchup, etc. under it. Clients filter by draftSlug themselves.
  */
 @WebSocketGateway({
   path: "/ws/",
@@ -57,28 +57,28 @@ export class DraftGateway {
     @MessageBody() request: JsonRpcRequest,
   ): void {
     const response: JsonRpcResponse = { jsonrpc: "2.0", id: request.id };
-    const tournamentKey = request.params?.["tournamentKey"];
+    const tournamentSlug = request.params?.["tournamentSlug"];
 
     switch (request.method) {
       case "league.subscribe":
-        if (typeof tournamentKey === "string" && tournamentKey) {
-          client.join(tournamentKey);
-          response.result = { subscribed: tournamentKey };
+        if (typeof tournamentSlug === "string" && tournamentSlug) {
+          client.join(tournamentSlug);
+          response.result = { subscribed: tournamentSlug };
         } else {
           response.error = {
             code: -32602,
-            message: "tournamentKey is required",
+            message: "tournamentSlug is required",
           };
         }
         break;
       case "league.unsubscribe":
-        if (typeof tournamentKey === "string" && tournamentKey) {
-          client.leave(tournamentKey);
-          response.result = { unsubscribed: tournamentKey };
+        if (typeof tournamentSlug === "string" && tournamentSlug) {
+          client.leave(tournamentSlug);
+          response.result = { unsubscribed: tournamentSlug };
         } else {
           response.error = {
             code: -32602,
-            message: "tournamentKey is required",
+            message: "tournamentSlug is required",
           };
         }
         break;
@@ -92,36 +92,36 @@ export class DraftGateway {
     client.emit("message", response);
   }
 
-  private broadcast(tournamentId: string, event: string, data: unknown): void {
-    if (!tournamentId) {
-      this.logger.warn(`Dropping ${event} broadcast with no tournamentId`);
+  private broadcast(tournamentSlug: string, event: string, data: unknown): void {
+    if (!tournamentSlug) {
+      this.logger.warn(`Dropping ${event} broadcast with no tournamentSlug`);
       return;
     }
-    this.server.to(tournamentId).emit("message", { event, data });
+    this.server.to(tournamentSlug).emit("message", { event, data });
   }
 
   @OnEvent("league.draft.added")
   onDraftAdded(payload: DraftAddedEvent): void {
-    this.broadcast(payload.tournamentId, "league.draft.added", payload);
+    this.broadcast(payload.tournamentSlug, "league.draft.added", payload);
   }
 
   @OnEvent("league.draft.counter")
   onDraftCounter(payload: DraftCounterEvent): void {
-    this.broadcast(payload.tournamentId, "league.draft.counter", payload);
+    this.broadcast(payload.tournamentSlug, "league.draft.counter", payload);
   }
 
   @OnEvent("league.draft.status")
   onDraftStatus(payload: DraftStatusEvent): void {
-    this.broadcast(payload.tournamentId, "league.draft.status", payload);
+    this.broadcast(payload.tournamentSlug, "league.draft.status", payload);
   }
 
   @OnEvent("league.draft.skip")
   onDraftSkip(payload: DraftSkipEvent): void {
-    this.broadcast(payload.tournamentId, "league.draft.skip", payload);
+    this.broadcast(payload.tournamentSlug, "league.draft.skip", payload);
   }
 
   @OnEvent("league.draft.completed")
   onDraftCompleted(payload: DraftCompletedEvent): void {
-    this.broadcast(payload.tournamentId, "league.draft.completed", payload);
+    this.broadcast(payload.tournamentSlug, "league.draft.completed", payload);
   }
 }

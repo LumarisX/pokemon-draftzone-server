@@ -2,6 +2,7 @@ import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { generateSlug } from "@core/slug";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentDto } from "./external-tournament.dto";
 import {
@@ -17,7 +18,7 @@ export class ExternalTournamentMapper {
   ): ExternalTournamentEntity {
     return {
       leagueName: tournament.leagueName,
-      leagueId: tournament.key,
+      slug: tournament.slug,
       teamName: tournament.teamName,
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
@@ -34,7 +35,7 @@ export class ExternalTournamentMapper {
     return {
       id: tournament._id?.toString(),
       leagueName: tournament.leagueName,
-      tournamentId: tournament.key,
+      slug: tournament.slug,
       teamName: tournament.teamName,
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
@@ -50,12 +51,19 @@ export class ExternalTournamentMapper {
     };
   }
 
-  static fromForm(dto: ExternalTournamentDto, sub: string): ExternalTournament {
-    const computedId = dto.leagueName
-      .toLowerCase()
-      .trim()
-      .replace(/[^\p{L}\p{N}]+/gu, "");
-    if (!computedId) {
+  /**
+   * `slug` is supplied on update so an edit keeps the tournament at the same
+   * URL — omitting it (the create path) mints a fresh one. Without that
+   * distinction every edit would re-roll the slug, since this same method
+   * builds the domain object for both operations.
+   */
+  static fromForm(
+    dto: ExternalTournamentDto,
+    sub: string,
+    slug?: string,
+  ): ExternalTournament {
+    const leagueName = dto.leagueName.trim();
+    if (!leagueName) {
       throw new PDZError(ErrorCodes.DRAFT.INVALID_NAME);
     }
     const ruleset = getRuleset(dto.ruleset);
@@ -68,9 +76,9 @@ export class ExternalTournamentMapper {
       {
         ruleset,
         format,
-        leagueName: dto.leagueName.trim(),
+        leagueName,
         teamName: dto.teamName.trim(),
-        key: computedId,
+        slug: slug ?? generateSlug(),
         owner: sub,
         team: mappedTeam,
         doc: dto.doc?.trim(),
@@ -100,7 +108,7 @@ export class ExternalTournamentMapper {
         format,
         leagueName: tournamentDoc.leagueName,
         teamName: tournamentDoc.teamName,
-        key: tournamentDoc.leagueId,
+        slug: tournamentDoc.slug,
         owner: tournamentDoc.owner,
         team,
         unresolvedTeam,

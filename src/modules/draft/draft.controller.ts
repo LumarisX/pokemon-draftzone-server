@@ -6,6 +6,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   UseGuards,
@@ -15,41 +16,42 @@ import {
   SetDraftStateDto,
   SetDraftTimerDto,
   SetPicksDto,
+  SetRoundPickDto,
 } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
-@Controller("leagues/:leagueKey/tournaments/:tournamentKey/drafts/:draftKey")
+@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/drafts/:draftSlug")
 @UseGuards(JwtAuthGuard)
 export class DraftController {
   constructor(private readonly draftService: DraftService) {}
 
   @Get()
   async getDetails(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.getDetails(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       sub,
     );
   }
 
   @Get("teams")
   async getTeams(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
     @Query("stageId") stageId?: string,
   ) {
     return this.draftService.getTeams(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       sub,
       stageId,
     );
@@ -57,47 +59,47 @@ export class DraftController {
 
   @Get("picks")
   async getPicks(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
   ) {
-    return this.draftService.getPicks(leagueKey, tournamentKey, draftKey);
+    return this.draftService.getPicks(leagueSlug, tournamentSlug, draftSlug);
   }
 
   @Get("order")
   async getOrder(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
   ) {
-    return this.draftService.getOrder(leagueKey, tournamentKey, draftKey);
+    return this.draftService.getOrder(leagueSlug, tournamentSlug, draftSlug);
   }
 
   @Get("power-rankings")
   async getPowerRankings(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
   ) {
     return this.draftService.getPowerRankings(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
     );
   }
 
   @Get("pokemon-list")
   async getPokemonList(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
     @Query("stageId") stageId?: string,
   ) {
     return this.draftService.getPokemonList(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       sub,
       stageId,
     );
@@ -105,18 +107,39 @@ export class DraftController {
 
   @Post("teams/:teamId/draft")
   async draftPick(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @Param("teamId") teamId: string,
     @User() sub: string,
     @Body() body: DraftDto,
   ) {
     return this.draftService.draftPick(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       teamId,
+      sub,
+      body,
+    );
+  }
+
+  @Post("teams/:teamId/draft/rounds/:round")
+  async setRoundPick(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
+    @Param("teamId") teamId: string,
+    @Param("round", ParseIntPipe) round: number,
+    @User() sub: string,
+    @Body() body: SetRoundPickDto,
+  ) {
+    return this.draftService.setRoundPick(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      teamId,
+      round,
       sub,
       body,
     );
@@ -124,17 +147,17 @@ export class DraftController {
 
   @Post("teams/:teamId/picks")
   async setPicks(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @Param("teamId") teamId: string,
     @User() sub: string,
     @Body() body: SetPicksDto,
   ) {
     return this.draftService.setPicks(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       teamId,
       sub,
       body,
@@ -143,16 +166,16 @@ export class DraftController {
 
   @Post("state")
   async setState(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
     @Body() body: SetDraftStateDto,
   ) {
     return this.draftService.setState(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       sub,
       body,
     );
@@ -160,16 +183,16 @@ export class DraftController {
 
   @Post("timer")
   async setTimer(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
     @Body() body: SetDraftTimerDto,
   ) {
     return this.draftService.setTimerMode(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       sub,
       body,
     );
@@ -177,17 +200,17 @@ export class DraftController {
 
   @Delete("teams/:teamId/draft/:pokemonId")
   async removeDraftPick(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @Param("teamId") teamId: string,
     @Param("pokemonId") pokemonId: string,
     @User() sub: string,
   ) {
     return this.draftService.removeDraftPick(
-      leagueKey,
-      tournamentKey,
-      draftKey,
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
       teamId,
       sub,
       pokemonId,
@@ -196,11 +219,11 @@ export class DraftController {
 
   @Post("skip")
   async skipPick(
-    @Param("leagueKey") leagueKey: string,
-    @Param("tournamentKey") tournamentKey: string,
-    @Param("draftKey") draftKey: string,
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
     @User() sub: string,
   ) {
-    return this.draftService.skipPick(leagueKey, tournamentKey, draftKey, sub);
+    return this.draftService.skipPick(leagueSlug, tournamentSlug, draftSlug, sub);
   }
 }

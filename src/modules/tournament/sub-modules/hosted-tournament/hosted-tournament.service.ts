@@ -55,14 +55,14 @@ export class HostedTournamentService {
   ) {}
 
   async getTeam(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     teamId: string,
     stageId?: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
-      leagueKey,
-      tournamentKey,
+      leagueSlug,
+      tournamentSlug,
     );
     const team = await this.teamRepo.findById(teamId);
 
@@ -163,18 +163,18 @@ export class HostedTournamentService {
     };
   }
 
-  async getTournament(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getTournament(leagueSlug: string, tournamentSlug: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     return HostedTournamentMapper.toClientPayload(tournament);
   }
 
-  async getInfo(leagueKey: string, tournamentKey: string, sub?: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getInfo(leagueSlug: string, tournamentSlug: string, sub?: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
 
     const canSeeAllDrafts = sub
@@ -188,7 +188,7 @@ export class HostedTournamentService {
 
     return {
       name: tournament.name,
-      tournamentKey: tournament.tournamentKey,
+      tournamentSlug: tournament.slug,
       description: tournament.description,
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
@@ -199,7 +199,7 @@ export class HostedTournamentService {
       seasonEnd: tournament.seasonEnd,
       logo: tournament.logo,
       drafts: drafts.map((draft) => ({
-        draftKey: draft.draftKey,
+        draftSlug: draft.slug,
         name: draft.name,
       })),
       discord: tournament.discord,
@@ -210,10 +210,10 @@ export class HostedTournamentService {
   }
 
   /** Flat team list for organizer tooling (e.g. picking bracket participants). */
-  async listTeams(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async listTeams(leagueSlug: string, tournamentSlug: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
     return {
@@ -228,10 +228,10 @@ export class HostedTournamentService {
     };
   }
 
-  async getBracket(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getBracket(leagueSlug: string, tournamentSlug: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     const playoffsStage = tournament.getPlayoffsStage();
 
@@ -250,13 +250,13 @@ export class HostedTournamentService {
   }
 
   async getRoles(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string | undefined,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     return tournament.getRoles(sub);
   }
@@ -272,10 +272,10 @@ export class HostedTournamentService {
     return null;
   }
 
-  async getSignup(leagueKey: string, tournamentKey: string, sub: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getSignup(leagueSlug: string, tournamentSlug: string, sub: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
 
     const signup = await this.findSignupForTournament(sub, tournament.id);
@@ -285,10 +285,10 @@ export class HostedTournamentService {
       });
     const { coach, team } = signup;
 
-    let draft: { draftKey: string; name: string } | null = null;
+    let draft: { draftSlug: string; name: string } | null = null;
     if (team.draftId) {
       const d = await this.draftRepo.findById(team.draftId);
-      if (d) draft = { draftKey: d.draftKey, name: d.name };
+      if (d) draft = { draftSlug: d.slug, name: d.name };
     }
 
     const guildId = tournament.discordSettings?.guildId;
@@ -313,14 +313,14 @@ export class HostedTournamentService {
   }
 
   async createSignup(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string,
     dto: SignUpDto,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
 
     if (dto.droppedBefore && !dto.droppedWhy.trim()) {
@@ -381,13 +381,13 @@ export class HostedTournamentService {
   }
 
   async getCoaches(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string | undefined,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
 
@@ -404,7 +404,7 @@ export class HostedTournamentService {
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftIdToKey = new Map(
-      drafts.map((d) => [d._id.toString(), d.draftKey]),
+      drafts.map((d) => [d._id.toString(), d.slug]),
     );
 
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
@@ -455,7 +455,7 @@ export class HostedTournamentService {
     return {
       signups,
       drafts: drafts.map((d) => ({
-        draftKey: d.draftKey,
+        draftSlug: d.slug,
         name: d.name,
       })),
     };
@@ -463,20 +463,20 @@ export class HostedTournamentService {
 
   /** Bulk assign/move/remove coaches across drafts. Replaces the old POST /signup/manage. */
   async assignCoaches(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string,
     assignments: CoachAssignmentDto[],
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!tournament.isOrganizer(sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
-    const draftsByKey = new Map(drafts.map((d) => [d.draftKey, d]));
+    const draftsByKey = new Map(drafts.map((d) => [d.slug, d]));
 
     for (const assignment of assignments) {
       if (!Types.ObjectId.isValid(assignment.coachId)) continue;
@@ -499,8 +499,8 @@ export class HostedTournamentService {
       const targetDraft = draftsByKey.get(assignment.divisionKey);
       if (!targetDraft)
         throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
-          draftKey: assignment.divisionKey,
-          tournamentKey: tournament.tournamentKey,
+          draftSlug: assignment.divisionKey,
+          tournamentSlug: tournament.slug,
         });
 
       await this.teamRepo.update(team._id, {
@@ -512,10 +512,10 @@ export class HostedTournamentService {
     return { message: "Update successful." };
   }
 
-  async getCoach(leagueKey: string, tournamentKey: string, coachId: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getCoach(leagueSlug: string, tournamentSlug: string, coachId: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
@@ -538,15 +538,15 @@ export class HostedTournamentService {
   }
 
   async setCoachLogo(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     coachId: string,
     sub: string,
     dto: UpdateCoachLogoDto,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
@@ -573,23 +573,23 @@ export class HostedTournamentService {
     return { message: "Logo updated.", logo: dto.fileKey };
   }
 
-  async getRules(leagueKey: string, tournamentKey: string) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+  async getRules(leagueSlug: string, tournamentSlug: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     return tournament.rules;
   }
 
   async updateRules(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string,
     ruleSections: RuleSectionDto[],
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!tournament.isOrganizer(sub)) {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
@@ -598,18 +598,18 @@ export class HostedTournamentService {
     const rules = ruleSections.map(
       (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
     );
-    await this.tournamentRepo.updateRules(tournamentKey, rules);
+    await this.tournamentRepo.updateRules(tournamentSlug, rules);
     return { message: "Rules updated successfully" };
   }
 
   async getSettings(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string | undefined,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!tournament.isOrganizer(sub)) {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
@@ -618,14 +618,14 @@ export class HostedTournamentService {
   }
 
   async updateSettings(
-    leagueKey: string,
-    tournamentKey: string,
+    leagueSlug: string,
+    tournamentSlug: string,
     sub: string,
     dto: UpdateHostedTournamentSettingsDto,
   ) {
-    const tournament = await this.tournamentRepo.findByKey(
-      leagueKey,
-      tournamentKey,
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
     if (!tournament.isOrganizer(sub)) {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);

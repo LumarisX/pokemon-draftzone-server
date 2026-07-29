@@ -399,7 +399,7 @@ export class ArchiveV2 {
   format: string;
   ruleset: string;
   team: string[];
-  leagueId: string;
+  slug: string;
   doc?: string;
   matchups: ArchiveMatchupV2[];
   stats: Map<string, Stat>;
@@ -409,7 +409,7 @@ export class ArchiveV2 {
 
   constructor(
     props: ArchiveIdentity & {
-      leagueId: string;
+      slug: string;
       doc?: string;
       matchups: ArchiveMatchupV2[];
       stats: Map<string, Stat>;
@@ -423,7 +423,7 @@ export class ArchiveV2 {
     this.format = props.format;
     this.ruleset = props.ruleset;
     this.team = props.team;
-    this.leagueId = props.leagueId;
+    this.slug = props.slug;
     this.doc = props.doc;
     this.matchups = props.matchups;
     this.stats = props.stats;

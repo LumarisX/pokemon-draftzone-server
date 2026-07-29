@@ -12,11 +12,11 @@ describe("PDZError", () => {
 
   it("exposes code, details, and a timestamp", () => {
     const before = Date.now();
-    const error = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey: "spring" });
+    const error = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueSlug: "spring" });
     const after = Date.now();
 
     expect(error.code).toBe("LR-001");
-    expect(error.details).toEqual({ leagueKey: "spring" });
+    expect(error.details).toEqual({ leagueSlug: "spring" });
     expect(error.timestamp).toBeInstanceOf(Date);
     expect(error.timestamp.getTime()).toBeGreaterThanOrEqual(before);
     expect(error.timestamp.getTime()).toBeLessThanOrEqual(after);
@@ -29,12 +29,12 @@ describe("PDZError", () => {
   });
 
   it("builds an HttpException response body with code/message, including details only when given", () => {
-    const withDetails = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey: "spring" });
+    const withDetails = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueSlug: "spring" });
     expect(withDetails.getResponse()).toEqual({
       error: {
         code: "LR-001",
         message: "League not found",
-        details: { leagueKey: "spring" },
+        details: { leagueSlug: "spring" },
       },
     });
 

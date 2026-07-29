@@ -22,7 +22,7 @@ export class ExternalTournamentService {
     teamId: string,
     sub: string,
   ): Promise<ExternalTournament> {
-    const tournament = await this.tournamentRepository.findByKeyAndOwner(
+    const tournament = await this.tournamentRepository.findBySlugAndOwner(
       teamId,
       sub,
     );
@@ -39,7 +39,7 @@ export class ExternalTournamentService {
     sub: string,
     tournament: ExternalTournament,
   ): Promise<void> {
-    await this.tournamentRepository.updateByKeyAndOwner(
+    await this.tournamentRepository.updateBySlugAndOwner(
       teamId,
       sub,
       tournament,
@@ -47,11 +47,11 @@ export class ExternalTournamentService {
   }
 
   async deleteTournament(teamId: string, sub: string, session?: ClientSession) {
-    return this.tournamentRepository.deleteByKeyAndOwner(teamId, sub, session);
+    return this.tournamentRepository.deleteBySlugAndOwner(teamId, sub, session);
   }
 
   async getTournamentStats(tournamentId: string, sub: string) {
-    const tournament = await this.tournamentRepository.findByKeyAndOwner(
+    const tournament = await this.tournamentRepository.findBySlugAndOwner(
       tournamentId,
       sub,
     );

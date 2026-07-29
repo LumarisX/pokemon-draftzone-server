@@ -40,10 +40,10 @@ function buildTournament(overrides: Partial<ConstructorParameters<typeof Externa
       format: FORMAT,
       leagueName: "Spring League",
       teamName: "Team Rocket",
-      key: "springleague",
+      slug: "springleague",
       owner: "auth0|owner",
       team: [],
-      doc: "doc-key",
+      doc: "doc-slug",
       ...overrides,
     },
     [],
@@ -90,12 +90,12 @@ describe("ExternalTournamentMapper", () => {
 
       expect(result).toEqual({
         leagueName: "Spring League",
-        leagueId: "springleague",
+        slug: "springleague",
         teamName: "Team Rocket",
         format: "Singles",
         ruleset: "Gen9 NatDex",
         owner: "auth0|owner",
-        doc: "doc-key",
+        doc: "doc-slug",
         team: [{ id: "pikachu", toDatabasePayload: true }],
       });
       expect(
@@ -105,7 +105,7 @@ describe("ExternalTournamentMapper", () => {
   });
 
   describe("toClientPayload", () => {
-    it("maps tournament fields for the client, keyed by the tournament's key", () => {
+    it("maps tournament fields for the client, keyed by the tournament's slug", () => {
       const pokemon = [{ id: "charizard" }] as any;
       const tournament = buildTournament({
         _id: "abc123" as any,
@@ -118,11 +118,11 @@ describe("ExternalTournamentMapper", () => {
       expect(result).toEqual({
         id: "abc123",
         leagueName: "Spring League",
-        tournamentId: "springleague",
+        slug: "springleague",
         teamName: "Team Rocket",
         format: "Singles",
         ruleset: "Gen9 NatDex",
-        doc: "doc-key",
+        doc: "doc-slug",
         score: { wins: 0, losses: 0, diff: "+0" },
         team: [{ id: "charizard", toClientPayload: true }],
       });
@@ -172,42 +172,64 @@ describe("ExternalTournamentMapper", () => {
       } as ExternalTournamentDto;
     }
 
-    it("derives the tournament key by lowercasing the league name and stripping non-word characters", () => {
+    it("mints a random base62(8) slug rather than deriving one from the name", () => {
       const dto = buildDto({ leagueName: " Spring's League! 2026 " });
 
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
 
-      expect(result.key).toBe("springsleague2026");
+      expect(result.slug).toMatch(/^[0-9A-Za-z]{8}$/);
     });
 
-    it("derives the tournament key from unicode letters, not just ASCII word characters", () => {
-      const dto = buildDto({ leagueName: "リーグ 2026" });
+    it("gives two tournaments with the same league name different slugs", () => {
+      const dto = buildDto({ leagueName: "Spring League" });
+
+      const first = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
+      const second = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
+
+      expect(first.slug).not.toBe(second.slug);
+    });
+
+    it("names that are all punctuation are fine now that the slug isn't derived from them", () => {
+      const dto = buildDto({ leagueName: "!!! 🔥🔥🔥" });
 
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
 
-      expect(result.key).toBe("リーグ2026");
+      expect(result.slug).toMatch(/^[0-9A-Za-z]{8}$/);
+      expect(result.leagueName).toBe("!!! 🔥🔥🔥");
     });
 
-    it("throws when the league name has no letters or numbers to derive a key from", () => {
-      const dto = buildDto({ leagueName: "!!! 🔥🔥🔥" });
+    it("still rejects a league name that is only whitespace", () => {
+      const dto = buildDto({ leagueName: "   " });
 
       expect(() => ExternalTournamentMapper.fromForm(dto, "auth0|owner")).toThrow(
         PDZError,
       );
     });
 
+    it("reuses the supplied slug so an edit keeps the tournament at the same URL", () => {
+      const dto = buildDto({ leagueName: "Renamed League" });
+
+      const result = ExternalTournamentMapper.fromForm(
+        dto,
+        "auth0|owner",
+        "k3Xq8mZa",
+      );
+
+      expect(result.slug).toBe("k3Xq8mZa");
+    });
+
     it("trims teamName, leagueName, and doc", () => {
       const dto = buildDto({
         leagueName: "  Spring League  ",
         teamName: "  Team Rocket  ",
-        doc: "  doc-key  ",
+        doc: "  doc-slug  ",
       });
 
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
 
       expect(result.leagueName).toBe("Spring League");
       expect(result.teamName).toBe("Team Rocket");
-      expect(result.doc).toBe("doc-key");
+      expect(result.doc).toBe("doc-slug");
     });
 
     it("leaves doc undefined when it isn't provided", () => {
@@ -258,11 +280,11 @@ describe("ExternalTournamentMapper", () => {
         _id: "doc-id",
         leagueName: "Spring League",
         teamName: "Team Rocket",
-        leagueId: "springleague",
+        slug: "springleague",
         format: "Singles",
         ruleset: "Gen9 NatDex",
         owner: "auth0|owner",
-        doc: "doc-key",
+        doc: "doc-slug",
         team: [{ id: "squirtle" }],
         ...overrides,
       } as unknown as ExternalTournamentDocument;
@@ -277,7 +299,7 @@ describe("ExternalTournamentMapper", () => {
       expect(mockedGetFormat).toHaveBeenCalledWith("Singles");
     });
 
-    it("maps the team using the resolved ruleset and carries the key from leagueId", () => {
+    it("maps the team using the resolved ruleset and carries the slug from slug", () => {
       const doc = buildDoc();
 
       const result = ExternalTournamentMapper.fromDatabase(doc, []);
@@ -287,7 +309,7 @@ describe("ExternalTournamentMapper", () => {
         RULESET,
       );
       expect(result.team).toEqual([{ id: "squirtle", fromDatabase: true }]);
-      expect(result.key).toBe("springleague");
+      expect(result.slug).toBe("springleague");
     });
 
     it("passes the given matchups through unchanged", () => {

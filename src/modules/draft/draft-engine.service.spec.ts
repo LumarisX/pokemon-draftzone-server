@@ -6,6 +6,7 @@ jest.mock("agenda", () => ({}));
 
 import { AgendaService } from "@modules/agenda/agenda.service";
 import { DiscordService } from "@modules/discord/discord.service";
+import { ConfigService } from "@nestjs/config";
 import {
   DraftCount,
   Tier,
@@ -54,7 +55,8 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   const tierList =
     (overrides.tierList as TierList | undefined) ?? buildTierList();
   return {
-    tournamentKey: "spring-cup",
+    slug: "spring-cup",
+    leagueSlug: "spring-league",
     tierList,
     draftCount: new DraftCount({ min: 1, max: 1 }),
     pointTotal: undefined,
@@ -83,7 +85,7 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
 function buildDraft(overrides: Record<string, unknown> = {}) {
   const draft: any = {
     _id: new Types.ObjectId(),
-    draftKey: "spring-draft",
+    slug: "spring-draft",
     name: "Spring Draft",
     status: "IN_PROGRESS",
     sequentialTurns: true,
@@ -106,6 +108,7 @@ describe("DraftEngineService", () => {
   let discordService: jest.Mocked<DiscordService>;
   let draftEvents: jest.Mocked<DraftEventsService>;
   let agendaService: jest.Mocked<AgendaService>;
+  let configService: jest.Mocked<ConfigService>;
   let engine: DraftEngineService;
   let fakeSession: jest.Mocked<ClientSession>;
   let fakeConnection: jest.Mocked<Connection>;
@@ -132,12 +135,16 @@ describe("DraftEngineService", () => {
     fakeConnection = {
       startSession: jest.fn(),
     } as unknown as jest.Mocked<Connection>;
+    configService = {
+      get: jest.fn().mockReturnValue(undefined),
+    } as unknown as jest.Mocked<ConfigService>;
     engine = new DraftEngineService(
       fakeConnection,
       teamRepo,
       discordService,
       draftEvents,
       agendaService,
+      configService,
     );
 
     fakeSession = buildFakeSession();
@@ -278,8 +285,8 @@ describe("DraftEngineService", () => {
 
       expect(draftEvents.emitDraftAdded).toHaveBeenCalledWith(
         expect.objectContaining({
-          tournamentId: "spring-cup",
-          draftId: "spring-draft",
+          tournamentSlug: "spring-cup",
+          draftSlug: "spring-draft",
           pick: expect.objectContaining({
             pokemon: expect.objectContaining({
               id: "pikachu",
@@ -333,6 +340,42 @@ describe("DraftEngineService", () => {
       );
     });
 
+    it("links the pick embed to this draft's own league, tournament, and draft", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        leagueSlug: "spring-league",
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], channelId: "channel-1" });
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      const [, payload] = discordService.sendMessage.mock.calls[0];
+      expect(payload.embeds?.[0].data.url).toBe(
+        "https://pokemondraftzone.com/leagues/spring-league/tournaments/spring-cup/drafts/spring-draft/draft",
+      );
+    });
+
+    it("points embed links at CLIENT_URL when one is configured", async () => {
+      configService.get.mockReturnValue("http://localhost:4200/");
+      const team = buildTeam();
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], channelId: "channel-1" });
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      const [, payload] = discordService.sendMessage.mock.calls[0];
+      expect(payload.embeds?.[0].data.url).toBe(
+        "http://localhost:4200/leagues/spring-league/tournaments/spring-cup/drafts/spring-draft/draft",
+      );
+    });
+
     it("completes the draft once the last required pick is made", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
@@ -346,11 +389,199 @@ describe("DraftEngineService", () => {
       expect(draft.status).toBe("COMPLETED");
       expect(draftEvents.emitDraftCompleted).toHaveBeenCalledWith(
         expect.objectContaining({
-          tournamentId: "spring-cup",
-          draftId: "spring-draft",
+          tournamentSlug: "spring-cup",
+          draftSlug: "spring-draft",
         }),
       );
       expect(agendaService.cancelSkipPick).toHaveBeenCalled();
+    });
+  });
+
+  describe("undraftPokemon", () => {
+    it("refuses a coach removal when the draft doesn't allow removals", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({
+        teams: [team],
+        sequentialTurns: true,
+        allowRemovals: false,
+      });
+
+      await expect(
+        engine.undraftPokemon(draft, team, "pikachu"),
+      ).rejects.toThrow("Draft does not allow removals.");
+    });
+
+    it("lets an organizer remove a pick even when removals are off", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({
+        teams: [team],
+        sequentialTurns: true,
+        allowRemovals: false,
+      });
+
+      await engine.undraftPokemon(draft, team, "pikachu", true);
+
+      expect(team.pickLog).toHaveLength(0);
+      expect(team.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("setPickAtRound", () => {
+    const threeMonTierList = () =>
+      buildTierList({
+        pokemon: new Map([
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+          ["blastoise", new TierListPokemon({ name: "Blastoise", tier: "A" })],
+        ]),
+      });
+
+    it("appends when the round is the team's next open slot", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 1, {
+        pokemonId: "charizard",
+      });
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual([
+        "pikachu",
+        "charizard",
+      ]);
+      expect(team.save).toHaveBeenCalled();
+    });
+
+    it("replaces an earlier round in place without shifting later rounds", async () => {
+      const team = buildTeam({
+        pickLog: [
+          { pokemon: { id: "pikachu" } },
+          { pokemon: { id: "charizard" } },
+        ],
+      });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 0, {
+        pokemonId: "blastoise",
+      });
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual([
+        "blastoise",
+        "charizard",
+      ]);
+    });
+
+    it("keeps the original picker and timestamp when replacing a round", async () => {
+      const picker = new Types.ObjectId();
+      const timestamp = new Date("2026-01-01T00:00:00Z");
+      const team = buildTeam({
+        pickLog: [{ pokemon: { id: "pikachu" }, picker, timestamp }],
+      });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 0, {
+        pokemonId: "charizard",
+      });
+
+      expect(team.pickLog[0].picker).toBe(picker);
+      expect(team.pickLog[0].timestamp).toBe(timestamp);
+    });
+
+    it("validates a replacement without counting the pick it replaces", async () => {
+      // Budget is 10; the team already spends all of it on Pikachu (S/10).
+      // Swapping that slot for Charizard (A/5) has to be allowed.
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+        pointTotal: 10,
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 0, {
+        pokemonId: "charizard",
+      });
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual(["charizard"]);
+    });
+
+    it("restores the replaced pick when the new one is rejected", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+        pointTotal: 5,
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setPickAtRound(tournament, draft, team, 0, {
+          pokemonId: "pikachu",
+        }),
+      ).rejects.toThrow("Team does not have enough points");
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual(["charizard"]);
+      expect(team.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a round that would leave a gap in the roster", async () => {
+      const team = buildTeam({ pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setPickAtRound(tournament, draft, team, 2, {
+          pokemonId: "pikachu",
+        }),
+      ).rejects.toThrow("Cannot set round 3 before round 1 is filled.");
+    });
+
+    it("refuses a round past the end of the draft", async () => {
+      const team = buildTeam({ pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setPickAtRound(tournament, draft, team, 2, {
+          pokemonId: "pikachu",
+        }),
+      ).rejects.toThrow("Draft only has 2 rounds.");
+    });
+
+    it("refuses a Pokemon another team already drafted", async () => {
+      const rival = buildTeam({
+        teamName: "Rival",
+        pickLog: [{ pokemon: { id: "blastoise" } }],
+      });
+      const team = buildTeam({ pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team, rival] });
+
+      await expect(
+        engine.setPickAtRound(tournament, draft, team, 0, {
+          pokemonId: "blastoise",
+        }),
+      ).rejects.toThrow("already been drafted");
     });
   });
 

@@ -33,7 +33,7 @@ describe("BusinessExceptionFilter", () => {
 
   it("uses the PDZError's own code/message/details and status", () => {
     const response = buildResponse();
-    const exception = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueKey: "spring" });
+    const exception = new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { leagueSlug: "spring" });
 
     filter.catch(exception, buildHost(response));
 
@@ -42,7 +42,7 @@ describe("BusinessExceptionFilter", () => {
       error: {
         code: "LR-001",
         message: "League not found",
-        details: { leagueKey: "spring" },
+        details: { leagueSlug: "spring" },
       },
       meta: { timestamp: expect.any(String) },
     });

@@ -10,8 +10,8 @@ type DraftPickSummary = {
 };
 
 export type DraftAddedEvent = {
-  tournamentId: string;
-  draftId: string;
+  tournamentSlug: string;
+  draftSlug: string;
   pick: {
     pokemon: DraftPickSummary;
     team: { id: string; name: string };
@@ -28,8 +28,8 @@ export type DraftAddedEvent = {
 };
 
 export type DraftCounterEvent = {
-  tournamentId: string;
-  draftId: string;
+  tournamentSlug: string;
+  draftSlug: string;
   currentPick: ReturnType<typeof calculateCurrentPick>;
   nextTeam: string;
   canDraftTeams: string[];
@@ -37,22 +37,22 @@ export type DraftCounterEvent = {
 };
 
 export type DraftCompletedEvent = {
-  tournamentId: string;
-  draftId: string;
+  tournamentSlug: string;
+  draftSlug: string;
   draftName: string;
 };
 
 export type DraftSkipEvent = {
-  tournamentId: string;
-  draftId: string;
+  tournamentSlug: string;
+  draftSlug: string;
   teamName: string;
   skipCount: number;
   newTimerLength?: number;
 };
 
 export type DraftStatusEvent = {
-  tournamentId: string;
-  draftId: string;
+  tournamentSlug: string;
+  draftSlug: string;
   status: string;
   noTimer?: boolean;
   currentPick: ReturnType<typeof calculateCurrentPick>;
