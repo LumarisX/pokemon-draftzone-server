@@ -195,6 +195,10 @@ export class UpdateHostedTournamentSettingsDto {
   @IsOptional()
   discord?: string;
 
+  @IsString()
+  @IsOptional()
+  logo?: string | null;
+
   @ValidateNested()
   @Type(() => TournamentDiscordSettingsDto)
   @IsOptional()

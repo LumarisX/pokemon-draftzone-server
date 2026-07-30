@@ -110,6 +110,7 @@ export class HostedTournamentMapper {
       draftEnd: tournament.draftEnd,
       seasonStart: tournament.seasonStart,
       seasonEnd: tournament.seasonEnd,
+      logo: tournament.logo,
       discord: tournament.discord,
       discordSettings: tournament.discordSettings,
       forfeit: tournament.forfeit,

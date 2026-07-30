@@ -682,6 +682,13 @@ export class HostedTournamentService {
     if (dto.seasonStart !== undefined) update["seasonStart"] = dto.seasonStart;
     if (dto.seasonEnd !== undefined) update["seasonEnd"] = dto.seasonEnd;
     if (dto.discord !== undefined) update["discord"] = dto.discord;
+    if (dto.logo !== undefined) {
+      if (dto.logo && this.s3Service.isEnabled()) {
+        const { exists } = await this.s3Service.headObject(dto.logo);
+        if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
+      }
+      update["logo"] = dto.logo;
+    }
     if (dto.discordSettings !== undefined)
       update["discordSettings"] = dto.discordSettings;
     if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;

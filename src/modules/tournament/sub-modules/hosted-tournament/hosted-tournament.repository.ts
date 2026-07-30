@@ -141,10 +141,9 @@ export class HostedTournamentRepository {
       draftCount: { min: number; max: number };
       pointTotal: number | null;
       tierRequirements: { tierName: string; required: number }[];
+      logo: string | null;
     }>,
   ): Promise<void> {
-    // `null` means "clear this field" (e.g. remove a point cap entirely,
-    // distinct from `undefined` which just leaves the stored value alone).
     const setFields: Record<string, unknown> = {};
     const unsetFields: Record<string, ""> = {};
     for (const [key, value] of Object.entries(update)) {
