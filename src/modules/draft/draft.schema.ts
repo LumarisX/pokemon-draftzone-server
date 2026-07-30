@@ -88,6 +88,10 @@ export class DraftEntity {
   @Prop({ default: true })
   useRandomSeeding?: boolean;
 
+  /** Manual seed order (team ids) used when `useRandomSeeding` is false. */
+  @Prop({ type: [SchemaTypes.ObjectId], default: [] })
+  teamOrder!: Types.ObjectId[];
+
   @Prop({ type: String, enum: ["ALL", "SELF"], default: "ALL" })
   visibility!: "ALL" | "SELF";
 

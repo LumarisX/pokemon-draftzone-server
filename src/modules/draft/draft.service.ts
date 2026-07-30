@@ -24,10 +24,13 @@ import { getDraftOrder } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import {
   DraftDto,
+  SetCurrentPickDto,
+  SetDraftOrderDto,
   SetDraftStateDto,
   SetDraftTimerDto,
   SetPicksDto,
   SetRoundPickDto,
+  UpdateDraftSettingsDto,
 } from "./draft.dto";
 import {
   DraftRepository,
@@ -114,7 +117,11 @@ export class DraftService {
     return getDraftDetails(tournament, draft, sub);
   }
 
-  async getPicks(leagueSlug: string, tournamentSlug: string, draftSlug: string) {
+  async getPicks(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+  ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
@@ -160,7 +167,11 @@ export class DraftService {
     return allPicks;
   }
 
-  async getOrder(leagueSlug: string, tournamentSlug: string, draftSlug: string) {
+  async getOrder(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+  ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
@@ -378,6 +389,100 @@ export class DraftService {
     return { message: "Timer mode updated successfully." };
   }
 
+  /** Organizer-only; see DraftEngineService.updateSettings. */
+  async updateSettings(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    sub: string,
+    dto: UpdateDraftSettingsDto,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    await this.draftEngine.updateSettings(tournament, draft, dto);
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
+    return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  /** Organizer-only; see DraftEngineService.sendTestMessage. */
+  async sendTestMessage(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    sub: string,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    if (!draft.channelId)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "No channel ID is set for this draft.",
+      });
+
+    const success = await this.draftEngine.sendTestMessage(tournament, draft);
+    return { success };
+  }
+
+  /** Organizer-only; see DraftEngineService.setDraftOrder. */
+  async setOrder(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    sub: string,
+    dto: SetDraftOrderDto,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    await this.draftEngine.setDraftOrder(tournament, draft, dto);
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
+    return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  /** Organizer-only rewind; see DraftEngineService.setCurrentPick. */
+  async setCurrentPick(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    sub: string,
+    dto: SetCurrentPickDto,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    await this.draftEngine.setCurrentPick(
+      tournament,
+      draft,
+      dto.round,
+      dto.position,
+    );
+
+    const { tournament: freshTournament, draft: freshDraft } =
+      await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
+    return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
   async removeDraftPick(
     leagueSlug: string,
     tournamentSlug: string,
@@ -400,6 +505,7 @@ export class DraftService {
       });
 
     await this.draftEngine.undraftPokemon(
+      tournament,
       draft,
       team,
       pokemonId,

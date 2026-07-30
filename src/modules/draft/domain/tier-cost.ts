@@ -204,17 +204,32 @@ export async function canBeDrafted(
   );
 }
 
+export type DraftEligibilityOptions = {
+  /**
+   * Skips the point budget and tier-requirement feasibility checks. Those are
+   * the rules an organizer is correcting when they edit a roster by hand, so
+   * only their edits set this — the checks that keep the draft coherent (real
+   * Pokemon, valid addons, not already taken) still apply.
+   */
+  ignoreLimits?: boolean;
+};
+
 export async function canBeDraftedWithReason(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
   team: PopulatedTeam,
   pick: TeamPickEntity,
+  options: DraftEligibilityOptions = {},
 ): Promise<{ canDraft: boolean; reason?: string }> {
   if (!pick.pokemonId || pick.pokemonId.trim() === "") {
     return { canDraft: false, reason: "Invalid Pokemon ID" };
   }
 
   const tierList = tournament.tierList;
+  if (!tierList.pokemon.has(pick.pokemonId)) {
+    return { canDraft: false, reason: "Pokemon is not on this tier list" };
+  }
+
   if (!areAddonsValid(tierList, pick)) {
     return {
       canDraft: false,
@@ -231,6 +246,8 @@ export async function canBeDraftedWithReason(
       reason: "Pokemon has already been drafted by another team",
     };
   }
+
+  if (options.ignoreLimits) return { canDraft: true };
 
   if (!tierRequirementsAreFeasible(tournament, team, pick)) {
     return {

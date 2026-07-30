@@ -22,8 +22,30 @@ export type DraftPick = {
 
 export type DraftRound = DraftPick[];
 
+/** Legacy drafts may carry statuses like NOT_STARTED, so treat anything not active/finished as pre-draft. */
+export function isPreDraftStatus(status: string): boolean {
+  return !["IN_PROGRESS", "PAUSED", "COMPLETED"].includes(status);
+}
+
 export function getDraftOrder(draft: PopulatedDraft): PopulatedTeam[] {
-  if (draft.teams.length <= 1 || !draft.useRandomSeeding) return draft.teams;
+  if (draft.teams.length <= 1) return draft.teams;
+
+  if (!draft.useRandomSeeding) {
+    if (!draft.teamOrder?.length) return draft.teams;
+
+    const teamsById = new Map(
+      draft.teams.map((team) => [getDocumentId(team), team]),
+    );
+    const ordered = draft.teamOrder
+      .map((id) => teamsById.get(id.toString()))
+      .filter((team): team is PopulatedTeam => !!team);
+    const orderedIds = new Set(ordered.map((team) => getDocumentId(team)));
+    const remaining = draft.teams.filter(
+      (team) => !orderedIds.has(getDocumentId(team)),
+    );
+
+    return [...ordered, ...remaining];
+  }
 
   let seed = 0;
   const draftId = draft._id.toString();

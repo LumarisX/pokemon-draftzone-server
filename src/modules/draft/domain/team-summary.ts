@@ -187,6 +187,8 @@ export async function getDraftDetails(
     visibility: draft.visibility,
     allowRemovals: draft.allowRemovals,
     teamOrder: initialTeamOrder.map((team) => team._id),
+    useRandomSeeding: draft.useRandomSeeding,
+    channelId: draft.channelId,
     rounds: numberOfRounds,
     minDraftCount: tournament.draftCount.min,
     tierRequirements: tournament.tierRequirements,

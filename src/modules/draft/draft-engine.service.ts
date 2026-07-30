@@ -16,9 +16,14 @@ import { ConfigService } from "@nestjs/config";
 import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
 import { EmbedBuilder, EmbedField } from "discord.js";
-import { ClientSession, Connection } from "mongoose";
-import { DraftDto } from "./draft.dto";
+import { ClientSession, Connection, Types } from "mongoose";
+import {
+  DraftDto,
+  SetDraftOrderDto,
+  UpdateDraftSettingsDto,
+} from "./draft.dto";
 import { DraftEventsService } from "./draft-events.service";
+import type { DraftPickUpdatedEvent } from "./draft-events.service";
 import {
   calculateCanDraft,
   calculateCanDraftCounts,
@@ -33,6 +38,7 @@ import {
   getDocumentId,
   getDraftOrder,
   getPokemonIdFromDraft,
+  isPreDraftStatus,
 } from "./domain/pick-order";
 import {
   canBeDrafted,
@@ -119,6 +125,128 @@ export class DraftEngineService {
       this.configService.get<string>("CLIENT_URL") ?? DEFAULT_CLIENT_URL
     ).replace(/\/+$/, "");
     return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/drafts/${draft.slug}/draft`;
+  }
+
+  /** One roster entry, shaped the way the websocket payloads describe picks. */
+  private pickSummary(
+    tournament: PopulatedTournament,
+    pick: { pokemonId: string; addons?: string[] },
+  ) {
+    return {
+      id: pick.pokemonId,
+      name: getName(pick.pokemonId),
+      tier: tournament.tierList.pokemon.get(pick.pokemonId)?.tier,
+      cost: getPickCost(tournament.tierList, pick),
+    };
+  }
+
+  private rosterSummary(tournament: PopulatedTournament, team: PopulatedTeam) {
+    return team.pickLog.map((entry) =>
+      this.pickSummary(tournament, {
+        pokemonId: getPokemonIdFromDraft(entry),
+        addons: entry.addons,
+      }),
+    );
+  }
+
+  /**
+   * Broadcasts an out-of-band roster edit so every open board re-syncs the
+   * affected team — nobody else is watching the HTTP response the organizer got.
+   */
+  private emitPickUpdated(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    detail: Pick<DraftPickUpdatedEvent, "round" | "pokemon" | "previous">,
+  ) {
+    const pickOrder = generatePickOrder(
+      getDraftOrder(draft),
+      tournament.draftCount.max,
+      draft.orderProgression,
+    );
+
+    this.draftEvents.emitDraftPickUpdated({
+      tournamentSlug: tournament.slug,
+      draftSlug: draft.slug,
+      ...detail,
+      team: {
+        id: team._id.toString(),
+        name: team.teamName,
+        draft: this.rosterSummary(tournament, team),
+      },
+      canDraftTeams: calculateCanDraft(draft, pickOrder),
+      canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
+      currentPick: calculateCurrentPick(draft),
+    });
+  }
+
+  /**
+   * Posts an organizer's roster correction to the draft channel. Coaches watch
+   * that feed rather than the board, so a silent edit reads as a lost pick.
+   */
+  private async sendDiscordPickUpdate(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    detail: Pick<DraftPickUpdatedEvent, "round" | "pokemon" | "previous">,
+  ): Promise<void> {
+    if (!draft.channelId) return;
+
+    const channelId = draft.channelId;
+    const { round, pokemon, previous } = detail;
+
+    await team.populate<{ coach: CoachDocument }>("coach");
+    const coachMention = await this.discordService.resolveMention(
+      channelId,
+      team.coach?.discordName,
+    );
+
+    const title = pokemon
+      ? previous
+        ? `${team.teamName}: ${previous.name} changed to ${pokemon.name}`
+        : `${team.teamName} was given ${pokemon.name}`
+      : `${team.teamName} lost ${previous?.name ?? "a pick"}`;
+
+    const fields: EmbedField[] = [];
+    if (round !== undefined)
+      fields.push({ name: "Round", value: `${round + 1}`, inline: true });
+    if (previous)
+      fields.push({ name: "Previous", value: previous.name, inline: true });
+    if (pokemon) {
+      fields.push({
+        name: "Tier",
+        value: pokemon.tier ?? "Banned",
+        inline: true,
+      });
+      if (pokemon.cost)
+        fields.push({
+          name: "Cost",
+          value: pokemon.cost.toString(),
+          inline: true,
+        });
+    }
+
+    const spriteId = pokemon?.id ?? previous?.id;
+    const specie = spriteId ? getSpecies(spriteId) : undefined;
+    const color = specie?.types[0]
+      ? typeColorMap.get(specie.types[0])
+      : undefined;
+
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setColor(color ?? 0xffde00)
+      .setURL(this.draftUrl(tournament, draft))
+      .addFields(fields)
+      .setTimestamp();
+    if (spriteId)
+      embed.setImage(
+        `https://play.pokemonshowdown.com/sprites/gen5/${spriteId}.png`,
+      );
+
+    await this.discordService.sendMessage(channelId, {
+      content: `An organizer updated ${coachMention ?? "a coach"}'s roster.`,
+      embeds: [embed],
+    });
   }
 
   private async currentTeamPicks(
@@ -699,6 +827,7 @@ export class DraftEngineService {
   }
 
   async undraftPokemon(
+    tournament: PopulatedTournament,
     draft: PopulatedDraft,
     team: PopulatedTeam,
     pokemonId: string,
@@ -709,7 +838,12 @@ export class DraftEngineService {
         reason: "Draft does not allow removals.",
       });
 
-    const pickIndex = team.pickLog.findIndex(
+    // The broadcast reads every roster off draft.teams, so mutate that instance
+    // rather than the separately-loaded copy the caller handed us.
+    const currentTeam =
+      draft.teams.find((t: PopulatedTeam) => t._id.equals(team._id)) ?? team;
+
+    const pickIndex = currentTeam.pickLog.findIndex(
       (p) => getPokemonIdFromDraft(p) === pokemonId,
     );
     if (pickIndex === -1)
@@ -717,16 +851,30 @@ export class DraftEngineService {
         reason: "Pokemon not found in pick log.",
       });
 
-    team.pickLog.splice(pickIndex, 1);
-    await team.save();
+    const [removed] = currentTeam.pickLog.splice(pickIndex, 1);
+    await currentTeam.save();
+
+    const previous = this.pickSummary(tournament, {
+      pokemonId,
+      addons: removed?.addons,
+    });
+    // pickLog is dense, so the removed entry's index was its round.
+    const detail = { round: pickIndex, previous };
+
+    this.emitPickUpdated(tournament, draft, currentTeam, detail);
+    if (isOrganizerOverride)
+      await this.sendDiscordPickUpdate(tournament, draft, currentTeam, detail);
   }
 
   /**
    * Organizer-only correction of a single turn: writes `pick` into the team's
    * round-`round` slot instead of appending like a normal draft pick would.
    * Replacing an earlier round is the whole point (a coach's round-2 pick was
-   * wrong), so this deliberately bypasses turn order and never touches the
-   * draft counter, timer, or Discord feed — it is an edit, not a pick.
+   * wrong), so this deliberately bypasses turn order.
+   *
+   * Filling the empty slot that is *on the clock* is the exception: that is the
+   * turn being taken, so it advances the counter and timer exactly as a coach's
+   * own pick would. Every other edit leaves the counter where it is.
    */
   async setPickAtRound(
     tournament: PopulatedTournament,
@@ -758,18 +906,22 @@ export class DraftEngineService {
         reason: `Cannot set round ${round + 1} before round ${currentTeam.pickLog.length + 1} is filled.`,
       });
 
-    // Validate against the roster *without* the pick being replaced, so a team
-    // at its point cap can still have that slot swapped.
+    // Validate against the roster *without* the pick being replaced, so the slot
+    // being swapped doesn't count itself as already drafted.
     const [replaced] =
       round < currentTeam.pickLog.length
         ? currentTeam.pickLog.splice(round, 1)
         : [];
 
+    // An organizer setting a pick here is overriding the draft rules on purpose
+    // — going over the point total or stranding a tier requirement is their
+    // call to make, so only the coherence checks are enforced.
     const check = await canBeDraftedWithReason(
       tournament,
       draft,
       currentTeam,
       pick,
+      { ignoreLimits: true },
     );
     if (!check.canDraft) {
       if (replaced) currentTeam.pickLog.splice(round, 0, replaced);
@@ -777,6 +929,14 @@ export class DraftEngineService {
         reason: check.reason,
       });
     }
+
+    // Whether this edit is the turn on the clock has to be read *before* the
+    // slot is written, since filling it is what satisfies the check.
+    const fillsCurrentTurn =
+      !replaced &&
+      draft.sequentialTurns &&
+      round === getCurrentRound(draft) &&
+      !!getCurrentPickingTeam(draft)?._id.equals(currentTeam._id);
 
     currentTeam.pickLog.splice(round, 0, {
       pokemon: { id: toID(pick.pokemonId) },
@@ -795,6 +955,118 @@ export class DraftEngineService {
       undefined,
       currentTeam._id.toString(),
     );
+
+    const detail = {
+      round,
+      pokemon: this.pickSummary(tournament, pick),
+      previous: replaced
+        ? this.pickSummary(tournament, {
+            pokemonId: getPokemonIdFromDraft(replaced),
+            addons: replaced.addons,
+          })
+        : undefined,
+    };
+    this.emitPickUpdated(tournament, draft, currentTeam, detail);
+    await this.sendDiscordPickUpdate(tournament, draft, currentTeam, detail);
+
+    if (fillsCurrentTurn)
+      await this.handlePostPickState(tournament, draft, currentTeam);
+  }
+
+  /**
+   * Organizer rewind: points the draft at an explicit round and position and
+   * hands that team a fresh clock. Undoes an accidental skip, or re-opens a turn
+   * whose pick the organizer just cleared.
+   */
+  async setCurrentPick(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    round: number,
+    position: number,
+  ) {
+    const teamCount = draft.teams.length;
+    if (!teamCount)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Draft has no teams.",
+      });
+
+    if (
+      !Number.isInteger(round) ||
+      round < 0 ||
+      round >= tournament.draftCount.max
+    )
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: `Round must be between 1 and ${tournament.draftCount.max}.`,
+      });
+
+    if (!Number.isInteger(position) || position < 0 || position >= teamCount)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: `Position must be between 1 and ${teamCount}.`,
+      });
+
+    draft.counter = round * teamCount + position;
+
+    const currentTeam = getCurrentPickingTeam(draft);
+    const teamTimer = currentTeam
+      ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
+      : (draft.timerLength ?? 30);
+
+    if (draft.noTimer) {
+      draft.skipTime = undefined;
+      draft.remainingTime = undefined;
+    } else if (draft.status === "IN_PROGRESS") {
+      const newSkipTime = new Date();
+      newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
+      draft.skipTime = newSkipTime;
+      draft.remainingTime = undefined;
+    } else {
+      // Bank a full turn instead of whatever was left on the turn we jumped
+      // away from, so play hands this team a clean clock.
+      draft.skipTime = undefined;
+      draft.remainingTime = teamTimer;
+    }
+
+    await draft.save();
+    await this.agendaService.resumeSkipPick(tournament, draft);
+
+    const pickOrder = generatePickOrder(
+      getDraftOrder(draft),
+      tournament.draftCount.max,
+      draft.orderProgression,
+    );
+    this.draftEvents.emitDraftCounter({
+      tournamentSlug: tournament.slug,
+      draftSlug: draft.slug,
+      currentPick: calculateCurrentPick(draft),
+      nextTeam: currentTeam?._id.toString() ?? "",
+      canDraftTeams: calculateCanDraft(draft, pickOrder),
+      canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
+    });
+
+    if (draft.channelId && currentTeam) {
+      const channelId = draft.channelId;
+      await currentTeam.populate<{ coach: CoachDocument }>("coach");
+      const coachMention = await this.discordService.resolveMention(
+        channelId,
+        currentTeam.coach?.discordName,
+      );
+      const embed = new EmbedBuilder()
+        .setTitle(`The draft is back on ${currentTeam.teamName}`)
+        .setColor(0xffde00)
+        .setURL(this.draftUrl(tournament, draft))
+        .addFields([
+          { name: "Round", value: `${round + 1}`, inline: true },
+          { name: "Position", value: `${position + 1}`, inline: true },
+        ])
+        .setTimestamp();
+      await this.discordService.sendMessage(channelId, {
+        content:
+          draft.status === "IN_PROGRESS"
+            ? `An organizer moved the draft back — ${coachMention ?? "coach"}, it is now your turn!`
+            : `An organizer moved the draft back to ${coachMention ?? "this coach"}'s turn.`,
+        embeds: [embed],
+      });
+    }
   }
 
   async batchDraftPokemon(
@@ -946,6 +1218,93 @@ export class DraftEngineService {
         content: `The draft is now ${statusLabel}.`,
       });
     }
+  }
+
+  /**
+   * Organizer-only: update draft metadata/settings. `orderProgression` and
+   * `sequentialTurns` feed directly into pick-order calculation the same way
+   * team order does, so — like setDraftOrder — those two are only allowed
+   * pre-draft; `name`, `channelId`, `visibility`, and `allowRemovals` don't
+   * affect turn order and can be changed anytime.
+   */
+  async updateSettings(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    dto: UpdateDraftSettingsDto,
+  ) {
+    const changesTurnOrder =
+      dto.orderProgression !== undefined || dto.sequentialTurns !== undefined;
+    if (changesTurnOrder && !isPreDraftStatus(draft.status))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason:
+          "Turn order settings can only be changed before the draft starts.",
+      });
+
+    if (dto.name !== undefined) draft.name = dto.name;
+    if (dto.channelId === null) draft.channelId = undefined;
+    else if (dto.channelId !== undefined) draft.channelId = dto.channelId;
+    if (dto.orderProgression !== undefined)
+      draft.orderProgression = dto.orderProgression;
+    if (dto.sequentialTurns !== undefined)
+      draft.sequentialTurns = dto.sequentialTurns;
+    if (dto.visibility !== undefined) draft.visibility = dto.visibility;
+    if (dto.allowRemovals !== undefined)
+      draft.allowRemovals = dto.allowRemovals;
+
+    await draft.save();
+  }
+
+  /** Organizer-only: verifies the saved channelId actually works, without waiting on a real draft event. */
+  async sendTestMessage(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+  ): Promise<boolean> {
+    if (!draft.channelId) return false;
+    return this.discordService.sendMessage(draft.channelId, {
+      content: `This is a test message for **${draft.name}**. If you can see this, the channel ID is configured correctly.`,
+    });
+  }
+
+  /**
+   * Organizer-only: switch between random and manual seeding, and/or write a
+   * manual order. Only allowed pre-draft — once picks exist, `draft.counter`
+   * and every logged pick are tied to the order teams drafted in, so changing
+   * it afterward would desync whose turn it is.
+   */
+  async setDraftOrder(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    dto: SetDraftOrderDto,
+  ) {
+    if (!isPreDraftStatus(draft.status))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "Team order can only be changed before the draft starts.",
+      });
+
+    if (dto.useRandomSeeding) {
+      draft.useRandomSeeding = true;
+    } else {
+      const validIds = new Set(
+        draft.teams.map((team) => getDocumentId(team)),
+      );
+      const submitted = dto.order ?? [];
+      const submittedIds = new Set(submitted);
+
+      const isValidPermutation =
+        submitted.length === validIds.size &&
+        submittedIds.size === submitted.length &&
+        [...validIds].every((id) => submittedIds.has(id));
+
+      if (!isValidPermutation)
+        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+          reason: "Order must include every team in the draft exactly once.",
+        });
+
+      draft.useRandomSeeding = false;
+      draft.teamOrder = submitted.map((id) => new Types.ObjectId(id));
+    }
+
+    await draft.save();
   }
 
   async setNoTimer(

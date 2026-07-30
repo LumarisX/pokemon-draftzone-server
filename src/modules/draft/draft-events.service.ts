@@ -36,6 +36,27 @@ export type DraftCounterEvent = {
   canDraftCounts: Record<string, number>;
 };
 
+/**
+ * An organizer edited a roster slot out of band — set, swapped, or cleared.
+ * Distinct from `added` because it isn't a turn being taken: it can land on any
+ * round, and `pokemon` is absent when the slot was cleared.
+ */
+export type DraftPickUpdatedEvent = {
+  tournamentSlug: string;
+  draftSlug: string;
+  round?: number;
+  pokemon?: DraftPickSummary;
+  previous?: DraftPickSummary;
+  team: {
+    id: string;
+    name: string;
+    draft: DraftPickSummary[];
+  };
+  canDraftTeams: string[];
+  canDraftCounts: Record<string, number>;
+  currentPick: ReturnType<typeof calculateCurrentPick>;
+};
+
 export type DraftCompletedEvent = {
   tournamentSlug: string;
   draftSlug: string;
@@ -74,6 +95,10 @@ export class DraftEventsService {
 
   emitDraftCounter(payload: DraftCounterEvent): void {
     this.eventEmitter.emit("league.draft.counter", payload);
+  }
+
+  emitDraftPickUpdated(payload: DraftPickUpdatedEvent): void {
+    this.eventEmitter.emit("league.draft.updated", payload);
   }
 
   emitDraftCompleted(payload: DraftCompletedEvent): void {

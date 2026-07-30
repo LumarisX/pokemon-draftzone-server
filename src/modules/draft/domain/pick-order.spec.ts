@@ -15,6 +15,7 @@ import {
   getDraftOrder,
   getPokemonIdFromDraft,
   isAlreadyDrafted,
+  isPreDraftStatus,
 } from "./pick-order";
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
@@ -63,6 +64,22 @@ describe("getDocumentId", () => {
   });
 });
 
+describe("isPreDraftStatus", () => {
+  it("treats PRE_DRAFT as pre-draft", () => {
+    expect(isPreDraftStatus("PRE_DRAFT")).toBe(true);
+  });
+
+  it("treats legacy NOT_STARTED (and any other unrecognized status) as pre-draft", () => {
+    expect(isPreDraftStatus("NOT_STARTED")).toBe(true);
+  });
+
+  it("treats IN_PROGRESS, PAUSED, and COMPLETED as not pre-draft", () => {
+    expect(isPreDraftStatus("IN_PROGRESS")).toBe(false);
+    expect(isPreDraftStatus("PAUSED")).toBe(false);
+    expect(isPreDraftStatus("COMPLETED")).toBe(false);
+  });
+});
+
 describe("getDraftOrder", () => {
   it("returns the same array reference when there's only one team", () => {
     const teams = [buildTeam()];
@@ -104,6 +121,51 @@ describe("getDraftOrder", () => {
 
     expect(result).toHaveLength(teams.length);
     expect(new Set(result)).toEqual(new Set(teams));
+  });
+
+  it("applies a manual teamOrder when random seeding is disabled", () => {
+    const teamA = buildTeam({ teamName: "A" });
+    const teamB = buildTeam({ teamName: "B" });
+    const teamC = buildTeam({ teamName: "C" });
+    const draft = buildDraft({
+      teams: [teamA, teamB, teamC],
+      useRandomSeeding: false,
+      teamOrder: [teamC._id, teamA._id, teamB._id],
+    });
+
+    const result = getDraftOrder(draft);
+
+    expect(result.map((t: any) => t.teamName)).toEqual(["C", "A", "B"]);
+  });
+
+  it("appends teams missing from teamOrder (e.g. joined after the order was set)", () => {
+    const teamA = buildTeam({ teamName: "A" });
+    const teamB = buildTeam({ teamName: "B" });
+    const teamC = buildTeam({ teamName: "C" });
+    const draft = buildDraft({
+      teams: [teamA, teamB, teamC],
+      useRandomSeeding: false,
+      teamOrder: [teamB._id],
+    });
+
+    const result = getDraftOrder(draft);
+
+    expect(result.map((t: any) => t.teamName)).toEqual(["B", "A", "C"]);
+  });
+
+  it("filters out ids in teamOrder for teams no longer in the draft", () => {
+    const teamA = buildTeam({ teamName: "A" });
+    const teamB = buildTeam({ teamName: "B" });
+    const removedTeamId = new Types.ObjectId();
+    const draft = buildDraft({
+      teams: [teamA, teamB],
+      useRandomSeeding: false,
+      teamOrder: [removedTeamId, teamB._id, teamA._id],
+    });
+
+    const result = getDraftOrder(draft);
+
+    expect(result.map((t: any) => t.teamName)).toEqual(["B", "A"]);
   });
 });
 

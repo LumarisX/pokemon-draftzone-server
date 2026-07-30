@@ -396,6 +396,83 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
       canDraft: true,
     });
   });
+
+  it("rejects a Pokemon that is not on the tier list", async () => {
+    const { tournament, draft, team } = setup();
+    const pick = { pokemonId: "mewtwo" } as any;
+
+    await expect(canBeDraftedWithReason(tournament, draft, team, pick)).resolves.toEqual({
+      canDraft: false,
+      reason: "Pokemon is not on this tier list",
+    });
+  });
+
+  describe("ignoreLimits", () => {
+    it("allows a pick the team can't afford", async () => {
+      const tierList = buildTierList();
+      const tournament = buildTournament(tierList, {
+        pointTotal: 5,
+        draftCount: new DraftCount({ min: 1, max: 1 }),
+      });
+      const draft = buildDraft({ teams: [] });
+      const team = buildTeam();
+      const pick = { pokemonId: "pikachu" } as any; // costs 10, budget is 5
+
+      await expect(
+        canBeDraftedWithReason(tournament, draft, team, pick, { ignoreLimits: true }),
+      ).resolves.toEqual({ canDraft: true });
+    });
+
+    it("allows a pick that strands a tier requirement", async () => {
+      const tierList = buildTierList({
+        pokemon: new Map([
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+          ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tier: "A" })],
+        ]),
+      });
+      const tournament = buildTournament(tierList, {
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+        tierRequirements: [{ tierName: "S", required: 1 }],
+      });
+      const draft = buildDraft({ teams: [] });
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+
+      await expect(
+        canBeDraftedWithReason(tournament, draft, team, { pokemonId: "bulbasaur" } as any, {
+          ignoreLimits: true,
+        }),
+      ).resolves.toEqual({ canDraft: true });
+    });
+
+    it("still rejects a Pokemon another team already drafted", async () => {
+      const { tournament, team } = setup();
+      const otherTeam = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({ teams: [otherTeam] });
+
+      await expect(
+        canBeDraftedWithReason(tournament, draft, team, { pokemonId: "pikachu" } as any, {
+          ignoreLimits: true,
+        }),
+      ).resolves.toEqual({
+        canDraft: false,
+        reason: "Pokemon has already been drafted by another team",
+      });
+    });
+
+    it("still rejects an off-tier-list Pokemon", async () => {
+      const { tournament, draft, team } = setup();
+
+      await expect(
+        canBeDraftedWithReason(tournament, draft, team, { pokemonId: "mewtwo" } as any, {
+          ignoreLimits: true,
+        }),
+      ).resolves.toEqual({
+        canDraft: false,
+        reason: "Pokemon is not on this tier list",
+      });
+    });
+  });
 });
 
 describe("isTeamDoneDrafting", () => {

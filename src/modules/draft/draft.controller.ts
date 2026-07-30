@@ -13,10 +13,13 @@ import {
 } from "@nestjs/common";
 import {
   DraftDto,
+  SetCurrentPickDto,
+  SetDraftOrderDto,
   SetDraftStateDto,
   SetDraftTimerDto,
   SetPicksDto,
   SetRoundPickDto,
+  UpdateDraftSettingsDto,
 } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
@@ -198,6 +201,72 @@ export class DraftController {
     );
   }
 
+  @Post("settings")
+  async updateSettings(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
+    @Body() body: UpdateDraftSettingsDto,
+  ) {
+    return this.draftService.updateSettings(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+      body,
+    );
+  }
+
+  @Post("settings/test-message")
+  async sendTestMessage(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
+  ) {
+    return this.draftService.sendTestMessage(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+    );
+  }
+
+  @Post("order")
+  async setOrder(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
+    @Body() body: SetDraftOrderDto,
+  ) {
+    return this.draftService.setOrder(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+      body,
+    );
+  }
+
+  @Post("current-pick")
+  async setCurrentPick(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
+    @Body() body: SetCurrentPickDto,
+  ) {
+    return this.draftService.setCurrentPick(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+      body,
+    );
+  }
+
   @Delete("teams/:teamId/draft/:pokemonId")
   async removeDraftPick(
     @Param("leagueSlug") leagueSlug: string,
@@ -224,6 +293,11 @@ export class DraftController {
     @Param("draftSlug") draftSlug: string,
     @User() sub: string,
   ) {
-    return this.draftService.skipPick(leagueSlug, tournamentSlug, draftSlug, sub);
+    return this.draftService.skipPick(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+    );
   }
 }

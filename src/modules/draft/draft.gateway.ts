@@ -12,6 +12,7 @@ import {
   DraftAddedEvent,
   DraftCompletedEvent,
   DraftCounterEvent,
+  DraftPickUpdatedEvent,
   DraftSkipEvent,
   DraftStatusEvent,
 } from "./draft-events.service";
@@ -92,7 +93,11 @@ export class DraftGateway {
     client.emit("message", response);
   }
 
-  private broadcast(tournamentSlug: string, event: string, data: unknown): void {
+  private broadcast(
+    tournamentSlug: string,
+    event: string,
+    data: unknown,
+  ): void {
     if (!tournamentSlug) {
       this.logger.warn(`Dropping ${event} broadcast with no tournamentSlug`);
       return;
@@ -108,6 +113,11 @@ export class DraftGateway {
   @OnEvent("league.draft.counter")
   onDraftCounter(payload: DraftCounterEvent): void {
     this.broadcast(payload.tournamentSlug, "league.draft.counter", payload);
+  }
+
+  @OnEvent("league.draft.updated")
+  onDraftPickUpdated(payload: DraftPickUpdatedEvent): void {
+    this.broadcast(payload.tournamentSlug, "league.draft.updated", payload);
   }
 
   @OnEvent("league.draft.status")

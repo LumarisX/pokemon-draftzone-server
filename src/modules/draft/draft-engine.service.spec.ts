@@ -124,6 +124,7 @@ describe("DraftEngineService", () => {
     draftEvents = {
       emitDraftAdded: jest.fn(),
       emitDraftCounter: jest.fn(),
+      emitDraftPickUpdated: jest.fn(),
       emitDraftCompleted: jest.fn(),
       emitDraftSkip: jest.fn(),
       emitDraftStatus: jest.fn(),
@@ -399,6 +400,7 @@ describe("DraftEngineService", () => {
 
   describe("undraftPokemon", () => {
     it("refuses a coach removal when the draft doesn't allow removals", async () => {
+      const tournament = buildTournament();
       const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
       const draft = buildDraft({
         teams: [team],
@@ -407,11 +409,12 @@ describe("DraftEngineService", () => {
       });
 
       await expect(
-        engine.undraftPokemon(draft, team, "pikachu"),
+        engine.undraftPokemon(tournament, draft, team, "pikachu"),
       ).rejects.toThrow("Draft does not allow removals.");
     });
 
     it("lets an organizer remove a pick even when removals are off", async () => {
+      const tournament = buildTournament();
       const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
       const draft = buildDraft({
         teams: [team],
@@ -419,10 +422,60 @@ describe("DraftEngineService", () => {
         allowRemovals: false,
       });
 
-      await engine.undraftPokemon(draft, team, "pikachu", true);
+      await engine.undraftPokemon(tournament, draft, team, "pikachu", true);
 
       expect(team.pickLog).toHaveLength(0);
       expect(team.save).toHaveBeenCalled();
+    });
+
+    it("broadcasts the cleared slot so open boards re-sync", async () => {
+      const tournament = buildTournament();
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({ teams: [team], allowRemovals: true });
+
+      await engine.undraftPokemon(tournament, draft, team, "pikachu", true);
+
+      const [event] = draftEvents.emitDraftPickUpdated.mock.calls[0];
+      expect(event).toMatchObject({
+        round: 0,
+        previous: expect.objectContaining({ id: "pikachu" }),
+        team: expect.objectContaining({ draft: [] }),
+      });
+      // Absent `pokemon` is what tells a client the slot was cleared, not set.
+      expect(event.pokemon).toBeUndefined();
+    });
+
+    it("announces an organizer removal in the draft channel", async () => {
+      const tournament = buildTournament();
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({
+        teams: [team],
+        allowRemovals: true,
+        channelId: "channel-1",
+      });
+
+      await engine.undraftPokemon(tournament, draft, team, "pikachu", true);
+
+      expect(discordService.sendMessage).toHaveBeenCalledWith(
+        "channel-1",
+        expect.objectContaining({
+          content: expect.stringContaining("An organizer updated"),
+        }),
+      );
+    });
+
+    it("stays out of the draft channel when a coach removes their own pick", async () => {
+      const tournament = buildTournament();
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const draft = buildDraft({
+        teams: [team],
+        allowRemovals: true,
+        channelId: "channel-1",
+      });
+
+      await engine.undraftPokemon(tournament, draft, team, "pikachu");
+
+      expect(discordService.sendMessage).not.toHaveBeenCalled();
     });
   });
 
@@ -499,40 +552,97 @@ describe("DraftEngineService", () => {
     });
 
     it("validates a replacement without counting the pick it replaces", async () => {
-      // Budget is 10; the team already spends all of it on Pikachu (S/10).
-      // Swapping that slot for Charizard (A/5) has to be allowed.
+      // Re-setting a slot to the Pokemon it already holds only works because the
+      // slot is spliced out before the already-drafted check runs.
       const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
       const tournament = buildTournament({
         tierList: threeMonTierList(),
         draftCount: new DraftCount({ min: 1, max: 2 }),
-        pointTotal: 10,
       });
       const draft = buildDraft({ teams: [team] });
 
       await engine.setPickAtRound(tournament, draft, team, 0, {
-        pokemonId: "charizard",
+        pokemonId: "pikachu",
       });
 
-      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual(["charizard"]);
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual(["pikachu"]);
     });
 
-    it("restores the replaced pick when the new one is rejected", async () => {
+    it("lets an organizer put a team over the point total", async () => {
       const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
       const tournament = buildTournament({
         tierList: threeMonTierList(),
         draftCount: new DraftCount({ min: 1, max: 2 }),
-        pointTotal: 5,
+        pointTotal: 5, // Pikachu costs 10 on its own
       });
       const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 1, {
+        pokemonId: "pikachu",
+      });
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual([
+        "charizard",
+        "pikachu",
+      ]);
+    });
+
+    it("lets an organizer strand a tier requirement", async () => {
+      // Last open slot with an unmet S requirement — a coach could not spend it
+      // on an A-tier mon, but an organizer correcting the roster can.
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+        tierRequirements: [{ tierName: "S", required: 1 }],
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await engine.setPickAtRound(tournament, draft, team, 1, {
+        pokemonId: "blastoise",
+      });
+
+      expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual([
+        "charizard",
+        "blastoise",
+      ]);
+    });
+
+    it("restores the replaced pick when the new one is rejected", async () => {
+      const rival = buildTeam({
+        teamName: "Rival",
+        pickLog: [{ pokemon: { id: "pikachu" } }],
+      });
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team, rival] });
 
       await expect(
         engine.setPickAtRound(tournament, draft, team, 0, {
           pokemonId: "pikachu",
         }),
-      ).rejects.toThrow("Team does not have enough points");
+      ).rejects.toThrow("already been drafted");
 
       expect(team.pickLog.map((p: any) => p.pokemon.id)).toEqual(["charizard"]);
       expect(team.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a Pokemon that is not on the tier list", async () => {
+      const team = buildTeam({ pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setPickAtRound(tournament, draft, team, 0, {
+          pokemonId: "mewtwo",
+        }),
+      ).rejects.toThrow("not on this tier list");
     });
 
     it("refuses a round that would leave a gap in the roster", async () => {
@@ -582,6 +692,154 @@ describe("DraftEngineService", () => {
           pokemonId: "blastoise",
         }),
       ).rejects.toThrow("already been drafted");
+    });
+
+    it("advances the draft when the edit fills the turn on the clock", async () => {
+      const onClock = buildTeam({ teamName: "On Clock", pickLog: [] });
+      const next = buildTeam({ teamName: "Next Up", pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [onClock, next], counter: 0 });
+
+      await engine.setPickAtRound(tournament, draft, onClock, 0, {
+        pokemonId: "pikachu",
+      });
+
+      expect(draft.counter).toBe(1);
+      expect(draftEvents.emitDraftCounter).toHaveBeenCalled();
+    });
+
+    it("leaves the counter alone when correcting an earlier round", async () => {
+      const team = buildTeam({
+        teamName: "On Clock",
+        pickLog: [{ pokemon: { id: "pikachu" } }],
+      });
+      const next = buildTeam({ teamName: "Next Up", pickLog: [] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      // Counter is on round 0 position 0, but that slot is already filled — a
+      // replacement there is a correction, not a turn being taken.
+      const draft = buildDraft({ teams: [team, next], counter: 0 });
+
+      await engine.setPickAtRound(tournament, draft, team, 0, {
+        pokemonId: "charizard",
+      });
+
+      expect(draft.counter).toBe(0);
+      expect(draftEvents.emitDraftCounter).not.toHaveBeenCalled();
+    });
+
+    it("announces the edit in the draft channel", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      const tournament = buildTournament({
+        tierList: threeMonTierList(),
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [team], channelId: "channel-1" });
+
+      await engine.setPickAtRound(tournament, draft, team, 0, {
+        pokemonId: "charizard",
+      });
+
+      expect(discordService.sendMessage).toHaveBeenCalledWith(
+        "channel-1",
+        expect.objectContaining({
+          content: expect.stringContaining("An organizer updated"),
+        }),
+      );
+      expect(draftEvents.emitDraftPickUpdated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          round: 0,
+          pokemon: expect.objectContaining({ id: "charizard" }),
+          previous: expect.objectContaining({ id: "pikachu" }),
+        }),
+      );
+    });
+  });
+
+  describe("setCurrentPick", () => {
+    it("moves the counter to the requested round and position", async () => {
+      const first = buildTeam({ teamName: "First" });
+      const second = buildTeam({ teamName: "Second" });
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({ teams: [first, second], counter: 5 });
+
+      await engine.setCurrentPick(tournament, draft, 1, 1);
+
+      expect(draft.counter).toBe(3);
+      expect(draft.save).toHaveBeenCalled();
+      expect(draftEvents.emitDraftCounter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentPick: expect.objectContaining({ round: 1, position: 1 }),
+        }),
+      );
+    });
+
+    it("restarts the clock while the draft is running", async () => {
+      const team = buildTeam({ skipCount: 0 });
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        counter: 3,
+        timerLength: 120,
+        status: "IN_PROGRESS",
+      });
+
+      await engine.setCurrentPick(tournament, draft, 1, 0);
+
+      expect(draft.skipTime!.getTime()).toBeGreaterThan(Date.now());
+      expect(draft.remainingTime).toBeUndefined();
+      expect(agendaService.resumeSkipPick).toHaveBeenCalled();
+    });
+
+    it("banks a full turn instead of a deadline while paused", async () => {
+      const team = buildTeam({ skipCount: 0 });
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        counter: 3,
+        timerLength: 120,
+        status: "PAUSED",
+      });
+
+      await engine.setCurrentPick(tournament, draft, 1, 0);
+
+      expect(draft.skipTime).toBeUndefined();
+      expect(draft.remainingTime).toBe(120);
+    });
+
+    it("refuses a position past the last team", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setCurrentPick(tournament, draft, 0, 1),
+      ).rejects.toThrow("Position must be between 1 and 1.");
+    });
+
+    it("refuses a round past the end of the draft", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+
+      await expect(
+        engine.setCurrentPick(tournament, draft, 2, 0),
+      ).rejects.toThrow("Round must be between 1 and 2.");
     });
   });
 
@@ -701,6 +959,220 @@ describe("DraftEngineService", () => {
 
       expect(draft.save).not.toHaveBeenCalled();
       expect(draftEvents.emitDraftStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateSettings", () => {
+    it("updates name, channelId, visibility, and allowRemovals regardless of status", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "IN_PROGRESS",
+        name: "Old Name",
+        channelId: "old-channel",
+        visibility: "ALL",
+        allowRemovals: false,
+      });
+
+      await engine.updateSettings(tournament, draft, {
+        name: "New Name",
+        channelId: "new-channel",
+        visibility: "SELF",
+        allowRemovals: true,
+      });
+
+      expect(draft.name).toBe("New Name");
+      expect(draft.channelId).toBe("new-channel");
+      expect(draft.visibility).toBe("SELF");
+      expect(draft.allowRemovals).toBe(true);
+      expect(draft.save).toHaveBeenCalled();
+    });
+
+    it("clears channelId when explicitly set to null", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "PRE_DRAFT",
+        channelId: "old-channel",
+      });
+
+      await engine.updateSettings(tournament, draft, { channelId: null });
+
+      expect(draft.channelId).toBeUndefined();
+      expect(draft.save).toHaveBeenCalled();
+    });
+
+    it("leaves channelId untouched when omitted", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "PRE_DRAFT",
+        channelId: "old-channel",
+      });
+
+      await engine.updateSettings(tournament, draft, { name: "New Name" });
+
+      expect(draft.channelId).toBe("old-channel");
+    });
+
+    it("rejects turn-order changes (orderProgression/sequentialTurns) once the draft is no longer pre-draft", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [], status: "IN_PROGRESS" });
+
+      await expect(
+        engine.updateSettings(tournament, draft, { orderProgression: "linear" }),
+      ).rejects.toThrow();
+      await expect(
+        engine.updateSettings(tournament, draft, { sequentialTurns: false }),
+      ).rejects.toThrow();
+      expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it("allows turn-order changes while pre-draft (including legacy NOT_STARTED)", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "NOT_STARTED",
+        orderProgression: "snake",
+        sequentialTurns: true,
+      });
+
+      await engine.updateSettings(tournament, draft, {
+        orderProgression: "linear",
+        sequentialTurns: false,
+      });
+
+      expect(draft.orderProgression).toBe("linear");
+      expect(draft.sequentialTurns).toBe(false);
+      expect(draft.save).toHaveBeenCalled();
+    });
+  });
+
+  describe("sendTestMessage", () => {
+    it("returns false without calling Discord when there's no channelId", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [], channelId: undefined });
+
+      const result = await engine.sendTestMessage(tournament, draft);
+
+      expect(result).toBe(false);
+      expect(discordService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("sends a test message and returns the Discord service's result", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        name: "Spring Draft",
+        channelId: "channel-1",
+      });
+      (discordService.sendMessage as jest.Mock).mockResolvedValueOnce(true);
+
+      const result = await engine.sendTestMessage(tournament, draft);
+
+      expect(result).toBe(true);
+      expect(discordService.sendMessage).toHaveBeenCalledWith(
+        "channel-1",
+        expect.objectContaining({ content: expect.stringContaining("Spring Draft") }),
+      );
+    });
+
+    it("propagates a false result when Discord can't deliver the message", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [], channelId: "channel-1" });
+      (discordService.sendMessage as jest.Mock).mockResolvedValueOnce(false);
+
+      const result = await engine.sendTestMessage(tournament, draft);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("setDraftOrder", () => {
+    it("rejects changes once the draft is no longer PRE_DRAFT", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [], status: "IN_PROGRESS" });
+
+      await expect(
+        engine.setDraftOrder(tournament, draft, { useRandomSeeding: true }),
+      ).rejects.toThrow();
+      expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it("accepts changes on a legacy draft whose status is NOT_STARTED rather than PRE_DRAFT", async () => {
+      const teamA = buildTeam();
+      const teamB = buildTeam();
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [teamA, teamB],
+        status: "NOT_STARTED",
+        useRandomSeeding: true,
+      });
+      const order = [teamB._id.toString(), teamA._id.toString()];
+
+      await engine.setDraftOrder(tournament, draft, {
+        useRandomSeeding: false,
+        order,
+      });
+
+      expect(draft.useRandomSeeding).toBe(false);
+      expect(draft.save).toHaveBeenCalled();
+    });
+
+    it("switches to random seeding without requiring an order", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "PRE_DRAFT",
+        useRandomSeeding: false,
+      });
+
+      await engine.setDraftOrder(tournament, draft, { useRandomSeeding: true });
+
+      expect(draft.useRandomSeeding).toBe(true);
+      expect(draft.save).toHaveBeenCalled();
+    });
+
+    it("rejects a manual order that isn't a permutation of the draft's teams", async () => {
+      const teamA = buildTeam();
+      const teamB = buildTeam();
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [teamA, teamB],
+        status: "PRE_DRAFT",
+        useRandomSeeding: true,
+      });
+
+      await expect(
+        engine.setDraftOrder(tournament, draft, {
+          useRandomSeeding: false,
+          order: [teamA._id.toString()],
+        }),
+      ).rejects.toThrow();
+      expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it("saves a valid manual order and turns off random seeding", async () => {
+      const teamA = buildTeam();
+      const teamB = buildTeam();
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [teamA, teamB],
+        status: "PRE_DRAFT",
+        useRandomSeeding: true,
+      });
+      const order = [teamB._id.toString(), teamA._id.toString()];
+
+      await engine.setDraftOrder(tournament, draft, {
+        useRandomSeeding: false,
+        order,
+      });
+
+      expect(draft.useRandomSeeding).toBe(false);
+      expect(draft.teamOrder.map((id: Types.ObjectId) => id.toString())).toEqual(
+        order,
+      );
+      expect(draft.save).toHaveBeenCalled();
     });
   });
 });
