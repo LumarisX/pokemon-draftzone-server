@@ -153,16 +153,20 @@ export class HostedTournamentController {
   }
 
   @Get(":tournamentSlug/teams/:teamId")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async getTeam(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("teamId") teamId: string,
+    @User() sub: string | undefined,
     @Query("stageId") stageId?: string,
   ) {
     return this.tournamentService.getTeam(
       leagueSlug,
       tournamentSlug,
       teamId,
+      sub,
       stageId,
     );
   }

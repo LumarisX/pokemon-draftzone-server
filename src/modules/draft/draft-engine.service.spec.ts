@@ -933,6 +933,68 @@ describe("DraftEngineService", () => {
       );
     });
 
+    it("play: pings the coach who is on the clock so the draft opens with a turn call", async () => {
+      discordService.resolveMention.mockResolvedValue("<@ash>");
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        status: "PRE_DRAFT",
+        counter: 0,
+        channelId: "channel-1",
+      });
+
+      await engine.setDraftState(tournament, draft, "play");
+
+      expect(discordService.sendMessage).toHaveBeenCalledWith("channel-1", {
+        content: "The draft is now started. <@ash>, it is now your turn!",
+      });
+    });
+
+    it("play: names the team when the coach has no resolvable Discord mention", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        status: "PRE_DRAFT",
+        counter: 0,
+        channelId: "channel-1",
+      });
+
+      await engine.setDraftState(tournament, draft, "play");
+
+      expect(discordService.sendMessage).toHaveBeenCalledWith("channel-1", {
+        content: "The draft is now started. Team Rocket, it is now your turn!",
+      });
+    });
+
+    it("play: skips the turn call when turns aren't sequential", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        status: "PRE_DRAFT",
+        sequentialTurns: false,
+        counter: 0,
+        channelId: "channel-1",
+      });
+
+      await engine.setDraftState(tournament, draft, "play");
+
+      expect(discordService.sendMessage).toHaveBeenCalledWith("channel-1", {
+        content: "The draft is now started.",
+      });
+    });
+
     it("pause: marks the draft PAUSED, clears the skip timer, and cancels the agenda timer", async () => {
       const tournament = buildTournament();
       const draft = buildDraft({

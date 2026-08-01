@@ -14,6 +14,7 @@ import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
+import { isCoachedBy } from "@modules/team/team.domain";
 import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable, Logger } from "@nestjs/common";
@@ -21,6 +22,11 @@ import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
 import { buildBracketView } from "@modules/stage/domain/bracket-view";
+import {
+  rosterContext,
+  stageRounds,
+  stageTeamIds,
+} from "@modules/stage/domain/stage-axis";
 import { getRosterByRound } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
@@ -58,6 +64,7 @@ export class HostedTournamentService {
     leagueSlug: string,
     tournamentSlug: string,
     teamId: string,
+    sub?: string,
     stageId?: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
@@ -69,6 +76,18 @@ export class HostedTournamentService {
     const stageDoc = await this.resolveStage(tournament.id, stageId);
     const coach = team.coach;
 
+    // Contact handles stay private to the team's own coach.
+    const viewerIsCoach = isCoachedBy(team, sub);
+    const identity = {
+      id: team._id.toString(),
+      coachId: coach._id.toString(),
+      isCoach: viewerIsCoach,
+      pointTotal: tournament.pointTotal,
+      ...(viewerIsCoach
+        ? { gameName: coach.gameName, discordName: coach.discordName }
+        : {}),
+    };
+
     if (!stageDoc) {
       const roster = getRosterByRound(team, undefined).map((pokemon) => ({
         id: pokemon.id,
@@ -77,6 +96,7 @@ export class HostedTournamentService {
         draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
       }));
       return {
+        ...identity,
         name: team.teamName,
         timezone: coach.timezone,
         coach: coach.name,
@@ -93,7 +113,10 @@ export class HostedTournamentService {
       name: string;
       cost: number | undefined;
       draftFormes?: { id: string; name: string }[];
-    } & { record?: unknown })[] = getRosterByRound(team, stage).map(
+    } & { record?: unknown })[] = getRosterByRound(
+      team,
+      rosterContext(stage, tournament),
+    ).map(
       (pokemon) => ({
         id: pokemon.id,
         name: getName(pokemon.id),
@@ -124,6 +147,7 @@ export class HostedTournamentService {
     );
 
     return {
+      ...identity,
       name: team.teamName,
       timezone: coach.timezone,
       coach: coach.name,
@@ -215,7 +239,19 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    const [teams, drafts] = await Promise.all([
+      this.teamRepo.findAllByTournament(tournament.id),
+      this.draftRepo.findAllByTournament(tournament.id),
+    ]);
+    // Which draft pool a team drafted in — organizers seed brackets across
+    // pools, so the pool has to be visible next to each team.
+    const draftById = new Map(
+      drafts.map((draft) => [
+        draft._id.toString(),
+        { draftSlug: draft.slug, name: draft.name },
+      ]),
+    );
+
     return {
       teams: teams.map((team) => ({
         id: team._id.toString(),
@@ -224,6 +260,9 @@ export class HostedTournamentService {
         logo: team.logo,
         pickCount: team.pickLog?.length ?? 0,
         status: team.status,
+        draft: team.draftId
+          ? (draftById.get(team.draftId.toString()) ?? null)
+          : null,
       })),
     };
   }
@@ -239,14 +278,18 @@ export class HostedTournamentService {
       return { format: null, seeding: null, teams: [], rounds: [], matches: [] };
     }
 
-    const bracketMatchups = await this.matchupRepo.findByRounds(
-      playoffsStage.rounds.map((round) => round._id.toString()),
+    const rounds = stageRounds(playoffsStage, tournament);
+    // Scoped to the stage too: on a tournament-wide axis every stage shares
+    // these rounds, so round alone would sweep in the group phase's matchups.
+    const bracketMatchups = await this.matchupRepo.findByRoundsInStage(
+      playoffsStage._id,
+      rounds.map((round) => round._id.toString()),
     );
-    const teamObjIds = playoffsStage.pools.flatMap((pool) => pool.teamIds);
+    const teamObjIds = stageTeamIds(playoffsStage);
     const teamDocs =
       teamObjIds.length > 0 ? await this.teamRepo.findManyByIds(teamObjIds) : [];
 
-    return buildBracketView(playoffsStage, bracketMatchups, teamDocs);
+    return buildBracketView(playoffsStage, bracketMatchups, teamDocs, rounds);
   }
 
   async getRoles(

@@ -3,18 +3,15 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import {
-  StageDocument,
-  StageEntity,
-  StagePoolEntity,
-  StageType,
-} from "./stage.schema";
+import { stageTeamIds } from "./domain/stage-axis";
+import { StageDocument, StageEntity, StageType } from "./stage.schema";
 
 export type CreateStageInput = {
   tournamentId: Types.ObjectId | string;
   order: number;
   name: string;
   type: StageType;
+  public?: boolean;
   rounds?: {
     name: string;
     matchDeadline?: Date;
@@ -108,7 +105,12 @@ export class StageRepository {
     return this.stageModel
       .findOne({
         tournamentId: { $eq: normalizedTournamentId },
-        "pools.teamIds": { $eq: normalizedTeamId },
+        // Either field may hold the roster: `teamIds` on a migrated stage,
+        // `pools` on one that predates the split.
+        $or: [
+          { teamIds: { $eq: normalizedTeamId } },
+          { "pools.teamIds": { $eq: normalizedTeamId } },
+        ],
       })
       .exec();
   }
@@ -119,12 +121,63 @@ export class StageRepository {
       order: data.order,
       name: data.name,
       type: data.type,
+      // Omitted rather than defaulted to undefined, so the schema default wins.
+      ...(data.public === undefined ? {} : { public: data.public }),
       rounds: data.rounds ?? [],
       pools: data.pools ?? [],
       trades: [],
       currentRoundIndex: -1,
     });
     await stage.save();
+    return stage;
+  }
+
+  /**
+   * Applies a whole tournament's stage edit in one round-trip: inserts stages
+   * the payload introduced, updates the ones it kept, and removes the rest.
+   *
+   * Ids are supplied by the caller because matchups reference stages, and the
+   * bracket path pre-allocates them so a match created in the same request can
+   * name the stage it belongs to.
+   */
+  async applyStageDiff(options: {
+    creates: {
+      _id: Types.ObjectId;
+      tournamentId: Types.ObjectId;
+      order: number;
+      name: string;
+      type: StageType;
+      public: boolean;
+      teamIds: Types.ObjectId[];
+      seedingLog: unknown[];
+    }[];
+    updates: { _id: Types.ObjectId; set: Record<string, unknown> }[];
+    deletes: Types.ObjectId[];
+  }): Promise<void> {
+    const ops = [
+      ...options.creates.map((doc) => ({ insertOne: { document: doc } })),
+      ...options.updates.map(({ _id, set }) => ({
+        updateOne: { filter: { _id }, update: { $set: set } },
+      })),
+      ...(options.deletes.length
+        ? [{ deleteMany: { filter: { _id: { $in: options.deletes } } } }]
+        : []),
+    ];
+    if (ops.length === 0) return;
+    await this.stageModel.bulkWrite(ops as never);
+  }
+
+  async setPublic(
+    stageId: Types.ObjectId | string,
+    isPublic: boolean,
+  ): Promise<StageDocument> {
+    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
+    const stage = await this.stageModel.findOneAndUpdate(
+      { _id: { $eq: normalizedStageId } },
+      { $set: { public: isPublic } },
+      { returnDocument: "after" },
+    );
+    if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
     return stage;
   }
 
@@ -160,12 +213,19 @@ export class StageRepository {
     return stage;
   }
 
-  /** Flattens every pool's teamIds — throws if the stage has no pools yet. */
+  /**
+   * The stage's teams in seed order — throws if it has none yet.
+   *
+   * Reads `teamIds` first and falls back to flattening `pools`, because a stage
+   * created by the sections-to-stages migration has only the former and a stage
+   * predating it has only the latter.
+   */
   flattenPoolTeamIds(stage: StageDocument): Types.ObjectId[] {
-    if (!stage.pools.length)
+    const teamIds = stageTeamIds(stage);
+    if (!teamIds.length)
       throw new PDZError(ErrorCodes.STAGE.NO_POOLS_DEFINED, {
         stageId: stage._id.toString(),
       });
-    return stage.pools.flatMap((pool: StagePoolEntity) => pool.teamIds);
+    return teamIds;
   }
 }

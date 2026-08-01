@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { PopulatedTeam } from "@modules/team/team.repository";
-import { StageDocument, StageTradeEntity } from "@modules/stage/stage.schema";
+import { RosterContext, TradeLike } from "./stage-axis";
 
 function getTradeTeamId(team?: Types.ObjectId | { _id: Types.ObjectId }) {
   if (!team) return undefined;
@@ -17,7 +17,7 @@ function getTradeTeamId(team?: Types.ObjectId | { _id: Types.ObjectId }) {
 export function updateRosterWithTrades(
   teamId: Types.ObjectId,
   roster: { id: string; addons?: string[] }[],
-  trades: StageTradeEntity[],
+  trades: TradeLike[],
 ) {
   const teamIdString = teamId.toString();
   for (const trade of trades) {
@@ -47,13 +47,13 @@ export function updateRosterWithTrades(
  * (the raw post-draft pick log, before any trade) through `roundIndex`
  * inclusive (defaults to every round in the stage).
  *
- * If `stage` is undefined, there's no trade context to walk — returns just
+ * If `context` is undefined, there's no trade context to walk — returns just
  * the raw pick log wrapped in a single-element array (covers DraftService's
  * "no stage" raw pick-history views).
  */
 export function getRostersBeforeRound(
   team: PopulatedTeam,
-  stage: StageDocument | undefined,
+  context: RosterContext | undefined,
   roundIndex?: number,
 ) {
   let roster: {
@@ -65,10 +65,10 @@ export function getRostersBeforeRound(
   }));
   const rosters = [[...roster]];
 
-  if (!stage) return rosters;
+  if (!context) return rosters;
 
   const teamIdString = team._id.toString();
-  const roundTrades = stage.trades
+  const roundTrades = context.trades
     .filter(
       (t) =>
         t.status === "APPROVED" &&
@@ -79,9 +79,9 @@ export function getRostersBeforeRound(
       const existing = map.get(t.activeRound);
       map.set(t.activeRound, existing ? [...existing, t] : [t]);
       return map;
-    }, new Map<number, StageTradeEntity[]>());
+    }, new Map<number, TradeLike[]>());
 
-  for (let r = 0; r < (roundIndex ?? stage.rounds.length); r++) {
+  for (let r = 0; r < (roundIndex ?? context.rounds.length); r++) {
     const trades = roundTrades.get(r);
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
     rosters.push([...roster]);
@@ -90,14 +90,14 @@ export function getRostersBeforeRound(
 }
 
 /**
- * Returns a team's roster as of `roundIndex` (defaults to the stage's
- * current round). `team.pickLog` is always the base roster; if `stage` is
+ * Returns a team's roster as of `roundIndex` (defaults to the context's
+ * current round). `team.pickLog` is always the base roster; if `context` is
  * undefined, the trade-walk is skipped entirely and the raw pick log is
  * returned as-is (covers DraftService's no-stage "raw pick history" views).
  */
 export function getRosterByRound(
   team: PopulatedTeam,
-  stage: StageDocument | undefined,
+  context: RosterContext | undefined,
   roundIndex?: number,
 ) {
   let roster: {
@@ -108,11 +108,10 @@ export function getRosterByRound(
     addons: p.addons,
   }));
 
-  if (!stage) return roster;
+  if (!context) return roster;
 
-  const currentRoundIndex = stage.currentRoundIndex;
   const teamIdString = team._id.toString();
-  const roundTrades = stage.trades
+  const roundTrades = context.trades
     .filter(
       (t) =>
         t.status === "APPROVED" &&
@@ -123,9 +122,9 @@ export function getRosterByRound(
       const existing = map.get(t.activeRound);
       map.set(t.activeRound, existing ? [...existing, t] : [t]);
       return map;
-    }, new Map<number, StageTradeEntity[]>());
+    }, new Map<number, TradeLike[]>());
 
-  for (let r = 0; r <= (roundIndex ?? currentRoundIndex); r++) {
+  for (let r = 0; r <= (roundIndex ?? context.currentRoundIndex); r++) {
     const trades = roundTrades.get(r);
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
   }

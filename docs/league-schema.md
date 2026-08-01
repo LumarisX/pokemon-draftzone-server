@@ -1,14 +1,11 @@
 # League pipeline schema map
 
-Hand-built from the actual schema files (not generated). This diagram reflects only the
-**NestJS schema** (`src/modules/**/*.schema.ts`) — the target/current shape going forward.
+Hand-built from the actual schema files (not generated), reflecting
+`src/modules/**/*.schema.ts`.
 
-`League`, `LeagueTournament`, and `TierList` are still also defined in
-`src/models/league/*.model.ts` (legacy Mongoose, same MongoDB collection, kept in sync by
-hand). `Division` _used to_ have that same dual-schema split, but `Division` itself has now
-been **removed entirely** — split into `Draft` and `Stage` (see "What changed in this
-migration" below). `Coach`, `Team`, `Stage`, `Draft`, and `Matchup` are Nest-only schemas —
-see "Migration in progress" below for the transition risk that creates.
+The legacy `src/models/league/*.model.ts` Mongoose schemas are **gone** — every collection
+here is Nest-only now, and the dual-schema hand-syncing that used to be required with them
+is no longer a concern.
 
 View with the "Markdown Preview Mermaid Support" VS Code extension, or paste the block
 into the [Mermaid Live Editor](https://mermaid.live) if you don't have it installed.
@@ -18,7 +15,7 @@ erDiagram
     League {
         ObjectId _id PK
         string name
-        string leagueKey UK
+        string slug UK "a document's own identifier is a bare slug; refs to others keep a prefix"
         string description "optional"
         string owner "auth0/google sub - plain string, NOT a ref"
         string logo "optional"
@@ -27,7 +24,7 @@ erDiagram
     LeagueTournament {
         ObjectId _id PK
         string name
-        string tournamentKey UK
+        string slug UK
         string description "optional"
         Date signUpDeadline
         Date draftStart "optional"
@@ -35,20 +32,32 @@ erDiagram
         Date seasonStart "optional"
         Date seasonEnd "optional"
         ObjectId league FK "-> League"
-        ObjectId tierList FK "-> TierList"
+        ObjectId tierList FK "-> TierList, optional"
         string_array organizers "auth0 subs"
         object_array rules
         string logo "optional"
         string discord "optional"
+        object discordSettings "optional; guildId/coachRoleId/signUpChannelId"
         object forfeit "gameDiff/pokemonDiff"
         string diffMode "pokemon | game"
-        ObjectId_array stages FK "-> Stage[], ordered - this array's order IS the tournament's stage sequence"
+        string format "competitive format, e.g. VGC - moved here off TierList"
+        string ruleset "moved here off TierList"
+        object draftCount "min/max - moved here off TierList"
+        number pointTotal "optional - moved here off TierList"
+        number tradePointLimit "optional; unset means no cap"
+        object_array tierRequirements "tierName/required - moved here off TierList"
+        ObjectId_array stages FK "-> Stage[], ordered - this array's order IS the stage sequence"
         number currentStageIndex "index into stages[], -1 = not started"
+        object_array rounds "THE schedule axis: name/matchDeadline/tradeDeadline/bestOf; round._id is what LeagueMatchup.round points to"
+        number currentRoundIndex "index into rounds[], -1 = not started"
+        object_array trades "side1/side2/timestamp/activeRound/status; activeRound indexes rounds[]"
+        object adSettings "optional"
+        boolean archived "optional"
     }
 
     Draft {
         ObjectId _id PK
-        string draftKey UK "scoped to tournamentId"
+        string slug "unique per tournamentId"
         string name
         ObjectId tournamentId FK "-> LeagueTournament, required"
         boolean public
@@ -56,12 +65,15 @@ erDiagram
         boolean sequentialTurns
         string orderProgression "snake | linear"
         number counter
+        number remainingTime "optional"
         object_array eventLog
         number skipTimerPenalty
         Date skipTime "optional"
         string channelId "optional, Discord"
         number timerLength "optional"
+        boolean noTimer
         boolean useRandomSeeding "optional"
+        ObjectId_array teamOrder "manual seed order when useRandomSeeding is false"
         string visibility "ALL | SELF"
         boolean allowRemovals
     }
@@ -70,11 +82,16 @@ erDiagram
         ObjectId _id PK
         ObjectId tournamentId FK "-> LeagueTournament, indexed"
         number order "position among this tournament's stages"
+        string name
         string type "round-robin | single-elimination | double-elimination | swiss | custom"
-        object_array rounds "name, matchDeadline, tradeDeadline, bestOf optional; round._id is what LeagueMatchup.round points to"
-        object_array pools "poolKey, name, teamIds[] -> Team - redrawn per stage, NOT mirrored onto Team"
-        object_array trades "side1/side2/timestamp/activeRound/status"
-        number currentRoundIndex "index into rounds[], -1 = not started"
+        boolean public "hidden stages are organizer-only; only an explicit false hides"
+        ObjectId_array teamIds FK "-> Team[], IN SEED ORDER: seed N is teamIds[N-1]"
+        object_array seedingLog "permanent record of every draw: method/seededAt/seededBy/seedFrom/seedTo"
+        object_array rounds "DEPRECATED -> LeagueTournament.rounds"
+        object_array pools "DEPRECATED -> teamIds"
+        object_array sections "DEPRECATED - each section became its own Stage"
+        object_array trades "DEPRECATED -> LeagueTournament.trades"
+        number currentRoundIndex "DEPRECATED -> LeagueTournament.currentRoundIndex"
     }
 
     Team {
@@ -84,9 +101,9 @@ erDiagram
         ObjectId coach FK "-> Coach, required, unique (one team per coach)"
         string teamName
         string logo "optional"
-        string status "approved | pending | denied - the tournament accepting this team's signup"
+        string status "approved | pending | denied - the tournament accepting this signup"
         object_array picks
-        object_array pickLog "each entry .picker -> Coach; the team's finalized draft pick history"
+        object_array pickLog "each entry .picker -> Coach; the finalized draft pick history"
         number skipCount
     }
 
@@ -107,15 +124,21 @@ erDiagram
 
     LeagueMatchup {
         ObjectId _id PK
-        ObjectId round "-> Stage.rounds[]._id, a SUBDOCUMENT id, not a top-level collection"
+        ObjectId round "a SUBDOCUMENT id, not a collection: LeagueTournament.rounds[]._id once migrated, Stage.rounds[]._id before"
         ObjectId stage FK "-> Stage, indexed"
-        string pool "optional, denormalized copy of Stage.pools[].poolKey"
-        object side1 "side1.team -> Team, indexed; side1.slot for bracket seed/winner advancement"
-        object side2 "side2.team -> Team, indexed; side2.slot for bracket seed/winner advancement"
+        string pool "optional, denormalized copy of the legacy Stage.pools[].poolKey"
+        string section "optional, DEPRECATED bracket grouping - sections are Stages now"
+        number bracketRound "optional, DEPRECATED section-relative echo of the round index"
+        number position "optional, row within the bracket column"
+        string label "optional"
+        object side1 "side1.team -> Team, indexed; side1.slot for seed/winner/loser advancement"
+        object side2 "side2.team -> Team, indexed; side2.slot for seed/winner/loser advancement"
         object_array results
+        string notes "optional"
+        Date scheduledDate "optional"
         string winner "optional"
         boolean forfeit "optional"
-        string status "optional"
+        string status "optional, pending | approved"
     }
 
     TierList {
@@ -126,10 +149,11 @@ erDiagram
         ObjectId copiedFrom FK "-> TierList, self-ref, optional"
         Map pokemon
         object_array tiers
-        object draftCount
+        object banned "moves[]/abilities[]"
         string format
         string ruleset
-        object settings
+        string_array collaborators
+        object settings "isPublic/shareToken"
     }
 
     League ||--o{ LeagueTournament : "hosts"
@@ -137,91 +161,122 @@ erDiagram
     LeagueTournament ||--o{ Stage : "progresses through (ordered)"
     LeagueTournament ||--o| TierList : "drafts from"
     LeagueTournament ||--o{ Team : "hosts signups"
+    LeagueTournament ||--o{ LeagueMatchup : "schedules against its rounds[]"
     Draft ||--o{ Team : "groups signups into a draft pool"
-    Stage ||--o{ LeagueMatchup : "schedules"
+    Stage ||--o{ LeagueMatchup : "owns"
+    Stage }o--o{ Team : "seeds (Stage.teamIds[], in seed order)"
     Team ||--|| Coach : "head coach (bidirectional: Team.coach + Coach.teamId)"
     Team }o--o{ LeagueMatchup : "side1/side2 (not a DB-enforced ref)"
     TierList ||--o| TierList : "copiedFrom"
 ```
 
-Note: there's deliberately no `Stage ||--o{ Team` line. Pool membership for a given stage
-lives only on `Stage.pools[].teamIds` — querying "what pool is this team in for this stage"
-means `Stage.findOne({ tournamentId, "pools.teamIds": teamId })` rather than reading a field
-off `Team`.
+## Reading the round axis
 
-## What changed in this migration
+A matchup is located by **two** independent references, and both are needed:
 
-- **`Division` is gone, split into `Draft` and `Stage`.** A `Division` document used to
-  conflate two unrelated things: a fixed pool of teams drafting together (state machine:
-  counter, snake/linear order, skip timer), and post-draft round-robin scheduling
-  (`stages[]`, `currentStage`, `trades[]`). Because both lived on one document, a team's
-  pool membership was permanent for its _entire_ tournament life — no way to redraw pools
-  between the draft, a round-robin phase, and a later bracket/swiss phase.
+- `LeagueMatchup.stage` — which competition it belongs to.
+- `LeagueMatchup.round` — **when** it is played, pointing at a round subdocument:
+  `LeagueTournament.rounds[]._id` on a migrated tournament, `Stage.rounds[]._id` before
+  (see the migration section below). The migration mints fresh ids for the merged axis and
+  repoints every matchup through an old-id → new-id map, so this reference is rewritten
+  rather than carried over.
+
+Once rounds are tournament-wide, several stages running concurrently share a round and its
+deadlines — so a round id alone does **not** identify one stage's matchups.
+`findByRoundsInStage(stageId, roundIds)` filters on both; filtering on round alone would
+sweep in every other stage's matches.
+
+Slot advancement (`side1.slot`/`side2.slot` = `{type: "seed"|"winner"|"loser", seed,
+matchId}`) is deliberately **not** stage-scoped: `slot.matchId` is a matchup `_id`, which
+is already unique, and a playoff stage's slots are fed by matches in the group stage
+before it.
+
+## Where a stage's teams live
+
+`Stage.teamIds` is an ordered list — **seed N is `teamIds[N - 1]`** — and that positional
+meaning is load-bearing. `buildBracketView` numbers seeds by position, so reordering the
+array renumbers the whole bracket.
+
+Team membership is stage-scoped and never mirrored onto `Team`: the same reasoning that
+removed `Coach.teamName`/`.logo`/`.status` in an earlier migration, since two copies of
+one fact drift apart. `Team.draftId` remains the one permanently-fixed grouping (which
+draft pool a team came from).
+
+A team may appear in **several** stages, and more than once in a tournament's seed order
+overall — each appearance is a separate positional seed.
+
+## Migration in progress: sections → stages
+
+The `Stage` fields marked DEPRECATED above are mid-migration, not dead. A stage used to
+own a round axis that its `sections[]` shared; each section owned its own teams, seeding
+and standings — all of a stage's responsibilities. So sections became stages, and the axis
+they were sharing moved up to the tournament, along with trades (whose `activeRound`
+indexes it).
+
+**The data migration was applied to production on 2026-08-01** — every tournament that had
+stages (`s3-singles`, `s3-vgc`, `cup-1`) is on the new shape, verified matchup-by-matchup
+with `scripts/verify-sections-to-stages.ts`. The legacy fields are still populated and still
+read, because the compatibility layer is what makes the rollback meaningful and because
+nothing has confirmed the new shape over a full season yet.
+
+Every read therefore still goes through `src/modules/stage/domain/stage-axis.ts` rather than
+reaching for one shape or the other:
+
+| Concept | Pre-migration | Post-migration | Resolver |
+| --- | --- | --- | --- |
+| Round axis | `Stage.rounds` | `LeagueTournament.rounds` | `stageRounds()` |
+| Current round | `Stage.currentRoundIndex` | `LeagueTournament.currentRoundIndex` | `currentRoundIndex()` |
+| Teams | `Stage.pools[].teamIds` | `Stage.teamIds` | `stageTeamIds()` |
+| Trades | `Stage.trades` | `LeagueTournament.trades` | `stageTrades()` |
+
+The tournament wins whenever it has rounds — a stage split out by the migration has none
+of its own, and a single-section stage keeps its `_id` and therefore its stale copies.
+`usesTournamentAxis()` is the single "has this tournament been converted" signal.
+
+Stage-scoped **writes** to any of the above are refused on a converted tournament
+(`STG-007`): the bracket endpoints replace the round list wholesale, so writing from one
+stage would renumber every other stage's rounds and orphan their matchups, while a trade
+or round advance would silently vanish — the read path prefers the tournament's copy and
+would never look at what was just written. Their replacements are tournament-level:
+`GET/PATCH /tournaments/:slug/bracket`, `PATCH .../bracket/current-round`,
+`GET/POST/PATCH /tournaments/:slug/trades`, and `GET /tournaments/:slug/schedule`.
+
+Scripts (dry-run by default, `--apply` to write), in `scripts/` — note that directory is
+gitignored, so these exist only in a working tree:
+
+- `migrate-sections-to-stages.ts` — unions each tournament's stages' rounds into one axis
+  (matching by name so concurrent stages share a row), repoints every matchup's `round`,
+  splits each stage into one stage per section, and moves trades up remapping
+  `activeRound`. Deletes nothing: originals keep `rounds`/`pools`/`sections`/`trades`, and
+  a stage split into several is archived (`tournamentId` removed so it stops appearing as
+  a phantom stage, `migratedTournamentId` added) rather than dropped.
+- `rollback-sections-to-stages.ts` — restores from those retained fields.
+
+## History: Division → Draft + Stage
+
+Completed; scripts live in `scripts/complete/`. Kept here because the shape above only
+makes sense against what it replaced.
+
+- **`Division` was split into `Draft` and `Stage`.** One `Division` conflated a fixed pool
+  of teams drafting together (counter, snake/linear order, skip timer) with post-draft
+  scheduling (`stages[]`, `currentStage`, `trades[]`). Because both lived on one document,
+  a team's pool membership was fixed for its _entire_ tournament life — pools could not be
+  redrawn between the draft, a round-robin phase, and a later bracket.
 - **`Draft` is a near-1:1 rename of "Division, scoped to draft concerns."** Same
-  cardinality as before — one `Draft` document is one pool, and a tournament can have
-  multiple simultaneous `Draft` documents (multi-pool drafting), exactly like multiple
-  `Division` documents could. The draft state machine fields (`status`/`counter`/
-  `orderProgression`/etc., previously the embedded `DivisionDraftEntity`) are now top-level
-  fields directly on `Draft`. `Team.draftId` replaces `Team.divisionId` as the one
-  permanently-fixed grouping for a team — which draft/pool it came from.
-- **`Stage` is the genuinely new concept**: an ordered, per-tournament, typed phase
-  (`round-robin | single-elimination | double-elimination | swiss | custom`), each with its
-  own `pools[]` (teams can be regrouped independently of which `Draft` they came from),
-  `rounds[]`, and `trades[]` (moved here from `Division`, `activeStage` renamed
-  `activeRound`). `LeagueTournament.stages` — previously a typed-but-disconnected embedded
-  array that nothing actually scheduled against — is now the real ordered list of `Stage`
-  refs that `LeagueMatchup` points to.
-- **Bracket scheduling was already real and working before this migration** — it just lived
-  separately, on `LeagueTournament.stages`/`.playoffs`, with real per-match advancement via
-  `LeagueMatchup.side1.slot`/`side2.slot` (`{type: "seed"|"winner", matchId}`). That
-  mechanism is preserved exactly; brackets are now just one more `Stage`, alongside
-  round-robin and swiss, instead of a separate tournament-level-only mechanism.
-  `LeagueTournament.playoffs` (`{teams: ObjectId[]}`) is removed — a playoffs bracket is a
-  `Stage` with `type: "single-elimination"` (or `"double-elimination"`) whose `pools[]`
-  holds the seeded teams.
-- **`Team.draft` is renamed `Team.pickLog`**, to stop colliding with the new top-level
-  `Draft` collection name. Same shape (`.pokemon`/`.addons`/`.timestamp`/`.picker`).
-- **Pool membership is stage-scoped, not a permanent `Team` attribute.** Round-robin pools,
-  bracket seeding, and swiss's single pool all live on `Stage.pools[].teamIds`, never
-  mirrored onto `Team` — same reasoning that deleted `Coach.teamName`/`.logo`/`.status` in
-  an earlier migration: two copies of the same fact drift apart.
-- **`LeagueMatchup.division` is renamed `LeagueMatchup.stage`**, with `round` still a
-  subdocument id, now pointing at `Stage.rounds[]._id` instead of `Division.stages[]._id`.
-  Added an optional denormalized `pool` field for filtering matchups without joining
-  through team membership.
-
-## Migration in progress — transition risk
-
-**The DivisionModule has been deleted** (NestJS controllers/services/repository/schema) —
-`src/modules/draft/` and `src/modules/stage/` are now the only server-side path for
-draft/scheduling data. However, **the underlying data has not been migrated yet**:
-`leaguedrafts`/`leaguestages` are new collections and are currently empty in the live
-database. The old `leaguedivisions` collection (and the legacy Express `/leagues` route,
-which reads it directly via `src/models/league/division.model.ts` and is allowed to break
-per an earlier decision) is untouched and still holds the real, pre-migration data.
-
-Until the migration scripts below are run with `--apply`, any tournament that already has a
-real `Division` will have **no corresponding `Draft`/`Stage` documents**, so the new
-NestJS `DraftController`/`StageController` endpoints will 404 for it. This was a deliberate,
-explicitly-accepted tradeoff (rather than keeping `DivisionModule` around longer) — flagged
-here so it isn't mistaken for a bug later.
-
-Two new scripts, both dry-run by default (`--apply` to write), in `src/scripts/`:
-
-- `migrate-division-to-draft-stage.ts` — for each `leaguedivisions` document, creates one
-  `Draft` + one `Stage` (type `round-robin`), backfills `Team.draftId`/`Team.pickLog` and
-  `LeagueMatchup.stage` (additive only — does not delete `Team.divisionId`/`.draft` or
-  `LeagueMatchup.division`, matching every other migration script's "verify before cleanup"
-  philosophy). **Must run after** `migrate-coach-team-division-to-nest.ts` (still not yet
-  run) is applied and verified.
-- `migrate-tournament-stages-to-stage-collection.ts` — run **after** the script above.
-  Converts each tournament's already-real embedded bracket `stages[]`/`playoffs.teams` into
-  standalone `Stage` documents (preserving round subdocument ids exactly, since
-  `LeagueMatchup.round` already points at them), and does the one full rewrite of
-  `LeagueTournament.stages` from the old embedded shape into the new ordered `ObjectId[]`
-  ref shape — ordering the first script's round-robin `Stage`(s) before its own bracket
-  `Stage`, so the final sequence reads draft → round-robin → bracket.
-
-Neither script has been run yet, including in dry-run — that requires connecting to the
-shared database (there is no separate staging cluster), which needs explicit sign-off
-before being run.
+  cardinality: one `Draft` is one pool, and a tournament can have several. The draft state
+  machine fields are now top-level. `Team.draftId` replaced `Team.divisionId`.
+- **`Stage` was the new concept**: an ordered, typed phase per tournament.
+  `LeagueTournament.stages` — previously a typed-but-disconnected embedded array — became
+  the real ordered list of `Stage` refs.
+- **Bracket scheduling already worked before that migration**, on
+  `LeagueTournament.stages`/`.playoffs`, with real advancement via `side1.slot`/`side2.slot`.
+  That mechanism was preserved exactly; brackets just became one more `Stage`.
+  `LeagueTournament.playoffs` was removed.
+- **`Team.draft` was renamed `Team.pickLog`**, to stop colliding with the new top-level
+  `Draft` collection.
+- **`*Key` fields became `slug`** (`leagueKey`/`tournamentKey`/`draftKey` → `slug`).
+  A document's own identifier is a bare `slug`; references to another document keep a
+  prefix (`leagueSlug`, `tournamentSlug`). ObjectIds were untouched.
+- **Format/ruleset/draftCount/pointTotal/tierRequirements moved off `TierList` onto
+  `LeagueTournament`**, so several tournaments can share one tier list without sharing its
+  competition settings.

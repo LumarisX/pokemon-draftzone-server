@@ -19,6 +19,102 @@ export const TierRequirementSchema = SchemaFactory.createForClass(
   TierRequirementEntity,
 );
 
+/**
+ * One row of the tournament's schedule.
+ *
+ * Rounds live here, not on a stage: every stage running at the same time
+ * shares the round, and therefore its deadlines. A group phase in weeks 1-3
+ * and a playoff bracket in weeks 4-5 are two stages on one axis.
+ */
+@Schema()
+export class TournamentRoundEntity {
+  _id!: Types.ObjectId;
+
+  @Prop({ required: true })
+  name!: string;
+
+  @Prop()
+  matchDeadline?: Date;
+
+  @Prop()
+  tradeDeadline?: Date;
+
+  @Prop()
+  bestOf?: number;
+}
+export const TournamentRoundSchema = SchemaFactory.createForClass(
+  TournamentRoundEntity,
+);
+
+@Schema({ _id: false })
+export class TournamentTradePokemonEntity {
+  @Prop({ required: true })
+  id!: string;
+
+  /**
+   * Draft add-ons carried with the pick ("Tera Captain"), mirroring
+   * `StageTradePokemonEntity`. Stored as the add-on list rather than a `tera`
+   * flag because that is the shape the migration copies up from stage trades,
+   * and the shape readers already derive `tera` from.
+   */
+  @Prop({ type: [String], default: undefined })
+  addons?: string[];
+}
+export const TournamentTradePokemonSchema = SchemaFactory.createForClass(
+  TournamentTradePokemonEntity,
+);
+
+@Schema({ _id: false })
+export class TournamentTradeSideEntity {
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
+  team?: Types.ObjectId;
+
+  @Prop({ type: [TournamentTradePokemonSchema], required: true })
+  pokemon!: TournamentTradePokemonEntity[];
+
+  /** Trade points this side's team is charged. Absent on pre-feature trades. */
+  @Prop({ default: 0 })
+  tradePoints?: number;
+}
+export const TournamentTradeSideSchema = SchemaFactory.createForClass(
+  TournamentTradeSideEntity,
+);
+
+/**
+ * A trade between two teams, effective from a round.
+ *
+ * Trades sit on the tournament rather than a stage because the round they take
+ * effect in is tournament-wide — a roster change made during the group phase
+ * still holds when the playoffs start.
+ */
+@Schema()
+export class TournamentTradeEntity {
+  _id!: Types.ObjectId;
+
+  @Prop({ type: TournamentTradeSideSchema, required: true })
+  side1!: TournamentTradeSideEntity;
+
+  @Prop({ type: TournamentTradeSideSchema, required: true })
+  side2!: TournamentTradeSideEntity;
+
+  @Prop({ default: () => new Date(), required: true })
+  timestamp!: Date;
+
+  /** Index into the tournament's round list. */
+  @Prop({ default: -1 })
+  activeRound!: number;
+
+  @Prop({
+    type: String,
+    enum: ["PENDING", "APPROVED", "REJECTED"],
+    default: "APPROVED",
+  })
+  status!: "PENDING" | "APPROVED" | "REJECTED";
+}
+export const TournamentTradeSchema = SchemaFactory.createForClass(
+  TournamentTradeEntity,
+);
+
 @Schema({ _id: false })
 export class TournamentRuleEntity {
   @Prop({ required: true })
@@ -150,6 +246,21 @@ export class HostedTournamentEntity {
   @Prop({ default: -1 })
   currentStageIndex!: number;
 
+  /**
+   * The schedule every stage is laid out against. Empty on tournaments that
+   * predate the move — their rounds still live on their stages until the
+   * sections-to-stages migration has run.
+   */
+  @Prop({ type: [TournamentRoundSchema], default: [] })
+  rounds!: TournamentRoundEntity[];
+
+  /** Index into `rounds`; -1 before the season starts. */
+  @Prop({ default: -1 })
+  currentRoundIndex!: number;
+
+  @Prop({ type: [TournamentTradeSchema], default: [] })
+  trades!: TournamentTradeEntity[];
+
   @Prop({ type: TournamentForfeitSchema, required: true })
   forfeit!: TournamentForfeitEntity;
 
@@ -167,6 +278,10 @@ export class HostedTournamentEntity {
 
   @Prop()
   pointTotal?: number;
+
+  /** Trade points each team may spend across a stage. Unset means no cap. */
+  @Prop()
+  tradePointLimit?: number;
 
   @Prop({ type: [TierRequirementSchema], default: [] })
   tierRequirements!: TierRequirementEntity[];

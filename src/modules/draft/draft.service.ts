@@ -14,6 +14,7 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getRosterByRound } from "../stage/domain/roster";
+import { rosterContext } from "../stage/domain/stage-axis";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -608,7 +609,9 @@ export class DraftService {
         id: team._id.toString(),
         coach: team.coach.name,
         logo: team.logo,
-        draft: getRosterByRound(team, stage).map((pokemon) => ({
+        draft: getRosterByRound(team, rosterContext(stage, tournament)).map((
+          pokemon,
+        ) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           capt: { tera: pokemon.addons?.includes("Tera Captain") },
@@ -655,7 +658,10 @@ export class DraftService {
           coachName: team.coach.name,
           id: team._id.toString(),
         },
-        roster: getRosterByRound(team, stage).map((pokemon) => {
+        roster: getRosterByRound(
+          team,
+          stage && rosterContext(stage, tournament),
+        ).map((pokemon) => {
           const pokemonTier = rawTierList.pokemon.get(pokemon.id);
           const tier = rawTierList.tiers.find(
             (t) => t.name === pokemonTier?.tier,

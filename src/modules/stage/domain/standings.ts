@@ -2,6 +2,7 @@ import { StageDocument, StageRoundEntity } from "@modules/stage/stage.schema";
 import { LeagueMatchupDocument } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PopulatedTeam } from "@modules/team/team.repository";
 import { getName } from "@modules/data/domain/pokedex";
+import { AxisTournament, stageRounds } from "./stage-axis";
 
 /**
  * A LeagueMatchup with its team sides populated (coach included), matching
@@ -362,17 +363,23 @@ function calculateStreak(
 export async function calculateDivisionCoachStandings(
   matchups: PopulatedStageMatchup[],
   stage: StageDocument & { teams: PopulatedTeam[] },
-  tournament: { diffMode: "pokemon" | "game"; forfeit?: ForfeitConfig },
+  tournament: AxisTournament & {
+    diffMode: "pokemon" | "game";
+    forfeit?: ForfeitConfig;
+  },
 ) {
   const coachStandingsMap = new Map<string, CoachStanding>();
   const diffMode = tournament.diffMode;
+  // A standing has one cell per round, so the axis has to be the one the
+  // matchups' `round` ids actually belong to.
+  const rounds = stageRounds(stage, tournament);
   for (const team of stage.teams) {
-    const teamStanding = createCoachStanding(team, stage.rounds.length);
+    const teamStanding = createCoachStanding(team, rounds.length);
     coachStandingsMap.set(teamStanding.teamId, teamStanding);
   }
 
   for (const matchup of matchups) {
-    const roundIndex = stage.rounds.findIndex(
+    const roundIndex = rounds.findIndex(
       (r) => matchup.round && r._id.equals(matchup.round),
     );
 
@@ -417,7 +424,7 @@ export async function calculateDivisionCoachStandings(
       const standing = getOrCreateCoachStanding(
         coachStandingsMap,
         team,
-        stage.rounds.length,
+        rounds.length,
       );
       const result = resolveTeamMatchupResult({
         winner: matchup.winner,

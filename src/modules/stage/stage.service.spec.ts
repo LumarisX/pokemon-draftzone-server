@@ -21,8 +21,10 @@ jest.mock("./domain/standings", () => ({
 }));
 
 const mockedGetRosterByRound = getRosterByRound as jest.Mock;
-const mockedCalculateDivisionCoachStandings = calculateDivisionCoachStandings as jest.Mock;
-const mockedCalculateDivisionPokemonStandings = calculateDivisionPokemonStandings as jest.Mock;
+const mockedCalculateDivisionCoachStandings =
+  calculateDivisionCoachStandings as jest.Mock;
+const mockedCalculateDivisionPokemonStandings =
+  calculateDivisionPokemonStandings as jest.Mock;
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
@@ -87,6 +89,7 @@ describe("StageService", () => {
       findAllByTournament: jest.fn(),
       setPools: jest.fn(),
       setCurrentRoundIndex: jest.fn(),
+      setPublic: jest.fn(),
       findById: jest.fn(async () => buildStage()),
       flattenPoolTeamIds: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
@@ -102,10 +105,12 @@ describe("StageService", () => {
       createMany: jest.fn().mockResolvedValue([]),
       deleteByStage: jest.fn().mockResolvedValue(0),
       resolveDownstreamSlots: jest.fn().mockResolvedValue(undefined),
+      findStructureByStage: jest.fn().mockResolvedValue([]),
+      applyStructureDiff: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     hostedTournamentRepo = {
       findBySlug: jest.fn(),
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {
       findById: jest.fn(),
@@ -133,24 +138,33 @@ describe("StageService", () => {
       const created = buildStage();
       stageRepo.create.mockResolvedValue(created);
 
-      const result = await service.createStage("league-1", "tournament-1", "auth0|owner", {
-        order: 1,
-        name: "Regular Season",
-        type: "round-robin",
-      });
+      const result = await service.createStage(
+        "league-1",
+        "tournament-1",
+        "auth0|owner",
+        {
+          order: 1,
+          name: "Regular Season",
+          type: "round-robin",
+        },
+      );
 
       expect(stageRepo.create).toHaveBeenCalledWith({
         tournamentId: tournament.id,
         order: 1,
         name: "Regular Season",
         type: "round-robin",
+        public: undefined,
         rounds: undefined,
       });
       expect(result).toBe(created);
     });
 
     it("allows an organizer (not just the owner) to create a stage", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", organizers: ["auth0|deputy"] });
+      const tournament = buildTournament({
+        owner: "auth0|owner",
+        organizers: ["auth0|deputy"],
+      });
       hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
       stageRepo.create.mockResolvedValue(buildStage());
 
@@ -164,7 +178,10 @@ describe("StageService", () => {
     });
 
     it("rejects a non-organizer, non-owner sub", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
+      const tournament = buildTournament({
+        owner: "auth0|owner",
+        organizers: [],
+      });
       hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       await expect(
@@ -199,8 +216,83 @@ describe("StageService", () => {
           type: "round-robin",
           order: 1,
           currentRoundIndex: 2,
+          public: true,
         },
       ]);
+    });
+
+    it("hides a non-public stage from anyone but an organizer", async () => {
+      const tournament = buildTournament({ owner: "auth0|owner" });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
+      const visible = buildStage({ name: "Regular Season" });
+      const hidden = buildStage({ name: "Playoffs" });
+      (hidden as any).public = false;
+      stageRepo.findAllByTournament.mockResolvedValue([visible, hidden]);
+
+      const anonymous = await service.listStages("league-1", "tournament-1");
+      expect(anonymous.map((stage) => stage.name)).toEqual(["Regular Season"]);
+
+      const stranger = await service.listStages(
+        "league-1",
+        "tournament-1",
+        "auth0|stranger",
+      );
+      expect(stranger.map((stage) => stage.name)).toEqual(["Regular Season"]);
+
+      const organizer = await service.listStages(
+        "league-1",
+        "tournament-1",
+        "auth0|owner",
+      );
+      expect(organizer.map((stage) => stage.name)).toEqual([
+        "Regular Season",
+        "Playoffs",
+      ]);
+      expect(organizer[1].public).toBe(false);
+    });
+  });
+
+  describe("setVisibility", () => {
+    it("flips the flag for an organizer", async () => {
+      const tournament = buildTournament({ owner: "auth0|owner" });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
+      const stage = buildStage({
+        tournamentId: { equals: (id: unknown) => id === tournament.id },
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      stageRepo.setPublic.mockResolvedValue({ ...stage, public: false } as any);
+
+      await service.setVisibility(
+        "league-1",
+        "tournament-1",
+        stage._id.toString(),
+        "auth0|owner",
+        { public: false },
+      );
+
+      expect(stageRepo.setPublic).toHaveBeenCalledWith(
+        stage._id.toString(),
+        false,
+      );
+    });
+
+    it("rejects a non-organizer", async () => {
+      const tournament = buildTournament({
+        owner: "auth0|owner",
+        organizers: [],
+      });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
+
+      await expect(
+        service.setVisibility(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|stranger",
+          { public: false },
+        ),
+      ).rejects.toMatchObject({ code: "AUTH-002" });
+      expect(stageRepo.setPublic).not.toHaveBeenCalled();
     });
   });
 
@@ -210,7 +302,9 @@ describe("StageService", () => {
 
       await expect(
         service.setPools("league-1", "tournament-1", "stage-1", "auth0|owner", {
-          pools: [{ poolKey: "A", name: "Pool A", teamIds: ["not-an-object-id"] }],
+          pools: [
+            { poolKey: "A", name: "Pool A", teamIds: ["not-an-object-id"] },
+          ],
         }),
       ).rejects.toMatchObject({ code: "VAL-002" });
       expect(stageRepo.setPools).not.toHaveBeenCalled();
@@ -221,9 +315,15 @@ describe("StageService", () => {
       const teamId = new Types.ObjectId().toString();
       stageRepo.setPools.mockResolvedValue(buildStage());
 
-      await service.setPools("league-1", "tournament-1", "stage-1", "auth0|owner", {
-        pools: [{ poolKey: "A", name: "Pool A", teamIds: [teamId] }],
-      });
+      await service.setPools(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        {
+          pools: [{ poolKey: "A", name: "Pool A", teamIds: [teamId] }],
+        },
+      );
 
       expect(stageRepo.setPools).toHaveBeenCalledWith("stage-1", [
         { poolKey: "A", name: "Pool A", teamIds: [new Types.ObjectId(teamId)] },
@@ -236,9 +336,15 @@ describe("StageService", () => {
       );
 
       await expect(
-        service.setPools("league-1", "tournament-1", "stage-1", "auth0|stranger", {
-          pools: [],
-        }),
+        service.setPools(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|stranger",
+          {
+            pools: [],
+          },
+        ),
       ).rejects.toMatchObject({ code: "AUTH-002" });
     });
   });
@@ -267,9 +373,15 @@ describe("StageService", () => {
       );
 
       await expect(
-        service.advanceCurrentRound("league-1", "tournament-1", "stage-1", "auth0|stranger", {
-          currentRoundIndex: 1,
-        }),
+        service.advanceCurrentRound(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|stranger",
+          {
+            currentRoundIndex: 1,
+          },
+        ),
       ).rejects.toMatchObject({ code: "AUTH-002" });
     });
   });
@@ -291,26 +403,39 @@ describe("StageService", () => {
     it("returns every round's matchups when no round filter is given", async () => {
       const round0 = { _id: new Types.ObjectId(), name: "Week 1" };
       const round1 = { _id: new Types.ObjectId(), name: "Week 2" };
-      const stage = buildStage({ rounds: [round0, round1], currentRoundIndex: 1 });
+      const stage = buildStage({
+        rounds: [round0, round1],
+        currentRoundIndex: 1,
+      });
       stageRepo.findById.mockResolvedValue(stage);
       hostedTournamentRepo.findById.mockResolvedValue(buildTournament());
       matchupRepo.findByRoundsInStage.mockResolvedValue([]);
 
       const result = await service.getSchedule(stage._id.toString());
 
-      expect(result.rounds.map((r: any) => r.name)).toEqual(["Week 1", "Week 2"]);
+      expect(result.rounds.map((r: any) => r.name)).toEqual([
+        "Week 1",
+        "Week 2",
+      ]);
       expect(result.currentRoundIndex).toBe(1);
     });
 
     it("restricts to only the current round when roundFilter is 'current'", async () => {
       const round0 = { _id: new Types.ObjectId(), name: "Week 1" };
       const round1 = { _id: new Types.ObjectId(), name: "Week 2" };
-      const stage = buildStage({ rounds: [round0, round1], currentRoundIndex: 1 });
+      const stage = buildStage({
+        rounds: [round0, round1],
+        currentRoundIndex: 1,
+      });
       stageRepo.findById.mockResolvedValue(stage);
       hostedTournamentRepo.findById.mockResolvedValue(buildTournament());
       matchupRepo.findByRoundsInStage.mockResolvedValue([]);
 
-      const result = await service.getSchedule(stage._id.toString(), undefined, "current");
+      const result = await service.getSchedule(
+        stage._id.toString(),
+        undefined,
+        "current",
+      );
 
       expect(result.rounds).toHaveLength(1);
       expect(result.rounds[0].name).toBe("Week 2");
@@ -329,11 +454,19 @@ describe("StageService", () => {
       matchupRepo.findByRoundsInStage.mockResolvedValue([]);
       const teamId = new Types.ObjectId().toString();
 
-      await service.getSchedule(stage._id.toString(), [teamId, "not-an-object-id", ""]);
+      await service.getSchedule(stage._id.toString(), [
+        teamId,
+        "not-an-object-id",
+        "",
+      ]);
 
-      expect(matchupRepo.findByRoundsInStage).toHaveBeenCalledWith(stage._id, [round0._id], {
-        teamIds: [new Types.ObjectId(teamId)],
-      });
+      expect(matchupRepo.findByRoundsInStage).toHaveBeenCalledWith(
+        stage._id,
+        [round0._id],
+        {
+          teamIds: [new Types.ObjectId(teamId)],
+        },
+      );
     });
 
     it("omits rounds the filtered team has no matchups in", async () => {
@@ -348,7 +481,10 @@ describe("StageService", () => {
       ]);
       mockedGetRosterByRound.mockReturnValue([]);
 
-      const result = await service.getSchedule(stage._id.toString(), team._id.toString());
+      const result = await service.getSchedule(
+        stage._id.toString(),
+        team._id.toString(),
+      );
 
       expect(result.rounds.map((r: any) => r.name)).toEqual(["Week 2"]);
     });
@@ -370,13 +506,21 @@ describe("StageService", () => {
           {
             replay: "replay-link",
             winner: "side1",
-            side1: { score: 2, pokemon: new Map([["pikachu", { status: "survived" }]]) },
-            side2: { score: 1, pokemon: new Map([["mewtwo", { status: "fainted" }]]) },
+            side1: {
+              score: 2,
+              pokemon: new Map([["pikachu", { status: "survived" }]]),
+            },
+            side2: {
+              score: 1,
+              pokemon: new Map([["mewtwo", { status: "fainted" }]]),
+            },
           },
         ],
       });
       matchupRepo.findByRoundsInStage.mockResolvedValue([matchup]);
-      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu", addons: ["Tera Captain"] }]);
+      mockedGetRosterByRound.mockReturnValue([
+        { id: "pikachu", addons: ["Tera Captain"] },
+      ]);
 
       const result = await service.getSchedule(stage._id.toString());
 
@@ -392,8 +536,16 @@ describe("StageService", () => {
       expect(transformed.winner).toBe("side1");
       expect(transformed.matches[0]).toEqual({
         link: "replay-link",
-        team1: { team: { pikachu: { status: "survived" } }, score: 2, winner: true },
-        team2: { team: { mewtwo: { status: "fainted" } }, score: 1, winner: false },
+        team1: {
+          team: { pikachu: { status: "survived" } },
+          score: 2,
+          winner: true,
+        },
+        team2: {
+          team: { mewtwo: { status: "fainted" } },
+          score: 1,
+          winner: false,
+        },
       });
     });
 
@@ -401,7 +553,9 @@ describe("StageService", () => {
       const round0 = { _id: new Types.ObjectId(), name: "Week 1" };
       const stage = buildStage({ rounds: [round0] });
       stageRepo.findById.mockResolvedValue(stage);
-      hostedTournamentRepo.findById.mockResolvedValue(buildTournament({ forfeit: { gameDiff: 3 } }));
+      hostedTournamentRepo.findById.mockResolvedValue(
+        buildTournament({ forfeit: { gameDiff: 3 } }),
+      );
       const matchup = buildMatchup({
         round: round0._id,
         winner: "side1",
@@ -430,7 +584,9 @@ describe("StageService", () => {
         coachStandings: [{ id: "team-1", wins: 3, losses: 1 }],
         diffMode: "pokemon",
       });
-      mockedCalculateDivisionPokemonStandings.mockResolvedValue([{ id: "pikachu" }]);
+      mockedCalculateDivisionPokemonStandings.mockResolvedValue([
+        { id: "pikachu" },
+      ]);
 
       const result = await service.getStandings(stage._id.toString());
 
@@ -439,7 +595,9 @@ describe("StageService", () => {
         expect.objectContaining({ _id: stage._id }),
         tournament,
       );
-      expect(mockedCalculateDivisionPokemonStandings).toHaveBeenCalledWith(matchups);
+      expect(mockedCalculateDivisionPokemonStandings).toHaveBeenCalledWith(
+        matchups,
+      );
       expect(result).toEqual({
         coachStandings: {
           cutoff: 8,
@@ -448,20 +606,94 @@ describe("StageService", () => {
           diffMode: "pokemon",
         },
         pokemonStandings: [{ id: "pikachu" }],
+        // No pools defined on this stage, so there is nothing to split.
+        pools: [],
       });
+    });
+
+    it("scores each pool over only its own matchups", async () => {
+      const groupA = [new Types.ObjectId(), new Types.ObjectId()];
+      const groupB = [new Types.ObjectId(), new Types.ObjectId()];
+      const stage = buildStage({
+        rounds: [{}, {}],
+        pools: [
+          { poolKey: "group-a", name: "Group A", teamIds: groupA },
+          { poolKey: "group-b", name: "Group B", teamIds: groupB },
+        ],
+        sections: [
+          { key: "a--rr", poolKey: "group-a" },
+          { key: "b--rr", poolKey: "group-b" },
+        ],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      stageRepo.flattenPoolTeamIds.mockReturnValue([...groupA, ...groupB]);
+      teamRepo.findManyByIds.mockResolvedValue(
+        [...groupA, ...groupB].map((_id) => buildTeam({ _id })),
+      );
+      hostedTournamentRepo.findById.mockResolvedValue(buildTournament());
+
+      const side = (team: Types.ObjectId) => ({ team: { _id: team } });
+      const inA = { id: "a", side1: side(groupA[0]), side2: side(groupA[1]) };
+      const inB = { id: "b", side1: side(groupB[0]), side2: side(groupB[1]) };
+      // A cross-pool match belongs to neither table.
+      const across = { id: "x", side1: side(groupA[0]), side2: side(groupB[0]) };
+      matchupRepo.findByRoundsInStage.mockResolvedValue([
+        inA,
+        inB,
+        across,
+      ] as any);
+
+      const result = await service.getStandings(stage._id.toString());
+
+      expect(result.pools.map((p) => p.poolKey)).toEqual([
+        "group-a",
+        "group-b",
+      ]);
+      expect(result.pools[0].sections).toEqual(["a--rr"]);
+
+      // Called once stage-wide, then once per pool with that pool's matchups.
+      const calls = mockedCalculateDivisionCoachStandings.mock.calls;
+      expect(calls[1][0]).toEqual([inA]);
+      expect(calls[2][0]).toEqual([inB]);
+      expect(calls[1][1].teams.map((t: any) => t._id.toString())).toEqual(
+        groupA.map(String),
+      );
     });
   });
 
   describe("getTrades", () => {
     function buildTradeFixture(overrides: Record<string, unknown> = {}) {
       return {
-        side1: { team: buildTeam({ teamName: "Team A" }), pokemon: [{ id: "pikachu" }] },
-        side2: { team: buildTeam({ teamName: "Team B" }), pokemon: [{ id: "mewtwo" }] },
+        side1: {
+          team: buildTeam({ teamName: "Team A" }),
+          pokemon: [{ id: "pikachu" }],
+        },
+        side2: {
+          team: buildTeam({ teamName: "Team B" }),
+          pokemon: [{ id: "mewtwo" }],
+        },
         activeRound: 0,
         timestamp: new Date(),
         status: "APPROVED",
         ...overrides,
       };
+    }
+
+    /**
+     * Serves the trades' teams through the team repository.
+     *
+     * getTrades resolves trade teams by id rather than by Mongoose populate,
+     * because the trades it reads may be the tournament's — a domain object
+     * with no document to populate.
+     */
+    function mockTradeTeams(trades: Record<string, any>[]) {
+      const teams = trades.flatMap((trade) =>
+        [trade.side1?.team, trade.side2?.team].filter(Boolean),
+      );
+      teamRepo.findManyByIds.mockImplementation(async (ids: any[]) => {
+        const wanted = new Set(ids.map(String));
+        return teams.filter((team) => wanted.has(team._id.toString()));
+      });
     }
 
     it("buckets each trade into its active round's bucket", async () => {
@@ -470,6 +702,7 @@ describe("StageService", () => {
         rounds: [{ name: "Week 1" }, { name: "Week 2" }],
         trades: [trade],
       });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
       const result = await service.getTrades(stage._id.toString());
@@ -479,13 +712,20 @@ describe("StageService", () => {
       expect(result.rounds[1].trades[0]).toMatchObject({
         activeRound: 1,
         status: "APPROVED",
-        side1: { team: { name: "Team A" }, pokemon: [{ id: "pikachu", name: "Pikachu", tera: false }] },
+        side1: {
+          team: { name: "Team A" },
+          pokemon: [{ id: "pikachu", name: "Pikachu", tera: false }],
+        },
       });
     });
 
     it("includes trades regardless of status (pending/approved/rejected)", async () => {
       const trade = buildTradeFixture({ status: "PENDING" });
-      const stage = buildStage({ rounds: [{ name: "Week 1" }], trades: [trade] });
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [trade],
+      });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
       const result = await service.getTrades(stage._id.toString());
@@ -495,7 +735,11 @@ describe("StageService", () => {
 
     it("drops trades whose activeRound is out of bounds for the stage's rounds", async () => {
       const trade = buildTradeFixture({ activeRound: -1 });
-      const stage = buildStage({ rounds: [{ name: "Week 1" }], trades: [trade] });
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [trade],
+      });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
       const result = await service.getTrades(stage._id.toString());
@@ -510,7 +754,11 @@ describe("StageService", () => {
           pokemon: [{ id: "charizard", addons: ["Tera Captain"] }],
         },
       });
-      const stage = buildStage({ rounds: [{ name: "Week 1" }], trades: [trade] });
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [trade],
+      });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
       const result = await service.getTrades(stage._id.toString());
@@ -538,22 +786,195 @@ describe("StageService", () => {
         rounds: [{ name: "Week 1" }],
         trades: [matchingTrade, nonMatchingTrade],
       });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
-      const result = await service.getTrades(stage._id.toString(), teamA._id.toString());
+      const result = await service.getTrades(
+        stage._id.toString(),
+        teamA._id.toString(),
+      );
 
       expect(result.rounds[0].trades).toHaveLength(1);
     });
 
     it("represents a bye side (no team) with an undefined team field", async () => {
-      const trade = buildTradeFixture({ side2: { team: undefined, pokemon: [] } });
-      const stage = buildStage({ rounds: [{ name: "Week 1" }], trades: [trade] });
+      const trade = buildTradeFixture({
+        side2: { team: undefined, pokemon: [] },
+      });
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [trade],
+      });
+      mockTradeTeams(stage.trades);
       stageRepo.findById.mockResolvedValue(stage);
 
       const result = await service.getTrades(stage._id.toString());
 
       expect((result.rounds[0].trades[0] as any).side2.team).toBeUndefined();
     });
+  });
+
+  /**
+   * A stage created by the sections-to-stages migration carries no rounds,
+   * pools or trades of its own — those moved to the tournament. Reads have to
+   * find them there, and stage-scoped writes have to refuse rather than write
+   * somewhere nothing will look again.
+   */
+  describe("a stage on a tournament-wide round axis", () => {
+    const tournamentRound = (name: string) => ({
+      _id: new Types.ObjectId(),
+      name,
+    });
+
+    /** As the migration leaves it: teams, and nothing else. */
+    function buildMigratedStage(overrides: Record<string, unknown> = {}) {
+      return buildStage({
+        rounds: [],
+        pools: [],
+        trades: [],
+        teamIds: [new Types.ObjectId(), new Types.ObjectId()],
+        currentRoundIndex: -1,
+        ...overrides,
+      });
+    }
+
+    it("reads the bracket against the tournament's rounds, not the stage's", async () => {
+      const rounds = [tournamentRound("Week 1"), tournamentRound("Week 2")];
+      const stage = buildMigratedStage();
+      stageRepo.findById.mockResolvedValue(stage);
+      hostedTournamentRepo.findById.mockResolvedValue(
+        buildTournament({ rounds }),
+      );
+      teamRepo.findManyByIds.mockResolvedValue([]);
+      matchupRepo.findByRoundsInStage.mockResolvedValue([] as any);
+
+      const result = await service.getBracket(stage._id.toString());
+
+      expect(result.rounds.map((r) => r.name)).toEqual(["Week 1", "Week 2"]);
+      // Scoped to the stage as well: the rounds are shared, so querying by
+      // round alone would return every other stage's matchups too.
+      expect(matchupRepo.findByRoundsInStage).toHaveBeenCalledWith(
+        stage._id,
+        rounds.map((r) => r._id),
+      );
+    });
+
+    it("takes the stage's teams from teamIds when it has no pools", async () => {
+      const stage = buildMigratedStage();
+      stageRepo.findById.mockResolvedValue(stage);
+      hostedTournamentRepo.findById.mockResolvedValue(
+        buildTournament({ rounds: [tournamentRound("Week 1")] }),
+      );
+      teamRepo.findManyByIds.mockResolvedValue([]);
+      matchupRepo.findByRoundsInStage.mockResolvedValue([] as any);
+
+      await service.getBracket(stage._id.toString());
+
+      expect(teamRepo.findManyByIds).toHaveBeenCalledWith(stage.teamIds);
+    });
+
+    it("serves the tournament's trades, not the stage's leftover copy", async () => {
+      // A single-section stage keeps its `_id` — and therefore its old trades —
+      // through the migration. Reading both would double every roster change.
+      const teamA = buildTeam({ teamName: "Team A" });
+      const teamB = buildTeam({ teamName: "Team B" });
+      const stage = buildMigratedStage({
+        trades: [
+          {
+            _id: new Types.ObjectId(),
+            side1: { team: teamA._id, pokemon: [{ id: "pikachu" }] },
+            side2: { team: teamB._id, pokemon: [] },
+            timestamp: new Date(),
+            activeRound: 0,
+            status: "APPROVED",
+          },
+        ],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      hostedTournamentRepo.findById.mockResolvedValue(
+        buildTournament({
+          rounds: [tournamentRound("Week 1")],
+          trades: [
+            {
+              _id: new Types.ObjectId(),
+              side1: { team: teamA._id, pokemon: [{ id: "mewtwo" }] },
+              side2: { team: teamB._id, pokemon: [] },
+              timestamp: new Date(),
+              activeRound: 0,
+              status: "APPROVED",
+            },
+          ],
+        }),
+      );
+      teamRepo.findManyByIds.mockResolvedValue([teamA, teamB]);
+
+      const result = await service.getTrades(stage._id.toString());
+
+      expect(result.rounds[0].trades).toHaveLength(1);
+      expect((result.rounds[0].trades[0] as any).side1.pokemon[0].id).toBe(
+        "mewtwo",
+      );
+    });
+
+    it.each([
+      [
+        "generateBracket",
+        (service: StageService, stageId: string) =>
+          service.generateBracket("league-1", "tournament-1", stageId, "auth0|owner", {
+            rounds: [{ name: "Week 1" }],
+            matches: [],
+            teamIds: [],
+          } as any),
+      ],
+      [
+        "updateBracket",
+        (service: StageService, stageId: string) =>
+          service.updateBracket("league-1", "tournament-1", stageId, "auth0|owner", {
+            rounds: [{ name: "Week 1" }],
+            matches: [],
+          } as any),
+      ],
+      [
+        "advanceCurrentRound",
+        (service: StageService, stageId: string) =>
+          service.advanceCurrentRound(
+            "league-1",
+            "tournament-1",
+            stageId,
+            "auth0|owner",
+            { currentRoundIndex: 1 } as any,
+          ),
+      ],
+      [
+        "createTrade",
+        (service: StageService, stageId: string) =>
+          service.createTrade("league-1", "tournament-1", stageId, "auth0|owner", {
+            side1: { team: undefined, pokemon: [] },
+            side2: { team: undefined, pokemon: [] },
+            roundIndex: 0,
+          } as any),
+      ],
+    ])(
+      "refuses %s, which would write to a schedule the tournament owns",
+      async (_name, call) => {
+        // The bracket paths check stage ownership before the guard, so the
+        // stage has to genuinely belong to this tournament for the guard to be
+        // what rejects.
+        const tournamentId = new Types.ObjectId();
+        const stage = buildMigratedStage({ tournamentId });
+        stageRepo.findById.mockResolvedValue(stage);
+        hostedTournamentRepo.findBySlug.mockResolvedValue(
+          buildTournament({
+            id: tournamentId.toString(),
+            rounds: [tournamentRound("Week 1")],
+          }),
+        );
+
+        await expect(call(service, stage._id.toString())).rejects.toMatchObject({
+          code: "STG-007",
+        });
+      },
+    );
   });
 
   describe("createTrade", () => {
@@ -626,7 +1047,10 @@ describe("StageService", () => {
       );
 
       expect(stage.save).not.toHaveBeenCalled();
-      expect(result).toEqual({ message: "Trade processed successfully." });
+      expect(result).toEqual({
+        message: "Trade processed successfully.",
+        status: "APPROVED",
+      });
     });
 
     it("throws TEAM.NOT_FOUND when side1's team doesn't exist", async () => {
@@ -641,7 +1065,9 @@ describe("StageService", () => {
           "tournament-1",
           "stage-1",
           "auth0|owner",
-          buildTradeDto({ side1: { team: teamId, pokemon: [{ id: "pikachu", tera: false }] } }),
+          buildTradeDto({
+            side1: { team: teamId, pokemon: [{ id: "pikachu", tera: false }] },
+          }),
         ),
       ).rejects.toMatchObject({ code: "LR-TEAM-001" });
     });
@@ -661,7 +1087,10 @@ describe("StageService", () => {
           "stage-1",
           "auth0|owner",
           buildTradeDto({
-            side1: { team: team1._id.toString(), pokemon: [{ id: "mewtwo", tera: false }] },
+            side1: {
+              team: team1._id.toString(),
+              pokemon: [{ id: "mewtwo", tera: false }],
+            },
           }),
         ),
       ).rejects.toMatchObject({ code: "SPC-001" });
@@ -676,7 +1105,10 @@ describe("StageService", () => {
       teamRepo.findByIdOrNull.mockImplementation((id) =>
         Promise.resolve(id === team1._id ? team1 : team2),
       );
-      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu" }, { id: "charizard" }]);
+      mockedGetRosterByRound.mockReturnValue([
+        { id: "pikachu" },
+        { id: "charizard" },
+      ]);
 
       const result = await service.createTrade(
         "league-1",
@@ -684,21 +1116,206 @@ describe("StageService", () => {
         "stage-1",
         "auth0|owner",
         buildTradeDto({
-          side1: { team: team1._id.toString(), pokemon: [{ id: "pikachu", tera: true }] },
-          side2: { team: team2._id.toString(), pokemon: [{ id: "charizard", tera: false }] },
+          side1: {
+            team: team1._id.toString(),
+            pokemon: [{ id: "pikachu", tera: true }],
+          },
+          side2: {
+            team: team2._id.toString(),
+            pokemon: [{ id: "charizard", tera: false }],
+          },
           roundIndex: 2,
         }),
       );
 
       expect(stage.trades).toHaveLength(1);
       expect(stage.trades[0]).toMatchObject({
-        side1: { team: team1._id, pokemon: [{ id: "pikachu", addons: ["Tera Captain"] }] },
-        side2: { team: team2._id, pokemon: [{ id: "charizard", addons: undefined }] },
+        side1: {
+          team: team1._id,
+          pokemon: [{ id: "pikachu", addons: ["Tera Captain"] }],
+        },
+        side2: {
+          team: team2._id,
+          pokemon: [{ id: "charizard", addons: undefined }],
+        },
         activeRound: 2,
         status: "APPROVED",
       });
       expect(stage.save).toHaveBeenCalled();
-      expect(result).toEqual({ message: "Trade processed successfully." });
+      expect(result).toEqual({
+        message: "Trade processed successfully.",
+        status: "APPROVED",
+      });
+    });
+  });
+
+  describe("trade points", () => {
+    function coachedTeam(sub: string, overrides: Record<string, unknown> = {}) {
+      return buildTeam({
+        coach: { name: "Giovanni", auth0Id: sub },
+        pickLog: [{ pokemon: { id: "pikachu" } }],
+        ...overrides,
+      });
+    }
+
+    it("records a coach-submitted trade as PENDING with its trade points", async () => {
+      const tournament = buildTournament({ organizers: [] });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(tournament);
+      const team = coachedTeam("auth0|coach");
+      const stage = buildStage({ rounds: [{ name: "Week 1" }] });
+      stageRepo.findById.mockResolvedValue(stage);
+      teamRepo.findManyByIds.mockResolvedValue([team]);
+      teamRepo.findByIdOrNull.mockResolvedValue(team);
+      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu" }]);
+
+      const result = await service.createTrade(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|coach",
+        {
+          side1: {
+            team: team._id.toString(),
+            pokemon: [{ id: "pikachu", tera: false }],
+            tradePoints: 3,
+          },
+          side2: { pokemon: [], tradePoints: 9 },
+          roundIndex: 0,
+        } as any,
+      );
+
+      expect(result.status).toBe("PENDING");
+      expect(stage.trades[0]).toMatchObject({
+        status: "PENDING",
+        side1: { tradePoints: 3 },
+        // A side with no team is free agency and is never charged.
+        side2: { tradePoints: 0 },
+      });
+    });
+
+    it("rejects a coach filing a trade their team is not part of", async () => {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ organizers: [] }),
+      );
+      stageRepo.findById.mockResolvedValue(buildStage());
+      teamRepo.findManyByIds.mockResolvedValue([coachedTeam("auth0|someone")]);
+
+      await expect(
+        service.createTrade(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|other",
+          {
+            side1: { team: new Types.ObjectId().toString(), pokemon: [] },
+            side2: { pokemon: [] },
+            roundIndex: 0,
+          } as any,
+        ),
+      ).rejects.toMatchObject({ code: "AUTH-002" });
+    });
+
+    it("blocks an organizer trade that would push a team over the limit", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ tradePointLimit: 4 }),
+      );
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [
+          {
+            _id: new Types.ObjectId(),
+            status: "APPROVED",
+            activeRound: 0,
+            side1: { team: team._id, pokemon: [], tradePoints: 3 },
+            side2: { pokemon: [], tradePoints: 0 },
+          },
+        ],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      teamRepo.findByIdOrNull.mockResolvedValue(team);
+      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu" }]);
+
+      await expect(
+        service.createTrade(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          {
+            side1: {
+              team: team._id.toString(),
+              pokemon: [{ id: "pikachu", tera: false }],
+              tradePoints: 2,
+            },
+            side2: { pokemon: [] },
+            roundIndex: 0,
+          } as any,
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
+    });
+
+    it("does not count the trade being approved against its own limit twice", async () => {
+      const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ tradePointLimit: 4 }),
+      );
+      const tradeId = new Types.ObjectId();
+      const pending = {
+        _id: tradeId,
+        status: "PENDING" as const,
+        activeRound: 0,
+        side1: { team: team._id, pokemon: [], tradePoints: 4 },
+        side2: { pokemon: [], tradePoints: 0 },
+      };
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [pending],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+      teamRepo.findByIdOrNull.mockResolvedValue(team);
+      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu" }]);
+
+      const result = await service.setTradeStatus(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        tradeId.toString(),
+        "auth0|owner",
+        { status: "APPROVED" },
+      );
+
+      expect(result.status).toBe("APPROVED");
+      expect(pending.status).toBe("APPROVED");
+    });
+
+    it("refuses to re-resolve a trade that is already settled", async () => {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
+      const tradeId = new Types.ObjectId();
+      const stage = buildStage({
+        rounds: [{ name: "Week 1" }],
+        trades: [
+          {
+            _id: tradeId,
+            status: "APPROVED",
+            activeRound: 0,
+            side1: { pokemon: [] },
+            side2: { pokemon: [] },
+          },
+        ],
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+
+      await expect(
+        service.setTradeStatus(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          tradeId.toString(),
+          "auth0|owner",
+          { status: "REJECTED" },
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
     });
   });
 
@@ -778,8 +1395,14 @@ describe("StageService", () => {
         {
           replay: "replay-link",
           winner: "side1",
-          side1: { score: 2, pokemon: new Map([["pikachu", { status: "survived" }]]) },
-          side2: { score: 1, pokemon: new Map([["mewtwo", { status: "fainted" }]]) },
+          side1: {
+            score: 2,
+            pokemon: new Map([["pikachu", { status: "survived" }]]),
+          },
+          side2: {
+            score: 1,
+            pokemon: new Map([["mewtwo", { status: "fainted" }]]),
+          },
         },
       ]);
       expect(matchup.save).toHaveBeenCalled();
@@ -810,23 +1433,26 @@ describe("StageService", () => {
       ["side1ffw", { winner: "side1", forfeit: true }],
       ["side2ffw", { winner: "side2", forfeit: true }],
       ["dffl", { winner: "draw", forfeit: true }],
-    ])("maps dto.winner %s to matchup {winner, forfeit}", async (dtoWinner, expected) => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
-      const matchup = buildMatchupDoc();
-      matchupRepo.findByIdInStage.mockResolvedValue(matchup);
+    ])(
+      "maps dto.winner %s to matchup {winner, forfeit}",
+      async (dtoWinner, expected) => {
+        hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
+        const matchup = buildMatchupDoc();
+        matchupRepo.findByIdInStage.mockResolvedValue(matchup);
 
-      await service.updateMatchup(
-        "league-1",
-        "tournament-1",
-        "stage-1",
-        new Types.ObjectId().toString(),
-        "auth0|owner",
-        { matches: [], winner: dtoWinner } as any,
-      );
+        await service.updateMatchup(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          new Types.ObjectId().toString(),
+          "auth0|owner",
+          { matches: [], winner: dtoWinner } as any,
+        );
 
-      expect(matchup.winner).toBe(expected.winner);
-      expect(matchup.forfeit).toBe(expected.forfeit);
-    });
+        expect(matchup.winner).toBe(expected.winner);
+        expect(matchup.forfeit).toBe(expected.forfeit);
+      },
+    );
 
     it("returns a confirmation message", async () => {
       hostedTournamentRepo.findBySlug.mockResolvedValue(buildTournament());
@@ -867,8 +1493,9 @@ describe("StageService", () => {
         { matches: [], winner: "side1" } as any,
       );
 
+      // Not scoped to a stage: the slot consuming this result may live in a
+      // later stage, and a stage filter would stop advancing teams into it.
       expect(matchupRepo.resolveDownstreamSlots).toHaveBeenCalledWith(
-        stageId,
         matchupId,
         side1Team,
         side2Team,
@@ -1042,8 +1669,8 @@ describe("StageService", () => {
       expect(byKey.get("gf").section).toBe("finals");
       expect(byKey.get("gf").label).toBe("Grand Finals");
 
-      expect(result.seeding.method).toBe("certified-random");
-      expect(result.seeding.timesSeeded).toBe(1);
+      expect(result.seeding?.method).toBe("certified-random");
+      expect(result.seeding?.timesSeeded).toBe(1);
       expect(result.seedOrder).toEqual(poolIds);
       expect(Object.keys(result.matchIds).sort()).toEqual([
         "gf",
@@ -1070,6 +1697,189 @@ describe("StageService", () => {
       expect(stage.seedingLog[0].inputTeamsHash).toBeUndefined();
     });
 
+    describe("seed groups", () => {
+      const groupTeamIds = Array.from({ length: 4 }, () =>
+        new Types.ObjectId().toString(),
+      );
+
+      /** Two independent 2-team sections, each owning half the seed numbers. */
+      const groupedDto = (
+        methods: ["certified-random" | "manual", "certified-random" | "manual"],
+      ) =>
+        ({
+          seedGroups: [
+            {
+              teamIds: groupTeamIds.slice(0, 2),
+              method: methods[0],
+              label: "Group A",
+            },
+            {
+              teamIds: groupTeamIds.slice(2),
+              method: methods[1],
+              label: "Group B",
+            },
+          ],
+          rounds: [{ name: "Group A — Round 1" }, { name: "Group B — Round 1" }],
+          sections: [
+            { key: "group-a--rr", kind: "round-robin", label: "Group A" },
+            { key: "group-b--rr", kind: "round-robin", label: "Group B" },
+          ],
+          matches: [
+            {
+              key: "a",
+              roundIndex: 0,
+              section: "group-a--rr",
+              a: { type: "seed", seed: 1 },
+              b: { type: "seed", seed: 2 },
+            },
+            {
+              key: "b",
+              roundIndex: 1,
+              section: "group-b--rr",
+              a: { type: "seed", seed: 3 },
+              b: { type: "seed", seed: 4 },
+            },
+          ],
+        }) as any;
+
+      function setupGroupedStage() {
+        const tournamentId = new Types.ObjectId();
+        hostedTournamentRepo.findBySlug.mockResolvedValue(
+          buildTournament({ id: tournamentId.toString() }),
+        );
+        const stage = buildStage({ tournamentId, type: "custom" });
+        stageRepo.findById.mockResolvedValue(stage);
+        // Answer with whatever was asked for: a team entering two sections is
+        // looked up once, so a fixed list would report a phantom missing team.
+        teamRepo.findManyByIds.mockImplementation(async (ids: any) =>
+          (ids as Types.ObjectId[]).map((id) =>
+            buildTeam({ _id: new Types.ObjectId(id.toString()) }),
+          ),
+        );
+        return stage;
+      }
+
+      it("shuffles a random group only among its own teams", async () => {
+        const stage = setupGroupedStage();
+
+        const result = await service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupedDto(["certified-random", "manual"]),
+        );
+
+        // The random group may land in either order, but never crosses into
+        // the other group's seeds — that is the whole point of grouping.
+        expect(result.seedOrder.slice(0, 2).sort()).toEqual(
+          groupTeamIds.slice(0, 2).sort(),
+        );
+        // The manual group keeps the submitted order verbatim.
+        expect(result.seedOrder.slice(2)).toEqual(groupTeamIds.slice(2));
+      });
+
+      it("logs one seeding entry per group, tagged with its seed range", async () => {
+        const stage = setupGroupedStage();
+
+        await service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupedDto(["certified-random", "manual"]),
+        );
+
+        expect(stage.seedingLog).toHaveLength(2);
+        expect(stage.seedingLog[0]).toMatchObject({
+          method: "certified-random",
+          label: "Group A",
+          seedFrom: 1,
+          seedTo: 2,
+        });
+        expect(stage.seedingLog[1]).toMatchObject({
+          method: "manual",
+          label: "Group B",
+          seedFrom: 3,
+          seedTo: 4,
+        });
+      });
+
+      it("counts one generation, not one per group", async () => {
+        setupGroupedStage();
+
+        const result = await service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupedDto(["certified-random", "manual"]),
+        );
+
+        expect(result.seeding?.timesSeeded).toBe(1);
+        expect(result.seeding?.method).toBe("mixed");
+        expect(result.seeding?.groups).toHaveLength(2);
+      });
+
+      it("persists the section metadata", async () => {
+        const stage = setupGroupedStage();
+
+        await service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupedDto(["manual", "manual"]),
+        );
+
+        expect(stage.sections).toEqual([
+          { key: "group-a--rr", kind: "round-robin", label: "Group A" },
+          { key: "group-b--rr", kind: "round-robin", label: "Group B" },
+        ]);
+      });
+
+      it("lets a team enter two groups, giving it a seed in each", async () => {
+        const stage = setupGroupedStage();
+        const dto = groupedDto(["manual", "manual"]);
+        // The same team plays in group A and again in group B.
+        dto.seedGroups[1].teamIds[0] = groupTeamIds[0];
+
+        const result = await service.generateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dto,
+        );
+
+        // Seeds are positional, so the repeat occupies its own seed number
+        // rather than collapsing onto the first one.
+        const seedOrder = result.seedOrder;
+        expect(seedOrder.length).toBe(
+          dto.seedGroups.flatMap((g: any) => g.teamIds).length,
+        );
+        expect(seedOrder.filter((id) => id === groupTeamIds[0]).length).toBe(2);
+        expect(stage.pools.flatMap((p: any) => p.teamIds)).toEqual(seedOrder);
+        expect(matchupRepo.createMany).toHaveBeenCalled();
+      });
+
+      it("rejects an empty group", async () => {
+        setupGroupedStage();
+        const dto = groupedDto(["manual", "manual"]);
+        dto.seedGroups[1].teamIds = [];
+
+        await expect(
+          service.generateBracket(
+            "league-1",
+            "tournament-1",
+            "stage-1",
+            "auth0|owner",
+            dto,
+          ),
+        ).rejects.toMatchObject({ code: "STG-004" });
+      });
+    });
+
     it("rejects when the stage already has matchups", async () => {
       setupBracketStage();
       (matchupRepo.countByStage as jest.Mock).mockResolvedValue(4);
@@ -1086,7 +1896,9 @@ describe("StageService", () => {
       expect(matchupRepo.createMany).not.toHaveBeenCalled();
     });
 
-    it("rejects a stage type that does not take a bracket", async () => {
+    it("accepts a round-robin stage", async () => {
+      // A group stage is authored as one section of the same structure, so
+      // its matchups come through the bracket endpoints like any other.
       const stage = setupBracketStage();
       stage.type = "round-robin";
 
@@ -1096,9 +1908,9 @@ describe("StageService", () => {
           "tournament-1",
           "stage-1",
           "auth0|owner",
-          bracketDto("certified-random"),
+          bracketDto("manual"),
         ),
-      ).rejects.toMatchObject({ code: "STG-004" });
+      ).resolves.toMatchObject({ message: "Bracket generated." });
     });
 
     it("rejects invalid wiring with the structural reasons", async () => {
@@ -1226,6 +2038,463 @@ describe("StageService", () => {
       expect(matchupRepo.deleteByStage).toHaveBeenCalledWith(stage._id);
       expect(stage.seedingLog).toHaveLength(1);
       expect(result).toEqual({ message: "Deleted 4 matchups." });
+    });
+  });
+
+  describe("updateBracket", () => {
+    const teamIds = [
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+    ];
+
+    /** A stage mid-season: two rounds, one played matchup, already seeded. */
+    function setupRunningStage(
+      options: { withResults?: boolean; type?: string } = {},
+    ) {
+      const tournamentId = new Types.ObjectId();
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: tournamentId.toString() }),
+      );
+
+      const roundIds = [new Types.ObjectId(), new Types.ObjectId()];
+      const stage = buildStage({
+        tournamentId,
+        type: options.type ?? "double-elimination",
+        rounds: [
+          { _id: roundIds[0], name: "Week 1" },
+          { _id: roundIds[1], name: "Week 2" },
+        ],
+        pools: [
+          {
+            poolKey: "bracket",
+            name: "Bracket",
+            teamIds: teamIds.map((id) => new Types.ObjectId(id)),
+          },
+        ],
+        seedingLog: [
+          {
+            method: "certified-random",
+            seededAt: new Date(),
+            seededBy: "auth0|owner",
+            seedFrom: 1,
+            seedTo: 2,
+          },
+        ],
+        currentRoundIndex: 1,
+      });
+      // Rounds already carry _ids here, so `set` must not re-mint them.
+      stage.set = jest.fn((key: string, value: unknown) => {
+        stage[key] = value;
+      });
+      stageRepo.findById.mockResolvedValue(stage);
+
+      const matchupId = new Types.ObjectId();
+      // The stage is under way, so its draw is in force.
+      (matchupRepo.countByStage as jest.Mock).mockResolvedValue(1);
+      teamRepo.findManyByIds.mockImplementation(async (ids: any) =>
+        (ids as Types.ObjectId[]).map((id) =>
+          buildTeam({ _id: new Types.ObjectId(id.toString()) }),
+        ),
+      );
+      (matchupRepo.findStructureByStage as jest.Mock).mockResolvedValue([
+        {
+          _id: matchupId,
+          round: roundIds[0],
+          section: "winners",
+          position: 0,
+          side1: {
+            slot: { type: "seed", seed: 1 },
+            team: new Types.ObjectId(teamIds[0]),
+          },
+          side2: {
+            slot: { type: "seed", seed: 2 },
+            team: new Types.ObjectId(teamIds[1]),
+          },
+          results: options.withResults ? [{ winner: "side1" }] : [],
+          winner: options.withResults ? "side1" : undefined,
+        },
+      ]);
+
+      return { stage, roundIds, matchupId };
+    }
+
+    const dtoFor = (
+      matchupId: Types.ObjectId,
+      roundIds: Types.ObjectId[],
+      over: Record<string, unknown> = {},
+    ) =>
+      ({
+        rounds: [
+          { _id: roundIds[0].toString(), name: "Week 1" },
+          { _id: roundIds[1].toString(), name: "Week 2" },
+        ],
+        sections: [{ key: "winners", kind: "winners" }],
+        matches: [
+          {
+            _id: matchupId.toString(),
+            key: "w1-0",
+            roundIndex: 0,
+            section: "winners",
+            position: 0,
+            a: { type: "seed", seed: 1 },
+            b: { type: "seed", seed: 2 },
+          },
+        ],
+        ...over,
+      }) as any;
+
+    it("adds a round without disturbing a played matchup", async () => {
+      const { stage, roundIds, matchupId } = setupRunningStage({
+        withResults: true,
+      });
+
+      const dto = dtoFor(matchupId, roundIds, {
+        rounds: [
+          { _id: roundIds[0].toString(), name: "Week 1" },
+          { _id: roundIds[1].toString(), name: "Week 2" },
+          { name: "Week 3" },
+        ],
+      });
+      await service.updateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        dto,
+      );
+
+      // The two existing rounds keep their ids; only the third is new.
+      expect(stage.rounds.map((r: any) => r._id.toString())).toEqual([
+        roundIds[0].toString(),
+        roundIds[1].toString(),
+        expect.any(String),
+      ]);
+      expect(stage.rounds[2].name).toBe("Week 3");
+
+      const diff = (matchupRepo.applyStructureDiff as jest.Mock).mock
+        .calls[0][0];
+      expect(diff.deletes).toEqual([]);
+      expect(diff.creates).toEqual([]);
+      // The played matchup is only re-placed — no results field is written.
+      expect(diff.updates).toHaveLength(1);
+      expect(Object.keys(diff.updates[0].set)).not.toContain("results");
+    });
+
+    it("refuses to delete a matchup that already has results", async () => {
+      const { roundIds } = setupRunningStage({ withResults: true });
+
+      await expect(
+        service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          // The played matchup is simply absent from the payload.
+          dtoFor(new Types.ObjectId(), roundIds, {
+            matches: [
+              {
+                key: "new",
+                roundIndex: 0,
+                section: "winners",
+                position: 0,
+                a: { type: "seed", seed: 1 },
+                b: { type: "seed", seed: 2 },
+              },
+            ],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "STG-004" });
+      expect(matchupRepo.applyStructureDiff).not.toHaveBeenCalled();
+    });
+
+    it("removes an unplayed matchup", async () => {
+      const { roundIds, matchupId } = setupRunningStage();
+
+      await service.updateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        dtoFor(matchupId, roundIds, {
+          matches: [
+            {
+              key: "new",
+              roundIndex: 0,
+              section: "winners",
+              position: 0,
+              a: { type: "seed", seed: 1 },
+              b: { type: "seed", seed: 2 },
+            },
+          ],
+        }),
+      );
+
+      const diff = (matchupRepo.applyStructureDiff as jest.Mock).mock
+        .calls[0][0];
+      expect(diff.deletes.map(String)).toEqual([matchupId.toString()]);
+      expect(diff.creates).toHaveLength(1);
+    });
+
+    it("lets a stage whose matchups were deleted be seeded afresh", async () => {
+      // deleteBracket clears matchups but keeps the pool it drew from, so the
+      // stage still looks seeded. Rebuilding it is a new draw, not a re-roll
+      // of one in force — the seedingLog is what records that it happened.
+      const { stage, roundIds, matchupId } = setupRunningStage();
+      (matchupRepo.findStructureByStage as jest.Mock).mockResolvedValue([]);
+      (matchupRepo.countByStage as jest.Mock).mockResolvedValue(0);
+
+      await expect(
+        service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dtoFor(matchupId, roundIds, {
+            // A different order than the pool holds — legal now the old
+            // bracket is gone.
+            seedGroups: [
+              { teamIds: [teamIds[1], teamIds[0]], method: "manual" },
+            ],
+          }),
+        ),
+      ).resolves.toMatchObject({ seedOrder: [teamIds[1], teamIds[0]] });
+      expect(stage.pools[0].teamIds).toEqual([teamIds[1], teamIds[0]]);
+    });
+
+    it("refuses a seeding that would re-draw an existing one", async () => {
+      const { roundIds, matchupId } = setupRunningStage();
+
+      await expect(
+        service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dtoFor(matchupId, roundIds, {
+            // Same teams, opposite order — a re-roll of a certified draw.
+            seedGroups: [
+              { teamIds: [teamIds[1], teamIds[0]], method: "manual" },
+            ],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "STG-006" });
+    });
+
+    it("appends new teams manually, keeping the original draw", async () => {
+      const { stage, roundIds, matchupId } = setupRunningStage();
+      const added = new Types.ObjectId().toString();
+      teamRepo.findManyByIds.mockResolvedValue(
+        [...teamIds, added].map((id) =>
+          buildTeam({ _id: new Types.ObjectId(id) }),
+        ),
+      );
+
+      await service.updateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        dtoFor(matchupId, roundIds, {
+          seedGroups: [
+            { teamIds: [...teamIds, added], method: "certified-random" },
+          ],
+          // An added team has to enter the bracket somewhere; seed 3 would
+          // otherwise fail structure validation.
+          matches: [
+            {
+              _id: matchupId.toString(),
+              key: "w1-0",
+              roundIndex: 0,
+              section: "winners",
+              position: 0,
+              a: { type: "seed", seed: 1 },
+              b: { type: "seed", seed: 2 },
+            },
+            {
+              key: "w2-0",
+              roundIndex: 1,
+              section: "winners",
+              position: 0,
+              a: { type: "seed", seed: 3 },
+              b: { type: "winner", from: "w1-0" },
+            },
+          ],
+        }),
+      );
+
+      expect(stage.pools[0].teamIds.map(String)).toEqual([...teamIds, added]);
+      // The appended team is seeded manually even though the group asked for
+      // random — a second draw would be a re-roll of the first.
+      expect(stage.seedingLog).toHaveLength(2);
+      expect(stage.seedingLog[1]).toMatchObject({
+        method: "manual",
+        seedFrom: 3,
+        seedTo: 3,
+      });
+    });
+
+    it("keeps the stage on the same round after an edit shifts indices", async () => {
+      const { stage, roundIds, matchupId } = setupRunningStage();
+
+      await service.updateBracket(
+        "league-1",
+        "tournament-1",
+        "stage-1",
+        "auth0|owner",
+        dtoFor(matchupId, roundIds, {
+          rounds: [
+            { name: "New Opener" },
+            { _id: roundIds[0].toString(), name: "Week 1" },
+            { _id: roundIds[1].toString(), name: "Week 2" },
+          ],
+          matches: [
+            {
+              _id: matchupId.toString(),
+              key: "w1-0",
+              roundIndex: 1,
+              section: "winners",
+              position: 0,
+              a: { type: "seed", seed: 1 },
+              b: { type: "seed", seed: 2 },
+            },
+          ],
+        }),
+      );
+
+      // Was index 1 (Week 2); a round inserted ahead of it makes that index 2.
+      expect(stage.currentRoundIndex).toBe(2);
+    });
+
+    it("accepts a round-robin stage", async () => {
+      const { roundIds, matchupId } = setupRunningStage({
+        type: "round-robin",
+      });
+
+      await expect(
+        service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dtoFor(matchupId, roundIds),
+        ),
+      ).resolves.toMatchObject({ seedOrder: teamIds });
+    });
+
+    describe("pools", () => {
+      /** Four teams, two sections, each with its own pool key. */
+      function setupTwoGroups() {
+        const { stage, roundIds } = setupRunningStage();
+        const extra = [
+          new Types.ObjectId().toString(),
+          new Types.ObjectId().toString(),
+        ];
+        const all = [...teamIds, ...extra];
+        stage.pools = [
+          {
+            poolKey: "bracket",
+            name: "Bracket",
+            teamIds: all.map((id) => new Types.ObjectId(id)),
+          },
+        ];
+        (matchupRepo.findStructureByStage as jest.Mock).mockResolvedValue([]);
+        return { stage, roundIds, all };
+      }
+
+      const groupDto = (roundIds: Types.ObjectId[], seeds: number[][]) =>
+        ({
+          rounds: [{ _id: roundIds[0].toString(), name: "Week 1" }],
+          sections: [
+            { key: "a", kind: "round-robin", poolKey: "group-a", title: "A" },
+            { key: "b", kind: "round-robin", poolKey: "group-b", title: "B" },
+          ],
+          matches: [
+            {
+              key: "a1",
+              roundIndex: 0,
+              section: "a",
+              position: 0,
+              a: { type: "seed", seed: seeds[0][0] },
+              b: { type: "seed", seed: seeds[0][1] },
+            },
+            {
+              key: "b1",
+              roundIndex: 0,
+              section: "b",
+              position: 0,
+              a: { type: "seed", seed: seeds[1][0] },
+              b: { type: "seed", seed: seeds[1][1] },
+            },
+          ],
+        }) as any;
+
+      it("splits the seed order into one pool per section pool key", async () => {
+        const { stage, roundIds, all } = setupTwoGroups();
+
+        await service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupDto(roundIds, [
+            [1, 2],
+            [3, 4],
+          ]),
+        );
+
+        expect(stage.pools.map((p: any) => p.poolKey)).toEqual([
+          "group-a",
+          "group-b",
+        ]);
+        expect(stage.pools[0].teamIds).toEqual(all.slice(0, 2));
+        expect(stage.pools[1].teamIds).toEqual(all.slice(2));
+        // Flattening the pools must reproduce the seed order exactly.
+        expect(stage.pools.flatMap((p: any) => p.teamIds)).toEqual(all);
+      });
+
+      it("keeps one pool when the derived ranges would interleave", async () => {
+        const { stage, roundIds, all } = setupTwoGroups();
+
+        // Group A takes seeds 1 and 3, group B takes 2 and 4 — splitting these
+        // into pools would renumber every seed on flatten.
+        await service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          groupDto(roundIds, [
+            [1, 3],
+            [2, 4],
+          ]),
+        );
+
+        expect(stage.pools).toHaveLength(1);
+        expect(stage.pools[0].poolKey).toBe("bracket");
+        expect(stage.pools[0].teamIds).toEqual(all);
+      });
+
+      it("keeps one pool when no section names a pool", async () => {
+        const { stage, roundIds, all } = setupTwoGroups();
+        const dto = groupDto(roundIds, [
+          [1, 2],
+          [3, 4],
+        ]);
+        dto.sections = dto.sections.map((s: any) => ({
+          ...s,
+          poolKey: undefined,
+        }));
+
+        await service.updateBracket(
+          "league-1",
+          "tournament-1",
+          "stage-1",
+          "auth0|owner",
+          dto,
+        );
+
+        expect(stage.pools).toHaveLength(1);
+        expect(stage.pools[0].teamIds).toEqual(all);
+      });
     });
   });
 });

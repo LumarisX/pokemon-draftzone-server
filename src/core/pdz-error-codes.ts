@@ -175,6 +175,13 @@ export const ErrorCodes = {
       message:
         "This stage's seeding is certified-random and can no longer be changed",
     },
+    SCHEDULE_IS_TOURNAMENT_WIDE: {
+      code: "STG-007",
+      status: 409,
+      message:
+        "This tournament's rounds and trades are shared by all its stages, " +
+        "and are edited on the tournament rather than on one stage",
+    },
   },
   SYSTEM: {
     NO_CONTEXT: {

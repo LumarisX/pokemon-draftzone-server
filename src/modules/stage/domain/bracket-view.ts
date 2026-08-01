@@ -1,5 +1,51 @@
 import { Types } from "mongoose";
-import { StageDocument } from "../stage.schema";
+import { StageDocument, StageSeedingEntity } from "../stage.schema";
+import { RoundLike, stageTeamIds } from "./stage-axis";
+
+/**
+ * Collapses the seeding log into a summary of the most recent generation.
+ *
+ * A bracket composed of several sections seeds each one separately, so one
+ * generation writes several entries — all sharing its `seededAt`. Grouping by
+ * that timestamp is what keeps "randomized N times" counting generations
+ * rather than sections.
+ */
+export function summarizeSeeding(seedingLog: StageSeedingEntity[]) {
+  if (seedingLog.length === 0) return null;
+
+  const stamps = [...new Set(seedingLog.map((e) => e.seededAt.getTime()))].sort(
+    (a, b) => a - b,
+  );
+  const latest = stamps[stamps.length - 1];
+  const groups = seedingLog.filter((e) => e.seededAt.getTime() === latest);
+
+  const allRandom = groups.every((g) => g.method === "certified-random");
+  const allManual = groups.every((g) => g.method === "manual");
+
+  return {
+    method: allRandom
+      ? ("certified-random" as const)
+      : allManual
+        ? ("manual" as const)
+        : ("mixed" as const),
+    seededAt: groups[0].seededAt,
+    // Only meaningful for a whole-bracket shuffle; per-section hashes live on
+    // the group entries below.
+    inputTeamsHash:
+      groups.length === 1 ? (groups[0].inputTeamsHash ?? null) : null,
+    algorithmVersion:
+      groups.length === 1 ? (groups[0].algorithmVersion ?? null) : null,
+    timesSeeded: stamps.length,
+    groups: groups.map((g) => ({
+      method: g.method,
+      label: g.label ?? null,
+      seedFrom: g.seedFrom ?? null,
+      seedTo: g.seedTo ?? null,
+      inputTeamsHash: g.inputTeamsHash ?? null,
+      algorithmVersion: g.algorithmVersion ?? null,
+    })),
+  };
+}
 
 interface BracketTeamDoc {
   _id: Types.ObjectId;
@@ -34,12 +80,17 @@ function mapSlot(slot: BracketSlotDoc | undefined) {
     : { type: slot.type, from: slot.matchId };
 }
 
+/**
+ * @param rounds The axis to render against. Passed in rather than read off the
+ *   stage because rounds moved to the tournament — see `stageRounds()`.
+ */
 export function buildBracketView(
   stage: StageDocument,
   matchups: BracketMatchupDoc[],
   teamDocs: BracketTeamDoc[],
+  rounds: RoundLike[],
 ) {
-  const teamObjIds = stage.pools.flatMap((pool) => pool.teamIds);
+  const teamObjIds = stageTeamIds(stage);
   const teams = teamObjIds
     .map((teamId, idx) => {
       const teamDoc = teamDocs.find(
@@ -57,27 +108,28 @@ export function buildBracketView(
     .filter((t): t is NonNullable<typeof t> => t !== null);
 
   const roundIdToName = new Map(
-    stage.rounds.map((round) => [round._id.toString(), round.name]),
+    rounds.map((round) => [round._id.toString(), round.name]),
   );
-
-  const latestSeeding = stage.seedingLog[stage.seedingLog.length - 1];
 
   return {
     format: stage.type,
-    seeding: latestSeeding
-      ? {
-          method: latestSeeding.method,
-          seededAt: latestSeeding.seededAt,
-          inputTeamsHash: latestSeeding.inputTeamsHash ?? null,
-          algorithmVersion: latestSeeding.algorithmVersion ?? null,
-          timesSeeded: stage.seedingLog.length,
-        }
-      : null,
+    seeding: summarizeSeeding(stage.seedingLog),
     teams,
-    rounds: stage.rounds.map((round) => ({
+    sections: (stage.sections ?? []).map((section) => ({
+      key: section.key,
+      title: section.title ?? null,
+      kind: section.kind ?? null,
+      label: section.label ?? null,
+      order: section.order ?? 0,
+      teamCount: section.teamCount ?? null,
+      roundTitles: section.roundTitles ?? null,
+    })),
+    rounds: rounds.map((round) => ({
       _id: round._id.toString(),
       name: round.name,
       matchDeadline: round.matchDeadline ?? null,
+      tradeDeadline: round.tradeDeadline ?? null,
+      bestOf: round.bestOf ?? null,
     })),
     matches: matchups.map((matchup) => ({
       _id: matchup._id.toString(),

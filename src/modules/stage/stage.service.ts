@@ -6,8 +6,12 @@ import {
   MatchupSide,
 } from "@modules/matchup/sub-modules/external-matchup/external-matchup.domain";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
-import { PokemonResultStatsEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
+import {
+  LeagueMatchupEntity,
+  PokemonResultStatsEntity,
+} from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
+import { isCoachedBy } from "@modules/team/team.domain";
 import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -15,13 +19,22 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
-import {
-  BracketMatchInput,
-  certifiedRandomSeedOrder,
-  validateBracketStructure,
-} from "./domain/bracket";
-import { buildBracketView } from "./domain/bracket-view";
+import { BracketMatchInput, validateBracketStructure } from "./domain/bracket";
+import { resolveSeedGroups } from "./domain/seeding";
+import { assertTradePointsWithinLimit } from "./domain/trades";
+import { buildBracketView, summarizeSeeding } from "./domain/bracket-view";
 import { getRosterByRound } from "./domain/roster";
+import { scheduleMatchups } from "./domain/schedule-view";
+import {
+  currentRoundIndex,
+  RoundLike,
+  rosterContext,
+  stageRounds,
+  stageTeamIds,
+  stageTrades,
+  TradeLike,
+  usesTournamentAxis,
+} from "./domain/stage-axis";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -34,16 +47,88 @@ import {
   MakeTradeDto,
   SetCurrentRoundDto,
   SetStagePoolsDto,
+  SetTradeStatusDto,
+  UpdateBracketDto,
   UpdateMatchupDto,
+  UpdateStageDto,
 } from "./stage.dto";
 import { StageRepository } from "./stage.repository";
-import { StageDocument, StageTradeSideEntity } from "./stage.schema";
+import {
+  StageDocument,
+  StageTradeEntity,
+  StageTradeSideEntity,
+} from "./stage.schema";
 
-const BRACKET_STAGE_TYPES: StageDocument["type"][] = [
-  "single-elimination",
-  "double-elimination",
-  "custom",
-];
+// Every stage type now authors its matchups through the bracket endpoints:
+// the builder treats a round-robin group as one section of the same
+// structure, so a stage may hold a group and a knockout side by side. The
+// former BRACKET_STAGE_TYPES gate is gone — with all five types allowed it
+// could never fire, and StageDocument["type"] is already the closed union.
+
+/**
+ * Splits the stage's seed order into one pool per section pool key, so each
+ * group gets its own standings table.
+ *
+ * A pool's teams are whichever seeds its sections actually use, which is why
+ * sections that share a pool key (a winners/losers pair, whose losers side
+ * enters by reference rather than by seed) end up in one table.
+ *
+ * The flattened pools must reproduce the seed order exactly — `buildBracketView`
+ * numbers seeds by position in that flattened list. So if the derived pools
+ * would interleave, this falls back to a single pool rather than quietly
+ * renumbering every seed in the bracket.
+ */
+function derivePools(
+  dto: UpdateBracketDto,
+  seedOrder: string[],
+): { poolKey: string; name: string; teamIds: string[] }[] {
+  const single = [
+    { poolKey: "bracket", name: "Bracket", teamIds: seedOrder },
+  ];
+  const sectionByKey = new Map(
+    (dto.sections ?? []).map((section) => [section.key, section]),
+  );
+
+  // seed number → pool key, via the section the seed enters through.
+  const poolBySeed = new Map<number, string>();
+  for (const match of dto.matches) {
+    const section = sectionByKey.get(match.section ?? "main");
+    const poolKey = section?.poolKey;
+    if (!poolKey) continue;
+    for (const slot of [match.a, match.b]) {
+      if (slot.type === "seed" && slot.seed !== undefined)
+        poolBySeed.set(slot.seed, poolKey);
+    }
+  }
+  if (poolBySeed.size === 0) return single;
+
+  const order: string[] = [];
+  const teamsByPool = new Map<string, string[]>();
+  for (let seed = 1; seed <= seedOrder.length; seed++) {
+    // A seed no section claims (byes, teams wired in only by reference) stays
+    // with whichever pool preceded it, keeping the ranges contiguous.
+    const poolKey =
+      poolBySeed.get(seed) ?? order[order.length - 1] ?? "bracket";
+    if (!teamsByPool.has(poolKey)) {
+      order.push(poolKey);
+      teamsByPool.set(poolKey, []);
+    } else if (order[order.length - 1] !== poolKey) {
+      // This pool's seeds are split by another pool's — flattening would
+      // reorder them and shift every seed after the break.
+      return single;
+    }
+    teamsByPool.get(poolKey)!.push(seedOrder[seed - 1]);
+  }
+
+  const nameOf = (poolKey: string) =>
+    (dto.sections ?? []).find((s) => s.poolKey === poolKey)?.title ?? poolKey;
+
+  return order.map((poolKey) => ({
+    poolKey,
+    name: nameOf(poolKey),
+    teamIds: teamsByPool.get(poolKey)!,
+  }));
+}
 
 @Injectable()
 export class StageService {
@@ -62,6 +147,67 @@ export class StageService {
   private assertOrganizer(tournament: HostedTournament, sub: string) {
     if (!this.isOrganizer(tournament, sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+  }
+
+  /**
+   * Loads a stage, refusing to reveal a hidden one to anyone but an organizer.
+   * Throws NOT_FOUND rather than FORBIDDEN so a hidden stage's existence isn't
+   * leaked to whoever guessed its id.
+   */
+  private async findVisibleStage(
+    stageId: string,
+    sub?: string,
+  ): Promise<StageDocument> {
+    const stage = await this.stageRepo.findById(stageId);
+    // Only an explicit `false` hides a stage: documents written before this
+    // field existed carry no value, and those must stay visible.
+    if (stage.public !== false) return stage;
+    if (sub) {
+      const tournament = await this.hostedTournamentRepo.findById(
+        stage.tournamentId,
+      );
+      if (this.isOrganizer(tournament, sub)) return stage;
+    }
+    throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+  }
+
+  /**
+   * Refuses a stage-scoped write to something the tournament now owns.
+   *
+   * Rounds, the current round and trades all moved up together. Writing them
+   * to the stage after that would be worse than an error: the bracket
+   * endpoints replace the round list wholesale, so one stage would renumber
+   * every other stage's rounds and orphan their matchups, while a trade or a
+   * round advance would vanish — the read path prefers the tournament's copy
+   * and would never look at what was just written.
+   *
+   * Every one of these has a tournament-level endpoint as its replacement.
+   */
+  private assertStageOwnsItsSchedule(
+    tournament: HostedTournament,
+    stageId: string,
+  ) {
+    if (usesTournamentAxis(tournament))
+      throw new PDZError(ErrorCodes.STAGE.SCHEDULE_IS_TOURNAMENT_WIDE, {
+        stageId,
+        tournamentId: tournament.id,
+      });
+  }
+
+  /**
+   * The tournament a stage belongs to, or null if it cannot be loaded.
+   *
+   * Reads need it for the round axis, which moved off the stage. Null rather
+   * than a throw because every caller falls back to the stage's own legacy
+   * fields, so a tournament that cannot be read degrades to the old behaviour
+   * instead of failing the request.
+   */
+  private async axisTournament(
+    stage: StageDocument,
+  ): Promise<HostedTournament | null> {
+    return this.hostedTournamentRepo
+      .findById(stage.tournamentId.toString())
+      .catch(() => null);
   }
 
   private async composeStageTeams(stage: StageDocument): Promise<
@@ -91,24 +237,51 @@ export class StageService {
       order: dto.order,
       name: dto.name,
       type: dto.type as StageDocument["type"],
+      public: dto.public,
       rounds: dto.rounds,
     });
   }
 
+  async setVisibility(
+    leagueSlug: string,
+    tournamentSlug: string,
+    stageId: string,
+    sub: string,
+    dto: UpdateStageDto,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    if (!stageDoc.tournamentId.equals(tournament.id))
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+
+    const stage = await this.stageRepo.setPublic(stageId, dto.public);
+    return { message: stage.public ? "Stage is visible." : "Stage is hidden." };
+  }
+
   /** Lightweight ordered list for the client's stage switcher. */
-  async listStages(leagueSlug: string, tournamentSlug: string) {
+  async listStages(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
     const stages = await this.stageRepo.findAllByTournament(tournament.id);
-    return stages.map((stage) => ({
-      _id: stage._id.toString(),
-      name: stage.name,
-      type: stage.type,
-      order: stage.order,
-      currentRoundIndex: stage.currentRoundIndex,
-    }));
+    const canSeeHidden = sub ? this.isOrganizer(tournament, sub) : false;
+
+    return stages
+      .filter((stage) => stage.public !== false || canSeeHidden)
+      .map((stage) => ({
+        _id: stage._id.toString(),
+        name: stage.name,
+        type: stage.type,
+        order: stage.order,
+        currentRoundIndex: stage.currentRoundIndex,
+        public: stage.public !== false,
+      }));
   }
 
   async setPools(
@@ -167,22 +340,29 @@ export class StageService {
       tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
+    this.assertStageOwnsItsSchedule(tournament, stageId);
 
     return this.stageRepo.setCurrentRoundIndex(stageId, dto.currentRoundIndex);
   }
 
-  /** Stage-scoped bracket read; tolerant of a stage with no pools/matchups yet. */
-  async getBracket(stageId: string) {
-    const stageDoc = await this.stageRepo.findById(stageId);
-    const matchups = await this.matchupRepo.findByRounds(
-      stageDoc.rounds.map((round) => round._id),
+  /** Stage-scoped bracket read; tolerant of a stage with no teams/matchups yet. */
+  async getBracket(stageId: string, sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageId, sub);
+    const tournament = await this.axisTournament(stageDoc);
+    const rounds = stageRounds(stageDoc, tournament ?? undefined);
+    // Scoped to the stage as well as the rounds: on a tournament-wide axis the
+    // rounds are shared, so matching on round alone would pull in every other
+    // stage's matchups.
+    const matchups = await this.matchupRepo.findByRoundsInStage(
+      stageDoc._id,
+      rounds.map((round) => round._id),
     );
-    const teamObjIds = stageDoc.pools.flatMap((pool) => pool.teamIds);
+    const teamObjIds = stageTeamIds(stageDoc);
     const teamDocs =
       teamObjIds.length > 0
         ? await this.teamRepo.findManyByIds(teamObjIds)
         : [];
-    return buildBracketView(stageDoc, matchups, teamDocs);
+    return buildBracketView(stageDoc, matchups, teamDocs, rounds);
   }
 
   /**
@@ -197,6 +377,27 @@ export class StageService {
    * the submitted order but is labeled as organizer-seeded in the bracket
    * view. Every seeding is appended to the stage's permanent seedingLog.
    */
+  /**
+   * Draws the stage's seed order and records it on the stage's permanent
+   * seedingLog. The draw itself lives in `domain/seeding.ts`, shared with the
+   * tournament-scoped bracket path so there is only ever one implementation of
+   * a certified-random shuffle.
+   */
+  private resolveSeedGroups(
+    stageDoc: StageDocument,
+    seedGroups: { teamIds: string[]; method: string; label?: string }[],
+    sub: string,
+    seedBase = 0,
+  ): string[] {
+    const { seedOrder, logEntries } = resolveSeedGroups(
+      seedGroups,
+      sub,
+      seedBase,
+    );
+    stageDoc.seedingLog.push(...logEntries);
+    return seedOrder;
+  }
+
   async generateBracket(
     leagueSlug: string,
     tournamentSlug: string,
@@ -213,37 +414,49 @@ export class StageService {
     const stageDoc = await this.stageRepo.findById(stageId);
     if (!stageDoc.tournamentId.equals(tournament.id))
       throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-
-    if (!BRACKET_STAGE_TYPES.includes(stageDoc.type))
-      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
-        reason: `Stage type "${stageDoc.type}" does not take a generated bracket`,
-      });
+    this.assertStageOwnsItsSchedule(tournament, stageId);
 
     if ((await this.matchupRepo.countByStage(stageDoc._id)) > 0)
       throw new PDZError(ErrorCodes.STAGE.MATCHUPS_EXIST, { stageId });
 
-    const teamIds = dto.teamIds;
+    // The flat seedingMethod/teamIds pair is the single-group form of
+    // seedGroups; normalize so the rest of this method only sees groups.
+    const seedGroups = dto.seedGroups?.length
+      ? dto.seedGroups
+      : [
+          {
+            teamIds: dto.teamIds ?? [],
+            method: dto.seedingMethod ?? "manual",
+            label: undefined as string | undefined,
+          },
+        ];
+    if (seedGroups.some((group) => group.teamIds.length === 0))
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: "A seed group must contain at least one team",
+      });
+
+    const teamIds = seedGroups.flatMap((group) => group.teamIds);
     if (teamIds.length < 2)
       throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
         reason: "A bracket needs at least 2 teams",
       });
-    if (new Set(teamIds).size !== teamIds.length)
-      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
-        reason: "Duplicate team ids in participant list",
-      });
+    // A team may enter several sections — a group stage feeding a playoff
+    // bracket puts the same team in both — so the seed order deliberately
+    // repeats it. Seeds are positional, so each entry gets its own number.
     for (const teamId of teamIds) {
       if (!isValidObjectId(teamId))
         throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
           reason: `Invalid team ID "${teamId}"`,
         });
     }
+    const uniqueTeamIds = [...new Set(teamIds)];
     const teamDocs = await this.teamRepo.findManyByIds(
-      teamIds.map((id) => new Types.ObjectId(id)),
+      uniqueTeamIds.map((id) => new Types.ObjectId(id)),
     );
-    if (teamDocs.length !== teamIds.length) {
+    if (teamDocs.length !== uniqueTeamIds.length) {
       const found = new Set(teamDocs.map((t) => t._id.toString()));
       throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
-        teamId: teamIds.filter((id) => !found.has(id)).join(", "),
+        teamId: uniqueTeamIds.filter((id) => !found.has(id)).join(", "),
       });
     }
 
@@ -255,33 +468,22 @@ export class StageService {
       dto.matches as BracketMatchInput[],
       teamIds.length,
       dto.rounds.length,
+      new Map(
+        (dto.sections ?? []).map((section) => [
+          section.key,
+          section.kind ?? section.key,
+        ]),
+      ),
     );
     if (structureErrors.length > 0)
       throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
         reasons: structureErrors,
       });
 
-    let seedOrder: string[];
-    if (dto.seedingMethod === "certified-random") {
-      const shuffle = certifiedRandomSeedOrder(teamIds);
-      seedOrder = shuffle.seedOrder;
-      stageDoc.seedingLog.push({
-        method: "certified-random",
-        seededAt: new Date(),
-        seededBy: sub,
-        inputTeamsHash: shuffle.inputTeamsHash,
-        algorithmVersion: shuffle.algorithmVersion,
-      });
-    } else {
-      seedOrder = [...teamIds];
-      stageDoc.seedingLog.push({
-        method: "manual",
-        seededAt: new Date(),
-        seededBy: sub,
-      });
-    }
+    const seedOrder = this.resolveSeedGroups(stageDoc, seedGroups, sub);
 
     stageDoc.set("rounds", dto.rounds);
+    stageDoc.set("sections", dto.sections ?? []);
     stageDoc.set("pools", [
       { poolKey: "bracket", name: "Bracket", teamIds: seedOrder },
     ]);
@@ -318,21 +520,328 @@ export class StageService {
       })),
     );
 
-    const seeding = stageDoc.seedingLog[stageDoc.seedingLog.length - 1];
     return {
       message: "Bracket generated.",
-      seeding: {
-        method: seeding.method,
-        seededAt: seeding.seededAt,
-        inputTeamsHash: seeding.inputTeamsHash ?? null,
-        algorithmVersion: seeding.algorithmVersion ?? null,
-        timesSeeded: stageDoc.seedingLog.length,
-      },
+      seeding: summarizeSeeding(stageDoc.seedingLog),
       seedOrder,
       matchIds: Object.fromEntries(
         [...idByKey].map(([key, id]) => [key, id.toString()]),
       ),
     };
+  }
+
+  /**
+   * Applies an edited bracket to a stage that may already be under way.
+   *
+   * Unlike `generateBracket`, this is a diff: rounds and matchups the payload
+   * still lists are updated in place, keeping their ids, so recorded results
+   * and any team already advanced into a slot survive the edit. Two things are
+   * therefore refused rather than done quietly — deleting a matchup that has
+   * results, and re-drawing a seeding that has already happened.
+   */
+  async updateBracket(
+    leagueSlug: string,
+    tournamentSlug: string,
+    stageId: string,
+    sub: string,
+    dto: UpdateBracketDto,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    if (!stageDoc.tournamentId.equals(tournament.id))
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+    this.assertStageOwnsItsSchedule(tournament, stageId);
+
+    if (dto.rounds.length === 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: "Bracket has no rounds",
+      });
+
+    // ── Seeding ──────────────────────────────────────────────────────────────
+    // A stage whose matchups have all been deleted is being rebuilt from
+    // scratch, so its draw is open again — the seedingLog keeps the record of
+    // every draw it has had, which is what makes a re-roll honest rather than
+    // hidden. Only a stage with live matchups has a draw to protect.
+    const liveMatchupCount = await this.matchupRepo.countByStage(stageDoc._id);
+    const seedOrder = await this.resolveUpdatedSeedOrder(
+      stageDoc,
+      dto,
+      sub,
+      liveMatchupCount > 0,
+    );
+
+    // ── Structure validation ─────────────────────────────────────────────────
+    const structureErrors = validateBracketStructure(
+      dto.matches as BracketMatchInput[],
+      seedOrder.length,
+      dto.rounds.length,
+      new Map(
+        (dto.sections ?? []).map((section) => [
+          section.key,
+          section.kind ?? section.key,
+        ]),
+      ),
+    );
+    if (structureErrors.length > 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reasons: structureErrors,
+      });
+
+    // ── Rounds ───────────────────────────────────────────────────────────────
+    // The array's order is the round index, so it is rebuilt in payload order.
+    // A round the payload still carries keeps its `_id`: matchups point at
+    // these subdocuments, and a fresh id would orphan every one of them.
+    const existingRoundIds = new Set(
+      stageDoc.rounds.map((r) => r._id.toString()),
+    );
+    const currentRoundId =
+      stageDoc.rounds[stageDoc.currentRoundIndex]?._id.toString();
+
+    const nextRounds = dto.rounds.map((round) => ({
+      _id:
+        round._id && existingRoundIds.has(round._id)
+          ? new Types.ObjectId(round._id)
+          : new Types.ObjectId(),
+      name: round.name,
+      matchDeadline: round.matchDeadline,
+      tradeDeadline: round.tradeDeadline,
+      bestOf: round.bestOf,
+    }));
+
+    // ── Matches ──────────────────────────────────────────────────────────────
+    const existing = await this.matchupRepo.findStructureByStage(stageDoc._id);
+    const existingById = new Map(existing.map((m) => [m._id.toString(), m]));
+
+    const idByKey = new Map(
+      dto.matches.map((match) => [
+        match.key,
+        match._id && existingById.has(match._id)
+          ? new Types.ObjectId(match._id)
+          : new Types.ObjectId(),
+      ]),
+    );
+
+    const keptIds = new Set(
+      [...idByKey.values()].map((id) => id.toString()),
+    );
+    const removed = existing.filter((m) => !keptIds.has(m._id.toString()));
+    const played = removed.filter((m) => (m.results?.length ?? 0) > 0);
+    if (played.length > 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason:
+          `${played.length} matchup(s) being removed already have recorded ` +
+          "results. Clear the results first, or keep the matchups.",
+      });
+
+    const toSlot = (slot: BracketMatchInput["a"]) =>
+      slot.type === "seed"
+        ? { type: "seed" as const, seed: slot.seed }
+        : { type: slot.type, matchId: idByKey.get(slot.from)!.toString() };
+
+    const sameSlot = (
+      a: { type?: string; seed?: number; matchId?: string } | undefined,
+      b: { type: string; seed?: number; matchId?: string },
+    ): boolean =>
+      a?.type === b.type && a?.seed === b.seed && a?.matchId === b.matchId;
+
+    const creates: (Partial<LeagueMatchupEntity> & { _id: Types.ObjectId })[] =
+      [];
+    const updates: { _id: Types.ObjectId; set: Record<string, unknown> }[] = [];
+
+    for (const match of dto.matches) {
+      const _id = idByKey.get(match.key)!;
+      const prior = existingById.get(_id.toString());
+      const round = nextRounds[match.roundIndex]._id;
+
+      const placement = {
+        round,
+        section: match.section,
+        bracketRound: match.bracketRound,
+        position: match.position,
+        label: match.label,
+      };
+
+      const sides = (["a", "b"] as const).map((key, index) => {
+        const slot = toSlot(match[key] as BracketMatchInput["a"]);
+        const side = index === 0 ? prior?.side1 : prior?.side2;
+        // A seed always names its team outright. A winner/loser slot only has
+        // one once the upstream match is decided — keep whatever was already
+        // resolved, unless the slot now points somewhere else.
+        const team =
+          slot.type === "seed"
+            ? new Types.ObjectId(seedOrder[slot.seed! - 1])
+            : sameSlot(side?.slot, slot)
+              ? side?.team
+              : undefined;
+        return { slot, team };
+      });
+
+      if (!prior) {
+        creates.push({
+          _id,
+          stage: stageDoc._id,
+          ...placement,
+          side1: { slot: sides[0].slot, team: sides[0].team },
+          side2: { slot: sides[1].slot, team: sides[1].team },
+          results: [],
+        } as Partial<LeagueMatchupEntity> & { _id: Types.ObjectId });
+        continue;
+      }
+
+      // Dotted paths so scores, results and notes on the surviving sides are
+      // left exactly as they are.
+      updates.push({
+        _id,
+        set: {
+          ...placement,
+          "side1.slot": sides[0].slot,
+          "side2.slot": sides[1].slot,
+          ...(sides[0].team ? { "side1.team": sides[0].team } : {}),
+          ...(sides[1].team ? { "side2.team": sides[1].team } : {}),
+        },
+      });
+    }
+
+    // ── Commit ───────────────────────────────────────────────────────────────
+    stageDoc.set("rounds", nextRounds);
+    stageDoc.set("sections", dto.sections ?? []);
+    stageDoc.set("pools", derivePools(dto, seedOrder));
+    // Follow the round the stage was on rather than its old index, which the
+    // edit may have shifted.
+    const nextCurrent = nextRounds.findIndex(
+      (r) => r._id.toString() === currentRoundId,
+    );
+    stageDoc.currentRoundIndex =
+      nextCurrent >= 0
+        ? nextCurrent
+        : Math.min(stageDoc.currentRoundIndex, nextRounds.length - 1);
+    await stageDoc.save();
+
+    await this.matchupRepo.applyStructureDiff({
+      creates,
+      updates,
+      deletes: removed.map((m) => m._id),
+    });
+
+    // A re-pointed slot may hang off a match that was decided long ago, so
+    // replay every settled result into whatever now consumes it.
+    await this.resolveAllDownstreamSlots(stageDoc._id);
+
+    return {
+      message: `Bracket updated: ${creates.length} added, ${updates.length} updated, ${removed.length} removed.`,
+      seeding: summarizeSeeding(stageDoc.seedingLog),
+      seedOrder,
+      matchIds: Object.fromEntries(
+        [...idByKey].map(([key, id]) => [key, id.toString()]),
+      ),
+    };
+  }
+
+  /**
+   * Seed order for an edited bracket.
+   *
+   * A stage that has never been seeded is seeded now, exactly as generation
+   * would. A stage that has been seeded keeps its draw: the payload may only
+   * confirm the existing order and append to it, and appended teams are always
+   * manual — drawing them randomly would be a second roll of the same dice.
+   */
+  private async resolveUpdatedSeedOrder(
+    stageDoc: StageDocument,
+    dto: UpdateBracketDto,
+    sub: string,
+    drawIsLive: boolean,
+  ): Promise<string[]> {
+    // Only a live draw is protected: with no matchups left, the pool is a
+    // leftover of a deleted bracket rather than a seeding in force.
+    const existingSeedOrder = drawIsLive
+      ? stageDoc.pools.flatMap((pool) => pool.teamIds).map((id) => id.toString())
+      : [];
+
+    if (!dto.seedGroups?.length) {
+      if (existingSeedOrder.length === 0)
+        throw new PDZError(ErrorCodes.STAGE.NO_POOLS_DEFINED, {
+          stageId: stageDoc._id.toString(),
+        });
+      return existingSeedOrder;
+    }
+
+    // A team may enter several sections, so the seed order repeats it — each
+    // entry is a separate, positional seed.
+    const requested = dto.seedGroups.flatMap((group) => group.teamIds);
+
+    // Checked before anything touches the database: an attempt to re-draw a
+    // seeding is refused on its own terms, whether or not the teams resolve.
+    const preservesDraw = existingSeedOrder.every(
+      (teamId, index) => requested[index] === teamId,
+    );
+    if (!preservesDraw)
+      throw new PDZError(ErrorCodes.STAGE.SEEDING_LOCKED, {
+        stageId: stageDoc._id.toString(),
+      });
+
+    for (const teamId of requested) {
+      if (!isValidObjectId(teamId))
+        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+          reason: `Invalid team ID "${teamId}"`,
+        });
+    }
+    const uniqueRequested = [...new Set(requested)];
+    const teamDocs = await this.teamRepo.findManyByIds(
+      uniqueRequested.map((id) => new Types.ObjectId(id)),
+    );
+    if (teamDocs.length !== uniqueRequested.length) {
+      const found = new Set(teamDocs.map((t) => t._id.toString()));
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, {
+        teamId: uniqueRequested.filter((id) => !found.has(id)).join(", "),
+      });
+    }
+
+    if (existingSeedOrder.length === 0) {
+      if (requested.length < 2)
+        throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+          reason: "A bracket needs at least 2 teams",
+        });
+      return this.resolveSeedGroups(stageDoc, dto.seedGroups, sub);
+    }
+
+    const appended = requested.slice(existingSeedOrder.length);
+    if (appended.length === 0) return existingSeedOrder;
+
+    this.resolveSeedGroups(
+      stageDoc,
+      [{ teamIds: appended, method: "manual", label: "Added teams" }],
+      sub,
+      existingSeedOrder.length,
+    );
+    return [...existingSeedOrder, ...appended];
+  }
+
+  /**
+   * Pushes every decided matchup's winner and loser into the slots that
+   * consume them. Cheap enough to run after a structural edit, and the only
+   * way a slot re-pointed at an already-played match gets its team.
+   */
+  private async resolveAllDownstreamSlots(
+    stageId: Types.ObjectId,
+  ): Promise<void> {
+    const matchups = await this.matchupRepo.findStructureByStage(stageId);
+    for (const matchup of matchups) {
+      if (!matchup.winner || matchup.winner === "draw") continue;
+      const winnerSide =
+        matchup.winner === "side1" ? matchup.side1 : matchup.side2;
+      const loserSide =
+        matchup.winner === "side1" ? matchup.side2 : matchup.side1;
+      await this.matchupRepo.resolveDownstreamSlots(
+        matchup._id,
+        winnerSide?.team as Types.ObjectId | undefined,
+        loserSide?.team as Types.ObjectId | undefined,
+      );
+    }
   }
 
   /**
@@ -370,8 +879,9 @@ export class StageService {
     stageId: string,
     teamId?: string | string[],
     roundFilter?: string,
+    sub?: string,
   ) {
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.findVisibleStage(stageId, sub);
 
     // forfeit.gameDiff is needed to display a forfeited match's score the
     // same way the old division.controller.ts schedule view did — resolved
@@ -388,11 +898,11 @@ export class StageService {
       .filter((id) => isValidObjectId(id))
       .map((id) => new Types.ObjectId(id));
 
-    const filteredRounds = stageDoc.rounds.filter(
-      (r) =>
-        !currentRoundOnly ||
-        (stageDoc.rounds[stageDoc.currentRoundIndex] &&
-          r._id.equals(stageDoc.rounds[stageDoc.currentRoundIndex]._id)),
+    const axisRounds = stageRounds(stageDoc, tournament);
+    const roster = rosterContext(stageDoc, tournament);
+    const current = axisRounds[currentRoundIndex(stageDoc, tournament)];
+    const filteredRounds = axisRounds.filter(
+      (r) => !currentRoundOnly || (current && r._id.equals(current._id)),
     );
 
     const allMatchups = (await this.matchupRepo.findByRoundsInStage(
@@ -409,86 +919,18 @@ export class StageService {
       else matchupsByRound.set(roundKey, [matchup]);
     }
 
-    const rounds = filteredRounds.map((roundDoc) => {
-      const roundIndex = stageDoc.rounds.indexOf(roundDoc);
-      const matchups = matchupsByRound.get(roundDoc._id.toString()) ?? [];
-      // Bracket matchups with unresolved winner/loser slots have no teams to
-      // display yet, so they don't appear on the schedule.
-      const transformedMatchups = matchups.filter(hasResolvedSides).map((matchup) => ({
-        id: matchup._id.toString(),
-        team1: {
-          name: matchup.side1.team.teamName,
-          coach: matchup.side1.team.coach.name,
-          score: matchup.forfeit
-            ? matchup.winner === "side1"
-              ? tournament.forfeit.gameDiff
-              : 0
-            : matchup.side1.score,
-          logo: matchup.side1.team.logo,
-          id: matchup.side1.team._id.toString(),
-          draft: getRosterByRound(matchup.side1.team, stageDoc, roundIndex).map(
-            (pokemon) => ({
-              id: pokemon.id,
-              capt: {
-                ...(pokemon.addons?.includes("Tera Captain")
-                  ? { tera: true }
-                  : undefined),
-              },
-            }),
-          ),
+    const rounds = filteredRounds.map((roundDoc) => ({
+      _id: roundDoc._id,
+      name: roundDoc.name,
+      matchups: scheduleMatchups(
+        matchupsByRound.get(roundDoc._id.toString()) ?? [],
+        {
+          roster,
+          roundIndex: axisRounds.indexOf(roundDoc),
+          forfeitGameDiff: tournament.forfeit.gameDiff,
         },
-        team2: {
-          name: matchup.side2.team.teamName,
-          coach: matchup.side2.team.coach.name,
-          score: matchup.forfeit
-            ? matchup.winner === "side2"
-              ? tournament.forfeit.gameDiff
-              : 0
-            : matchup.side2.score,
-          logo: matchup.side2.team.logo,
-          id: matchup.side2.team._id.toString(),
-          draft: getRosterByRound(matchup.side2.team, stageDoc, roundIndex).map(
-            (pokemon) => ({
-              id: pokemon.id,
-              capt: {
-                ...(pokemon.addons?.includes("Tera Captain")
-                  ? { tera: true }
-                  : undefined),
-              },
-            }),
-          ),
-        },
-        matches: matchup.results.map((result) => ({
-          link: result.replay,
-          team1: {
-            team: Object.fromEntries(result.side1.pokemon.entries()),
-            score: result.side1.score,
-            winner: result.winner === "side1",
-          },
-          team2: {
-            team: Object.fromEntries(result.side2.pokemon.entries()),
-            score: result.side2.score,
-            winner: result.winner === "side2",
-          },
-        })),
-        score: {
-          team1: matchup.side1.score,
-          team2: matchup.side2.score,
-        },
-        winner: matchup.forfeit
-          ? matchup.winner === "side1"
-            ? "side1ffw"
-            : matchup.winner === "side2"
-              ? "side2ffw"
-              : "dffl"
-          : matchup.winner,
-      }));
-      return {
-        _id: roundDoc._id,
-        name: roundDoc.name,
-        matchups: transformedMatchups,
-      };
-    });
+      ),
+    }));
 
     // A team-scoped schedule only shows rounds the team actually plays in.
     // (Safe to drop rounds here: only the unfiltered manage view indexes
@@ -499,7 +941,7 @@ export class StageService {
 
     return {
       rounds: visibleRounds,
-      currentRoundIndex: stageDoc.currentRoundIndex,
+      currentRoundIndex: currentRoundIndex(stageDoc, tournament),
     };
   }
 
@@ -516,7 +958,7 @@ export class StageService {
         matchupId,
       });
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.findVisibleStage(stageId, sub);
     const tournament = await this.hostedTournamentRepo.findById(
       stageDoc.tournamentId,
     );
@@ -535,18 +977,17 @@ export class StageService {
     if (!hasResolvedSides(matchupDoc))
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
 
+    const axisRounds = stageRounds(stageDoc, tournament);
+    const rosterCtx = rosterContext(stageDoc, tournament);
     const roundIndex = matchupDoc.round
-      ? stageDoc.rounds.findIndex((round) =>
-          round._id.equals(matchupDoc.round!),
-        )
+      ? axisRounds.findIndex((round) => round._id.equals(matchupDoc.round!))
       : -1;
-    const roundDoc =
-      roundIndex === -1 ? undefined : stageDoc.rounds[roundIndex];
+    const roundDoc = roundIndex === -1 ? undefined : axisRounds[roundIndex];
 
     const toSide = (side: { team: PopulatedTeam }): MatchupSide => {
       const roster = getRosterByRound(
         side.team,
-        stageDoc,
+        rosterCtx,
         roundIndex === -1 ? undefined : roundIndex,
       );
       const team: PDZPokemon[] = [];
@@ -560,8 +1001,7 @@ export class StageService {
                   ? { tera: [] }
                   : undefined,
                 draftFormes: tierList?.getPokemonFormeIds(pokemon.id) as
-                  | ID[]
-                  | undefined,
+                  ID[] | undefined,
               },
               tournament.ruleset,
             ),
@@ -591,17 +1031,18 @@ export class StageService {
     return matchup.analyze(sub);
   }
 
-  async getStandings(stageId: string) {
-    const stageDoc = await this.stageRepo.findById(stageId);
+  async getStandings(stageId: string, sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageId, sub);
     const stage = await this.composeStageTeams(stageDoc);
 
     const tournament = await this.hostedTournamentRepo.findById(
       stage.tournamentId,
     );
 
+    const axisRounds = stageRounds(stage, tournament);
     const allMatchups = (await this.matchupRepo.findByRoundsInStage(
       stage._id,
-      stage.rounds.map((r) => r._id),
+      axisRounds.map((r) => r._id),
     )) as unknown as PopulatedStageMatchup[];
 
     const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
@@ -613,44 +1054,143 @@ export class StageService {
       await calculateDivisionPokemonStandings(allMatchups);
 
     return {
+      // The stage-wide table stays the primary shape; `pools` is additional,
+      // so nothing reading standings today has to change.
       coachStandings: {
         cutoff: 8,
-        weeks: stage.rounds.length,
+        weeks: axisRounds.length,
         teams: coachStandings,
         diffMode,
       },
       pokemonStandings,
+      pools: await this.standingsByPool(
+        stage,
+        allMatchups,
+        tournament,
+        axisRounds,
+      ),
     };
   }
 
-  /** One trades view for everyone (no separate "manage" copy). */
-  async getTrades(stageId: string, teamId?: string | string[]) {
-    const stageDoc = await this.stageRepo.findById(stageId);
+  /**
+   * One standings table per pool.
+   *
+   * A pool is a self-contained competition — two groups that never play each
+   * other can't be ranked in one table — so each is scored over only the
+   * matchups played entirely within it. A stage with a single pool (every
+   * bracket saved before sections were linked to pools) yields one entry that
+   * matches the stage-wide table.
+   */
+  private async standingsByPool(
+    stage: StageDocument & { teams: PopulatedTeam[] },
+    matchups: PopulatedStageMatchup[],
+    tournament: Parameters<typeof calculateDivisionCoachStandings>[2],
+    axisRounds: RoundLike[],
+  ) {
+    // A migrated stage is one section, so it is one pool: its whole roster.
+    // Synthesizing it here keeps `pools` non-empty for both data shapes, which
+    // is what lets the client render the same way either side of the migration.
+    const pools = stage.pools.length
+      ? stage.pools
+      : [
+          {
+            poolKey: "stage",
+            name: stage.name,
+            teamIds: stageTeamIds(stage),
+          },
+        ];
 
-    await stageDoc.populate([
-      { path: "trades.side1.team", populate: { path: "coach" } },
-      { path: "trades.side2.team", populate: { path: "coach" } },
-    ]);
+    const results = [];
+    for (const pool of pools) {
+      const memberIds = new Set(pool.teamIds.map((id) => id.toString()));
+      const teams = stage.teams.filter((team) =>
+        memberIds.has(team._id.toString()),
+      );
+      if (teams.length === 0) continue;
+
+      // A cross-pool matchup belongs to neither pool's table.
+      const poolMatchups = matchups.filter(
+        (matchup) =>
+          matchup.side1.team &&
+          matchup.side2.team &&
+          memberIds.has(matchup.side1.team._id.toString()) &&
+          memberIds.has(matchup.side2.team._id.toString()),
+      );
+
+      // Standings only read `teams` and `rounds` off the stage.
+      const poolView = { rounds: axisRounds, teams } as unknown as
+        StageDocument & { teams: PopulatedTeam[] };
+      const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
+        poolMatchups,
+        poolView,
+        tournament,
+      );
+
+      results.push({
+        poolKey: pool.poolKey,
+        name: pool.name,
+        sections: stage.sections
+          .filter((section) => section.poolKey === pool.poolKey)
+          .map((section) => section.key),
+        coachStandings: {
+          cutoff: 8,
+          weeks: axisRounds.length,
+          teams: coachStandings,
+          diffMode,
+        },
+        pokemonStandings: await calculateDivisionPokemonStandings(poolMatchups),
+      });
+    }
+    return results;
+  }
+
+  /** One trades view for everyone (no separate "manage" copy). */
+  async getTrades(stageId: string, teamId?: string | string[], sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageId, sub);
+    const tournament = await this.axisTournament(stageDoc);
+    const trades = stageTrades(stageDoc, tournament ?? undefined);
 
     const teamIds = (Array.isArray(teamId) ? teamId : [teamId]).filter(
       (id): id is string => Boolean(id) && isValidObjectId(id),
     );
 
-    const rounds: { name: string; trades: unknown[] }[] = stageDoc.rounds.map(
-      (round) => ({ name: round.name, trades: [] }),
+    const rounds: { name: string; trades: unknown[] }[] = stageRounds(
+      stageDoc,
+      tournament ?? undefined,
+    ).map((round) => ({ name: round.name, trades: [] }));
+
+    type TradeSide = TradeLike["side1"];
+
+    // Resolved by lookup rather than Mongoose populate: the trades may be the
+    // tournament's, which is a domain object with no document to populate.
+    const tradeTeamIds = [
+      ...new Set(
+        trades.flatMap((trade) =>
+          [trade.side1.team, trade.side2.team]
+            .filter((team): team is NonNullable<typeof team> => !!team)
+            .map((team) =>
+              team instanceof Types.ObjectId
+                ? team.toString()
+                : team._id.toString(),
+            ),
+        ),
+      ),
+    ];
+    const teamById = new Map(
+      (tradeTeamIds.length
+        ? await this.teamRepo.findManyByIds(tradeTeamIds)
+        : []
+      ).map((team) => [team._id.toString(), team]),
     );
 
-    type TradeSide = (typeof stageDoc.trades)[number]["side1"];
-
-    const asPopulatedTeam = (side: TradeSide) =>
-      side.team as unknown as
-        | {
-            _id: Types.ObjectId;
-            teamName: string;
-            logo?: string;
-            coach: { name: string };
-          }
-        | undefined;
+    const asPopulatedTeam = (side: TradeSide) => {
+      if (!side.team) return undefined;
+      const id =
+        side.team instanceof Types.ObjectId
+          ? side.team.toString()
+          : side.team._id.toString();
+      return teamById.get(id);
+    };
 
     const buildSide = (side: TradeSide) => {
       const team = asPopulatedTeam(side);
@@ -668,10 +1208,31 @@ export class StageService {
           name: getName(p.id),
           tera: p.addons?.includes("Tera Captain") || false,
         })),
+        tradePoints: side.tradePoints ?? 0,
       };
     };
 
-    for (const trade of stageDoc.trades) {
+    const spentByTeam = new Map<
+      string,
+      { teamId: string; teamName: string; spent: number }
+    >();
+    for (const trade of trades) {
+      if (trade.status !== "APPROVED") continue;
+      for (const side of [trade.side1, trade.side2]) {
+        const team = asPopulatedTeam(side);
+        if (!team) continue;
+        const key = team._id.toString();
+        const entry = spentByTeam.get(key) ?? {
+          teamId: key,
+          teamName: team.teamName,
+          spent: 0,
+        };
+        entry.spent += side.tradePoints ?? 0;
+        spentByTeam.set(key, entry);
+      }
+    }
+
+    for (const trade of trades) {
       if (trade.activeRound < 0 || trade.activeRound >= rounds.length) continue;
 
       if (
@@ -682,6 +1243,7 @@ export class StageService {
         continue;
 
       rounds[trade.activeRound].trades.push({
+        id: trade._id?.toString(),
         side1: buildSide(trade.side1),
         side2: buildSide(trade.side2),
         activeRound: trade.activeRound,
@@ -690,7 +1252,16 @@ export class StageService {
       });
     }
 
-    return { rounds };
+    return {
+      rounds,
+      currentRoundIndex: currentRoundIndex(stageDoc, tournament ?? undefined),
+      tradePoints: {
+        limit: tournament?.tradePointLimit ?? null,
+        byTeam: [...spentByTeam.values()].sort((a, b) =>
+          a.teamName.localeCompare(b.teamName),
+        ),
+      },
+    };
   }
 
   async createTrade(
@@ -704,7 +1275,8 @@ export class StageService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    const isOrganizer = this.isOrganizer(tournament, sub);
+    this.assertStageOwnsItsSchedule(tournament, stageId);
 
     const stageDoc = await this.stageRepo.findById(stageId);
 
@@ -717,12 +1289,15 @@ export class StageService {
         reason: "Invalid team ID for side2",
       });
 
+    if (!isOrganizer) await this.assertTradeParticipant(dto, sub);
+
     const side1Trade = {
       team: dto.side1.team ? new Types.ObjectId(dto.side1.team) : undefined,
       pokemon: dto.side1.pokemon.map((p) => ({
         id: p.id,
         addons: p.tera ? ["Tera Captain"] : undefined,
       })),
+      tradePoints: dto.side1.team ? (dto.side1.tradePoints ?? 0) : 0,
     };
     const side2Trade = {
       team: dto.side2.team ? new Types.ObjectId(dto.side2.team) : undefined,
@@ -730,10 +1305,57 @@ export class StageService {
         id: p.id,
         addons: p.tera ? ["Tera Captain"] : undefined,
       })),
+      tradePoints: dto.side2.team ? (dto.side2.tradePoints ?? 0) : 0,
     };
 
-    await this.makeTrade(stageDoc, side1Trade, side2Trade, dto.roundIndex);
-    return { message: "Trade processed successfully." };
+    const status = isOrganizer ? "APPROVED" : "PENDING";
+    if (status === "APPROVED")
+      this.assertTradePointsWithinLimit(
+        stageDoc,
+        tournament,
+        { side1: side1Trade, side2: side2Trade },
+        null,
+      );
+
+    await this.makeTrade(
+      stageDoc,
+      side1Trade,
+      side2Trade,
+      dto.roundIndex,
+      status,
+    );
+    return {
+      message: isOrganizer
+        ? "Trade processed successfully."
+        : "Trade submitted for approval.",
+      status: isOrganizer ? "APPROVED" : "PENDING",
+    };
+  }
+
+  private assertTradePointsWithinLimit(
+    stage: StageDocument,
+    tournament: HostedTournament,
+    trade: { side1: StageTradeSideEntity; side2: StageTradeSideEntity },
+    exclude: StageTradeEntity | null,
+  ) {
+    assertTradePointsWithinLimit({
+      trades: stage.trades,
+      limit: tournament.tradePointLimit,
+      trade,
+      exclude,
+    });
+  }
+
+  /** A coach may only file a trade that their own team is a side of. */
+  private async assertTradeParticipant(dto: MakeTradeDto, sub: string) {
+    const teamIds = [dto.side1.team, dto.side2.team].filter(
+      (id): id is string => Boolean(id),
+    );
+    if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+
+    const teams = await this.teamRepo.findManyByIds(teamIds);
+    if (!teams.some((team) => isCoachedBy(team, sub)))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
   /**
@@ -747,58 +1369,93 @@ export class StageService {
     side1: StageTradeSideEntity,
     side2: StageTradeSideEntity,
     activeRoundIndex: number,
+    status: "PENDING" | "APPROVED" = "APPROVED",
   ) {
     if (side1.team === undefined && side2.team === undefined) return;
 
-    const team1 = side1.team
-      ? await this.teamRepo.findByIdOrNull(side1.team)
-      : null;
-    if (side1.team && !team1)
-      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: side1.team });
-
-    const team2 = side2.team
-      ? await this.teamRepo.findByIdOrNull(side2.team)
-      : null;
-    if (side2.team && !team2)
-      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: side2.team });
-
-    if (team1) {
-      const draftedPokemonIds = new Set(
-        getRosterByRound(team1, stage).map((pokemon) => pokemon.id),
-      );
-      for (const pokemon of side1.pokemon) {
-        if (!draftedPokemonIds.has(pokemon.id)) {
-          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
-            pokemonId: pokemon.id,
-            teamId: team1._id.toString(),
-          });
-        }
-      }
-    }
-
-    if (team2) {
-      const draftedPokemonIds = new Set(
-        getRosterByRound(team2, stage).map((pokemon) => pokemon.id),
-      );
-      for (const pokemon of side2.pokemon) {
-        if (!draftedPokemonIds.has(pokemon.id)) {
-          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
-            pokemonId: pokemon.id,
-            teamId: team2._id.toString(),
-          });
-        }
-      }
-    }
+    await this.assertTradeRostersValid(stage, { side1, side2 });
 
     stage.trades.push({
       side1,
       side2,
       timestamp: new Date(),
       activeRound: activeRoundIndex,
-      status: "APPROVED",
-    });
+      status,
+    } as StageTradeEntity);
 
     await stage.save();
+  }
+
+  /**
+   * Each side may only offer Pokémon its team currently holds. Re-checked at
+   * approval time, since a pending trade can go stale behind other trades.
+   */
+  private async assertTradeRostersValid(
+    stage: StageDocument,
+    trade: { side1: StageTradeSideEntity; side2: StageTradeSideEntity },
+  ) {
+    for (const side of [trade.side1, trade.side2]) {
+      if (!side.team) continue;
+
+      const team = await this.teamRepo.findByIdOrNull(side.team);
+      if (!team)
+        throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId: side.team });
+
+      // Resolved here rather than threaded through every caller: validating a
+      // trade against the wrong set of earlier trades would reject a legitimate
+      // offer, or accept one for a Pokémon the team no longer holds.
+      const tournament = await this.axisTournament(stage);
+      const rosterIds = new Set(
+        getRosterByRound(team, rosterContext(stage, tournament ?? undefined))
+          .map((pokemon) => pokemon.id),
+      );
+      for (const pokemon of side.pokemon) {
+        if (!rosterIds.has(pokemon.id))
+          throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, {
+            pokemonId: pokemon.id,
+            teamId: team._id.toString(),
+          });
+      }
+    }
+  }
+
+  /** Organizer-only resolution of a coach-submitted trade. */
+  async setTradeStatus(
+    leagueSlug: string,
+    tournamentSlug: string,
+    stageId: string,
+    tradeId: string,
+    sub: string,
+    dto: SetTradeStatusDto,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+    this.assertStageOwnsItsSchedule(tournament, stageId);
+
+    const stageDoc = await this.stageRepo.findById(stageId);
+    const trade = stageDoc.trades.find((t) => t._id?.toString() === tradeId);
+    if (!trade) throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, { tradeId });
+
+    if (trade.status !== "PENDING")
+      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+        reason: `Trade is already ${trade.status}`,
+      });
+
+    if (dto.status === "APPROVED") {
+      await this.assertTradeRostersValid(stageDoc, trade);
+      this.assertTradePointsWithinLimit(stageDoc, tournament, trade, trade);
+    }
+
+    trade.status = dto.status;
+    await stageDoc.save();
+
+    return {
+      message: `Trade ${dto.status.toLowerCase()}.`,
+      status: dto.status,
+    };
   }
 
   async updateMatchup(
@@ -888,7 +1545,6 @@ export class StageService {
 
       if (winnerTeamId || loserTeamId) {
         await this.matchupRepo.resolveDownstreamSlots(
-          matchup.stage,
           matchup._id,
           winnerTeamId,
           loserTeamId,

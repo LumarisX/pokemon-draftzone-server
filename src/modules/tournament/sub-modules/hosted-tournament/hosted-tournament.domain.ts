@@ -4,6 +4,10 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { DraftCount, TierList } from "@modules/tier-list/tier-list.domain";
+import {
+  TournamentRoundEntity,
+  TournamentTradeEntity,
+} from "./hosted-tournament.schema";
 
 export class TierRequirement {
   tierName: string;
@@ -91,12 +95,22 @@ export class HostedTournament {
   discord?: string;
   discordSettings?: TournamentDiscordSettings;
   stages: StageDocument[];
+  /**
+   * The schedule every stage is laid out against. Empty on tournaments that
+   * predate the sections-to-stages migration — their stages still carry their
+   * own rounds, and `stageRounds()` is what picks between the two.
+   */
+  rounds: TournamentRoundEntity[];
+  /** Index into `rounds`; -1 before the season starts. */
+  currentRoundIndex: number;
+  trades: TournamentTradeEntity[];
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
   format: Format;
   ruleset: Ruleset;
   draftCount: DraftCount;
   pointTotal?: number;
+  tradePointLimit?: number;
   tierRequirements: TierRequirement[];
   adSettings?: TournamentAdSettings;
 
@@ -120,12 +134,16 @@ export class HostedTournament {
     discord?: string;
     discordSettings?: TournamentDiscordSettings;
     stages: StageDocument[];
+    rounds?: TournamentRoundEntity[];
+    currentRoundIndex?: number;
+    trades?: TournamentTradeEntity[];
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
     format: string;
     ruleset: string;
     draftCount: DraftCount;
     pointTotal?: number;
+    tradePointLimit?: number;
     tierRequirements: TierRequirement[];
     adSettings?: TournamentAdSettings;
   }) {
@@ -148,12 +166,16 @@ export class HostedTournament {
     this.discord = props.discord;
     this.discordSettings = props.discordSettings;
     this.stages = props.stages;
+    this.rounds = props.rounds ?? [];
+    this.currentRoundIndex = props.currentRoundIndex ?? -1;
+    this.trades = props.trades ?? [];
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
     this.format = getFormat(props.format);
     this.ruleset = getRuleset(props.ruleset);
     this.draftCount = props.draftCount;
     this.pointTotal = props.pointTotal;
+    this.tradePointLimit = props.tradePointLimit;
     this.tierRequirements = props.tierRequirements;
     this.adSettings = props.adSettings;
   }

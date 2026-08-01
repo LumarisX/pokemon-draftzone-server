@@ -7,6 +7,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -17,7 +18,10 @@ import {
   MakeTradeDto,
   SetCurrentRoundDto,
   SetStagePoolsDto,
+  SetTradeStatusDto,
+  UpdateBracketDto,
   UpdateMatchupDto,
+  UpdateStageDto,
 } from "./stage.dto";
 import { StageService } from "./stage.service";
 
@@ -26,11 +30,32 @@ export class StageController {
   constructor(private readonly stageService: StageService) {}
 
   @Get()
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async listStages(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub?: string,
   ) {
-    return this.stageService.listStages(leagueSlug, tournamentSlug);
+    return this.stageService.listStages(leagueSlug, tournamentSlug, sub);
+  }
+
+  @Patch(":stageId")
+  @UseGuards(JwtAuthGuard)
+  async setVisibility(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @User() sub: string,
+    @Body() body: UpdateStageDto,
+  ) {
+    return this.stageService.setVisibility(
+      leagueSlug,
+      tournamentSlug,
+      stageId,
+      sub,
+      body,
+    );
   }
 
   @Post()
@@ -45,17 +70,22 @@ export class StageController {
   }
 
   @Get(":stageId/schedule")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async getSchedule(
     @Param("stageId") stageId: string,
     @Query("teamId") teamId?: string | string[],
     @Query("round") round?: string,
+    @User() sub?: string,
   ) {
-    return this.stageService.getSchedule(stageId, teamId, round);
+    return this.stageService.getSchedule(stageId, teamId, round, sub);
   }
 
   @Get(":stageId/bracket")
-  async getBracket(@Param("stageId") stageId: string) {
-    return this.stageService.getBracket(stageId);
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  async getBracket(@Param("stageId") stageId: string, @User() sub?: string) {
+    return this.stageService.getBracket(stageId, sub);
   }
 
   @Post(":stageId/bracket")
@@ -68,6 +98,29 @@ export class StageController {
     @Body() body: GenerateBracketDto,
   ) {
     return this.stageService.generateBracket(
+      leagueSlug,
+      tournamentSlug,
+      stageId,
+      sub,
+      body,
+    );
+  }
+
+  /**
+   * Applies an edited bracket to a stage that may already be under way.
+   * Unlike POST, this neither refuses an existing bracket nor rebuilds it —
+   * see `StageService.updateBracket`.
+   */
+  @Patch(":stageId/bracket")
+  @UseGuards(JwtAuthGuard)
+  async updateBracket(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @User() sub: string,
+    @Body() body: UpdateBracketDto,
+  ) {
+    return this.stageService.updateBracket(
       leagueSlug,
       tournamentSlug,
       stageId,
@@ -93,16 +146,21 @@ export class StageController {
   }
 
   @Get(":stageId/standings")
-  async getStandings(@Param("stageId") stageId: string) {
-    return this.stageService.getStandings(stageId);
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  async getStandings(@Param("stageId") stageId: string, @User() sub?: string) {
+    return this.stageService.getStandings(stageId, sub);
   }
 
   @Get(":stageId/trades")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async getTrades(
     @Param("stageId") stageId: string,
     @Query("teamId") teamId?: string | string[],
+    @User() sub?: string,
   ) {
-    return this.stageService.getTrades(stageId, teamId);
+    return this.stageService.getTrades(stageId, teamId, sub);
   }
 
   @Post(":stageId/trades")
@@ -118,6 +176,26 @@ export class StageController {
       leagueSlug,
       tournamentSlug,
       stageId,
+      sub,
+      body,
+    );
+  }
+
+  @Patch(":stageId/trades/:tradeId")
+  @UseGuards(JwtAuthGuard)
+  async setTradeStatus(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @Param("tradeId") tradeId: string,
+    @User() sub: string,
+    @Body() body: SetTradeStatusDto,
+  ) {
+    return this.stageService.setTradeStatus(
+      leagueSlug,
+      tournamentSlug,
+      stageId,
+      tradeId,
       sub,
       body,
     );

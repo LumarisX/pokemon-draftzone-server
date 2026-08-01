@@ -18,10 +18,18 @@ export interface BracketMatchInput {
 
 export const CERTIFIED_SHUFFLE_ALGORITHM = "fisher-yates-csprng-v1";
 
+/**
+ * `sectionKinds` maps a section key to its structural role. It only affects
+ * seed-reuse policing: a knockout section may use each seed once (a team enters
+ * once and advances by winner/loser reference), while a round-robin section
+ * replays the same teams every round. Omitting it treats every section as
+ * knockout, which is the pre-sections behaviour.
+ */
 export function validateBracketStructure(
   matches: BracketMatchInput[],
   teamCount: number,
   roundCount: number,
+  sectionKinds?: Map<string, string>,
 ): string[] {
   const errors: string[] = [];
   const byKey = new Map<string, BracketMatchInput>();
@@ -44,8 +52,12 @@ export function validateBracketStructure(
   }
 
   const seenSeeds = new Set<number>();
+  const seenSeedsPerSection = new Set<string>();
   const consumedEdges = new Set<string>();
   for (const match of matches) {
+    const section = match.section ?? "main";
+    const kind = sectionKinds?.get(section) ?? section;
+    const replaysSeeds = kind === "round-robin" || kind === "rr";
     for (const slot of [match.a, match.b]) {
       if (slot.type === "seed") {
         if (
@@ -58,9 +70,15 @@ export function validateBracketStructure(
           );
           continue;
         }
-        if (seenSeeds.has(slot.seed))
-          errors.push(`Seed ${slot.seed} enters the bracket more than once`);
         seenSeeds.add(slot.seed);
+        if (!replaysSeeds) {
+          const key = `${section}:${slot.seed}`;
+          if (seenSeedsPerSection.has(key))
+            errors.push(
+              `Seed ${slot.seed} enters section "${section}" more than once`,
+            );
+          seenSeedsPerSection.add(key);
+        }
         continue;
       }
 

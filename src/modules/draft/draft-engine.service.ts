@@ -1196,6 +1196,11 @@ export class DraftEngineService {
       return;
     }
 
+    // Play can auto-draft a queued pick, which advances the counter and pings
+    // the next coach itself — compare against this so that team isn't pinged
+    // twice below.
+    const counterBeforeAction = draft.counter;
+
     await action();
     await draft.save();
     this.draftEvents.emitDraftStatus({
@@ -1214,10 +1219,44 @@ export class DraftEngineService {
           : draft.status.toLowerCase();
 
     if (draft.channelId) {
-      this.discordService.sendMessage(draft.channelId, {
-        content: `The draft is now ${statusLabel}.`,
+      // Starting (or resuming) leaves a coach on the clock with nothing
+      // announcing it — advanceSequentialCounter only pings once a pick lands,
+      // so without this the first coach of the draft is never told it's on them.
+      const turnText = await this.openingTurnText(
+        draft,
+        state,
+        counterBeforeAction,
+      );
+      await this.discordService.sendMessage(draft.channelId, {
+        content: `The draft is now ${statusLabel}.${turnText}`,
       });
     }
+  }
+
+  /**
+   * Trailing "it is now your turn" for the play/pause announcement, empty when
+   * nobody is newly on the clock (paused, non-sequential free-for-all, or a
+   * queued pick already advanced the draft and pinged the next coach).
+   */
+  private async openingTurnText(
+    draft: PopulatedDraft,
+    state: "play" | "pause",
+    counterBeforeAction: number,
+  ): Promise<string> {
+    if (state !== "play") return "";
+    if (draft.status !== "IN_PROGRESS") return "";
+    if (!draft.sequentialTurns) return "";
+    if (draft.counter !== counterBeforeAction) return "";
+
+    const currentTeam = getCurrentPickingTeam(draft);
+    if (!currentTeam || !draft.channelId) return "";
+
+    await currentTeam.populate<{ coach: CoachDocument }>("coach");
+    const mention = await this.discordService.resolveMention(
+      draft.channelId,
+      currentTeam.coach?.discordName,
+    );
+    return ` ${mention ?? currentTeam.teamName}, it is now your turn!`;
   }
 
   /**

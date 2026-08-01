@@ -169,3 +169,8 @@ export const LeagueMatchupSchema = SchemaFactory.createForClass(
 
 LeagueMatchupSchema.index({ "side1.team": 1 });
 LeagueMatchupSchema.index({ "side2.team": 1 });
+// Advancing a result looks matchups up by the match their slot consumes, and
+// that lookup is not scoped to a stage — a playoff slot is fed by a match in
+// the group stage before it. Without these it is a full collection scan.
+LeagueMatchupSchema.index({ "side1.slot.matchId": 1 });
+LeagueMatchupSchema.index({ "side2.slot.matchId": 1 });

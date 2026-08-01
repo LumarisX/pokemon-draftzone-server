@@ -163,4 +163,59 @@ export class HostedTournamentRepository {
         tournamentId: tournamentId.toString(),
       });
   }
+
+  /**
+   * Writes the round axis, the stage list and the current round together.
+   *
+   * One update because they are one fact: `stages` order is the phase sequence,
+   * `rounds` is the schedule those phases sit on, and `currentRoundIndex`
+   * points into it. Saving them separately would leave a window where a client
+   * could read an index past the end of the rounds.
+   *
+   * Round subdocument `_id`s are supplied by the caller and written verbatim —
+   * matchups reference them, so letting Mongoose mint fresh ones would orphan
+   * every matchup in the tournament.
+   */
+  async setSchedule(
+    tournamentId: Types.ObjectId | string,
+    schedule: {
+      rounds: {
+        _id: Types.ObjectId;
+        name: string;
+        matchDeadline?: Date;
+        tradeDeadline?: Date;
+        bestOf?: number;
+      }[];
+      stages: Types.ObjectId[];
+      currentRoundIndex: number;
+    },
+  ): Promise<void> {
+    const result = await this.hostedTournamentModel
+      .findByIdAndUpdate(tournamentId, {
+        $set: {
+          rounds: schedule.rounds,
+          stages: schedule.stages,
+          currentRoundIndex: schedule.currentRoundIndex,
+        },
+      })
+      .exec();
+    if (!result)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+        tournamentId: tournamentId.toString(),
+      });
+  }
+
+  /** Replaces the tournament's trades wholesale. */
+  async setTrades(
+    tournamentId: Types.ObjectId | string,
+    trades: Record<string, unknown>[],
+  ): Promise<void> {
+    const result = await this.hostedTournamentModel
+      .findByIdAndUpdate(tournamentId, { $set: { trades } })
+      .exec();
+    if (!result)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+        tournamentId: tournamentId.toString(),
+      });
+  }
 }

@@ -6,6 +6,7 @@ import {
   getRostersBeforeRound,
   updateRosterWithTrades,
 } from "./roster";
+import { rosterContext } from "./stage-axis";
 
 function buildTeam(pickLog: { pokemon: { id: string }; addons?: string[] }[]) {
   return {
@@ -139,7 +140,7 @@ describe("getRosterByRound", () => {
     });
     const stage = buildStage({ trades: [pendingTrade], currentRoundIndex: 1 });
 
-    const result = getRosterByRound(team, stage);
+    const result = getRosterByRound(team, rosterContext(stage));
 
     expect(result).toEqual([{ id: "pikachu" }]);
   });
@@ -153,8 +154,8 @@ describe("getRosterByRound", () => {
     });
     const stage = buildStage({ trades: [trade] });
 
-    expect(getRosterByRound(team, stage, 0)).toEqual([{ id: "pikachu" }]);
-    expect(getRosterByRound(team, stage, 1)).toEqual([{ id: "mewtwo" }]);
+    expect(getRosterByRound(team, rosterContext(stage), 0)).toEqual([{ id: "pikachu" }]);
+    expect(getRosterByRound(team, rosterContext(stage), 1)).toEqual([{ id: "mewtwo" }]);
   });
 
   it("defaults roundIndex to the stage's currentRoundIndex", () => {
@@ -166,7 +167,7 @@ describe("getRosterByRound", () => {
     });
     const stage = buildStage({ trades: [trade], currentRoundIndex: 2 });
 
-    expect(getRosterByRound(team, stage)).toEqual([{ id: "mewtwo" }]);
+    expect(getRosterByRound(team, rosterContext(stage))).toEqual([{ id: "mewtwo" }]);
   });
 
   it("ignores trades that don't involve this team", () => {
@@ -178,7 +179,7 @@ describe("getRosterByRound", () => {
     });
     const stage = buildStage({ trades: [trade], currentRoundIndex: 1 });
 
-    expect(getRosterByRound(team, stage)).toEqual([{ id: "pikachu" }]);
+    expect(getRosterByRound(team, rosterContext(stage))).toEqual([{ id: "pikachu" }]);
   });
 });
 
@@ -200,7 +201,7 @@ describe("getRostersBeforeRound", () => {
     });
     const stage = buildStage({ trades: [trade] });
 
-    const result = getRostersBeforeRound(team, stage, 2);
+    const result = getRostersBeforeRound(team, rosterContext(stage), 2);
 
     expect(result).toEqual([
       [{ id: "pikachu" }], // start of round 0: raw pick log
@@ -213,7 +214,7 @@ describe("getRostersBeforeRound", () => {
     const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
     const stage = buildStage({ rounds: [{}, {}] as any, trades: [] });
 
-    const result = getRostersBeforeRound(team, stage);
+    const result = getRostersBeforeRound(team, rosterContext(stage));
 
     // 1 initial snapshot + 1 per round (2 rounds) = 3 total.
     expect(result).toHaveLength(3);

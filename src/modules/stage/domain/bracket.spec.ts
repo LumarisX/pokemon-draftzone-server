@@ -52,9 +52,58 @@ describe("validateBracketStructure", () => {
       1,
     );
     expect(
-      errors.some((e) => e.includes("Seed 1 enters the bracket more than once")),
+      errors.some((e) => e.includes("Seed 1 enters section")),
     ).toBe(true);
     expect(errors.some((e) => e.includes("Seed 2 never enters"))).toBe(true);
+  });
+
+  it("lets a round-robin section replay its seeds every round", () => {
+    // Everyone plays everyone: each seed necessarily appears in several
+    // matches, which is a structural error only in a knockout section.
+    const errors = validateBracketStructure(
+      [
+        { key: "r1", roundIndex: 0, section: "rr", a: seed(1), b: seed(2) },
+        { key: "r2", roundIndex: 1, section: "rr", a: seed(1), b: seed(3) },
+        { key: "r3", roundIndex: 2, section: "rr", a: seed(2), b: seed(3) },
+      ],
+      3,
+      3,
+      new Map([["rr", "round-robin"]]),
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it("still flags a repeated seed inside a knockout section", () => {
+    const errors = validateBracketStructure(
+      [
+        { key: "m1", roundIndex: 0, section: "playoffs", a: seed(1), b: seed(2) },
+        { key: "m2", roundIndex: 0, section: "playoffs", a: seed(1), b: seed(3) },
+      ],
+      3,
+      1,
+      new Map([["playoffs", "main"]]),
+    );
+    expect(
+      errors.some((e) => e.includes('Seed 1 enters section "playoffs"')),
+    ).toBe(true);
+  });
+
+  it("scopes seed reuse per section, not across the bracket", () => {
+    // A group-stage team that also enters the playoff section directly is the
+    // same seed in two sections — legal, since each section is its own draw.
+    const errors = validateBracketStructure(
+      [
+        { key: "g", roundIndex: 0, section: "groups", a: seed(1), b: seed(2) },
+        { key: "p", roundIndex: 1, section: "playoffs", a: seed(1), b: seed(2) },
+      ],
+      2,
+      2,
+      new Map([
+        ["groups", "main"],
+        ["playoffs", "main"],
+      ]),
+    );
+    expect(errors).toEqual([]);
   });
 
   it("flags dangling, self, and doubly-consumed references", () => {

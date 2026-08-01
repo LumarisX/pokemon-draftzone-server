@@ -20,22 +20,39 @@ describe("StageController", () => {
     controller = new StageController(service);
   });
 
-  it("listStages forwards league/tournament keys", async () => {
+  it("listStages forwards league/tournament keys and the caller", async () => {
     const stages = [{ _id: "stage-1" }];
     service.listStages.mockResolvedValue(stages as any);
 
-    const result = await controller.listStages("league-1", "tournament-1");
+    const result = await controller.listStages(
+      "league-1",
+      "tournament-1",
+      "auth0|owner",
+    );
 
-    expect(service.listStages).toHaveBeenCalledWith("league-1", "tournament-1");
+    expect(service.listStages).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
+      "auth0|owner",
+    );
     expect(result).toBe(stages);
   });
 
   it("createStage forwards keys, sub, and body", async () => {
-    const body = { order: 1, name: "Regular Season", type: "round-robin" } as any;
+    const body = {
+      order: 1,
+      name: "Regular Season",
+      type: "round-robin",
+    } as any;
     const created = { _id: "stage-1" };
     service.createStage.mockResolvedValue(created as any);
 
-    const result = await controller.createStage("league-1", "tournament-1", "auth0|owner", body);
+    const result = await controller.createStage(
+      "league-1",
+      "tournament-1",
+      "auth0|owner",
+      body,
+    );
 
     expect(service.createStage).toHaveBeenCalledWith(
       "league-1",
@@ -50,9 +67,19 @@ describe("StageController", () => {
     const schedule = { rounds: [] };
     service.getSchedule.mockResolvedValue(schedule as any);
 
-    const result = await controller.getSchedule("stage-1", "team-1", "current");
+    const result = await controller.getSchedule(
+      "stage-1",
+      "team-1",
+      "current",
+      "auth0|coach",
+    );
 
-    expect(service.getSchedule).toHaveBeenCalledWith("stage-1", "team-1", "current");
+    expect(service.getSchedule).toHaveBeenCalledWith(
+      "stage-1",
+      "team-1",
+      "current",
+      "auth0|coach",
+    );
     expect(result).toBe(schedule);
   });
 
@@ -60,9 +87,9 @@ describe("StageController", () => {
     const standings = { coachStandings: {} };
     service.getStandings.mockResolvedValue(standings as any);
 
-    const result = await controller.getStandings("stage-1");
+    const result = await controller.getStandings("stage-1", "auth0|coach");
 
-    expect(service.getStandings).toHaveBeenCalledWith("stage-1");
+    expect(service.getStandings).toHaveBeenCalledWith("stage-1", "auth0|coach");
     expect(result).toBe(standings);
   });
 
@@ -70,15 +97,30 @@ describe("StageController", () => {
     const trades = { rounds: [] };
     service.getTrades.mockResolvedValue(trades as any);
 
-    const result = await controller.getTrades("stage-1", "team-1");
+    const result = await controller.getTrades(
+      "stage-1",
+      "team-1",
+      "auth0|coach",
+    );
 
-    expect(service.getTrades).toHaveBeenCalledWith("stage-1", "team-1");
+    expect(service.getTrades).toHaveBeenCalledWith(
+      "stage-1",
+      "team-1",
+      "auth0|coach",
+    );
     expect(result).toBe(trades);
   });
 
   it("createTrade forwards keys, stageId, sub, and body", async () => {
-    const body = { side1: { pokemon: [] }, side2: { pokemon: [] }, roundIndex: 0 } as any;
-    const response = { message: "Trade processed successfully." };
+    const body = {
+      side1: { pokemon: [] },
+      side2: { pokemon: [] },
+      roundIndex: 0,
+    } as any;
+    const response = {
+      message: "Trade processed successfully.",
+      status: "APPROVED",
+    };
     service.createTrade.mockResolvedValue(response);
 
     const result = await controller.createTrade(

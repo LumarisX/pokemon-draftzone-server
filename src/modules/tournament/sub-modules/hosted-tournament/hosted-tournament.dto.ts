@@ -238,6 +238,11 @@ export class UpdateHostedTournamentSettingsDto {
   // leaves it untouched) - see HostedTournamentRepository.updateSettings.
   pointTotal?: number | null;
 
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  tradePointLimit?: number | null;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TierRequirementDto)

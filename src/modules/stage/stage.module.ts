@@ -8,6 +8,12 @@ import { StageController } from "./stage.controller";
 import { StageRepository } from "./stage.repository";
 import { StageEntity, StageSchema } from "./stage.schema";
 import { StageService } from "./stage.service";
+import { TournamentBracketController } from "./tournament-bracket.controller";
+import { TournamentBracketService } from "./tournament-bracket.service";
+import { TournamentScheduleController } from "./tournament-schedule.controller";
+import { TournamentScheduleService } from "./tournament-schedule.service";
+import { TournamentTradeController } from "./tournament-trade.controller";
+import { TournamentTradeService } from "./tournament-trade.service";
 
 @Module({
   imports: [
@@ -19,8 +25,19 @@ import { StageService } from "./stage.service";
     TierListModule,
     forwardRef(() => HostedTournamentCoreModule),
   ],
-  controllers: [StageController],
-  providers: [StageService, StageRepository],
+  controllers: [
+    StageController,
+    TournamentBracketController,
+    TournamentTradeController,
+    TournamentScheduleController,
+  ],
+  providers: [
+    StageService,
+    StageRepository,
+    TournamentBracketService,
+    TournamentTradeService,
+    TournamentScheduleService,
+  ],
   exports: [StageRepository],
 })
 export class StageModule {}

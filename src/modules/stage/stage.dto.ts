@@ -8,6 +8,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Min,
   MinLength,
   ValidateNested,
 } from "class-validator";
@@ -85,6 +86,11 @@ export class TradeSideDto {
   @ValidateNested({ each: true })
   @Type(() => TradePokemonDto)
   pokemon!: TradePokemonDto[];
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  tradePoints?: number;
 }
 
 export class MakeTradeDto {
@@ -98,6 +104,11 @@ export class MakeTradeDto {
 
   @IsNumber()
   roundIndex!: number;
+}
+
+export class SetTradeStatusDto {
+  @IsIn(["APPROVED", "REJECTED"])
+  status!: "APPROVED" | "REJECTED";
 }
 
 export class CreateStageRoundDto {
@@ -142,6 +153,16 @@ export class CreateStageDto {
   @Type(() => CreateStageRoundDto)
   @IsOptional()
   rounds?: CreateStageRoundDto[];
+
+  /** Omit to take the schema default (visible). */
+  @IsBoolean()
+  @IsOptional()
+  public?: boolean;
+}
+
+export class UpdateStageDto {
+  @IsBoolean()
+  public!: boolean;
 }
 
 export class SetStagePoolDto {
@@ -216,9 +237,75 @@ export class BracketMatchDto {
   b!: BracketSlotDto;
 }
 
-export class GenerateBracketDto {
+export class BracketSectionDto {
+  @IsString()
+  @MinLength(1)
+  key!: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsIn(["main", "winners", "losers", "finals", "round-robin"])
+  @IsOptional()
+  kind?: "main" | "winners" | "losers" | "finals" | "round-robin";
+
+  @IsString()
+  @IsOptional()
+  label?: string;
+
+  @IsNumber()
+  @IsOptional()
+  order?: number;
+
+  @IsNumber()
+  @IsOptional()
+  teamCount?: number;
+
+  /** Pool whose standings table this section feeds. */
+  @IsString()
+  @IsOptional()
+  poolKey?: string;
+
+  @IsObject()
+  @IsOptional()
+  roundTitles?: Record<number, string>;
+}
+
+/**
+ * One block of the bracket's seeding. Groups own consecutive seed numbers in
+ * array order — group 0 gets seeds 1..n, group 1 the n following, and so on —
+ * and each resolves independently, so a random group is shuffled only among
+ * its own teams and never leaks a team into another section.
+ */
+export class SeedGroupDto {
+  @IsArray()
+  @IsString({ each: true })
+  teamIds!: string[];
+
   @IsIn(["certified-random", "manual"])
-  seedingMethod!: "certified-random" | "manual";
+  method!: "certified-random" | "manual";
+
+  /** Section name, recorded on the seeding log entry this group produces. */
+  @IsString()
+  @IsOptional()
+  label?: string;
+}
+
+export class GenerateBracketDto {
+  /**
+   * Per-section seeding. Preferred over the flat seedingMethod/teamIds pair,
+   * which remains accepted as the single-group form.
+   */
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SeedGroupDto)
+  @IsOptional()
+  seedGroups?: SeedGroupDto[];
+
+  @IsIn(["certified-random", "manual"])
+  @IsOptional()
+  seedingMethod?: "certified-random" | "manual";
 
   /**
    * Participant team ids. For "manual" this order IS the seeding (index 0 =
@@ -227,7 +314,8 @@ export class GenerateBracketDto {
    */
   @IsArray()
   @IsString({ each: true })
-  teamIds!: string[];
+  @IsOptional()
+  teamIds?: string[];
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -236,6 +324,66 @@ export class GenerateBracketDto {
 
   @IsArray()
   @ValidateNested({ each: true })
+  @Type(() => BracketSectionDto)
+  @IsOptional()
+  sections?: BracketSectionDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => BracketMatchDto)
   matches!: BracketMatchDto[];
+}
+
+/**
+ * A round that may already exist. `_id` identifies a round to keep — matchups
+ * reference rounds by subdocument id, so an edit that drops the id would
+ * orphan every matchup scheduled in that round.
+ */
+export class UpdateBracketRoundDto extends CreateStageRoundDto {
+  @IsString()
+  @IsOptional()
+  _id?: string;
+}
+
+/** A match that may already exist. `_id` identifies a matchup to update. */
+export class UpdateBracketMatchDto extends BracketMatchDto {
+  @IsString()
+  @IsOptional()
+  _id?: string;
+}
+
+/**
+ * The full intended state of a stage's bracket, applied as a diff against
+ * what is already stored. Anything absent from `rounds` or `matches` is
+ * deleted, so this is a replace-with, not a merge — but recorded results are
+ * never destroyed: deleting a round or match that has results is refused.
+ */
+export class UpdateBracketDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateBracketRoundDto)
+  rounds!: UpdateBracketRoundDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BracketSectionDto)
+  @IsOptional()
+  sections?: BracketSectionDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateBracketMatchDto)
+  matches!: UpdateBracketMatchDto[];
+
+  /**
+   * Only accepted while the stage has never been seeded, or to *append*
+   * teams: the existing seed order must appear as a prefix, and anything
+   * beyond it is seeded manually. A certified-random draw happens once and
+   * is never re-run.
+   */
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SeedGroupDto)
+  @IsOptional()
+  seedGroups?: SeedGroupDto[];
 }

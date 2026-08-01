@@ -47,6 +47,11 @@ export class HostedTournamentMapper {
           })
         : undefined,
       stages,
+      // Passed through as stored subdocuments rather than remapped: the round
+      // `_id`s are what matchups reference, so they have to survive intact.
+      rounds: doc.rounds,
+      currentRoundIndex: doc.currentRoundIndex,
+      trades: doc.trades,
       forfeit: new TournamentForfeit({
         gameDiff: doc.forfeit.gameDiff,
         pokemonDiff: doc.forfeit.pokemonDiff,
@@ -59,6 +64,7 @@ export class HostedTournamentMapper {
         max: doc.draftCount.max,
       }),
       pointTotal: doc.pointTotal,
+      tradePointLimit: doc.tradePointLimit,
       tierRequirements: doc.tierRequirements.map(
         (req) =>
           new TierRequirement({
@@ -120,6 +126,7 @@ export class HostedTournamentMapper {
       ruleset: tournament.ruleset.name,
       draftCount: tournament.draftCount,
       pointTotal: tournament.pointTotal,
+      tradePointLimit: tournament.tradePointLimit,
       tierRequirements: tournament.tierRequirements,
       adSettings: tournament.adSettings,
     };
