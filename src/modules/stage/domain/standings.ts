@@ -2,7 +2,7 @@ import { StageDocument, StageRoundEntity } from "@modules/stage/stage.schema";
 import { LeagueMatchupDocument } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PopulatedTeam } from "@modules/team/team.repository";
 import { getName } from "@modules/data/domain/pokedex";
-import { AxisTournament, stageRounds } from "./stage-axis";
+import { AxisTournament, RoundLike, stageRounds } from "./stage-axis";
 
 /**
  * A LeagueMatchup with its team sides populated (coach included), matching
@@ -468,7 +468,7 @@ export async function calculateDivisionCoachStandings(
 
 export async function calculateTeamScore(
   matchups: PopulatedStageMatchup[],
-  rounds: StageRoundEntity[],
+  rounds: RoundLike[],
   team: PopulatedTeam,
   forfeitConfig?: ForfeitConfig,
 ): Promise<TeamScore> {

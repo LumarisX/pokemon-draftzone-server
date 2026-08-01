@@ -146,10 +146,24 @@ export class LeagueMatchupRepository {
   }
 
   /** Every matchup across several stages, teams populated, in insertion order. */
-  async findByStages(stageIds: (Types.ObjectId | string)[]) {
+  async findByStages(
+    stageIds: (Types.ObjectId | string)[],
+    options?: { teamIds?: (Types.ObjectId | string)[] },
+  ) {
     if (stageIds.length === 0) return [];
+    const hasTeamFilter = options?.teamIds && options.teamIds.length > 0;
     return this.matchupModel
-      .find({ stage: { $in: stageIds } })
+      .find({
+        stage: { $in: stageIds },
+        ...(hasTeamFilter
+          ? {
+              $or: [
+                { "side1.team": { $in: options!.teamIds } },
+                { "side2.team": { $in: options!.teamIds } },
+              ],
+            }
+          : undefined),
+      })
       .sort({ _id: 1 })
       .populate(TEAM_POPULATE)
       .exec();

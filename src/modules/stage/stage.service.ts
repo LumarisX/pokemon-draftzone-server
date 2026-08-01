@@ -232,13 +232,16 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
+    // `dto.rounds` is deliberately not written. Rounds belong to the
+    // tournament: a stage created with its own would be invisible to every
+    // read (they all prefer the tournament's axis) while still looking like it
+    // had a schedule. Rounds are authored through the tournament bracket.
     return this.stageRepo.create({
       tournamentId: tournament.id,
       order: dto.order,
       name: dto.name,
       type: dto.type as StageDocument["type"],
       public: dto.public,
-      rounds: dto.rounds,
     });
   }
 

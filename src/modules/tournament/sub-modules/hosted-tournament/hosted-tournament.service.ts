@@ -26,6 +26,8 @@ import {
   rosterContext,
   stageRounds,
   stageTeamIds,
+  tournamentRosterContext,
+  usesTournamentAxis,
 } from "@modules/stage/domain/stage-axis";
 import { getRosterByRound } from "@modules/stage/domain/roster";
 import {
@@ -73,7 +75,17 @@ export class HostedTournamentService {
     );
     const team = await this.teamRepo.findById(teamId);
 
-    const stageDoc = await this.resolveStage(tournament.id, stageId);
+    // A team's page is not a stage's page. Rounds and trades belong to the
+    // tournament now, and a team's record spans every stage it plays in — so
+    // there is nothing here to disambiguate, and asking the caller to pick a
+    // stage was the old model leaking out. Before the migration a stage did own
+    // both, and a tournament with several genuinely could not answer this,
+    // which is what the "pass stageId" error meant.
+    const migrated = usesTournamentAxis(tournament);
+    const allStages = await this.stageRepo.findAllByTournament(tournament.id);
+    const stageDoc = migrated
+      ? allStages[0]
+      : await this.resolveStage(tournament.id, stageId);
     const coach = team.coach;
 
     // Contact handles stay private to the team's own coach.
@@ -115,19 +127,22 @@ export class HostedTournamentService {
       draftFormes?: { id: string; name: string }[];
     } & { record?: unknown })[] = getRosterByRound(
       team,
-      rosterContext(stage, tournament),
-    ).map(
-      (pokemon) => ({
-        id: pokemon.id,
-        name: getName(pokemon.id),
-        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-        draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-      }),
-    );
+      migrated
+        ? tournamentRosterContext(tournament)
+        : rosterContext(stage, tournament),
+    ).map((pokemon) => ({
+      id: pokemon.id,
+      name: getName(pokemon.id),
+      cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
+      draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+    }));
 
-    const teamMatchups = (await this.matchupRepo.findByStage(stage._id, {
-      teamIds: [team._id],
-    })) as unknown as PopulatedStageMatchup[];
+    // Every stage the team plays in, not just one: a coach's record covers the
+    // group phase and the playoffs together.
+    const teamMatchups = (await this.matchupRepo.findByStages(
+      migrated ? allStages.map((s) => s._id) : [stage._id],
+      { teamIds: [team._id] },
+    )) as unknown as PopulatedStageMatchup[];
 
     const pokemonStandings = await calculateDivisionPokemonStandings(
       teamMatchups,
@@ -141,7 +156,7 @@ export class HostedTournamentService {
 
     const teamRecord = await calculateTeamScore(
       teamMatchups,
-      stage.rounds,
+      stageRounds(stage, tournament),
       team,
       tournament.forfeit,
     );

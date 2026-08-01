@@ -78,6 +78,15 @@ export class DraftService {
    *   undefined (roster-only) if it has zero; throw if it has more than one
    *   (organizer must disambiguate via `?stageId=`).
    */
+  /**
+   * The stage the draft's mixed roster/record views are read against.
+   *
+   * Several stages per tournament is the normal shape now — a group phase and
+   * a playoff bracket are two of them — so this no longer refuses to choose.
+   * It only ever supplies the round axis and the trade context for the roster
+   * walk, and once a tournament owns its rounds and trades every stage gives
+   * the same answer. `stageId` still wins when the caller names one.
+   */
   private async resolveStage(
     tournamentId: Types.ObjectId,
     stageId?: string,
@@ -85,12 +94,7 @@ export class DraftService {
     if (stageId) return this.stageRepo.findById(stageId);
 
     const stages = await this.stageRepo.findAllByTournament(tournamentId);
-    if (stages.length === 0) return undefined;
-    if (stages.length === 1) return stages[0];
-
-    throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-      reason: "Multiple stages exist for this tournament; pass stageId",
-    });
+    return stages[0];
   }
 
   /** Composes `.teams` onto a Stage the same way DraftRepository does for Draft. */
@@ -581,8 +585,12 @@ export class DraftService {
 
     const stage = await this.composeStageTeams(stageDoc);
 
-    const allMatchups = (await this.matchupRepo.findByStage(
-      stage._id,
+    // Across every stage, not just the one supplying the axis: a coach's
+    // record on the draft page covers the whole tournament, and a stage is no
+    // longer the unit a season is played in.
+    const stages = await this.stageRepo.findAllByTournament(draft.tournamentId);
+    const allMatchups = (await this.matchupRepo.findByStages(
+      stages.map((s) => s._id),
     )) as unknown as PopulatedStageMatchup[];
 
     const pokemonStandings =

@@ -119,7 +119,10 @@ describe("DraftService", () => {
       findDraft: jest.fn(),
       findTeamInDraftOrThrow: jest.fn(),
     } as unknown as jest.Mocked<DraftRepository>;
-    matchupRepo = { findByStage: jest.fn() } as unknown as jest.Mocked<LeagueMatchupRepository>;
+    matchupRepo = {
+      findByStage: jest.fn(),
+      findByStages: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<LeagueMatchupRepository>;
     stageRepo = {
       findById: jest.fn(),
       findAllByTournament: jest.fn(),
@@ -475,16 +478,38 @@ describe("DraftService", () => {
       expect(result.teams.map((t: any) => t.name)).toEqual(["Approved"]);
     });
 
-    it("throws INVALID_PARAMS when multiple stages exist and no stageId was given", async () => {
+    it("reads against a tournament with several stages without being told which", async () => {
+      // Several stages per tournament is the normal shape now — a group phase
+      // and a playoff bracket are two of them — so refusing to choose would
+      // break the page for every tournament that has both.
+      const team = buildTeam({ teamName: "A" });
       const tournament = buildTournament();
-      const draft = buildDraft();
+      const draft = buildDraft({ teams: [team] });
+      const stages = [
+        { _id: new Types.ObjectId(), rounds: [], pools: [], teamIds: [] },
+        { _id: new Types.ObjectId(), rounds: [], pools: [], teamIds: [] },
+      ] as any[];
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
-      stageRepo.findAllByTournament.mockResolvedValue([{} as any, {} as any]);
+      stageRepo.findAllByTournament.mockResolvedValue(stages);
+      teamRepo.findManyByIds.mockResolvedValue([team]);
+      matchupRepo.findByStages.mockResolvedValue([]);
+      mockedCalculateDivisionPokemonStandings.mockResolvedValue([]);
+      mockedCalculateDivisionCoachStandings.mockResolvedValue({
+        coachStandings: [],
+        diffMode: "pokemon",
+      });
+      mockedGetDraftOrder.mockReturnValue([team]);
+      mockedGetRosterByRound.mockReturnValue([]);
 
       await expect(
         service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub"),
-      ).rejects.toMatchObject({ code: "VAL-002" });
+      ).resolves.toBeDefined();
+
+      // Records span every stage, so the query covers all of them.
+      expect(matchupRepo.findByStages).toHaveBeenCalledWith(
+        stages.map((s) => s._id),
+      );
     });
 
     it("merges win/loss record and diffMode when exactly one stage is resolved", async () => {
@@ -495,8 +520,9 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
       stageRepo.findById.mockResolvedValue(stage);
+      stageRepo.findAllByTournament.mockResolvedValue([stage]);
       teamRepo.findManyByIds.mockResolvedValue([team]);
-      matchupRepo.findByStage.mockResolvedValue([]);
+      matchupRepo.findByStages.mockResolvedValue([]);
       mockedCalculateDivisionPokemonStandings.mockResolvedValue([]);
       mockedCalculateDivisionCoachStandings.mockResolvedValue({
         coachStandings: [
@@ -509,8 +535,9 @@ describe("DraftService", () => {
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
 
+      // An explicit stageId still picks the axis, even though the matchup
+      // query itself now spans every stage.
       expect(stageRepo.findById).toHaveBeenCalledWith("stage-1");
-      expect(stageRepo.findAllByTournament).not.toHaveBeenCalled();
       expect((result.teams[0] as any).record).toEqual({ wins: 3, losses: 1, pokemonDiff: 2, gameDiff: 1 });
       expect((result.teams[0] as any).diffMode).toBe("pokemon");
     });
