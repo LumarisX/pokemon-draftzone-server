@@ -1,6 +1,7 @@
 import { Format } from "@core/data/formats/formats";
-import { Ruleset, getRuleset } from "@core/data/rulesets/rulesets";
-import { Specie, SpeciesName, TypeName } from "@pkmn/data";
+import { Ruleset } from "@core/data/rulesets/rulesets";
+import { Generation, Specie, SpeciesName, TypeName, toID } from "@pkmn/data";
+import { Dex } from "@pkmn/dex";
 
 const SINGLES_TIER_HIERARCHY = [
   "AG",
@@ -89,12 +90,22 @@ function groupSpeciesByBaseForm(species: Specie[], ruleset: Ruleset) {
   );
 }
 
+const displayDex = new Generation(Dex.forGen(9), (d) => !!d.exists);
+
 export function getSpecies(pokemonID: string): Specie | undefined {
-  return getRuleset("Gen9 NatDex").species.get(pokemonID);
+  return displayDex.species.get(pokemonID);
 }
 
 export function getName(pokemonID: string): SpeciesName | "" {
   return getSpecies(pokemonID)?.name ?? "";
+}
+
+export function getSpriteId(pokemonID: string): string {
+  const specie = getSpecies(pokemonID);
+  if (!specie) return toID(pokemonID);
+  return specie.forme
+    ? `${toID(specie.baseSpecies)}-${toID(specie.forme)}`
+    : toID(specie.name);
 }
 
 export function getRandom(

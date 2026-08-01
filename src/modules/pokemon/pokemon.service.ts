@@ -1,5 +1,6 @@
 import { Format } from "@core/data/formats/formats";
-import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
+import { Ruleset } from "@core/data/rulesets/rulesets";
+import { getName, getSpecies } from "@modules/data/domain/pokedex";
 import { Injectable } from "@nestjs/common";
 import { Specie, SpeciesName, TypeName } from "@pkmn/data";
 
@@ -79,11 +80,11 @@ export class PokemonService {
   }
 
   getSpecies(pokemonID: string): Specie | undefined {
-    return getRuleset("Gen9 NatDex").species.get(pokemonID);
+    return getSpecies(pokemonID);
   }
 
   getName(pokemonID: string): SpeciesName | "" {
-    return this.getSpecies(pokemonID)?.name ?? "";
+    return getName(pokemonID);
   }
 
   getRandom(

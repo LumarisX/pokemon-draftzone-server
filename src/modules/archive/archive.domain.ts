@@ -1,4 +1,4 @@
-import { getRuleset } from "@core/data/rulesets/rulesets";
+import { getName } from "@modules/data/domain/pokedex";
 import { PokemonEntity } from "@modules/pokemon/pokemon.schema";
 import { ExternalMatchupDocument } from "@modules/matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ID, toID } from "@pkmn/data";
@@ -44,7 +44,7 @@ function toStatRow(pid: string, stat: Stat): ArchivePokemonStat {
   return {
     pokemon: {
       id: toID(pid),
-      name: getRuleset("Gen9 NatDex").species.get(pid)?.name ?? "",
+      name: getName(pid),
     },
     kills,
     brought,

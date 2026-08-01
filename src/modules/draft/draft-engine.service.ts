@@ -2,7 +2,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { DiscordService } from "@modules/discord/discord.service";
-import { getName, getSpecies } from "@modules/data/domain/pokedex";
+import { getName, getSpecies, getSpriteId } from "@modules/data/domain/pokedex";
 import {
   PopulatedDraft,
   PopulatedTeam,
@@ -240,7 +240,7 @@ export class DraftEngineService {
       .setTimestamp();
     if (spriteId)
       embed.setImage(
-        `https://play.pokemonshowdown.com/sprites/gen5/${spriteId}.png`,
+        `https://play.pokemonshowdown.com/sprites/gen5/${getSpriteId(spriteId)}.png`,
       );
 
     await this.discordService.sendMessage(channelId, {
@@ -550,7 +550,7 @@ export class DraftEngineService {
         .setURL(this.draftUrl(tournament, draft))
         .addFields(fields)
         .setImage(
-          `https://play.pokemonshowdown.com/sprites/gen5/${pick.pokemonId}.png`,
+          `https://play.pokemonshowdown.com/sprites/gen5/${getSpriteId(pick.pokemonId)}.png`,
         )
         .setTimestamp();
       this.discordService.sendMessage(channelId, {

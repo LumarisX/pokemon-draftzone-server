@@ -1,4 +1,4 @@
-import { getRuleset } from "@core/data/rulesets/rulesets";
+import { getName } from "@modules/data/domain/pokedex";
 import {
   Archive,
   ArchiveMatchTeamV2,
@@ -138,7 +138,7 @@ export class ArchiveMapper {
       ruleset: archive.ruleset,
       team: archive.team.map((id) => ({
         id,
-        name: getRuleset("Gen9 NatDex").species.get(id)?.name ?? "",
+        name: getName(id),
       })),
       score: archive.archiveType === "ArchiveV2" ? archive.score : undefined,
     };

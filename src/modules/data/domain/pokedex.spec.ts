@@ -1,5 +1,5 @@
 import { getRuleset } from "@core/data/rulesets/rulesets";
-import { getName, getRandom, getSpecies } from "./pokedex";
+import { getName, getRandom, getSpecies, getSpriteId } from "./pokedex";
 
 jest.mock("@core/data/rulesets/rulesets", () => ({
   getRuleset: jest.fn(),
@@ -11,54 +11,52 @@ describe("Pokedex Domain", () => {
   });
 
   describe("getSpecies", () => {
-    it("looks up the species against the Gen9 NatDex ruleset specifically", () => {
-      const pikachu = { id: "pikachu", name: "Pikachu" };
-      const mockSpeciesGet = jest.fn().mockReturnValue(pikachu);
-      (getRuleset as jest.Mock).mockReturnValue({ species: { get: mockSpeciesGet } });
+    it("looks up the species without applying any ruleset filter", () => {
+      expect(getSpecies("pikachu")?.name).toBe("Pikachu");
+      expect(getRuleset).not.toHaveBeenCalled();
+    });
 
-      const result = getSpecies("pikachu");
-
-      expect(result).toBe(pikachu);
-      expect(getRuleset).toHaveBeenCalledWith("Gen9 NatDex");
-      expect(mockSpeciesGet).toHaveBeenCalledWith("pikachu");
+    it("resolves species no named ruleset allows, so picks still render", () => {
+      // Legends Z-A megas are `isNonstandard: "Future"`, which Gen9 NatDex's
+      // exists filter drops — looking one up there returns undefined and the
+      // pick renders with a blank name.
+      expect(getSpecies("chimechomega")?.name).toBe("Chimecho-Mega");
     });
 
     it("returns undefined when the species doesn't exist", () => {
-      (getRuleset as jest.Mock).mockReturnValue({
-        species: { get: jest.fn().mockReturnValue(undefined) },
-      });
-
       expect(getSpecies("notarealpokemon")).toBeUndefined();
     });
   });
 
   describe("getName", () => {
     it("should return the name of a valid pokemon ID", () => {
-      const mockSpeciesGet = jest.fn().mockReturnValue({ name: "Pikachu" });
-      (getRuleset as jest.Mock).mockReturnValue({
-        species: {
-          get: mockSpeciesGet,
-        },
-      });
-
-      const result = getName("pikachu");
-      expect(result).toBe("Pikachu");
-      expect(getRuleset).toHaveBeenCalledWith("Gen9 NatDex");
-      expect(mockSpeciesGet).toHaveBeenCalledWith("pikachu");
+      expect(getName("pikachu")).toBe("Pikachu");
     });
 
     it("should return an empty string for an invalid pokemon ID", () => {
-      const mockSpeciesGet = jest.fn().mockReturnValue(undefined);
-      (getRuleset as jest.Mock).mockReturnValue({
-        species: {
-          get: mockSpeciesGet,
-        },
-      });
+      expect(getName("invalidpokemon")).toBe("");
+    });
+  });
 
-      const result = getName("invalidpokemon");
-      expect(result).toBe("");
-      expect(getRuleset).toHaveBeenCalledWith("Gen9 NatDex");
-      expect(mockSpeciesGet).toHaveBeenCalledWith("invalidpokemon");
+  describe("getSpriteId", () => {
+    it.each([
+      ["pikachu", "pikachu"],
+      ["garchompmega", "garchomp-mega"],
+      ["chimechomega", "chimecho-mega"],
+      ["landorustherian", "landorus-therian"],
+      ["urshifurapidstrike", "urshifu-rapidstrike"],
+      ["calyrexshadowrider", "calyrex-shadow"],
+      ["mrmimegalar", "mrmime-galar"],
+      // Names that merely contain a hyphen are not formes.
+      ["hooh", "hooh"],
+      ["porygonz", "porygonz"],
+      ["tapukoko", "tapukoko"],
+    ])("maps %s to the Showdown sprite name %s", (id, expected) => {
+      expect(getSpriteId(id)).toBe(expected);
+    });
+
+    it("falls back to the plain id for an unknown species", () => {
+      expect(getSpriteId("notarealpokemon")).toBe("notarealpokemon");
     });
   });
 
