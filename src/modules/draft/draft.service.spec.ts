@@ -137,6 +137,7 @@ describe("DraftService", () => {
       batchDraftPokemon: jest.fn(),
       setDraftState: jest.fn(),
       skipCurrentPick: jest.fn(),
+      autoDraftFromQueueIfOnClock: jest.fn(),
     } as unknown as jest.Mocked<DraftEngineService>;
     service = new DraftService(draftRepo, matchupRepo, stageRepo, teamRepo, draftEngine);
   });
@@ -373,6 +374,30 @@ describe("DraftService", () => {
 
       expect(teamRepo.updatePicks).toHaveBeenCalledWith(team._id, dto.picks);
       expect(result).toEqual({ message: "Draft pick set successfully." });
+    });
+
+    it("checks whether the newly-saved queue can be auto-drafted right away", async () => {
+      // updatePicks() is a raw $set that bypasses this in-memory team, so the
+      // engine needs to see dto.picks on it before checking whether this team
+      // is already on the clock (regression: a queued pick saved mid-turn
+      // used to just sit there, unused, until the timer skipped the team).
+      const tournament = buildTournament();
+      const team = buildTeam();
+      const draft = buildDraft({ teams: [team] });
+      draftRepo.findTournament.mockResolvedValue(tournament);
+      draftRepo.findDraft.mockResolvedValue(draft);
+      draftRepo.findTeamInDraftOrThrow.mockResolvedValue(team);
+      mockedIsCoach.mockResolvedValue(true);
+      const dto = { picks: [[{ pokemonId: "pikachu" }]] } as SetPicksDto;
+
+      await service.setPicks(
+        "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
+      );
+
+      expect(team.picks).toEqual(dto.picks);
+      expect(draftEngine.autoDraftFromQueueIfOnClock).toHaveBeenCalledWith(
+        tournament, draft, team,
+      );
     });
   });
 

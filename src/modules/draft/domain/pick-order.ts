@@ -279,6 +279,31 @@ export function getCurrentPickingTeam(
   return pickingOrder[currentPositionInRound];
 }
 
+/**
+ * The round/position a team's own Nth pick fills, independent of the draft's
+ * live counter. Needed because a team can use their turn to fill a make-up
+ * pick for a round they fell behind on — at that moment the shared counter is
+ * already on a later round than the slot this specific pick actually fills.
+ * `pickIndex` is 0-based (team.pickLog.length - 1 for the pick just made).
+ */
+export function getTeamPickSlot(
+  draft: PopulatedDraft,
+  team: PopulatedTeam,
+  pickIndex: number,
+): { round: number; position: number } {
+  const teams = getDraftOrder(draft);
+  const teamId = getDocumentId(team);
+  const position = teams.findIndex((t) => getDocumentId(t) === teamId);
+  if (position === -1) return { round: pickIndex, position: -1 };
+
+  const reversed =
+    draft.orderProgression === "snake" && pickIndex % 2 === 1;
+  return {
+    round: pickIndex,
+    position: reversed ? teams.length - 1 - position : position,
+  };
+}
+
 export function calculateTeamTimer(
   baseTimerLength: number | undefined,
   skipCount: number,

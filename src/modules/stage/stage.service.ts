@@ -299,6 +299,10 @@ export class StageService {
       tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
+    // Pools were superseded by `stage.teamIds`, which every read prefers, so
+    // on a migrated tournament this would write somewhere nothing looks again.
+    // Teams are set through the tournament bracket's per-stage seed groups.
+    this.assertStageOwnsItsSchedule(tournament, stageId);
 
     // Once a stage is certified-random and its bracket exists, pool order
     // (= the seeding) is immutable — rewriting it would let an organizer

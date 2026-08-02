@@ -113,13 +113,16 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleSkipDraftPick(job: Job) {
-    if (this.isDev()) return;
     const {
       tournamentId,
       draftId,
       skipTime: expectedSkipTime,
       retryCount = 0,
     } = job.attrs.data as SkipJobData;
+    this.logger.log(
+      `skip-draft-pick fired for draft ${draftId} (expectedSkipTime=${expectedSkipTime ? new Date(expectedSkipTime).toISOString() : "none"}, retryCount=${retryCount}, isDev=${this.isDev()})`,
+    );
+    if (this.isDev()) return;
     const tournament = await this.findPopulatedTournament(tournamentId);
     if (!tournament) {
       this.logger.error(
@@ -138,17 +141,21 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     // Last line of defence against a leftover job: if the draft's clock has
     // moved on (paused, already advanced, timer turned off) this job is not the
     // authority for the current pick, so drop it rather than skip anyone.
+    const driftMs =
+      expectedSkipTime && draft.skipTime
+        ? Math.abs(
+            draft.skipTime.getTime() - new Date(expectedSkipTime).getTime(),
+          )
+        : undefined;
     if (
       draft.status !== "IN_PROGRESS" ||
       draft.noTimer ||
       !draft.skipTime ||
-      (expectedSkipTime &&
-        Math.abs(
-          draft.skipTime.getTime() - new Date(expectedSkipTime).getTime(),
-        ) > SKIP_TIME_TOLERANCE_MS)
+      (driftMs !== undefined && driftMs > SKIP_TIME_TOLERANCE_MS)
     ) {
       this.logger.warn(
-        `Discarding stale skip-draft-pick job for draft ${draft.name}`,
+        `Discarding stale skip-draft-pick job for draft ${draft.name} ` +
+          `(status=${draft.status}, noTimer=${draft.noTimer}, draft.skipTime=${draft.skipTime?.toISOString() ?? "none"}, driftMs=${driftMs ?? "n/a"})`,
       );
       await job.remove();
       return;
@@ -362,10 +369,16 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     const timerRunning =
       draft.status === "IN_PROGRESS" && !draft.noTimer && !!skipTime;
     if (!timerRunning || !skipTime) {
+      this.logger.log(
+        `resumeSkipPick clearing jobs for draft ${draftId} (status=${draft.status}, noTimer=${draft.noTimer}, skipTime=${skipTime?.toISOString() ?? "none"})`,
+      );
       await this.cancelSkipPick(draft);
       return;
     }
 
+    this.logger.log(
+      `resumeSkipPick scheduling skip-draft-pick for draft ${draftId} at ${skipTime.toISOString()}`,
+    );
     await this.upsertDraftJob(SKIP_PICK_JOB, draftId, skipTime, {
       tournamentId: tournament.id,
       draftId,

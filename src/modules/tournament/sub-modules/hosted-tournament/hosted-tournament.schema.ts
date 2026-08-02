@@ -247,9 +247,13 @@ export class HostedTournamentEntity {
   currentStageIndex!: number;
 
   /**
-   * The schedule every stage is laid out against. Empty on tournaments that
-   * predate the move — their rounds still live on their stages until the
-   * sections-to-stages migration has run.
+   * The schedule every stage is laid out against — `LeagueMatchup.round`
+   * points at one of these subdocuments.
+   *
+   * Empty only on a tournament that has never had a stage. The
+   * sections-to-stages migration filled this for every tournament that had
+   * one; `StageEntity.rounds` is the deprecated copy it was filled from, kept
+   * so the rollback has something to restore.
    */
   @Prop({ type: [TournamentRoundSchema], default: [] })
   rounds!: TournamentRoundEntity[];

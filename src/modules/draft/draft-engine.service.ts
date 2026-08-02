@@ -11,7 +11,7 @@ import {
 import { TeamPickEntity } from "@modules/team/team.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { AgendaService } from "@modules/agenda/agenda.service";
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
@@ -38,6 +38,7 @@ import {
   getDocumentId,
   getDraftOrder,
   getPokemonIdFromDraft,
+  getTeamPickSlot,
   isPreDraftStatus,
 } from "./domain/pick-order";
 import {
@@ -106,6 +107,8 @@ function clearSideEffects(session: ClientSession) {
 
 @Injectable()
 export class DraftEngineService {
+  private readonly logger = new Logger(DraftEngineService.name);
+
   constructor(
     @InjectConnection() private readonly connection: Connection,
     private readonly teamRepo: TeamRepository,
@@ -277,6 +280,33 @@ export class DraftEngineService {
     }
     if (!picks.length) return null;
     return picks;
+  }
+
+  /**
+   * A coach who saves their queue while it's already their turn never gets a
+   * turn-transition to trigger consumption — advanceSequentialCounter() only
+   * fires when the counter moves onto a team, and setDraftState()'s play
+   * action only fires on start/resume. Without this, a picks[0] entry saved
+   * mid-turn just sits unused until the timer skips them.
+   */
+  async autoDraftFromQueueIfOnClock(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    session?: ClientSession,
+  ): Promise<void> {
+    if (!draft.sequentialTurns) return;
+    if (!(await canTeamDraft(draft, team))) return;
+
+    const queuedPicks = await this.currentTeamPicks(
+      tournament,
+      draft,
+      team,
+      session,
+    );
+    if (!queuedPicks?.length) return;
+
+    await this.draftPokemon(tournament, draft, team, queuedPicks[0], session);
   }
 
   async draftPokemon(
@@ -519,11 +549,15 @@ export class DraftEngineService {
       ? typeColorMap.get(pokemonSpecie.types[0])
       : undefined;
 
+    // The team's own pick count, not the draft's live counter — this pick may be
+    // a make-up for a round the team fell behind on, which the shared counter has
+    // already moved past.
+    const pickSlot = getTeamPickSlot(draft, team, team.pickLog.length - 1);
     const fields: EmbedField[] = [
-      { name: "Round", value: `${getCurrentRound(draft) + 1}`, inline: true },
+      { name: "Round", value: `${pickSlot.round + 1}`, inline: true },
       {
         name: "Position",
-        value: `${getCurrentPositionInRound(draft) + 1}`,
+        value: `${pickSlot.position + 1}`,
         inline: true,
       },
       {
@@ -772,7 +806,13 @@ export class DraftEngineService {
 
     const team = getCurrentPickingTeam(draft);
 
-    if (!team) return false;
+    if (!team) {
+      this.logger.warn(
+        `skipCurrentPick: getCurrentPickingTeam returned null for draft ${draft._id} ` +
+          `(teams=${draft.teams.length}, counter=${draft.counter}, status=${draft.status})`,
+      );
+      return false;
+    }
 
     const fullTeam = await this.teamRepo.findByIdOrNull(team._id);
     const teamName = fullTeam?.teamName || "Unknown Team";
@@ -1004,7 +1044,9 @@ export class DraftEngineService {
         reason: `Position must be between 1 and ${teamCount}.`,
       });
 
+    const previousCounter = draft.counter;
     draft.counter = round * teamCount + position;
+    const movedForward = draft.counter > previousCounter;
 
     const currentTeam = getCurrentPickingTeam(draft);
     const teamTimer = currentTeam
@@ -1051,7 +1093,11 @@ export class DraftEngineService {
         currentTeam.coach?.discordName,
       );
       const embed = new EmbedBuilder()
-        .setTitle(`The draft is back on ${currentTeam.teamName}`)
+        .setTitle(
+          movedForward
+            ? `The draft was skipped ahead to ${currentTeam.teamName}`
+            : `The draft is back on ${currentTeam.teamName}`,
+        )
         .setColor(0xffde00)
         .setURL(this.draftUrl(tournament, draft))
         .addFields([
@@ -1059,11 +1105,12 @@ export class DraftEngineService {
           { name: "Position", value: `${position + 1}`, inline: true },
         ])
         .setTimestamp();
+      const verb = movedForward ? "skipped the draft ahead" : "moved the draft back";
       await this.discordService.sendMessage(channelId, {
         content:
           draft.status === "IN_PROGRESS"
-            ? `An organizer moved the draft back — ${coachMention ?? "coach"}, it is now your turn!`
-            : `An organizer moved the draft back to ${coachMention ?? "this coach"}'s turn.`,
+            ? `An organizer ${verb} — ${coachMention ?? "coach"}, it is now your turn!`
+            : `An organizer ${verb} to ${coachMention ?? "this coach"}'s turn.`,
         embeds: [embed],
       });
     }

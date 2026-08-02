@@ -35,6 +35,7 @@ import {
 } from "./draft.dto";
 import {
   DraftRepository,
+  PopulatedDraft,
   PopulatedTeam,
   PopulatedTournament,
 } from "./draft.repository";
@@ -297,12 +298,36 @@ export class DraftService {
         isOrganizerOverride,
       );
 
-    if (dto.picks !== undefined)
+    if (dto.picks !== undefined) {
       await this.teamRepo.updatePicks(team._id, dto.picks);
+      await this.autoDraftFromQueueIfOnClock(tournament, draft, team, dto.picks);
+    }
 
     const { tournament: freshTournament, draft: freshDraft } =
       await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  /**
+   * `updatePicks()` is a raw $set that bypasses the in-memory team documents,
+   * so the copy sitting in `draft.teams` (which draftPokemon() operates on)
+   * needs the same picks before checking whether that team is now on the
+   * clock with a usable queued pick.
+   */
+  private async autoDraftFromQueueIfOnClock(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    team: PopulatedTeam,
+    picks: PopulatedTeam["picks"],
+  ) {
+    const teamIndex = draft.teams.findIndex((t) => t._id.equals(team._id));
+    const engineTeam = teamIndex !== -1 ? draft.teams[teamIndex] : team;
+    engineTeam.picks = picks;
+    await this.draftEngine.autoDraftFromQueueIfOnClock(
+      tournament,
+      draft,
+      engineTeam,
+    );
   }
 
   /** Organizer-only edit of one turn's pick; see DraftEngineService.setPickAtRound. */
@@ -355,6 +380,7 @@ export class DraftService {
       });
 
     await this.teamRepo.updatePicks(team._id, dto.picks);
+    await this.autoDraftFromQueueIfOnClock(tournament, draft, team, dto.picks);
     return { message: "Draft pick set successfully." };
   }
 

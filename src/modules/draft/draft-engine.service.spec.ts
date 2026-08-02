@@ -398,6 +398,77 @@ describe("DraftEngineService", () => {
     });
   });
 
+  describe("autoDraftFromQueueIfOnClock", () => {
+    it("drafts the team's queued pick when it's already their turn", async () => {
+      const tierList = buildTierList();
+      const team = buildTeam({ picks: [[{ pokemonId: "pikachu" }]] });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], counter: 0 });
+
+      await engine.autoDraftFromQueueIfOnClock(tournament, draft, team);
+
+      expect(team.pickLog).toHaveLength(1);
+      expect(team.pickLog[0].pokemon.id).toBe("pikachu");
+      expect(team.picks).toEqual([]);
+    });
+
+    it("does nothing when it isn't this team's turn", async () => {
+      const tierList = buildTierList();
+      const teamA = buildTeam({ teamName: "A" });
+      const teamB = buildTeam({
+        teamName: "B",
+        picks: [[{ pokemonId: "charizard" }]],
+      });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      // counter 0 means teamA (first in draft order) is on the clock, not teamB.
+      const draft = buildDraft({ teams: [teamA, teamB], counter: 0 });
+
+      await engine.autoDraftFromQueueIfOnClock(tournament, draft, teamB);
+
+      expect(teamB.pickLog).toHaveLength(0);
+      expect(teamB.picks).toEqual([[{ pokemonId: "charizard" }]]);
+    });
+
+    it("does nothing when the team has no queued picks", async () => {
+      const tierList = buildTierList();
+      const team = buildTeam({ picks: [] });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], counter: 0 });
+
+      await engine.autoDraftFromQueueIfOnClock(tournament, draft, team);
+
+      expect(team.pickLog).toHaveLength(0);
+      expect(team.save).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when turns aren't sequential", async () => {
+      const tierList = buildTierList();
+      const team = buildTeam({ picks: [[{ pokemonId: "pikachu" }]] });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        counter: 0,
+        sequentialTurns: false,
+      });
+
+      await engine.autoDraftFromQueueIfOnClock(tournament, draft, team);
+
+      expect(team.pickLog).toHaveLength(0);
+    });
+  });
+
   describe("undraftPokemon", () => {
     it("refuses a coach removal when the draft doesn't allow removals", async () => {
       const tournament = buildTournament();
