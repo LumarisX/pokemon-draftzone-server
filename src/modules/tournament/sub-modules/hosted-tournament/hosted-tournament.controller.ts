@@ -34,13 +34,9 @@ export class HostedTournamentController {
     return this.tournamentService.getTournament(leagueSlug, tournamentSlug);
   }
 
-  @Get(":tournamentSlug/bracket")
-  async getTournamentBracket(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-  ) {
-    return this.tournamentService.getBracket(leagueSlug, tournamentSlug);
-  }
+  // GET :tournamentSlug/bracket lives on TournamentBracketController, which
+  // serves rounds, stages and matches together and hides stages an organizer
+  // has not released. A second handler here only shadowed it.
 
   @Get(":tournamentSlug/info")
   @OptionalAuth()

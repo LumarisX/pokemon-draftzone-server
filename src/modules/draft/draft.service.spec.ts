@@ -126,7 +126,7 @@ describe("DraftService", () => {
     stageRepo = {
       findById: jest.fn(),
       findAllByTournament: jest.fn(),
-      flattenPoolTeamIds: jest.fn().mockReturnValue([]),
+      teamIdsInSeedOrder: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
     teamRepo = {
       findManyByIds: jest.fn(),

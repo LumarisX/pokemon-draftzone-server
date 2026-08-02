@@ -214,18 +214,17 @@ export class StageRepository {
   }
 
   /**
-   * The stage's teams in seed order — throws if it has none yet.
+   * The stage's teams in seed order, empty when it has none yet.
    *
    * Reads `teamIds` first and falls back to flattening `pools`, because a stage
    * created by the sections-to-stages migration has only the former and a stage
    * predating it has only the latter.
+   *
+   * Deliberately total. A stage whose bracket has not been built yet has no
+   * teams, which is a normal state — the reads that hang off this (a team page,
+   * a standings table) show an empty competition rather than failing.
    */
-  flattenPoolTeamIds(stage: StageDocument): Types.ObjectId[] {
-    const teamIds = stageTeamIds(stage);
-    if (!teamIds.length)
-      throw new PDZError(ErrorCodes.STAGE.NO_POOLS_DEFINED, {
-        stageId: stage._id.toString(),
-      });
-    return teamIds;
+  teamIdsInSeedOrder(stage: StageDocument): Types.ObjectId[] {
+    return stageTeamIds(stage);
   }
 }

@@ -15,17 +15,15 @@ import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-mat
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { isCoachedBy } from "@modules/team/team.domain";
-import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { TeamRepository } from "@modules/team/team.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
-import { buildBracketView } from "@modules/stage/domain/bracket-view";
 import {
   rosterContext,
   stageRounds,
-  stageTeamIds,
   tournamentRosterContext,
   usesTournamentAxis,
 } from "@modules/stage/domain/stage-axis";
@@ -82,9 +80,15 @@ export class HostedTournamentService {
     // both, and a tournament with several genuinely could not answer this,
     // which is what the "pass stageId" error meant.
     const migrated = usesTournamentAxis(tournament);
-    const allStages = await this.stageRepo.findAllByTournament(tournament.id);
+    // A hidden stage is invisible to everyone but an organizer, matches
+    // included — a team page must not be the hole the unreleased bracket
+    // leaks through.
+    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const stages = (
+      await this.stageRepo.findAllByTournament(tournament.id)
+    ).filter((stage) => stage.public !== false || canSeeHidden);
     const stageDoc = migrated
-      ? allStages[0]
+      ? stages[0]
       : await this.resolveStage(tournament.id, stageId);
     const coach = team.coach;
 
@@ -118,7 +122,10 @@ export class HostedTournamentService {
       };
     }
 
-    const stage = await this.composeStageTeams(stageDoc);
+    // The stage supplies the round axis and the legacy trade context, nothing
+    // more — a team page never reads the stage's own roster, so it does not
+    // matter here whether the stage has teams assigned yet.
+    const stage = stageDoc;
 
     const draftRoster: ({
       id: string;
@@ -140,7 +147,7 @@ export class HostedTournamentService {
     // Every stage the team plays in, not just one: a coach's record covers the
     // group phase and the playoffs together.
     const teamMatchups = (await this.matchupRepo.findByStages(
-      migrated ? allStages.map((s) => s._id) : [stage._id],
+      migrated ? stages.map((s) => s._id) : [stage._id],
       { teamIds: [team._id] },
     )) as unknown as PopulatedStageMatchup[];
 
@@ -192,16 +199,6 @@ export class HostedTournamentService {
     });
   }
 
-  private async composeStageTeams(
-    stage: StageDocument,
-  ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
-    const teamIds = this.stageRepo.flattenPoolTeamIds(stage);
-    const teams = await this.teamRepo.findManyByIds(teamIds);
-    return Object.assign(stage, { teams }) as StageDocument & {
-      teams: PopulatedTeam[];
-    };
-  }
-
   async getTournament(leagueSlug: string, tournamentSlug: string) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
@@ -248,15 +245,26 @@ export class HostedTournamentService {
     };
   }
 
-  /** Flat team list for organizer tooling (e.g. picking bracket participants). */
+  /**
+   * Flat team list, each with the roster it currently holds.
+   *
+   * The roster is here rather than on the tier list because it is tournament
+   * data: who owns what depends on this tournament's approved trades and the
+   * round it is on, and the same tier list can back several tournaments. It is
+   * what the trade tools read to know a team's Pokémon and which of the tier
+   * list's are still free.
+   */
   async listTeams(leagueSlug: string, tournamentSlug: string) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
-    const [teams, drafts] = await Promise.all([
+    const [teams, drafts, tierList] = await Promise.all([
       this.teamRepo.findAllByTournament(tournament.id),
       this.draftRepo.findAllByTournament(tournament.id),
+      tournament.tierListId
+        ? this.tierListRepo.findById(tournament.tierListId).catch(() => null)
+        : null,
     ]);
     // Which draft pool a team drafted in — organizers seed brackets across
     // pools, so the pool has to be visible next to each team.
@@ -266,6 +274,13 @@ export class HostedTournamentService {
         { draftSlug: draft.slug, name: draft.name },
       ]),
     );
+
+    // Only a migrated tournament owns the trades and the round axis the walk
+    // needs. Without them there is nothing to replay, and the pick log is the
+    // roster.
+    const context = usesTournamentAxis(tournament)
+      ? tournamentRosterContext(tournament)
+      : undefined;
 
     return {
       teams: teams.map((team) => ({
@@ -278,33 +293,14 @@ export class HostedTournamentService {
         draft: team.draftId
           ? (draftById.get(team.draftId.toString()) ?? null)
           : null,
+        roster: getRosterByRound(team, context).map((pokemon) => ({
+          id: pokemon.id,
+          name: getName(pokemon.id),
+          cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
+          tier: tierList?.pokemon.get(pokemon.id)?.tier,
+        })),
       })),
     };
-  }
-
-  async getBracket(leagueSlug: string, tournamentSlug: string) {
-    const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
-    const playoffsStage = tournament.getPlayoffsStage();
-
-    if (!playoffsStage) {
-      return { format: null, seeding: null, teams: [], rounds: [], matches: [] };
-    }
-
-    const rounds = stageRounds(playoffsStage, tournament);
-    // Scoped to the stage too: on a tournament-wide axis every stage shares
-    // these rounds, so round alone would sweep in the group phase's matchups.
-    const bracketMatchups = await this.matchupRepo.findByRoundsInStage(
-      playoffsStage._id,
-      rounds.map((round) => round._id.toString()),
-    );
-    const teamObjIds = stageTeamIds(playoffsStage);
-    const teamDocs =
-      teamObjIds.length > 0 ? await this.teamRepo.findManyByIds(teamObjIds) : [];
-
-    return buildBracketView(playoffsStage, bracketMatchups, teamDocs, rounds);
   }
 
   async getRoles(

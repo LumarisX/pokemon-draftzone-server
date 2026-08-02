@@ -363,7 +363,13 @@ export class TournamentBracketService {
             order: stage.order,
             name: stage.dto.name,
             type: stage.dto.type,
-            public: stage.dto.public !== false,
+            // Only when the payload actually carries it. Visibility belongs to
+            // the organizer's show/hide control, and a bracket save that
+            // omitted the field used to read as "make it visible" — silently
+            // republishing a stage that had been hidden.
+            ...(stage.dto.public === undefined
+              ? {}
+              : { public: stage.dto.public }),
             teamIds: stage.seedOrder.map((id) => new Types.ObjectId(id)),
             seedingLog: [
               ...(stage.existing!.seedingLog ?? []),

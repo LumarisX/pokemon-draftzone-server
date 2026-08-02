@@ -102,7 +102,7 @@ export class DraftService {
   private async composeStageTeams(
     stage: StageDocument,
   ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
-    const teamIds = this.stageRepo.flattenPoolTeamIds(stage);
+    const teamIds = this.stageRepo.teamIdsInSeedOrder(stage);
     const teams = await this.teamRepo.findManyByIds(teamIds);
     return Object.assign(stage, { teams }) as StageDocument & {
       teams: PopulatedTeam[];
@@ -613,8 +613,13 @@ export class DraftService {
 
     // Across every stage, not just the one supplying the axis: a coach's
     // record on the draft page covers the whole tournament, and a stage is no
-    // longer the unit a season is played in.
-    const stages = await this.stageRepo.findAllByTournament(draft.tournamentId);
+    // longer the unit a season is played in. Hidden stages are excluded for
+    // everyone but an organizer — a result from an unreleased bracket would
+    // otherwise show up in the records here.
+    const canSeeHidden = this.isOrganizer(tournament, sub);
+    const stages = (
+      await this.stageRepo.findAllByTournament(draft.tournamentId)
+    ).filter((stage) => stage.public !== false || canSeeHidden);
     const allMatchups = (await this.matchupRepo.findByStages(
       stages.map((s) => s._id),
     )) as unknown as PopulatedStageMatchup[];

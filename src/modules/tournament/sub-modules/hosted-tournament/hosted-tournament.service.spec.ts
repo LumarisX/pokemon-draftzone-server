@@ -10,6 +10,7 @@ import {
   DraftCount,
   Tier,
   TierList,
+  TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Types } from "mongoose";
@@ -483,6 +484,169 @@ describe("HostedTournamentService settings", () => {
         },
       );
       expect(result).toEqual({ success: true });
+    });
+  });
+});
+
+describe("HostedTournamentService teams", () => {
+  const TEAM_ID = new Types.ObjectId();
+  const OTHER_TEAM_ID = new Types.ObjectId();
+
+  function buildTeam(
+    id: Types.ObjectId,
+    teamName: string,
+    pokemonIds: string[],
+  ) {
+    return {
+      _id: id,
+      teamName,
+      status: "approved",
+      coach: { _id: new Types.ObjectId(), name: `${teamName} coach` },
+      pickLog: pokemonIds.map((pokemonId) => ({ pokemon: { id: pokemonId } })),
+    };
+  }
+
+  function buildRosterTierList() {
+    return buildSettingsTierList({
+      pokemon: new Map([
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+        ["eevee", new TierListPokemon({ name: "Eevee", tier: "A" })],
+        ["snorlax", new TierListPokemon({ name: "Snorlax", tier: "A" })],
+      ]),
+    });
+  }
+
+  function buildService(overrides: {
+    tournament: HostedTournament;
+    teams?: unknown[];
+    stages?: unknown[];
+    team?: unknown;
+  }) {
+    const tierList = buildRosterTierList();
+    const tournamentRepo = {
+      findBySlug: jest.fn().mockResolvedValue(overrides.tournament),
+    } as unknown as jest.Mocked<HostedTournamentRepository>;
+    const tierListRepo = {
+      findById: jest.fn().mockResolvedValue(tierList),
+    } as unknown as jest.Mocked<TierListRepository>;
+    const teamRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue(overrides.teams ?? []),
+      findById: jest.fn().mockResolvedValue(overrides.team),
+    } as unknown as jest.Mocked<TeamRepository>;
+    const draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+      findTournament: jest
+        .fn()
+        .mockResolvedValue(Object.assign(overrides.tournament, { tierList })),
+    } as unknown as jest.Mocked<DraftRepository>;
+    const stageRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue(overrides.stages ?? []),
+    } as unknown as jest.Mocked<StageRepository>;
+    const matchupRepo = {
+      findByStages: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<LeagueMatchupRepository>;
+
+    const service = new HostedTournamentService(
+      tournamentRepo,
+      tierListRepo,
+      teamRepo,
+      {} as CoachRepository,
+      draftRepo,
+      stageRepo,
+      matchupRepo,
+      {} as DiscordService,
+      {} as S3Service,
+    );
+    return { service, matchupRepo };
+  }
+
+  describe("listTeams", () => {
+    it("returns each team's picks priced against the tier list", async () => {
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: [buildTeam(TEAM_ID, "Team One", ["pikachu", "eevee"])],
+      });
+
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(result.teams[0].roster).toEqual([
+        { id: "pikachu", name: "Pikachu", cost: 10, tier: "S" },
+        { id: "eevee", name: "Eevee", cost: 5, tier: "A" },
+      ]);
+    });
+
+    it("applies the tournament's approved trades to the roster it reports", async () => {
+      const tournament = buildTournament({
+        rounds: [{ _id: new Types.ObjectId(), name: "Week 1" }],
+        currentRoundIndex: 0,
+        trades: [
+          {
+            side1: { team: TEAM_ID, pokemon: [{ id: "eevee" }] },
+            side2: { team: OTHER_TEAM_ID, pokemon: [{ id: "snorlax" }] },
+            timestamp: new Date(),
+            activeRound: 0,
+            status: "APPROVED",
+          },
+        ],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const { service } = buildService({
+        tournament,
+        teams: [buildTeam(TEAM_ID, "Team One", ["pikachu", "eevee"])],
+      });
+
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(result.teams[0].roster.map((p) => p.id)).toEqual([
+        "pikachu",
+        "snorlax",
+      ]);
+    });
+  });
+
+  describe("getTeam", () => {
+    const visibleStage = { _id: new Types.ObjectId(), order: 0, public: true };
+    const hiddenStage = { _id: new Types.ObjectId(), order: 1, public: false };
+    const tournamentWithAxis = () =>
+      buildTournament({
+        rounds: [{ _id: new Types.ObjectId(), name: "Week 1" }],
+        currentRoundIndex: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+    it("leaves a hidden stage's matchups out for a coach", async () => {
+      const { service, matchupRepo } = buildService({
+        tournament: tournamentWithAxis(),
+        team: buildTeam(TEAM_ID, "Team One", ["pikachu"]),
+        stages: [visibleStage, hiddenStage],
+      });
+
+      await service.getTeam(LEAGUE_KEY, TOURNAMENT_KEY, TEAM_ID.toString(), SUB);
+
+      expect(matchupRepo.findByStages).toHaveBeenCalledWith(
+        [visibleStage._id],
+        { teamIds: [TEAM_ID] },
+      );
+    });
+
+    it("includes it for an organizer", async () => {
+      const { service, matchupRepo } = buildService({
+        tournament: tournamentWithAxis(),
+        team: buildTeam(TEAM_ID, "Team One", ["pikachu"]),
+        stages: [visibleStage, hiddenStage],
+      });
+
+      await service.getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        TEAM_ID.toString(),
+        "auth0|owner",
+      );
+
+      expect(matchupRepo.findByStages).toHaveBeenCalledWith(
+        [visibleStage._id, hiddenStage._id],
+        { teamIds: [TEAM_ID] },
+      );
     });
   });
 });

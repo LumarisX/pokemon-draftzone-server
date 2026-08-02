@@ -215,7 +215,7 @@ export class StageService {
       teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>>;
     }
   > {
-    const teamIds = this.stageRepo.flattenPoolTeamIds(stage);
+    const teamIds = this.stageRepo.teamIdsInSeedOrder(stage);
     const teams = await this.teamRepo.findManyByIds(teamIds);
     return Object.assign(stage, { teams });
   }
@@ -771,7 +771,7 @@ export class StageService {
 
     if (!dto.seedGroups?.length) {
       if (existingSeedOrder.length === 0)
-        throw new PDZError(ErrorCodes.STAGE.NO_POOLS_DEFINED, {
+        throw new PDZError(ErrorCodes.STAGE.NO_TEAMS_TO_SEED, {
           stageId: stageDoc._id.toString(),
         });
       return existingSeedOrder;

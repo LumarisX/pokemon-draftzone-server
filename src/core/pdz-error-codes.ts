@@ -154,10 +154,10 @@ export const ErrorCodes = {
       status: 400,
       message: "Invalid trade data",
     },
-    NO_POOLS_DEFINED: {
+    NO_TEAMS_TO_SEED: {
       code: "STG-003",
       status: 400,
-      message: "This stage has no pools defined yet",
+      message: "This stage has no teams to seed",
     },
     INVALID_BRACKET: {
       code: "STG-004",

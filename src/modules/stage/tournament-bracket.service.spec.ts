@@ -600,6 +600,30 @@ describe("TournamentBracketService", () => {
       ).toEqual(seeded.map(String));
     });
 
+    it("leaves a hidden stage hidden when the payload omits `public`", async () => {
+      const stage = buildStage({
+        public: false,
+        teamIds: [new Types.ObjectId(), new Types.ObjectId()],
+      });
+      stageRepo.findAllByTournament.mockResolvedValue([stage]);
+
+      const dto = buildDto({
+        stages: [
+          {
+            _id: stage._id.toString(),
+            key: "groups",
+            name: "Group A",
+            type: "round-robin",
+          },
+        ],
+      } as Partial<UpdateTournamentBracketDto>);
+
+      await update(dto);
+
+      const stageUpdate = stageRepo.applyStageDiff.mock.calls[0][0].updates[0];
+      expect(stageUpdate.set).not.toHaveProperty("public");
+    });
+
     it("rejects an unknown stage id rather than silently creating a new stage", async () => {
       const dto = buildDto({
         stages: [

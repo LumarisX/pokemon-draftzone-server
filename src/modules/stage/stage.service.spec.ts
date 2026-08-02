@@ -91,7 +91,7 @@ describe("StageService", () => {
       setCurrentRoundIndex: jest.fn(),
       setPublic: jest.fn(),
       findById: jest.fn(async () => buildStage()),
-      flattenPoolTeamIds: jest.fn().mockReturnValue([]),
+      teamIdsInSeedOrder: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
     teamRepo = {
       findManyByIds: jest.fn().mockResolvedValue([]),
@@ -626,7 +626,7 @@ describe("StageService", () => {
         ],
       });
       stageRepo.findById.mockResolvedValue(stage);
-      stageRepo.flattenPoolTeamIds.mockReturnValue([...groupA, ...groupB]);
+      stageRepo.teamIdsInSeedOrder.mockReturnValue([...groupA, ...groupB]);
       teamRepo.findManyByIds.mockResolvedValue(
         [...groupA, ...groupB].map((_id) => buildTeam({ _id })),
       );
