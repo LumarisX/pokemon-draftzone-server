@@ -2,7 +2,7 @@ import { Specie } from "@pkmn/data";
 
 type WeaknessModifier = (
   weaknesses: { [key: string]: number },
-  specie: Specie
+  specie: Specie,
 ) => void;
 
 const immunityToPoison: WeaknessModifier = (weak) => {
@@ -79,6 +79,9 @@ export const abilityModifiers: Partial<Record<string, WeaknessModifier>> = {
     weak.Grass = 0;
   },
   Levitate: (weak) => {
+    weak.Ground = 0;
+  },
+  Eelevate: (weak) => {
     weak.Ground = 0;
   },
   "Earth Eater": (weak) => {
