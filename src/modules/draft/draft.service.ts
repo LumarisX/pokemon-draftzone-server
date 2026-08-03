@@ -13,8 +13,12 @@ import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
-import { getRosterByRound } from "../stage/domain/roster";
-import { rosterContext } from "../stage/domain/stage-axis";
+import { getLatestRoster, getRosterByRound } from "../stage/domain/roster";
+import {
+  rosterContext,
+  tournamentRosterContext,
+  usesTournamentAxis,
+} from "../stage/domain/stage-axis";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -590,12 +594,22 @@ export class DraftService {
       (team) => team.status === "approved",
     );
 
+    // Rosters no longer need a stage: trades and the rounds they take effect
+    // in belong to the tournament. A stage is only consulted for a tournament
+    // the sections-to-stages migration has not reached, which still keeps its
+    // trades on the stage.
+    const roster = usesTournamentAxis(tournament)
+      ? tournamentRosterContext(tournament)
+      : stageDoc
+        ? rosterContext(stageDoc, tournament)
+        : undefined;
+
     if (!stageDoc) {
       const teams = approvedTeams.map((team) => ({
         id: team._id.toString(),
         coach: team.coach.name,
         logo: team.logo,
-        draft: getRosterByRound(team, undefined).map((pokemon) => ({
+        draft: getLatestRoster(team, roster).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           capt: { tera: pokemon.addons?.includes("Tera Captain") },
@@ -648,9 +662,7 @@ export class DraftService {
         id: team._id.toString(),
         coach: team.coach.name,
         logo: team.logo,
-        draft: getRosterByRound(team, rosterContext(stage, tournament)).map((
-          pokemon,
-        ) => ({
+        draft: getLatestRoster(team, roster).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           capt: { tera: pokemon.addons?.includes("Tera Captain") },

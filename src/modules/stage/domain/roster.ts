@@ -130,3 +130,19 @@ export function getRosterByRound(
   }
   return roster;
 }
+
+/**
+ * A team's roster with every approved trade applied, including ones that take
+ * effect in a round that has not been reached yet.
+ *
+ * This is what a roster listing wants: a coach looking at the teams page is
+ * asking who holds what now, not who held what during the round currently
+ * being played. Match views still read {@link getRosterByRound}, because a
+ * result has to be scored against the roster in force when it was played.
+ */
+export function getLatestRoster(
+  team: PopulatedTeam,
+  context: RosterContext | undefined,
+) {
+  return getRosterByRound(team, context, context?.rounds.length);
+}

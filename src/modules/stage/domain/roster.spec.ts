@@ -2,6 +2,7 @@ import { PopulatedTeam } from "@modules/team/team.repository";
 import { StageDocument, StageTradeEntity } from "@modules/stage/stage.schema";
 import { Types } from "mongoose";
 import {
+  getLatestRoster,
   getRosterByRound,
   getRostersBeforeRound,
   updateRosterWithTrades,
@@ -180,6 +181,56 @@ describe("getRosterByRound", () => {
     const stage = buildStage({ trades: [trade], currentRoundIndex: 1 });
 
     expect(getRosterByRound(team, rosterContext(stage))).toEqual([{ id: "pikachu" }]);
+  });
+});
+
+describe("getLatestRoster", () => {
+  it("returns the raw pick log when there's no context to walk", () => {
+    const team = buildTeam([{ pokemon: { id: "pikachu" }, addons: ["Tera Captain"] }]);
+
+    expect(getLatestRoster(team, undefined)).toEqual([
+      { id: "pikachu", addons: ["Tera Captain"] },
+    ]);
+  });
+
+  it("applies a trade that takes effect in a round that hasn't been reached yet", () => {
+    const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
+    const trade = buildTrade({
+      activeRound: 2,
+      side1: { team: team._id, pokemon: [{ id: "pikachu" }] },
+      side2: { team: new Types.ObjectId(), pokemon: [{ id: "mewtwo" }] },
+    });
+    const stage = buildStage({ trades: [trade], currentRoundIndex: 0 });
+
+    // getRosterByRound stops at the current round and still sees the old mon.
+    expect(getRosterByRound(team, rosterContext(stage))).toEqual([{ id: "pikachu" }]);
+    expect(getLatestRoster(team, rosterContext(stage))).toEqual([{ id: "mewtwo" }]);
+  });
+
+  it("applies a trade in the stage's last round", () => {
+    const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
+    const trade = buildTrade({
+      // buildStage has 3 rounds, so index 2 is the last one.
+      activeRound: 2,
+      side1: { team: team._id, pokemon: [{ id: "pikachu" }] },
+      side2: { team: new Types.ObjectId(), pokemon: [{ id: "mewtwo" }] },
+    });
+    const stage = buildStage({ trades: [trade], currentRoundIndex: -1 });
+
+    expect(getLatestRoster(team, rosterContext(stage))).toEqual([{ id: "mewtwo" }]);
+  });
+
+  it("still ignores PENDING and REJECTED trades", () => {
+    const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
+    const rejected = buildTrade({
+      status: "REJECTED",
+      activeRound: 1,
+      side1: { team: team._id, pokemon: [{ id: "pikachu" }] },
+      side2: { team: new Types.ObjectId(), pokemon: [{ id: "mewtwo" }] },
+    });
+    const stage = buildStage({ trades: [rejected], currentRoundIndex: 0 });
+
+    expect(getLatestRoster(team, rosterContext(stage))).toEqual([{ id: "pikachu" }]);
   });
 });
 

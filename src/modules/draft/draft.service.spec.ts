@@ -11,7 +11,7 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { Types } from "mongoose";
-import { getRosterByRound } from "../stage/domain/roster";
+import { getLatestRoster } from "../stage/domain/roster";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -34,6 +34,7 @@ jest.mock("./domain/pick-order", () => ({
   getDraftOrder: jest.fn(),
 }));
 jest.mock("../stage/domain/roster", () => ({
+  getLatestRoster: jest.fn(),
   getRosterByRound: jest.fn(),
 }));
 jest.mock("../stage/domain/standings", () => ({
@@ -44,7 +45,7 @@ jest.mock("../stage/domain/standings", () => ({
 const mockedGetDraftDetails = getDraftDetails as jest.Mock;
 const mockedIsCoach = isCoach as jest.Mock;
 const mockedGetDraftOrder = getDraftOrder as jest.Mock;
-const mockedGetRosterByRound = getRosterByRound as jest.Mock;
+const mockedGetLatestRoster = getLatestRoster as jest.Mock;
 const mockedCalculateDivisionCoachStandings = calculateDivisionCoachStandings as jest.Mock;
 const mockedCalculateDivisionPokemonStandings = calculateDivisionPokemonStandings as jest.Mock;
 
@@ -469,7 +470,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       stageRepo.findAllByTournament.mockResolvedValue([]);
       mockedGetDraftOrder.mockReturnValue([team]);
-      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu", addons: undefined }]);
+      mockedGetLatestRoster.mockReturnValue([{ id: "pikachu", addons: undefined }]);
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|coach-1");
 
@@ -496,7 +497,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       stageRepo.findAllByTournament.mockResolvedValue([]);
       mockedGetDraftOrder.mockReturnValue([approved, pending, denied]);
-      mockedGetRosterByRound.mockReturnValue([]);
+      mockedGetLatestRoster.mockReturnValue([]);
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub");
 
@@ -525,7 +526,7 @@ describe("DraftService", () => {
         diffMode: "pokemon",
       });
       mockedGetDraftOrder.mockReturnValue([team]);
-      mockedGetRosterByRound.mockReturnValue([]);
+      mockedGetLatestRoster.mockReturnValue([]);
 
       await expect(
         service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub"),
@@ -556,7 +557,7 @@ describe("DraftService", () => {
         diffMode: "pokemon",
       });
       mockedGetDraftOrder.mockReturnValue([team]);
-      mockedGetRosterByRound.mockReturnValue([]);
+      mockedGetLatestRoster.mockReturnValue([]);
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
 
