@@ -1,5 +1,6 @@
 import { CoachModule } from "@modules/coach/coach.module";
 import { DraftCoreModule } from "@modules/draft/draft-core.module";
+import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { TeamModule } from "@modules/team/team.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
@@ -16,6 +17,7 @@ import { LeagueCoreModule } from "./league-core.module";
     CoachModule,
     TeamModule,
     DraftCoreModule,
+    LeagueMatchupModule,
   ],
   controllers: [LeagueController],
   providers: [LeagueService],

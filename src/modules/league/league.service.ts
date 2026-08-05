@@ -1,7 +1,13 @@
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { getName } from "@modules/data/domain/pokedex";
 import { DraftRepository } from "@modules/draft/draft.repository";
-import { getRosterByRound } from "@modules/stage/domain/roster";
+import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
+import { getLatestRoster } from "@modules/stage/domain/roster";
+import {
+  calculateTeamScore,
+  PopulatedStageMatchup,
+} from "@modules/stage/domain/standings";
+import { rosterContextForTournament } from "@modules/stage/domain/stage-axis";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
@@ -17,6 +23,7 @@ export class LeagueService {
     private readonly coachRepo: CoachRepository,
     private readonly teamRepo: TeamRepository,
     private readonly draftRepo: DraftRepository,
+    private readonly matchupRepo: LeagueMatchupRepository,
   ) {}
 
   async getLeagues(sub: string) {
@@ -33,12 +40,37 @@ export class LeagueService {
       teams.map((team) => [team.tournamentId.toString(), team]),
     );
 
-    const drafts = await this.draftRepo.findManyByIds(
-      teams.flatMap((team) => (team.draftId ? [team.draftId] : [])),
-    );
+    // One query for every card's matches rather than one per card: a team only
+    // ever appears in its own tournament's stages, so the results can be
+    // bucketed by team afterwards without any risk of crossing tournaments.
+    const [drafts, scoringMatchups] = await Promise.all([
+      this.draftRepo.findManyByIds(
+        teams.flatMap((team) => (team.draftId ? [team.draftId] : [])),
+      ),
+      this.matchupRepo.findScoringByStages(
+        tournaments.flatMap((tournament) =>
+          tournament.stages.map((stage) => stage._id),
+        ),
+        teams.map((team) => team._id),
+      ),
+    ]);
     const draftSlugsById = new Map(
       drafts.map((draft) => [draft._id.toString(), draft.slug]),
     );
+
+    // Every matchup has one of these teams on it, but the other side is an
+    // opponent whose record no card here shows, so only ours get a bucket.
+    const ownTeamIds = new Set(teams.map((team) => team._id.toString()));
+    const matchupsByTeam = new Map<string, typeof scoringMatchups>();
+    for (const matchup of scoringMatchups) {
+      for (const side of ["side1", "side2"] as const) {
+        const teamId = matchup[side].team?.toString();
+        if (!teamId || !ownTeamIds.has(teamId)) continue;
+        const bucket = matchupsByTeam.get(teamId);
+        if (bucket) bucket.push(matchup);
+        else matchupsByTeam.set(teamId, [matchup]);
+      }
+    }
 
     const details = await Promise.all(
       tournaments.map(async (tournament) => {
@@ -48,11 +80,26 @@ export class LeagueService {
           this.leagueRepo.findById(tournament.leagueId),
           this.tierListRepo.findById(tournament.tierListId),
         ]);
-        const roster = getRosterByRound(team, undefined).map((pokemon) => ({
+        // The tournament card is a "what do I have now" view, so it takes the
+        // roster with every approved trade applied, including ones that land in
+        // a round the season has not reached.
+        const context = rosterContextForTournament(tournament);
+        const roster = getLatestRoster(team, context).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           draftFormes: tierList.getPokemonFormes(pokemon.id),
         }));
+        // Across every stage the team plays in, matching the team page: a
+        // coach's record covers the group phase and the playoffs together.
+        const teamMatchups = matchupsByTeam.get(team._id.toString()) ?? [];
+        const record = teamMatchups.length
+          ? await calculateTeamScore(
+              teamMatchups as unknown as PopulatedStageMatchup[],
+              context?.rounds ?? [],
+              team,
+              tournament.forfeit,
+            )
+          : undefined;
         return {
           name: tournament.name,
           teamName: team.teamName,
@@ -69,6 +116,16 @@ export class LeagueService {
           draft: roster,
           format: tournament.format.name,
           ruleset: tournament.ruleset.name,
+          // Undefined until the schedule exists, so the card shows no record
+          // badge rather than a meaningless 0 - 0.
+          score: record && {
+            wins: record.wins,
+            losses: record.losses,
+            diff:
+              tournament.diffMode === "game"
+                ? record.gameDiff
+                : record.pokemonDiff,
+          },
         };
       }),
     );

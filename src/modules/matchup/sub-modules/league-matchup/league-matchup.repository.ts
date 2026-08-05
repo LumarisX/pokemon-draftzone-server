@@ -170,6 +170,35 @@ export class LeagueMatchupRepository {
   }
 
   /**
+   * Just enough of several stages' matchups to score the given teams: the
+   * result fields, plus each side's raw team ref.
+   *
+   * Deliberately unpopulated. Scoring only ever reads a side's team `_id`, and
+   * Mongoose defines `_id` on ObjectId itself, so an unpopulated ref answers
+   * that the same way a populated document does — two populate round-trips per
+   * call, each dragging a team and its coach along, would buy nothing.
+   */
+  async findScoringByStages(
+    stageIds: (Types.ObjectId | string)[],
+    teamIds: (Types.ObjectId | string)[],
+  ) {
+    if (stageIds.length === 0 || teamIds.length === 0) return [];
+    return this.matchupModel
+      .find({
+        stage: { $in: stageIds },
+        $or: [
+          { "side1.team": { $in: teamIds } },
+          { "side2.team": { $in: teamIds } },
+        ],
+      })
+      .select(
+        "round winner forfeit side1.team side1.score side2.team side2.score results",
+      )
+      .sort({ _id: 1 })
+      .exec();
+  }
+
+  /**
    * Applies a whole bracket edit in one round-trip: inserts new matchups,
    * `$set`s structural fields on existing ones, and removes the rest. Updates
    * are dotted-path sets so recorded results and scores are left untouched.

@@ -22,12 +22,11 @@ import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
 import {
-  rosterContext,
+  rosterContextForTournament,
   stageRounds,
-  tournamentRosterContext,
   usesTournamentAxis,
 } from "@modules/stage/domain/stage-axis";
-import { getRosterByRound } from "@modules/stage/domain/roster";
+import { getLatestRoster } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
   calculateTeamScore,
@@ -105,7 +104,12 @@ export class HostedTournamentService {
     };
 
     if (!stageDoc) {
-      const roster = getRosterByRound(team, undefined).map((pokemon) => ({
+      // No stage still does not mean no trades: a migrated tournament holds
+      // them itself, so the walk runs off the tournament axis alone.
+      const roster = getLatestRoster(
+        team,
+        rosterContextForTournament(tournament),
+      ).map((pokemon) => ({
         id: pokemon.id,
         name: getName(pokemon.id),
         cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
@@ -132,11 +136,9 @@ export class HostedTournamentService {
       name: string;
       cost: number | undefined;
       draftFormes?: { id: string; name: string }[];
-    } & { record?: unknown })[] = getRosterByRound(
+    } & { record?: unknown })[] = getLatestRoster(
       team,
-      migrated
-        ? tournamentRosterContext(tournament)
-        : rosterContext(stage, tournament),
+      rosterContextForTournament(tournament, stage),
     ).map((pokemon) => ({
       id: pokemon.id,
       name: getName(pokemon.id),
@@ -275,12 +277,7 @@ export class HostedTournamentService {
       ]),
     );
 
-    // Only a migrated tournament owns the trades and the round axis the walk
-    // needs. Without them there is nothing to replay, and the pick log is the
-    // roster.
-    const context = usesTournamentAxis(tournament)
-      ? tournamentRosterContext(tournament)
-      : undefined;
+    const context = rosterContextForTournament(tournament);
 
     return {
       teams: teams.map((team) => ({
@@ -293,7 +290,7 @@ export class HostedTournamentService {
         draft: team.draftId
           ? (draftById.get(team.draftId.toString()) ?? null)
           : null,
-        roster: getRosterByRound(team, context).map((pokemon) => ({
+        roster: getLatestRoster(team, context).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
@@ -301,6 +298,124 @@ export class HostedTournamentService {
         })),
       })),
     };
+  }
+
+  /**
+   * Every approved team in the tournament, grouped by the draft pool it
+   * drafted in — what the tournament's teams page renders.
+   *
+   * Readable without a session: a league's teams are public information. A
+   * signed-in organizer additionally sees results from stages they have not
+   * released yet, so an unreleased bracket does not leak through the records.
+   */
+  async listTeamsByDraft(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub?: string,
+  ) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
+      tournamentSlug,
+    );
+    const [teams, drafts] = await Promise.all([
+      this.teamRepo.findAllByTournament(tournament.id),
+      this.draftRepo.findAllByTournament(tournament.id),
+    ]);
+
+    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const stages = (
+      await this.stageRepo.findAllByTournament(tournament.id)
+    ).filter((stage) => stage.public !== false || canSeeHidden);
+    const stage = stages[0];
+
+    // A stage only supplies the round axis and the legacy trade context; the
+    // roster walk itself runs off the tournament once it owns its trades.
+    const roster = rosterContextForTournament(tournament, stage);
+
+    // Records span every stage a team plays in, not just one: a coach's
+    // record covers the group phase and the playoffs together.
+    const matchups = stage
+      ? ((await this.matchupRepo.findByStages(
+          stages.map((s) => s._id),
+        )) as unknown as PopulatedStageMatchup[])
+      : [];
+    const pokemonStandings = await calculateDivisionPokemonStandings(matchups);
+    const rounds = stage ? stageRounds(stage, tournament) : [];
+
+    const composed = await Promise.all(
+      teams
+        .filter((team) => team.status === "approved")
+        .map(async (team) => {
+          const teamId = team._id.toString();
+          const score = stage
+            ? await calculateTeamScore(
+                matchups,
+                rounds,
+                team,
+                tournament.forfeit,
+              )
+            : undefined;
+
+          return {
+            draftId: team.draftId?.toString() ?? null,
+            team: {
+              id: teamId,
+              name: team.teamName,
+              coach: team.coach.name,
+              logo: team.logo,
+              timezone: team.coach.timezone,
+              isCoach: isCoachedBy(team, sub),
+              draft: getLatestRoster(team, roster).map((pokemon) => ({
+                id: pokemon.id,
+                name: getName(pokemon.id),
+                capt: { tera: pokemon.addons?.includes("Tera Captain") },
+                cost: tournament.tierList.getPokemonCost(
+                  pokemon.id,
+                  pokemon.addons,
+                ),
+                draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+                record: pokemonStandings.find(
+                  (p) => p.id === pokemon.id && p.teamId === teamId,
+                )?.record,
+              })),
+              ...(score
+                ? {
+                    record: {
+                      wins: score.wins,
+                      losses: score.losses,
+                      pokemonDiff: score.pokemonDiff,
+                      gameDiff: score.gameDiff,
+                    },
+                    diffMode: score.diffMode,
+                  }
+                : {}),
+            },
+          };
+        }),
+    );
+
+    const draftIds = new Set(drafts.map((draft) => draft._id.toString()));
+    const groups: {
+      draftSlug: string | null;
+      name: string;
+      teams: (typeof composed)[number]["team"][];
+    }[] = drafts.map((draft) => ({
+      draftSlug: draft.slug,
+      name: draft.name,
+      teams: composed
+        .filter((entry) => entry.draftId === draft._id.toString())
+        .map((entry) => entry.team),
+    }));
+
+    // A team whose pool was deleted, or which was approved before being
+    // assigned one, still belongs on the page.
+    const unassigned = composed
+      .filter((entry) => !entry.draftId || !draftIds.has(entry.draftId))
+      .map((entry) => entry.team);
+    if (unassigned.length)
+      groups.push({ draftSlug: null, name: "Unassigned", teams: unassigned });
+
+    return { drafts: groups };
   }
 
   async getRoles(
@@ -457,9 +572,7 @@ export class HostedTournamentService {
     }
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
-    const draftIdToKey = new Map(
-      drafts.map((d) => [d._id.toString(), d.slug]),
-    );
+    const draftIdToKey = new Map(drafts.map((d) => [d._id.toString(), d.slug]));
 
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
     const populatedTournament = Object.assign(tournament, {

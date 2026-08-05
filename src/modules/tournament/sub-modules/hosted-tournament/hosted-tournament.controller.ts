@@ -148,6 +148,22 @@ export class HostedTournamentController {
     return this.tournamentService.listTeams(leagueSlug, tournamentSlug);
   }
 
+  // Declared before `teams/:teamId` so the literal segment wins the match.
+  @Get(":tournamentSlug/teams/by-draft")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  async listTeamsByDraft(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string | undefined,
+  ) {
+    return this.tournamentService.listTeamsByDraft(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+    );
+  }
+
   @Get(":tournamentSlug/teams/:teamId")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)

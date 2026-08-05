@@ -13,12 +13,8 @@ import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
-import { getLatestRoster, getRosterByRound } from "../stage/domain/roster";
-import {
-  rosterContext,
-  tournamentRosterContext,
-  usesTournamentAxis,
-} from "../stage/domain/stage-axis";
+import { getLatestRoster } from "../stage/domain/roster";
+import { rosterContextForTournament } from "../stage/domain/stage-axis";
 import {
   calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
@@ -244,13 +240,13 @@ export class DraftService {
     );
 
     const ruleset = tournament.tierList.ruleset;
+    // Ranked on what each team holds now, not what it drafted — a typechart
+    // built from the pick log rates a team on Pokémon it traded away.
+    const roster = rosterContextForTournament(tournament);
     const teams = await Promise.all(
       draft.teams.map(async (team: PopulatedTeam, index) => {
-        const teamRaw = team.pickLog.map((pickItem) => ({
-          id: pickItem.pokemon.id,
-        }));
-        const draftTeam = teamRaw.map(
-          (pokemon) => new PDZPokemon(pokemon, ruleset),
+        const draftTeam = getLatestRoster(team, roster).map(
+          (pokemon) => new PDZPokemon({ id: pokemon.id }, ruleset),
         );
         const typechart = getTeamTypechart(draftTeam);
         const summary = summarizeTeam(draftTeam);
@@ -304,7 +300,12 @@ export class DraftService {
 
     if (dto.picks !== undefined) {
       await this.teamRepo.updatePicks(team._id, dto.picks);
-      await this.autoDraftFromQueueIfOnClock(tournament, draft, team, dto.picks);
+      await this.autoDraftFromQueueIfOnClock(
+        tournament,
+        draft,
+        team,
+        dto.picks,
+      );
     }
 
     const { tournament: freshTournament, draft: freshDraft } =
@@ -598,11 +599,7 @@ export class DraftService {
     // in belong to the tournament. A stage is only consulted for a tournament
     // the sections-to-stages migration has not reached, which still keeps its
     // trades on the stage.
-    const roster = usesTournamentAxis(tournament)
-      ? tournamentRosterContext(tournament)
-      : stageDoc
-        ? rosterContext(stageDoc, tournament)
-        : undefined;
+    const roster = rosterContextForTournament(tournament, stageDoc);
 
     if (!stageDoc) {
       const teams = approvedTeams.map((team) => ({
@@ -709,9 +706,12 @@ export class DraftService {
           coachName: team.coach.name,
           id: team._id.toString(),
         },
-        roster: getRosterByRound(
+        // Who currently owns what, so the free-agent half of this list is
+        // everything no team holds right now — a traded Pokémon has to move
+        // with the trade, not stay listed under whoever drafted it.
+        roster: getLatestRoster(
           team,
-          stage && rosterContext(stage, tournament),
+          rosterContextForTournament(tournament, stage),
         ).map((pokemon) => {
           const pokemonTier = rawTierList.pokemon.get(pokemon.id);
           const tier = rawTierList.tiers.find(

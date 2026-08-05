@@ -47,6 +47,12 @@ export interface AxisTournament {
   trades?: TradeLike[];
 }
 
+/** The stage fields a roster walk reads, on either axis. */
+export type AxisStage = Pick<
+  StageDocument,
+  "rounds" | "trades" | "currentRoundIndex" | "teamIds" | "pools"
+>;
+
 /**
  * The ordered rounds a stage is laid out against.
  *
@@ -136,10 +142,7 @@ export interface RosterContext {
 }
 
 export function rosterContext(
-  stage: Pick<
-    StageDocument,
-    "rounds" | "trades" | "currentRoundIndex" | "teamIds" | "pools"
-  >,
+  stage: AxisStage,
   tournament?: AxisTournament,
 ): RosterContext {
   return {
@@ -166,4 +169,30 @@ export function tournamentRosterContext(
     rounds: tournament.rounds ?? [],
     currentRoundIndex: tournament.currentRoundIndex ?? -1,
   };
+}
+
+/**
+ * The roster context for a tournament as a whole, on whichever axis it is on.
+ *
+ * "Which Pokémon does this team hold" is a tournament-wide question, but every
+ * caller asking it was picking an axis by hand and falling back to `undefined`
+ * — no trade context at all — whenever it had not resolved a stage. That
+ * fallback drops every trade, and it is wrong for a migrated tournament, which
+ * owns its trades outright and has a context whether or not any stage exists.
+ *
+ * `stage` is a stage the caller has already resolved; it is consulted only on
+ * the legacy path, where trades still live on the stage. Without one, a
+ * pre-migration tournament with exactly one stage resolves to that stage, and
+ * anything more ambiguous returns undefined — the caller has to say which.
+ */
+export function rosterContextForTournament(
+  tournament: AxisTournament & { stages?: AxisStage[] },
+  stage?: AxisStage,
+): RosterContext | undefined {
+  if (usesTournamentAxis(tournament))
+    return tournamentRosterContext(tournament);
+  const legacyStage =
+    stage ??
+    (tournament.stages?.length === 1 ? tournament.stages[0] : undefined);
+  return legacyStage ? rosterContext(legacyStage, tournament) : undefined;
 }

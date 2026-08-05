@@ -3,6 +3,7 @@ import { StageDocument } from "../stage.schema";
 import {
   currentRoundIndex,
   rosterContext,
+  rosterContextForTournament,
   stageRounds,
   stageTeamIds,
   stageTrades,
@@ -11,15 +12,14 @@ import {
 
 const round = (name: string) => ({ _id: new Types.ObjectId(), name });
 
-const trade = (activeRound: number) =>
-  ({
-    _id: new Types.ObjectId(),
-    side1: { team: new Types.ObjectId(), pokemon: [] },
-    side2: { team: new Types.ObjectId(), pokemon: [] },
-    timestamp: new Date(),
-    activeRound,
-    status: "APPROVED" as const,
-  });
+const trade = (activeRound: number) => ({
+  _id: new Types.ObjectId(),
+  side1: { team: new Types.ObjectId(), pokemon: [] },
+  side2: { team: new Types.ObjectId(), pokemon: [] },
+  timestamp: new Date(),
+  activeRound,
+  status: "APPROVED" as const,
+});
 
 /** A stage as it exists before the sections-to-stages migration. */
 function legacyStage(overrides: Record<string, unknown> = {}) {
@@ -143,9 +143,9 @@ describe("stageTrades", () => {
   });
 
   it("returns no trades for a migrated tournament that has none", () => {
-    expect(
-      stageTrades(migratedStage(), { rounds: [round("Week 1")] }),
-    ).toEqual([]);
+    expect(stageTrades(migratedStage(), { rounds: [round("Week 1")] })).toEqual(
+      [],
+    );
   });
 });
 
@@ -183,5 +183,69 @@ describe("rosterContext", () => {
     expect(context.rounds).toBe(stage.rounds);
     expect(context.trades).toBe(stage.trades);
     expect(context.currentRoundIndex).toBe(1);
+  });
+});
+
+describe("rosterContextForTournament", () => {
+  it("reads the tournament's own axis when it has one, with no stage at all", () => {
+    // The case every roster listing used to get wrong: it passed undefined
+    // whenever it had not resolved a stage, silently dropping every trade.
+    const trades = [trade(0)];
+
+    const context = rosterContextForTournament({
+      rounds: [round("Week 1")],
+      currentRoundIndex: 0,
+      trades,
+      stages: [],
+    });
+
+    expect(context?.trades).toBe(trades);
+  });
+
+  it("ignores a passed stage's legacy trades once the tournament is migrated", () => {
+    const trades = [trade(0)];
+
+    const context = rosterContextForTournament(
+      { rounds: [round("Week 1")], trades, stages: [] },
+      legacyStage(),
+    );
+
+    expect(context?.trades).toBe(trades);
+  });
+
+  it("reads the caller's stage on the legacy path", () => {
+    const stage = legacyStage();
+
+    const context = rosterContextForTournament({ rounds: [] }, stage);
+
+    expect(context?.trades).toBe(stage.trades);
+  });
+
+  it("resolves a pre-migration tournament's only stage without being told", () => {
+    const stage = legacyStage();
+
+    const context = rosterContextForTournament({
+      rounds: [],
+      stages: [stage],
+    });
+
+    expect(context?.trades).toBe(stage.trades);
+  });
+
+  it("returns no context when a pre-migration tournament has several stages", () => {
+    // Each carries its own rounds, so there is no single axis to replay
+    // against — the caller has to name the stage it means.
+    expect(
+      rosterContextForTournament({
+        rounds: [],
+        stages: [legacyStage(), legacyStage()],
+      }),
+    ).toBeUndefined();
+  });
+
+  it("returns no context for a pre-migration tournament with no stages", () => {
+    expect(
+      rosterContextForTournament({ rounds: [], stages: [] }),
+    ).toBeUndefined();
   });
 });
