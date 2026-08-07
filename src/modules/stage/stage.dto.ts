@@ -8,6 +8,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -66,6 +67,27 @@ export class UpdateMatchupDto {
   @ValidateNested({ each: true })
   @Type(() => MatchResultDto)
   matches!: MatchResultDto[];
+}
+
+export class SubmitMatchupReportDto {
+  @ValidateNested()
+  @Type(() => MatchupScoreDto)
+  @IsOptional()
+  score?: MatchupScoreDto;
+
+  @IsIn(["side1", "side2", "draw"])
+  @IsOptional()
+  winner?: "side1" | "side2" | "draw";
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MatchResultDto)
+  matches!: MatchResultDto[];
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  notes?: string;
 }
 
 export class TradePokemonDto {

@@ -183,6 +183,18 @@ export const TournamentForfeitSchema = SchemaFactory.createForClass(
   TournamentForfeitEntity,
 );
 
+@Schema({ _id: false })
+export class TournamentMatchSettingsEntity {
+  @Prop({ default: true })
+  chat!: boolean;
+
+  @Prop({ default: true })
+  coachReporting!: boolean;
+}
+export const TournamentMatchSettingsSchema = SchemaFactory.createForClass(
+  TournamentMatchSettingsEntity,
+);
+
 export type HostedTournamentDocument = HydratedDocument<HostedTournamentEntity>;
 
 @Schema({
@@ -295,6 +307,9 @@ export class HostedTournamentEntity {
 
   @Prop({ type: TournamentAdSettingsSchema })
   adSettings?: TournamentAdSettingsEntity;
+
+  @Prop({ type: TournamentMatchSettingsSchema })
+  matchSettings?: TournamentMatchSettingsEntity;
 
   createdAt?: Date;
 }

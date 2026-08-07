@@ -228,6 +228,10 @@ export class LeagueMatchupRepository {
     return result.deletedCount;
   }
 
+  async findByIdOrNull(matchupId: Types.ObjectId | string) {
+    return this.matchupModel.findById(matchupId).exec();
+  }
+
   async findByIdInStage(
     matchupId: Types.ObjectId | string,
     stageId: Types.ObjectId | string,

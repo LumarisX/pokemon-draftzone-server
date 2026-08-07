@@ -74,6 +74,16 @@ export class TournamentAdSettings {
   }
 }
 
+export class TournamentMatchSettings {
+  chat: boolean;
+  coachReporting: boolean;
+
+  constructor(props: { chat?: boolean; coachReporting?: boolean }) {
+    this.chat = props.chat !== false;
+    this.coachReporting = props.coachReporting !== false;
+  }
+}
+
 export class HostedTournament {
   id: string;
   name: string;
@@ -113,6 +123,7 @@ export class HostedTournament {
   tradePointLimit?: number;
   tierRequirements: TierRequirement[];
   adSettings?: TournamentAdSettings;
+  matchSettings?: TournamentMatchSettings;
 
   constructor(props: {
     id: string;
@@ -146,6 +157,7 @@ export class HostedTournament {
     tradePointLimit?: number;
     tierRequirements: TierRequirement[];
     adSettings?: TournamentAdSettings;
+    matchSettings?: TournamentMatchSettings;
   }) {
     this.id = props.id;
     this.name = props.name;
@@ -178,6 +190,7 @@ export class HostedTournament {
     this.tradePointLimit = props.tradePointLimit;
     this.tierRequirements = props.tierRequirements;
     this.adSettings = props.adSettings;
+    this.matchSettings = props.matchSettings;
   }
 
   validateTierListMatch(tierList: TierList): void {

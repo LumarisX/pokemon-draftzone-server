@@ -136,9 +136,32 @@ export class TournamentBracketService {
             : matchup.winner === "side2"
               ? 1
               : undefined,
+        forfeit: matchup.forfeit ?? false,
+        // Same convention as the schedule view: a forfeit shows the
+        // tournament's configured game difference rather than the recorded
+        // score, so the two views never disagree about a forfeit.
+        score: this.seriesScore(matchup, tournament.forfeit?.gameDiff ?? 0),
+        scheduledDate: matchup.scheduledDate?.toISOString() ?? null,
+        // Game 1's replay, kept for callers that predate the list below.
         replay: matchup.results?.[0]?.replay,
+        replays: (matchup.results ?? [])
+          .map((result) => result.replay)
+          .filter((replay): replay is string => !!replay),
       })),
     };
+  }
+
+  /** Games won by each side, as `[side1, side2]`. */
+  private seriesScore(
+    matchup: LeagueMatchupEntity,
+    forfeitGameDiff: number,
+  ): [number, number] {
+    if (matchup.forfeit) {
+      if (matchup.winner === "side1") return [forfeitGameDiff, 0];
+      if (matchup.winner === "side2") return [0, forfeitGameDiff];
+      return [0, 0];
+    }
+    return [matchup.side1?.score ?? 0, matchup.side2?.score ?? 0];
   }
 
   private mapSlot(
@@ -264,8 +287,8 @@ export class TournamentBracketService {
     // A stage is only gone once nothing points at it. Deleting one whose
     // matchups the payload still lists would leave them orphaned.
     const orphaning = removedStages.filter((stage) =>
-      dto.matches.some(
-        (match) => stageByKey.get(match.stageKey)?._id.equals(stage._id),
+      dto.matches.some((match) =>
+        stageByKey.get(match.stageKey)?._id.equals(stage._id),
       ),
     );
     if (orphaning.length > 0)

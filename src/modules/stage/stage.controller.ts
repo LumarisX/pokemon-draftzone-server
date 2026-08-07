@@ -19,6 +19,7 @@ import {
   SetCurrentRoundDto,
   SetStagePoolsDto,
   SetTradeStatusDto,
+  SubmitMatchupReportDto,
   UpdateBracketDto,
   UpdateMatchupDto,
   UpdateStageDto,
@@ -204,12 +205,77 @@ export class StageController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   @Get(":stageId/matchups/:matchupId")
+  async getMatchupDetail(
+    @Param("stageId") stageId: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub?: string,
+  ) {
+    return this.stageService.getMatchupDetail(stageId, matchupId, sub);
+  }
+
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get(":stageId/matchups/:matchupId/analysis")
   async getMatchupAnalysis(
     @Param("stageId") stageId: string,
     @Param("matchupId") matchupId: string,
     @User() sub?: string,
   ) {
     return this.stageService.getMatchupAnalysis(stageId, matchupId, sub);
+  }
+
+  @Post(":stageId/matchups/:matchupId/report")
+  @UseGuards(JwtAuthGuard)
+  async submitMatchupReport(
+    @Param("stageId") stageId: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub: string,
+    @Body() body: SubmitMatchupReportDto,
+  ) {
+    return this.stageService.submitMatchupReport(
+      stageId,
+      matchupId,
+      sub,
+      body,
+    );
+  }
+
+  @Post(":stageId/matchups/:matchupId/report/approve")
+  @UseGuards(JwtAuthGuard)
+  async approveMatchupReport(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub: string,
+  ) {
+    return this.stageService.reviewMatchupReport(
+      leagueSlug,
+      tournamentSlug,
+      stageId,
+      matchupId,
+      sub,
+      true,
+    );
+  }
+
+  @Post(":stageId/matchups/:matchupId/report/reject")
+  @UseGuards(JwtAuthGuard)
+  async rejectMatchupReport(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub: string,
+  ) {
+    return this.stageService.reviewMatchupReport(
+      leagueSlug,
+      tournamentSlug,
+      stageId,
+      matchupId,
+      sub,
+      false,
+    );
   }
 
   @Post(":stageId/matchups/:matchupId")

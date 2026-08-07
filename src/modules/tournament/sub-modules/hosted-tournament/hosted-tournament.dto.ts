@@ -156,6 +156,16 @@ export class TournamentForfeitDto {
   pokemonDiff!: number;
 }
 
+export class TournamentMatchSettingsDto {
+  @IsBoolean()
+  @IsOptional()
+  chat?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  coachReporting?: boolean;
+}
+
 export class UpdateHostedTournamentSettingsDto {
   @IsString()
   @MinLength(1)
@@ -253,4 +263,9 @@ export class UpdateHostedTournamentSettingsDto {
   @Type(() => TournamentAdSettingsDto)
   @IsOptional()
   adSettings?: TournamentAdSettingsDto;
+
+  @ValidateNested()
+  @Type(() => TournamentMatchSettingsDto)
+  @IsOptional()
+  matchSettings?: TournamentMatchSettingsDto;
 }

@@ -6,6 +6,7 @@ import {
   TournamentAdSettings,
   TournamentDiscordSettings,
   TournamentForfeit,
+  TournamentMatchSettings,
   TournamentRule,
 } from "./hosted-tournament.domain";
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
@@ -85,6 +86,10 @@ export class HostedTournamentMapper {
             platforms: [...doc.adSettings.platforms],
           })
         : undefined,
+      matchSettings: new TournamentMatchSettings({
+        chat: doc.matchSettings?.chat,
+        coachReporting: doc.matchSettings?.coachReporting,
+      }),
     });
   }
 
@@ -129,6 +134,7 @@ export class HostedTournamentMapper {
       tradePointLimit: tournament.tradePointLimit,
       tierRequirements: tournament.tierRequirements,
       adSettings: tournament.adSettings,
+      matchSettings: tournament.matchSettings,
     };
   }
 }

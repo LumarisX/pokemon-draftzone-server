@@ -874,6 +874,13 @@ export class HostedTournamentService {
     if (dto.tierRequirements !== undefined)
       update["tierRequirements"] = dto.tierRequirements;
     if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
+    if (dto.matchSettings !== undefined)
+      update["matchSettings"] = {
+        chat: dto.matchSettings.chat ?? tournament.matchSettings?.chat !== false,
+        coachReporting:
+          dto.matchSettings.coachReporting ??
+          tournament.matchSettings?.coachReporting !== false,
+      };
 
     await this.tournamentRepo.updateSettings(tournament.id, update);
     return { success: true };

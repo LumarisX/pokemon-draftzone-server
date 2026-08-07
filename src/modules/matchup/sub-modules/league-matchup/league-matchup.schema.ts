@@ -68,6 +68,39 @@ export const MatchResultSchema = SchemaFactory.createForClass(
 );
 
 @Schema({ _id: false })
+export class MatchupReportEntity {
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
+  team?: Types.ObjectId;
+
+  @Prop({ required: true })
+  submittedBy!: string;
+
+  @Prop()
+  submittedByName?: string;
+
+  @Prop({ default: () => new Date() })
+  submittedAt!: Date;
+
+  @Prop({ type: [MatchResultSchema], default: [] })
+  results!: MatchResultEntity[];
+
+  @Prop({ min: 0 })
+  side1Score?: number;
+
+  @Prop({ min: 0 })
+  side2Score?: number;
+
+  @Prop({ type: String, enum: MATCH_WINNERS })
+  winner?: LeagueMatchupWinner;
+
+  @Prop({ trim: true })
+  notes?: string;
+}
+export const MatchupReportSchema = SchemaFactory.createForClass(
+  MatchupReportEntity,
+);
+
+@Schema({ _id: false })
 export class MatchSideSlotEntity {
   @Prop({ type: String, enum: ["seed", "winner", "loser"], required: true })
   type!: "seed" | "winner" | "loser";
@@ -161,6 +194,9 @@ export class LeagueMatchupEntity {
 
   @Prop({ type: String, enum: MATCH_STATUSES })
   status?: LeagueMatchupStatus;
+
+  @Prop({ type: MatchupReportSchema })
+  report?: MatchupReportEntity;
 }
 
 export const LeagueMatchupSchema = SchemaFactory.createForClass(

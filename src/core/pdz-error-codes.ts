@@ -331,6 +331,43 @@ export const ErrorCodes = {
       status: 404,
       message: "Matchup not found",
     },
+    NOT_PARTICIPANT: {
+      code: "MU-002",
+      status: 403,
+      message: "Only this matchup's coaches and the organizers can do that",
+    },
+    NO_REPORT: {
+      code: "MU-003",
+      status: 404,
+      message: "This matchup has no submitted result to review",
+    },
+    REPORTING_DISABLED: {
+      code: "MU-004",
+      status: 403,
+      message: "This tournament has coach result reporting turned off",
+    },
+  },
+  CHAT: {
+    FORBIDDEN: {
+      code: "CH-001",
+      status: 403,
+      message: "You do not have access to this conversation",
+    },
+    MESSAGE_NOT_FOUND: {
+      code: "CH-002",
+      status: 404,
+      message: "Message not found",
+    },
+    TARGET_REQUIRED: {
+      code: "CH-003",
+      status: 400,
+      message: "This chat channel needs a target",
+    },
+    DISABLED: {
+      code: "CH-004",
+      status: 403,
+      message: "This chat is turned off for this tournament",
+    },
   },
   REPLAY: {
     INVALID_URL: {
@@ -421,6 +458,7 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.ARCHIVE
   | keyof typeof ErrorCodes.SPECIES
   | keyof typeof ErrorCodes.MATCHUP
+  | keyof typeof ErrorCodes.CHAT
   | keyof typeof ErrorCodes.REPLAY
   | keyof typeof ErrorCodes.PARAMS
   | keyof typeof ErrorCodes.FORMAT

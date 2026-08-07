@@ -7,7 +7,9 @@ import {
 } from "@modules/matchup/sub-modules/external-matchup/external-matchup.domain";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import {
+  LeagueMatchupDocument,
   LeagueMatchupEntity,
+  MatchResultEntity,
   PokemonResultStatsEntity,
 } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
@@ -23,6 +25,7 @@ import { BracketMatchInput, validateBracketStructure } from "./domain/bracket";
 import { resolveSeedGroups } from "./domain/seeding";
 import { assertTradePointsWithinLimit } from "./domain/trades";
 import { buildBracketView, summarizeSeeding } from "./domain/bracket-view";
+import { MatchupViewer, toMatchupDetail } from "./domain/matchup-view";
 import { getRosterByRound } from "./domain/roster";
 import { scheduleMatchups } from "./domain/schedule-view";
 import {
@@ -45,9 +48,11 @@ import {
   CreateStageDto,
   GenerateBracketDto,
   MakeTradeDto,
+  MatchResultDto,
   SetCurrentRoundDto,
   SetStagePoolsDto,
   SetTradeStatusDto,
+  SubmitMatchupReportDto,
   UpdateBracketDto,
   UpdateMatchupDto,
   UpdateStageDto,
@@ -1038,6 +1043,265 @@ export class StageService {
     return matchup.analyze(sub);
   }
 
+  private async loadMatchupContext(
+    stageId: string,
+    matchupId: string,
+    sub?: string,
+  ) {
+    if (!isValidObjectId(matchupId))
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Invalid matchup ID",
+        matchupId,
+      });
+
+    const stageDoc = await this.findVisibleStage(stageId, sub);
+    const tournament = await this.hostedTournamentRepo.findById(
+      stageDoc.tournamentId,
+    );
+    const matchupDoc = (await this.matchupRepo.findByIdInStagePopulated(
+      matchupId,
+      stageId,
+    )) as unknown as PopulatedStageMatchup;
+    if (!hasResolvedSides(matchupDoc))
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+
+    const isOrganizer = sub ? this.isOrganizer(tournament, sub) : false;
+    const side = !sub
+      ? null
+      : isCoachedBy(matchupDoc.side1.team, sub)
+        ? ("side1" as const)
+        : isCoachedBy(matchupDoc.side2.team, sub)
+          ? ("side2" as const)
+          : null;
+
+    const chatEnabled = tournament.matchSettings?.chat !== false;
+    const coachReportingEnabled =
+      tournament.matchSettings?.coachReporting !== false;
+
+    const viewer: MatchupViewer = {
+      side,
+      isOrganizer,
+      chatEnabled,
+      coachReportingEnabled,
+      canChat: chatEnabled && (isOrganizer || side !== null),
+      canReport: isOrganizer || (coachReportingEnabled && side !== null),
+      canReview: isOrganizer,
+    };
+
+    return { stageDoc, tournament, matchupDoc, viewer };
+  }
+
+  private assertMatchupParticipant(viewer: MatchupViewer) {
+    if (!viewer.canChat) throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
+  }
+
+  async getMatchupDetail(stageId: string, matchupId: string, sub?: string) {
+    const { stageDoc, tournament, matchupDoc, viewer } =
+      await this.loadMatchupContext(stageId, matchupId, sub);
+
+    const axisRounds = stageRounds(stageDoc, tournament);
+    const roundIndex = matchupDoc.round
+      ? axisRounds.findIndex((round) => round._id.equals(matchupDoc.round!))
+      : -1;
+    const roundDoc = roundIndex === -1 ? undefined : axisRounds[roundIndex];
+
+    return toMatchupDetail(matchupDoc, {
+      roster: rosterContext(stageDoc, tournament),
+      roundIndex,
+      forfeitGameDiff: tournament.forfeit.gameDiff,
+      stage: { id: stageDoc._id.toString(), name: stageDoc.name },
+      round: roundDoc
+        ? {
+            name: roundDoc.name,
+            matchDeadline: roundDoc.matchDeadline,
+            bestOf: roundDoc.bestOf,
+          }
+        : null,
+      viewer,
+    });
+  }
+
+  async submitMatchupReport(
+    stageId: string,
+    matchupId: string,
+    sub: string,
+    dto: SubmitMatchupReportDto,
+  ) {
+    const { matchupDoc, viewer } = await this.loadMatchupContext(
+      stageId,
+      matchupId,
+      sub,
+    );
+    if (!viewer.isOrganizer && viewer.side === null)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
+    if (!viewer.isOrganizer && !viewer.coachReportingEnabled)
+      throw new PDZError(ErrorCodes.MATCHUP.REPORTING_DISABLED);
+
+    const results = this.buildMatchResults(dto.matches);
+    const score = dto.score ?? this.tallyScore(results);
+    const winner = dto.winner ?? this.tallyWinner(score);
+
+    if (viewer.isOrganizer) {
+      matchupDoc.results = results;
+      matchupDoc.side1.score = score.team1;
+      matchupDoc.side2.score = score.team2;
+      matchupDoc.winner = winner;
+      matchupDoc.forfeit = false;
+      matchupDoc.status = "approved";
+      matchupDoc.report = undefined;
+      await matchupDoc.save();
+      await this.advanceBracket(matchupDoc);
+      return { message: "Result recorded.", status: "approved" as const };
+    }
+
+    const reportingSide =
+      viewer.side === "side1" ? matchupDoc.side1 : matchupDoc.side2;
+    const reportingTeam = reportingSide.team!;
+
+    matchupDoc.report = {
+      team: reportingTeam._id,
+      submittedBy: sub,
+      submittedByName: reportingTeam.coach.name,
+      submittedAt: new Date(),
+      results,
+      side1Score: score.team1,
+      side2Score: score.team2,
+      winner,
+      notes: dto.notes?.trim() || undefined,
+    };
+    matchupDoc.status = "pending";
+    await matchupDoc.save();
+
+    return {
+      message: "Result submitted for review.",
+      status: "pending" as const,
+    };
+  }
+
+  async reviewMatchupReport(
+    leagueSlug: string,
+    tournamentSlug: string,
+    stageId: string,
+    matchupId: string,
+    sub: string,
+    approve: boolean,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const { matchupDoc } = await this.loadMatchupContext(
+      stageId,
+      matchupId,
+      sub,
+    );
+    const report = matchupDoc.report;
+    if (!report) throw new PDZError(ErrorCodes.MATCHUP.NO_REPORT, { matchupId });
+
+    if (!approve) {
+      matchupDoc.report = undefined;
+      matchupDoc.status = undefined;
+      await matchupDoc.save();
+      return { message: "Report rejected.", status: "rejected" as const };
+    }
+
+    matchupDoc.results = report.results.map((result) => ({
+      replay: result.replay,
+      winner: result.winner,
+      side1: {
+        score: result.side1.score,
+        pokemon: new Map(result.side1.pokemon),
+      },
+      side2: {
+        score: result.side2.score,
+        pokemon: new Map(result.side2.pokemon),
+      },
+    }));
+    matchupDoc.side1.score = report.side1Score ?? 0;
+    matchupDoc.side2.score = report.side2Score ?? 0;
+    if (report.winner) matchupDoc.winner = report.winner;
+    matchupDoc.status = "approved";
+    matchupDoc.report = undefined;
+    await matchupDoc.save();
+    await this.advanceBracket(matchupDoc);
+
+    return { message: "Report approved.", status: "approved" as const };
+  }
+
+  private buildMatchResults(matches: MatchResultDto[]): MatchResultEntity[] {
+    return matches.map((match) => ({
+      replay: match.link?.trim() || undefined,
+      winner: match.winner,
+      side1: {
+        score: match.team1.score,
+        pokemon: new Map(
+          Object.entries(match.team1.pokemon).filter(
+            ([, stats]) => stats.status !== null && stats.status !== undefined,
+          ) as [string, PokemonResultStatsEntity][],
+        ),
+      },
+      side2: {
+        score: match.team2.score,
+        pokemon: new Map(
+          Object.entries(match.team2.pokemon).filter(
+            ([, stats]) => stats.status !== null && stats.status !== undefined,
+          ) as [string, PokemonResultStatsEntity][],
+        ),
+      },
+    }));
+  }
+
+  private tallyScore(results: MatchResultEntity[]) {
+    return results.reduce(
+      (totals, result) => ({
+        team1: totals.team1 + (result.winner === "side1" ? 1 : 0),
+        team2: totals.team2 + (result.winner === "side2" ? 1 : 0),
+      }),
+      { team1: 0, team2: 0 },
+    );
+  }
+
+  private tallyWinner(score: { team1: number; team2: number }) {
+    if (score.team1 > score.team2) return "side1" as const;
+    if (score.team2 > score.team1) return "side2" as const;
+    return "draw" as const;
+  }
+
+  private async advanceBracket(matchup: LeagueMatchupDocument) {
+    if (!matchup.winner || !matchup.stage) return;
+
+    const idOf = (
+      team?: Types.ObjectId | { _id: Types.ObjectId },
+    ): Types.ObjectId | undefined => {
+      if (!team) return undefined;
+      return team instanceof Types.ObjectId ? team : team._id;
+    };
+
+    const side1Id = idOf(matchup.side1.team);
+    const side2Id = idOf(matchup.side2.team);
+    const winnerTeamId =
+      matchup.winner === "side1"
+        ? side1Id
+        : matchup.winner === "side2"
+          ? side2Id
+          : undefined;
+    const loserTeamId =
+      matchup.winner === "side1"
+        ? side2Id
+        : matchup.winner === "side2"
+          ? side1Id
+          : undefined;
+
+    if (!winnerTeamId && !loserTeamId) return;
+    await this.matchupRepo.resolveDownstreamSlots(
+      matchup._id,
+      winnerTeamId,
+      loserTeamId,
+    );
+  }
+
   async getStandings(stageId: string, sub?: string) {
     const stageDoc = await this.findVisibleStage(stageId, sub);
     const stage = await this.composeStageTeams(stageDoc);
@@ -1486,26 +1750,7 @@ export class StageService {
 
     const matchup = await this.matchupRepo.findByIdInStage(matchupId, stageId);
 
-    matchup.results = dto.matches.map((match) => ({
-      replay: match.link?.trim() || undefined,
-      winner: match.winner,
-      side1: {
-        score: match.team1.score,
-        pokemon: new Map(
-          Object.entries(match.team1.pokemon).filter(
-            ([, stats]) => stats.status !== null && stats.status !== undefined,
-          ) as [string, PokemonResultStatsEntity][],
-        ),
-      },
-      side2: {
-        score: match.team2.score,
-        pokemon: new Map(
-          Object.entries(match.team2.pokemon).filter(
-            ([, stats]) => stats.status !== null && stats.status !== undefined,
-          ) as [string, PokemonResultStatsEntity][],
-        ),
-      },
-    }));
+    matchup.results = this.buildMatchResults(dto.matches);
 
     if (dto.score) {
       matchup.side1.score = dto.score.team1;
@@ -1531,33 +1776,14 @@ export class StageService {
       }
     }
 
+    if (dto.winner || matchup.results.length) matchup.status = "approved";
+    matchup.report = undefined;
     await matchup.save();
 
     // Bracket advancement: fill in the winner/loser side of any downstream
     // matchup that references this one, so it becomes resolvable (visible
     // on the schedule) as soon as this result is recorded.
-    if (dto.winner && matchup.stage) {
-      const winnerTeamId =
-        matchup.winner === "side1"
-          ? matchup.side1.team
-          : matchup.winner === "side2"
-            ? matchup.side2.team
-            : undefined;
-      const loserTeamId =
-        matchup.winner === "side1"
-          ? matchup.side2.team
-          : matchup.winner === "side2"
-            ? matchup.side1.team
-            : undefined;
-
-      if (winnerTeamId || loserTeamId) {
-        await this.matchupRepo.resolveDownstreamSlots(
-          matchup._id,
-          winnerTeamId,
-          loserTeamId,
-        );
-      }
-    }
+    if (dto.winner) await this.advanceBracket(matchup);
 
     return { message: "Schedule updated." };
   }
