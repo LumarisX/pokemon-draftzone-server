@@ -55,6 +55,7 @@ describe("TournamentTradeService", () => {
     teamRepo = {
       findManyByIds: jest.fn().mockResolvedValue([]),
       findByIdOrNull: jest.fn().mockResolvedValue(null),
+      findIdsBySlugs: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TeamRepository>;
 
     tournamentRepo = {
@@ -434,13 +435,17 @@ describe("TournamentTradeService", () => {
         }),
       );
       teamRepo.findManyByIds.mockResolvedValue([teamA, teamB, teamC]);
+      // The filter arrives as a slug — the URL's identifier — and is resolved
+      // to the ObjectId the trades actually store.
+      teamRepo.findIdsBySlugs.mockResolvedValue([teamA._id]);
 
       const result = await service.getTrades(
         "league-1",
         "tournament-1",
-        teamA._id.toString(),
+        "team-a-slug",
       );
 
+      expect(teamRepo.findIdsBySlugs).toHaveBeenCalledWith(["team-a-slug"]);
       expect(result.rounds[0].trades).toHaveLength(1);
     });
   });

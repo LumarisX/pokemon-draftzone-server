@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
@@ -140,6 +141,14 @@ export type LeagueMatchupDocument = HydratedDocument<LeagueMatchupEntity>;
   collection: "leaguematchups",
 })
 export class LeagueMatchupEntity {
+  /**
+   * URL identifier for the matchup page. Globally unique, so the route needs
+   * no stage segment to disambiguate it — `slot.matchId` and the chat room's
+   * `target` still key off `_id`, which is what actually joins documents.
+   */
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
+
   // References a subdocument _id inside StageEntity.rounds[], not a
   // top-level collection — same as the legacy schema, intentionally no ref.
   @Prop({ type: SchemaTypes.ObjectId, index: true })

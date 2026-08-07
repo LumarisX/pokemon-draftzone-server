@@ -157,6 +157,8 @@ type CoachStanding = {
   gameDiff: number;
   logo?: string;
   teamId: string;
+  /** For the link to the team's page; `teamId` is what the table keys on. */
+  teamSlug: string;
 };
 
 type ForfeitConfig = {
@@ -207,6 +209,7 @@ function createCoachStanding(
     pokemonDiff: 0,
     gameDiff: 0,
     teamId: teamKey,
+    teamSlug: team.slug,
   };
 }
 

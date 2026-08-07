@@ -49,6 +49,7 @@ export function summarizeSeeding(seedingLog: StageSeedingEntity[]) {
 
 interface BracketTeamDoc {
   _id: Types.ObjectId;
+  slug: string;
   teamName: string;
   logo?: string;
   coach: { name: string };
@@ -62,6 +63,7 @@ interface BracketSlotDoc {
 
 interface BracketMatchupDoc {
   _id: Types.ObjectId;
+  slug: string;
   round?: Types.ObjectId | null;
   section?: string;
   bracketRound?: number;
@@ -103,6 +105,7 @@ export function buildBracketView(
         coachName: teamDoc.coach.name,
         logo: teamDoc.logo,
         teamId: teamDoc._id.toString(),
+        teamSlug: teamDoc.slug,
       };
     })
     .filter((t): t is NonNullable<typeof t> => t !== null);
@@ -132,7 +135,10 @@ export function buildBracketView(
       bestOf: round.bestOf ?? null,
     })),
     matches: matchups.map((matchup) => ({
+      // `_id` stays: slots reference their upstream match by it, so renaming
+      // it to the slug would break every winner/loser chain in the bracket.
       _id: matchup._id.toString(),
+      slug: matchup.slug,
       round: matchup.round?.toString() ?? null,
       roundName: matchup.round
         ? (roundIdToName.get(matchup.round.toString()) ?? null)

@@ -16,7 +16,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "test:ci": "test --runInBand",
+    "test:ci": "jest --runInBand",
+    "test:safe": "jest --runInBand --silent",
     "report:users": "ts-node src/scripts/auth0-user-report.ts"
   },
   "engines": {

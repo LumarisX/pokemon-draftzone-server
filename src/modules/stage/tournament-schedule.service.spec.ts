@@ -1,4 +1,5 @@
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
+import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Test } from "@nestjs/testing";
 import { Types } from "mongoose";
@@ -55,6 +56,7 @@ describe("TournamentScheduleService", () => {
   let stageRepo: jest.Mocked<StageRepository>;
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
   let service: TournamentScheduleService;
 
   const week1 = round("Week 1");
@@ -83,6 +85,9 @@ describe("TournamentScheduleService", () => {
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(buildTournament()),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
+    teamRepo = {
+      findIdsBySlugs: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<TeamRepository>;
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -90,6 +95,7 @@ describe("TournamentScheduleService", () => {
         { provide: StageRepository, useValue: stageRepo },
         { provide: LeagueMatchupRepository, useValue: matchupRepo },
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
+        { provide: TeamRepository, useValue: teamRepo },
       ],
     }).compile();
 
@@ -153,7 +159,7 @@ describe("TournamentScheduleService", () => {
       buildMatchup(groups._id, week2._id, team("A"), team("B")),
     ]);
 
-    const result = await get({ teamId: new Types.ObjectId().toString() });
+    const result = await get({ teamSlug: "team-a-slug" });
 
     expect(result.rounds.map((r) => r.name)).toEqual(["Week 2"]);
   });

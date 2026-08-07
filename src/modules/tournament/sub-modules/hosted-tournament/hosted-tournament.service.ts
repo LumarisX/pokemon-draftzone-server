@@ -62,15 +62,15 @@ export class HostedTournamentService {
   async getTeam(
     leagueSlug: string,
     tournamentSlug: string,
-    teamId: string,
+    teamSlug: string,
     sub?: string,
-    stageId?: string,
+    stageSlug?: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
       tournamentSlug,
     );
-    const team = await this.teamRepo.findById(teamId);
+    const team = await this.teamRepo.findBySlug(teamSlug);
 
     // A team's page is not a stage's page. Rounds and trades belong to the
     // tournament now, and a team's record spans every stage it plays in — so
@@ -88,13 +88,14 @@ export class HostedTournamentService {
     ).filter((stage) => stage.public !== false || canSeeHidden);
     const stageDoc = migrated
       ? stages[0]
-      : await this.resolveStage(tournament.id, stageId);
+      : await this.resolveStage(tournament.id, stageSlug);
     const coach = team.coach;
 
     // Contact handles stay private to the team's own coach.
     const viewerIsCoach = isCoachedBy(team, sub);
     const identity = {
       id: team._id.toString(),
+      slug: team.slug,
       coachId: coach._id.toString(),
       isCoach: viewerIsCoach,
       pointTotal: tournament.pointTotal,
@@ -188,16 +189,16 @@ export class HostedTournamentService {
   }
   private async resolveStage(
     tournamentId: Types.ObjectId | string,
-    stageId?: string,
+    stageSlug?: string,
   ): Promise<StageDocument | undefined> {
-    if (stageId) return this.stageRepo.findById(stageId);
+    if (stageSlug) return this.stageRepo.findBySlug(stageSlug);
 
     const stages = await this.stageRepo.findAllByTournament(tournamentId);
     if (stages.length === 0) return undefined;
     if (stages.length === 1) return stages[0];
 
     throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-      reason: "Multiple stages exist for this tournament; pass stageId",
+      reason: "Multiple stages exist for this tournament; pass stageSlug",
     });
   }
 
@@ -282,6 +283,7 @@ export class HostedTournamentService {
     return {
       teams: teams.map((team) => ({
         id: team._id.toString(),
+        slug: team.slug,
         teamName: team.teamName,
         coachName: team.coach.name,
         logo: team.logo,
@@ -360,6 +362,7 @@ export class HostedTournamentService {
             draftId: team.draftId?.toString() ?? null,
             team: {
               id: teamId,
+              slug: team.slug,
               name: team.teamName,
               coach: team.coach.name,
               logo: team.logo,
@@ -476,6 +479,7 @@ export class HostedTournamentService {
       logo: team.logo,
       signedUpAt: coach.signedUpAt,
       teamId: team._id.toString(),
+      teamSlug: team.slug,
       draft,
       inDiscordServer,
     };
@@ -564,6 +568,7 @@ export class HostedTournamentService {
       return teams.map((team) => ({
         id: team.coach._id.toString(),
         teamId: team._id.toString(),
+        teamSlug: team.slug,
         teamName: team.teamName,
         coachName: team.coach.name,
         logo: team.logo,
@@ -598,6 +603,7 @@ export class HostedTournamentService {
         return {
           id: coach._id.toString(),
           teamId: team._id.toString(),
+          teamSlug: team.slug,
           name: coach.name,
           gameName: coach.gameName,
           discordName: coach.discordName,

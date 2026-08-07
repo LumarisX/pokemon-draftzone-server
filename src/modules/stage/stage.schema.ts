@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
@@ -189,6 +190,10 @@ export type StageDocument = HydratedDocument<StageEntity>;
   collection: "leaguestages",
 })
 export class StageEntity {
+  /** URL identifier for every stage-scoped page and endpoint. */
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
+
   @Prop({
     type: SchemaTypes.ObjectId,
     ref: HostedTournamentEntity.name,

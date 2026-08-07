@@ -73,26 +73,19 @@ export class DraftService {
   }
 
   /**
-   * Resolves the Stage to use for the mixed (roster + record) views.
-   * - `stageId` explicit: resolve it directly.
-   * - omitted: auto-resolve if the tournament has exactly one Stage; return
-   *   undefined (roster-only) if it has zero; throw if it has more than one
-   *   (organizer must disambiguate via `?stageId=`).
-   */
-  /**
    * The stage the draft's mixed roster/record views are read against.
    *
    * Several stages per tournament is the normal shape now — a group phase and
    * a playoff bracket are two of them — so this no longer refuses to choose.
    * It only ever supplies the round axis and the trade context for the roster
    * walk, and once a tournament owns its rounds and trades every stage gives
-   * the same answer. `stageId` still wins when the caller names one.
+   * the same answer. `stageSlug` still wins when the caller names one.
    */
   private async resolveStage(
     tournamentId: Types.ObjectId,
-    stageId?: string,
+    stageSlug?: string,
   ): Promise<StageDocument | undefined> {
-    if (stageId) return this.stageRepo.findById(stageId);
+    if (stageSlug) return this.stageRepo.findBySlug(stageSlug);
 
     const stages = await this.stageRepo.findAllByTournament(tournamentId);
     return stages[0];
@@ -572,16 +565,16 @@ export class DraftService {
 
   /**
    * Mixed view: roster is a pure draft concern, but each team's W/L record
-   * needs a Stage. If `stageId` is omitted, auto-resolves to the tournament's
-   * single Stage (if exactly one exists); returns roster-only data with no
-   * `record` field if zero Stages exist; throws if more than one exists.
+   * needs a Stage. If `stageSlug` is omitted, the tournament's first stage
+   * supplies the axis; a tournament with none returns roster-only data with
+   * no `record` field.
    */
   async getTeams(
     leagueSlug: string,
     tournamentSlug: string,
     draftSlug: string,
     sub: string,
-    stageId?: string,
+    stageSlug?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -589,7 +582,7 @@ export class DraftService {
       draftSlug,
     );
 
-    const stageDoc = await this.resolveStage(draft.tournamentId, stageId);
+    const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);
 
     const approvedTeams = getDraftOrder(draft).filter(
       (team) => team.status === "approved",
@@ -685,7 +678,7 @@ export class DraftService {
     tournamentSlug: string,
     draftSlug: string,
     sub: string,
-    stageId?: string,
+    stageSlug?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -694,7 +687,7 @@ export class DraftService {
     );
     this.assertOrganizer(tournament, sub);
 
-    const stageDoc = await this.resolveStage(draft.tournamentId, stageId);
+    const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);
     const stage = stageDoc ? await this.composeStageTeams(stageDoc) : undefined;
 
     const rawTierList = tournament.tierList;

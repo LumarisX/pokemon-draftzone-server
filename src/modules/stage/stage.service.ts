@@ -160,10 +160,24 @@ export class StageService {
    * leaked to whoever guessed its id.
    */
   private async findVisibleStage(
-    stageId: string,
+    stageSlug: string,
     sub?: string,
   ): Promise<StageDocument> {
-    const stage = await this.stageRepo.findById(stageId);
+    return this.assertStageVisible(
+      await this.stageRepo.findBySlug(stageSlug),
+      sub,
+    );
+  }
+
+  /**
+   * Split out from `findVisibleStage` for the paths that arrive at a stage
+   * through something else — a matchup names its stage, so there is no slug to
+   * look up, but the same hidden-stage rule still has to apply.
+   */
+  private async assertStageVisible(
+    stage: StageDocument,
+    sub?: string,
+  ): Promise<StageDocument> {
     // Only an explicit `false` hides a stage: documents written before this
     // field existed carry no value, and those must stay visible.
     if (stage.public !== false) return stage;
@@ -173,7 +187,7 @@ export class StageService {
       );
       if (this.isOrganizer(tournament, sub)) return stage;
     }
-    throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+    throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug: stage.slug });
   }
 
   /**
@@ -190,11 +204,11 @@ export class StageService {
    */
   private assertStageOwnsItsSchedule(
     tournament: HostedTournament,
-    stageId: string,
+    stageSlug: string,
   ) {
     if (usesTournamentAxis(tournament))
       throw new PDZError(ErrorCodes.STAGE.SCHEDULE_IS_TOURNAMENT_WIDE, {
-        stageId,
+        stageSlug,
         tournamentId: tournament.id,
       });
   }
@@ -253,7 +267,7 @@ export class StageService {
   async setVisibility(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: UpdateStageDto,
   ) {
@@ -263,11 +277,11 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     if (!stageDoc.tournamentId.equals(tournament.id))
-      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug });
 
-    const stage = await this.stageRepo.setPublic(stageId, dto.public);
+    const stage = await this.stageRepo.setPublic(stageDoc._id, dto.public);
     return { message: stage.public ? "Stage is visible." : "Stage is hidden." };
   }
 
@@ -284,6 +298,7 @@ export class StageService {
       .filter((stage) => stage.public !== false || canSeeHidden)
       .map((stage) => ({
         _id: stage._id.toString(),
+        slug: stage.slug,
         name: stage.name,
         type: stage.type,
         order: stage.order,
@@ -295,7 +310,7 @@ export class StageService {
   async setPools(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: SetStagePoolsDto,
   ) {
@@ -307,18 +322,18 @@ export class StageService {
     // Pools were superseded by `stage.teamIds`, which every read prefers, so
     // on a migrated tournament this would write somewhere nothing looks again.
     // Teams are set through the tournament bracket's per-stage seed groups.
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
     // Once a stage is certified-random and its bracket exists, pool order
     // (= the seeding) is immutable — rewriting it would let an organizer
     // fix a bracket that still displays the certified seal.
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     const latestSeeding = stageDoc.seedingLog[stageDoc.seedingLog.length - 1];
     if (
       latestSeeding?.method === "certified-random" &&
       (await this.matchupRepo.countByStage(stageDoc._id)) > 0
     ) {
-      throw new PDZError(ErrorCodes.STAGE.SEEDING_LOCKED, { stageId });
+      throw new PDZError(ErrorCodes.STAGE.SEEDING_LOCKED, { stageSlug });
     }
 
     for (const pool of dto.pools) {
@@ -331,7 +346,7 @@ export class StageService {
     }
 
     return this.stageRepo.setPools(
-      stageId,
+      stageDoc._id,
       dto.pools.map((pool) => ({
         poolKey: pool.poolKey,
         name: pool.name,
@@ -343,7 +358,7 @@ export class StageService {
   async advanceCurrentRound(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: SetCurrentRoundDto,
   ) {
@@ -352,14 +367,18 @@ export class StageService {
       tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
-    return this.stageRepo.setCurrentRoundIndex(stageId, dto.currentRoundIndex);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
+    return this.stageRepo.setCurrentRoundIndex(
+      stageDoc._id,
+      dto.currentRoundIndex,
+    );
   }
 
   /** Stage-scoped bracket read; tolerant of a stage with no teams/matchups yet. */
-  async getBracket(stageId: string, sub?: string) {
-    const stageDoc = await this.findVisibleStage(stageId, sub);
+  async getBracket(stageSlug: string, sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageSlug, sub);
     const tournament = await this.axisTournament(stageDoc);
     const rounds = stageRounds(stageDoc, tournament ?? undefined);
     // Scoped to the stage as well as the rounds: on a tournament-wide axis the
@@ -413,7 +432,7 @@ export class StageService {
   async generateBracket(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: GenerateBracketDto,
   ) {
@@ -423,13 +442,13 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     if (!stageDoc.tournamentId.equals(tournament.id))
-      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug });
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
     if ((await this.matchupRepo.countByStage(stageDoc._id)) > 0)
-      throw new PDZError(ErrorCodes.STAGE.MATCHUPS_EXIST, { stageId });
+      throw new PDZError(ErrorCodes.STAGE.MATCHUPS_EXIST, { stageSlug });
 
     // The flat seedingMethod/teamIds pair is the single-group form of
     // seedGroups; normalize so the rest of this method only sees groups.
@@ -554,7 +573,7 @@ export class StageService {
   async updateBracket(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: UpdateBracketDto,
   ) {
@@ -564,10 +583,10 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     if (!stageDoc.tournamentId.equals(tournament.id))
-      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug });
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
     if (dto.rounds.length === 0)
       throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
@@ -865,7 +884,7 @@ export class StageService {
   async deleteBracket(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
@@ -874,9 +893,9 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     if (!stageDoc.tournamentId.equals(tournament.id))
-      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug });
 
     const deleted = await this.matchupRepo.deleteByStage(stageDoc._id);
     return { message: `Deleted ${deleted} matchups.` };
@@ -888,12 +907,12 @@ export class StageService {
    * `stage.rounds[stage.currentRoundIndex]` instead of `division.stages`.
    */
   async getSchedule(
-    stageId: string,
+    stageSlug: string,
     teamId?: string | string[],
     roundFilter?: string,
     sub?: string,
   ) {
-    const stageDoc = await this.findVisibleStage(stageId, sub);
+    const stageDoc = await this.findVisibleStage(stageSlug, sub);
 
     // forfeit.gameDiff is needed to display a forfeited match's score the
     // same way the old division.controller.ts schedule view did — resolved
@@ -963,31 +982,24 @@ export class StageService {
    * the client's matchup overview page can render either. `sub` only
    * affects side order (a coach sees their own team first).
    */
-  async getMatchupAnalysis(stageId: string, matchupId: string, sub?: string) {
-    if (!isValidObjectId(matchupId))
-      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-        reason: "Invalid matchup ID",
-        matchupId,
-      });
-
-    const stageDoc = await this.findVisibleStage(stageId, sub);
-    const tournament = await this.hostedTournamentRepo.findById(
-      stageDoc.tournamentId,
+  async getMatchupAnalysis(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub?: string,
+  ) {
+    const { stageDoc, tournament, matchupDoc } = await this.resolveMatchup(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
     );
+
     // The tier list decides which alternate formes each pick may run; a missing
     // or unresolvable tier list just means no formes are attached.
     const tierList = await this.tierListRepo
       .findById(tournament.tierListId)
       .catch(() => undefined);
-
-    const matchupDoc = (await this.matchupRepo.findByIdInStagePopulated(
-      matchupId,
-      stageId,
-    )) as unknown as PopulatedStageMatchup;
-    // Bracket matchups with unresolved winner/loser slots have no teams to
-    // analyze yet — treat them like a missing matchup.
-    if (!hasResolvedSides(matchupDoc))
-      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
 
     const axisRounds = stageRounds(stageDoc, tournament);
     const rosterCtx = rosterContext(stageDoc, tournament);
@@ -1043,27 +1055,55 @@ export class StageService {
     return matchup.analyze(sub);
   }
 
-  private async loadMatchupContext(
-    stageId: string,
-    matchupId: string,
+  /**
+   * The matchup a URL names, with the stage and tournament it belongs to.
+   *
+   * A matchup slug is unique across the collection, so it identifies the match
+   * on its own — but that also means the league and tournament in the URL are
+   * a claim rather than a fact, and a matchup reached through the wrong
+   * tournament has to read as missing rather than as somebody else's match.
+   */
+  private async resolveMatchup(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
     sub?: string,
   ) {
-    if (!isValidObjectId(matchupId))
-      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-        reason: "Invalid matchup ID",
-        matchupId,
-      });
-
-    const stageDoc = await this.findVisibleStage(stageId, sub);
-    const tournament = await this.hostedTournamentRepo.findById(
-      stageDoc.tournamentId,
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
-    const matchupDoc = (await this.matchupRepo.findByIdInStagePopulated(
-      matchupId,
-      stageId,
+    const matchupDoc = (await this.matchupRepo.findBySlugPopulated(
+      matchupSlug,
     )) as unknown as PopulatedStageMatchup;
+
+    const stageDoc = matchupDoc.stage
+      ? await this.stageRepo.findByIdOrNull(matchupDoc.stage)
+      : null;
+    if (!stageDoc || stageDoc.tournamentId.toString() !== tournament.id)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
+    await this.assertStageVisible(stageDoc, sub);
+
+    // Bracket matchups with unresolved winner/loser slots have no teams yet —
+    // treat them like a missing matchup.
     if (!hasResolvedSides(matchupDoc))
-      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
+
+    return { stageDoc, tournament, matchupDoc };
+  }
+
+  private async loadMatchupContext(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub?: string,
+  ) {
+    const { stageDoc, tournament, matchupDoc } = await this.resolveMatchup(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+    );
 
     const isOrganizer = sub ? this.isOrganizer(tournament, sub) : false;
     const side = !sub
@@ -1095,9 +1135,19 @@ export class StageService {
     if (!viewer.canChat) throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
   }
 
-  async getMatchupDetail(stageId: string, matchupId: string, sub?: string) {
+  async getMatchupDetail(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub?: string,
+  ) {
     const { stageDoc, tournament, matchupDoc, viewer } =
-      await this.loadMatchupContext(stageId, matchupId, sub);
+      await this.loadMatchupContext(
+        leagueSlug,
+        tournamentSlug,
+        matchupSlug,
+        sub,
+      );
 
     const axisRounds = stageRounds(stageDoc, tournament);
     const roundIndex = matchupDoc.round
@@ -1109,7 +1159,11 @@ export class StageService {
       roster: rosterContext(stageDoc, tournament),
       roundIndex,
       forfeitGameDiff: tournament.forfeit.gameDiff,
-      stage: { id: stageDoc._id.toString(), name: stageDoc.name },
+      stage: {
+        id: stageDoc._id.toString(),
+        slug: stageDoc.slug,
+        name: stageDoc.name,
+      },
       round: roundDoc
         ? {
             name: roundDoc.name,
@@ -1122,14 +1176,16 @@ export class StageService {
   }
 
   async submitMatchupReport(
-    stageId: string,
-    matchupId: string,
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
     sub: string,
     dto: SubmitMatchupReportDto,
   ) {
     const { matchupDoc, viewer } = await this.loadMatchupContext(
-      stageId,
-      matchupId,
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
       sub,
     );
     if (!viewer.isOrganizer && viewer.side === null)
@@ -1181,8 +1237,7 @@ export class StageService {
   async reviewMatchupReport(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
-    matchupId: string,
+    matchupSlug: string,
     sub: string,
     approve: boolean,
   ) {
@@ -1193,12 +1248,14 @@ export class StageService {
     this.assertOrganizer(tournament, sub);
 
     const { matchupDoc } = await this.loadMatchupContext(
-      stageId,
-      matchupId,
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
       sub,
     );
     const report = matchupDoc.report;
-    if (!report) throw new PDZError(ErrorCodes.MATCHUP.NO_REPORT, { matchupId });
+    if (!report)
+      throw new PDZError(ErrorCodes.MATCHUP.NO_REPORT, { matchupSlug });
 
     if (!approve) {
       matchupDoc.report = undefined;
@@ -1302,8 +1359,8 @@ export class StageService {
     );
   }
 
-  async getStandings(stageId: string, sub?: string) {
-    const stageDoc = await this.findVisibleStage(stageId, sub);
+  async getStandings(stageSlug: string, sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageSlug, sub);
     const stage = await this.composeStageTeams(stageDoc);
 
     const tournament = await this.hostedTournamentRepo.findById(
@@ -1416,8 +1473,8 @@ export class StageService {
   }
 
   /** One trades view for everyone (no separate "manage" copy). */
-  async getTrades(stageId: string, teamId?: string | string[], sub?: string) {
-    const stageDoc = await this.findVisibleStage(stageId, sub);
+  async getTrades(stageSlug: string, teamId?: string | string[], sub?: string) {
+    const stageDoc = await this.findVisibleStage(stageSlug, sub);
     const tournament = await this.axisTournament(stageDoc);
     const trades = stageTrades(stageDoc, tournament ?? undefined);
 
@@ -1538,7 +1595,7 @@ export class StageService {
   async createTrade(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     sub: string,
     dto: MakeTradeDto,
   ) {
@@ -1547,9 +1604,9 @@ export class StageService {
       tournamentSlug,
     );
     const isOrganizer = this.isOrganizer(tournament, sub);
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
 
     if (dto.side1.team && !isValidObjectId(dto.side1.team))
       throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
@@ -1694,7 +1751,7 @@ export class StageService {
   async setTradeStatus(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
+    stageSlug: string,
     tradeId: string,
     sub: string,
     dto: SetTradeStatusDto,
@@ -1704,9 +1761,9 @@ export class StageService {
       tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
-    this.assertStageOwnsItsSchedule(tournament, stageId);
+    this.assertStageOwnsItsSchedule(tournament, stageSlug);
 
-    const stageDoc = await this.stageRepo.findById(stageId);
+    const stageDoc = await this.stageRepo.findBySlug(stageSlug);
     const trade = stageDoc.trades.find((t) => t._id?.toString() === tradeId);
     if (!trade) throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, { tradeId });
 
@@ -1732,8 +1789,7 @@ export class StageService {
   async updateMatchup(
     leagueSlug: string,
     tournamentSlug: string,
-    stageId: string,
-    matchupId: string,
+    matchupSlug: string,
     sub: string,
     dto: UpdateMatchupDto,
   ) {
@@ -1743,12 +1799,15 @@ export class StageService {
     );
     this.assertOrganizer(tournament, sub);
 
-    if (!isValidObjectId(matchupId))
-      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-        reason: "Invalid matchup ID",
-      });
-
-    const matchup = await this.matchupRepo.findByIdInStage(matchupId, stageId);
+    const matchup = await this.matchupRepo.findBySlug(matchupSlug);
+    // The slug alone does not say which tournament the match belongs to, and
+    // being an organizer of one tournament must not authorize a write to
+    // another's results.
+    const stageDoc = matchup.stage
+      ? await this.stageRepo.findByIdOrNull(matchup.stage)
+      : null;
+    if (!stageDoc || stageDoc.tournamentId.toString() !== tournament.id)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
 
     matchup.results = this.buildMatchResults(dto.matches);
 

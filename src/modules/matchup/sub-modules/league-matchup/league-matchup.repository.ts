@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { generateSlug } from "@core/slug";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -12,6 +13,18 @@ const TEAM_POPULATE = [
   { path: "side1.team", populate: { path: "coach" } },
   { path: "side2.team", populate: { path: "coach" } },
 ];
+
+/**
+ * Fills in the URL slug for documents about to be bulk-inserted.
+ *
+ * The bulk paths hand Mongo pre-built objects rather than saving documents, so
+ * they cannot rely on the schema default the single-document path gets — a
+ * matchup created by bracket generation would otherwise have no page to link
+ * to.
+ */
+function withSlugs<T extends Partial<LeagueMatchupEntity>>(docs: T[]): T[] {
+  return docs.map((doc) => (doc.slug ? doc : { ...doc, slug: generateSlug() }));
+}
 
 @Injectable()
 export class LeagueMatchupRepository {
@@ -85,7 +98,7 @@ export class LeagueMatchupRepository {
   async createMany(
     matchups: (Partial<LeagueMatchupEntity> & { _id: Types.ObjectId })[],
   ): Promise<LeagueMatchupDocument[]> {
-    const inserted = await this.matchupModel.insertMany(matchups);
+    const inserted = await this.matchupModel.insertMany(withSlugs(matchups));
     return inserted as unknown as LeagueMatchupDocument[];
   }
 
@@ -209,7 +222,9 @@ export class LeagueMatchupRepository {
     deletes: Types.ObjectId[];
   }): Promise<void> {
     const ops = [
-      ...options.creates.map((doc) => ({ insertOne: { document: doc } })),
+      ...withSlugs(options.creates).map((doc) => ({
+        insertOne: { document: doc },
+      })),
       ...options.updates.map(({ _id, set }) => ({
         updateOne: { filter: { _id }, update: { $set: set } },
       })),
@@ -232,28 +247,26 @@ export class LeagueMatchupRepository {
     return this.matchupModel.findById(matchupId).exec();
   }
 
-  async findByIdInStage(
-    matchupId: Types.ObjectId | string,
-    stageId: Types.ObjectId | string,
-  ) {
-    const matchup = await this.matchupModel
-      .findOne({ _id: matchupId, stage: stageId })
-      .exec();
+  /**
+   * The matchup a URL names. Not scoped to a stage — the slug is unique across
+   * the collection, so the stage would only ever confirm what the slug already
+   * decided. Callers still have to check the matchup's stage belongs to the
+   * tournament in the URL, which is an authorization question, not a lookup.
+   */
+  async findBySlug(slug: string) {
+    const matchup = await this.matchupModel.findOne({ slug }).exec();
     if (!matchup)
-      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug: slug });
     return matchup;
   }
 
-  async findByIdInStagePopulated(
-    matchupId: Types.ObjectId | string,
-    stageId: Types.ObjectId | string,
-  ) {
+  async findBySlugPopulated(slug: string) {
     const matchup = await this.matchupModel
-      .findOne({ _id: matchupId, stage: stageId })
+      .findOne({ slug })
       .populate(TEAM_POPULATE)
       .exec();
     if (!matchup)
-      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug: slug });
     return matchup;
   }
 

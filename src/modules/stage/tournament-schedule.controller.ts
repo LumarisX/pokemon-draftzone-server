@@ -19,12 +19,12 @@ export class TournamentScheduleController {
   async getSchedule(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Query("teamId") teamId?: string | string[],
+    @Query("teamSlug") teamSlug?: string | string[],
     @Query("round") round?: string,
     @User() sub?: string,
   ) {
     return this.scheduleService.getSchedule(leagueSlug, tournamentSlug, {
-      teamId,
+      teamSlug,
       roundFilter: round,
       sub,
     });

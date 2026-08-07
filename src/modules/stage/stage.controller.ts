@@ -19,9 +19,7 @@ import {
   SetCurrentRoundDto,
   SetStagePoolsDto,
   SetTradeStatusDto,
-  SubmitMatchupReportDto,
   UpdateBracketDto,
-  UpdateMatchupDto,
   UpdateStageDto,
 } from "./stage.dto";
 import { StageService } from "./stage.service";
@@ -41,19 +39,19 @@ export class StageController {
     return this.stageService.listStages(leagueSlug, tournamentSlug, sub);
   }
 
-  @Patch(":stageId")
+  @Patch(":stageSlug")
   @UseGuards(JwtAuthGuard)
   async setVisibility(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: UpdateStageDto,
   ) {
     return this.stageService.setVisibility(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );
@@ -70,38 +68,41 @@ export class StageController {
     return this.stageService.createStage(leagueSlug, tournamentSlug, sub, body);
   }
 
-  @Get(":stageId/schedule")
+  @Get(":stageSlug/schedule")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getSchedule(
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @Query("teamId") teamId?: string | string[],
     @Query("round") round?: string,
     @User() sub?: string,
   ) {
-    return this.stageService.getSchedule(stageId, teamId, round, sub);
+    return this.stageService.getSchedule(stageSlug, teamId, round, sub);
   }
 
-  @Get(":stageId/bracket")
+  @Get(":stageSlug/bracket")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
-  async getBracket(@Param("stageId") stageId: string, @User() sub?: string) {
-    return this.stageService.getBracket(stageId, sub);
+  async getBracket(
+    @Param("stageSlug") stageSlug: string,
+    @User() sub?: string,
+  ) {
+    return this.stageService.getBracket(stageSlug, sub);
   }
 
-  @Post(":stageId/bracket")
+  @Post(":stageSlug/bracket")
   @UseGuards(JwtAuthGuard)
   async generateBracket(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: GenerateBracketDto,
   ) {
     return this.stageService.generateBracket(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );
@@ -112,82 +113,85 @@ export class StageController {
    * Unlike POST, this neither refuses an existing bracket nor rebuilds it —
    * see `StageService.updateBracket`.
    */
-  @Patch(":stageId/bracket")
+  @Patch(":stageSlug/bracket")
   @UseGuards(JwtAuthGuard)
   async updateBracket(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: UpdateBracketDto,
   ) {
     return this.stageService.updateBracket(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );
   }
 
-  @Delete(":stageId/bracket")
+  @Delete(":stageSlug/bracket")
   @UseGuards(JwtAuthGuard)
   async deleteBracket(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
   ) {
     return this.stageService.deleteBracket(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
     );
   }
 
-  @Get(":stageId/standings")
+  @Get(":stageSlug/standings")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
-  async getStandings(@Param("stageId") stageId: string, @User() sub?: string) {
-    return this.stageService.getStandings(stageId, sub);
+  async getStandings(
+    @Param("stageSlug") stageSlug: string,
+    @User() sub?: string,
+  ) {
+    return this.stageService.getStandings(stageSlug, sub);
   }
 
-  @Get(":stageId/trades")
+  @Get(":stageSlug/trades")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getTrades(
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @Query("teamId") teamId?: string | string[],
     @User() sub?: string,
   ) {
-    return this.stageService.getTrades(stageId, teamId, sub);
+    return this.stageService.getTrades(stageSlug, teamId, sub);
   }
 
-  @Post(":stageId/trades")
+  @Post(":stageSlug/trades")
   @UseGuards(JwtAuthGuard)
   async createTrade(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: MakeTradeDto,
   ) {
     return this.stageService.createTrade(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );
   }
 
-  @Patch(":stageId/trades/:tradeId")
+  @Patch(":stageSlug/trades/:tradeId")
   @UseGuards(JwtAuthGuard)
   async setTradeStatus(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @Param("tradeId") tradeId: string,
     @User() sub: string,
     @Body() body: SetTradeStatusDto,
@@ -195,140 +199,44 @@ export class StageController {
     return this.stageService.setTradeStatus(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       tradeId,
       sub,
       body,
     );
   }
 
-  @OptionalAuth()
-  @UseGuards(JwtAuthGuard)
-  @Get(":stageId/matchups/:matchupId")
-  async getMatchupDetail(
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub?: string,
-  ) {
-    return this.stageService.getMatchupDetail(stageId, matchupId, sub);
-  }
-
-  @OptionalAuth()
-  @UseGuards(JwtAuthGuard)
-  @Get(":stageId/matchups/:matchupId/analysis")
-  async getMatchupAnalysis(
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub?: string,
-  ) {
-    return this.stageService.getMatchupAnalysis(stageId, matchupId, sub);
-  }
-
-  @Post(":stageId/matchups/:matchupId/report")
-  @UseGuards(JwtAuthGuard)
-  async submitMatchupReport(
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub: string,
-    @Body() body: SubmitMatchupReportDto,
-  ) {
-    return this.stageService.submitMatchupReport(
-      stageId,
-      matchupId,
-      sub,
-      body,
-    );
-  }
-
-  @Post(":stageId/matchups/:matchupId/report/approve")
-  @UseGuards(JwtAuthGuard)
-  async approveMatchupReport(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub: string,
-  ) {
-    return this.stageService.reviewMatchupReport(
-      leagueSlug,
-      tournamentSlug,
-      stageId,
-      matchupId,
-      sub,
-      true,
-    );
-  }
-
-  @Post(":stageId/matchups/:matchupId/report/reject")
-  @UseGuards(JwtAuthGuard)
-  async rejectMatchupReport(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub: string,
-  ) {
-    return this.stageService.reviewMatchupReport(
-      leagueSlug,
-      tournamentSlug,
-      stageId,
-      matchupId,
-      sub,
-      false,
-    );
-  }
-
-  @Post(":stageId/matchups/:matchupId")
-  @UseGuards(JwtAuthGuard)
-  async updateMatchup(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
-    @Param("matchupId") matchupId: string,
-    @User() sub: string,
-    @Body() body: UpdateMatchupDto,
-  ) {
-    return this.stageService.updateMatchup(
-      leagueSlug,
-      tournamentSlug,
-      stageId,
-      matchupId,
-      sub,
-      body,
-    );
-  }
-
-  @Post(":stageId/pools")
+  @Post(":stageSlug/pools")
   @UseGuards(JwtAuthGuard)
   async setPools(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: SetStagePoolsDto,
   ) {
     return this.stageService.setPools(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );
   }
 
-  @Post(":stageId/current-round")
+  @Post(":stageSlug/current-round")
   @UseGuards(JwtAuthGuard)
   async advanceCurrentRound(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("stageId") stageId: string,
+    @Param("stageSlug") stageSlug: string,
     @User() sub: string,
     @Body() body: SetCurrentRoundDto,
   ) {
     return this.stageService.advanceCurrentRound(
       leagueSlug,
       tournamentSlug,
-      stageId,
+      stageSlug,
       sub,
       body,
     );

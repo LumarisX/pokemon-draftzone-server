@@ -43,19 +43,28 @@ export class TournamentTradeService {
 
   // ── Read ──────────────────────────────────────────────────────────────────
 
+  /**
+   * @param teamSlug Restricts to trades one team is a party to. A slug because
+   *   that is what the team's page has in its URL; the trades themselves store
+   *   the ObjectId behind it.
+   */
   async getTrades(
     leagueSlug: string,
     tournamentSlug: string,
-    teamId?: string | string[],
+    teamSlug?: string | string[],
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
 
-    const filterIds = (Array.isArray(teamId) ? teamId : [teamId]).filter(
-      (id): id is string => Boolean(id) && isValidObjectId(id),
-    );
+    const filterIds = (
+      await this.teamRepo.findIdsBySlugs(
+        (Array.isArray(teamSlug) ? teamSlug : [teamSlug]).filter(
+          (slug): slug is string => Boolean(slug),
+        ),
+      )
+    ).map((id) => id.toString());
 
     const rounds: { name: string; trades: unknown[] }[] = tournament.rounds.map(
       (round) => ({ name: round.name, trades: [] }),
@@ -111,7 +120,7 @@ export class TournamentTradeService {
       if (trade.activeRound < 0 || trade.activeRound >= rounds.length) continue;
 
       if (
-        teamId &&
+        teamSlug &&
         !filterIds.includes(this.sideTeamId(trade.side1) ?? "") &&
         !filterIds.includes(this.sideTeamId(trade.side2) ?? "")
       )

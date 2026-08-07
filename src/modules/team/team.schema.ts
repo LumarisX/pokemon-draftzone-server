@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { PokemonEntity, PokemonSchema } from "@modules/pokemon/pokemon.schema";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
@@ -38,6 +39,14 @@ export type TeamDocument = HydratedDocument<TeamEntity>;
   collection: "leagueteams",
 })
 export class TeamEntity {
+  /**
+   * URL identifier for the team page. Payloads keep emitting the ObjectId as
+   * `id` alongside it — schedule filtering, standings and the chat policy all
+   * join on that, and only the link needs the slug.
+   */
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
+
   @Prop({
     type: SchemaTypes.ObjectId,
     ref: HostedTournamentEntity.name,

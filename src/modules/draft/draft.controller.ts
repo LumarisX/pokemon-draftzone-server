@@ -49,14 +49,14 @@ export class DraftController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
     @User() sub: string,
-    @Query("stageId") stageId?: string,
+    @Query("stageSlug") stageSlug?: string,
   ) {
     return this.draftService.getTeams(
       leagueSlug,
       tournamentSlug,
       draftSlug,
       sub,
-      stageId,
+      stageSlug,
     );
   }
 
@@ -97,14 +97,14 @@ export class DraftController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
     @User() sub: string,
-    @Query("stageId") stageId?: string,
+    @Query("stageSlug") stageSlug?: string,
   ) {
     return this.draftService.getPokemonList(
       leagueSlug,
       tournamentSlug,
       draftSlug,
       sub,
-      stageId,
+      stageSlug,
     );
   }
 

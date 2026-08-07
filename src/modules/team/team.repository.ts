@@ -37,6 +37,31 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam;
   }
 
+  /** The team a URL names. Slugs are unique across the collection. */
+  async findBySlug(slug: string): Promise<PopulatedTeam> {
+    const team = await this.teamModel
+      .findOne({ slug: { $eq: slug } })
+      .populate<{ coach: CoachDocument }>("coach")
+      .exec();
+    if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamSlug: slug });
+    return team as unknown as PopulatedTeam;
+  }
+
+  /**
+   * The ObjectIds behind a set of slugs, for the read filters that take a slug
+   * from the URL but join on the id. Unknown slugs are dropped rather than
+   * throwing: a filter naming a team that does not exist is an empty result,
+   * not an error.
+   */
+  async findIdsBySlugs(slugs: string[]): Promise<Types.ObjectId[]> {
+    if (slugs.length === 0) return [];
+    const teams = await this.teamModel
+      .find({ slug: { $in: slugs } }, { _id: 1 })
+      .lean()
+      .exec();
+    return teams.map((team) => team._id);
+  }
+
   async findManyByIds(
     teamIds: (Types.ObjectId | string)[],
   ): Promise<PopulatedTeam[]> {

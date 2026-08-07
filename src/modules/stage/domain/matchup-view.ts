@@ -19,7 +19,7 @@ export interface MatchupViewer {
 }
 
 export interface MatchupDetailOptions extends ScheduleViewOptions {
-  stage: { id: string; name: string };
+  stage: { id: string; slug: string; name: string };
   round: { name: string; matchDeadline?: Date; bestOf?: number } | null;
   viewer: MatchupViewer;
 }

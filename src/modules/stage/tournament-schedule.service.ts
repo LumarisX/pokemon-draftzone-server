@@ -1,4 +1,5 @@
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
+import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
@@ -27,6 +28,7 @@ export class TournamentScheduleService {
     private readonly stageRepo: StageRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
+    private readonly teamRepo: TeamRepository,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
@@ -35,15 +37,17 @@ export class TournamentScheduleService {
   }
 
   /**
-   * @param teamId Restricts to a team's own matches, and drops the rounds it
-   *   has none in — a coach's schedule is the weeks they actually play.
+   * @param teamSlug Restricts to a team's own matches, and drops the rounds it
+   *   has none in — a coach's schedule is the weeks they actually play. Taken
+   *   as a slug because that is what the team's page has in its URL; the
+   *   matchups themselves are joined on the ObjectId behind it.
    * @param roundFilter `"current"` narrows to the round the tournament is on.
    */
   async getSchedule(
     leagueSlug: string,
     tournamentSlug: string,
     options: {
-      teamId?: string | string[];
+      teamSlug?: string | string[];
       roundFilter?: string;
       sub?: string;
     } = {},
@@ -61,12 +65,13 @@ export class TournamentScheduleService {
       stages.map((stage) => [stage._id.toString(), stage]),
     );
 
-    const teamIds = (
-      Array.isArray(options.teamId) ? options.teamId : [options.teamId]
-    )
-      .filter((id): id is string => Boolean(id) && isValidObjectId(id))
-      .map((id) => new Types.ObjectId(id));
-    const hasTeamFilter = options.teamId !== undefined;
+    const teamIds = await this.teamRepo.findIdsBySlugs(
+      (Array.isArray(options.teamSlug)
+        ? options.teamSlug
+        : [options.teamSlug]
+      ).filter((slug): slug is string => Boolean(slug)),
+    );
+    const hasTeamFilter = options.teamSlug !== undefined;
 
     // Pre-migration a tournament has no axis of its own — each stage still
     // carries one. Concatenating them in stage order gives a whole-tournament
@@ -154,6 +159,7 @@ export class TournamentScheduleService {
               const stageId = stage!._id.toString();
               return {
                 _id: stage!._id,
+                slug: stage!.slug,
                 name: stage!.name,
                 type: stage!.type,
                 matchups: scheduleMatchups(stageMatchups, {

@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { generateSlug } from "@core/slug";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -59,6 +60,14 @@ export class StageRepository {
       .findOne({ _id: { $eq: normalizedStageId } })
       .exec();
     if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
+    return stage;
+  }
+
+  /** The stage a URL names. Slugs are unique across the collection. */
+  async findBySlug(slug: string): Promise<StageDocument> {
+    const stage = await this.stageModel.findOne({ slug: { $eq: slug } }).exec();
+    if (!stage)
+      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug: slug });
     return stage;
   }
 
@@ -155,7 +164,11 @@ export class StageRepository {
     deletes: Types.ObjectId[];
   }): Promise<void> {
     const ops = [
-      ...options.creates.map((doc) => ({ insertOne: { document: doc } })),
+      // Slugged here rather than by the schema default: a bulk insert hands
+      // Mongo plain objects, so nothing would fill the URL identifier in.
+      ...options.creates.map((doc) => ({
+        insertOne: { document: { ...doc, slug: generateSlug() } },
+      })),
       ...options.updates.map(({ _id, set }) => ({
         updateOne: { filter: { _id }, update: { $set: set } },
       })),

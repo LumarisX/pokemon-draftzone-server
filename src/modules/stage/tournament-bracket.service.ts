@@ -102,6 +102,7 @@ export class TournamentBracketService {
       currentRoundIndex: tournament.currentRoundIndex,
       stages: stages.map((stage) => ({
         _id: stage._id.toString(),
+        slug: stage.slug,
         name: stage.name,
         type: stage.type,
         order: stage.order,
@@ -115,6 +116,7 @@ export class TournamentBracketService {
             return {
               seed: index + 1,
               teamId: team._id.toString(),
+              teamSlug: team.slug,
               teamName: team.teamName,
               coachName: team.coach.name,
               logo: team.logo,
@@ -123,7 +125,9 @@ export class TournamentBracketService {
           .filter((team): team is NonNullable<typeof team> => team !== null),
       })),
       matches: matchups.map((matchup) => ({
+        // `_id` stays: a slot names its upstream match by it.
         _id: matchup._id.toString(),
+        slug: matchup.slug,
         stage: matchup.stage?.toString() ?? null,
         round: matchup.round?.toString() ?? null,
         position: matchup.position ?? null,

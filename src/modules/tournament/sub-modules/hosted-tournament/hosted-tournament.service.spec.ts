@@ -499,6 +499,7 @@ describe("HostedTournamentService teams", () => {
   ) {
     return {
       _id: id,
+      slug: `${teamName.toLowerCase().replace(/\s+/g, "-")}-slug`,
       teamName,
       status: "approved",
       coach: { _id: new Types.ObjectId(), name: `${teamName} coach` },
@@ -532,6 +533,7 @@ describe("HostedTournamentService teams", () => {
     const teamRepo = {
       findAllByTournament: jest.fn().mockResolvedValue(overrides.teams ?? []),
       findById: jest.fn().mockResolvedValue(overrides.team),
+      findBySlug: jest.fn().mockResolvedValue(overrides.team),
     } as unknown as jest.Mocked<TeamRepository>;
     const draftRepo = {
       findAllByTournament: jest.fn().mockResolvedValue([]),
@@ -621,7 +623,7 @@ describe("HostedTournamentService teams", () => {
         stages: [visibleStage, hiddenStage],
       });
 
-      await service.getTeam(LEAGUE_KEY, TOURNAMENT_KEY, TEAM_ID.toString(), SUB);
+      await service.getTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-one-slug", SUB);
 
       expect(matchupRepo.findByStages).toHaveBeenCalledWith(
         [visibleStage._id],
@@ -639,7 +641,7 @@ describe("HostedTournamentService teams", () => {
       await service.getTeam(
         LEAGUE_KEY,
         TOURNAMENT_KEY,
-        TEAM_ID.toString(),
+        "team-one-slug",
         "auth0|owner",
       );
 

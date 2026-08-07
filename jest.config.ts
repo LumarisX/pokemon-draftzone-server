@@ -19,7 +19,7 @@ const config: Config = {
   clearMocks: true,
 
   // Indicates whether the coverage information should be collected while executing the test
-  collectCoverage: true,
+  collectCoverage: false,
 
   // An array of glob patterns indicating a set of files for which coverage information should be collected
   // collectCoverageFrom: undefined,
@@ -70,7 +70,13 @@ const config: Config = {
   globals: {},
 
   // The maximum amount of workers used to run your tests. Can be specified as % or a number. E.g. maxWorkers: 10% will use 10% of your CPU amount + 1 as the maximum worker number. maxWorkers: 2 will use a maximum of 2 workers.
-  // maxWorkers: "50%",
+  // Jest's default (cpus - 1) spawns ~23 ts-jest workers on a 24-core machine,
+  // each holding its own TypeScript program -- enough to exhaust system RAM.
+  maxWorkers: 4,
+
+  // Restart a worker once its heap passes this, so leaks can't accumulate
+  // across the ~100 suites in this repo.
+  workerIdleMemoryLimit: "1GB",
 
   // An array of directory names to be searched recursively up from the requiring module's location
   // moduleDirectories: [

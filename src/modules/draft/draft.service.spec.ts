@@ -126,6 +126,7 @@ describe("DraftService", () => {
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     stageRepo = {
       findById: jest.fn(),
+      findBySlug: jest.fn(),
       findAllByTournament: jest.fn(),
       teamIdsInSeedOrder: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
@@ -545,7 +546,7 @@ describe("DraftService", () => {
       const stage = { _id: new Types.ObjectId(), rounds: [] } as any;
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
-      stageRepo.findById.mockResolvedValue(stage);
+      stageRepo.findBySlug.mockResolvedValue(stage);
       stageRepo.findAllByTournament.mockResolvedValue([stage]);
       teamRepo.findManyByIds.mockResolvedValue([team]);
       matchupRepo.findByStages.mockResolvedValue([]);
@@ -561,9 +562,9 @@ describe("DraftService", () => {
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
 
-      // An explicit stageId still picks the axis, even though the matchup
+      // An explicit stage slug still picks the axis, even though the matchup
       // query itself now spans every stage.
-      expect(stageRepo.findById).toHaveBeenCalledWith("stage-1");
+      expect(stageRepo.findBySlug).toHaveBeenCalledWith("stage-1");
       expect((result.teams[0] as any).record).toEqual({ wins: 3, losses: 1, pokemonDiff: 2, gameDiff: 1 });
       expect((result.teams[0] as any).diffMode).toBe("pokemon");
     });

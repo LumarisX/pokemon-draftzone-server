@@ -31,9 +31,9 @@ export class TournamentTradeController {
   async getTrades(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Query("teamId") teamId?: string | string[],
+    @Query("teamSlug") teamSlug?: string | string[],
   ) {
-    return this.tradeService.getTrades(leagueSlug, tournamentSlug, teamId);
+    return this.tradeService.getTrades(leagueSlug, tournamentSlug, teamSlug);
   }
 
   @Post()

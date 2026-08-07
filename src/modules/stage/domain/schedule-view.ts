@@ -50,12 +50,14 @@ export function toScheduleMatchup(
         : matchup[which].score,
       logo: team.logo,
       id: team._id.toString(),
+      slug: team.slug,
       draft: rosterFor(team, options),
     };
   };
 
   return {
     id: matchup._id.toString(),
+    slug: matchup.slug,
     team1: side("side1"),
     team2: side("side2"),
     matches: matchup.results.map((result) => ({
