@@ -13,8 +13,8 @@ import {
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
 import {
-  calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
+  calculateDivisionTeamStandings,
 } from "../stage/domain/standings";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "../stage/stage.repository";
@@ -38,7 +38,7 @@ jest.mock("../stage/domain/roster", () => ({
   getRosterByRound: jest.fn(),
 }));
 jest.mock("../stage/domain/standings", () => ({
-  calculateDivisionCoachStandings: jest.fn(),
+  calculateDivisionTeamStandings: jest.fn(),
   calculateDivisionPokemonStandings: jest.fn(),
 }));
 
@@ -46,7 +46,7 @@ const mockedGetDraftDetails = getDraftDetails as jest.Mock;
 const mockedIsCoach = isCoach as jest.Mock;
 const mockedGetDraftOrder = getDraftOrder as jest.Mock;
 const mockedGetLatestRoster = getLatestRoster as jest.Mock;
-const mockedCalculateDivisionCoachStandings = calculateDivisionCoachStandings as jest.Mock;
+const mockedCalculateDivisionTeamStandings = calculateDivisionTeamStandings as jest.Mock;
 const mockedCalculateDivisionPokemonStandings = calculateDivisionPokemonStandings as jest.Mock;
 
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
@@ -522,8 +522,8 @@ describe("DraftService", () => {
       teamRepo.findManyByIds.mockResolvedValue([team]);
       matchupRepo.findByStages.mockResolvedValue([]);
       mockedCalculateDivisionPokemonStandings.mockResolvedValue([]);
-      mockedCalculateDivisionCoachStandings.mockResolvedValue({
-        coachStandings: [],
+      mockedCalculateDivisionTeamStandings.mockResolvedValue({
+        teamStandings: [],
         diffMode: "pokemon",
       });
       mockedGetDraftOrder.mockReturnValue([team]);
@@ -551,8 +551,8 @@ describe("DraftService", () => {
       teamRepo.findManyByIds.mockResolvedValue([team]);
       matchupRepo.findByStages.mockResolvedValue([]);
       mockedCalculateDivisionPokemonStandings.mockResolvedValue([]);
-      mockedCalculateDivisionCoachStandings.mockResolvedValue({
-        coachStandings: [
+      mockedCalculateDivisionTeamStandings.mockResolvedValue({
+        teamStandings: [
           { id: team._id.toString(), wins: 3, losses: 1, pokemonDiff: 2, gameDiff: 1 },
         ],
         diffMode: "pokemon",

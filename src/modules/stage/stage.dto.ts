@@ -79,6 +79,11 @@ export class SubmitMatchupReportDto {
   @IsOptional()
   winner?: "side1" | "side2" | "draw";
 
+  /** Set alongside `winner` to report a forfeit rather than played games. */
+  @IsBoolean()
+  @IsOptional()
+  forfeit?: boolean;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MatchResultDto)

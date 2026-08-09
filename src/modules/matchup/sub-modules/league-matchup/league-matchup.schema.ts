@@ -94,6 +94,9 @@ export class MatchupReportEntity {
   @Prop({ type: String, enum: MATCH_WINNERS })
   winner?: LeagueMatchupWinner;
 
+  @Prop()
+  forfeit?: boolean;
+
   @Prop({ trim: true })
   notes?: string;
 }

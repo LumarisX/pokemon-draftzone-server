@@ -16,8 +16,8 @@ import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
 import { rosterContextForTournament } from "../stage/domain/stage-axis";
 import {
-  calculateDivisionCoachStandings,
   calculateDivisionPokemonStandings,
+  calculateDivisionTeamStandings,
   PopulatedStageMatchup,
 } from "../stage/domain/standings";
 import { DraftEngineService } from "./draft-engine.service";
@@ -630,14 +630,14 @@ export class DraftService {
 
     const pokemonStandings =
       await calculateDivisionPokemonStandings(allMatchups);
-    const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
+    const { teamStandings, diffMode } = await calculateDivisionTeamStandings(
       allMatchups,
       stage,
       tournament,
     );
 
     const teams = approvedTeams.map((team) => {
-      const standings = coachStandings.find(
+      const standings = teamStandings.find(
         (c) => c.id === team._id.toString(),
       );
       const record = standings

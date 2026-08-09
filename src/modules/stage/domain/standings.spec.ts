@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 import {
-  calculateDivisionCoachStandings,
+  calculateDivisionTeamStandings,
   calculateTeamScore,
 } from "./standings";
 
-describe("calculateDivisionCoachStandings", () => {
+describe("calculateDivisionTeamStandings", () => {
   it("marks both teams as losses for double forfeits", async () => {
     const roundId = new Types.ObjectId();
     const team1Id = new Types.ObjectId();
@@ -58,16 +58,16 @@ describe("calculateDivisionCoachStandings", () => {
       },
     ];
 
-    const { coachStandings } = await calculateDivisionCoachStandings(
+    const { teamStandings } = await calculateDivisionTeamStandings(
       matchups as any,
       stage as any,
       tournament as any,
     );
 
-    const teamOneStanding = coachStandings.find(
+    const teamOneStanding = teamStandings.find(
       (team) => team.name === "Team One",
     );
-    const teamTwoStanding = coachStandings.find(
+    const teamTwoStanding = teamStandings.find(
       (team) => team.name === "Team Two",
     );
 
@@ -122,13 +122,13 @@ describe("calculateDivisionCoachStandings", () => {
       },
     ];
 
-    const { coachStandings } = await calculateDivisionCoachStandings(
+    const { teamStandings } = await calculateDivisionTeamStandings(
       matchups as any,
       stage as any,
       tournament as any,
     );
 
-    const teamOneStanding = coachStandings.find(
+    const teamOneStanding = teamStandings.find(
       (team) => team.name === "Team One",
     );
 

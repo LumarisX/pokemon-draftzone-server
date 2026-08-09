@@ -15,7 +15,7 @@ import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-mat
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { isCoachedBy } from "@modules/team/team.domain";
-import { TeamRepository } from "@modules/team/team.repository";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
@@ -29,6 +29,7 @@ import {
 import { getLatestRoster } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
+  calculateDivisionTeamStandings,
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
@@ -187,6 +188,7 @@ export class HostedTournamentService {
       },
     };
   }
+
   private async resolveStage(
     tournamentId: Types.ObjectId | string,
     stageSlug?: string,
@@ -200,6 +202,101 @@ export class HostedTournamentService {
     throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
       reason: "Multiple stages exist for this tournament; pass stageSlug",
     });
+  }
+
+  /**
+   * Every stage's standings in one response, plus an "all" view combining
+   * every stage's matchups together — the tournament no longer forces a
+   * choice of stage up front the way a `/stages/:stageSlug/standings` route
+   * would; the client picks which view to show from what's already here.
+   */
+  async getStandings(leagueSlug: string, tournamentSlug: string, sub?: string) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
+      tournamentSlug,
+    );
+
+    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const visibleStages = (
+      await this.stageRepo.findAllByTournament(tournament.id)
+    ).filter((stage) => stage.public !== false || canSeeHidden);
+
+    const composedStages = await Promise.all(
+      visibleStages.map((stage) => this.composeStageTeams(stage)),
+    );
+
+    const filters = [
+      { value: "all", label: "All Stages" },
+      ...visibleStages.map((stage) => ({
+        value: stage.slug,
+        label: stage.name,
+      })),
+    ];
+
+    const views: Record<
+      string,
+      {
+        teamStandings: {
+          cutoff: number;
+          diffMode: "game" | "pokemon";
+          teams: unknown[];
+        };
+        pokemonStandings: unknown[];
+      }
+    > = {};
+
+    for (const stage of composedStages) {
+      const axisRounds = stageRounds(stage, tournament);
+      const matchups = (await this.matchupRepo.findByRoundsInStage(
+        stage._id,
+        axisRounds.map((r) => r._id),
+      )) as unknown as PopulatedStageMatchup[];
+
+      const { teamStandings, diffMode } = await calculateDivisionTeamStandings(
+        matchups,
+        stage,
+        tournament,
+      );
+      views[stage.slug] = {
+        teamStandings: { cutoff: 8, diffMode, teams: teamStandings },
+        pokemonStandings: await calculateDivisionPokemonStandings(matchups),
+      };
+    }
+
+    // "All Stages": every visible stage's matchups combined, scored against
+    // the union of every stage's teams — the same merge the Team/Draft pages
+    // do, just computed once here instead of separately on each page.
+    const allTeamsById = new Map<string, PopulatedTeam>();
+    for (const stage of composedStages) {
+      for (const team of stage.teams) allTeamsById.set(team._id.toString(), team);
+    }
+    const combinedStage = {
+      rounds: [],
+      teams: Array.from(allTeamsById.values()),
+    } as unknown as StageDocument & { teams: PopulatedTeam[] };
+    const allMatchups = (await this.matchupRepo.findByStages(
+      visibleStages.map((s) => s._id),
+    )) as unknown as PopulatedStageMatchup[];
+    const { teamStandings: combinedTeamStandings, diffMode: combinedDiffMode } =
+      await calculateDivisionTeamStandings(allMatchups, combinedStage, tournament);
+    views.all = {
+      teamStandings: {
+        cutoff: 8,
+        diffMode: combinedDiffMode,
+        teams: combinedTeamStandings,
+      },
+      pokemonStandings: await calculateDivisionPokemonStandings(allMatchups),
+    };
+
+    return { filters, views };
+  }
+
+  private async composeStageTeams(
+    stage: StageDocument,
+  ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
+    const teamIds = this.stageRepo.teamIdsInSeedOrder(stage);
+    const teams = await this.teamRepo.findManyByIds(teamIds);
+    return Object.assign(stage, { teams });
   }
 
   async getTournament(leagueSlug: string, tournamentSlug: string) {

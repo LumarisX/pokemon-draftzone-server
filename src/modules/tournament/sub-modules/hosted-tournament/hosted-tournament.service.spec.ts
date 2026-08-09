@@ -543,9 +543,12 @@ describe("HostedTournamentService teams", () => {
     } as unknown as jest.Mocked<DraftRepository>;
     const stageRepo = {
       findAllByTournament: jest.fn().mockResolvedValue(overrides.stages ?? []),
+      teamIdsInSeedOrder: jest.fn().mockReturnValue([]),
     } as unknown as jest.Mocked<StageRepository>;
+    (teamRepo as any).findManyByIds = jest.fn().mockResolvedValue([]);
     const matchupRepo = {
       findByStages: jest.fn().mockResolvedValue([]),
+      findByRoundsInStage: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
 
     const service = new HostedTournamentService(
@@ -559,7 +562,7 @@ describe("HostedTournamentService teams", () => {
       {} as DiscordService,
       {} as S3Service,
     );
-    return { service, matchupRepo };
+    return { service, matchupRepo, stageRepo, teamRepo };
   }
 
   describe("listTeams", () => {
@@ -649,6 +652,152 @@ describe("HostedTournamentService teams", () => {
         [visibleStage._id, hiddenStage._id],
         { teamIds: [TEAM_ID] },
       );
+    });
+  });
+
+  describe("getStandings", () => {
+    const roundId = new Types.ObjectId();
+    const groupStage = {
+      _id: new Types.ObjectId(),
+      slug: "group-phase",
+      name: "Group Phase",
+      order: 0,
+      public: true,
+    };
+    const playoffStage = {
+      _id: new Types.ObjectId(),
+      slug: "playoffs",
+      name: "Playoffs",
+      order: 1,
+      public: true,
+    };
+    const hiddenStage = {
+      _id: new Types.ObjectId(),
+      slug: "hidden-stage",
+      name: "Hidden Stage",
+      order: 2,
+      public: false,
+    };
+
+    function tournamentWithAxis() {
+      return buildTournament({
+        rounds: [{ _id: roundId, name: "Week 1" }],
+        currentRoundIndex: 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+    }
+
+    it("returns one view per visible stage plus an all view combining every stage's matchups", async () => {
+      const teamA = buildTeam(TEAM_ID, "Team A", []);
+      const teamB = buildTeam(OTHER_TEAM_ID, "Team B", []);
+      const { service, matchupRepo, stageRepo, teamRepo } = buildService({
+        tournament: tournamentWithAxis(),
+        stages: [groupStage, playoffStage],
+      });
+      stageRepo.teamIdsInSeedOrder.mockReturnValue([TEAM_ID, OTHER_TEAM_ID]);
+      (teamRepo as any).findManyByIds.mockResolvedValue([teamA, teamB]);
+
+      const groupMatchup = {
+        side1: { team: teamA, score: 3 },
+        side2: { team: teamB, score: 1 },
+        round: roundId,
+        winner: "side1",
+        results: [],
+      };
+      const playoffMatchup = {
+        side1: { team: teamB, score: 2 },
+        side2: { team: teamA, score: 0 },
+        round: roundId,
+        winner: "side1",
+        results: [],
+      };
+      (matchupRepo.findByRoundsInStage as jest.Mock).mockImplementation(
+        (stageId: any) => {
+          if (stageId === groupStage._id)
+            return Promise.resolve([groupMatchup]);
+          if (stageId === playoffStage._id)
+            return Promise.resolve([playoffMatchup]);
+          return Promise.resolve([]);
+        },
+      );
+      matchupRepo.findByStages.mockResolvedValue([
+        groupMatchup,
+        playoffMatchup,
+      ] as any);
+
+      const result = await service.getStandings(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(result.filters).toEqual([
+        { value: "all", label: "All Stages" },
+        { value: "group-phase", label: "Group Phase" },
+        { value: "playoffs", label: "Playoffs" },
+      ]);
+
+      const groupTeams = result.views["group-phase"].teamStandings.teams as any[];
+      expect(groupTeams.find((t) => t.id === TEAM_ID.toString())).toMatchObject(
+        { wins: 1, losses: 0 },
+      );
+      expect(
+        groupTeams.find((t) => t.id === OTHER_TEAM_ID.toString()),
+      ).toMatchObject({ wins: 0, losses: 1 });
+
+      const playoffTeams = result.views["playoffs"].teamStandings
+        .teams as any[];
+      expect(
+        playoffTeams.find((t) => t.id === OTHER_TEAM_ID.toString()),
+      ).toMatchObject({ wins: 1, losses: 0 });
+      expect(
+        playoffTeams.find((t) => t.id === TEAM_ID.toString()),
+      ).toMatchObject({ wins: 0, losses: 1 });
+
+      // Combined: Team A and Team B split their two matches 1-1 overall.
+      const allTeams = result.views["all"].teamStandings.teams as any[];
+      expect(allTeams.find((t) => t.id === TEAM_ID.toString())).toMatchObject({
+        wins: 1,
+        losses: 1,
+      });
+      expect(
+        allTeams.find((t) => t.id === OTHER_TEAM_ID.toString()),
+      ).toMatchObject({ wins: 1, losses: 1 });
+    });
+
+    it("excludes a hidden stage from filters/views for a non-organizer, includes it for an organizer", async () => {
+      const { service: coachService, stageRepo: coachStageRepo } =
+        buildService({
+          tournament: tournamentWithAxis(),
+          stages: [groupStage, hiddenStage],
+        });
+      coachStageRepo.teamIdsInSeedOrder.mockReturnValue([]);
+
+      const coachResult = await coachService.getStandings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+      );
+      expect(coachResult.filters.map((f) => f.value)).toEqual([
+        "all",
+        "group-phase",
+      ]);
+      expect(coachResult.views["hidden-stage"]).toBeUndefined();
+
+      const { service: organizerService, stageRepo: organizerStageRepo } =
+        buildService({
+          tournament: tournamentWithAxis(),
+          stages: [groupStage, hiddenStage],
+        });
+      organizerStageRepo.teamIdsInSeedOrder.mockReturnValue([]);
+
+      const organizerResult = await organizerService.getStandings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+      );
+      expect(organizerResult.filters.map((f) => f.value)).toEqual([
+        "all",
+        "group-phase",
+        "hidden-stage",
+      ]);
+      expect(organizerResult.views["hidden-stage"]).toBeDefined();
     });
   });
 });

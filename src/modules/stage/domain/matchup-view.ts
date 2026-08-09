@@ -60,6 +60,7 @@ function reportView(report: MatchupReportEntity) {
       team2: report.side2Score ?? 0,
     },
     winner: report.winner,
+    forfeit: report.forfeit ?? false,
     notes: report.notes,
     matches: resultsView(report.results ?? []),
   };

@@ -183,6 +183,17 @@ export class HostedTournamentController {
     );
   }
 
+  @Get(":tournamentSlug/standings")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
+  async getStandings(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string | undefined,
+  ) {
+    return this.tournamentService.getStandings(leagueSlug, tournamentSlug, sub);
+  }
+
   @Get(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
   async getTournamentSettings(

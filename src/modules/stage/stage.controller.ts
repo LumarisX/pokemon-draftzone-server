@@ -147,16 +147,6 @@ export class StageController {
     );
   }
 
-  @Get(":stageSlug/standings")
-  @OptionalAuth()
-  @UseGuards(JwtAuthGuard)
-  async getStandings(
-    @Param("stageSlug") stageSlug: string,
-    @User() sub?: string,
-  ) {
-    return this.stageService.getStandings(stageSlug, sub);
-  }
-
   @Get(":stageSlug/trades")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)

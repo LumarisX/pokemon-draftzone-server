@@ -144,7 +144,7 @@ export async function calculateDivisionPokemonStandings(
     });
 }
 
-type CoachStanding = {
+type TeamStanding = {
   name: string;
   results: ({
     outcome: "w" | "l" | "t" | "ff";
@@ -192,10 +192,10 @@ export type TeamScore = {
   diffMode: "pokemon" | "game";
 };
 
-function createCoachStanding(
+function createTeamStanding(
   team: PopulatedTeam,
   roundCount: number,
-): CoachStanding {
+): TeamStanding {
   const teamKey = team._id.toString();
   const coach = team.coach;
 
@@ -213,19 +213,19 @@ function createCoachStanding(
   };
 }
 
-function getOrCreateCoachStanding(
-  coachStandingsMap: Map<string, CoachStanding>,
+function getOrCreateTeamStanding(
+  teamStandingsMap: Map<string, TeamStanding>,
   team: PopulatedTeam,
   roundCount: number,
-): CoachStanding {
+): TeamStanding {
   const teamKey = team._id.toString();
-  const existingStanding = coachStandingsMap.get(teamKey);
+  const existingStanding = teamStandingsMap.get(teamKey);
   if (existingStanding) {
     return existingStanding;
   }
 
-  const newStanding = createCoachStanding(team, roundCount);
-  coachStandingsMap.set(teamKey, newStanding);
+  const newStanding = createTeamStanding(team, roundCount);
+  teamStandingsMap.set(teamKey, newStanding);
   return newStanding;
 }
 
@@ -251,7 +251,7 @@ function calculateMatchupFainted(
 }
 
 function applyMatchupDiffs(
-  standing: CoachStanding,
+  standing: TeamStanding,
   roundIndex: number,
   stageDiff: number,
   pokemonDiff: number,
@@ -319,7 +319,7 @@ function resolveTeamMatchupResult({
 }
 
 function applyResolvedMatchupResult(
-  standing: CoachStanding,
+  standing: TeamStanding,
   roundIndex: number,
   diffMode: "game" | "pokemon",
   result: ResolvedMatchupResult,
@@ -363,7 +363,7 @@ function calculateStreak(
   return streak;
 }
 
-export async function calculateDivisionCoachStandings(
+export async function calculateDivisionTeamStandings(
   matchups: PopulatedStageMatchup[],
   stage: StageDocument & { teams: PopulatedTeam[] },
   tournament: AxisTournament & {
@@ -371,14 +371,14 @@ export async function calculateDivisionCoachStandings(
     forfeit?: ForfeitConfig;
   },
 ) {
-  const coachStandingsMap = new Map<string, CoachStanding>();
+  const teamStandingsMap = new Map<string, TeamStanding>();
   const diffMode = tournament.diffMode;
   // A standing has one cell per round, so the axis has to be the one the
   // matchups' `round` ids actually belong to.
   const rounds = stageRounds(stage, tournament);
   for (const team of stage.teams) {
-    const teamStanding = createCoachStanding(team, rounds.length);
-    coachStandingsMap.set(teamStanding.teamId, teamStanding);
+    const teamStanding = createTeamStanding(team, rounds.length);
+    teamStandingsMap.set(teamStanding.teamId, teamStanding);
   }
 
   for (const matchup of matchups) {
@@ -424,8 +424,8 @@ export async function calculateDivisionCoachStandings(
 
     for (const { teamSide, team, stageDiff, pokemonDiff } of sides) {
       if (!team) continue;
-      const standing = getOrCreateCoachStanding(
-        coachStandingsMap,
+      const standing = getOrCreateTeamStanding(
+        teamStandingsMap,
         team,
         rounds.length,
       );
@@ -442,7 +442,7 @@ export async function calculateDivisionCoachStandings(
   }
 
   return {
-    coachStandings: Array.from(coachStandingsMap.values())
+    teamStandings: Array.from(teamStandingsMap.values())
       .map((team) => {
         return {
           name: team.name,
@@ -475,7 +475,7 @@ export async function calculateTeamScore(
   team: PopulatedTeam,
   forfeitConfig?: ForfeitConfig,
 ): Promise<TeamScore> {
-  const teamStanding = createCoachStanding(team, rounds.length);
+  const teamStanding = createTeamStanding(team, rounds.length);
   const teamId = team._id.toString();
   let diffMode: "pokemon" | "game" = "pokemon";
   let unplayed = 0;

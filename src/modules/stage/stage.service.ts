@@ -30,7 +30,6 @@ import { getRosterByRound } from "./domain/roster";
 import { scheduleMatchups } from "./domain/schedule-view";
 import {
   currentRoundIndex,
-  RoundLike,
   rosterContext,
   stageRounds,
   stageTeamIds,
@@ -39,8 +38,6 @@ import {
   usesTournamentAxis,
 } from "./domain/stage-axis";
 import {
-  calculateDivisionCoachStandings,
-  calculateDivisionPokemonStandings,
   hasResolvedSides,
   PopulatedStageMatchup,
 } from "./domain/standings";
@@ -227,16 +224,6 @@ export class StageService {
     return this.hostedTournamentRepo
       .findById(stage.tournamentId.toString())
       .catch(() => null);
-  }
-
-  private async composeStageTeams(stage: StageDocument): Promise<
-    StageDocument & {
-      teams: Awaited<ReturnType<TeamRepository["findManyByIds"]>>;
-    }
-  > {
-    const teamIds = this.stageRepo.teamIdsInSeedOrder(stage);
-    const teams = await this.teamRepo.findManyByIds(teamIds);
-    return Object.assign(stage, { teams });
   }
 
   async createStage(
@@ -1202,7 +1189,7 @@ export class StageService {
       matchupDoc.side1.score = score.team1;
       matchupDoc.side2.score = score.team2;
       matchupDoc.winner = winner;
-      matchupDoc.forfeit = false;
+      matchupDoc.forfeit = dto.forfeit ?? false;
       matchupDoc.status = "approved";
       matchupDoc.report = undefined;
       await matchupDoc.save();
@@ -1223,6 +1210,7 @@ export class StageService {
       side1Score: score.team1,
       side2Score: score.team2,
       winner,
+      forfeit: dto.forfeit || undefined,
       notes: dto.notes?.trim() || undefined,
     };
     matchupDoc.status = "pending";
@@ -1279,6 +1267,7 @@ export class StageService {
     matchupDoc.side1.score = report.side1Score ?? 0;
     matchupDoc.side2.score = report.side2Score ?? 0;
     if (report.winner) matchupDoc.winner = report.winner;
+    matchupDoc.forfeit = report.forfeit ?? false;
     matchupDoc.status = "approved";
     matchupDoc.report = undefined;
     await matchupDoc.save();
@@ -1357,119 +1346,6 @@ export class StageService {
       winnerTeamId,
       loserTeamId,
     );
-  }
-
-  async getStandings(stageSlug: string, sub?: string) {
-    const stageDoc = await this.findVisibleStage(stageSlug, sub);
-    const stage = await this.composeStageTeams(stageDoc);
-
-    const tournament = await this.hostedTournamentRepo.findById(
-      stage.tournamentId,
-    );
-
-    const axisRounds = stageRounds(stage, tournament);
-    const allMatchups = (await this.matchupRepo.findByRoundsInStage(
-      stage._id,
-      axisRounds.map((r) => r._id),
-    )) as unknown as PopulatedStageMatchup[];
-
-    const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
-      allMatchups,
-      stage,
-      tournament,
-    );
-    const pokemonStandings =
-      await calculateDivisionPokemonStandings(allMatchups);
-
-    return {
-      // The stage-wide table stays the primary shape; `pools` is additional,
-      // so nothing reading standings today has to change.
-      coachStandings: {
-        cutoff: 8,
-        weeks: axisRounds.length,
-        teams: coachStandings,
-        diffMode,
-      },
-      pokemonStandings,
-      pools: await this.standingsByPool(
-        stage,
-        allMatchups,
-        tournament,
-        axisRounds,
-      ),
-    };
-  }
-
-  /**
-   * One standings table per pool.
-   *
-   * A pool is a self-contained competition — two groups that never play each
-   * other can't be ranked in one table — so each is scored over only the
-   * matchups played entirely within it. A stage with a single pool (every
-   * bracket saved before sections were linked to pools) yields one entry that
-   * matches the stage-wide table.
-   */
-  private async standingsByPool(
-    stage: StageDocument & { teams: PopulatedTeam[] },
-    matchups: PopulatedStageMatchup[],
-    tournament: Parameters<typeof calculateDivisionCoachStandings>[2],
-    axisRounds: RoundLike[],
-  ) {
-    // A migrated stage is one section, so it is one pool: its whole roster.
-    // Synthesizing it here keeps `pools` non-empty for both data shapes, which
-    // is what lets the client render the same way either side of the migration.
-    const pools = stage.pools.length
-      ? stage.pools
-      : [
-          {
-            poolKey: "stage",
-            name: stage.name,
-            teamIds: stageTeamIds(stage),
-          },
-        ];
-
-    const results = [];
-    for (const pool of pools) {
-      const memberIds = new Set(pool.teamIds.map((id) => id.toString()));
-      const teams = stage.teams.filter((team) =>
-        memberIds.has(team._id.toString()),
-      );
-      if (teams.length === 0) continue;
-
-      // A cross-pool matchup belongs to neither pool's table.
-      const poolMatchups = matchups.filter(
-        (matchup) =>
-          matchup.side1.team &&
-          matchup.side2.team &&
-          memberIds.has(matchup.side1.team._id.toString()) &&
-          memberIds.has(matchup.side2.team._id.toString()),
-      );
-
-      // Standings only read `teams` and `rounds` off the stage.
-      const poolView = { rounds: axisRounds, teams } as unknown as
-        StageDocument & { teams: PopulatedTeam[] };
-      const { coachStandings, diffMode } = await calculateDivisionCoachStandings(
-        poolMatchups,
-        poolView,
-        tournament,
-      );
-
-      results.push({
-        poolKey: pool.poolKey,
-        name: pool.name,
-        sections: stage.sections
-          .filter((section) => section.poolKey === pool.poolKey)
-          .map((section) => section.key),
-        coachStandings: {
-          cutoff: 8,
-          weeks: axisRounds.length,
-          teams: coachStandings,
-          diffMode,
-        },
-        pokemonStandings: await calculateDivisionPokemonStandings(poolMatchups),
-      });
-    }
-    return results;
   }
 
   /** One trades view for everyone (no separate "manage" copy). */

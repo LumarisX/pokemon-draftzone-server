@@ -4,27 +4,14 @@ import { TeamRepository } from "../team/team.repository";
 import { HostedTournamentRepository } from "../tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "../tier-list/tier-list.repository";
 import { getRosterByRound } from "./domain/roster";
-import {
-  calculateDivisionCoachStandings,
-  calculateDivisionPokemonStandings,
-} from "./domain/standings";
 import { StageRepository } from "./stage.repository";
 import { StageService } from "./stage.service";
 
 jest.mock("./domain/roster", () => ({
   getRosterByRound: jest.fn(),
 }));
-jest.mock("./domain/standings", () => ({
-  ...jest.requireActual("./domain/standings"),
-  calculateDivisionCoachStandings: jest.fn(),
-  calculateDivisionPokemonStandings: jest.fn(),
-}));
 
 const mockedGetRosterByRound = getRosterByRound as jest.Mock;
-const mockedCalculateDivisionCoachStandings =
-  calculateDivisionCoachStandings as jest.Mock;
-const mockedCalculateDivisionPokemonStandings =
-  calculateDivisionPokemonStandings as jest.Mock;
 
 function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
@@ -127,11 +114,6 @@ describe("StageService", () => {
     );
 
     mockedGetRosterByRound.mockReturnValue([]);
-    mockedCalculateDivisionCoachStandings.mockResolvedValue({
-      coachStandings: [],
-      diffMode: "pokemon",
-    });
-    mockedCalculateDivisionPokemonStandings.mockResolvedValue([]);
   });
 
   describe("createStage", () => {
@@ -573,95 +555,6 @@ describe("StageService", () => {
       expect(transformed.team1.score).toBe(3);
       expect(transformed.team2.score).toBe(0);
       expect(transformed.winner).toBe("side1ffw");
-    });
-  });
-
-  describe("getStandings", () => {
-    it("composes stage teams and returns coach + Pokemon standings", async () => {
-      const stage = buildStage({ rounds: [{}, {}, {}] });
-      stageRepo.findBySlug.mockResolvedValue(stage);
-      const tournament = buildTournament();
-      hostedTournamentRepo.findById.mockResolvedValue(tournament);
-      const matchups = [{ id: "matchup-1" }];
-      matchupRepo.findByRoundsInStage.mockResolvedValue(matchups as any);
-      mockedCalculateDivisionCoachStandings.mockResolvedValue({
-        coachStandings: [{ id: "team-1", wins: 3, losses: 1 }],
-        diffMode: "pokemon",
-      });
-      mockedCalculateDivisionPokemonStandings.mockResolvedValue([
-        { id: "pikachu" },
-      ]);
-
-      const result = await service.getStandings(stage._id.toString());
-
-      expect(mockedCalculateDivisionCoachStandings).toHaveBeenCalledWith(
-        matchups,
-        expect.objectContaining({ _id: stage._id }),
-        tournament,
-      );
-      expect(mockedCalculateDivisionPokemonStandings).toHaveBeenCalledWith(
-        matchups,
-      );
-      expect(result).toEqual({
-        coachStandings: {
-          cutoff: 8,
-          weeks: 3,
-          teams: [{ id: "team-1", wins: 3, losses: 1 }],
-          diffMode: "pokemon",
-        },
-        pokemonStandings: [{ id: "pikachu" }],
-        // No pools defined on this stage, so there is nothing to split.
-        pools: [],
-      });
-    });
-
-    it("scores each pool over only its own matchups", async () => {
-      const groupA = [new Types.ObjectId(), new Types.ObjectId()];
-      const groupB = [new Types.ObjectId(), new Types.ObjectId()];
-      const stage = buildStage({
-        rounds: [{}, {}],
-        pools: [
-          { poolKey: "group-a", name: "Group A", teamIds: groupA },
-          { poolKey: "group-b", name: "Group B", teamIds: groupB },
-        ],
-        sections: [
-          { key: "a--rr", poolKey: "group-a" },
-          { key: "b--rr", poolKey: "group-b" },
-        ],
-      });
-      stageRepo.findBySlug.mockResolvedValue(stage);
-      stageRepo.teamIdsInSeedOrder.mockReturnValue([...groupA, ...groupB]);
-      teamRepo.findManyByIds.mockResolvedValue(
-        [...groupA, ...groupB].map((_id) => buildTeam({ _id })),
-      );
-      hostedTournamentRepo.findById.mockResolvedValue(buildTournament());
-
-      const side = (team: Types.ObjectId) => ({ team: { _id: team } });
-      const inA = { id: "a", side1: side(groupA[0]), side2: side(groupA[1]) };
-      const inB = { id: "b", side1: side(groupB[0]), side2: side(groupB[1]) };
-      // A cross-pool match belongs to neither table.
-      const across = { id: "x", side1: side(groupA[0]), side2: side(groupB[0]) };
-      matchupRepo.findByRoundsInStage.mockResolvedValue([
-        inA,
-        inB,
-        across,
-      ] as any);
-
-      const result = await service.getStandings(stage._id.toString());
-
-      expect(result.pools.map((p) => p.poolKey)).toEqual([
-        "group-a",
-        "group-b",
-      ]);
-      expect(result.pools[0].sections).toEqual(["a--rr"]);
-
-      // Called once stage-wide, then once per pool with that pool's matchups.
-      const calls = mockedCalculateDivisionCoachStandings.mock.calls;
-      expect(calls[1][0]).toEqual([inA]);
-      expect(calls[2][0]).toEqual([inB]);
-      expect(calls[1][1].teams.map((t: any) => t._id.toString())).toEqual(
-        groupA.map(String),
-      );
     });
   });
 

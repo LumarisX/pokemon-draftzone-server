@@ -1,4 +1,5 @@
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
+import { MatchupReportEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -22,6 +23,19 @@ import { StageRepository } from "./stage.repository";
  * within it a coach may have a group-phase match and a playoff match at once;
  * flattening those into one list loses which competition each belongs to.
  */
+/** Only shown to organizers — a pending report's score/notes are not public. */
+function reportSummary(report?: MatchupReportEntity) {
+  if (!report) return undefined;
+  return {
+    submittedByName: report.submittedByName ?? "A coach",
+    submittedAt: report.submittedAt,
+    score: { team1: report.side1Score ?? 0, team2: report.side2Score ?? 0 },
+    winner: report.winner,
+    forfeit: report.forfeit ?? false,
+    notes: report.notes,
+  };
+}
+
 @Injectable()
 export class TournamentScheduleService {
   constructor(
@@ -157,15 +171,41 @@ export class TournamentScheduleService {
             .sort((a, b) => a.stage!.order - b.stage!.order)
             .map(({ stage, stageMatchups }) => {
               const stageId = stage!._id.toString();
+              const scheduled = scheduleMatchups(stageMatchups, {
+                roster: rosterFor(stageId),
+                roundIndex: roundIndexFor(stageId, roundIndex),
+                forfeitGameDiff: tournament.forfeit.gameDiff,
+              });
+              // Pending-report details are only useful to whoever can act on
+              // them, so they ride along on this same list rather than
+              // forcing the organizer to open every matchup individually.
+              if (!canSeeHidden) {
+                return {
+                  _id: stage!._id,
+                  slug: stage!.slug,
+                  name: stage!.name,
+                  type: stage!.type,
+                  matchups: scheduled,
+                };
+              }
+              const matchupsById = new Map<string, PopulatedStageMatchup>(
+                stageMatchups.map((matchup: PopulatedStageMatchup) => [
+                  matchup._id.toString(),
+                  matchup,
+                ]),
+              );
               return {
                 _id: stage!._id,
                 slug: stage!.slug,
                 name: stage!.name,
                 type: stage!.type,
-                matchups: scheduleMatchups(stageMatchups, {
-                  roster: rosterFor(stageId),
-                  roundIndex: roundIndexFor(stageId, roundIndex),
-                  forfeitGameDiff: tournament.forfeit.gameDiff,
+                matchups: scheduled.map((matchup) => {
+                  const doc = matchupsById.get(matchup.id);
+                  return {
+                    ...matchup,
+                    status: doc?.status,
+                    report: reportSummary(doc?.report),
+                  };
                 }),
               };
             })

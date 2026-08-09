@@ -10,7 +10,6 @@ describe("StageController", () => {
       listStages: jest.fn(),
       createStage: jest.fn(),
       getSchedule: jest.fn(),
-      getStandings: jest.fn(),
       getTrades: jest.fn(),
       createTrade: jest.fn(),
       setPools: jest.fn(),
@@ -80,16 +79,6 @@ describe("StageController", () => {
       "auth0|coach",
     );
     expect(result).toBe(schedule);
-  });
-
-  it("getStandings forwards stageSlug", async () => {
-    const standings = { coachStandings: {} };
-    service.getStandings.mockResolvedValue(standings as any);
-
-    const result = await controller.getStandings("stage-1", "auth0|coach");
-
-    expect(service.getStandings).toHaveBeenCalledWith("stage-1", "auth0|coach");
-    expect(result).toBe(standings);
   });
 
   it("getTrades forwards stageSlug and teamId", async () => {
