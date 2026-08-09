@@ -237,7 +237,6 @@ export class HostedTournamentService {
       string,
       {
         teamStandings: {
-          cutoff: number;
           diffMode: "game" | "pokemon";
           teams: unknown[];
         };
@@ -258,7 +257,7 @@ export class HostedTournamentService {
         tournament,
       );
       views[stage.slug] = {
-        teamStandings: { cutoff: 8, diffMode, teams: teamStandings },
+        teamStandings: { diffMode, teams: teamStandings },
         pokemonStandings: await calculateDivisionPokemonStandings(matchups),
       };
     }
@@ -281,7 +280,6 @@ export class HostedTournamentService {
       await calculateDivisionTeamStandings(allMatchups, combinedStage, tournament);
     views.all = {
       teamStandings: {
-        cutoff: 8,
         diffMode: combinedDiffMode,
         teams: combinedTeamStandings,
       },
