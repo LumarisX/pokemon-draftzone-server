@@ -5,7 +5,7 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 
 export class ExternalTournamentDto {
@@ -28,6 +28,12 @@ export class ExternalTournamentDto {
   @IsString()
   @IsOptional()
   doc?: string;
+
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  coach?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

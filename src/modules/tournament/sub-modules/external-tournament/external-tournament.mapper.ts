@@ -24,6 +24,7 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       owner: tournament.owner,
       doc: tournament.doc,
+      coach: tournament.coach,
       team: tournament.team.map(PokemonMapper.toDatabasePayload),
     };
   }
@@ -40,6 +41,7 @@ export class ExternalTournamentMapper {
       format: tournament.format.name,
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
+      coach: tournament.coach,
       score: tournament.getScore(),
       team: [
         ...tournament.team.map(PokemonMapper.toClientPayload),
@@ -82,6 +84,7 @@ export class ExternalTournamentMapper {
         owner: sub,
         team: mappedTeam,
         doc: dto.doc?.trim(),
+        coach: dto.coach?.trim() || undefined,
       },
       [],
     );
@@ -113,6 +116,7 @@ export class ExternalTournamentMapper {
         team,
         unresolvedTeam,
         doc: tournamentDoc.doc,
+        coach: tournamentDoc.coach,
       },
       matchups,
     );

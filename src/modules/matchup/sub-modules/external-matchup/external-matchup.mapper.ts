@@ -132,6 +132,7 @@ export class ExternalMatchupMapper {
         team: aTeam.resolved,
         unresolvedTeam: aTeam.unresolved,
         teamName: tournamentDoc.teamName,
+        coach: tournamentDoc.coach,
         owner: tournamentDoc.owner,
         paste: matchupDoc.aTeam?.paste,
         notes: matchupDoc.notes,

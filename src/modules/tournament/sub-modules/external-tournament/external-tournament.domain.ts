@@ -22,6 +22,7 @@ export class ExternalTournament {
   team: PDZPokemon[];
   unresolvedTeam: PokemonEntity[];
   doc?: string;
+  coach?: string;
   matchups: ExternalMatchup[];
   constructor(
     props: {
@@ -35,6 +36,7 @@ export class ExternalTournament {
       team: PDZPokemon[];
       unresolvedTeam?: PokemonEntity[];
       doc?: string;
+      coach?: string;
     },
     matchups: ExternalMatchup[],
   ) {
@@ -48,6 +50,7 @@ export class ExternalTournament {
     this.team = props.team;
     this.unresolvedTeam = props.unresolvedTeam ?? [];
     this.doc = props.doc;
+    this.coach = props.coach;
     this.matchups = matchups;
   }
 

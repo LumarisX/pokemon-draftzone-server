@@ -361,7 +361,7 @@ describe("ExternalMatchupMapper", () => {
     });
 
     it("builds aTeam from the tournament document, including owner and notes", () => {
-      const tournamentDoc = buildTournamentDoc();
+      const tournamentDoc = buildTournamentDoc({ coach: "Giovanni" } as any);
       const matchupDoc = buildMatchupDoc({ notes: "a-notes" });
 
       const result = ExternalMatchupMapper.fromDatabase(matchupDoc, tournamentDoc);
@@ -371,6 +371,7 @@ describe("ExternalMatchupMapper", () => {
         team: [{ id: "bulbasaur", fromDatabase: true }],
         unresolvedTeam: [],
         teamName: "Team Rocket",
+        coach: "Giovanni",
         owner: "auth0|owner",
         paste: "a-paste",
         notes: "a-notes",

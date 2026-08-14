@@ -218,11 +218,12 @@ describe("ExternalTournamentMapper", () => {
       expect(result.slug).toBe("k3Xq8mZa");
     });
 
-    it("trims teamName, leagueName, and doc", () => {
+    it("trims teamName, leagueName, doc, and coach", () => {
       const dto = buildDto({
         leagueName: "  Spring League  ",
         teamName: "  Team Rocket  ",
         doc: "  doc-slug  ",
+        coach: "  Giovanni  ",
       });
 
       const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
@@ -230,6 +231,15 @@ describe("ExternalTournamentMapper", () => {
       expect(result.leagueName).toBe("Spring League");
       expect(result.teamName).toBe("Team Rocket");
       expect(result.doc).toBe("doc-slug");
+      expect(result.coach).toBe("Giovanni");
+    });
+
+    it("leaves coach undefined when it is blank, so no name is shown", () => {
+      const dto = buildDto({ coach: "   " });
+
+      const result = ExternalTournamentMapper.fromForm(dto, "auth0|owner");
+
+      expect(result.coach).toBeUndefined();
     });
 
     it("leaves doc undefined when it isn't provided", () => {
@@ -319,6 +329,14 @@ describe("ExternalTournamentMapper", () => {
       const result = ExternalTournamentMapper.fromDatabase(doc, matchups);
 
       expect(result.matchups).toBe(matchups);
+    });
+
+    it("carries the stored coach through", () => {
+      const doc = buildDoc({ coach: "Giovanni" } as any);
+
+      const result = ExternalTournamentMapper.fromDatabase(doc, []);
+
+      expect(result.coach).toBe("Giovanni");
     });
   });
 });
