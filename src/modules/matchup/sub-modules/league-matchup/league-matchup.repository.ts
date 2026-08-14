@@ -120,8 +120,23 @@ export class LeagueMatchupRepository {
     return this.matchupModel
       .find({ stage: { $in: stageIds } })
       .select(
-        "stage round section bracketRound position label side1 side2 results",
+        "stage slug round section bracketRound position label side1 side2 results",
       )
+      .sort({ _id: 1 })
+      .lean();
+  }
+
+  /**
+   * Just the fields `buildMatchLabels` numbers by. The schedule labels every
+   * card, so this runs on every schedule read — it stays a narrow projection
+   * rather than reusing `findStructureByStages`, which also drags along both
+   * sides and every recorded result.
+   */
+  async findLabelFieldsByStages(stageIds: (Types.ObjectId | string)[]) {
+    if (stageIds.length === 0) return [];
+    return this.matchupModel
+      .find({ stage: { $in: stageIds } })
+      .select("stage slug round position label")
       .sort({ _id: 1 })
       .lean();
   }

@@ -946,6 +946,7 @@ export class StageService {
           roster,
           roundIndex: axisRounds.indexOf(roundDoc),
           forfeitGameDiff: tournament.forfeit.gameDiff,
+          keepUnresolvedOpponent: hasTeamFilter,
         },
       ),
     }));

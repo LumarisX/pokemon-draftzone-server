@@ -80,7 +80,7 @@ export function toMatchupDetail(
     ...base,
     team1: { ...base.team1, ...contactFor(matchup.side1.team, viewer) },
     team2: { ...base.team2, ...contactFor(matchup.side2.team, viewer) },
-    label: matchup.label,
+    label: matchup.label ?? base.label,
     notes: matchup.notes,
     scheduledDate: matchup.scheduledDate,
     forfeit: matchup.forfeit ?? false,

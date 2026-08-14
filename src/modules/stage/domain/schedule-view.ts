@@ -1,3 +1,4 @@
+import { MatchLabel } from "./match-labels";
 import { getRosterByRound } from "./roster";
 import { RosterContext } from "./stage-axis";
 import { hasResolvedSides, PopulatedStageMatchup } from "./standings";
@@ -18,6 +19,13 @@ export interface ScheduleViewOptions {
   roundIndex: number;
   /** `tournament.forfeit.gameDiff` — the score a forfeit is displayed as. */
   forfeitGameDiff: number;
+  keepUnresolvedOpponent?: boolean;
+  /**
+   * Bracket names for every match in the stage, keyed by matchup id. Supplies
+   * both the card's own label and the name an unresolved slot points at, so
+   * "Winner of Match 4" and the card called Match 4 always agree.
+   */
+  matchLabels?: Map<string, MatchLabel>;
 }
 
 function rosterFor(
@@ -34,12 +42,56 @@ function rosterFor(
   );
 }
 
+export interface ScheduleSide {
+  name: string;
+  coach: string;
+  score?: number;
+  logo?: string;
+  id: string | null;
+  slug: string | null;
+  from: { slug: string; label: string } | null;
+  draft: ReturnType<typeof rosterFor>;
+}
+
+function unresolvedSide(
+  slot: PopulatedStageMatchup["side1"]["slot"],
+  options: ScheduleViewOptions,
+): ScheduleSide {
+  const source = slot?.matchId
+    ? (options.matchLabels?.get(slot.matchId) ?? null)
+    : null;
+  const outcome =
+    slot?.type === "winner" ? "Winner" : slot?.type === "loser" ? "Loser" : null;
+
+  const name =
+    slot?.type === "seed" && slot.seed
+      ? `Seed ${slot.seed}`
+      : outcome && source
+        ? `${outcome} of ${source.label}`
+        : "TBD";
+
+  return {
+    name,
+    coach: "",
+    score: 0,
+    logo: undefined,
+    id: null,
+    slug: null,
+    from:
+      outcome && source?.slug
+        ? { slug: source.slug, label: source.label }
+        : null,
+    draft: [],
+  };
+}
+
 export function toScheduleMatchup(
   matchup: PopulatedStageMatchup,
   options: ScheduleViewOptions,
 ) {
-  const side = (which: "side1" | "side2") => {
-    const team = matchup[which].team!;
+  const side = (which: "side1" | "side2"): ScheduleSide => {
+    const team = matchup[which].team;
+    if (!team) return unresolvedSide(matchup[which].slot, options);
     return {
       name: team.teamName,
       coach: team.coach.name,
@@ -51,6 +103,7 @@ export function toScheduleMatchup(
       logo: team.logo,
       id: team._id.toString(),
       slug: team.slug,
+      from: null,
       draft: rosterFor(team, options),
     };
   };
@@ -58,6 +111,7 @@ export function toScheduleMatchup(
   return {
     id: matchup._id.toString(),
     slug: matchup.slug,
+    label: options.matchLabels?.get(matchup._id.toString())?.label,
     team1: side("side1"),
     team2: side("side2"),
     matches: matchup.results.map((result) => ({
@@ -84,15 +138,16 @@ export function toScheduleMatchup(
   };
 }
 
-/**
- * Bracket matchups whose winner/loser slots are still unresolved have no teams
- * to show, so they are not on anyone's schedule yet.
- */
 export function scheduleMatchups(
   matchups: PopulatedStageMatchup[],
   options: ScheduleViewOptions,
 ) {
+  const keep = options.keepUnresolvedOpponent
+    ? (matchup: PopulatedStageMatchup) =>
+        Boolean(matchup.side1.team ?? matchup.side2.team)
+    : hasResolvedSides;
+
   return matchups
-    .filter(hasResolvedSides)
+    .filter(keep)
     .map((matchup) => toScheduleMatchup(matchup, options));
 }

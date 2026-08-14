@@ -81,6 +81,7 @@ describe("TournamentScheduleService", () => {
     } as unknown as jest.Mocked<StageRepository>;
     matchupRepo = {
       findByRoundsAcrossStages: jest.fn().mockResolvedValue([]),
+      findLabelFieldsByStages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(buildTournament()),
@@ -292,5 +293,76 @@ describe("TournamentScheduleService", () => {
 
     // No teams to show yet, so the round has nothing from that stage.
     expect(result.rounds[0].stages).toEqual([]);
+  });
+
+  it("keeps a filtered team's matchup and names the slot its opponent comes from", async () => {
+    const playoffs = buildStage({ type: "single-elimination" });
+    const sourceId = new Types.ObjectId();
+    stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+    matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+      buildMatchup(playoffs._id, week2._id, undefined, team("B"), {
+        side1: { slot: { type: "winner", matchId: sourceId.toString() } },
+      }),
+    ]);
+    // Two unlabelled semi-finals in week 1; the slot points at the second.
+    matchupRepo.findLabelFieldsByStages.mockResolvedValue([
+      {
+        _id: new Types.ObjectId(),
+        slug: "semi-one",
+        stage: playoffs._id,
+        round: week1._id,
+        position: 0,
+      },
+      {
+        _id: sourceId,
+        slug: "semi-two",
+        stage: playoffs._id,
+        round: week1._id,
+        position: 1,
+      },
+    ] as any);
+
+    const result = await get({ teamSlug: "team-b-slug" });
+
+    const matchups = result.rounds[0].stages[0].matchups;
+    expect(matchups).toHaveLength(1);
+    expect(matchups[0].team1).toMatchObject({
+      name: "Winner of Match 2",
+      id: null,
+      slug: null,
+      from: { slug: "semi-two", label: "Match 2" },
+    });
+    expect(matchups[0].team2.name).toBe("B");
+  });
+
+  it("falls back to TBD when the slot's source match cannot be found", async () => {
+    const playoffs = buildStage({ type: "single-elimination" });
+    stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+    matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+      buildMatchup(playoffs._id, week1._id, undefined, team("B"), {
+        side1: { slot: { type: "winner", matchId: "gone" } },
+      }),
+    ]);
+
+    const result = await get({ teamSlug: "team-b-slug" });
+
+    expect(result.rounds[0].stages[0].matchups[0].team1).toMatchObject({
+      name: "TBD",
+      from: null,
+    });
+  });
+
+  it("names an unresolved seed slot rather than calling it TBD", async () => {
+    const playoffs = buildStage({ type: "single-elimination" });
+    stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+    matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+      buildMatchup(playoffs._id, week1._id, team("A"), undefined, {
+        side2: { slot: { type: "seed", seed: 4 } },
+      }),
+    ]);
+
+    const result = await get({ teamSlug: "team-a-slug" });
+
+    expect(result.rounds[0].stages[0].matchups[0].team2.name).toBe("Seed 4");
   });
 });

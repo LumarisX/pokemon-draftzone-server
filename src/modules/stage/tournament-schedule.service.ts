@@ -5,6 +5,7 @@ import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournam
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
+import { buildMatchLabels } from "./domain/match-labels";
 import { scheduleMatchups } from "./domain/schedule-view";
 import {
   rosterContext,
@@ -116,6 +117,16 @@ export class TournamentScheduleService {
       hasTeamFilter ? { teamIds } : undefined,
     )) as unknown as PopulatedStageMatchup[];
 
+    // Every card carries its bracket name, so the labels are always needed —
+    // both for the card's own header and for the "Winner of Match 4" text on a
+    // slot whose opponent has not been decided yet.
+    const matchLabels = buildMatchLabels(
+      await this.matchupRepo.findLabelFieldsByStages(
+        stages.map((stage) => stage._id),
+      ),
+      new Map(axis.map((round, index) => [round._id.toString(), index])),
+    );
+
     // round id -> stage id -> that stage's matchups in the round.
     const byRound = new Map<string, Map<string, PopulatedStageMatchup[]>>();
     for (const matchup of matchups) {
@@ -175,6 +186,8 @@ export class TournamentScheduleService {
                 roster: rosterFor(stageId),
                 roundIndex: roundIndexFor(stageId, roundIndex),
                 forfeitGameDiff: tournament.forfeit.gameDiff,
+                keepUnresolvedOpponent: hasTeamFilter,
+                matchLabels,
               });
               // Pending-report details are only useful to whoever can act on
               // them, so they ride along on this same list rather than
