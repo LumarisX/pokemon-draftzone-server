@@ -310,7 +310,7 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   getResists() {
     let tc = this.typechart();
     return Object.entries(tc)
-      .filter((value: [string, number]) => value[1] > 0 && value[1] < 1)
+      .filter((value: [string, number]) => value[1] < 1)
       .map((value: [string, number]) => value[0]);
   }
 

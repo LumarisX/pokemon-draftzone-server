@@ -103,7 +103,7 @@ describe("PDZPokemon", () => {
         ["Electric", "Rock", "Water"].sort(),
       );
       expect(charizard.getResists().sort()).toEqual(
-        ["Bug", "Fairy", "Fighting", "Fire", "Grass", "Steel"].sort(),
+        ["Bug", "Fairy", "Fighting", "Fire", "Grass", "Ground", "Steel"].sort(),
       );
       expect(charizard.getImmune()).toEqual(["Ground"]);
     });
