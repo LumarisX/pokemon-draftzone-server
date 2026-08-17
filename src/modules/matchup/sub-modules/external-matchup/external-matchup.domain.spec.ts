@@ -210,9 +210,7 @@ describe("ExternalMatchup.analyze", () => {
   });
 
   it("assembles details from the format, ruleset, and tournament metadata", async () => {
-    const gameTime = new Date("2026-01-05");
     const matchup = buildMatchup({ stage: "Round 1", tournamentName: "Spring Cup" });
-    matchup.gameTime = gameTime;
 
     const result = await matchup.analyze();
 
@@ -220,7 +218,6 @@ describe("ExternalMatchup.analyze", () => {
       level: FORMAT.level,
       format: FORMAT.name,
       ruleset: RULESET.name,
-      gameTime,
       leagueName: "Spring Cup",
       stage: "Round 1",
     });

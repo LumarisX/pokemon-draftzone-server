@@ -4,7 +4,7 @@ import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/ex
 import { Types } from "mongoose";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
-import { ExternalMatchupDto, ScorePatchDto, SchedulePatchDto } from "./external-matchup.dto";
+import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
 import { ExternalMatchupService } from "./external-matchup.service";
@@ -481,100 +481,4 @@ describe("ExternalMatchupService", () => {
     });
   });
 
-  describe("getExternalMatchupSchedule", () => {
-    function mockOwnedMatchup(matchup: Partial<ExternalMatchup>) {
-      const tournament = buildTournament();
-      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
-      matchupRepo.findById.mockResolvedValue({
-        aTeam: { id: tournament._id },
-        ...matchup,
-      } as unknown as ExternalMatchup);
-    }
-
-    it("returns the stored game time and reminder lead time for an owned matchup", async () => {
-      const gameTime = new Date("2026-02-01");
-      mockOwnedMatchup({ gameTime, reminder: 60 });
-
-      const result = await service.getExternalMatchupSchedule(
-        "springleague",
-        "matchup-1",
-        "auth0|owner",
-      );
-
-      expect(tournamentRepo.findBySlugAndOwner).toHaveBeenCalledWith(
-        "springleague",
-        "auth0|owner",
-      );
-      expect(result).toEqual({ gameTime, reminder: 60 });
-    });
-
-    it("returns an undefined reminder when none was set", async () => {
-      mockOwnedMatchup({ gameTime: undefined, reminder: undefined });
-
-      const result = await service.getExternalMatchupSchedule(
-        "springleague",
-        "matchup-1",
-        "auth0|owner",
-      );
-
-      expect(result).toEqual({ gameTime: undefined, reminder: undefined });
-    });
-
-    it("rejects when the matchup belongs to a different tournament", async () => {
-      const tournament = buildTournament();
-      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
-      matchupRepo.findById.mockResolvedValue({
-        aTeam: { id: new Types.ObjectId() },
-      } as unknown as ExternalMatchup);
-
-      await expect(
-        service.getExternalMatchupSchedule(
-          "springleague",
-          "matchup-1",
-          "auth0|stranger",
-        ),
-      ).rejects.toMatchObject({ code: "MU-001" });
-    });
-  });
-
-  describe("updateExternalMatchupSchedule", () => {
-    it("persists the new date/time and reminder lead time for an owned matchup", async () => {
-      const tournament = buildTournament();
-      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
-      matchupRepo.findById.mockResolvedValue({
-        aTeam: { id: tournament._id },
-      } as unknown as ExternalMatchup);
-      const dto: SchedulePatchDto = { dateTime: "2026-02-01T00:00:00Z", emailTime: 60 };
-
-      await service.updateExternalMatchupSchedule(
-        "springleague",
-        "matchup-1",
-        "auth0|owner",
-        dto,
-      );
-
-      expect(matchupRepo.update).toHaveBeenCalledWith("matchup-1", {
-        gameTime: dto.dateTime,
-        reminder: dto.emailTime,
-      });
-    });
-
-    it("rejects and does not write when the matchup is owned by a different tournament", async () => {
-      const tournament = buildTournament();
-      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
-      matchupRepo.findById.mockResolvedValue({
-        aTeam: { id: new Types.ObjectId() },
-      } as unknown as ExternalMatchup);
-
-      await expect(
-        service.updateExternalMatchupSchedule(
-          "springleague",
-          "matchup-1",
-          "auth0|stranger",
-          { dateTime: "2026-02-01T00:00:00Z" } as SchedulePatchDto,
-        ),
-      ).rejects.toMatchObject({ code: "MU-001" });
-      expect(matchupRepo.update).not.toHaveBeenCalled();
-    });
-  });
 });

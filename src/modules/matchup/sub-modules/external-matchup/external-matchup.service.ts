@@ -6,11 +6,7 @@ import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/ex
 import { Injectable } from "@nestjs/common";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
-import {
-  ExternalMatchupDto,
-  SchedulePatchDto,
-  ScorePatchDto,
-} from "./external-matchup.dto";
+import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
 
@@ -141,35 +137,6 @@ export class ExternalMatchupService {
       dto.aTeamPaste,
       dto.bTeamPaste,
     );
-  }
-
-  async getExternalMatchupSchedule(
-    tournamentSlug: string,
-    externalmatchupId: string,
-    owner: string,
-  ) {
-    const matchup = await this.getOwnedMatchup(
-      tournamentSlug,
-      externalmatchupId,
-      owner,
-    );
-    return {
-      gameTime: matchup.gameTime,
-      reminder: matchup.reminder,
-    };
-  }
-
-  async updateExternalMatchupSchedule(
-    tournamentSlug: string,
-    externalmatchupId: string,
-    owner: string,
-    dto: SchedulePatchDto,
-  ): Promise<void> {
-    await this.getOwnedMatchup(tournamentSlug, externalmatchupId, owner);
-    await this.matchupRepo.update(externalmatchupId, {
-      gameTime: dto.dateTime,
-      reminder: dto.emailTime,
-    });
   }
 
   async deleteExternalMatchup(

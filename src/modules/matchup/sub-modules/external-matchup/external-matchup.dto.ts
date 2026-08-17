@@ -110,16 +110,3 @@ export class ScorePatchDto {
   @Type(() => ExternalMatchDto)
   matches!: ExternalMatchDto[];
 }
-
-export class SchedulePatchDto {
-  @IsString()
-  @MinLength(1)
-  dateTime!: string;
-
-  @IsOptional()
-  email?: boolean;
-
-  @IsNumber()
-  @IsOptional()
-  emailTime?: number;
-}

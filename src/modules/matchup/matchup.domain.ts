@@ -19,7 +19,6 @@ export class Matchup {
   bTeam: MatchupSide;
   matches: ExternalMatch[];
   stage: string;
-  gameTime?: Date;
   tournamentName: string;
   constructor(props: {
     aTeam: MatchupSide;

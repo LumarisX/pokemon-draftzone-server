@@ -51,12 +51,6 @@ export class ExternalMatchupEntity {
   @Prop({ type: MatchupTeamFullEntity, required: true })
   bTeam!: MatchupTeamFullEntity;
 
-  @Prop({ type: String })
-  gameTime?: string;
-
-  @Prop({ type: Number })
-  reminder?: number;
-
   @Prop({ required: true })
   stage!: string;
 

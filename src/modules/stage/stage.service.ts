@@ -1036,7 +1036,6 @@ export class StageService {
       format: tournament.format,
       tournamentName: tournament.name,
       stage: roundDoc?.name ?? stageDoc.name,
-      gameTime: matchupDoc.scheduledDate,
       aTeam: toSide(matchupDoc.side1),
       bTeam: toSide(matchupDoc.side2),
     });

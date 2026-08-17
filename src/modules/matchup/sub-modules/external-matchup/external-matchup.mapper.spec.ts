@@ -400,31 +400,5 @@ describe("ExternalMatchupMapper", () => {
       });
     });
 
-    it("parses the stored gameTime string into a Date and carries the reminder lead time", () => {
-      const matchupDoc = buildMatchupDoc({
-        gameTime: "2026-02-01T00:00:00.000Z",
-        reminder: 60,
-      });
-
-      const result = ExternalMatchupMapper.fromDatabase(
-        matchupDoc,
-        buildTournamentDoc(),
-      );
-
-      expect(result.gameTime).toEqual(new Date("2026-02-01T00:00:00.000Z"));
-      expect(result.reminder).toBe(60);
-    });
-
-    it("leaves gameTime undefined when none is stored", () => {
-      const matchupDoc = buildMatchupDoc({ gameTime: undefined, reminder: undefined });
-
-      const result = ExternalMatchupMapper.fromDatabase(
-        matchupDoc,
-        buildTournamentDoc(),
-      );
-
-      expect(result.gameTime).toBeUndefined();
-      expect(result.reminder).toBeUndefined();
-    });
   });
 });

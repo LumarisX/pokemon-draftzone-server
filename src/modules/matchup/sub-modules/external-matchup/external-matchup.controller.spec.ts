@@ -1,5 +1,5 @@
 import { ExternalMatchupController } from "./external-matchup.controller";
-import { ExternalMatchupDto, ScorePatchDto, SchedulePatchDto } from "./external-matchup.dto";
+import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupService } from "./external-matchup.service";
 
@@ -27,8 +27,6 @@ describe("ExternalMatchupController", () => {
       getExternalMatchupOpponent: jest.fn(),
       updateExternalMatchupOpponent: jest.fn(),
       updateExternalMatchupScore: jest.fn(),
-      getExternalMatchupSchedule: jest.fn(),
-      updateExternalMatchupSchedule: jest.fn(),
     } as unknown as jest.Mocked<ExternalMatchupService>;
     controller = new ExternalMatchupController(service);
   });
@@ -184,44 +182,4 @@ describe("ExternalMatchupController", () => {
     });
   });
 
-  describe("getExternalMatchupSchedule", () => {
-    it("forwards the matchup id and returns the service's result directly", async () => {
-      const schedule = { gameTime: new Date(), reminder: undefined };
-      service.getExternalMatchupSchedule.mockResolvedValue(schedule);
-
-      const result = await controller.getExternalMatchupSchedule(
-        "springleague",
-        "matchup-1",
-        "auth0|coach-1",
-      );
-
-      expect(service.getExternalMatchupSchedule).toHaveBeenCalledWith(
-        "springleague",
-        "matchup-1",
-        "auth0|coach-1",
-      );
-      expect(result).toBe(schedule);
-    });
-  });
-
-  describe("updateExternalMatchupSchedule", () => {
-    it("forwards the matchup id and body to the service", async () => {
-      const body = { dateTime: "2026-02-01T00:00:00Z" } as SchedulePatchDto;
-
-      const result = await controller.updateExternalMatchupSchedule(
-        "springleague",
-        "matchup-1",
-        "auth0|coach-1",
-        body,
-      );
-
-      expect(service.updateExternalMatchupSchedule).toHaveBeenCalledWith(
-        "springleague",
-        "matchup-1",
-        "auth0|coach-1",
-        body,
-      );
-      expect(result).toEqual({ message: "Schedule Updated" });
-    });
-  });
 });
