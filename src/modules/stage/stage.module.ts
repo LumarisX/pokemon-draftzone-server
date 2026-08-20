@@ -4,6 +4,7 @@ import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { forwardRef, Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageController } from "./stage.controller";
 import { StageRepository } from "./stage.repository";
 import { StageEntity, StageSchema } from "./stage.schema";
@@ -35,6 +36,7 @@ import { TournamentTradeService } from "./tournament-trade.service";
   ],
   providers: [
     StageService,
+    BracketAdvancementService,
     StageRepository,
     TournamentBracketService,
     TournamentTradeService,

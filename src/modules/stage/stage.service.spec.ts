@@ -3,6 +3,7 @@ import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/l
 import { TeamRepository } from "../team/team.repository";
 import { HostedTournamentRepository } from "../tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "../tier-list/tier-list.repository";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { getRosterByRound } from "./domain/roster";
 import { StageRepository } from "./stage.repository";
 import { StageService } from "./stage.service";
@@ -68,6 +69,7 @@ describe("StageService", () => {
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let hostedTournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let advancement: jest.Mocked<BracketAdvancementService>;
   let service: StageService;
 
   beforeEach(() => {
@@ -105,12 +107,18 @@ describe("StageService", () => {
     tierListRepo = {
       findById: jest.fn(),
     } as unknown as jest.Mocked<TierListRepository>;
+    advancement = {
+      applyToTournament: jest.fn().mockResolvedValue(0),
+      applyToStages: jest.fn().mockResolvedValue(0),
+      findBlocked: jest.fn().mockResolvedValue(new Set<string>()),
+    } as unknown as jest.Mocked<BracketAdvancementService>;
     service = new StageService(
       stageRepo,
       teamRepo,
       matchupRepo,
       hostedTournamentRepo,
       tierListRepo,
+      advancement,
     );
 
     mockedGetRosterByRound.mockReturnValue([]);
@@ -1355,8 +1363,8 @@ describe("StageService", () => {
       "maps dto.winner %s to matchup {winner, forfeit}",
       async (dtoWinner, expected) => {
         hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
+          buildTournament({ id: TOURNAMENT_ID.toString() }),
+        );
         const matchup = buildMatchupDoc();
         inTournament(matchup);
 
@@ -1390,19 +1398,17 @@ describe("StageService", () => {
       expect(result).toEqual({ message: "Schedule updated." });
     });
 
-    it("propagates the winner/loser team into downstream bracket slots", async () => {
+    it("re-resolves the tournament's bracket after a result is recorded", async () => {
       hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ id: TOURNAMENT_ID.toString() }),
       );
       const stageId = new Types.ObjectId();
       const matchupId = new Types.ObjectId();
-      const side1Team = new Types.ObjectId();
-      const side2Team = new Types.ObjectId();
       const matchup = buildMatchupDoc({
         _id: matchupId,
         stage: stageId,
-        side1: { score: 0, team: side1Team },
-        side2: { score: 0, team: side2Team },
+        side1: { score: 0, team: new Types.ObjectId() },
+        side2: { score: 0, team: new Types.ObjectId() },
       });
       inTournament(matchup);
 
@@ -1414,16 +1420,13 @@ describe("StageService", () => {
         { matches: [], winner: "side1" } as any,
       );
 
-      // Not scoped to a stage: the slot consuming this result may live in a
-      // later stage, and a stage filter would stop advancing teams into it.
-      expect(matchupRepo.resolveDownstreamSlots).toHaveBeenCalledWith(
-        matchupId,
-        side1Team,
-        side2Team,
-      );
+      // The whole tournament, not just this match's slots: a correction has to
+      // travel past the next match into everything resolved behind it, and the
+      // slot consuming this result may live in a later stage entirely.
+      expect(advancement.applyToTournament).toHaveBeenCalledWith(TOURNAMENT_ID);
     });
 
-    it("does not propagate when dto.winner is absent", async () => {
+    it("does not re-resolve when dto.winner is absent", async () => {
       hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ id: TOURNAMENT_ID.toString() }),
       );
@@ -1441,30 +1444,113 @@ describe("StageService", () => {
         { matches: [] } as any,
       );
 
-      expect(matchupRepo.resolveDownstreamSlots).not.toHaveBeenCalled();
+      expect(advancement.applyToTournament).not.toHaveBeenCalled();
     });
+  });
 
-    it("does not propagate on a draw (no winner/loser team to resolve)", async () => {
+  describe("setMatchupAdvancement", () => {
+    const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
+
+    /** A double-forfeited match in a stage of the tournament being addressed. */
+    function setup() {
       hostedTournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ id: TOURNAMENT_ID.toString() }),
       );
-      const matchup = buildMatchupDoc({
+      const matchup = {
         _id: new Types.ObjectId(),
-        stage: new Types.ObjectId(),
-        side1: { score: 0, team: new Types.ObjectId() },
-        side2: { score: 0, team: new Types.ObjectId() },
-      });
-      inTournament(matchup);
+        slug: "match-1",
+        stage: stageId,
+        results: [],
+        side1: { score: 0 },
+        side2: { score: 0 },
+        winner: "draw",
+        forfeit: true,
+        save: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      matchupRepo.findBySlug.mockResolvedValue(matchup);
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
+      );
+      return matchup;
+    }
 
-      await service.updateMatchup(
+    it("records the side an organizer advances out of a double forfeit", async () => {
+      const matchup = setup();
+
+      const result = await service.setMatchupAdvancement(
         "league-1",
         "tournament-1",
-        new Types.ObjectId().toString(),
+        matchup.slug,
         "auth0|owner",
-        { matches: [], winner: "draw" } as any,
+        "side1",
       );
 
-      expect(matchupRepo.resolveDownstreamSlots).not.toHaveBeenCalled();
+      expect(matchup.advances).toBe("side1");
+      expect(matchup.save).toHaveBeenCalled();
+      expect(advancement.applyToTournament).toHaveBeenCalledWith(TOURNAMENT_ID);
+      expect(result.advances).toBe("side1");
+    });
+
+    it('stores "none" as a decision rather than as an unset field', async () => {
+      const matchup = setup();
+
+      await service.setMatchupAdvancement(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|owner",
+        "none",
+      );
+
+      expect(matchup.advances).toBe("none");
+    });
+
+    it("clears the override on null, putting the bracket back on the result", async () => {
+      const matchup = setup();
+      matchup.advances = "side2";
+
+      const result = await service.setMatchupAdvancement(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|owner",
+        null,
+      );
+
+      expect(matchup.advances).toBeUndefined();
+      expect(result.advances).toBeNull();
+    });
+
+    it("rejects a non-organizer", async () => {
+      const matchup = setup();
+
+      await expect(
+        service.setMatchupAdvancement(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|stranger",
+          "side1",
+        ),
+      ).rejects.toThrow();
+    });
+
+    it("refuses a matchup that belongs to another tournament", async () => {
+      const matchup = setup();
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: new Types.ObjectId() }),
+      );
+
+      await expect(
+        service.setMatchupAdvancement(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|owner",
+          "side1",
+        ),
+      ).rejects.toThrow();
     });
   });
 

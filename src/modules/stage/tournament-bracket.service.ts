@@ -12,6 +12,7 @@ import { summarizeSeeding } from "./domain/bracket-view";
 import { resolveSeedGroups } from "./domain/seeding";
 import { stageTeamIds, usesTournamentAxis } from "./domain/stage-axis";
 import { validateTournamentBracket } from "./domain/tournament-bracket";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
 import { StageDocument, StageSeedingEntity, StageType } from "./stage.schema";
 import {
@@ -47,6 +48,7 @@ export class TournamentBracketService {
     private readonly teamRepo: TeamRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
+    private readonly advancement: BracketAdvancementService,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
@@ -141,6 +143,9 @@ export class TournamentBracketService {
               ? 1
               : undefined,
         forfeit: matchup.forfeit ?? false,
+        // The organizer's override for who leaves this match. Only ever set
+        // where the result could not answer that — a double forfeit.
+        advances: matchup.advances ?? null,
         // Same convention as the schedule view: a forfeit shows the
         // tournament's configured game difference rather than the recorded
         // score, so the two views never disagree about a forfeit.
@@ -437,7 +442,7 @@ export class TournamentBracketService {
     // A re-pointed slot may hang off a match that was decided long ago, so
     // replay every settled result into whatever now consumes it. Not scoped to
     // one stage: a playoff slot is fed by a match in the stage before it.
-    await this.resolveAllDownstreamSlots(stages.map((stage) => stage._id));
+    await this.advancement.applyToStages(stages.map((stage) => stage._id));
 
     return {
       message:
@@ -596,41 +601,6 @@ export class TournamentBracketService {
       seedOrder: [...existingSeedOrder, ...appended],
       newSeedingLog: logEntries,
     };
-  }
-
-  /**
-   * Pushes every decided matchup's winner and loser into the slots that
-   * consume them, across the whole tournament.
-   *
-   * Tournament-wide rather than per stage: a playoff match consuming a group
-   * stage's winner crosses a stage boundary, and scoping this to one stage
-   * would silently stop advancing teams across it.
-   */
-  private async resolveAllDownstreamSlots(stageIds: Types.ObjectId[]) {
-    const decided = (await this.matchupRepo.findByStages(stageIds)).filter(
-      (matchup) => matchup.winner === "side1" || matchup.winner === "side2",
-    );
-
-    for (const matchup of decided) {
-      const winnerSide =
-        matchup.winner === "side1" ? matchup.side1 : matchup.side2;
-      const loserSide =
-        matchup.winner === "side1" ? matchup.side2 : matchup.side1;
-      const teamId = (side: typeof winnerSide) =>
-        side.team
-          ? new Types.ObjectId(
-              side.team instanceof Types.ObjectId
-                ? side.team
-                : (side.team as unknown as { _id: Types.ObjectId })._id,
-            )
-          : undefined;
-
-      await this.matchupRepo.resolveDownstreamSlots(
-        matchup._id,
-        teamId(winnerSide),
-        teamId(loserSide),
-      );
-    }
   }
 
   /**

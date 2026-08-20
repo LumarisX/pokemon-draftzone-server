@@ -9,7 +9,11 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { SubmitMatchupReportDto, UpdateMatchupDto } from "./stage.dto";
+import {
+  SetMatchupAdvancementDto,
+  SubmitMatchupReportDto,
+  UpdateMatchupDto,
+} from "./stage.dto";
 import { StageService } from "./stage.service";
 
 /**
@@ -108,6 +112,31 @@ export class TournamentMatchupController {
       matchupSlug,
       sub,
       false,
+    );
+  }
+
+  /**
+   * Unsticks a bracket that a result could not resolve.
+   *
+   * Its own route rather than a field on the result: the advancement is a
+   * separate decision from the score, is made after the fact, and must not
+   * require resending a result to change.
+   */
+  @Post(":matchupSlug/advancement")
+  @UseGuards(JwtAuthGuard)
+  async setMatchupAdvancement(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("matchupSlug") matchupSlug: string,
+    @User() sub: string,
+    @Body() body: SetMatchupAdvancementDto,
+  ) {
+    return this.stageService.setMatchupAdvancement(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+      body.advances,
     );
   }
 

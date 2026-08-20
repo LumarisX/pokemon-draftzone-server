@@ -1,3 +1,4 @@
+import { MatchupAdvancement } from "./advancement";
 import { MatchLabel } from "./match-labels";
 import { getRosterByRound } from "./roster";
 import { RosterContext } from "./stage-axis";
@@ -26,6 +27,12 @@ export interface ScheduleViewOptions {
    * "Winner of Match 4" and the card called Match 4 always agree.
    */
   matchLabels?: Map<string, MatchLabel>;
+  /**
+   * Matches that have stopped the bracket — settled with no side leaving them
+   * while something downstream still waits on one. Computed over the whole
+   * bracket, so it has to be passed in rather than derived per card.
+   */
+  blockedMatchIds?: ReadonlySet<string>;
 }
 
 function rosterFor(
@@ -61,7 +68,11 @@ function unresolvedSide(
     ? (options.matchLabels?.get(slot.matchId) ?? null)
     : null;
   const outcome =
-    slot?.type === "winner" ? "Winner" : slot?.type === "loser" ? "Loser" : null;
+    slot?.type === "winner"
+      ? "Winner"
+      : slot?.type === "loser"
+        ? "Loser"
+        : null;
 
   const name =
     slot?.type === "seed" && slot.seed
@@ -128,6 +139,12 @@ export function toScheduleMatchup(
       },
     })),
     score: { team1: matchup.side1.score, team2: matchup.side2.score },
+    // The organizer's override for who leaves this match, and whether one is
+    // still needed. A double forfeit decides nothing, so a match below it can
+    // never be filled until somebody says who moves on.
+    advances: (matchup.advances ?? null) as MatchupAdvancement | null,
+    advancementBlocked:
+      options.blockedMatchIds?.has(matchup._id.toString()) ?? false,
     winner: matchup.forfeit
       ? matchup.winner === "side1"
         ? "side1ffw"
@@ -142,10 +159,27 @@ export function scheduleMatchups(
   matchups: PopulatedStageMatchup[],
   options: ScheduleViewOptions,
 ) {
+  // Two reasons to keep a match whose sides are not both filled.
+  //
+  // Blocked: that side is empty for good — it is fed by a slot nothing will
+  // ever arrive in — so dropping it as "not resolved yet" hides the one card an
+  // organizer has to act on.
+  //
+  // Walked over: the organizer already answered, by recording a result for the
+  // side that does have a team. That clears the blocked flag, so without this
+  // the card would vanish the moment it was dealt with — taking a real recorded
+  // result out of view along with it.
+  const isBlocked = (matchup: PopulatedStageMatchup) =>
+    options.blockedMatchIds?.has(matchup._id.toString()) ?? false;
+  const isWalkover = (matchup: PopulatedStageMatchup) =>
+    Boolean(matchup.winner) &&
+    Boolean(matchup.side1.team ?? matchup.side2.team);
+
   const keep = options.keepUnresolvedOpponent
     ? (matchup: PopulatedStageMatchup) =>
-        Boolean(matchup.side1.team ?? matchup.side2.team)
-    : hasResolvedSides;
+        Boolean(matchup.side1.team ?? matchup.side2.team) || isBlocked(matchup)
+    : (matchup: PopulatedStageMatchup) =>
+        hasResolvedSides(matchup) || isBlocked(matchup) || isWalkover(matchup);
 
   return matchups
     .filter(keep)

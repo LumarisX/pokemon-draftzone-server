@@ -286,42 +286,46 @@ export class LeagueMatchupRepository {
   }
 
   /**
-   * Pushes a decided matchup's winner and loser into whatever consumes them.
+   * Every field the advancement resolver reads, across a tournament's stages.
    *
-   * Deliberately not scoped to a stage. `slot.matchId` is a matchup `_id`, so
-   * it already identifies the source uniquely — and once a playoff stage
-   * consumes a group stage's results, the match feeding a slot lives in a
-   * different stage than the slot does. A stage filter here would silently
-   * stop advancing teams across that boundary.
+   * Narrow on purpose: this runs on each recorded result, and the resolver only
+   * ever needs each side's slot, the team currently sitting in it, and the two
+   * fields that decide who leaves the match.
    */
-  async resolveDownstreamSlots(
-    sourceMatchupId: Types.ObjectId | string,
-    winnerTeamId?: Types.ObjectId,
-    loserTeamId?: Types.ObjectId,
-  ): Promise<void> {
-    const sourceMatchIdStr = sourceMatchupId.toString();
-    const updates: Promise<unknown>[] = [];
-
-    for (const side of ["side1", "side2"] as const) {
-      for (const [outcome, teamId] of [
-        ["winner", winnerTeamId],
-        ["loser", loserTeamId],
-      ] as const) {
-        if (!teamId) continue;
-        updates.push(
-          this.matchupModel
-            .updateMany(
-              {
-                [`${side}.slot.type`]: outcome,
-                [`${side}.slot.matchId`]: sourceMatchIdStr,
-              },
-              { $set: { [`${side}.team`]: teamId } },
-            )
-            .exec(),
-        );
-      }
-    }
-
-    await Promise.all(updates);
+  async findAdvancementFieldsByStages(stageIds: (Types.ObjectId | string)[]) {
+    if (stageIds.length === 0) return [];
+    return this.matchupModel
+      .find({ stage: { $in: stageIds } })
+      .select("winner advances side1.slot side1.team side2.slot side2.team")
+      .sort({ _id: 1 })
+      .lean();
   }
+
+  /**
+   * Writes resolved advancement into the sides it belongs to.
+   *
+   * A `null` team unsets the field rather than storing null: a slot nothing
+   * advances into has to read as unresolved again, which is what lets an
+   * organizer correct an advancement they had already made.
+   */
+  async applyAdvancementDiff(
+    changes: {
+      _id: Types.ObjectId | string;
+      side: "side1" | "side2";
+      team: Types.ObjectId | null;
+    }[],
+  ): Promise<void> {
+    if (changes.length === 0) return;
+    await this.matchupModel.bulkWrite(
+      changes.map(({ _id, side, team }) => ({
+        updateOne: {
+          filter: { _id },
+          update: team
+            ? { $set: { [`${side}.team`]: team } }
+            : { $unset: { [`${side}.team`]: "" } },
+        },
+      })) as never,
+    );
+  }
+
 }

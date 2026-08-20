@@ -21,6 +21,7 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getName } from "@modules/data/domain/pokedex";
+import { MatchupAdvancement } from "./domain/advancement";
 import { BracketMatchInput, validateBracketStructure } from "./domain/bracket";
 import { resolveSeedGroups } from "./domain/seeding";
 import { assertTradePointsWithinLimit } from "./domain/trades";
@@ -54,6 +55,7 @@ import {
   UpdateMatchupDto,
   UpdateStageDto,
 } from "./stage.dto";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
 import {
   StageDocument,
@@ -140,6 +142,7 @@ export class StageService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly hostedTournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
+    private readonly advancement: BracketAdvancementService,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub: string): boolean {
@@ -748,7 +751,7 @@ export class StageService {
 
     // A re-pointed slot may hang off a match that was decided long ago, so
     // replay every settled result into whatever now consumes it.
-    await this.resolveAllDownstreamSlots(stageDoc._id);
+    await this.advancement.applyToTournament(stageDoc.tournamentId);
 
     return {
       message: `Bracket updated: ${creates.length} added, ${updates.length} updated, ${removed.length} removed.`,
@@ -837,29 +840,6 @@ export class StageService {
       existingSeedOrder.length,
     );
     return [...existingSeedOrder, ...appended];
-  }
-
-  /**
-   * Pushes every decided matchup's winner and loser into the slots that
-   * consume them. Cheap enough to run after a structural edit, and the only
-   * way a slot re-pointed at an already-played match gets its team.
-   */
-  private async resolveAllDownstreamSlots(
-    stageId: Types.ObjectId,
-  ): Promise<void> {
-    const matchups = await this.matchupRepo.findStructureByStage(stageId);
-    for (const matchup of matchups) {
-      if (!matchup.winner || matchup.winner === "draw") continue;
-      const winnerSide =
-        matchup.winner === "side1" ? matchup.side1 : matchup.side2;
-      const loserSide =
-        matchup.winner === "side1" ? matchup.side2 : matchup.side1;
-      await this.matchupRepo.resolveDownstreamSlots(
-        matchup._id,
-        winnerSide?.team as Types.ObjectId | undefined,
-        loserSide?.team as Types.ObjectId | undefined,
-      );
-    }
   }
 
   /**
@@ -1315,37 +1295,67 @@ export class StageService {
     return "draw" as const;
   }
 
+  /**
+   * Re-resolves the bracket after a result changed.
+   *
+   * The whole tournament, not just the slots this match feeds: an advancement
+   * can be corrected as well as made, and a correction has to travel past the
+   * next match into everything that was already resolved behind it.
+   */
   private async advanceBracket(matchup: LeagueMatchupDocument) {
-    if (!matchup.winner || !matchup.stage) return;
+    if (!matchup.stage) return;
+    const stageDoc = await this.stageRepo.findByIdOrNull(matchup.stage);
+    if (!stageDoc) return;
+    await this.advancement.applyToTournament(stageDoc.tournamentId);
+  }
 
-    const idOf = (
-      team?: Types.ObjectId | { _id: Types.ObjectId },
-    ): Types.ObjectId | undefined => {
-      if (!team) return undefined;
-      return team instanceof Types.ObjectId ? team : team._id;
-    };
-
-    const side1Id = idOf(matchup.side1.team);
-    const side2Id = idOf(matchup.side2.team);
-    const winnerTeamId =
-      matchup.winner === "side1"
-        ? side1Id
-        : matchup.winner === "side2"
-          ? side2Id
-          : undefined;
-    const loserTeamId =
-      matchup.winner === "side1"
-        ? side2Id
-        : matchup.winner === "side2"
-          ? side1Id
-          : undefined;
-
-    if (!winnerTeamId && !loserTeamId) return;
-    await this.matchupRepo.resolveDownstreamSlots(
-      matchup._id,
-      winnerTeamId,
-      loserTeamId,
+  /**
+   * Names the side that leaves a match whose result cannot say so itself.
+   *
+   * The soft lock this exists for: a double forfeit is a settled result with
+   * no winning side, so every `winner`/`loser` slot below it stays empty and
+   * the rest of the bracket becomes unplayable. The organizer picks a side to
+   * advance anyway, or `"none"` to declare that nobody does — and `null`
+   * withdraws the decision, putting the bracket back on the recorded result.
+   */
+  async setMatchupAdvancement(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub: string,
+    advances: MatchupAdvancement | null,
+  ) {
+    const tournament = await this.hostedTournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
     );
+    this.assertOrganizer(tournament, sub);
+
+    const matchup = await this.matchupRepo.findBySlug(matchupSlug);
+    // The slug alone does not say which tournament the match belongs to, and
+    // organizing one tournament must not authorize a write to another's.
+    const stageDoc = matchup.stage
+      ? await this.stageRepo.findByIdOrNull(matchup.stage)
+      : null;
+    if (!stageDoc || stageDoc.tournamentId.toString() !== tournament.id)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
+
+    matchup.advances = advances ?? undefined;
+    await matchup.save();
+
+    const changed = await this.advancement.applyToTournament(
+      stageDoc.tournamentId,
+    );
+
+    return {
+      message:
+        advances === null
+          ? `Advancement cleared; ${changed} bracket slot(s) updated.`
+          : advances === "none"
+            ? `No team advances from this match; ${changed} bracket slot(s) updated.`
+            : `Advancement set; ${changed} bracket slot(s) updated.`,
+      advances: advances ?? null,
+    };
   }
 
   /** One trades view for everyone (no separate "manage" copy). */
@@ -1610,8 +1620,10 @@ export class StageService {
       // offer, or accept one for a Pokémon the team no longer holds.
       const tournament = await this.axisTournament(stage);
       const rosterIds = new Set(
-        getRosterByRound(team, rosterContext(stage, tournament ?? undefined))
-          .map((pokemon) => pokemon.id),
+        getRosterByRound(
+          team,
+          rosterContext(stage, tournament ?? undefined),
+        ).map((pokemon) => pokemon.id),
       );
       for (const pokemon of side.pokemon) {
         if (!rosterIds.has(pokemon.id))

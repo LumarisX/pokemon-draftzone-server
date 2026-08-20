@@ -5,10 +5,12 @@ import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 const MATCH_SIDES = ["side1", "side2"] as const;
 const MATCH_WINNERS = [...MATCH_SIDES, "draw"] as const;
 const MATCH_STATUSES = ["pending", "approved"] as const;
+const MATCH_ADVANCEMENTS = ["side1", "side2", "none"] as const;
 const POKEMON_STATUSES = ["brought", "survived", "fainted"] as const;
 
 export type LeagueMatchupWinner = (typeof MATCH_WINNERS)[number];
 export type LeagueMatchupStatus = (typeof MATCH_STATUSES)[number];
+export type LeagueMatchupAdvancement = (typeof MATCH_ADVANCEMENTS)[number];
 export type PokemonResultStatus = (typeof POKEMON_STATUSES)[number];
 
 @Schema({ _id: false })
@@ -206,6 +208,18 @@ export class LeagueMatchupEntity {
 
   @Prop({ type: String, enum: MATCH_STATUSES })
   status?: LeagueMatchupStatus;
+
+  /**
+   * Organizer override for which side leaves this match, used when `winner`
+   * cannot answer that on its own.
+   *
+   * A double forfeit is the case it exists for: it is a settled result with no
+   * winning side, so every downstream `winner`/`loser` slot would otherwise
+   * stay empty forever and the rest of the bracket could never be played.
+   * `"none"` says nobody advances — a deliberate answer, not an unanswered one.
+   */
+  @Prop({ type: String, enum: MATCH_ADVANCEMENTS })
+  advances?: LeagueMatchupAdvancement;
 
   @Prop({ type: MatchupReportSchema })
   report?: MatchupReportEntity;

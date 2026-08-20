@@ -3,6 +3,7 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Test } from "@nestjs/testing";
 import { Types } from "mongoose";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
 import { UpdateTournamentBracketDto } from "./tournament-bracket.dto";
 import { TournamentBracketService } from "./tournament-bracket.service";
@@ -98,6 +99,14 @@ describe("TournamentBracketService", () => {
         { provide: TeamRepository, useValue: teamRepo },
         { provide: LeagueMatchupRepository, useValue: matchupRepo },
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
+        {
+          provide: BracketAdvancementService,
+          useValue: {
+            applyToTournament: jest.fn().mockResolvedValue(0),
+            applyToStages: jest.fn().mockResolvedValue(0),
+            findBlocked: jest.fn().mockResolvedValue(new Set<string>()),
+          },
+        },
       ],
     }).compile();
 

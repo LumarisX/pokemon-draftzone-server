@@ -53,6 +53,18 @@ export class MatchResultDto {
   team2!: MatchTeamResultDto;
 }
 
+/**
+ * Names the side that leaves a match whose recorded result cannot.
+ *
+ * `null` withdraws the decision and puts the bracket back on the result, so
+ * the field is nullable rather than merely optional — omitting it and clearing
+ * it are different requests.
+ */
+export class SetMatchupAdvancementDto {
+  @IsIn(["side1", "side2", "none", null])
+  advances!: "side1" | "side2" | "none" | null;
+}
+
 export class UpdateMatchupDto {
   @ValidateNested()
   @Type(() => MatchupScoreDto)

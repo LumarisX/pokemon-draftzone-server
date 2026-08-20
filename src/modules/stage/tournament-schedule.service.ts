@@ -5,6 +5,7 @@ import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournam
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { buildMatchLabels } from "./domain/match-labels";
 import { scheduleMatchups } from "./domain/schedule-view";
 import {
@@ -44,6 +45,7 @@ export class TournamentScheduleService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly teamRepo: TeamRepository,
+    private readonly advancement: BracketAdvancementService,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
@@ -127,6 +129,13 @@ export class TournamentScheduleService {
       new Map(axis.map((round, index) => [round._id.toString(), index])),
     );
 
+    // Which matches have stopped the bracket. Whole-bracket, not per round: a
+    // match is only blocking if something downstream is waiting on it, and
+    // that something is in a later round — and possibly a later stage.
+    const blockedMatchIds = canSeeHidden
+      ? await this.advancement.findBlocked(stages.map((stage) => stage._id))
+      : undefined;
+
     // round id -> stage id -> that stage's matchups in the round.
     const byRound = new Map<string, Map<string, PopulatedStageMatchup[]>>();
     for (const matchup of matchups) {
@@ -188,6 +197,7 @@ export class TournamentScheduleService {
                 forfeitGameDiff: tournament.forfeit.gameDiff,
                 keepUnresolvedOpponent: hasTeamFilter,
                 matchLabels,
+                blockedMatchIds,
               });
               // Pending-report details are only useful to whoever can act on
               // them, so they ride along on this same list rather than

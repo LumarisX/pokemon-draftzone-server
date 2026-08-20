@@ -3,6 +3,7 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Test } from "@nestjs/testing";
 import { Types } from "mongoose";
+import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
 import { TournamentScheduleService } from "./tournament-schedule.service";
 
@@ -57,6 +58,7 @@ describe("TournamentScheduleService", () => {
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
+  let advancement: { findBlocked: jest.Mock };
   let service: TournamentScheduleService;
 
   const week1 = round("Week 1");
@@ -90,6 +92,12 @@ describe("TournamentScheduleService", () => {
       findIdsBySlugs: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TeamRepository>;
 
+    advancement = {
+      applyToTournament: jest.fn().mockResolvedValue(0),
+      applyToStages: jest.fn().mockResolvedValue(0),
+      findBlocked: jest.fn().mockResolvedValue(new Set<string>()),
+    } as any;
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         TournamentScheduleService,
@@ -97,6 +105,7 @@ describe("TournamentScheduleService", () => {
         { provide: LeagueMatchupRepository, useValue: matchupRepo },
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
         { provide: TeamRepository, useValue: teamRepo },
+        { provide: BracketAdvancementService, useValue: advancement },
       ],
     }).compile();
 
@@ -242,7 +251,11 @@ describe("TournamentScheduleService", () => {
       // concatenated axis, the second stage's rounds sit at index 2 and 3, so
       // using the global index would apply this stage's trades in the wrong
       // week entirely.
-      const first = buildStage({ name: "First", order: 0, rounds: [round("A")] });
+      const first = buildStage({
+        name: "First",
+        order: 0,
+        rounds: [round("A")],
+      });
       const teamA = team("A");
       const second = buildStage({
         name: "Second",
@@ -364,5 +377,101 @@ describe("TournamentScheduleService", () => {
     const result = await get({ teamSlug: "team-a-slug" });
 
     expect(result.rounds[0].stages[0].matchups[0].team2.name).toBe("Seed 4");
+  });
+
+  describe("bracket advancement", () => {
+    it("reports the override and the blocked flag to an organizer", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      const semi = buildMatchup(playoffs._id, week1._id, team("A"), team("B"), {
+        winner: "draw",
+        forfeit: true,
+      });
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([semi]);
+      advancement.findBlocked.mockResolvedValue(new Set([semi._id.toString()]));
+
+      const result = await get({ sub: "auth0|owner" });
+
+      const card = result.rounds[0].stages[0].matchups[0];
+      expect(card.advancementBlocked).toBe(true);
+      expect(card.advances).toBeNull();
+    });
+
+    // A stranded match has a side no result will ever fill, so the ordinary
+    // "both sides resolved" filter would hide the one card that needs acting on.
+    it("keeps a blocked match whose opponent slot can never be filled", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      const final = buildMatchup(
+        playoffs._id,
+        week1._id,
+        team("C"),
+        undefined,
+        {
+          side2: { slot: { type: "winner", matchId: "some-match" } },
+        },
+      );
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([final]);
+      advancement.findBlocked.mockResolvedValue(
+        new Set([final._id.toString()]),
+      );
+
+      const result = await get({ sub: "auth0|owner" });
+
+      expect(result.rounds[0].stages[0].matchups).toHaveLength(1);
+      expect(result.rounds[0].stages[0].matchups[0].advancementBlocked).toBe(
+        true,
+      );
+    });
+
+    // The walkover an organizer records on a stranded match: a real result, on
+    // a card that still has one empty side. Dropping it would hide a recorded
+    // result the organizer may need to correct.
+    it("keeps a match that has a recorded result but an empty side", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+        buildMatchup(playoffs._id, week1._id, undefined, team("D"), {
+          side1: { slot: { type: "winner", matchId: "gone" } },
+          winner: "side2",
+          forfeit: true,
+        }),
+      ]);
+
+      const result = await get({ sub: "auth0|owner" });
+
+      expect(result.rounds[0].stages[0].matchups).toHaveLength(1);
+      expect(result.rounds[0].stages[0].matchups[0].winner).toBe("side2ffw");
+    });
+
+    it("still drops a match that is merely waiting on an upstream result", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+        buildMatchup(playoffs._id, week1._id, team("C"), undefined, {
+          side2: { slot: { type: "winner", matchId: "some-match" } },
+        }),
+      ]);
+
+      const result = await get({ sub: "auth0|owner" });
+
+      expect(result.rounds[0].stages).toHaveLength(0);
+    });
+
+    // The flag drives an organizer-only control, and the set costs a query.
+    it("does not compute blocked matches for a public read", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+        buildMatchup(playoffs._id, week1._id, team("A"), team("B")),
+      ]);
+
+      const result = await get();
+
+      expect(advancement.findBlocked).not.toHaveBeenCalled();
+      expect(result.rounds[0].stages[0].matchups[0].advancementBlocked).toBe(
+        false,
+      );
+    });
   });
 });
