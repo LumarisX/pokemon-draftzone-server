@@ -13,6 +13,12 @@ import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/e
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
 export class ExternalTournamentMapper {
+  /**
+   * Deliberately omits `archivedAt`. This payload is the update body for the
+   * whole document, so carrying the flag here would let an ordinary edit of a
+   * restored league silently re-archive it (or vice versa). Archiving has its
+   * own targeted update.
+   */
   static toDatabasePayload(
     tournament: ExternalTournament,
   ): ExternalTournamentEntity {
@@ -42,6 +48,7 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
       coach: tournament.coach,
+      archivedAt: tournament.archivedAt,
       score: tournament.getScore(),
       team: [
         ...tournament.team.map(PokemonMapper.toClientPayload),
@@ -50,6 +57,25 @@ export class ExternalTournamentMapper {
       ...(unresolved.length > 0 && {
         unresolvedPokemon: unresolved.map((pokemon) => pokemon.id),
       }),
+    };
+  }
+
+  /**
+   * Matches `ArchiveMapper.toListItem` field for field so the archived-drafts
+   * list can render legacy archives and flagged drafts from one template.
+   * `_id` is the draft's ObjectId, which is what the stats route resolves.
+   */
+  static toArchiveListItem(tournament: ExternalTournament) {
+    return {
+      _id: tournament._id?.toString(),
+      leagueName: tournament.leagueName,
+      teamName: tournament.teamName,
+      owner: tournament.owner,
+      format: tournament.format.name,
+      ruleset: tournament.ruleset.name,
+      slug: tournament.slug,
+      team: tournament.team.map(PokemonMapper.toClientPayload),
+      score: tournament.getScore(),
     };
   }
 
@@ -117,6 +143,7 @@ export class ExternalTournamentMapper {
         unresolvedTeam,
         doc: tournamentDoc.doc,
         coach: tournamentDoc.coach,
+        archivedAt: tournamentDoc.archivedAt,
       },
       matchups,
     );

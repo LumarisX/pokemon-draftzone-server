@@ -18,6 +18,6 @@ import { ExternalTournamentService } from "./external-tournament.service";
   ],
   controllers: [ExternalTournamentController],
   providers: [ExternalTournamentService, ExternalTournamentRepository],
-  exports: [ExternalTournamentRepository],
+  exports: [ExternalTournamentRepository, ExternalTournamentService],
 })
 export class ExternalTournamentModule {}

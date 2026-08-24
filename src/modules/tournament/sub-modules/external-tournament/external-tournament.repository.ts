@@ -23,9 +23,27 @@ export class ExternalTournamentRepository {
     private readonly tournamentModel: Model<ExternalTournamentDocument>,
   ) {}
 
+  /**
+   * `archivedAt: null` rather than `$exists: false` — it matches the unset and
+   * the absent case alike, so every league created before the field existed
+   * reads as active with no backfill.
+   */
   async findByOwner(owner: string): Promise<ExternalTournament[]> {
+    return this.findByOwnerAndArchiveState(owner, { archivedAt: null });
+  }
+
+  async findArchivedByOwner(owner: string): Promise<ExternalTournament[]> {
+    return this.findByOwnerAndArchiveState(owner, {
+      archivedAt: { $ne: null },
+    });
+  }
+
+  private async findByOwnerAndArchiveState(
+    owner: string,
+    archiveFilter: Record<string, unknown>,
+  ): Promise<ExternalTournament[]> {
     const tournamentDocs = await this.tournamentModel
-      .find({ owner: owner })
+      .find({ owner: owner, ...archiveFilter })
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .sort({ createdAt: -1 })
       .exec();
@@ -113,6 +131,26 @@ export class ExternalTournamentRepository {
       throw error;
     }
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+  }
+
+  /**
+   * Unarchiving `$unset`s the field rather than writing null, so an active
+   * league looks identical to one that predates the field.
+   */
+  async setArchived(
+    slug: string,
+    owner: string,
+    archivedAt: Date | null,
+  ): Promise<void> {
+    const update = archivedAt
+      ? { $set: { archivedAt } }
+      : { $unset: { archivedAt: "" } };
+
+    const result = await this.tournamentModel
+      .findOneAndUpdate({ owner, slug }, update, { returnDocument: "after" })
+      .exec();
+
+    if (!result) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
   }
 
   private isDuplicateSlugError(error: unknown): boolean {

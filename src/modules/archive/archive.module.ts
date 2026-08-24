@@ -1,3 +1,4 @@
+import { ExternalTournamentModule } from "@modules/tournament/sub-modules/external-tournament/external-tournament.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ArchiveController } from "./archive.controller";
@@ -24,6 +25,7 @@ import { ArchiveService } from "./archive.service";
         ],
       },
     ]),
+    ExternalTournamentModule,
   ],
   controllers: [ArchiveController],
   providers: [ArchiveService, ArchiveRepository],

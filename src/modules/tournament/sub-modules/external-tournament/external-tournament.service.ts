@@ -18,6 +18,18 @@ export class ExternalTournamentService {
     return tournaments;
   }
 
+  async getArchivedTournaments(sub: string): Promise<ExternalTournament[]> {
+    return this.tournamentRepository.findArchivedByOwner(sub);
+  }
+
+  async archiveTournament(teamId: string, sub: string): Promise<void> {
+    await this.tournamentRepository.setArchived(teamId, sub, new Date());
+  }
+
+  async unarchiveTournament(teamId: string, sub: string): Promise<void> {
+    await this.tournamentRepository.setArchived(teamId, sub, null);
+  }
+
   async getTournament(
     teamId: string,
     sub: string,
@@ -56,6 +68,11 @@ export class ExternalTournamentService {
       sub,
     );
 
+    return this.compileStats(tournament.matchups);
+  }
+
+  async getTournamentStatsById(id: string) {
+    const tournament = await this.tournamentRepository.findById(id);
     return this.compileStats(tournament.matchups);
   }
 
