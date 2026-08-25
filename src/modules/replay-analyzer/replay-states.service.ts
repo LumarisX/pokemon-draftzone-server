@@ -23,6 +23,7 @@ export type MoveData = {
   turnNumber: number;
   raw: string;
   target?: string;
+  phase?: "charge" | "release";
 };
 
 export type DamageData = {
@@ -105,6 +106,7 @@ export type Pokemon = {
   shiny?: true;
   gender?: GenderName;
   everActive?: boolean;
+  stallChain?: { counter: number; turnNumber: number };
   boosts: Boosts;
   flags: {
     destinyBond?: string;
@@ -359,18 +361,62 @@ function getMoveAccuracy(moveId: string, genNum?: number): number | undefined {
   const gen = gens.get(genNum ?? 9);
   const move = gen.moves.get(moveId);
   if (!move?.exists) return undefined;
-  if (!move.target || move.target === "self") return undefined;
-  return move.accuracy === true ? 1 : move.accuracy / 100;
+  if (move.accuracy === true) return undefined;
+  return move.accuracy / 100;
 }
 
-const SPREAD_MOVE_TARGETS = new Set([
-  "allAdjacent",
-  "allAdjacentFoes",
-  "all",
-  "foeSide",
-  "allySide",
-  "allyTeam",
-]);
+function isMultiAccuracyMove(moveId: string, genNum?: number): boolean {
+  const move = gens.get(genNum ?? 9).moves.get(moveId);
+  return Boolean(move?.exists && move.multiaccuracy);
+}
+
+function getMaxHits(moveId: string, genNum?: number): number | undefined {
+  const move = gens.get(genNum ?? 9).moves.get(moveId);
+  if (!move?.exists || move.multihit === undefined) return undefined;
+  return Array.isArray(move.multihit) ? move.multihit[1] : move.multihit;
+}
+
+function couldHaveSkillLink(pokemon: Pokemon, genNum?: number): boolean {
+  if (pokemon.ability) return pokemon.ability === "Skill Link";
+  const species = gens.get(genNum ?? 9).species.get(pokemon.species ?? "");
+  if (!species?.exists) return false;
+  return Object.values(species.abilities).includes("Skill Link");
+}
+
+const STALL_COUNTER_START = 3;
+const STALL_COUNTER_MAX = 729;
+
+function isStallingMove(moveId: string, genNum?: number): boolean {
+  const move = gens.get(genNum ?? 9).moves.get(moveId);
+  return Boolean(move?.exists && move.stallingMove);
+}
+
+const SIDE_SHIELD_MOVES = new Set(["wideguard", "quickguard", "craftyshield"]);
+
+function isShieldingMove(moveId: string, genNum?: number): boolean {
+  return SIDE_SHIELD_MOVES.has(moveId) || isStallingMove(moveId, genNum);
+}
+
+const SPREAD_MOVE_TARGETS = new Set(["allAdjacent", "allAdjacentFoes"]);
+
+function findChild(line: ReplayLine, action: string): ReplayLine | undefined {
+  return line.children?.find((child) => child.action === action);
+}
+
+function resolveMovePhase(line: ReplayLine): "charge" | "release" | undefined {
+  if (line.args.from === "lockedmove") return "release";
+  if (findChild(line, "-prepare") && !findChild(line, "-anim")) return "charge";
+  return undefined;
+}
+
+function resolveMoveTarget(line: ReplayLine): string | undefined {
+  const declared = line.args.target?.trim();
+  if (declared) return declared;
+  return (
+    findChild(line, "-anim")?.args.target ??
+    findChild(line, "-prepare")?.args.defender
+  );
+}
 
 function isTargetablePosition(position: Position): boolean {
   return Boolean(position.pokemon && !position.pokemon.fainted);
@@ -386,18 +432,6 @@ function countMoveTargets(
   const move = gen.moves.get(moveId);
   if (!move?.exists || !move.target) return 1;
   if (!SPREAD_MOVE_TARGETS.has(move.target)) return 1;
-  if (move.target === "allySide" || move.target === "allyTeam") return 1;
-
-  if (move.target === "all") {
-    return SIDE_IDS.reduce(
-      (count, sideId) =>
-        count +
-        Object.values(field.sides[sideId].positions).filter(
-          isTargetablePosition,
-        ).length,
-      0,
-    );
-  }
 
   const foeSideIds = SIDE_IDS.filter((sideId) => sideId !== attacker.sideId);
   let count = foeSideIds.reduce(
@@ -712,11 +746,14 @@ export class ReplayStatesService {
       }
 
       const moveId = toID(line.args.move);
+      const phase = resolveMovePhase(line);
+      const target = resolveMoveTarget(line);
       const history = pokemon.moveHistory[moveId] ?? [];
       history.push({
         turnNumber: line.turnNumber,
         raw: line.args.move,
-        target: line.args.target,
+        target,
+        phase,
       });
       pokemon.moveHistory[moveId] = history;
 
@@ -735,7 +772,11 @@ export class ReplayStatesService {
         });
       }
 
-      this.recordMoveLuck(pokemon, moveId, line, ctx);
+      if (isStallingMove(moveId, field.genNum)) {
+        this.recordStallLuck(pokemon, line);
+      } else if (phase !== "charge") {
+        this.recordMoveLuck(pokemon, moveId, line, ctx, target);
+      }
     },
     cant: (line, ctx) => {
       if (line.args.reason !== "par") return;
@@ -902,23 +943,12 @@ export class ReplayStatesService {
         parentLine.args.attacker ?? parentLine.args.pokemon,
         field,
       );
-      const target = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!attacker) return;
       const moveId = toID(parentLine.args.move);
-      const claimed = this.claimMoveLuckEntry(
-        ctx,
-        attacker.key,
-        moveId,
-        line.turnNumber,
+      this.discardMoveLuckEntry(
+        attacker,
+        this.claimMoveLuckEntry(ctx, attacker.key, moveId, line.turnNumber),
       );
-      if (claimed?.miss) {
-        claimed.miss.target = target?.key ?? claimed.miss.target;
-        claimed.miss.hit = true;
-      }
-      if (claimed?.crit) {
-        claimed.crit.target = target?.key ?? claimed.crit.target;
-        claimed.crit.hit = false;
-      }
       this.consumePendingCrit(ctx, attacker.key, moveId, line.turnNumber);
     },
     "-miss": (line, ctx, parentLine) => {
@@ -939,6 +969,7 @@ export class ReplayStatesService {
         claimed.miss.target = target?.key ?? claimed.miss.target;
         claimed.miss.hit = false;
       }
+      this.discardMoveLuckEntry(attacker, claimed, { keepMiss: true });
       if (moveId)
         this.consumePendingCrit(ctx, attacker.key, moveId, line.turnNumber);
     },
@@ -947,7 +978,7 @@ export class ReplayStatesService {
       if (!pokemon || !line.args.ability) return;
       pokemon.ability = line.args.ability;
     },
-    "-activate": (line, ctx) => {
+    "-activate": (line, ctx, parentLine) => {
       const field = ctx.field;
       const pokemon = this.getPokemonFromArgs(line.args.pokemon, field);
       if (!pokemon) return;
@@ -958,6 +989,35 @@ export class ReplayStatesService {
         };
       }
       const effectName = line.args.effect?.replace(/^move:\s*/i, "");
+      if (
+        effectName &&
+        parentLine?.action === "move" &&
+        parentLine.args.move &&
+        isShieldingMove(toID(effectName), field.genNum)
+      ) {
+        const attacker = this.getPokemonFromArgs(
+          parentLine.args.attacker ?? parentLine.args.pokemon,
+          field,
+        );
+        if (attacker && attacker.key !== pokemon.key) {
+          const blockedId = toID(parentLine.args.move);
+          this.discardMoveLuckEntry(
+            attacker,
+            this.claimMoveLuckEntry(
+              ctx,
+              attacker.key,
+              blockedId,
+              line.turnNumber,
+            ),
+          );
+          this.consumePendingCrit(
+            ctx,
+            attacker.key,
+            blockedId,
+            line.turnNumber,
+          );
+        }
+      }
       if (effectName === "Destiny Bond") {
         const lastDamage =
           pokemon.damageHistory[pokemon.damageHistory.length - 1];
@@ -1199,7 +1259,7 @@ export class ReplayStatesService {
     "-hitcount": (line, ctx, parentLine) => {
       const field = ctx.field;
       const hitCount = Number(line.args.num);
-      if (!Number.isFinite(hitCount) || hitCount <= 1) return;
+      if (!Number.isFinite(hitCount) || hitCount < 1) return;
 
       const moveInfo =
         parentLine?.action === "move" && parentLine.args.move
@@ -1223,9 +1283,17 @@ export class ReplayStatesService {
       const critExpected = getMoveCritChance(moveInfo.moveId, field.genNum);
       const target = this.getPokemonFromArgs(line.args.pokemon, field)?.key;
 
+      const maxHits = getMaxHits(moveInfo.moveId, field.genNum);
+      const skillLinkLikely =
+        hitCount === maxHits && couldHaveSkillLink(attacker, field.genNum);
+      const rollsPerHit =
+        accuracyExpected !== undefined &&
+        !skillLinkLikely &&
+        isMultiAccuracyMove(moveInfo.moveId, field.genNum);
+
       const extraCritEvents: CritLuckEvent[] = [];
       for (let hit = 1; hit < hitCount; hit++) {
-        if (accuracyExpected !== undefined) {
+        if (rollsPerHit) {
           attacker.missHistory.push({
             turnNumber: line.turnNumber,
             move: moveInfo.moveRaw,
@@ -1245,6 +1313,16 @@ export class ReplayStatesService {
           attacker.critHistory.push(critEvent);
           extraCritEvents.push(critEvent);
         }
+      }
+
+      if (rollsPerHit && maxHits !== undefined && hitCount < maxHits) {
+        attacker.missHistory.push({
+          turnNumber: line.turnNumber,
+          move: moveInfo.moveRaw,
+          target,
+          expected: accuracyExpected,
+          hit: false,
+        });
       }
 
       while (
@@ -1697,11 +1775,62 @@ export class ReplayStatesService {
     return undefined;
   }
 
+  private recordStallLuck(pokemon: Pokemon, line: ReplayLine): void {
+    if (!line.args.move) return;
+
+    const chain =
+      pokemon.stallChain &&
+      pokemon.stallChain.turnNumber >= line.turnNumber - 1 &&
+      pokemon.stallChain.counter > 1
+        ? pokemon.stallChain
+        : undefined;
+    const succeeded = Boolean(findChild(line, "-singleturn"));
+
+    if (!succeeded && !chain) {
+      pokemon.stallChain = undefined;
+      return;
+    }
+
+    pokemon.missHistory.push({
+      turnNumber: line.turnNumber,
+      move: line.args.move,
+      target: pokemon.key,
+      expected: chain ? 1 / chain.counter : 1,
+      hit: succeeded,
+    });
+
+    pokemon.stallChain = succeeded
+      ? {
+          counter: chain
+            ? Math.min(chain.counter * 3, STALL_COUNTER_MAX)
+            : STALL_COUNTER_START,
+          turnNumber: line.turnNumber,
+        }
+      : undefined;
+  }
+
+  private discardMoveLuckEntry(
+    pokemon: Pokemon,
+    entry: { crit?: CritLuckEvent; miss?: MissLuckEvent } | undefined,
+    options: { keepMiss?: boolean } = {},
+  ): void {
+    if (!entry) return;
+    if (entry.miss && !options.keepMiss) {
+      const index = pokemon.missHistory.indexOf(entry.miss);
+      if (index >= 0) pokemon.missHistory.splice(index, 1);
+    }
+    if (entry.crit) {
+      const index = pokemon.critHistory.indexOf(entry.crit);
+      if (index >= 0) pokemon.critHistory.splice(index, 1);
+    }
+  }
+
   private recordMoveLuck(
     pokemon: Pokemon,
     moveId: string,
     line: ReplayLine,
     ctx: BuildContext,
+    target?: string,
   ): void {
     if (!line.args.move) return;
     const field = ctx.field;
@@ -1725,7 +1854,7 @@ export class ReplayStatesService {
         const missEvent: MissLuckEvent = {
           turnNumber: line.turnNumber,
           move: line.args.move,
-          target: line.args.target,
+          target,
           expected: accuracyExpected,
           hit: true,
         };
@@ -1737,7 +1866,7 @@ export class ReplayStatesService {
         const critEvent: CritLuckEvent = {
           turnNumber: line.turnNumber,
           move: line.args.move,
-          target: line.args.target,
+          target,
           expected: critExpected,
           hit: false,
         };
@@ -1900,7 +2029,10 @@ export class ReplayStatesService {
     }
 
     const position = side.positions[pokemonRef.positionId];
-    if (options.clearVolatiles !== false) position.conditions = [];
+    if (options.clearVolatiles !== false) {
+      position.conditions = [];
+      pokemon.stallChain = undefined;
+    }
     position.pokemon = pokemon;
   }
 

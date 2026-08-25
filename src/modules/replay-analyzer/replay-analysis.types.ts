@@ -35,6 +35,7 @@ export const REPLAY_ACTIONS = [
   "-miss",
   "-mustrecharge",
   "-notarget",
+  "-nothing",
   "-prepare",
   "-primal",
   "-resisted",
@@ -170,9 +171,8 @@ export type ParsedArgs = {
   megaStone?: MEGASTONE;
   message?: MESSAGE;
   move?: MOVE;
-  /** Block name on |uhtml|NAME|HTML lines. */
+  multiplier?: NUMBER;
   name?: string;
-  /** Effect-specific extra arg on -start/-activate (typechange type, Disable move, ...). */
   effectDetail?: string;
   num?: NUM;
   number?: NUMBER;
