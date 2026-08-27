@@ -1,4 +1,8 @@
-import { ExternalMatch, TeamMatchStat } from "./external-matchup-match.domain";
+import {
+  ExternalMatch,
+  TeamMatchStat,
+  normalizePokemonMatchStat,
+} from "./external-matchup-match.domain";
 import {
   ExternalMatchDto,
   TeamStatDataDto,
@@ -22,9 +26,9 @@ export class MatchMapper {
     return {
       winner: match.winner,
       replay: match.replay,
-      aTeam: MatchMapper.mapTeamToDatabase(match.aTeam),
+      aTeam: MatchMapper.mapTeam(match.aTeam),
       bTeam: match.bTeam
-        ? MatchMapper.mapTeamToDatabase(match.bTeam)
+        ? MatchMapper.mapTeam(match.bTeam)
         : { stats: [], score: 0 },
     };
   }
@@ -33,8 +37,8 @@ export class MatchMapper {
     return new ExternalMatch({
       winner: dto.winner,
       replay: dto.replay,
-      aTeam: MatchMapper.mapTeamToDomain(dto.aTeam),
-      bTeam: dto.bTeam ? MatchMapper.mapTeamToDomain(dto.bTeam) : undefined,
+      aTeam: MatchMapper.mapTeam(dto.aTeam),
+      bTeam: dto.bTeam ? MatchMapper.mapTeam(dto.bTeam) : undefined,
     });
   }
 
@@ -42,45 +46,22 @@ export class MatchMapper {
     return new ExternalMatch({
       winner: entity.winner,
       replay: entity.replay,
-      aTeam: MatchMapper.mapTeamToDomain(entity.aTeam),
+      aTeam: MatchMapper.mapTeam(entity.aTeam),
       bTeam:
         (entity.bTeam?.stats?.length ?? 0) > 0
-          ? MatchMapper.mapTeamToDomain(entity.bTeam!)
+          ? MatchMapper.mapTeam(entity.bTeam!)
           : undefined,
     });
   }
 
-  private static mapTeamToDomain(
-    team: TeamStatDataDto | ExternalMatchTeamEntity,
+  private static mapTeam(
+    team: TeamStatDataDto | ExternalMatchTeamEntity | TeamMatchStat,
   ): TeamMatchStat {
     return {
-      score: team.score,
-
+      score: team.score ?? 0,
       stats: (team.stats ?? []).map(([pokemonId, stats]) => [
         pokemonId,
-        {
-          brought: stats.brought,
-          kills: stats.kills,
-          deaths: stats.deaths,
-          indirect: stats.indirect,
-        },
-      ]),
-    };
-  }
-
-  private static mapTeamToDatabase(
-    team: TeamMatchStat,
-  ): ExternalMatchTeamEntity {
-    return {
-      score: team.score,
-      stats: team.stats.map(([pokemonId, stats]) => [
-        pokemonId,
-        {
-          brought: stats.brought,
-          kills: stats.kills,
-          deaths: stats.deaths,
-          indirect: stats.indirect,
-        },
+        normalizePokemonMatchStat(stats ?? {}),
       ]),
     };
   }

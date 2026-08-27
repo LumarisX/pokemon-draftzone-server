@@ -8,6 +8,7 @@ import {
   IsIn,
 } from "class-validator";
 import { IsMatchStatTuple, MatchStatData } from "../external-matchup.dto";
+import { MATCH_WINNERS, MatchWinner } from "./external-matchup-match.schema";
 
 export class TeamStatDataDto {
   @IsMatchStatTuple()
@@ -32,7 +33,7 @@ export class ExternalMatchDto {
   @IsOptional()
   replay?: string;
 
-  @IsIn(["a", "b"])
+  @IsIn(MATCH_WINNERS)
   @IsOptional()
-  winner?: "a" | "b";
+  winner?: MatchWinner;
 }

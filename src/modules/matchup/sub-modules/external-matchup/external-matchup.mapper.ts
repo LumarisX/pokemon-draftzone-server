@@ -19,6 +19,7 @@ export class ExternalMatchupMapper {
       coach: matchup.bTeam.coach,
       team: ExternalMatchupMapper.teamPayload(matchup.bTeam),
       score: matchup.calculateScore(),
+      winner: matchup.calculateWinner(),
       matches: matchup.matches,
       paste: matchup.bTeam.paste,
     };
@@ -43,6 +44,10 @@ export class ExternalMatchupMapper {
       leagueName: matchup.tournamentName,
       stage: matchup.stage,
       score: matchup.calculateScore(),
+      winner: matchup.calculateWinner(),
+      scoreOverride: matchup.scoreOverride ?? null,
+      winnerOverride: matchup.winnerOverride ?? null,
+      forfeitedBy: matchup.forfeitedBy ?? null,
       aTeam: {
         teamName: matchup.aTeam.teamName,
         team: ExternalMatchupMapper.teamPayload(matchup.aTeam),
@@ -74,6 +79,9 @@ export class ExternalMatchupMapper {
       matches: matchup.matches.map((match) =>
         MatchMapper.toDatabasePayload(match),
       ),
+      scoreOverride: matchup.scoreOverride,
+      winnerOverride: matchup.winnerOverride,
+      forfeitedBy: matchup.forfeitedBy,
     };
   }
 
@@ -86,6 +94,9 @@ export class ExternalMatchupMapper {
       format: existing.format,
       tournamentName: existing.tournamentName,
       stage: data.stage ?? existing.stage,
+      scoreOverride: existing.scoreOverride,
+      winnerOverride: existing.winnerOverride,
+      forfeitedBy: existing.forfeitedBy,
       matches: data.matches
         ? data.matches.map((m) => MatchMapper.fromForm(m))
         : existing.matches,
@@ -125,6 +136,11 @@ export class ExternalMatchupMapper {
       matches: matchupDoc.matches
         ? matchupDoc.matches.map((m) => MatchMapper.fromDatabase(m))
         : [],
+      scoreOverride: matchupDoc.scoreOverride
+        ? [matchupDoc.scoreOverride[0], matchupDoc.scoreOverride[1]]
+        : undefined,
+      winnerOverride: matchupDoc.winnerOverride,
+      forfeitedBy: matchupDoc.forfeitedBy,
       aTeam: {
         id: tournamentDoc._id,
         team: aTeam.resolved,

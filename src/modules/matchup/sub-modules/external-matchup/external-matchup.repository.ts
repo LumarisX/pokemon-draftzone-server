@@ -6,6 +6,10 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
+import {
+  ForfeitSide,
+  MatchWinner,
+} from "./external-matchup-match/external-matchup-match.schema";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import {
@@ -58,17 +62,36 @@ export class ExternalMatchupRepository {
   async updateScore(
     id: string,
     matches: ExternalMatch[],
-    aTeamPaste?: string,
-    bTeamPaste?: string,
+    options: {
+      aTeamPaste?: string;
+      bTeamPaste?: string;
+      scoreOverride?: [number, number] | null;
+      winnerOverride?: MatchWinner | null;
+      forfeitedBy?: ForfeitSide | null;
+    } = {},
   ): Promise<void> {
     const setData: { [key: string]: unknown } = {
       matches: matches.map((match) => MatchMapper.toDatabasePayload(match)),
     };
+    const unsetData: { [key: string]: "" } = {};
+    const { aTeamPaste, bTeamPaste, scoreOverride, winnerOverride, forfeitedBy } =
+      options;
+
     if (aTeamPaste !== undefined) setData["aTeam.paste"] = aTeamPaste;
     if (bTeamPaste !== undefined) setData["bTeam.paste"] = bTeamPaste;
+    if (scoreOverride) setData["scoreOverride"] = scoreOverride;
+    else unsetData["scoreOverride"] = "";
+    if (winnerOverride) setData["winnerOverride"] = winnerOverride;
+    else unsetData["winnerOverride"] = "";
+    if (forfeitedBy) setData["forfeitedBy"] = forfeitedBy;
+    else unsetData["forfeitedBy"] = "";
 
     await this.externalmatchupModel
-      .findByIdAndUpdate(id, { $set: setData }, { returnDocument: "after" })
+      .findByIdAndUpdate(
+        id,
+        { $set: setData, $unset: unsetData },
+        { returnDocument: "after" },
+      )
       .exec();
   }
 

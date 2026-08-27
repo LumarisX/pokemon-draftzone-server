@@ -94,6 +94,7 @@ export class ExternalTournamentService {
       const matches = Array.isArray(matchup.matches) ? matchup.matches : [];
       for (const game of matches) {
         for (const [pid, teamStats] of game.aTeam.stats) {
+          if (teamStats.status === "brought") continue;
           const id = toID(pid);
           if (!(id in stats)) {
             stats[id] = {

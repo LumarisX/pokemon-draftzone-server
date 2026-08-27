@@ -26,10 +26,16 @@ export class ArchiveStatEntity {
   kills?: number;
 
   @Prop()
+  teammate?: number;
+
+  @Prop()
   deaths?: number;
 
   @Prop()
   brought?: number;
+
+  @Prop({ type: String, enum: ["brought", "survived", "fainted"] })
+  status?: "brought" | "survived" | "fainted";
 }
 export const ArchiveStatSchema =
   SchemaFactory.createForClass(ArchiveStatEntity);

@@ -57,30 +57,21 @@ describe("ExternalMatchup.calculateScore", () => {
     expect(matchup.calculateScore()).toBeNull();
   });
 
-  it("counts surviving Pokemon (brought without dying) per side for a single match", () => {
+  it("uses the stored per-side scores for a single match", () => {
     const matchup = buildMatchup({
       matches: [
         {
-          aTeam: {
-            score: 0,
-            stats: [
-              ["pikachu", { brought: 1, deaths: 0 }],
-              ["charizard", { brought: 1, deaths: 1 }],
-              ["squirtle", { brought: 0, deaths: 0 }],
-            ],
-          },
-          bTeam: {
-            score: 0,
-            stats: [["bulbasaur", { brought: 1, deaths: 0 }]],
-          },
+          aTeam: { score: 3, stats: [] },
+          bTeam: { score: 1, stats: [] },
         } as any,
       ],
     });
 
-    expect(matchup.calculateScore()).toEqual([1, 1]);
+    expect(matchup.calculateScore()).toEqual([3, 1]);
+    expect(matchup.calculateWinner()).toBe("a");
   });
 
-  it("treats a missing or non-array stats list as zero survivors", () => {
+  it("treats a missing side as a zero score", () => {
     const matchup = buildMatchup({
       matches: [
         {
@@ -91,6 +82,7 @@ describe("ExternalMatchup.calculateScore", () => {
     });
 
     expect(matchup.calculateScore()).toEqual([0, 0]);
+    expect(matchup.calculateWinner()).toBeUndefined();
   });
 
   it("tallies series wins across multiple matches by winner field", () => {
@@ -104,6 +96,79 @@ describe("ExternalMatchup.calculateScore", () => {
     });
 
     expect(matchup.calculateScore()).toEqual([2, 1]);
+    expect(matchup.calculateWinner()).toBe("a");
+  });
+
+  it("prefers an explicit score override over the inferred score", () => {
+    const matchup = buildMatchup({
+      matches: [
+        { winner: "a", aTeam: { score: 1, stats: [] } } as any,
+        { winner: "a", aTeam: { score: 1, stats: [] } } as any,
+      ],
+      scoreOverride: [0, 2],
+    });
+
+    expect(matchup.inferScore()).toEqual([2, 0]);
+    expect(matchup.calculateScore()).toEqual([0, 2]);
+    expect(matchup.calculateWinner()).toBe("b");
+  });
+
+  it("prefers an explicit winner override over the score comparison", () => {
+    const matchup = buildMatchup({
+      matches: [
+        {
+          aTeam: { score: 3, stats: [] },
+          bTeam: { score: 1, stats: [] },
+        } as any,
+      ],
+      winnerOverride: "b",
+    });
+
+    expect(matchup.calculateScore()).toEqual([3, 1]);
+    expect(matchup.calculateWinner()).toBe("b");
+  });
+
+  it("awards the win to the side that did not forfeit", () => {
+    const matchup = buildMatchup({ matches: [], forfeitedBy: "a" });
+
+    expect(matchup.calculateWinner()).toBe("b");
+    expect(matchup.isDoubleForfeit()).toBe(false);
+  });
+
+  it("leaves a double forfeit with no winner", () => {
+    const matchup = buildMatchup({
+      matches: [
+        {
+          aTeam: { score: 3, stats: [] },
+          bTeam: { score: 1, stats: [] },
+        } as any,
+      ],
+      forfeitedBy: "both",
+    });
+
+    expect(matchup.calculateWinner()).toBeUndefined();
+    expect(matchup.isDoubleForfeit()).toBe(true);
+  });
+
+  it("lets a forfeit outrank an explicit winner override", () => {
+    const matchup = buildMatchup({
+      matches: [],
+      forfeitedBy: "b",
+      winnerOverride: "b",
+    });
+
+    expect(matchup.calculateWinner()).toBe("a");
+  });
+
+  it("leaves the winner undecided when a series is tied and nothing is overridden", () => {
+    const matchup = buildMatchup({
+      matches: [
+        { winner: "a", aTeam: { score: 1, stats: [] } } as any,
+        { winner: "b", aTeam: { score: 1, stats: [] } } as any,
+      ],
+    });
+
+    expect(matchup.calculateWinner()).toBeUndefined();
   });
 });
 

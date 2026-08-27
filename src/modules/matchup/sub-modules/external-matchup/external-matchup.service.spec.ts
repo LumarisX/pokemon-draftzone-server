@@ -58,6 +58,23 @@ function buildSeriesMatch(winner?: "a" | "b") {
   return { winner } as any;
 }
 
+function buildMatchup(
+  matches: any[] | undefined,
+  overrides: {
+    scoreOverride?: [number, number];
+    winnerOverride?: "a" | "b";
+  } = {},
+): ExternalMatchup {
+  return new ExternalMatchup({
+    ruleset: {} as any,
+    format: {} as any,
+    aTeam: {} as any,
+    bTeam: {} as any,
+    matches,
+    ...overrides,
+  });
+}
+
 describe("ExternalMatchupService", () => {
   let matchupRepo: jest.Mocked<ExternalMatchupRepository>;
   let tournamentRepo: jest.Mocked<ExternalTournamentRepository>;
@@ -95,8 +112,8 @@ describe("ExternalMatchupService", () => {
     it("skips matchups with no matches", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        { matches: [] } as unknown as ExternalMatchup,
-        { matches: undefined } as unknown as ExternalMatchup,
+        buildMatchup([]),
+        buildMatchup(undefined),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -107,9 +124,9 @@ describe("ExternalMatchupService", () => {
     it("scores a single-game matchup by comparing aTeam/bTeam scores", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        { matches: [buildSingleMatch(3, 1)] } as unknown as ExternalMatchup,
-        { matches: [buildSingleMatch(0, 2)] } as unknown as ExternalMatchup,
-        { matches: [buildSingleMatch(1, 1)] } as unknown as ExternalMatchup,
+        buildMatchup([buildSingleMatch(3, 1)]),
+        buildMatchup([buildSingleMatch(0, 2)]),
+        buildMatchup([buildSingleMatch(1, 1)]),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -120,9 +137,7 @@ describe("ExternalMatchupService", () => {
     it("defaults missing single-game scores to 0", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        {
-          matches: [{ aTeam: undefined, bTeam: undefined } as any],
-        } as unknown as ExternalMatchup,
+        buildMatchup([{ aTeam: undefined, bTeam: undefined } as any]),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -133,20 +148,16 @@ describe("ExternalMatchupService", () => {
     it("scores a best-of series by majority of per-game winners", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        {
-          matches: [
-            buildSeriesMatch("a"),
-            buildSeriesMatch("a"),
-            buildSeriesMatch("b"),
-          ],
-        } as unknown as ExternalMatchup,
-        {
-          matches: [
-            buildSeriesMatch("b"),
-            buildSeriesMatch("b"),
-            buildSeriesMatch("a"),
-          ],
-        } as unknown as ExternalMatchup,
+        buildMatchup([
+          buildSeriesMatch("a"),
+          buildSeriesMatch("a"),
+          buildSeriesMatch("b"),
+        ]),
+        buildMatchup([
+          buildSeriesMatch("b"),
+          buildSeriesMatch("b"),
+          buildSeriesMatch("a"),
+        ]),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -157,9 +168,7 @@ describe("ExternalMatchupService", () => {
     it("doesn't credit a win or loss when a series is tied", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        {
-          matches: [buildSeriesMatch("a"), buildSeriesMatch("b")],
-        } as unknown as ExternalMatchup,
+        buildMatchup([buildSeriesMatch("a"), buildSeriesMatch("b")]),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -170,7 +179,7 @@ describe("ExternalMatchupService", () => {
     it("formats a negative net diff without a leading plus", async () => {
       tournamentRepo.findBySlugAndOwner.mockResolvedValue(buildTournament());
       matchupRepo.findByTournamentId.mockResolvedValue([
-        { matches: [buildSingleMatch(0, 4)] } as unknown as ExternalMatchup,
+        buildMatchup([buildSingleMatch(0, 4)]),
       ]);
 
       const result = await service.getScore("springleague", "auth0|owner");
@@ -440,6 +449,8 @@ describe("ExternalMatchupService", () => {
         aTeamPaste: "a-paste",
         bTeamPaste: "b-paste",
         matches: [{ winner: "a" } as any],
+        scoreOverride: [2, 1],
+        winnerOverride: "b",
       };
 
       await service.updateExternalMatchupScore(
@@ -456,8 +467,12 @@ describe("ExternalMatchupService", () => {
       expect(matchupRepo.updateScore).toHaveBeenCalledWith(
         "matchup-1",
         [{ mapped: dto.matches[0] }],
-        "a-paste",
-        "b-paste",
+        {
+          aTeamPaste: "a-paste",
+          bTeamPaste: "b-paste",
+          scoreOverride: [2, 1],
+          winnerOverride: "b",
+        },
       );
     });
 

@@ -160,8 +160,11 @@ describe("ExternalMatchupMapper", () => {
         _id: "matchup-1",
         leagueName: "Spring Cup",
         stage: "Round 1",
-        // single match with no stats => 0 alive Pokémon on each side
         score: [0, 0],
+        winner: undefined,
+        scoreOverride: null,
+        winnerOverride: null,
+        forfeitedBy: null,
         aTeam: {
           teamName: "Team Rocket",
           team: [{ id: "pikachu", toClientPayload: true }],

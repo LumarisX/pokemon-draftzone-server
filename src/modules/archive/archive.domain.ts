@@ -6,21 +6,27 @@ import { ID, toID } from "@pkmn/data";
 export class Stat {
   indirect?: number;
   kills?: number;
+  teammate?: number;
   deaths?: number;
   brought?: number;
+  status?: "brought" | "survived" | "fainted";
 
   constructor(
     props: {
       indirect?: number;
       kills?: number;
+      teammate?: number;
       deaths?: number;
       brought?: number;
+      status?: "brought" | "survived" | "fainted";
     } = {},
   ) {
     this.indirect = props.indirect;
     this.kills = props.kills;
+    this.teammate = props.teammate;
     this.deaths = props.deaths;
     this.brought = props.brought;
+    this.status = props.status;
   }
 }
 
@@ -58,7 +64,14 @@ function toStatRow(pid: string, stat: Stat): ArchivePokemonStat {
 function tuplesToStatMap(
   tuples: [
     string,
-    { indirect?: number; kills?: number; deaths?: number; brought?: number },
+    {
+      indirect?: number;
+      kills?: number;
+      teammate?: number;
+      deaths?: number;
+      brought?: number;
+      status?: "brought" | "survived" | "fainted";
+    },
   ][],
 ): Map<string, Stat> {
   return new Map(tuples.map(([pid, stat]) => [pid, new Stat(stat)]));
@@ -161,12 +174,14 @@ function accumulateTeamStats(
 
   for (const match of matches) {
     for (const [pid, stat] of match[team].stats.entries()) {
+      if (stat.status === "brought") continue;
       const existing = pokemonMap.get(pid);
       pokemonMap.set(
         pid,
         new Stat({
           brought: (existing?.brought ?? 0) + (stat.brought ? 1 : 0),
           kills: (existing?.kills ?? 0) + (stat.kills ?? 0),
+          teammate: (existing?.teammate ?? 0) + (stat.teammate ?? 0),
           deaths: (existing?.deaths ?? 0) + (stat.deaths ? 1 : 0),
           indirect: (existing?.indirect ?? 0) + (stat.indirect ?? 0),
         }),
@@ -185,7 +200,13 @@ function accumulateTeamStats(
   return new ArchiveMatchupStatsTeam({ wins, stats: pokemonMap, differential });
 }
 
-function computeMatchupStats(matches: ArchiveMatchV2[]): ArchiveMatchupStats {
+function computeMatchupStats(
+  matches: ArchiveMatchV2[],
+  override: {
+    score?: [number, number];
+    winner?: "a" | "b";
+  } = {},
+): ArchiveMatchupStats {
   if (matches.length === 0) {
     return new ArchiveMatchupStats({
       winner: undefined,
@@ -202,24 +223,31 @@ function computeMatchupStats(matches: ArchiveMatchV2[]): ArchiveMatchupStats {
     });
   }
 
-  const wins = matches.reduce(
-    (acc, match) => {
-      if (match.winner === "a") acc[0]++;
-      else if (match.winner === "b") acc[1]++;
-      return acc;
-    },
-    [0, 0] as [number, number],
-  );
+  const wins =
+    override.score ??
+    matches.reduce(
+      (acc, match) => {
+        if (match.winner === "a") acc[0]++;
+        else if (match.winner === "b") acc[1]++;
+        return acc;
+      },
+      [0, 0] as [number, number],
+    );
 
-  let winner: "a" | "b" | undefined;
-  if (wins[0] > wins[1]) winner = "a";
-  else if (wins[1] > wins[0]) winner = "b";
+  let winner = override.winner;
+  if (!winner) {
+    if (wins[0] > wins[1]) winner = "a";
+    else if (wins[1] > wins[0]) winner = "b";
+  }
 
-  return new ArchiveMatchupStats({
-    winner,
-    aTeam: accumulateTeamStats(matches, "aTeam"),
-    bTeam: accumulateTeamStats(matches, "bTeam"),
-  });
+  const aTeam = accumulateTeamStats(matches, "aTeam");
+  const bTeam = accumulateTeamStats(matches, "bTeam");
+  if (override.score) {
+    aTeam.differential = override.score[0];
+    bTeam.differential = override.score[1];
+  }
+
+  return new ArchiveMatchupStats({ winner, aTeam, bTeam });
 }
 
 export class ArchiveMatchupV2 {
@@ -280,7 +308,12 @@ export class ArchiveMatchupV2 {
       pastes: { aTeam: matchup.aTeam.paste, bTeam: matchup.bTeam.paste },
       stage: matchup.stage,
       matches,
-      stats: computeMatchupStats(matches),
+      stats: computeMatchupStats(matches, {
+        score: matchup.scoreOverride
+          ? [matchup.scoreOverride[0], matchup.scoreOverride[1]]
+          : undefined,
+        winner: normalizeWinner(matchup.winnerOverride),
+      }),
     });
   }
 }

@@ -47,13 +47,17 @@ describe("ExternalMatchupRepository", () => {
           $set: {
             matches: [{ persisted: matches[0] }, { persisted: matches[1] }],
           },
+          $unset: { scoreOverride: "", winnerOverride: "", forfeitedBy: "" },
         },
         { returnDocument: "after" },
       );
     });
 
     it("includes both pastes when provided", async () => {
-      await repository.updateScore("matchup-1", matches, "a-paste", "b-paste");
+      await repository.updateScore("matchup-1", matches, {
+        aTeamPaste: "a-paste",
+        bTeamPaste: "b-paste",
+      });
 
       const setData = (model.findByIdAndUpdate as jest.Mock).mock.calls[0][1].$set;
       expect(setData["aTeam.paste"]).toBe("a-paste");
@@ -61,7 +65,9 @@ describe("ExternalMatchupRepository", () => {
     });
 
     it("omits a paste key entirely when its value is undefined", async () => {
-      await repository.updateScore("matchup-1", matches, undefined, "b-paste");
+      await repository.updateScore("matchup-1", matches, {
+        bTeamPaste: "b-paste",
+      });
 
       const setData = (model.findByIdAndUpdate as jest.Mock).mock.calls[0][1].$set;
       expect("aTeam.paste" in setData).toBe(false);
@@ -69,7 +75,7 @@ describe("ExternalMatchupRepository", () => {
     });
 
     it("persists an empty-string paste (distinct from undefined)", async () => {
-      await repository.updateScore("matchup-1", matches, "");
+      await repository.updateScore("matchup-1", matches, { aTeamPaste: "" });
 
       const setData = (model.findByIdAndUpdate as jest.Mock).mock.calls[0][1].$set;
       expect(setData["aTeam.paste"]).toBe("");

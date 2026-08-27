@@ -7,7 +7,11 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Schema as MongooseSchema, Types } from "mongoose";
 import {
   ExternalMatchEntity,
+  FORFEIT_SIDES,
+  ForfeitSide,
+  MATCH_WINNERS,
   MatchDataSchema,
+  MatchWinner,
 } from "./external-matchup-match/external-matchup-match.schema";
 
 export type ExternalMatchupDocument = HydratedDocument<ExternalMatchupEntity>;
@@ -59,6 +63,15 @@ export class ExternalMatchupEntity {
 
   @Prop({ type: [MatchDataSchema], required: true })
   matches!: ExternalMatchEntity[];
+
+  @Prop({ type: [Number], default: undefined })
+  scoreOverride?: [number, number];
+
+  @Prop({ type: String, enum: MATCH_WINNERS, default: undefined })
+  winnerOverride?: MatchWinner;
+
+  @Prop({ type: String, enum: FORFEIT_SIDES, default: undefined })
+  forfeitedBy?: ForfeitSide;
 }
 
 export const ExternalMatchupSchema = SchemaFactory.createForClass(

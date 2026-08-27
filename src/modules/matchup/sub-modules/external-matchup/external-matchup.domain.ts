@@ -9,6 +9,10 @@ import { summarizeTeam } from "@modules/matchup/domain/summary";
 import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { Types } from "mongoose";
 import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
+import {
+  ForfeitSide,
+  MatchWinner,
+} from "./external-matchup-match/external-matchup-match.schema";
 
 export interface MatchupSide {
   id?: Types.ObjectId;
@@ -29,6 +33,9 @@ export class ExternalMatchup {
   matches: ExternalMatch[];
   stage?: string;
   tournamentName?: string;
+  scoreOverride?: [number, number];
+  winnerOverride?: MatchWinner;
+  forfeitedBy?: ForfeitSide;
   constructor(props: {
     aTeam: MatchupSide;
     bTeam: MatchupSide;
@@ -37,12 +44,18 @@ export class ExternalMatchup {
     matches?: ExternalMatch[];
     stage?: string;
     tournamentName?: string;
+    scoreOverride?: [number, number];
+    winnerOverride?: MatchWinner;
+    forfeitedBy?: ForfeitSide;
   }) {
     this.ruleset = props.ruleset;
     this.format = props.format;
     this.matches = props.matches ?? [];
     this.stage = props.stage;
     this.tournamentName = props.tournamentName;
+    this.scoreOverride = props.scoreOverride;
+    this.winnerOverride = props.winnerOverride;
+    this.forfeitedBy = props.forfeitedBy;
     this.aTeam = props.aTeam;
     this.bTeam = props.bTeam;
   }
@@ -84,21 +97,12 @@ export class ExternalMatchup {
     return data;
   }
 
-  calculateScore(): [number, number] | null {
+  inferScore(): [number, number] | null {
     if (!this.matches || this.matches.length === 0) return null;
 
     if (this.matches.length === 1) {
       const match = this.matches[0];
-      const countAlivePokemon = (
-        team: typeof match.aTeam | typeof match.bTeam,
-      ) => {
-        if (!team?.stats || !Array.isArray(team.stats)) return 0;
-
-        return team.stats.filter((p) => p?.[1]?.brought && !p?.[1]?.deaths)
-          .length;
-      };
-
-      return [countAlivePokemon(match.aTeam), countAlivePokemon(match.bTeam)];
+      return [match.aTeam?.score ?? 0, match.bTeam?.score ?? 0];
     }
 
     return this.matches.reduce(
@@ -112,5 +116,28 @@ export class ExternalMatchup {
       },
       [0, 0],
     );
+  }
+
+  calculateScore(): [number, number] | null {
+    return this.scoreOverride ?? this.inferScore();
+  }
+
+  inferWinner(): MatchWinner | undefined {
+    const score = this.calculateScore();
+    if (!score) return undefined;
+    if (score[0] > score[1]) return "a";
+    if (score[1] > score[0]) return "b";
+    return undefined;
+  }
+
+  calculateWinner(): MatchWinner | undefined {
+    if (this.forfeitedBy === "both") return undefined;
+    if (this.forfeitedBy === "a") return "b";
+    if (this.forfeitedBy === "b") return "a";
+    return this.winnerOverride ?? this.inferWinner();
+  }
+
+  isDoubleForfeit(): boolean {
+    return this.forfeitedBy === "both";
   }
 }

@@ -134,8 +134,13 @@ export class ExternalMatchupService {
     await this.matchupRepo.updateScore(
       externalmatchupId,
       dto.matches.map((match) => MatchMapper.fromForm(match)),
-      dto.aTeamPaste,
-      dto.bTeamPaste,
+      {
+        aTeamPaste: dto.aTeamPaste,
+        bTeamPaste: dto.bTeamPaste,
+        scoreOverride: dto.scoreOverride,
+        winnerOverride: dto.winnerOverride,
+        forfeitedBy: dto.forfeitedBy,
+      },
     );
   }
 
@@ -154,31 +159,19 @@ export class ExternalMatchupService {
     let netDiff = 0;
 
     for (const matchup of matchups) {
-      if (!matchup.matches || matchup.matches.length === 0) continue;
-
-      if (matchup.matches.length > 1) {
-        let seriesWins = 0;
-        let seriesLosses = 0;
-
-        for (const match of matchup.matches) {
-          if (match.winner === "a") seriesWins++;
-          if (match.winner === "b") seriesLosses++;
-        }
-
-        if (seriesWins > seriesLosses) wins++;
-        else if (seriesLosses > seriesWins) losses++;
-
-        netDiff += seriesWins - seriesLosses;
-      } else {
-        const singleMatch = matchup.matches[0];
-        const scoreA = singleMatch.aTeam?.score ?? 0;
-        const scoreB = singleMatch.bTeam?.score ?? 0;
-
-        if (scoreA > scoreB) wins++;
-        else if (scoreA < scoreB) losses++;
-
-        netDiff += scoreA - scoreB;
+      if (matchup.isDoubleForfeit()) {
+        losses++;
+        continue;
       }
+
+      const score = matchup.calculateScore();
+      const winner = matchup.calculateWinner();
+      if (!score && !winner) continue;
+
+      if (winner === "a") wins++;
+      else if (winner === "b") losses++;
+
+      if (score) netDiff += score[0] - score[1];
     }
 
     return {

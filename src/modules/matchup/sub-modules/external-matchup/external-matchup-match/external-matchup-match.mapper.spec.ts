@@ -48,11 +48,21 @@ describe("MatchMapper", () => {
         replay: "replay-1",
         aTeam: {
           score: 3,
-          stats: [["pikachu", { kills: 2, deaths: 1, brought: undefined, indirect: undefined }]],
+          stats: [
+            [
+              "pikachu",
+              { kills: 2, indirect: 0, teammate: 0, deaths: 1, brought: 1, status: "fainted" },
+            ],
+          ],
         },
         bTeam: {
           score: 1,
-          stats: [["charizard", { kills: 1, deaths: 2, brought: undefined, indirect: undefined }]],
+          stats: [
+            [
+              "charizard",
+              { kills: 1, indirect: 0, teammate: 0, deaths: 1, brought: 1, status: "fainted" },
+            ],
+          ],
         },
       });
     });
@@ -87,12 +97,56 @@ describe("MatchMapper", () => {
       expect(result.replay).toBe("replay-2");
       expect(result.aTeam).toEqual({
         score: 2,
-        stats: [["pikachu", { brought: undefined, kills: 1, deaths: undefined, indirect: undefined }]],
+        stats: [
+          [
+            "pikachu",
+            { brought: 1, kills: 1, indirect: 0, teammate: 0, deaths: 0, status: "survived" },
+          ],
+        ],
       });
       expect(result.bTeam).toEqual({
         score: 4,
-        stats: [["charizard", { brought: undefined, kills: 3, deaths: undefined, indirect: undefined }]],
+        stats: [
+          [
+            "charizard",
+            { brought: 1, kills: 3, indirect: 0, teammate: 0, deaths: 0, status: "survived" },
+          ],
+        ],
       });
+    });
+
+    it("keeps an explicit team-preview status without counting it as played", () => {
+      const dto = buildDto({
+        aTeam: { score: 0, stats: [["pikachu", { status: "brought" }]] },
+      });
+
+      const result = MatchMapper.fromForm(dto);
+
+      expect(result.aTeam.stats).toEqual([
+        [
+          "pikachu",
+          { brought: 0, kills: 0, indirect: 0, teammate: 0, deaths: 0, status: "brought" },
+        ],
+      ]);
+    });
+
+    it("derives a status from the legacy brought/deaths flags", () => {
+      const dto = buildDto({
+        aTeam: {
+          score: 0,
+          stats: [
+            ["pikachu", { brought: 1, deaths: 0 }],
+            ["charizard", { brought: 1, deaths: 1 }],
+          ],
+        },
+      });
+
+      const result = MatchMapper.fromForm(dto);
+
+      expect(result.aTeam.stats.map(([id, stat]) => [id, stat.status])).toEqual([
+        ["pikachu", "survived"],
+        ["charizard", "fainted"],
+      ]);
     });
 
     it("leaves bTeam undefined when the DTO has no bTeam", () => {
@@ -134,7 +188,10 @@ describe("MatchMapper", () => {
       expect(() => matches.map(MatchMapper.toDatabasePayload)).not.toThrow();
       const [result] = matches.map(MatchMapper.toDatabasePayload);
       expect(result.aTeam.stats).toEqual([
-        ["pikachu", { kills: 1, deaths: undefined, indirect: undefined, brought: undefined }],
+        [
+          "pikachu",
+          { kills: 1, indirect: 0, teammate: 0, deaths: 0, brought: 1, status: "survived" },
+        ],
       ]);
     });
 
@@ -171,7 +228,12 @@ describe("MatchMapper", () => {
       expect(result.winner).toBe("a");
       expect(result.aTeam).toEqual({
         score: 5,
-        stats: [["pikachu", { brought: undefined, kills: 4, deaths: undefined, indirect: undefined }]],
+        stats: [
+          [
+            "pikachu",
+            { brought: 1, kills: 4, indirect: 0, teammate: 0, deaths: 0, status: "survived" },
+          ],
+        ],
       });
     });
 
@@ -192,7 +254,12 @@ describe("MatchMapper", () => {
 
       expect(result.bTeam).toEqual({
         score: 2,
-        stats: [["charizard", { brought: undefined, kills: undefined, deaths: 1, indirect: undefined }]],
+        stats: [
+          [
+            "charizard",
+            { brought: 1, kills: 0, indirect: 0, teammate: 0, deaths: 1, status: "fainted" },
+          ],
+        ],
       });
     });
   });

@@ -1,6 +1,15 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Schema as MongooseSchema } from "mongoose";
 
+export const POKEMON_STATUSES = ["brought", "survived", "fainted"] as const;
+export type PokemonResultStatus = (typeof POKEMON_STATUSES)[number];
+
+export const MATCH_WINNERS = ["a", "b"] as const;
+export type MatchWinner = (typeof MATCH_WINNERS)[number];
+
+export const FORFEIT_SIDES = ["a", "b", "both"] as const;
+export type ForfeitSide = (typeof FORFEIT_SIDES)[number];
+
 @Schema({ _id: false })
 export class PokemonStatsEntity {
   @Prop({ type: Number })
@@ -10,10 +19,16 @@ export class PokemonStatsEntity {
   kills?: number;
 
   @Prop({ type: Number })
+  teammate?: number;
+
+  @Prop({ type: Number })
   deaths?: number;
 
   @Prop({ type: Number })
   brought?: number;
+
+  @Prop({ type: String, enum: POKEMON_STATUSES })
+  status?: PokemonResultStatus;
 }
 
 @Schema({ _id: false })
@@ -42,8 +57,8 @@ export class ExternalMatchEntity {
   @Prop({ type: String })
   replay?: string;
 
-  @Prop({ type: String })
-  winner?: "a" | "b";
+  @Prop({ type: String, enum: MATCH_WINNERS })
+  winner?: MatchWinner;
 }
 export const MatchDataSchema =
   SchemaFactory.createForClass(ExternalMatchEntity);
