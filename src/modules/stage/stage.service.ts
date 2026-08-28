@@ -1163,11 +1163,15 @@ export class StageService {
     const results = this.buildMatchResults(dto.matches);
     const score = dto.score ?? this.tallyScore(results);
     const winner = dto.winner ?? this.tallyWinner(score);
+    const side1Paste = dto.side1Paste?.trim() || undefined;
+    const side2Paste = dto.side2Paste?.trim() || undefined;
 
     if (viewer.isOrganizer) {
       matchupDoc.results = results;
       matchupDoc.side1.score = score.team1;
       matchupDoc.side2.score = score.team2;
+      matchupDoc.side1.paste = side1Paste;
+      matchupDoc.side2.paste = side2Paste;
       matchupDoc.winner = winner;
       matchupDoc.forfeit = dto.forfeit ?? false;
       matchupDoc.status = "approved";
@@ -1192,6 +1196,8 @@ export class StageService {
       winner,
       forfeit: dto.forfeit || undefined,
       notes: dto.notes?.trim() || undefined,
+      side1Paste,
+      side2Paste,
     };
     matchupDoc.status = "pending";
     await matchupDoc.save();
@@ -1246,6 +1252,8 @@ export class StageService {
     }));
     matchupDoc.side1.score = report.side1Score ?? 0;
     matchupDoc.side2.score = report.side2Score ?? 0;
+    matchupDoc.side1.paste = report.side1Paste ?? matchupDoc.side1.paste;
+    matchupDoc.side2.paste = report.side2Paste ?? matchupDoc.side2.paste;
     if (report.winner) matchupDoc.winner = report.winner;
     matchupDoc.forfeit = report.forfeit ?? false;
     matchupDoc.status = "approved";

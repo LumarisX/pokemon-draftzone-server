@@ -62,6 +62,8 @@ function reportView(report: MatchupReportEntity) {
     winner: report.winner,
     forfeit: report.forfeit ?? false,
     notes: report.notes,
+    side1Paste: report.side1Paste,
+    side2Paste: report.side2Paste,
     matches: resultsView(report.results ?? []),
   };
 }
@@ -78,8 +80,16 @@ export function toMatchupDetail(
 
   return {
     ...base,
-    team1: { ...base.team1, ...contactFor(matchup.side1.team, viewer) },
-    team2: { ...base.team2, ...contactFor(matchup.side2.team, viewer) },
+    team1: {
+      ...base.team1,
+      ...contactFor(matchup.side1.team, viewer),
+      paste: matchup.side1.paste,
+    },
+    team2: {
+      ...base.team2,
+      ...contactFor(matchup.side2.team, viewer),
+      paste: matchup.side2.paste,
+    },
     label: matchup.label ?? base.label,
     notes: matchup.notes,
     scheduledDate: matchup.scheduledDate,

@@ -105,6 +105,16 @@ export class SubmitMatchupReportDto {
   @MaxLength(500)
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  side1Paste?: string;
+
+  @IsString()
+  @MaxLength(500)
+  @IsOptional()
+  side2Paste?: string;
 }
 
 export class TradePokemonDto {

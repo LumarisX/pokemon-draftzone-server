@@ -101,6 +101,12 @@ export class MatchupReportEntity {
 
   @Prop({ trim: true })
   notes?: string;
+
+  @Prop({ trim: true })
+  side1Paste?: string;
+
+  @Prop({ trim: true })
+  side2Paste?: string;
 }
 export const MatchupReportSchema = SchemaFactory.createForClass(
   MatchupReportEntity,
@@ -136,6 +142,9 @@ export class MatchSideEntity {
 
   @Prop({ min: 0 })
   score?: number;
+
+  @Prop({ trim: true })
+  paste?: string;
 }
 export const MatchSideSchema = SchemaFactory.createForClass(MatchSideEntity);
 
