@@ -451,6 +451,10 @@ function countMoveTargets(
   return Math.max(count, 1);
 }
 
+function speciesExists(speciesId: ID, genNum?: number): boolean {
+  return gens.get(genNum ?? 9).species.get(speciesId)?.exists === true;
+}
+
 function toBaseSpeciesId(speciesId: ID, genNum?: number): ID {
   const gen = gens.get(genNum ?? 9);
   const specie = gen.species.get(speciesId);
@@ -2110,10 +2114,11 @@ export class ReplayStatesService {
     }
     if (line.args.species) {
       const speciesId = toID(line.args.species);
-      const baseSpeciesId = toBaseSpeciesId(speciesId, field.genNum);
-      pokemon.species = speciesId;
-      pokemon.baseSpecies = baseSpeciesId;
-      pushUnique(pokemon.speciesHistory, speciesId);
+      if (speciesExists(speciesId, field.genNum)) {
+        pokemon.species = speciesId;
+        pokemon.baseSpecies = toBaseSpeciesId(speciesId, field.genNum);
+        pushUnique(pokemon.speciesHistory, speciesId);
+      }
     }
     if (line.args.hpStatus) {
       const hp = parseHpStatus(line.args.hpStatus);
