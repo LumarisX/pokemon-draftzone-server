@@ -33,6 +33,8 @@ export class ExternalMatchup {
   matches: ExternalMatch[];
   stage?: string;
   tournamentName?: string;
+  scheduledDate?: Date;
+  opponentTimezone?: string;
   scoreOverride?: [number, number];
   winnerOverride?: MatchWinner;
   forfeitedBy?: ForfeitSide;
@@ -44,6 +46,8 @@ export class ExternalMatchup {
     matches?: ExternalMatch[];
     stage?: string;
     tournamentName?: string;
+    scheduledDate?: Date;
+    opponentTimezone?: string;
     scoreOverride?: [number, number];
     winnerOverride?: MatchWinner;
     forfeitedBy?: ForfeitSide;
@@ -53,6 +57,8 @@ export class ExternalMatchup {
     this.matches = props.matches ?? [];
     this.stage = props.stage;
     this.tournamentName = props.tournamentName;
+    this.scheduledDate = props.scheduledDate;
+    this.opponentTimezone = props.opponentTimezone;
     this.scoreOverride = props.scoreOverride;
     this.winnerOverride = props.winnerOverride;
     this.forfeitedBy = props.forfeitedBy;
@@ -78,6 +84,7 @@ export class ExternalMatchup {
         ruleset: this.ruleset.name,
         leagueName: this.tournamentName,
         stage: this.stage,
+        scheduledDate: this.scheduledDate?.toISOString(),
       },
       summary: [
         summarizeTeam(aTeam.team, aTeam.teamName, aTeam.coach),

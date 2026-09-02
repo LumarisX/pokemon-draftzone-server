@@ -64,6 +64,12 @@ export class ExternalMatchupEntity {
   @Prop({ type: [MatchDataSchema], required: true })
   matches!: ExternalMatchEntity[];
 
+  @Prop({ type: Date, default: undefined })
+  scheduledDate?: Date;
+
+  @Prop({ type: String, trim: true, default: undefined })
+  opponentTimezone?: string;
+
   @Prop({ type: [Number], default: undefined })
   scoreOverride?: [number, number];
 

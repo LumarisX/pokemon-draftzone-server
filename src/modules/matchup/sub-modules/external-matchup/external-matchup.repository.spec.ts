@@ -81,4 +81,60 @@ describe("ExternalMatchupRepository", () => {
       expect(setData["aTeam.paste"]).toBe("");
     });
   });
+
+  describe("update", () => {
+    it("routes undefined entity fields to $unset so a cleared field clears", async () => {
+      await repository.update("matchup-1", {
+        stage: "Round 3",
+        scheduledDate: undefined,
+        opponentTimezone: undefined,
+      });
+
+      expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+        "matchup-1",
+        {
+          $set: { stage: "Round 3" },
+          $unset: { scheduledDate: "", opponentTimezone: "" },
+        },
+        { returnDocument: "after" },
+      );
+    });
+
+    it("leaves absent keys alone rather than unsetting them", async () => {
+      await repository.update("matchup-1", { stage: "Round 3" });
+
+      const call = (model.findByIdAndUpdate as jest.Mock).mock.calls[0][1];
+      expect(call.$unset).toEqual({});
+      expect("notes" in call.$set).toBe(false);
+    });
+  });
+
+  describe("updateSchedule", () => {
+    it("sets both fields when a date and zone are given", async () => {
+      const when = new Date("2026-09-06T02:00:00.000Z");
+      await repository.updateSchedule("matchup-1", when, "America/Chicago");
+
+      expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+        "matchup-1",
+        {
+          $set: { scheduledDate: when, opponentTimezone: "America/Chicago" },
+          $unset: {},
+        },
+        { returnDocument: "after" },
+      );
+    });
+
+    it("unsets the zone alongside the date when the time is cleared", async () => {
+      await repository.updateSchedule("matchup-1", null, "America/Chicago");
+
+      expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+        "matchup-1",
+        {
+          $set: {},
+          $unset: { scheduledDate: "", opponentTimezone: "" },
+        },
+        { returnDocument: "after" },
+      );
+    });
+  });
 });

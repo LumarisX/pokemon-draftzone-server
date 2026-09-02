@@ -6,7 +6,11 @@ import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/ex
 import { Injectable } from "@nestjs/common";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
-import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
+import {
+  ExternalMatchupDto,
+  MatchSchedulePatchDto,
+  ScorePatchDto,
+} from "./external-matchup.dto";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 import { ExternalMatchupRepository } from "./external-matchup.repository";
 
@@ -64,6 +68,8 @@ export class ExternalMatchupService {
           ),
       },
       stage: dto.stage,
+      scheduledDate: dto.scheduledDate ? new Date(dto.scheduledDate) : undefined,
+      opponentTimezone: dto.opponentTimezone,
       matches: [],
     };
     await this.matchupRepo.create(payload);
@@ -120,6 +126,21 @@ export class ExternalMatchupService {
     await this.matchupRepo.update(
       externalmatchupId,
       ExternalMatchupMapper.toDatabasePayload(updated),
+    );
+    return this.matchupRepo.findById(externalmatchupId);
+  }
+
+  async updateExternalMatchupSchedule(
+    tournamentSlug: string,
+    externalmatchupId: string,
+    owner: string,
+    dto: MatchSchedulePatchDto,
+  ): Promise<ExternalMatchup> {
+    await this.getOwnedMatchup(tournamentSlug, externalmatchupId, owner);
+    await this.matchupRepo.updateSchedule(
+      externalmatchupId,
+      dto.scheduledDate ? new Date(dto.scheduledDate) : null,
+      dto.opponentTimezone,
     );
     return this.matchupRepo.findById(externalmatchupId);
   }

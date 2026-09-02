@@ -22,13 +22,11 @@ export class ExternalMatchupMapper {
       winner: matchup.calculateWinner(),
       matches: matchup.matches,
       paste: matchup.bTeam.paste,
+      scheduledDate: matchup.scheduledDate?.toISOString() ?? null,
+      opponentTimezone: matchup.opponentTimezone ?? null,
     };
   }
 
-  /**
-   * Resolved team members plus any unresolved entries (greyed out client-side),
-   * so a wrong-ruleset species is shown rather than silently dropped.
-   */
   private static teamPayload(side: ExternalMatchup["bTeam"]) {
     return [
       ...side.team.map(PokemonMapper.toClientPayload),
@@ -48,6 +46,8 @@ export class ExternalMatchupMapper {
       scoreOverride: matchup.scoreOverride ?? null,
       winnerOverride: matchup.winnerOverride ?? null,
       forfeitedBy: matchup.forfeitedBy ?? null,
+      scheduledDate: matchup.scheduledDate?.toISOString() ?? null,
+      opponentTimezone: matchup.opponentTimezone ?? null,
       aTeam: {
         teamName: matchup.aTeam.teamName,
         team: ExternalMatchupMapper.teamPayload(matchup.aTeam),
@@ -79,6 +79,8 @@ export class ExternalMatchupMapper {
       matches: matchup.matches.map((match) =>
         MatchMapper.toDatabasePayload(match),
       ),
+      scheduledDate: matchup.scheduledDate,
+      opponentTimezone: matchup.opponentTimezone,
       scoreOverride: matchup.scoreOverride,
       winnerOverride: matchup.winnerOverride,
       forfeitedBy: matchup.forfeitedBy,
@@ -94,6 +96,10 @@ export class ExternalMatchupMapper {
       format: existing.format,
       tournamentName: existing.tournamentName,
       stage: data.stage ?? existing.stage,
+      scheduledDate: data.scheduledDate
+        ? new Date(data.scheduledDate)
+        : undefined,
+      opponentTimezone: data.opponentTimezone,
       scoreOverride: existing.scoreOverride,
       winnerOverride: existing.winnerOverride,
       forfeitedBy: existing.forfeitedBy,
@@ -133,6 +139,8 @@ export class ExternalMatchupMapper {
       format,
       tournamentName: tournamentDoc.leagueName,
       stage: matchupDoc.stage,
+      scheduledDate: matchupDoc.scheduledDate ?? undefined,
+      opponentTimezone: matchupDoc.opponentTimezone ?? undefined,
       matches: matchupDoc.matches
         ? matchupDoc.matches.map((m) => MatchMapper.fromDatabase(m))
         : [],

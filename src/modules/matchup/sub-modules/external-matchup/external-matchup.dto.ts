@@ -4,12 +4,14 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsNumber,
   IsOptional,
   IsString,
   Min,
   MinLength,
   registerDecorator,
+  ValidateIf,
   ValidateNested,
   ValidationArguments,
   ValidationOptions,
@@ -107,6 +109,16 @@ export class ExternalMatchupDto {
   @IsOptional()
   coach?: string;
 
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsDateString()
+  @IsOptional()
+  scheduledDate?: string;
+
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsString()
+  @IsOptional()
+  opponentTimezone?: string;
+
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })
@@ -117,6 +129,18 @@ export class ExternalMatchupDto {
   @ValidateNested({ each: true })
   @Type(() => PokemonDto)
   team!: PokemonDto[];
+}
+
+export class MatchSchedulePatchDto {
+  @Transform(({ value }) => (value === "" ? null : value))
+  @ValidateIf((_, value) => value !== null)
+  @IsDateString()
+  scheduledDate!: string | null;
+
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @IsString()
+  @IsOptional()
+  opponentTimezone?: string;
 }
 
 export class ScorePatchDto {

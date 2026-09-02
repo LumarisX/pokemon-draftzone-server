@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import {
   SetMatchupAdvancementDto,
+  SetMatchupScheduleDto,
   SubmitMatchupReportDto,
   UpdateMatchupDto,
 } from "./stage.dto";
@@ -60,6 +61,24 @@ export class TournamentMatchupController {
       tournamentSlug,
       matchupSlug,
       sub,
+    );
+  }
+
+  @Post(":matchupSlug/schedule")
+  @UseGuards(JwtAuthGuard)
+  async setMatchupSchedule(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("matchupSlug") matchupSlug: string,
+    @User() sub: string,
+    @Body() body: SetMatchupScheduleDto,
+  ) {
+    return this.stageService.setMatchupSchedule(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+      body,
     );
   }
 

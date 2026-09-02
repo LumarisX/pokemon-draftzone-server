@@ -48,6 +48,7 @@ import {
   MakeTradeDto,
   MatchResultDto,
   SetCurrentRoundDto,
+  SetMatchupScheduleDto,
   SetStagePoolsDto,
   SetTradeStatusDto,
   SubmitMatchupReportDto,
@@ -1093,6 +1094,7 @@ export class StageService {
       canChat: chatEnabled && (isOrganizer || side !== null),
       canReport: isOrganizer || (coachReportingEnabled && side !== null),
       canReview: isOrganizer,
+      canSchedule: isOrganizer || side !== null,
     };
 
     return { stageDoc, tournament, matchupDoc, viewer };
@@ -1140,6 +1142,33 @@ export class StageService {
         : null,
       viewer,
     });
+  }
+
+  async setMatchupSchedule(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub: string,
+    dto: SetMatchupScheduleDto,
+  ) {
+    const { matchupDoc, viewer } = await this.loadMatchupContext(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+    );
+    if (!viewer.canSchedule)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
+
+    matchupDoc.scheduledDate = dto.scheduledDate
+      ? new Date(dto.scheduledDate)
+      : undefined;
+    await matchupDoc.save();
+
+    return {
+      message: dto.scheduledDate ? "Match time set" : "Match time cleared",
+      scheduledDate: matchupDoc.scheduledDate?.toISOString() ?? null,
+    };
   }
 
   async submitMatchupReport(

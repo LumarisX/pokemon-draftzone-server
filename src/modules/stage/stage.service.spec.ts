@@ -1448,6 +1448,120 @@ describe("StageService", () => {
     });
   });
 
+  describe("setMatchupSchedule", () => {
+    const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
+    const WHEN = "2026-09-06T02:00:00.000Z";
+
+    function setup() {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: TOURNAMENT_ID.toString() }),
+      );
+      const matchup = {
+        _id: new Types.ObjectId(),
+        slug: "match-1",
+        stage: stageId,
+        results: [],
+        side1: {
+          score: 0,
+          team: buildTeam({ coach: { auth0Id: "auth0|coach-1" } }),
+        },
+        side2: {
+          score: 0,
+          team: buildTeam({ coach: { auth0Id: "auth0|coach-2" } }),
+        },
+        save: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      matchupRepo.findBySlugPopulated.mockResolvedValue(matchup);
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
+      );
+      return matchup;
+    }
+
+    it.each([
+      ["a coach on side1", "auth0|coach-1"],
+      ["a coach on side2", "auth0|coach-2"],
+      ["an organizer", "auth0|owner"],
+    ])("lets %s set the time", async (_label, sub) => {
+      const matchup = setup();
+
+      const result = await service.setMatchupSchedule(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        sub,
+        { scheduledDate: WHEN },
+      );
+
+      expect(matchup.scheduledDate).toEqual(new Date(WHEN));
+      expect(matchup.save).toHaveBeenCalled();
+      expect(result.scheduledDate).toBe(WHEN);
+    });
+
+    it("rejects someone who is neither a coach in the match nor an organizer", async () => {
+      const matchup = setup();
+
+      await expect(
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|stranger",
+          { scheduledDate: WHEN },
+        ),
+      ).rejects.toThrow();
+      expect(matchup.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a coach from another match in the same tournament", async () => {
+      const matchup = setup();
+
+      await expect(
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|coach-3",
+          { scheduledDate: WHEN },
+        ),
+      ).rejects.toThrow();
+    });
+
+    it("clears the time on null", async () => {
+      const matchup = setup();
+      matchup.scheduledDate = new Date(WHEN);
+
+      const result = await service.setMatchupSchedule(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|coach-1",
+        { scheduledDate: null },
+      );
+
+      expect(matchup.scheduledDate).toBeUndefined();
+      expect(result.scheduledDate).toBeNull();
+    });
+
+    it("refuses a matchup that belongs to another tournament", async () => {
+      const matchup = setup();
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: new Types.ObjectId() }),
+      );
+
+      await expect(
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|owner",
+          { scheduledDate: WHEN },
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
   describe("setMatchupAdvancement", () => {
     const TOURNAMENT_ID = new Types.ObjectId();
     const stageId = new Types.ObjectId();

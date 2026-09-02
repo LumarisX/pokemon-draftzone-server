@@ -1,8 +1,9 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsDateString,
   IsIn,
   IsNumber,
   IsObject,
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 
@@ -79,6 +81,13 @@ export class UpdateMatchupDto {
   @ValidateNested({ each: true })
   @Type(() => MatchResultDto)
   matches!: MatchResultDto[];
+}
+
+export class SetMatchupScheduleDto {
+  @Transform(({ value }) => (value === "" ? null : value))
+  @ValidateIf((_, value) => value !== null)
+  @IsDateString()
+  scheduledDate!: string | null;
 }
 
 export class SubmitMatchupReportDto {

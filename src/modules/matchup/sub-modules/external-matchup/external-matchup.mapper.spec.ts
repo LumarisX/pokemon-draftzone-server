@@ -114,6 +114,8 @@ describe("ExternalMatchupMapper", () => {
         score: null,
         matches: [],
         paste: "b-paste",
+        scheduledDate: null,
+        opponentTimezone: null,
       });
     });
 
@@ -165,6 +167,8 @@ describe("ExternalMatchupMapper", () => {
         scoreOverride: null,
         winnerOverride: null,
         forfeitedBy: null,
+        scheduledDate: null,
+        opponentTimezone: null,
         aTeam: {
           teamName: "Team Rocket",
           team: [{ id: "pikachu", toClientPayload: true }],

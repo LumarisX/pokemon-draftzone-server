@@ -10,7 +10,11 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
+import {
+  ExternalMatchupDto,
+  MatchSchedulePatchDto,
+  ScorePatchDto,
+} from "./external-matchup.dto";
 import { ExternalMatchupService } from "./external-matchup.service";
 import { ExternalMatchupMapper } from "./external-matchup.mapper";
 
@@ -105,6 +109,26 @@ export class ExternalMatchupController {
     return {
       message: "ExternalMatchup Updated",
       draft: ExternalMatchupMapper.toClientPayload(updatedMatchup),
+    };
+  }
+
+  @Patch("matchups/:matchupId/schedule")
+  async updateExternalMatchupSchedule(
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("matchupId") matchupId: string,
+    @User() sub: string,
+    @Body() body: MatchSchedulePatchDto,
+  ) {
+    const updatedMatchup =
+      await this.externalmatchupService.updateExternalMatchupSchedule(
+        tournamentSlug,
+        matchupId,
+        sub,
+        body,
+      );
+    return {
+      message: "Match Time Updated",
+      matchup: ExternalMatchupMapper.toClientPayload(updatedMatchup),
     };
   }
 

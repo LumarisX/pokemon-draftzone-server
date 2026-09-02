@@ -16,6 +16,7 @@ export interface MatchupViewer {
   canChat: boolean;
   canReport: boolean;
   canReview: boolean;
+  canSchedule: boolean;
 }
 
 export interface MatchupDetailOptions extends ScheduleViewOptions {

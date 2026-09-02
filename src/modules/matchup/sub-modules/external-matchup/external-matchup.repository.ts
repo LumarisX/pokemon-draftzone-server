@@ -54,8 +54,46 @@ export class ExternalMatchupRepository {
     id: string,
     updateData: Partial<ExternalMatchupEntity>,
   ): Promise<void> {
+    const setData: { [key: string]: unknown } = {};
+    const unsetData: { [key: string]: "" } = {};
+
+    for (const [key, value] of Object.entries(updateData)) {
+      if (value === undefined) unsetData[key] = "";
+      else setData[key] = value;
+    }
+
     await this.externalmatchupModel
-      .findByIdAndUpdate(id, { $set: updateData }, { returnDocument: "after" })
+      .findByIdAndUpdate(
+        id,
+        { $set: setData, $unset: unsetData },
+        { returnDocument: "after" },
+      )
+      .exec();
+  }
+
+  async updateSchedule(
+    id: string,
+    scheduledDate: Date | null,
+    opponentTimezone?: string,
+  ): Promise<void> {
+    const setData: { [key: string]: unknown } = {};
+    const unsetData: { [key: string]: "" } = {};
+
+    if (scheduledDate) setData["scheduledDate"] = scheduledDate;
+    else unsetData["scheduledDate"] = "";
+
+    if (scheduledDate && opponentTimezone) {
+      setData["opponentTimezone"] = opponentTimezone;
+    } else {
+      unsetData["opponentTimezone"] = "";
+    }
+
+    await this.externalmatchupModel
+      .findByIdAndUpdate(
+        id,
+        { $set: setData, $unset: unsetData },
+        { returnDocument: "after" },
+      )
       .exec();
   }
 
