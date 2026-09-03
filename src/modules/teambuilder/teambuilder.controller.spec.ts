@@ -7,34 +7,75 @@ describe("TeambuilderController", () => {
 
   beforeEach(() => {
     service = {
-      getPokemonData: jest.fn(),
+      getSpecies: jest.fn(),
+      getProcessedLearnset: jest.fn(),
     } as unknown as jest.Mocked<TeambuilderService>;
     controller = new TeambuilderController(service);
   });
 
-  describe("getPokemonData", () => {
-    it("throws MISSING_FIELD when id is omitted", async () => {
-      await expect(
-        controller.getPokemonData(undefined, "Gen9 NatDex"),
-      ).rejects.toMatchObject({ code: "VAL-003" });
-      expect(service.getPokemonData).not.toHaveBeenCalled();
-    });
-
+  describe("getSpecies", () => {
     it("throws MISSING_FIELD when ruleset is omitted", async () => {
       await expect(
-        controller.getPokemonData("pikachu", undefined),
+        controller.getSpecies("pikachu", undefined),
       ).rejects.toMatchObject({ code: "VAL-003" });
-      expect(service.getPokemonData).not.toHaveBeenCalled();
+      expect(service.getSpecies).not.toHaveBeenCalled();
     });
 
-    it("forwards id and ruleset to the service when both are present", async () => {
+    it("forwards id and ruleset to the service", async () => {
       const data = { id: "pikachu" } as any;
-      service.getPokemonData.mockResolvedValue(data);
+      service.getSpecies.mockResolvedValue(data);
 
-      const result = await controller.getPokemonData("pikachu", "Gen9 NatDex");
+      const result = await controller.getSpecies("pikachu", "Gen9 NatDex");
 
-      expect(service.getPokemonData).toHaveBeenCalledWith("pikachu", "Gen9 NatDex");
+      expect(service.getSpecies).toHaveBeenCalledWith(
+        "pikachu",
+        "Gen9 NatDex",
+      );
       expect(result).toBe(data);
+    });
+  });
+
+  describe("getLearnset", () => {
+    it("throws MISSING_FIELD when ruleset is omitted", async () => {
+      await expect(
+        controller.getLearnset("pikachu", undefined),
+      ).rejects.toMatchObject({ code: "VAL-003" });
+      expect(service.getProcessedLearnset).not.toHaveBeenCalled();
+    });
+
+    it("splits the types query into the set shape the service expects", async () => {
+      service.getProcessedLearnset.mockResolvedValue([]);
+
+      await controller.getLearnset(
+        "pikachu",
+        "Gen9 NatDex",
+        "Electric",
+        "Electric",
+        "Static",
+      );
+
+      expect(service.getProcessedLearnset).toHaveBeenCalledWith({
+        ruleset: "Gen9 NatDex",
+        pokemon: {
+          id: "pikachu",
+          types: ["Electric"],
+          teraType: "Electric",
+          ability: "Static",
+          moves: [],
+        },
+      });
+    });
+
+    it("defaults types and ability when they are not supplied", async () => {
+      service.getProcessedLearnset.mockResolvedValue([]);
+
+      await controller.getLearnset("pikachu", "Gen9 NatDex");
+
+      expect(service.getProcessedLearnset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pokemon: expect.objectContaining({ types: [], ability: "" }),
+        }),
+      );
     });
   });
 });

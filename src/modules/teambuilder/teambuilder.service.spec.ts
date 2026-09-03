@@ -1,4 +1,7 @@
-import { TeambuilderPokemonSet, TeambuilderService } from "./teambuilder.service";
+import {
+  TeambuilderPokemonSet,
+  TeambuilderService,
+} from "./teambuilder.service";
 
 describe("TeambuilderService", () => {
   let service: TeambuilderService;
@@ -7,9 +10,9 @@ describe("TeambuilderService", () => {
     service = new TeambuilderService();
   });
 
-  describe("getPokemonData", () => {
+  describe("getSpecies", () => {
     it("returns the species' teambuilder data for a valid id/ruleset", () => {
-      const result = service.getPokemonData("pikachu", "Gen9 NatDex");
+      const result = service.getSpecies("pikachu", "Gen9 NatDex");
 
       return expect(result).resolves.toMatchObject({
         id: "pikachu",
@@ -18,95 +21,10 @@ describe("TeambuilderService", () => {
       });
     });
 
-    it("throws SPECIES.NOT_FOUND for an unknown id", () => {
-      let error: unknown;
-      try {
-        service.getPokemonData("notarealpokemon", "Gen9 NatDex");
-      } catch (e) {
-        error = e;
-      }
-      expect(error).toMatchObject({ code: "SPC-001" });
-    });
-  });
-
-  describe("shouldHighlightMove", () => {
-    const pokemon: TeambuilderPokemonSet = {
-      id: "pikachu" as any,
-      types: ["Electric"],
-      teraType: "Electric" as any,
-      ability: "Adaptability",
-      moves: [],
-    };
-
-    it("returns false when ability or move is missing", () => {
-      expect(
-        service.shouldHighlightMove({ ability: "", move: { type: "Electric" } as any, pokemon }),
-      ).toBe(false);
-      expect(
-        service.shouldHighlightMove({ ability: "Adaptability", move: undefined as any, pokemon }),
-      ).toBe(false);
-    });
-
-    it("returns true for Adaptability on a STAB move", () => {
-      const result = service.shouldHighlightMove({
-        ability: "Adaptability",
-        move: { type: "Electric" } as any,
-        pokemon,
-      });
-
-      expect(result).toBe(true);
-    });
-
-    it("returns false for Adaptability on a non-STAB move", () => {
-      const result = service.shouldHighlightMove({
-        ability: "Adaptability",
-        move: { type: "Ice" } as any,
-        pokemon,
-      });
-
-      expect(result).toBe(false);
-    });
-
-    it("returns false for Adaptability when no pokemon is given", () => {
-      const result = service.shouldHighlightMove({
-        ability: "Adaptability",
-        move: { type: "Electric" } as any,
-        pokemon: undefined,
-      });
-
-      expect(result).toBe(false);
-    });
-
-    it("returns false for any other ability", () => {
-      const result = service.shouldHighlightMove({
-        ability: "Static",
-        move: { type: "Electric" } as any,
-        pokemon,
-      });
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe("shouldHighlightItem (not yet implemented)", () => {
-    it("always returns false, even with valid ability/item", () => {
-      const result = service.shouldHighlightItem({
-        ability: "Levitate",
-        item: { id: "lightball", pngId: "", name: "Light Ball", desc: "", tags: [] },
-      });
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe("getModifiedMove / getModifiedType (not yet implemented)", () => {
-    it("always return undefined", () => {
-      expect(
-        service.getModifiedMove({ ability: "Levitate", move: {} as any }),
-      ).toBeUndefined();
-      expect(
-        service.getModifiedType({ move: {} as any, pokemon: {} as any }),
-      ).toBeUndefined();
+    it("throws SPECIES.NOT_FOUND for an unknown id", async () => {
+      await expect(
+        service.getSpecies("notarealpokemon", "Gen9 NatDex"),
+      ).rejects.toMatchObject({ code: "SPC-001" });
     });
   });
 

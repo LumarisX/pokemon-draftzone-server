@@ -53,4 +53,18 @@ describe("generateSlug", () => {
       expect(SLUG_ALPHABET).toContain(char);
     }
   });
+
+  it("falls back to the default length when called with a non-number", () => {
+    const asMongooseCallsDefaults = generateSlug as unknown as (
+      doc: unknown,
+    ) => string;
+
+    expect(asMongooseCallsDefaults({ any: "document" })).toHaveLength(
+      SLUG_LENGTH,
+    );
+    expect(asMongooseCallsDefaults(undefined)).toHaveLength(SLUG_LENGTH);
+    expect(asMongooseCallsDefaults(0)).toHaveLength(SLUG_LENGTH);
+    expect(asMongooseCallsDefaults(-5)).toHaveLength(SLUG_LENGTH);
+    expect(asMongooseCallsDefaults(NaN)).toHaveLength(SLUG_LENGTH);
+  });
 });

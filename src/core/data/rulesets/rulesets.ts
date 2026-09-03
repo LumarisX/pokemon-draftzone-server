@@ -5,6 +5,12 @@ import * as InsDex from "../../../mods/insurgance";
 import * as RRDex from "../../../mods/radicalred";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import {
+  DEFAULT_STAT_SYSTEM_ID,
+  getStatSystem,
+  StatSystem,
+  StatSystemId,
+} from "@pdz/sets";
 
 const championsDex = Dex.mod(
   "champions" as ID,
@@ -202,13 +208,13 @@ export class Ruleset extends Generation {
   name: RulesetId;
   restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
   isNatDex: boolean;
-  useStatPoints: boolean;
+  statSystem: StatSystemId;
   constructor(
     dex: ModdedDex,
     exists: (d: Data) => boolean,
     name: RulesetId,
     options?: {
-      useStatPoints?: boolean;
+      statSystem?: StatSystemId;
       restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
       isNatDex?: boolean;
     },
@@ -217,7 +223,11 @@ export class Ruleset extends Generation {
     this.name = name;
     this.restriction = options?.restriction;
     this.isNatDex = options?.isNatDex ?? false;
-    this.useStatPoints = options?.useStatPoints ?? false;
+    this.statSystem = options?.statSystem ?? DEFAULT_STAT_SYSTEM_ID;
+  }
+
+  get statRules(): StatSystem {
+    return getStatSystem(this.statSystem);
   }
 }
 
@@ -242,7 +252,7 @@ export const Rulesets: {
             (d.kind === "Species" && d.forme === "Gmax")
           ),
         RULESET_IDS.CHAMPIONS,
-        { useStatPoints: true },
+        { statSystem: "statPoints" },
       ),
     },
     "National Dex": {

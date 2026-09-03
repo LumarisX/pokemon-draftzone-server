@@ -5,6 +5,7 @@ import { PDZMove } from "@modules/move/move.domain";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getPowerModifier } from "@modules/data/domain/move-power";
 import { Injectable, Logger } from "@nestjs/common";
+import { getStatSystem, StatSystemId } from "@pdz/sets";
 import { ID, Move, TypeName } from "@pkmn/data";
 
 export interface TeambuilderItem {
@@ -13,6 +14,21 @@ export interface TeambuilderItem {
   readonly name: string;
   readonly desc: string;
   readonly tags: string[];
+}
+
+function getStatSystemPayload(id: StatSystemId) {
+  const system = getStatSystem(id);
+  return {
+    id: system.id,
+    label: system.label,
+    pointLabel: system.pointLabel,
+    field: system.field,
+    perStatMax: system.perStatMax,
+    total: system.total,
+    usableTotal: system.usableTotal,
+    granularity: system.granularity,
+    usesIvs: system.usesIvs,
+  };
 }
 
 export interface TeambuilderPokemonSet {
@@ -70,52 +86,15 @@ function pdzCalculateStrength(
 export class TeambuilderService {
   private readonly logger = new Logger(TeambuilderService.name);
 
-  getPokemonData(id: string, rulesetId: string) {
+  async getSpecies(id: string, rulesetId: string) {
     const ruleset = getRuleset(rulesetId);
     const specie = ruleset.species.get(id);
     if (!specie) throw new PDZError(ErrorCodes.SPECIES.NOT_FOUND, { id });
 
     const pokemon = new PDZPokemon(specie, ruleset);
-    return pokemon.toTeambuilder();
-  }
-
-  shouldHighlightMove(params: {
-    ability: string;
-    move: Move;
-    pokemon?: TeambuilderPokemonSet;
-  }): boolean {
-    const { ability, move, pokemon } = params || {};
-    if (!ability || !move) return false;
-
-    // For Adaptability, we need to check if it's a STAB move
-    if (ability === "Adaptability" && pokemon) return isStab(move, pokemon);
-
-    return false;
-  }
-
-  shouldHighlightItem(params: {
-    ability: string;
-    item: TeambuilderItem;
-  }): boolean {
-    const { ability, item } = params || {};
-    if (!ability || !item) return false;
-
-    return false;
-  }
-
-  getModifiedMove(_params: {
-    ability: string;
-    move: Move;
-    pokemon?: TeambuilderPokemonSet;
-  }): undefined {
-    return undefined;
-  }
-
-  getModifiedType(_params: {
-    move: Move;
-    pokemon: TeambuilderPokemonSet;
-  }): undefined {
-    return undefined;
+    const data = await pokemon.toTeambuilder();
+    const statSystem: StatSystemId = ruleset.statSystem;
+    return { ...data, statSystem, statRules: getStatSystemPayload(statSystem) };
   }
 
   async getProcessedLearnset(params: {

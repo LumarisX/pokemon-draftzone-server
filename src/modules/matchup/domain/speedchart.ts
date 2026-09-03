@@ -1,3 +1,4 @@
+import { getStatSystem } from "@pdz/sets";
 import { ID, StatusName } from "@pkmn/data";
 import { computeStats } from "../../../../dmg/stats";
 import { State } from "../../../../dmg/state";
@@ -60,13 +61,9 @@ const LEGACY_BOOSTS = [
   25, 28, 33, 40, 50, 66, 100, 150, 200, 250, 300, 350, 400,
 ];
 
-const MAX_EVS = 252;
-const MAX_SPS = 32;
+const MAX_EVS = getStatSystem("evs").perStatMax;
+const MAX_SPS = getStatSystem("statPoints").perStatMax;
 const MIN_SPS = 0;
-
-function maxInvestmentLabel(useStatPoints: boolean): string {
-  return String(useStatPoints ? MAX_SPS : MAX_EVS);
-}
 
 type AbilitySpeedRule =
   | { kind: "multiplier"; mult: number; noItem?: true }
@@ -160,8 +157,9 @@ function applyScenarioSpeedEffects(
 }
 
 function getSpeedTierPresets(pokemon: PDZPokemon): SpeedTierPreset[] {
-  const useStatPoints = pokemon.ruleset.useStatPoints;
-  const maxLabel = maxInvestmentLabel(useStatPoints);
+  const statRules = pokemon.ruleset.statRules;
+  const useStatPoints = statRules.field === "sps";
+  const maxLabel = String(statRules.perStatMax);
   const abilityModifiers = abilitySpeedModifiers(pokemon.getAbilities());
 
   const fast: SpeedTierPreset = {

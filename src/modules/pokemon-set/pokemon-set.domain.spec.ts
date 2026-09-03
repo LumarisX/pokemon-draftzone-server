@@ -229,6 +229,34 @@ describe("PDZPokemonSet", () => {
         expect(pikachu.isLegal).toBe(false);
       });
 
+      it("allows exactly 510 total EVs but flags the wasted remainder", () => {
+        const pikachu = set(
+          {
+            id: "pikachu",
+            evs: { hp: 6, atk: 252, spe: 252 },
+          },
+          NAT_DEX,
+        );
+        expect(pikachu.isLegal).toBe(true);
+        expect(pikachu.issues.map((issue) => issue.code)).toContain(
+          "points.wasted",
+        );
+      });
+
+      it("rejects 512 total EVs", () => {
+        const pikachu = set(
+          {
+            id: "pikachu",
+            evs: { hp: 8, atk: 252, spe: 252 },
+          },
+          NAT_DEX,
+        );
+        expect(pikachu.isLegal).toBe(false);
+        expect(pikachu.issues.map((issue) => issue.code)).toContain(
+          "points.total",
+        );
+      });
+
       it("returns false if an individual EV exceeds the maximum allowed (252)", () => {
         const pikachu = set(
           {

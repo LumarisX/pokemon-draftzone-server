@@ -441,6 +441,18 @@ export const ErrorCodes = {
       message: "Invalid tournament settings",
     },
   },
+  TEAMBUILDER: {
+    TEAM_NOT_FOUND: {
+      code: "TB-001",
+      status: 404,
+      message: "Team not found",
+    },
+    TOO_MANY_SETS: {
+      code: "TB-002",
+      status: 400,
+      message: "Team has too many Pokemon",
+    },
+  },
 } as const;
 
 export type ErrorCodePath =
@@ -463,4 +475,5 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.PARAMS
   | keyof typeof ErrorCodes.FORMAT
   | keyof typeof ErrorCodes.FILE
-  | keyof typeof ErrorCodes.TOURNAMENT;
+  | keyof typeof ErrorCodes.TOURNAMENT
+  | keyof typeof ErrorCodes.TEAMBUILDER;
