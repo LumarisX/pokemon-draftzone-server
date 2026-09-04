@@ -48,6 +48,7 @@ import {
   MakeTradeDto,
   MatchResultDto,
   SetCurrentRoundDto,
+  SetMatchupNotesDto,
   SetMatchupScheduleDto,
   SetStagePoolsDto,
   SetTradeStatusDto,
@@ -977,7 +978,10 @@ export class StageService {
       : -1;
     const roundDoc = roundIndex === -1 ? undefined : axisRounds[roundIndex];
 
-    const toSide = (side: { team: PopulatedTeam }): MatchupSide => {
+    const toSide = (side: {
+      team: PopulatedTeam;
+      notes?: string;
+    }): MatchupSide => {
       const roster = getRosterByRound(
         side.team,
         rosterCtx,
@@ -1009,6 +1013,7 @@ export class StageService {
         teamName: side.team.teamName,
         coach: side.team.coach.name,
         owner: side.team.coach.auth0Id,
+        notes: side.notes,
       };
     };
 
@@ -1169,6 +1174,29 @@ export class StageService {
       message: dto.scheduledDate ? "Match time set" : "Match time cleared",
       scheduledDate: matchupDoc.scheduledDate?.toISOString() ?? null,
     };
+  }
+
+  async setMatchupNotes(
+    leagueSlug: string,
+    tournamentSlug: string,
+    matchupSlug: string,
+    sub: string,
+    dto: SetMatchupNotesDto,
+  ) {
+    const { matchupDoc, viewer } = await this.loadMatchupContext(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+    );
+    if (viewer.side === null)
+      throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
+
+    const notes = dto.notes?.trim() || undefined;
+    matchupDoc[viewer.side].notes = notes;
+    await matchupDoc.save();
+
+    return { message: notes ? "Notes saved" : "Notes cleared" };
   }
 
   async submitMatchupReport(

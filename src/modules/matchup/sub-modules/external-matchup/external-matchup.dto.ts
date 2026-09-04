@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   registerDecorator,
@@ -172,4 +173,13 @@ export class ScorePatchDto {
   @IsIn(FORFEIT_SIDES)
   @IsOptional()
   forfeitedBy?: ForfeitSide | null;
+}
+
+export const NOTES_MAX_LENGTH = 20000;
+
+export class MatchupNotesDto {
+  @IsString()
+  @MaxLength(NOTES_MAX_LENGTH)
+  @IsOptional()
+  notes?: string;
 }

@@ -261,9 +261,11 @@ describe("ExternalMatchup.analyze", () => {
 
     const aResult = await matchup.analyze("auth0|a");
     expect(aResult.notes).toBe("a-notes");
+    expect(aResult.canEditNotes).toBe(true);
 
     const bResult = await matchup.analyze("auth0|b");
     expect(bResult.notes).toBe("b-notes");
+    expect(bResult.canEditNotes).toBe(true);
   });
 
   it("omits notes when no sub is provided", async () => {
@@ -272,6 +274,19 @@ describe("ExternalMatchup.analyze", () => {
     const result = await matchup.analyze();
 
     expect(result.notes).toBeUndefined();
+    expect(result.canEditNotes).toBe(false);
+  });
+
+  it("gives a viewer who owns neither side no notes to edit", async () => {
+    const matchup = buildMatchup({
+      aTeam: buildSide({ owner: "auth0|a", notes: "a-notes" }),
+      bTeam: buildSide({ owner: "auth0|b", notes: "b-notes" }),
+    });
+
+    const result = await matchup.analyze("auth0|stranger");
+
+    expect(result.notes).toBeUndefined();
+    expect(result.canEditNotes).toBe(false);
   });
 
   it("assembles details from the format, ruleset, and tournament metadata", async () => {

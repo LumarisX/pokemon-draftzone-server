@@ -1562,6 +1562,100 @@ describe("StageService", () => {
     });
   });
 
+  describe("setMatchupNotes", () => {
+    const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
+
+    function setup() {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: TOURNAMENT_ID.toString() }),
+      );
+      const matchup = {
+        _id: new Types.ObjectId(),
+        slug: "match-1",
+        stage: stageId,
+        results: [],
+        side1: {
+          score: 0,
+          team: buildTeam({ coach: { auth0Id: "auth0|coach-1" } }),
+        },
+        side2: {
+          score: 0,
+          team: buildTeam({ coach: { auth0Id: "auth0|coach-2" } }),
+        },
+        save: jest.fn().mockResolvedValue(undefined),
+      } as any;
+      matchupRepo.findBySlugPopulated.mockResolvedValue(matchup);
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
+      );
+      return matchup;
+    }
+
+    it.each([
+      ["side1", "auth0|coach-1", "side2"],
+      ["side2", "auth0|coach-2", "side1"],
+    ])(
+      "writes a coach's notes to %s and leaves the other side alone",
+      async (side, sub, otherSide) => {
+        const matchup = setup();
+
+        await service.setMatchupNotes("league-1", "tournament-1", matchup.slug, sub, {
+          notes: "  lead flutter mane  ",
+        });
+
+        expect(matchup[side].notes).toBe("lead flutter mane");
+        expect(matchup[otherSide].notes).toBeUndefined();
+        expect(matchup.save).toHaveBeenCalled();
+      },
+    );
+
+    it("clears the notes on an empty string", async () => {
+      const matchup = setup();
+      matchup.side1.notes = "old";
+
+      await service.setMatchupNotes(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|coach-1",
+        { notes: "   " },
+      );
+
+      expect(matchup.side1.notes).toBeUndefined();
+    });
+
+    it("rejects an organizer who is not a coach in the match", async () => {
+      const matchup = setup();
+
+      await expect(
+        service.setMatchupNotes(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|owner",
+          { notes: "peeking" },
+        ),
+      ).rejects.toThrow();
+      expect(matchup.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a coach from another match", async () => {
+      const matchup = setup();
+
+      await expect(
+        service.setMatchupNotes(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|coach-3",
+          { notes: "peeking" },
+        ),
+      ).rejects.toThrow();
+      expect(matchup.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe("setMatchupAdvancement", () => {
     const TOURNAMENT_ID = new Types.ObjectId();
     const stageId = new Types.ObjectId();

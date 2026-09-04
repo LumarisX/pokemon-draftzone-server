@@ -90,6 +90,13 @@ export class SetMatchupScheduleDto {
   scheduledDate!: string | null;
 }
 
+export class SetMatchupNotesDto {
+  @IsString()
+  @MaxLength(20000)
+  @IsOptional()
+  notes?: string;
+}
+
 export class SubmitMatchupReportDto {
   @ValidateNested()
   @Type(() => MatchupScoreDto)

@@ -70,6 +70,7 @@ export class ExternalMatchup {
     const flip = !!sub && this.bTeam.owner === sub;
     const aTeam = flip ? this.bTeam : this.aTeam;
     const bTeam = flip ? this.aTeam : this.bTeam;
+    const ownsSide = !!sub && (sub === aTeam.owner || sub === bTeam.owner);
     const [aCoverageChart, bCoverageChart, aMoveChart, bMoveChart] =
       await Promise.all([
         getMatchupCoverage(aTeam.team, bTeam.team),
@@ -100,6 +101,7 @@ export class ExternalMatchup {
           : sub && sub === bTeam.owner
             ? bTeam.notes
             : undefined,
+      canEditNotes: ownsSide,
     };
     return data;
   }

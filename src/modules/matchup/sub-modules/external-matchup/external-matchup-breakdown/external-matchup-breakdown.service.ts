@@ -26,6 +26,8 @@ export class ExternalMatchupBreakdownService {
     if (matchup.aTeam.owner !== sub) {
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND);
     }
-    await this.matchupRepo.update(matchupId.toString(), { notes });
+    await this.matchupRepo.update(matchupId.toString(), {
+      notes: notes.trim() || undefined,
+    });
   }
 }

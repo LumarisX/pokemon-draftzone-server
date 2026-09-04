@@ -9,6 +9,7 @@ import { getRuleset } from "@core/data/rulesets/rulesets";
 import { ExternalMatchup } from "../external-matchup.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { MatchupNotesDto } from "../external-matchup.dto";
 
 @Controller("external/matchups")
 export class ExternalMatchupBreakdownController {
@@ -80,13 +81,17 @@ export class ExternalMatchupBreakdownController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(":matchupId/update-notes")
+  @Post(":matchupId/notes")
   async updateNotes(
     @Param("matchupId") matchupId: Types.ObjectId,
     @User() sub: string,
-    @Body() body: { notes: string },
+    @Body() body: MatchupNotesDto,
   ) {
-    await this.matchupBreakdownService.updateNotes(matchupId, sub, body.notes);
+    await this.matchupBreakdownService.updateNotes(
+      matchupId,
+      sub,
+      body.notes ?? "",
+    );
     return { success: true, message: "Notes updated" };
   }
 }
