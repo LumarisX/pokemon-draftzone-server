@@ -35,6 +35,26 @@ export class ExternalTournamentMapper {
     };
   }
 
+  /**
+   * When the coach next plays. The draft cards show a countdown, and the list
+   * already carries every matchup, so this costs no extra query. Scored
+   * matchups are skipped: a result recorded late would otherwise keep pointing
+   * at a match that has already happened.
+   */
+  private static nextScheduled(tournament: ExternalTournament): string | null {
+    const now = Date.now();
+    const upcoming = (tournament.matchups ?? [])
+      .filter(
+        (matchup) =>
+          matchup.scheduledDate &&
+          matchup.scheduledDate.getTime() > now &&
+          !matchup.calculateScore(),
+      )
+      .sort((a, b) => a.scheduledDate!.getTime() - b.scheduledDate!.getTime());
+
+    return upcoming[0]?.scheduledDate?.toISOString() ?? null;
+  }
+
   static toClientPayload(tournament: ExternalTournament) {
     const unresolved = tournament.unresolvedTeam.map(
       PokemonMapper.toUnresolvedClientPayload,
@@ -50,6 +70,7 @@ export class ExternalTournamentMapper {
       coach: tournament.coach,
       archivedAt: tournament.archivedAt,
       score: tournament.getScore(),
+      nextMatch: ExternalTournamentMapper.nextScheduled(tournament),
       team: [
         ...tournament.team.map(PokemonMapper.toClientPayload),
         ...unresolved,

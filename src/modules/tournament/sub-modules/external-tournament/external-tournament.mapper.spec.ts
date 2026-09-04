@@ -33,7 +33,10 @@ const mockedPokemonMapper = PokemonMapper as jest.Mocked<
 const RULESET = { name: "Gen9 NatDex" } as any;
 const FORMAT = { name: "Singles", level: 100, choose: 6, layout: "1" } as any;
 
-function buildTournament(overrides: Partial<ConstructorParameters<typeof ExternalTournament>[0]> = {}) {
+function buildTournament(
+  overrides: Partial<ConstructorParameters<typeof ExternalTournament>[0]> = {},
+  matchups: ConstructorParameters<typeof ExternalTournament>[1] = [],
+) {
   return new ExternalTournament(
     {
       ruleset: RULESET,
@@ -46,8 +49,18 @@ function buildTournament(overrides: Partial<ConstructorParameters<typeof Externa
       doc: "doc-slug",
       ...overrides,
     },
-    [],
+    matchups,
   );
+}
+
+function buildMatchup(
+  scheduledDate: Date | undefined,
+  score: [number, number] | null = null,
+) {
+  return {
+    scheduledDate,
+    calculateScore: () => score,
+  } as unknown as ConstructorParameters<typeof ExternalTournament>[1][number];
 }
 
 describe("ExternalTournamentMapper", () => {
@@ -124,8 +137,37 @@ describe("ExternalTournamentMapper", () => {
         ruleset: "Gen9 NatDex",
         doc: "doc-slug",
         score: { wins: 0, losses: 0, diff: "+0" },
+        nextMatch: null,
         team: [{ id: "charizard", toClientPayload: true }],
       });
+    });
+
+    it("reports the soonest unplayed scheduled match as nextMatch", () => {
+      const hour = 60 * 60 * 1000;
+      const soon = new Date(Date.now() + hour);
+      const later = new Date(Date.now() + 5 * hour);
+      const tournament = buildTournament({}, [
+        buildMatchup(later),
+        buildMatchup(soon),
+        buildMatchup(undefined),
+      ]);
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.nextMatch).toBe(soon.toISOString());
+    });
+
+    it("skips matches already played or already scored", () => {
+      const hour = 60 * 60 * 1000;
+      const upcoming = new Date(Date.now() + hour);
+      const tournament = buildTournament({}, [
+        buildMatchup(new Date(Date.now() - hour)),
+        buildMatchup(upcoming, [3, 1]),
+      ]);
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.nextMatch).toBeNull();
     });
 
     it("returns an undefined id when the tournament has no _id yet", () => {

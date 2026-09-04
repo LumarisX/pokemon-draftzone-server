@@ -14,6 +14,28 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { LeagueRepository } from "./league.repository";
 
+/**
+ * When this team next plays. The card shows a countdown, and the record query
+ * has already loaded every one of the team's matchups, so this costs no extra
+ * round trip. Matchups with a result recorded are skipped: a score entered
+ * late would otherwise keep the card pointing at a match already played.
+ */
+function nextScheduledMatch(
+  matchups: { scheduledDate?: Date | null; results?: unknown[] }[],
+): string | null {
+  const now = Date.now();
+  const upcoming = matchups
+    .filter(
+      (matchup) =>
+        matchup.scheduledDate &&
+        matchup.scheduledDate.getTime() > now &&
+        !matchup.results?.length,
+    )
+    .sort((a, b) => a.scheduledDate!.getTime() - b.scheduledDate!.getTime());
+
+  return upcoming[0]?.scheduledDate?.toISOString() ?? null;
+}
+
 @Injectable()
 export class LeagueService {
   constructor(
@@ -113,6 +135,8 @@ export class LeagueService {
             ? draftSlugsById.get(team.draftId.toString())
             : undefined,
           teamId: team._id.toString(),
+          teamSlug: team.slug,
+          nextMatch: nextScheduledMatch(teamMatchups),
           draft: roster,
           format: tournament.format.name,
           ruleset: tournament.ruleset.name,

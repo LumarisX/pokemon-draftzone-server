@@ -123,6 +123,7 @@ export function toScheduleMatchup(
     id: matchup._id.toString(),
     slug: matchup.slug,
     label: options.matchLabels?.get(matchup._id.toString())?.label,
+    scheduledDate: matchup.scheduledDate ?? null,
     team1: side("side1"),
     team2: side("side2"),
     matches: matchup.results.map((result) => ({

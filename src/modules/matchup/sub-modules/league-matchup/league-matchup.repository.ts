@@ -220,7 +220,7 @@ export class LeagueMatchupRepository {
         ],
       })
       .select(
-        "round winner forfeit side1.team side1.score side2.team side2.score results",
+        "round winner forfeit scheduledDate side1.team side1.score side2.team side2.score results",
       )
       .sort({ _id: 1 })
       .exec();
