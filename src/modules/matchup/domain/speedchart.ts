@@ -1,7 +1,6 @@
 import { getStatSystem } from "@pdz/sets";
 import { ID, StatusName } from "@pkmn/data";
-import { computeStats } from "../../../../dmg/stats";
-import { State } from "../../../../dmg/state";
+import { State, computeStats } from "@pdz/calc";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";

@@ -3,6 +3,7 @@ import { StorageModule } from "@core/storage/storage.module";
 import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
 import { ArchiveModule } from "@modules/archive/archive.module";
+import { CalcModule } from "@modules/calc/calc.module";
 import { ChatModule } from "@modules/chat/chat.module";
 import { DataModule } from "@modules/data/data.module";
 import { DraftModule } from "@modules/draft/draft.module";
@@ -85,6 +86,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     AgendaModule,
     ArchiveModule,
     AuthModule,
+    CalcModule,
     ChatModule,
     DataModule,
     DraftModule,
