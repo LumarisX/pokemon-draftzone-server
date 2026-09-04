@@ -24,6 +24,8 @@ import {
   HPSTATUS,
   ITEM,
   KillString,
+  KOEvent,
+  KOMon,
   LastDamage,
   MARJORACTION,
   MEGASTONE,
@@ -104,6 +106,7 @@ export class ReplayAnalyzerService {
   tempMons: { [key: string]: TempMonSnapshot } = {};
   events: { player: number; turn: number; message: string }[] = [];
   killStrings: KillString[] = [];
+  kos: KOEvent[] = [];
   gametype!: GAMETYPE;
   preview: number = 6;
   gen!: Generation;
@@ -139,8 +142,7 @@ export class ReplayAnalyzerService {
   actionFns: { [key: string]: (line: ReplayLine) => void } = {
     "-ability": (line) => {
       const [pokemonStr, ability, fromEffect] = line.args as
-        | [POKEMON, ABILITY, FROMEFFECT]
-        | [POKEMON, ABILITY];
+        [POKEMON, ABILITY, FROMEFFECT] | [POKEMON, ABILITY];
     },
     "-activate": (line) => {
       const [pokemonStr, effect, majoraction] = line.args as [
@@ -335,8 +337,7 @@ export class ReplayAnalyzerService {
     },
     "-prepare": (line) => {
       const [attacker, move, defender] = line.args as
-        | [ATTACKER, MOVE, DEFENDER]
-        | [ATTACKER, MOVE];
+        [ATTACKER, MOVE, DEFENDER] | [ATTACKER, MOVE];
     },
     "-primal": (line) => {
       const [pokemonStr] = line.args as [POKEMON];
@@ -483,8 +484,7 @@ export class ReplayAnalyzerService {
     },
     cant: (line) => {
       const [pokemonStr, reason, move] = line.args as
-        | [POKEMON, REASON]
-        | [POKEMON, REASON, MOVE];
+        [POKEMON, REASON] | [POKEMON, REASON, MOVE];
       if (reason !== "par") return;
       const cantMon = this.getPokemon(pokemonStr);
       if (!cantMon) return;
@@ -550,8 +550,7 @@ export class ReplayAnalyzerService {
     },
     error: (line) => {
       const [message] = line.args as
-        | [`[Invalid choice] ${MESSAGE}`]
-        | [`[Unavailable choice] ${MESSAGE}`];
+        [`[Invalid choice] ${MESSAGE}`] | [`[Unavailable choice] ${MESSAGE}`];
     },
     faint: (line) => {
       const [pokemonStr] = line.args as [POKEMON];
@@ -1303,13 +1302,14 @@ export class ReplayAnalyzerService {
   private upkeep(turn: Turn | undefined) {
     if (!turn) return;
     this.cleanStatuses();
-    this.killStrings.forEach((ks) =>
+    this.killStrings.forEach((ks) => {
       this.events.push({
         player: this.field.getPlayerIndex(ks.target.player) + 1,
         turn: turn.number,
         message: `${this.makeKillString(ks)}.`,
-      }),
-    );
+      });
+      this.kos.push(this.makeKO(ks, turn.number));
+    });
     this.killStrings = [];
   }
 
@@ -1369,6 +1369,25 @@ export class ReplayAnalyzerService {
     return "opp";
   }
 
+  private makeKOMon(pokemon: Pokemon): KOMon {
+    return {
+      player: this.field.getPlayerIndex(pokemon.player) + 1,
+      ...pokemon.spriteRef(),
+    };
+  }
+
+  private makeKO(ks: KillString, turn: number): KOEvent {
+    const self = ks.attacker === ks.target;
+    return {
+      turn,
+      victim: this.makeKOMon(ks.target),
+      attacker: ks.attacker && !self ? this.makeKOMon(ks.attacker) : undefined,
+      cause: ks.reason,
+      indirect: ks.indirect === true,
+      self,
+    };
+  }
+
   private makeKillString(ks: {
     attacker?: Pokemon;
     target: Pokemon;
@@ -1410,6 +1429,7 @@ export class ReplayAnalyzerService {
       gameTime: this.tf - this.t0,
       players: this.players.map((player) => player.toClient()),
       events: this.events,
+      kos: this.kos,
     };
     const warnings = [] as {}[];
     return { analysis, warnings };

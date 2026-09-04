@@ -103,6 +103,23 @@ type ReplayPlayerAnalysis = {
   team: ReplayPokemonAnalysis[];
 };
 
+export type ReplayKOMon = {
+  player: number;
+  id: string;
+  name: string;
+  shiny?: true;
+};
+
+export type ReplayKO = {
+  turn: number;
+  victim: ReplayKOMon;
+  attacker?: ReplayKOMon;
+  move?: string;
+  cause?: string;
+  indirect: boolean;
+  self: boolean;
+};
+
 export type ReplayAnalysisResult = {
   gametype: string;
   genNum: number;
@@ -110,6 +127,7 @@ export type ReplayAnalysisResult = {
   gameTime: number;
   players: ReplayPlayerAnalysis[];
   events: { player: number; turn: number; message: string }[];
+  kos: ReplayKO[];
 };
 
 function emptyStatBreakdown(): StatBreakdown {
@@ -167,6 +185,13 @@ export class ReplayAnalysisService {
     const killsBySide = new Map<string, number>();
     const deathsBySide = new Map<string, number>();
     const events: { player: number; turn: number; message: string }[] = [];
+    const kos: ReplayKO[] = [];
+    const toKOMon = (pokemon: Pokemon): ReplayKOMon => ({
+      player: (sideIndexById.get(pokemon.sideId) ?? 0) + 1,
+      id: toSpeciesGroupId(pokemon.species, field.genNum),
+      name: toDisplayName(pokemon),
+      ...(pokemon.shiny ? { shiny: true as const } : {}),
+    });
 
     playerSideIds.forEach((sideId) => {
       killsBySide.set(sideId, 0);
@@ -219,6 +244,19 @@ export class ReplayAnalysisService {
             turn: faint.turnNumber,
             message: `${this.buildFaintMessage(victim, faint, attacker, field.sides)}.`,
           });
+
+          kos.push({
+            turn: faint.turnNumber,
+            victim: toKOMon(victim),
+            attacker:
+              attacker && attacker.key !== victim.key
+                ? toKOMon(attacker)
+                : undefined,
+            move: faint.move,
+            cause: faint.cause,
+            indirect: faint.indirect === true,
+            self: Boolean(attacker && attacker.key === victim.key),
+          });
         });
       });
     });
@@ -232,6 +270,7 @@ export class ReplayAnalysisService {
     });
 
     events.sort((a, b) => a.turn - b.turn);
+    kos.sort((a, b) => a.turn - b.turn);
 
     if (field.winner) {
       const winnerSideId = playerSideIds.find(
@@ -316,6 +355,7 @@ export class ReplayAnalysisService {
       gameTime,
       players,
       events,
+      kos,
     };
   }
 

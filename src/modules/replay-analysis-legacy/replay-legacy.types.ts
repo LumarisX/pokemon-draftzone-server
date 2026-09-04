@@ -78,11 +78,7 @@ export type EFFECT = string;
 export type FORMATNAME = string;
 export type FROMEFFECT = `[from] ${EFFECT}`;
 export type GAMETYPE =
-  | `singles`
-  | `doubles`
-  | `triples`
-  | `multi`
-  | `freeforall`;
+  `singles` | `doubles` | `triples` | `multi` | `freeforall`;
 export type GENNUM = string;
 export type HP = `${string}/${string}`;
 export type HPSTATUS = `${HP} ${STATUS}`;
@@ -95,8 +91,7 @@ export type NUMBER = string;
 export type OFPOKEMON = `[of] ${SOURCE}`;
 export type PLAYER = string;
 export type POKEMON =
-  | `p${PPlayer}${PPosition}: ${string}`
-  | `p${PPlayer}: ${string}`;
+  `p${PPlayer}${PPosition}: ${string}` | `p${PPlayer}: ${string}`;
 export type POSITION = "0" | "1" | "2";
 export type PPlayer = "1" | "2" | "3" | "4";
 export type PPosition = "a" | "b" | "c";
@@ -226,6 +221,19 @@ export class Pokemon {
       shiny: this.formes[0].detail.includes(", shiny") || undefined,
       formes: this.baseSpecie.formes?.map((forme) => toID(forme)),
       item: this.item,
+    };
+  }
+
+  spriteRef(): Omit<KOMon, "player"> {
+    const specie = this.formes[0].specie.isCosmeticForme
+      ? this.baseSpecie
+      : this.formes[0].specie;
+    return {
+      id: specie.id,
+      name: specie.name,
+      ...(this.formes[0].detail.includes(", shiny")
+        ? { shiny: true as const }
+        : {}),
     };
   }
 }
@@ -399,6 +407,22 @@ export type KillString = {
   target: Pokemon;
   reason?: string;
   indirect?: true;
+};
+
+export type KOMon = {
+  player: number;
+  id: string;
+  name: string;
+  shiny?: true;
+};
+
+export type KOEvent = {
+  turn: number;
+  victim: KOMon;
+  attacker?: KOMon;
+  cause?: string;
+  indirect: boolean;
+  self: boolean;
 };
 
 export type Stats = {
