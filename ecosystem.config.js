@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "pmdz",
 
-      script: "./dist/src/main.js",
+      script: "./dist/main.js",
 
       node_args: `--max-old-space-size=1536`,
 

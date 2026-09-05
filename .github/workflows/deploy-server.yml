@@ -62,6 +62,7 @@ jobs:
               "set -ex",
               "sudo -u ubuntu mkdir -p /home/ubuntu/pokemon-draftzone-server",
               "sudo -u ubuntu aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /home/ubuntu/pokemon-draftzone-server/server-build.tgz",
+              "sudo -u ubuntu rm -rf /home/ubuntu/pokemon-draftzone-server/dist",
               "sudo -u ubuntu tar -xzf /home/ubuntu/pokemon-draftzone-server/server-build.tgz -C /home/ubuntu/pokemon-draftzone-server",
               "sudo -u ubuntu bash -lc \"source /home/ubuntu/.nvm/nvm.sh && nvm use ${{ env.NODE_VERSION }} && node -v && npm -v && which node npm git\"",
               "sudo -u ubuntu bash -lc \"source /home/ubuntu/.nvm/nvm.sh && nvm use ${{ env.NODE_VERSION }} && cd /home/ubuntu/pokemon-draftzone-server && npm install --omit=dev\"",
