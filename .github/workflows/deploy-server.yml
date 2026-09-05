@@ -50,21 +50,6 @@ jobs:
         run: |
           aws s3 cp server-build.tgz s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz
 
-      - name: Check SSM agent is online
-        run: |
-          set -euo pipefail
-          PING=$(aws ssm describe-instance-information \
-            --filters "Key=InstanceIds,Values=${INSTANCE_ID}" \
-            --query "InstanceInformationList[0].PingStatus" --output text)
-          AGENT=$(aws ssm describe-instance-information \
-            --filters "Key=InstanceIds,Values=${INSTANCE_ID}" \
-            --query "InstanceInformationList[0].AgentVersion" --output text)
-          echo "PingStatus=${PING} AgentVersion=${AGENT}"
-          if [ "$PING" != "Online" ]; then
-            echo "::error::SSM agent on ${INSTANCE_ID} is '${PING}' - the deploy command would sit Pending until it expired."
-            exit 1
-          fi
-
       - name: Deploy via SSM
         run: |
           set -euo pipefail
