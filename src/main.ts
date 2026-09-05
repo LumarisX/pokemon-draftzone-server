@@ -4,6 +4,7 @@ import { BadRequestException, Logger, ValidationPipe } from "@nestjs/common";
 import { ValidationError } from "class-validator";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -34,7 +35,7 @@ async function bootstrap() {
   const winstonLogger = createAppLogger(logDir);
 
   const bootstrapLogger = new Logger("Bootstrap");
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: WinstonModule.createLogger({ instance: winstonLogger }),
   });
 
@@ -42,13 +43,19 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  const trustProxyHops = Number(
+    configService.get<string>("TRUST_PROXY_HOPS") ?? 2,
+  );
+  app.set("trust proxy", trustProxyHops);
+  bootstrapLogger.log(`Trusting ${trustProxyHops} proxy hop(s) for client IP`);
+
   const allowedOrigins = configService
     .get<string>("ALLOWED_ORIGINS")
     ?.split(",") || ["http://localhost:4200"];
 
   app.enableCors({
     origin: (
-      origin: string,
+      origin: string | undefined,
       callback: (arg0: Error | null, arg1: boolean) => any,
     ) => {
       if (!origin) return callback(null, true);
@@ -94,9 +101,19 @@ async function bootstrap() {
     )
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup("docs", app, document);
-  bootstrapLogger.log("Swagger UI initialized on /docs");
+  const swaggerFlag = configService.get<string>("SWAGGER_ENABLED");
+  const swaggerEnabled =
+    swaggerFlag !== undefined
+      ? swaggerFlag.toLowerCase() === "true"
+      : configService.get<string>("NODE_ENV") !== "production";
+
+  if (swaggerEnabled) {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup("docs", app, document);
+    bootstrapLogger.log("Swagger UI initialized on /docs");
+  } else {
+    bootstrapLogger.log("Swagger UI disabled (set SWAGGER_ENABLED=true to serve /docs)");
+  }
 
   const port = configService.get<number>("PORT") || 9960;
   await app.listen(port);

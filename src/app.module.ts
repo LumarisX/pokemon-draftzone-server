@@ -21,8 +21,10 @@ import { TournamentModule } from "@modules/tournament/tournament.module";
 import { UploadsModule } from "@modules/upload/upload.module";
 import { UserModule } from "@modules/user/user.module";
 import { WebhookModule } from "@modules/webhook/webhook.module";
+import { GlobalThrottlerGuard } from "@core/guards/global-throttler.guard";
 import { Logger, Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ThrottlerModule } from "@nestjs/throttler";
@@ -34,7 +36,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     ConfigModule.forRoot({ isGlobal: true }),
     AppCacheModule,
     EventEmitterModule.forRoot(),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 300 }]),
 
     MongooseModule.forRootAsync({
       inject: [ConfigService],
@@ -106,5 +108,6 @@ import { AuthModule } from "./modules/auth/auth.module";
     UserModule,
     WebhookModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: GlobalThrottlerGuard }],
 })
 export class AppModule {}

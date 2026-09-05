@@ -1,4 +1,5 @@
 import { User } from "@core/decorators/user.decorator";
+import { SkipGlobalThrottle } from "@core/guards/skip-global-throttle.decorator";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { RequestUploadUrlDto } from "./upload.dto";
@@ -7,6 +8,7 @@ import { UploadsService } from "./upload.service";
 
 @Controller("uploads")
 @UseGuards(JwtAuthGuard, UploadsThrottlerGuard)
+@SkipGlobalThrottle()
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 

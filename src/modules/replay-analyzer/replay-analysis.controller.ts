@@ -1,6 +1,7 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { ReplayParseService } from "./replay-parse.service";
 import { ReplayStatesService } from "./replay-states.service";
 import { ReplayAnalysisService } from "./replay-analysis.service";
@@ -10,6 +11,7 @@ const REPLAY_URL_PATTERN =
 const FETCH_TIMEOUT_MS = 10_000;
 
 @Controller("replay/analyze")
+@Throttle({ default: { ttl: 60_000, limit: 20 } })
 export class ReplayAnalysisController {
   constructor(
     private readonly replayParseService: ReplayParseService,
