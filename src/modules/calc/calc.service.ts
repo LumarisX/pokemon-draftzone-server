@@ -25,9 +25,8 @@ import {
 const DEFAULT_RULESET = "Gen9 NatDex";
 const DEFAULT_TURNS = 6;
 const MAX_TURNS = 12;
-const TURN_BUDGET_MS = 1500;
-const MIN_TURN_RESOLVES = 0;
-const MAX_TURN_RESOLVES = 4000;
+const SINGLE_HIT_TURN_RESOLVES = 20000;
+const MULTI_HIT_TURN_RESOLVES = 12;
 
 @Injectable()
 export class CalcService {
@@ -50,9 +49,12 @@ export class CalcService {
       throw error;
     }
 
-    const resolveStarted = Date.now();
     const distribution = resolveMove(state);
-    const resolveMs = Math.max(Date.now() - resolveStarted, 0.05);
+    const hitBranches = hitCountBranches(ruleset.num, state.move, state.attacker);
+    const maxHits = hitBranches.reduce(
+      (highest, branch) => Math.max(highest, branch.hits),
+      1,
+    );
     const total = distribution.totalOutcomes;
     const startingHp = state.target.hp;
     const maxhp = state.target.maxhp;
@@ -82,7 +84,7 @@ export class CalcService {
       branches: {
         accuracy: accuracyBranches(state.move),
         crit: critBranches(state),
-        hits: hitCountBranches(ruleset.num, state.move, state.attacker),
+        hits: hitBranches,
         secondaries: secondaryBranches(state).map((branch) => ({
           effects: branch.effects.map(describeSecondary),
           weight: branch.weight,
@@ -100,7 +102,7 @@ export class CalcService {
         rolls,
       },
       outcomes,
-      ko: this.knockout(state, turns, resolveMs),
+      ko: this.knockout(state, turns, maxHits),
       meta: {
         distinctOutcomes: distribution.size(),
         totalWeight: total,
@@ -110,14 +112,11 @@ export class CalcService {
     };
   }
 
-  private knockout(state: State, turns: number, resolveMs: number) {
-    const affordable = Math.floor(TURN_BUDGET_MS / resolveMs);
+  private knockout(state: State, turns: number, maxHits: number) {
     const projection = resolveTurns(state, {
       turns,
-      maxResolves: Math.min(
-        MAX_TURN_RESOLVES,
-        Math.max(MIN_TURN_RESOLVES, affordable),
-      ),
+      maxResolves:
+        maxHits > 1 ? MULTI_HIT_TURN_RESOLVES : SINGLE_HIT_TURN_RESOLVES,
     });
     const chances = projection.knockoutByTurn;
     const incomplete = projection.unexpandedMass > 1e-9;
@@ -142,10 +141,16 @@ export class CalcService {
       exactlyOnTurn: exactly.map((chance) => round(chance, 6)),
       guaranteedTurn: guaranteedTurn === -1 ? undefined : guaranteedTurn + 1,
       earliestTurn,
-      likeliestTurn: likeliest?.turn,
+      likeliestTurn: incomplete ? undefined : likeliest?.turn,
       unresolved: round(unresolved, 6),
       unexpanded: round(projection.unexpandedMass, 6),
-      summary: this.knockoutSummary(resolved, unresolved, turns, incomplete),
+      summary: this.knockoutSummary(
+        resolved,
+        unresolved,
+        turns,
+        incomplete,
+        projection.unexpandedMass,
+      ),
     };
   }
 
@@ -154,11 +159,20 @@ export class CalcService {
     unresolved: number,
     turns: number,
     incomplete: boolean,
+    unexpanded: number,
   ) {
+    const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+    if (incomplete) {
+      const found = resolved.reduce((sum, entry) => sum + entry.probability, 0);
+      const budget = `${pct(unexpanded)} of the distribution was never advanced — the projection hit its compute budget`;
+      return found > 1e-9
+        ? `at least ${pct(found)} to knock out within ${turns} turns (${budget}, so this is a floor, not a rate)`
+        : `no knockout found before the compute budget ran out (${budget})`;
+    }
+
     if (!resolved.length) {
-      return incomplete
-        ? `no knockout found within the compute budget (${turns} turns requested)`
-        : `no knockout within ${turns} turn${turns === 1 ? "" : "s"}`;
+      return `no knockout within ${turns} turn${turns === 1 ? "" : "s"}`;
     }
 
     const first = resolved[0].turn;
@@ -171,11 +185,9 @@ export class CalcService {
     const tail =
       unresolved <= 1e-9
         ? ""
-        : incomplete
-          ? `, ${(unresolved * 100).toFixed(1)}% unresolved — the search hit its compute budget, so later turns are a lower bound`
-          : `, ${(unresolved * 100).toFixed(1)}% still standing after ${turns}`;
+        : `, ${pct(unresolved)} still standing after ${turns}`;
 
-    return `${likeliest.turn}HKO — ${range} turns (${(likeliest.probability * 100).toFixed(1)}% on turn ${likeliest.turn})${tail}`;
+    return `${likeliest.turn}HKO — ${range} turns (${pct(likeliest.probability)} on turn ${likeliest.turn})${tail}`;
   }
 
   private damageRolls(outcomes: CalcOutcomeDto[], maxhp: number) {
