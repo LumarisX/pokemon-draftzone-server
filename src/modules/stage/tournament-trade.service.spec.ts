@@ -261,10 +261,10 @@ describe("TournamentTradeService", () => {
     });
   });
 
-  describe("setTradeStatus", () => {
+  describe("updateTrade", () => {
     it("rejects a non-organizer", async () => {
       await expect(
-        service.setTradeStatus(
+        service.updateTrade(
           "league-1",
           "tournament-1",
           new Types.ObjectId().toString(),
@@ -281,7 +281,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.setTradeStatus(
+        service.updateTrade(
           "league-1",
           "tournament-1",
           trade._id.toString(),
@@ -289,6 +289,122 @@ describe("TournamentTradeService", () => {
           { status: "APPROVED" },
         ),
       ).rejects.toMatchObject({ code: "STG-002" });
+    });
+
+    it("writes a rejection through", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      const result = await service.updateTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+        { status: "REJECTED" },
+      );
+
+      expect(result).toMatchObject({ status: "REJECTED" });
+      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
+      expect(written.status).toBe("REJECTED");
+      expect(written._id.toString()).toBe(trade._id.toString());
+    });
+
+    it("writes the resolved trade as a plain object", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await service.updateTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+        { status: "REJECTED" },
+      );
+
+      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
+      expect(written.$__).toBeUndefined();
+      expect(written._doc).toBeUndefined();
+    });
+
+    it("moves a pending trade to another round", async () => {
+      const trade = buildTrade({ status: "PENDING", activeRound: 0 });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      const result = await service.updateTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+        { activeRound: 1 },
+      );
+
+      expect(result).toMatchObject({ activeRound: 1, status: "PENDING" });
+      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
+      expect(written.activeRound).toBe(1);
+      expect(written.status).toBe("PENDING");
+    });
+
+    it("rejects a round outside the tournament's axis", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await expect(
+        service.updateTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|owner",
+          { activeRound: 7 },
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
+    });
+
+    it("rejects an empty edit", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await expect(
+        service.updateTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|owner",
+          {},
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
+    });
+
+    it("approves at the round it is moved to", async () => {
+      const team = withRoster("pikachu");
+      const trade = buildTrade({
+        status: "PENDING",
+        activeRound: 0,
+        side1: { team: team._id, pokemon: [{ id: "pikachu" }], tradePoints: 0 },
+        side2: { team: undefined, pokemon: [], tradePoints: 0 },
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      const result = await service.updateTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+        { status: "APPROVED", activeRound: 1 },
+      );
+
+      expect(result).toMatchObject({ status: "APPROVED", activeRound: 1 });
     });
 
     it("approves a pending trade whose roster still holds up", async () => {
@@ -306,7 +422,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade] }),
       );
 
-      await service.setTradeStatus(
+      await service.updateTrade(
         "league-1",
         "tournament-1",
         trade._id.toString(),
@@ -336,7 +452,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.setTradeStatus(
+        service.updateTrade(
           "league-1",
           "tournament-1",
           trade._id.toString(),
@@ -362,7 +478,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.setTradeStatus(
+        service.updateTrade(
           "league-1",
           "tournament-1",
           trade._id.toString(),
@@ -370,6 +486,101 @@ describe("TournamentTradeService", () => {
           { status: "APPROVED" },
         ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe("withdrawTrade", () => {
+    it("lets a coach withdraw their own pending trade", async () => {
+      const team = withRoster("pikachu", {
+        coach: { name: "Giovanni", auth0Id: "auth0|giovanni" },
+      });
+      const trade = buildTrade({
+        status: "PENDING",
+        side1: { team: team._id, pokemon: [{ id: "pikachu" }], tradePoints: 0 },
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await service.withdrawTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|giovanni",
+      );
+
+      expect(tournamentRepo.setTrades.mock.calls[0][1]).toHaveLength(0);
+    });
+
+    it("lets an organizer withdraw any pending trade", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await service.withdrawTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+      );
+
+      expect(tournamentRepo.setTrades.mock.calls[0][1]).toHaveLength(0);
+    });
+
+    it("leaves the other trades in place", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      const other = buildTrade({ status: "APPROVED" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade, other] }),
+      );
+
+      await service.withdrawTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+      );
+
+      const written = tournamentRepo.setTrades.mock.calls[0][1] as any[];
+      expect(written).toHaveLength(1);
+      expect(written[0]._id.toString()).toBe(other._id.toString());
+    });
+
+    it("rejects a coach who is not a party to the trade", async () => {
+      const team = withRoster("pikachu");
+      const trade = buildTrade({
+        status: "PENDING",
+        side1: { team: team._id, pokemon: [{ id: "pikachu" }], tradePoints: 0 },
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await expect(
+        service.withdrawTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|stranger",
+        ),
+      ).rejects.toMatchObject({ code: "AUTH-002" });
+    });
+
+    it("rejects withdrawing a trade that is already resolved", async () => {
+      const trade = buildTrade({ status: "APPROVED" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await expect(
+        service.withdrawTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|owner",
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
     });
   });
 

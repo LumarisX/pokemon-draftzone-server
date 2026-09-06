@@ -176,6 +176,17 @@ export class SetTradeStatusDto {
   status!: "APPROVED" | "REJECTED";
 }
 
+export class UpdateTradeDto {
+  @IsIn(["APPROVED", "REJECTED"])
+  @IsOptional()
+  status?: "APPROVED" | "REJECTED";
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  activeRound?: number;
+}
+
 export class CreateStageRoundDto {
   @IsString()
   @MinLength(1)

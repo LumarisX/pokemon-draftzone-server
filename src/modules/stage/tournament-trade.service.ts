@@ -10,7 +10,7 @@ import { isValidObjectId, Types } from "mongoose";
 import { getRosterByRound } from "./domain/roster";
 import { TradeLike, tournamentRosterContext } from "./domain/stage-axis";
 import { assertTradePointsWithinLimit } from "./domain/trades";
-import { MakeTradeDto, SetTradeStatusDto } from "./stage.dto";
+import { MakeTradeDto, UpdateTradeDto } from "./stage.dto";
 
 /**
  * Trades, held by the tournament rather than by a stage.
@@ -235,19 +235,23 @@ export class TournamentTradeService {
     };
   }
 
-  /** Organizer-only resolution of a coach-submitted trade. */
-  async setTradeStatus(
+  async updateTrade(
     leagueSlug: string,
     tournamentSlug: string,
     tradeId: string,
     sub: string,
-    dto: SetTradeStatusDto,
+    dto: UpdateTradeDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
     this.assertOrganizer(tournament, sub);
+
+    if (dto.status === undefined && dto.activeRound === undefined)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+        reason: "Nothing to update",
+      });
 
     const trade = tournament.trades.find(
       (t) => t._id?.toString() === tradeId,
@@ -259,7 +263,15 @@ export class TournamentTradeService {
         reason: `Trade is already ${trade.status}`,
       });
 
-    if (dto.status === "APPROVED") {
+    const activeRound = dto.activeRound ?? trade.activeRound;
+    if (activeRound < 0 || activeRound >= tournament.rounds.length)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+        reason: `Round ${activeRound} is outside this tournament's ${tournament.rounds.length} round(s)`,
+      });
+
+    const status = dto.status ?? trade.status;
+
+    if (status === "APPROVED") {
       // Re-checked at approval time: a pending trade can go stale behind other
       // trades approved after it was filed.
       assertTradePointsWithinLimit({
@@ -268,19 +280,74 @@ export class TournamentTradeService {
         trade,
         exclude: trade,
       });
-      await this.assertRostersValid(tournament, trade, trade.activeRound);
+      await this.assertRostersValid(tournament, trade, activeRound);
     }
+
+    const updated = {
+      _id: trade._id,
+      side1: trade.side1,
+      side2: trade.side2,
+      timestamp: trade.timestamp,
+      activeRound,
+      status,
+    };
 
     await this.tournamentRepo.setTrades(
       tournament.id,
       tournament.trades.map((t) =>
         t._id?.toString() === tradeId
-          ? ({ ...t, status: dto.status } as unknown as Record<string, unknown>)
+          ? (updated as unknown as Record<string, unknown>)
           : (t as unknown as Record<string, unknown>),
       ),
     );
 
-    return { message: `Trade ${dto.status.toLowerCase()}.` };
+    return { message: `Trade ${status.toLowerCase()}.`, status, activeRound };
+  }
+
+  async withdrawTrade(
+    leagueSlug: string,
+    tournamentSlug: string,
+    tradeId: string,
+    sub: string,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+
+    const trade = tournament.trades.find(
+      (t) => t._id?.toString() === tradeId,
+    ) as TradeLike | undefined;
+    if (!trade) throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, { tradeId });
+
+    if (trade.status !== "PENDING")
+      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+        reason: `Trade is already ${trade.status}`,
+      });
+
+    if (!this.isOrganizer(tournament, sub))
+      await this.assertTradeParticipant(trade, sub);
+
+    await this.tournamentRepo.setTrades(
+      tournament.id,
+      tournament.trades
+        .filter((t) => t._id?.toString() !== tradeId)
+        .map((t) => t as unknown as Record<string, unknown>),
+    );
+
+    return { message: "Trade withdrawn." };
+  }
+
+  private async assertTradeParticipant(trade: TradeLike, sub: string) {
+    const teamIds = [
+      this.sideTeamId(trade.side1),
+      this.sideTeamId(trade.side2),
+    ].filter((id): id is string => Boolean(id));
+    if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+
+    const teams = await this.teamRepo.findManyByIds(teamIds);
+    if (!teams.some((team) => isCoachedBy(team, sub)))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
   /**

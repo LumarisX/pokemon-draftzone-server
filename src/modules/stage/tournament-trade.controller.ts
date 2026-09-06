@@ -4,6 +4,7 @@ import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -11,7 +12,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { MakeTradeDto, SetTradeStatusDto } from "./stage.dto";
+import { MakeTradeDto, UpdateTradeDto } from "./stage.dto";
 import { TournamentTradeService } from "./tournament-trade.service";
 
 /**
@@ -54,19 +55,35 @@ export class TournamentTradeController {
 
   @Patch(":tradeId")
   @UseGuards(JwtAuthGuard)
-  async setTradeStatus(
+  async updateTrade(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("tradeId") tradeId: string,
     @User() sub: string,
-    @Body() body: SetTradeStatusDto,
+    @Body() body: UpdateTradeDto,
   ) {
-    return this.tradeService.setTradeStatus(
+    return this.tradeService.updateTrade(
       leagueSlug,
       tournamentSlug,
       tradeId,
       sub,
       body,
+    );
+  }
+
+  @Delete(":tradeId")
+  @UseGuards(JwtAuthGuard)
+  async withdrawTrade(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("tradeId") tradeId: string,
+    @User() sub: string,
+  ) {
+    return this.tradeService.withdrawTrade(
+      leagueSlug,
+      tournamentSlug,
+      tradeId,
+      sub,
     );
   }
 }
