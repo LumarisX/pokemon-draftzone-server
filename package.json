@@ -41,7 +41,6 @@
     "@nestjs/testing": "^11.1.27",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.27",
-    "@pdz/calc": "git+https://github.com/LumarisX/dmg.git#a1437145c620ff87f82df01a6f5cabd724125869",
     "@pdz/sets": "git+https://github.com/LumarisX/pdz-sets.git#96baf626c671088fcec2b64b474b1fe16f48750e",
     "@pkmn/data": "^0.10.11",
     "@pkmn/dex": "^0.10.11",

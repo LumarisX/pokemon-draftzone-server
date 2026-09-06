@@ -1,6 +1,5 @@
 import { getStatSystem } from "@pdz/sets";
 import { ID, StatusName } from "@pkmn/data";
-import { State, computeStats } from "@pdz/calc";
 import { PokemonDto } from "@modules/pokemon/pokemon.dto";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
@@ -277,6 +276,30 @@ function buildScenarios(
   );
 }
 
+function requireNature(
+  ruleset: PDZPokemon["ruleset"],
+  name?: string,
+): ID | undefined {
+  if (!name) return undefined;
+  const nature = ruleset.natures.get(name);
+  if (!nature) {
+    throw new Error(`No nature '${name}' in generation ${ruleset.num}`);
+  }
+  return nature.id;
+}
+
+function requireItem(
+  ruleset: PDZPokemon["ruleset"],
+  name?: string,
+): ID | undefined {
+  if (!name) return undefined;
+  const item = ruleset.items.get(name);
+  if (!item) {
+    throw new Error(`No item '${name}' in generation ${ruleset.num}`);
+  }
+  return item.id;
+}
+
 function evaluateScenario(
   pokemon: PDZPokemon,
   level: number,
@@ -286,7 +309,7 @@ function evaluateScenario(
     pokemon.id === "aegislash" ? ("aegislash-shield" as ID) : pokemon.id;
 
   try {
-    const dmgGeneration = pokemon.ruleset;
+    const ruleset = pokemon.ruleset;
 
     const set = new PDZPokemonSet(
       {
@@ -295,31 +318,16 @@ function evaluateScenario(
         evs: scenario.evs,
         ivs: scenario.ivs,
         sps: scenario.sps,
+        nature: requireNature(ruleset, scenario.nature),
+        item: requireItem(ruleset, scenario.item),
       },
-      dmgGeneration,
+      ruleset,
     );
 
-    const pokemonState = State.createPokemon(dmgGeneration, id, {
-      level: set.level,
-      evs: set.evs,
-      ivs: set.ivs,
-      // Nature and item are intentionally NOT resolved through PDZPokemonSet: that resolution is
-      // lenient (unknown name -> undefined), but dmg/state.ts deliberately throws when a nature or
-      // item doesn't exist yet in this generation/ruleset, which speedchart relies on to drop
-      // impossible scenarios (e.g. a nature or Choice Scarf in Generation 1).
-      nature: scenario.nature,
-      item: scenario.item,
-      status: scenario.status || undefined,
-    });
-
-    const stats = computeStats(dmgGeneration, {
-      ...pokemonState,
-      boosts: {},
-    });
     const speed = applyScenarioSpeedEffects(
-      stats.spe,
+      set.stats.spe,
       scenario,
-      pokemon.ruleset.num,
+      ruleset.num,
     );
 
     return {

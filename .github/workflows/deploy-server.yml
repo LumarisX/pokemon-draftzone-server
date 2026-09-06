@@ -69,9 +69,9 @@ jobs:
               "sudo -u ubuntu aws s3 cp s3://pokemondraftzone.api/server-builds/${{ github.sha }}.tgz /home/ubuntu/pokemon-draftzone-server/server-build.tgz",
               "sudo -u ubuntu rm -rf /home/ubuntu/pokemon-draftzone-server/dist /home/ubuntu/pokemon-draftzone-server/node_modules",
               "sudo -u ubuntu tar -xzf /home/ubuntu/pokemon-draftzone-server/server-build.tgz -C /home/ubuntu/pokemon-draftzone-server",
-              "sudo -u ubuntu test -f /home/ubuntu/pokemon-draftzone-server/dist/main.js",
-              "sudo -u ubuntu test -d /home/ubuntu/pokemon-draftzone-server/node_modules/@pdz/calc/build",
-              "sudo -u ubuntu test -d /home/ubuntu/pokemon-draftzone-server/node_modules/@pdz/sets/build",
+              "test -f /home/ubuntu/pokemon-draftzone-server/dist/main.js",
+              "test -d /home/ubuntu/pokemon-draftzone-server/node_modules/@nestjs/core",
+              "test -d /home/ubuntu/pokemon-draftzone-server/node_modules/@pdz/sets/build",
               "sudo -u ubuntu bash -lc \"source /home/ubuntu/.nvm/nvm.sh && nvm use ${{ env.NODE_VERSION }} && node -v && npm -v\"",
               "sudo -u ubuntu bash -lc \"source /home/ubuntu/.nvm/nvm.sh && nvm use ${{ env.NODE_VERSION }} && pm2 update && pm2 startOrReload /home/ubuntu/pokemon-draftzone-server/ecosystem.config.js --only pmdz\"",
               "sudo -u ubuntu bash -lc \"source /home/ubuntu/.nvm/nvm.sh && nvm use ${{ env.NODE_VERSION }} && pm2 jlist\""
@@ -106,14 +106,24 @@ jobs:
             --command-id "${COMMAND_ID}" \
             --instance-id "${INSTANCE_ID}" > invocation.json
 
+          echo "--- invocation ---"
+          jq 'del(.StandardOutputContent, .StandardErrorContent)' invocation.json
+
           echo "--- stdout ---"
           jq -r '.StandardOutputContent' invocation.json
           echo "--- stderr ---"
           jq -r '.StandardErrorContent' invocation.json
 
           STATUS=$(jq -r '.Status' invocation.json)
-          echo "Invocation status: ${STATUS}"
+          DETAILS=$(jq -r '.StatusDetails // "none"' invocation.json)
+          RESPONSE_CODE=$(jq -r '.ResponseCode // "none"' invocation.json)
+          echo "Invocation status: ${STATUS} (${DETAILS}), response code: ${RESPONSE_CODE}"
+
+          if [ "$RESPONSE_CODE" = "-1" ]; then
+            echo "::error::SSM never ran the script on ${INSTANCE_ID} (${DETAILS}). Check that the instance is running and the SSM agent is connected."
+          fi
+
           if [ "$STATUS" != "Success" ]; then
-            echo "::error::Deploy script failed on ${INSTANCE_ID} with status ${STATUS}"
+            echo "::error::Deploy script failed on ${INSTANCE_ID} with status ${STATUS} (${DETAILS})"
             exit 1
           fi
