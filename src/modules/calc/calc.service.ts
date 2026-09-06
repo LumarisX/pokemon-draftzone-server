@@ -50,21 +50,21 @@ export class CalcService {
 
     const distribution = resolveMove(state);
     const total = distribution.totalOutcomes;
-    const startingHp = state.p2.pokemon.hp;
-    const maxhp = state.p2.pokemon.maxhp;
+    const startingHp = state.target.hp;
+    const maxhp = state.target.maxhp;
 
     const outcomes: CalcOutcomeDto[] = distribution.outcomes
       .map((outcome) => {
-        const hp = outcome.data.p2.pokemon.hp;
+        const hp = outcome.data.target.hp;
         return {
           probability: outcome.count / total,
           damage: startingHp - hp,
           hp,
           hpPercent: round((hp / maxhp) * 100, 2),
           fainted: hp <= 0,
-          status: outcome.data.p2.pokemon.status,
-          boosts: nonEmpty(outcome.data.p2.pokemon.boosts),
-          attackerBoosts: nonEmpty(outcome.data.p1.pokemon.boosts),
+          status: outcome.data.target.status,
+          boosts: nonEmpty(outcome.data.target.boosts),
+          attackerBoosts: nonEmpty(outcome.data.attacker.boosts),
         };
       })
       .sort((a, b) => a.damage - b.damage);
@@ -78,7 +78,7 @@ export class CalcService {
       branches: {
         accuracy: accuracyBranches(state.move),
         crit: critBranches(state),
-        hits: hitCountBranches(ruleset.num, state.move, state.p1.pokemon),
+        hits: hitCountBranches(ruleset.num, state.move, state.attacker),
         secondaries: secondaryBranches(state).map((branch) => ({
           effects: branch.effects.map(describeSecondary),
           weight: branch.weight,
@@ -199,7 +199,7 @@ export class CalcService {
       terrain: request.field?.terrain || undefined,
     });
 
-    return new State(ruleset, attacker, defender, move, field);
+    return State.oneOnOne(ruleset, attacker, defender, move, field);
   }
 
   private applyOverrides(
@@ -254,8 +254,8 @@ export class CalcService {
     return {
       ruleset: request.ruleset ?? DEFAULT_RULESET,
       gen: state.gen.num,
-      attacker: describePokemon(state.p1.pokemon),
-      defender: describePokemon(state.p2.pokemon),
+      attacker: describePokemon(state.attacker),
+      defender: describePokemon(state.target),
       move: {
         name: state.move.name,
         id: state.move.id,
