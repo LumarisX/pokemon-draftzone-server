@@ -4,9 +4,8 @@ import {
   accuracyBranches,
   assertSupported,
   critBranches,
-  guaranteedKnockoutTurn,
   hitCountBranches,
-  knockoutChances,
+  resolveTurns,
   resolveMove,
   secondaryBranches,
 } from "@pdz/calc";
@@ -26,6 +25,9 @@ import {
 const DEFAULT_RULESET = "Gen9 NatDex";
 const DEFAULT_TURNS = 6;
 const MAX_TURNS = 12;
+const TURN_BUDGET_MS = 1500;
+const MIN_TURN_RESOLVES = 0;
+const MAX_TURN_RESOLVES = 4000;
 
 @Injectable()
 export class CalcService {
@@ -48,7 +50,9 @@ export class CalcService {
       throw error;
     }
 
+    const resolveStarted = Date.now();
     const distribution = resolveMove(state);
+    const resolveMs = Math.max(Date.now() - resolveStarted, 0.05);
     const total = distribution.totalOutcomes;
     const startingHp = state.target.hp;
     const maxhp = state.target.maxhp;
@@ -96,7 +100,7 @@ export class CalcService {
         rolls,
       },
       outcomes,
-      ko: this.knockout(state, turns),
+      ko: this.knockout(state, turns, resolveMs),
       meta: {
         distinctOutcomes: distribution.size(),
         totalWeight: total,
@@ -106,8 +110,17 @@ export class CalcService {
     };
   }
 
-  private knockout(state: State, turns: number) {
-    const chances = knockoutChances(state, turns);
+  private knockout(state: State, turns: number, resolveMs: number) {
+    const affordable = Math.floor(TURN_BUDGET_MS / resolveMs);
+    const projection = resolveTurns(state, {
+      turns,
+      maxResolves: Math.min(
+        MAX_TURN_RESOLVES,
+        Math.max(MIN_TURN_RESOLVES, affordable),
+      ),
+    });
+    const chances = projection.knockoutByTurn;
+    const incomplete = projection.unexpandedMass > 1e-9;
     const exactly = chances.map(
       (chance, index) => chance - (index ? chances[index - 1] : 0),
     );
@@ -117,6 +130,7 @@ export class CalcService {
       .filter((entry) => entry.probability > 1e-9);
 
     const unresolved = 1 - (chances[chances.length - 1] ?? 0);
+    const guaranteedTurn = chances.findIndex((chance) => chance >= 1);
     const earliestTurn = resolved[0]?.turn;
     const likeliest = resolved.reduce(
       (best, entry) => (entry.probability > (best?.probability ?? 0) ? entry : best),
@@ -126,11 +140,12 @@ export class CalcService {
     return {
       chances: chances.map((chance) => round(chance, 6)),
       exactlyOnTurn: exactly.map((chance) => round(chance, 6)),
-      guaranteedTurn: guaranteedKnockoutTurn(state, turns),
+      guaranteedTurn: guaranteedTurn === -1 ? undefined : guaranteedTurn + 1,
       earliestTurn,
       likeliestTurn: likeliest?.turn,
       unresolved: round(unresolved, 6),
-      summary: this.knockoutSummary(resolved, unresolved, turns),
+      unexpanded: round(projection.unexpandedMass, 6),
+      summary: this.knockoutSummary(resolved, unresolved, turns, incomplete),
     };
   }
 
@@ -138,9 +153,12 @@ export class CalcService {
     resolved: { turn: number; probability: number }[],
     unresolved: number,
     turns: number,
+    incomplete: boolean,
   ) {
     if (!resolved.length) {
-      return `no knockout within ${turns} turn${turns === 1 ? "" : "s"}`;
+      return incomplete
+        ? `no knockout found within the compute budget (${turns} turns requested)`
+        : `no knockout within ${turns} turn${turns === 1 ? "" : "s"}`;
     }
 
     const first = resolved[0].turn;
@@ -151,9 +169,11 @@ export class CalcService {
 
     const range = first === last ? `${first}` : `${first}–${last}`;
     const tail =
-      unresolved > 1e-9
-        ? `, ${(unresolved * 100).toFixed(1)}% still standing after ${turns}`
-        : "";
+      unresolved <= 1e-9
+        ? ""
+        : incomplete
+          ? `, ${(unresolved * 100).toFixed(1)}% unresolved — the search hit its compute budget, so later turns are a lower bound`
+          : `, ${(unresolved * 100).toFixed(1)}% still standing after ${turns}`;
 
     return `${likeliest.turn}HKO — ${range} turns (${(likeliest.probability * 100).toFixed(1)}% on turn ${likeliest.turn})${tail}`;
   }

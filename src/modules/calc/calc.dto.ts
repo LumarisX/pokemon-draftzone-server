@@ -72,6 +72,7 @@ export interface CalcResponseDto {
     earliestTurn?: number;
     likeliestTurn?: number;
     unresolved: number;
+    unexpanded: number;
     summary: string;
   };
   meta?: {
