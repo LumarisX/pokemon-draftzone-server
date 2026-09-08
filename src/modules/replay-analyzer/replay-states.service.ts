@@ -137,6 +137,7 @@ export type Field = {
   timestampEnd?: number;
   gameType?: string;
   genNum?: number;
+  pickedTeamSize?: number;
   weather?: ConditionState;
   winner?: string;
   tie?: boolean;
@@ -822,6 +823,13 @@ export class ReplayStatesService {
       if (!Number.isFinite(timestamp)) return;
       if (field.timestampStart === undefined) field.timestampStart = timestamp;
       field.timestampEnd = timestamp;
+    },
+    teampreview: (line, ctx) => {
+      const previewSize = line.args.previewSize
+        ? Number(line.args.previewSize)
+        : NaN;
+      if (!Number.isFinite(previewSize) || previewSize <= 0) return;
+      ctx.field.pickedTeamSize = previewSize;
     },
     teamsize: (line, ctx) => {
       const sideId = parseSideId(line.args.player);

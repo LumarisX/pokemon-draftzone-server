@@ -82,11 +82,18 @@ type LuckStats = {
   };
 };
 
+type BroughtTeam = {
+  keys: Set<PokemonKey> | undefined;
+  size: number;
+  unrevealed: number;
+};
+
 type ReplayPlayerAnalysis = {
   username: string;
   win: boolean;
   stats: {
     switches: number;
+    brought: number;
   };
   total: {
     kills: number;
@@ -140,6 +147,36 @@ function emptyCalcLog(): CalcLog {
 
 function isPokemonFainted(pokemon: Pokemon | undefined): boolean {
   return Boolean(pokemon?.fainted);
+}
+
+function resolveBroughtTeam(
+  side: Side,
+  genNum: number | undefined,
+  pickedTeamSize: number | undefined,
+): BroughtTeam {
+  const roster = Object.values(side.pokemon);
+  const speciesOf = (pokemon: Pokemon) =>
+    toSpeciesGroupId(pokemon.species, genNum);
+  const species = new Set(roster.map(speciesOf));
+  const bringLimit = Math.min(
+    side.teamSize ?? 0,
+    pickedTeamSize ?? Number.POSITIVE_INFINITY,
+  );
+
+  if (bringLimit > 0 && species.size <= bringLimit) {
+    return { keys: undefined, size: species.size, unrevealed: 0 };
+  }
+
+  const revealed = roster.filter(
+    (pokemon) => pokemon.everActive || isPokemonFainted(pokemon),
+  );
+  const revealedSpecies = new Set(revealed.map(speciesOf));
+  const size = Math.max(bringLimit, revealedSpecies.size);
+  return {
+    keys: new Set(revealed.map((pokemon) => pokemon.key)),
+    size,
+    unrevealed: size - revealedSpecies.size,
+  };
 }
 
 function toDisplayName(pokemon: Pokemon): string {
@@ -294,26 +331,47 @@ export class ReplayAnalysisService {
       { turn: number; damage: number; remaining: number }[]
     >();
     playerSideIds.forEach((sideId) => turnChartBySide.set(sideId, []));
+    const broughtBySide = new Map<string, BroughtTeam>(
+      playerSideIds.map((sideId) => [
+        sideId,
+        resolveBroughtTeam(
+          field.sides[sideId],
+          field.genNum,
+          field.pickedTeamSize,
+        ),
+      ]),
+    );
     build.turns.forEach((snapshot) => {
       playerSideIds.forEach((sideId) => {
-        const team = Object.values(snapshot.sides[sideId] ?? {});
+        const brought = broughtBySide.get(sideId);
+        const team = Object.entries(snapshot.sides[sideId] ?? {})
+          .filter(([key]) => !brought?.keys || brought.keys.has(key))
+          .map(([, state]) => state);
         turnChartBySide.get(sideId)?.push({
           turn: snapshot.turnNumber,
           damage: team.reduce((sum, mon) => sum + (100 - mon.hpPercent), 0),
-          remaining: team.reduce((sum, mon) => sum + (mon.fainted ? 0 : 1), 0),
+          remaining:
+            team.reduce((sum, mon) => sum + (mon.fainted ? 0 : 1), 0) +
+            (brought?.unrevealed ?? 0),
         });
       });
     });
 
     const players: ReplayPlayerAnalysis[] = playerSideIds.map((sideId) => {
       const side = field.sides[sideId];
-      const team = this.buildTeamAnalysis(side, field.genNum, {
-        killsByPokemon,
-        damageDealtByPokemon,
-        damageTakenByPokemon,
-        hpRestoredByPokemon,
-        calcLogByPokemon,
-      });
+      const brought = broughtBySide.get(sideId);
+      const team = this.buildTeamAnalysis(
+        side,
+        field.genNum,
+        brought?.keys,
+        {
+          killsByPokemon,
+          damageDealtByPokemon,
+          damageTakenByPokemon,
+          hpRestoredByPokemon,
+          calcLogByPokemon,
+        },
+      );
 
       return {
         username: side.username ?? sideId,
@@ -322,6 +380,7 @@ export class ReplayAnalysisService {
           field.winner === (side.username ?? sideId),
         stats: {
           switches: side.stats.switches,
+          brought: brought?.size ?? team.length,
         },
         total: {
           kills: killsBySide.get(sideId) ?? 0,
@@ -450,6 +509,7 @@ export class ReplayAnalysisService {
   private buildTeamAnalysis(
     side: Side,
     genNum: number | undefined,
+    broughtKeys: Set<PokemonKey> | undefined,
     aggregates: {
       killsByPokemon: Map<PokemonKey, StatBreakdown>;
       damageDealtByPokemon: Map<PokemonKey, StatBreakdown>;
@@ -473,7 +533,6 @@ export class ReplayAnalysisService {
       const damageTaken = emptyStatBreakdown();
       const calcLog = emptyCalcLog();
       let hpRestored = 0;
-      let everActive = false;
       const moveset = new Set<string>();
       const formes = new Set<string>();
 
@@ -507,7 +566,6 @@ export class ReplayAnalysisService {
             emptyStatBreakdown(),
         );
         hpRestored += aggregates.hpRestoredByPokemon.get(pokemon.key) ?? 0;
-        everActive = everActive || Boolean(pokemon.everActive);
 
         const pokemonCalcLog = aggregates.calcLogByPokemon.get(pokemon.key);
         if (pokemonCalcLog) {
@@ -525,7 +583,7 @@ export class ReplayAnalysisService {
         kills,
         status: isPokemonFainted(chosenPokemon)
           ? "fainted"
-          : everActive || groupedTeam.size <= (side.teamSize ?? 0)
+          : !broughtKeys || group.some((pokemon) => broughtKeys.has(pokemon.key))
             ? "survived"
             : "brought",
         moveset: [...moveset],
