@@ -1,4 +1,14 @@
-import { getRuleset, getRulesets, getRulesetsGrouped } from './rulesets';
+import {
+  CHAMPIONS_MA,
+  CHAMPIONS_MB,
+  CHAMPIONS_MC,
+} from './champions-regulations';
+import {
+  DEFAULT_RULESET_ID,
+  getRuleset,
+  getRulesets,
+  getRulesetsGrouped,
+} from './rulesets';
 
 // Mock @pkmn/data and @pkmn/dex
 jest.mock('@pkmn/data', () => ({
@@ -71,22 +81,50 @@ describe('getRulesets', () => {
 
   it('includes every group, not just Gen 9/Gen 8/Older Gens (e.g. Champions and Rom Hacks)', () => {
     const rulesets = getRulesets();
-    expect(rulesets).toContain('Champions');
+    expect(rulesets).toContain('Champions MC');
     expect(rulesets).toContain('radicalred');
     expect(rulesets).toContain('insurgance');
   });
 
-  it('does not advertise the legacy Champions MA/MB ids', () => {
+  it('advertises each Champions regulation separately', () => {
     const rulesets = getRulesets();
-    expect(rulesets).not.toContain('Champions MA');
-    expect(rulesets).not.toContain('Champions MB');
+    expect(rulesets).toContain('Champions MA');
+    expect(rulesets).toContain('Champions MB');
+    expect(rulesets).toContain('Champions MC');
+  });
+
+  it('does not advertise the rolling Champions id', () => {
+    expect(getRulesets()).not.toContain('Champions');
   });
 });
 
 describe('legacy ruleset id aliases', () => {
-  it('resolves the retired Champions MA/MB ids to the current Champions ruleset', () => {
-    expect(getRuleset('Champions MA').name).toBe('Champions');
-    expect(getRuleset('Champions MB').name).toBe('Champions');
+  it('pins the rolling Champions id to the regulation it meant (M-B)', () => {
+    expect(getRuleset('Champions').name).toBe('Champions MB');
+  });
+
+  it('resolves each Champions regulation to itself', () => {
+    expect(getRuleset('Champions MA').name).toBe('Champions MA');
+    expect(getRuleset('Champions MB').name).toBe('Champions MB');
+    expect(getRuleset('Champions MC').name).toBe('Champions MC');
+  });
+});
+
+describe('champions regulations', () => {
+  it('is strictly additive: M-A subset of M-B subset of M-C', () => {
+    for (const id of CHAMPIONS_MA) expect(CHAMPIONS_MB.has(id)).toBe(true);
+    for (const id of CHAMPIONS_MB) expect(CHAMPIONS_MC.has(id)).toBe(true);
+  });
+
+  it('grows by the expected amount each regulation', () => {
+    expect(CHAMPIONS_MA.size).toBe(271);
+    expect(CHAMPIONS_MB.size).toBe(310);
+    expect(CHAMPIONS_MC.size).toBe(341);
+  });
+
+  it('defaults to the newest regulation', () => {
+    expect(DEFAULT_RULESET_ID).toBe('Champions MC');
+    expect(getRuleset(DEFAULT_RULESET_ID).name).toBe('Champions MC');
   });
 });
 
