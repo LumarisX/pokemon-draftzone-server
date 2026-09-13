@@ -189,6 +189,7 @@ const MA_POKEMON = [
   "pangoro",
   "furfrou",
   "meowstic",
+  "meowsticf",
   "meowsticfmega",
   "aegislash",
   "aromatisse",

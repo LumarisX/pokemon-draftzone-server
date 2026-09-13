@@ -117,9 +117,9 @@ describe('champions regulations', () => {
   });
 
   it('grows by the expected amount each regulation', () => {
-    expect(CHAMPIONS_MA.size).toBe(271);
-    expect(CHAMPIONS_MB.size).toBe(310);
-    expect(CHAMPIONS_MC.size).toBe(341);
+    expect(CHAMPIONS_MA.size).toBe(272);
+    expect(CHAMPIONS_MB.size).toBe(311);
+    expect(CHAMPIONS_MC.size).toBe(342);
   });
 
   it('defaults to the newest regulation', () => {
