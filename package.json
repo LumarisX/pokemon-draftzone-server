@@ -19,7 +19,7 @@
     "test:ci": "jest --runInBand",
     "test:safe": "jest --runInBand --silent",
     "report:users": "ts-node src/scripts/auth0-user-report.ts",
-    "gen:champions": "ts-node -r tsconfig-paths/register src/mods/champions-mc/generate.ts"
+    "gen:champions": "ts-node -r tsconfig-paths/register src/mods/champions/generate.ts"
   },
   "engines": {
     "node": "24.12.0"

@@ -1,14 +1,12 @@
 import { Data, Generation, ID } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
-import * as ChampionsDex from "@pkmn/mods/champions";
-import * as ChampionsMC from "../../../mods/champions-mc";
-import * as InsDex from "../../../mods/insurgance";
-import * as RRDex from "../../../mods/radicalred";
 import {
-  CHAMPIONS_MA,
-  CHAMPIONS_MB,
-  CHAMPIONS_MC,
-} from "./champions-regulations";
+  CHAMPIONS_REGULATION_DATA,
+  ChampionsRegulation,
+} from "../../../mods/champions";
+import * as InsDex from "../../../mods/insurgance";
+import { LEGENDS_ZA_DATA } from "../../../mods/legends";
+import * as RRDex from "../../../mods/radicalred";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import {
@@ -18,11 +16,20 @@ import {
   StatSystemId,
 } from "@pdz/sets";
 
-const championsDex = Dex.mod("champions" as ID, {
-  ...ChampionsDex,
-  FormatsData: { ...ChampionsDex.FormatsData, ...ChampionsMC.FormatsData },
-  Learnsets: { ...ChampionsDex.Learnsets, ...ChampionsMC.Learnsets },
-} as unknown as ModData);
+const CHAMPIONS_MOD_IDS: Record<ChampionsRegulation, string> = {
+  "M-A": "championsrega",
+  "M-B": "championsregb",
+  "M-C": "champions",
+};
+
+const championsDex = (regulation: ChampionsRegulation): ModdedDex =>
+  Dex.mod(
+    CHAMPIONS_MOD_IDS[regulation] as ID,
+    CHAMPIONS_REGULATION_DATA[regulation] as ModData,
+  );
+
+const legendsZADex = (): ModdedDex =>
+  Dex.mod("gen9legends" as ID, LEGENDS_ZA_DATA);
 
 const NATDEX_UNOBTAINABLE_SPECIES = [
   "Pichu-Spiky-eared",
@@ -128,10 +135,13 @@ function ROM_EXISTS(d: Data) {
   });
 }
 
-function CHAMPIONS_EXISTS(d: Data, regulation: ReadonlySet<string>) {
+function CHAMPIONS_EXISTS(d: Data) {
   if (d.kind === "Species") {
-    return d.exists && d.forme !== "Gmax" && regulation.has(d.id);
+    if (d.forme === "Gmax") return false;
+    if (d.isNonstandard) return false;
+    if (d.tier === "Illegal" || d.tier === "Unreleased") return false;
   }
+  if (d.kind === "Item" && d.isNonstandard) return false;
   return _exists(d, {
     nonstandard: ["CAP", "Custom", "Future"],
     species: {
@@ -252,8 +262,8 @@ export const Rulesets: {
       id: RULESET_IDS.CHAMP_MC,
       desc: "Only Pokémon allowed in Champions Regulation M-C.",
       ruleset: new Ruleset(
-        championsDex,
-        (d: Data) => CHAMPIONS_EXISTS(d, CHAMPIONS_MC),
+        championsDex("M-C"),
+        CHAMPIONS_EXISTS,
         RULESET_IDS.CHAMP_MC,
         { statSystem: "statPoints" },
       ),
@@ -262,8 +272,8 @@ export const Rulesets: {
       id: RULESET_IDS.CHAMP_MB,
       desc: "Only Pokémon allowed in Champions Regulation M-B.",
       ruleset: new Ruleset(
-        championsDex,
-        (d: Data) => CHAMPIONS_EXISTS(d, CHAMPIONS_MB),
+        championsDex("M-B"),
+        CHAMPIONS_EXISTS,
         RULESET_IDS.CHAMP_MB,
         { statSystem: "statPoints" },
       ),
@@ -272,8 +282,8 @@ export const Rulesets: {
       id: RULESET_IDS.CHAMP_MA,
       desc: "Only Pokémon allowed in Champions Regulation M-A.",
       ruleset: new Ruleset(
-        championsDex,
-        (d: Data) => CHAMPIONS_EXISTS(d, CHAMPIONS_MA),
+        championsDex("M-A"),
+        CHAMPIONS_EXISTS,
         RULESET_IDS.CHAMP_MA,
         { statSystem: "statPoints" },
       ),
@@ -305,9 +315,9 @@ export const Rulesets: {
     },
     "ZA National Dex": {
       id: RULESET_IDS.ZA_NATDEX,
-      desc: "Only Pokémon available in Generation 9 and before",
+      desc: "Generation 9 and before, with Legends: Z-A movepools and stats",
       ruleset: new Ruleset(
-        Dex.forGen(9),
+        legendsZADex(),
         (d: Data) =>
           !(!ZA_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
         RULESET_IDS.ZA_NATDEX,

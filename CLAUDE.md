@@ -35,7 +35,7 @@ src/
   core/        cross-cutting: PDZError, slug, cache, filters, decorators,
                logging, storage, static data (formats, rulesets)
   modules/     one folder per domain (see below)
-  mods/        custom Pokémon dex mods (insurgence, radical red)
+  mods/        custom Pokémon dex mods (champions regulations, insurgence, radical red)
   tests/       fixtures and manual harnesses
 scripts/complete/   one-off migration + backfill scripts, already run
 docs/               schema notes
@@ -121,6 +121,86 @@ Conventions when adding one:
 - **Write and review the script, then let the user run it.** Do not execute
   migrations against a live database yourself.
 - Name it by intent: `migrate-*`, `backfill-*`, `rollback-*`, `diagnose-*`, `fix-*`.
+
+## Vendored Showdown mods
+
+`src/mods/ps-vendor.ts` fetches a mod's data tables straight from
+`raw.githubusercontent.com/smogon/pokemon-showdown` at a **pinned commit** and emits
+them as TypeScript. Two mods use it today: `src/mods/champions/` and
+`src/mods/legends/`. Both are **generated** — run `npm run gen:champions` /
+`npm run gen:legends`, never hand-edit the output. Every generated directory exports
+a `SOURCE` naming the upstream path and ref it came from, and the specs assert it.
+
+Two traps when composing a vendored mod into a `Dex.mod`:
+
+- The species table key is **`Species`**, not `Pokedex` as the upstream file is
+  named, and the parent dex comes from `Scripts` — a mod with no `Scripts.gen`
+  resolves its parent wrong and silently inherits nothing.
+- A table entry **replaces** the parent entry unless it carries `inherit: true`.
+  Upstream files use that flag inconsistently: `gen9legends` formats-data entries set
+  only `isNonstandard`, so applying them verbatim strips every `tier`. `legends/index.ts`
+  adds `inherit: true` to that table for exactly this reason.
+
+## Champions regulations
+
+Each regulation is its own dex mod, not one dex filtered by an allowlist. The data
+lives in `src/mods/champions/{ma,mb,mc}/`.
+
+Composition is a chain, newest first: M-C is the head regulation (upstream keeps it
+in `data/mods/champions`), M-B is a delta over M-C, M-A a delta over M-B. Legality
+comes from upstream's own `isNonstandard`/`tier` data, so a regulation gates its own
+species, items and moves — Iron Ball is absent in M-A, Salamencite only in M-C, and
+`strengthsap` has different PP either side of M-C.
+
+Two rules keep this honest:
+
+- **Never derive an older regulation from a moving base.** `@pkmn/mods/champions`
+  tracks whatever regulation is current upstream; anything pinned to it silently
+  rewrites itself when the package updates. Only the head regulation may float.
+- **Upstream keeps just one historical regulation.** When M-C landed, PS renamed
+  `championsregma` to `championsregmb` and the M-A data stopped existing upstream.
+  M-A is pinned to its final commit for that reason. When the next regulation lands,
+  vendor the outgoing one *before* bumping `@pkmn/mods`.
+
+`CHAMPIONS_EXISTS` treats any `isNonstandard` item as illegal, unlike `_exists`,
+which exempts `Past` items that have an `itemUser` — that exemption is right for
+NatDex and wrong for a regulation, where `Past` means "not in this regulation".
+
+## ZA National Dex
+
+A full national dex roster (1304 species) playing under Legends: Z-A data where that
+data exists. The 503 species native to Z-A use Z-A movepools — roughly half the size
+of gen 9's — and Mega Starmie, Mega Mawile and Mega Medicham use Z-A's higher Attack.
+Everything else falls back to gen 9, movepools included.
+
+**Do not apply `legends/za/formats-data.ts` as ruleset legality.** It marks the 588
+non-Z-A species `isNonstandard: "Past"`, which would cut the roster to ~500 and break
+every stored draft using a mon outside Z-A — 510 documents at the last sweep. It is
+exported as `LEGENDS_ZA_NATIVE_SPECIES` for the "is this native to Z-A" question only.
+
+It is unrelated to Champions: `gen9legends` declares `inherit: 'gen9'`, and the
+`champions` mod ships no pokedex override, so Champions legitimately uses the *base*
+mega stats. The two mods model the same game for different purposes; do not
+cross-apply their data.
+
+## Ruleset changes touch live data
+
+Narrowing any ruleset can orphan stored picks — one unresolvable species 404s the
+whole request. Before shipping one, run:
+
+```
+npx ts-node -r tsconfig-paths/register scripts/diagnose-ruleset-legality.ts
+```
+
+It is read-only and reports every stored species, item, ability and move its own
+document's ruleset no longer resolves. There is a standing baseline of ~66 references
+across ~37 documents in rulesets nobody has touched (Z-A megas saved under Gen9
+NatDex, a Gmax pick, one malformed id) — that is drift from ruleset switching, not a
+regression. Judge a change by whether it *adds* to that.
+
+Battle-only formes are not all equal: Palafin-Hero (162 stored picks) and
+Aegislash-Blade are deliberately drafted and must stay legal, unlike Morpeko-Hangry
+or Mimikyu-Busted. Do not add them to `IRRELEVANT_BATTLE_ONLY_SPECIES`.
 
 ## Domain gotchas
 

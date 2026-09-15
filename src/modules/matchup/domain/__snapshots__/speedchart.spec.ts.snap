@@ -6647,21 +6647,6 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
             ],
             "speed": 176,
           },
-          {
-            "modifiers": [
-              "0-",
-              "-1",
-              "Iron Ball",
-            ],
-            "speed": 58,
-          },
-          {
-            "modifiers": [
-              "0-",
-              "Iron Ball",
-            ],
-            "speed": 88,
-          },
         ],
       },
       {
@@ -6875,21 +6860,6 @@ exports[`speedchart matches the recorded baseline across ability/item/ruleset co
               "0-",
             ],
             "speed": 194,
-          },
-          {
-            "modifiers": [
-              "0-",
-              "-1",
-              "Iron Ball",
-            ],
-            "speed": 64,
-          },
-          {
-            "modifiers": [
-              "0-",
-              "Iron Ball",
-            ],
-            "speed": 97,
           },
         ],
       },
