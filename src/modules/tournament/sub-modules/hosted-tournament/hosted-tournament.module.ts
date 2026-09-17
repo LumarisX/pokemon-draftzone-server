@@ -5,6 +5,7 @@ import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup
 import { StageModule } from "@modules/stage/stage.module";
 import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
+import { UserModule } from "@modules/user/user.module";
 import { Module } from "@nestjs/common";
 import { HostedTournamentCoreModule } from "./hosted-tournament-core.module";
 import { HostedTournamentController } from "./hosted-tournament.controller";
@@ -20,6 +21,7 @@ import { HostedTournamentService } from "./hosted-tournament.service";
     DraftCoreModule,
     StageModule,
     LeagueMatchupModule,
+    UserModule,
   ],
   controllers: [HostedTournamentController],
   providers: [HostedTournamentService],

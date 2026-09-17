@@ -26,6 +26,8 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
     slug: "springcup",
     description: "The spring cup",
     tierListId: "tierlist-1",
+    format: { name: "Singles" },
+    ruleset: { name: "Gen9 NatDex" },
     signUpDeadline: new Date("2026-01-01"),
     draftStart: new Date("2026-01-15"),
     draftEnd: new Date("2026-01-20"),
@@ -116,17 +118,18 @@ describe("LeagueService.getLeagueSummary", () => {
     });
   });
 
-  it("merges each tournament's own fields with its tier list's format/ruleset", async () => {
+  it("reads format/ruleset off the tournament without fetching its tier list", async () => {
     const league = buildLeague();
-    const tournament = buildTournament();
-    const tierList = buildTierList({ format: "VGC", ruleset: "Paldea Dex" });
+    const tournament = buildTournament({
+      format: { name: "VGC" },
+      ruleset: { name: "Paldea Dex" },
+    });
     leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([tournament]);
-    tierListRepo.findById.mockResolvedValue(tierList);
 
     const result = await service.getLeagueSummary("springleague");
 
-    expect(tierListRepo.findById).toHaveBeenCalledWith("tierlist-1");
+    expect(tierListRepo.findById).not.toHaveBeenCalled();
     expect(result.tournaments).toEqual([
       {
         name: "Spring Cup",
@@ -149,23 +152,20 @@ describe("LeagueService.getLeagueSummary", () => {
     const league = buildLeague();
     const tournamentA = buildTournament({
       slug: "a",
-      tierListId: "tierlist-a",
+      format: { name: "format-a" },
     });
     const tournamentB = buildTournament({
       slug: "b",
-      tierListId: "tierlist-b",
+      format: { name: "format-b" },
     });
     leagueRepo.findBySlug.mockResolvedValue(league);
     hostedTournamentRepo.findAllByLeague.mockResolvedValue([tournamentA, tournamentB]);
-    tierListRepo.findById.mockImplementation((id) =>
-      Promise.resolve(buildTierList({ format: id })),
-    );
 
     const result = await service.getLeagueSummary("springleague");
 
     expect(result.tournaments.map((t) => t.tournamentSlug)).toEqual(["a", "b"]);
-    expect(result.tournaments[0].format).toBe("tierlist-a");
-    expect(result.tournaments[1].format).toBe("tierlist-b");
+    expect(result.tournaments[0].format).toBe("format-a");
+    expect(result.tournaments[1].format).toBe("format-b");
   });
 });
 
@@ -273,6 +273,18 @@ describe("LeagueService.getLeagues", () => {
         .fn()
         .mockResolvedValue(
           buildTierList({ getPokemonFormes: () => undefined }),
+        ),
+      findManyByIds: jest
+        .fn()
+        .mockImplementation((ids: string[]) =>
+          Promise.resolve(
+            new Map(
+              ids.map((id) => [
+                id,
+                buildTierList({ getPokemonFormes: () => undefined }),
+              ]),
+            ),
+          ),
         ),
     } as unknown as jest.Mocked<TierListRepository>;
     coachRepo = {

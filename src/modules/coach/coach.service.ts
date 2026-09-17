@@ -75,6 +75,12 @@ export class CoachService {
     const canDelete = await this.canManageCoach(coach, sub);
     if (!canDelete) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
+    if (coach.teamId)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_HAS_TEAM, {
+        coachId: coach._id.toString(),
+        teamId: coach.teamId.toString(),
+      });
+
     await this.coachRepo.delete(coachId);
   }
 

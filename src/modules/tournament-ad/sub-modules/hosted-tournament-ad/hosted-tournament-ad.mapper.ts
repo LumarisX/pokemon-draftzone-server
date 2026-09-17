@@ -66,6 +66,11 @@ export class HostedTournamentAdMapper {
       seasonEnd: doc.seasonEnd,
       createdAt: doc.createdAt,
       hosted: true,
+      hostedLinks: {
+        leagueSlug: league.slug,
+        leagueName: league.name,
+        tournamentSlug: doc.slug,
+      },
     };
   }
 }

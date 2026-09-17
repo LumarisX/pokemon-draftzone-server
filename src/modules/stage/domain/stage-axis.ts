@@ -32,6 +32,8 @@ export interface TradeLike {
   timestamp: Date;
   activeRound: number;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  submittedBy?: string;
+  resolvedBy?: string;
 }
 
 interface TradeSideLike {

@@ -4,6 +4,7 @@ import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  AddOrganizerDto,
   AssignCoachesDto,
   SignUpDto,
   UpdateCoachLogoDto,
@@ -57,6 +59,84 @@ export class HostedTournamentController {
     @User() sub: string,
   ) {
     return this.tournamentService.getRoles(leagueSlug, tournamentSlug, sub);
+  }
+
+  @Get(":tournamentSlug/organizers")
+  @UseGuards(JwtAuthGuard)
+  async getOrganizers(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+  ) {
+    return this.tournamentService.getOrganizers(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+    );
+  }
+
+  @Get(":tournamentSlug/organizers/search")
+  @UseGuards(JwtAuthGuard)
+  async searchOrganizerCandidates(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+    @Query("q") query: string,
+  ) {
+    return this.tournamentService.searchOrganizerCandidates(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      query ?? "",
+    );
+  }
+
+  @Post(":tournamentSlug/organizers")
+  @UseGuards(JwtAuthGuard)
+  async addOrganizer(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+    @Body() body: AddOrganizerDto,
+  ) {
+    return this.tournamentService.addOrganizer(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      body,
+    );
+  }
+
+  @Delete(":tournamentSlug/organizers/:organizerSub")
+  @UseGuards(JwtAuthGuard)
+  async removeOrganizer(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("organizerSub") organizerSub: string,
+    @User() sub: string,
+  ) {
+    return this.tournamentService.removeOrganizer(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      organizerSub,
+    );
+  }
+
+  @Delete(":tournamentSlug/coaches/:coachId")
+  @UseGuards(JwtAuthGuard)
+  async removeParticipant(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("coachId") coachId: string,
+    @User() sub: string,
+  ) {
+    return this.tournamentService.removeParticipant(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      coachId,
+    );
   }
 
   @Get(":tournamentSlug/signup")

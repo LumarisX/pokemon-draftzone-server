@@ -4,6 +4,15 @@ import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-t
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
+export const TEAM_STATUSES = [
+  "approved",
+  "pending",
+  "denied",
+  "dropped",
+] as const;
+
+export type TeamStatus = (typeof TEAM_STATUSES)[number];
+
 @Schema({ _id: false })
 export class TeamPickEntity {
   @Prop({ required: true })
@@ -73,10 +82,10 @@ export class TeamEntity {
 
   @Prop({
     type: String,
-    enum: ["approved", "pending", "denied"],
+    enum: TEAM_STATUSES,
     default: "pending",
   })
-  status!: "approved" | "pending" | "denied";
+  status!: TeamStatus;
 
   @Prop({ type: [[TeamPickSchema]], default: [] })
   picks!: TeamPickEntity[][];

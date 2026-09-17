@@ -5,6 +5,7 @@ import { isCoachedBy } from "@modules/team/team.domain";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getRosterByRound } from "./domain/roster";
@@ -29,6 +30,7 @@ export class TournamentTradeService {
   constructor(
     private readonly teamRepo: TeamRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
+    private readonly tierListRepo: TierListRepository,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
@@ -76,6 +78,12 @@ export class TournamentTradeService {
       return id ? teamById.get(id) : undefined;
     };
 
+    // A tier list that no longer resolves only costs the picks their tier and
+    // cost; the trades themselves still read fine without them.
+    const tierList = await this.tierListRepo
+      .findById(tournament.tierListId)
+      .catch(() => undefined);
+
     const buildSide = (side: TradeLike["side1"]) => {
       const team = teamOf(side);
       return {
@@ -91,6 +99,8 @@ export class TournamentTradeService {
           id: p.id,
           name: getName(p.id),
           tera: p.addons?.includes("Tera Captain") || false,
+          cost: tierList?.getPokemonCost(p.id, p.addons),
+          tier: tierList?.pokemon.get(p.id)?.tier,
         })),
         tradePoints: side.tradePoints ?? 0,
       };
@@ -177,6 +187,13 @@ export class TournamentTradeService {
         reason: `Round ${dto.roundIndex} is outside this tournament's ${tournament.rounds.length} round(s)`,
       });
 
+    const tradeDeadline = tournament.rounds[dto.roundIndex]?.tradeDeadline;
+    if (!isOrganizer && tradeDeadline && new Date() > new Date(tradeDeadline))
+      throw new PDZError(ErrorCodes.STAGE.TRADE_DEADLINE_PASSED, {
+        roundIndex: dto.roundIndex,
+        tradeDeadline,
+      });
+
     // A coach may only file a trade their own team is a side of.
     if (!isOrganizer) {
       const teamIds = [dto.side1.team, dto.side2.team].filter(
@@ -211,6 +228,8 @@ export class TournamentTradeService {
       timestamp: new Date(),
       activeRound: dto.roundIndex,
       status,
+      submittedBy: sub,
+      resolvedBy: isOrganizer ? sub : undefined,
     };
 
     if (status === "APPROVED") {
@@ -290,6 +309,8 @@ export class TournamentTradeService {
       timestamp: trade.timestamp,
       activeRound,
       status,
+      submittedBy: trade.submittedBy,
+      resolvedBy: dto.status ? sub : trade.resolvedBy,
     };
 
     await this.tournamentRepo.setTrades(

@@ -1,3 +1,4 @@
+import { TEAM_STATUSES, TeamStatus } from "@modules/team/team.schema";
 import { DraftCountDto } from "@modules/tier-list/tier-list.dto";
 import { Type } from "class-transformer";
 import {
@@ -68,9 +69,9 @@ export class CoachAssignmentDto {
   @IsOptional()
   divisionKey?: string | null;
 
-  @IsIn(["approved", "pending", "denied"])
+  @IsIn(TEAM_STATUSES)
   @IsOptional()
-  status?: "approved" | "pending" | "denied";
+  status?: TeamStatus;
 }
 
 export class AssignCoachesDto {
@@ -268,4 +269,20 @@ export class UpdateHostedTournamentSettingsDto {
   @Type(() => TournamentMatchSettingsDto)
   @IsOptional()
   matchSettings?: TournamentMatchSettingsDto;
+
+  @IsBoolean()
+  @IsOptional()
+  archived?: boolean;
+}
+
+export class AddOrganizerDto {
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  coachId?: string;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  sub?: string;
 }

@@ -61,6 +61,14 @@ export class StageTradeEntity {
     default: "APPROVED",
   })
   status!: "PENDING" | "APPROVED" | "REJECTED";
+
+  /** Auth0 sub of whoever filed the trade. Absent on pre-feature trades. */
+  @Prop()
+  submittedBy?: string;
+
+  /** Auth0 sub of the organizer who approved or rejected it. */
+  @Prop()
+  resolvedBy?: string;
 }
 export const StageTradeSchema = SchemaFactory.createForClass(StageTradeEntity);
 

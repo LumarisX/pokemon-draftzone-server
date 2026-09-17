@@ -33,8 +33,10 @@ import {
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
+import { UserRepository } from "@modules/user/user.repository";
 import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import {
+  AddOrganizerDto,
   CoachAssignmentDto,
   RuleSectionDto,
   SignUpDto,
@@ -58,7 +60,154 @@ export class HostedTournamentService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly discordService: DiscordService,
     private readonly s3Service: S3Service,
+    private readonly userRepo: UserRepository,
   ) {}
+
+  async getOrganizers(leagueSlug: string, tournamentSlug: string, sub: string) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    if (!tournament.isOrganizer(sub))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+
+    const subs = [tournament.owner, ...tournament.organizers];
+    const users = await this.userRepo.findManyBySubs(subs);
+    const usernamesBySub = new Map(
+      users.map((user) => [user.auth0Sub, user.username]),
+    );
+
+    return {
+      canEdit: tournament.getRoles(sub).includes("owner"),
+      organizers: subs.map((organizerSub) => ({
+        sub: organizerSub,
+        username: usernamesBySub.get(organizerSub) ?? null,
+        isOwner: organizerSub === tournament.owner,
+      })),
+    };
+  }
+
+  async searchOrganizerCandidates(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    query: string,
+  ) {
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
+
+    const taken = new Set([tournament.owner, ...tournament.organizers]);
+    const users = await this.userRepo.searchByUsername(query, 10);
+
+    return users
+      .filter((user) => !taken.has(user.auth0Sub))
+      .map((user) => ({
+        sub: user.auth0Sub,
+        username: user.username ?? null,
+        joined: user.joined,
+      }));
+  }
+
+  async addOrganizer(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    dto: AddOrganizerDto,
+  ) {
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
+
+    const organizerSub = dto.coachId
+      ? await this.subForCoach(tournament.id, dto.coachId)
+      : dto.sub;
+    if (!organizerSub)
+      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_NOT_FOUND, {
+        coachId: dto.coachId,
+      });
+    if (organizerSub === tournament.owner)
+      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
+
+    await this.tournamentRepo.addOrganizer(tournament.id, organizerSub);
+    return this.getOrganizers(leagueSlug, tournamentSlug, sub);
+  }
+
+  async removeOrganizer(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    organizerSub: string,
+  ) {
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
+    if (organizerSub === tournament.owner)
+      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
+
+    await this.tournamentRepo.removeOrganizer(tournament.id, organizerSub);
+    return this.getOrganizers(leagueSlug, tournamentSlug, sub);
+  }
+
+  async removeParticipant(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    coachId: string,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    if (!tournament.isOrganizer(sub))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    if (!Types.ObjectId.isValid(coachId))
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
+
+    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    if (!coach)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+
+    const team = await this.teamRepo.findByIdOrNull(coach.teamId);
+    if (!team || team.tournamentId.toString() !== tournament.id)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+
+    const stages = await this.stageRepo.findAllByTournament(tournament.id);
+    const played = await this.matchupRepo.findByStages(
+      stages.map((stage) => stage._id),
+      { teamIds: [team._id] },
+    );
+    if (played.length > 0)
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_HAS_MATCHES, {
+        coachId,
+        matchups: played.length,
+      });
+
+    await this.teamRepo.delete(team._id);
+    await this.coachRepo.delete(coach._id);
+
+    return { message: "Participant removed." };
+  }
+
+  private async requireOwner(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    if (!tournament.getRoles(sub).includes("owner"))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    return tournament;
+  }
+
+  private async subForCoach(
+    tournamentId: string,
+    coachId: string,
+  ): Promise<string | null> {
+    if (!Types.ObjectId.isValid(coachId)) return null;
+    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    if (!coach) return null;
+    const team = await this.teamRepo.findByIdOrNull(coach.teamId);
+    if (!team || team.tournamentId.toString() !== tournamentId) return null;
+    return coach.auth0Id;
+  }
 
   async getTeam(
     leagueSlug: string,
@@ -616,7 +765,7 @@ export class HostedTournamentService {
     const coachId = new Types.ObjectId();
     const teamId = new Types.ObjectId();
 
-    await this.teamRepo.create({
+    const team = await this.teamRepo.create({
       _id: teamId,
       tournamentId: tournament.id,
       coach: coachId,
@@ -645,6 +794,8 @@ export class HostedTournamentService {
       message: "Sign up successful.",
       userId: leagueCoach._id.toString(),
       tournamentId: tournament.id,
+      teamId: team._id.toString(),
+      teamSlug: team.slug,
     };
   }
 
@@ -975,6 +1126,7 @@ export class HostedTournamentService {
     if (dto.tierRequirements !== undefined)
       update["tierRequirements"] = dto.tierRequirements;
     if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
+    if (dto.archived !== undefined) update["archived"] = dto.archived;
     if (dto.matchSettings !== undefined)
       update["matchSettings"] = {
         chat: dto.matchSettings.chat ?? tournament.matchSettings?.chat !== false,

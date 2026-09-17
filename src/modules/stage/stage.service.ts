@@ -1471,6 +1471,12 @@ export class StageService {
       return teamById.get(id);
     };
 
+    const tierList = tournament
+      ? await this.tierListRepo
+          .findById(tournament.tierListId)
+          .catch(() => undefined)
+      : undefined;
+
     const buildSide = (side: TradeSide) => {
       const team = asPopulatedTeam(side);
       return {
@@ -1486,6 +1492,8 @@ export class StageService {
           id: p.id,
           name: getName(p.id),
           tera: p.addons?.includes("Tera Captain") || false,
+          cost: tierList?.getPokemonCost(p.id, p.addons),
+          tier: tierList?.pokemon.get(p.id)?.tier,
         })),
         tradePoints: side.tradePoints ?? 0,
       };
@@ -1602,6 +1610,7 @@ export class StageService {
       side2Trade,
       dto.roundIndex,
       status,
+      sub,
     );
     return {
       message: isOrganizer
@@ -1649,6 +1658,7 @@ export class StageService {
     side2: StageTradeSideEntity,
     activeRoundIndex: number,
     status: "PENDING" | "APPROVED" = "APPROVED",
+    submittedBy?: string,
   ) {
     if (side1.team === undefined && side2.team === undefined) return;
 
@@ -1660,6 +1670,8 @@ export class StageService {
       timestamp: new Date(),
       activeRound: activeRoundIndex,
       status,
+      submittedBy,
+      resolvedBy: status === "APPROVED" ? submittedBy : undefined,
     } as StageTradeEntity);
 
     await stage.save();
@@ -1731,6 +1743,7 @@ export class StageService {
     }
 
     trade.status = dto.status;
+    trade.resolvedBy = sub;
     await stageDoc.save();
 
     return {

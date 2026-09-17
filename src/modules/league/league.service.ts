@@ -94,14 +94,15 @@ export class LeagueService {
       }
     }
 
+    const tierListsById = await this.tierListRepo.findManyByIds(
+      tournaments.map((tournament) => tournament.tierListId),
+    );
+
     const details = await Promise.all(
       tournaments.map(async (tournament) => {
         const team = teamsByTournament.get(tournament.id);
         if (!team) return null;
-        const [league, tierList] = await Promise.all([
-          this.leagueRepo.findById(tournament.leagueId),
-          this.tierListRepo.findById(tournament.tierListId),
-        ]);
+        const tierList = tierListsById.get(tournament.tierListId);
         // The tournament card is a "what do I have now" view, so it takes the
         // roster with every approved trade applied, including ones that land in
         // a round the season has not reached.
@@ -109,7 +110,7 @@ export class LeagueService {
         const roster = getLatestRoster(team, context).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
-          draftFormes: tierList.getPokemonFormes(pokemon.id),
+          draftFormes: tierList?.getPokemonFormes(pokemon.id),
         }));
         // Across every stage the team plays in, matching the team page: a
         // coach's record covers the group phase and the playoffs together.
@@ -129,8 +130,8 @@ export class LeagueService {
           logo: team.logo ?? tournament.logo,
           discord: tournament.discord,
           tournamentSlug: tournament.slug,
-          leagueName: league.name,
-          leagueSlug: league.slug,
+          leagueName: tournament.leagueName,
+          leagueSlug: tournament.leagueSlug,
           draftSlug: team.draftId
             ? draftSlugsById.get(team.draftId.toString())
             : undefined,
@@ -165,27 +166,20 @@ export class LeagueService {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     const tournaments = await this.hostedTournamentRepo.findAllByLeague(league);
 
-    const tournamentSummaries = await Promise.all(
-      tournaments.map(async (tournament) => {
-        const tierList = await this.tierListRepo.findById(
-          tournament.tierListId,
-        );
-        return {
-          name: tournament.name,
-          tournamentSlug: tournament.slug,
-          description: tournament.description,
-          format: tierList.format.name,
-          ruleset: tierList.ruleset.name,
-          signUpDeadline: tournament.signUpDeadline,
-          draftStart: tournament.draftStart,
-          draftEnd: tournament.draftEnd,
-          seasonStart: tournament.seasonStart,
-          seasonEnd: tournament.seasonEnd,
-          logo: tournament.logo,
-          discord: tournament.discord,
-        };
-      }),
-    );
+    const tournamentSummaries = tournaments.map((tournament) => ({
+      name: tournament.name,
+      tournamentSlug: tournament.slug,
+      description: tournament.description,
+      format: tournament.format.name,
+      ruleset: tournament.ruleset.name,
+      signUpDeadline: tournament.signUpDeadline,
+      draftStart: tournament.draftStart,
+      draftEnd: tournament.draftEnd,
+      seasonStart: tournament.seasonStart,
+      seasonEnd: tournament.seasonEnd,
+      logo: tournament.logo,
+      discord: tournament.discord,
+    }));
 
     return {
       name: league.name,

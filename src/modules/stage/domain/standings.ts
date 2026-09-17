@@ -456,6 +456,7 @@ export async function calculateDivisionTeamStandings(
           logo: team.logo,
           diffMode,
           id: team.teamId,
+          teamSlug: team.teamSlug,
         };
       })
       .sort((a, b) => {

@@ -4,7 +4,7 @@ import { CoachDocument } from "@modules/coach/coach.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { TeamDocument, TeamEntity } from "./team.schema";
+import { TeamDocument, TeamEntity, TeamStatus } from "./team.schema";
 
 export type PopulatedTeam = TeamDocument & { coach: CoachDocument };
 
@@ -18,7 +18,7 @@ export type CreateTeamInput = {
   coach: Types.ObjectId | string;
   teamName: string;
   logo?: string;
-  status?: "approved" | "pending" | "denied";
+  status?: TeamStatus;
 };
 
 @Injectable()
@@ -156,7 +156,7 @@ export class TeamRepository {
     data: {
       teamName?: string;
       logo?: string;
-      status?: "approved" | "pending" | "denied";
+      status?: TeamStatus;
       draftId?: Types.ObjectId | string | null;
     },
   ): Promise<PopulatedTeam> {

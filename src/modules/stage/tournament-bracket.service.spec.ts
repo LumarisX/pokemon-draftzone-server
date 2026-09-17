@@ -374,6 +374,29 @@ describe("TournamentBracketService", () => {
       expect(schedule.rounds[0].name).toBe("Week 1 (renamed)");
     });
 
+    it("clears a deadline the payload leaves out, because rounds are replaced wholesale", async () => {
+      const round = buildRound("Week 1");
+      (round as Record<string, unknown>)["matchDeadline"] = new Date(
+        "2026-03-01",
+      );
+      (round as Record<string, unknown>)["tradeDeadline"] = new Date(
+        "2026-02-28",
+      );
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ rounds: [round] }),
+      );
+
+      const dto = buildDto({
+        rounds: [{ _id: round._id.toString(), name: "Week 1" }],
+      } as Partial<UpdateTournamentBracketDto>);
+
+      await update(dto);
+
+      const schedule = tournamentRepo.setSchedule.mock.calls[0][1];
+      expect(schedule.rounds[0].matchDeadline).toBeUndefined();
+      expect(schedule.rounds[0].tradeDeadline).toBeUndefined();
+    });
+
     it("follows the current round when an edit shifts its index", async () => {
       const week1 = buildRound("Week 1");
       const week2 = buildRound("Week 2");

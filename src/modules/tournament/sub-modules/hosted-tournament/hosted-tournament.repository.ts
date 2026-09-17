@@ -132,6 +132,18 @@ export class HostedTournamentRepository {
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
   }
 
+  async addOrganizer(tournamentId: Types.ObjectId | string, sub: string) {
+    await this.hostedTournamentModel
+      .updateOne({ _id: tournamentId }, { $addToSet: { organizers: sub } })
+      .exec();
+  }
+
+  async removeOrganizer(tournamentId: Types.ObjectId | string, sub: string) {
+    await this.hostedTournamentModel
+      .updateOne({ _id: tournamentId }, { $pull: { organizers: sub } })
+      .exec();
+  }
+
   async updateSettings(
     tournamentId: Types.ObjectId | string,
     update: Partial<{

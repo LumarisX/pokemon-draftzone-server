@@ -20,6 +20,15 @@ export class TierListRepository {
     return TierListMapper.fromDatabase(doc);
   }
 
+  async findManyByIds(tierListIds: string[]): Promise<Map<string, TierList>> {
+    const ids = [...new Set(tierListIds.filter(Boolean))];
+    if (ids.length === 0) return new Map();
+    const docs = await this.tierListModel.find({ _id: { $in: ids } }).exec();
+    return new Map(
+      docs.map((doc) => [doc._id.toString(), TierListMapper.fromDatabase(doc)]),
+    );
+  }
+
   async updateSettings(
     tierListId: string,
     update: Partial<{

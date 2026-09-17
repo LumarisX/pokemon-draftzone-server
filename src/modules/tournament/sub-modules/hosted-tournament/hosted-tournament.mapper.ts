@@ -12,7 +12,7 @@ import {
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
 
 /** The parts of the owning league a tournament needs to carry with it. */
-export type TournamentLeague = { owner: string; slug: string };
+export type TournamentLeague = { owner: string; slug: string; name: string };
 
 export class HostedTournamentMapper {
   static fromDatabase(
@@ -33,6 +33,8 @@ export class HostedTournamentMapper {
       owner: league.owner,
       leagueId: doc.league.toString(),
       leagueSlug: league.slug,
+      leagueName: league.name,
+      archived: doc.archived,
       organizers: [...doc.organizers],
       tierListId: doc.tierList?.toString() ?? "",
       rules: doc.rules.map(
@@ -135,6 +137,7 @@ export class HostedTournamentMapper {
       tierRequirements: tournament.tierRequirements,
       adSettings: tournament.adSettings,
       matchSettings: tournament.matchSettings,
+      archived: tournament.archived,
     };
   }
 }

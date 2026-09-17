@@ -1,5 +1,6 @@
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Test } from "@nestjs/testing";
 import { Types } from "mongoose";
 import { TournamentTradeService } from "./tournament-trade.service";
@@ -49,6 +50,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
 describe("TournamentTradeService", () => {
   let teamRepo: jest.Mocked<TeamRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let tierListRepo: jest.Mocked<TierListRepository>;
   let service: TournamentTradeService;
 
   beforeEach(async () => {
@@ -63,11 +65,16 @@ describe("TournamentTradeService", () => {
       setTrades: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
 
+    tierListRepo = {
+      findById: jest.fn().mockRejectedValue(new Error("no tier list")),
+    } as unknown as jest.Mocked<TierListRepository>;
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         TournamentTradeService,
         { provide: TeamRepository, useValue: teamRepo },
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
+        { provide: TierListRepository, useValue: tierListRepo },
       ],
     }).compile();
 
@@ -135,6 +142,32 @@ describe("TournamentTradeService", () => {
       );
 
       expect(result.status).toBe("PENDING");
+      const written = tournamentRepo.setTrades.mock.calls[0][1];
+      // Filed but not yet resolved: an organizer still has to act on it.
+      expect(written[0]).toMatchObject({ submittedBy: "auth0|ash" });
+      expect(written[0].resolvedBy).toBeUndefined();
+    });
+
+    it("records the organizer as both submitter and resolver", async () => {
+      const team = withRoster("pikachu");
+
+      await service.createTrade(
+        "league-1",
+        "tournament-1",
+        "auth0|owner",
+        tradeDto({
+          side1: {
+            team: team._id.toString(),
+            pokemon: [{ id: "pikachu", tera: false }],
+            tradePoints: 0,
+          },
+        }),
+      );
+
+      expect(tournamentRepo.setTrades.mock.calls[0][1][0]).toMatchObject({
+        submittedBy: "auth0|owner",
+        resolvedBy: "auth0|owner",
+      });
     });
 
     it("rejects a coach filing a trade for someone else's team", async () => {
@@ -309,6 +342,30 @@ describe("TournamentTradeService", () => {
       const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
       expect(written.status).toBe("REJECTED");
       expect(written._id.toString()).toBe(trade._id.toString());
+      expect(written.resolvedBy).toBe("auth0|owner");
+    });
+
+    it("leaves a still-pending trade unresolved when only its round moves", async () => {
+      const trade = buildTrade({ status: "PENDING", submittedBy: "auth0|ash" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ trades: [trade] }),
+      );
+
+      await service.updateTrade(
+        "league-1",
+        "tournament-1",
+        trade._id.toString(),
+        "auth0|owner",
+        { activeRound: 1 },
+      );
+
+      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
+      expect(written).toMatchObject({
+        status: "PENDING",
+        activeRound: 1,
+        submittedBy: "auth0|ash",
+      });
+      expect(written.resolvedBy).toBeUndefined();
     });
 
     it("writes the resolved trade as a plain object", async () => {
@@ -615,6 +672,35 @@ describe("TournamentTradeService", () => {
         { teamId: teamA._id.toString(), teamName: "A", spent: 2 },
         { teamId: teamB._id.toString(), teamName: "B", spent: 0 },
       ]);
+    });
+
+    it("tags each traded pick with its tier and cost", async () => {
+      const team = buildTeam({ teamName: "A" });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          trades: [
+            buildTrade({
+              side1: {
+                team: team._id,
+                pokemon: [{ id: "pikachu" }],
+                tradePoints: 0,
+              },
+              side2: { team: undefined, pokemon: [], tradePoints: 0 },
+            }),
+          ],
+        }),
+      );
+      teamRepo.findManyByIds.mockResolvedValue([team]);
+      tierListRepo.findById.mockResolvedValue({
+        pokemon: new Map([["pikachu", { tier: "B" }]]),
+        getPokemonCost: jest.fn().mockReturnValue(12),
+      } as any);
+
+      const result = await service.getTrades("league-1", "tournament-1");
+
+      expect((result.rounds[0].trades[0] as any).side1.pokemon[0]).toMatchObject(
+        { id: "pikachu", tier: "B", cost: 12 },
+      );
     });
 
     it("drops a trade whose round is outside the axis", async () => {

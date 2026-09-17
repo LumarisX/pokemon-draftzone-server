@@ -22,6 +22,27 @@ export class UserRepository {
     return UserMapper.fromDatabase(userDoc);
   }
 
+  async findManyBySubs(subs: string[]): Promise<UserDocument[]> {
+    if (subs.length === 0) return [];
+    return this.userModel
+      .find({ auth0Sub: { $in: subs } }, { auth0Sub: 1, username: 1 })
+      .exec();
+  }
+
+  async searchByUsername(query: string, limit: number): Promise<UserDocument[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return this.userModel
+      .find(
+        { username: { $regex: escaped, $options: "i" } },
+        { auth0Sub: 1, username: 1, joined: 1 },
+      )
+      .sort({ username: 1 })
+      .limit(limit)
+      .exec();
+  }
+
   async updateUser(user: User): Promise<UserDocument> {
     const setFields: Partial<UserEntity> = {
       username: user.username,

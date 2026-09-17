@@ -105,7 +105,7 @@ describe("StageService", () => {
       findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<TierListRepository>;
     advancement = {
       applyToTournament: jest.fn().mockResolvedValue(0),

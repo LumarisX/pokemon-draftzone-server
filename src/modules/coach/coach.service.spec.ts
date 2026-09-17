@@ -1,3 +1,4 @@
+import { ErrorCodes } from "@core/pdz-error-codes";
 import {
   findTournamentByTeamId,
   isOrganizerOrOwner,
@@ -186,8 +187,23 @@ describe("CoachService", () => {
       expect(coachRepo.delete).not.toHaveBeenCalled();
     });
 
-    it("deletes when the caller owns the coach", async () => {
+    it("refuses to delete a coach that still has a team, rather than orphaning team.coach", async () => {
       const coach = buildCoach({ auth0Id: "auth0|coach-1" });
+      coachRepo.findById.mockResolvedValue(coach);
+
+      await expect(
+        service.deleteCoach("coach-1", "auth0|coach-1"),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.COACH_HAS_TEAM.code,
+      });
+      expect(coachRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("deletes a teamless coach when the caller owns it", async () => {
+      const coach = buildCoach({
+        auth0Id: "auth0|coach-1",
+        teamId: undefined,
+      });
       coachRepo.findById.mockResolvedValue(coach);
 
       await service.deleteCoach("coach-1", "auth0|coach-1");

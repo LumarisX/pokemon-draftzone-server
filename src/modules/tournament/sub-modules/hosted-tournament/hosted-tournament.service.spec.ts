@@ -13,6 +13,7 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { UserRepository } from "@modules/user/user.repository";
 import { Types } from "mongoose";
 import { HostedTournament } from "./hosted-tournament.domain";
 import { SignUpDto } from "./hosted-tournament.dto";
@@ -34,6 +35,7 @@ function buildTournament(
     owner: "auth0|owner",
     leagueId: "league-1",
     leagueSlug: "springleague",
+    leagueName: "Spring League",
     organizers: [],
     tierListId: "tier-1",
     rules: [],
@@ -66,6 +68,12 @@ function buildSignUpDto(overrides: Partial<SignUpDto> = {}): SignUpDto {
     confirm: true,
     ...overrides,
   };
+}
+
+const CREATED_TEAM_SLUG = "team-rocket-a1b2";
+
+function buildCreatedTeam(id: Types.ObjectId | string = new Types.ObjectId()) {
+  return { _id: id, slug: CREATED_TEAM_SLUG } as any;
 }
 
 describe("HostedTournamentService signup", () => {
@@ -116,6 +124,7 @@ describe("HostedTournamentService signup", () => {
       {} as LeagueMatchupRepository,
       discordService,
       s3Service,
+      {} as UserRepository,
     );
   });
 
@@ -272,7 +281,9 @@ describe("HostedTournamentService signup", () => {
 
     it("creates the team and coach with matching cross-referenced ids on success", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockResolvedValue({} as any);
+      teamRepo.create.mockImplementation(async (input) =>
+        buildCreatedTeam(input._id),
+      );
       const createdCoachId = new Types.ObjectId();
       coachRepo.create.mockResolvedValue({ _id: createdCoachId } as any);
 
@@ -317,6 +328,8 @@ describe("HostedTournamentService signup", () => {
         message: "Sign up successful.",
         userId: createdCoachId.toString(),
         tournamentId: tournament.id,
+        teamId: teamInput!._id!.toString(),
+        teamSlug: CREATED_TEAM_SLUG,
       });
 
       // Best-effort Discord side effects: announce in the signup channel,
@@ -330,7 +343,7 @@ describe("HostedTournamentService signup", () => {
         buildTournament({ discordSettings: undefined }),
       );
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockResolvedValue({} as any);
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
       await expect(
@@ -344,7 +357,7 @@ describe("HostedTournamentService signup", () => {
 
     it("doesn't fail the signup when the Discord notification throws", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockResolvedValue({} as any);
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       discordService.sendMessage.mockRejectedValue(new Error("rate limited"));
 
@@ -400,6 +413,7 @@ describe("HostedTournamentService settings", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      {} as UserRepository,
     );
   });
 
@@ -561,6 +575,7 @@ describe("HostedTournamentService teams", () => {
       matchupRepo,
       {} as DiscordService,
       {} as S3Service,
+      {} as UserRepository,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
   }

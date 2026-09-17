@@ -98,6 +98,8 @@ export class HostedTournament {
   leagueId: string;
   /** The league's URL slug — needed to build client links (/leagues/:leagueSlug/...). */
   leagueSlug: string;
+  leagueName: string;
+  archived: boolean;
   organizers: string[];
   tierListId: string;
   rules: TournamentRule[];
@@ -138,6 +140,8 @@ export class HostedTournament {
     owner: string;
     leagueId: string;
     leagueSlug: string;
+    leagueName: string;
+    archived?: boolean;
     organizers: string[];
     tierListId: string;
     rules: TournamentRule[];
@@ -171,6 +175,8 @@ export class HostedTournament {
     this.owner = props.owner;
     this.leagueId = props.leagueId;
     this.leagueSlug = props.leagueSlug;
+    this.leagueName = props.leagueName;
+    this.archived = props.archived ?? false;
     this.organizers = props.organizers;
     this.tierListId = props.tierListId;
     this.rules = props.rules;

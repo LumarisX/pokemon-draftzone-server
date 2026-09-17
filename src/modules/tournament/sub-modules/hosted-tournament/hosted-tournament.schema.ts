@@ -110,6 +110,20 @@ export class TournamentTradeEntity {
     default: "APPROVED",
   })
   status!: "PENDING" | "APPROVED" | "REJECTED";
+
+  /**
+   * Auth0 sub of whoever filed the trade — a coach on one of the sides, or an
+   * organizer entering it on their behalf. Absent on trades predating the field.
+   */
+  @Prop()
+  submittedBy?: string;
+
+  /**
+   * Auth0 sub of the organizer who approved or rejected it. Equal to
+   * `submittedBy` when an organizer files a trade, since that approves it.
+   */
+  @Prop()
+  resolvedBy?: string;
 }
 export const TournamentTradeSchema = SchemaFactory.createForClass(
   TournamentTradeEntity,

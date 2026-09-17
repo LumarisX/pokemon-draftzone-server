@@ -36,6 +36,28 @@ export const ErrorCodes = {
       status: 404,
       message: "Coach not found",
     },
+    COACH_HAS_TEAM: {
+      code: "LR-007",
+      status: 400,
+      message:
+        "This coach still has a team. Remove the participant from the tournament, or set their status to dropped.",
+    },
+    COACH_HAS_MATCHES: {
+      code: "LR-008",
+      status: 400,
+      message:
+        "This team has already played matches. Set their status to dropped instead of removing them.",
+    },
+    ORGANIZER_NOT_FOUND: {
+      code: "LR-009",
+      status: 404,
+      message: "No user found to add as an organizer",
+    },
+    ORGANIZER_IS_OWNER: {
+      code: "LR-010",
+      status: 400,
+      message: "The tournament owner is always an organizer",
+    },
   },
   DIVISION: {
     NOT_FOUND: {
@@ -181,6 +203,11 @@ export const ErrorCodes = {
       message:
         "This tournament's rounds and trades are shared by all its stages, " +
         "and are edited on the tournament rather than on one stage",
+    },
+    TRADE_DEADLINE_PASSED: {
+      code: "STG-008",
+      status: 409,
+      message: "The trade deadline for this round has passed",
     },
   },
   SYSTEM: {
