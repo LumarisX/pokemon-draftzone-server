@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { tierId } from "./tier-list.test-ids";
 import {
   Tier,
   TierList,
@@ -21,14 +22,14 @@ function buildDoc(overrides: Record<string, unknown> = {}): TierListDocument {
         "pikachu",
         {
           name: "Pikachu",
-          tier: "S",
+          tierId: new Types.ObjectId(tierId("S")),
           notes: "great pick",
           banned: false,
           addons: [{ name: "Light Ball", cost: 5, notes: "boosts power" }],
         },
       ],
     ]),
-    tiers: [{ name: "S", cost: 30, color: "#ff0000" }],
+    tiers: [{ _id: new Types.ObjectId(tierId("S")), name: "S", cost: 30, color: "#ff0000" }],
     banned: { moves: ["Explosion"], abilities: ["Static"] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -70,7 +71,7 @@ describe("TierListMapper.fromDatabase", () => {
     expect(result.pokemon.get("pikachu")).toEqual(
       new TierListPokemon({
         name: "Pikachu",
-        tier: "S",
+        tierId: tierId("S"),
         notes: "great pick",
         banned: false,
         addons: [
@@ -87,7 +88,7 @@ describe("TierListMapper.fromDatabase", () => {
   it("maps tiers", () => {
     const result = TierListMapper.fromDatabase(buildDoc());
 
-    expect(result.tiers).toEqual([new Tier({ name: "S", cost: 30, color: "#ff0000" })]);
+    expect(result.tiers).toEqual([new Tier({ id: tierId("S"), name: "S", cost: 30, color: "#ff0000" })]);
   });
 
   it("copies the banned moves/abilities arrays (not by reference)", () => {
@@ -129,10 +130,15 @@ describe("TierListMapper.toSettingsPayload", () => {
 
 describe("TierListMapper.toTierEntities", () => {
   it("maps domain Tiers to their persisted shape", () => {
-    const tiers = [new Tier({ name: "S", cost: 30, color: "#ff0000" })];
+    const tiers = [new Tier({ id: tierId("S"), name: "S", cost: 30, color: "#ff0000" })];
 
     expect(TierListMapper.toTierEntities(tiers)).toEqual([
-      { name: "S", cost: 30, color: "#ff0000" },
+      {
+        _id: new Types.ObjectId(tierId("S")),
+        name: "S",
+        cost: 30,
+        color: "#ff0000",
+      },
     ]);
   });
 });
@@ -144,7 +150,7 @@ describe("TierListMapper.toPokemonEntityMap", () => {
         "pikachu",
         new TierListPokemon({
           name: "Pikachu",
-          tier: "S",
+          tierId: tierId("S"),
           notes: "great pick",
           banned: true,
           addons: [new TierListPokemonAddon({ name: "Light Ball", cost: 5 })],
@@ -156,9 +162,10 @@ describe("TierListMapper.toPokemonEntityMap", () => {
 
     expect(result.get("pikachu")).toEqual({
       name: "Pikachu",
-      tier: "S",
+      tierId: new Types.ObjectId(tierId("S")),
       notes: "great pick",
       banned: true,
+      formes: undefined,
       addons: [{ name: "Light Ball", cost: 5, notes: undefined }],
     });
   });

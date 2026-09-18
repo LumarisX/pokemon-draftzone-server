@@ -137,11 +137,8 @@ export class DraftService {
       draft.teams.map(async (team: PopulatedTeam) => {
         const picks = await Promise.all(
           team.pickLog.map(async (pickItem) => {
-            const pokemonData = tournament.tierList.pokemon.get(
+            const tier = tournament.tierList.getPokemonTier(
               pickItem.pokemon.id,
-            );
-            const tier = tournament.tierList.tiers.find(
-              (t) => t.name === pokemonData?.tier,
             );
             return {
               pokemon: {
@@ -707,9 +704,7 @@ export class DraftService {
           rosterContextForTournament(tournament, stage),
         ).map((pokemon) => {
           const pokemonTier = rawTierList.pokemon.get(pokemon.id);
-          const tier = rawTierList.tiers.find(
-            (t) => t.name === pokemonTier?.tier,
-          );
+          const tier = rawTierList.getPokemonTier(pokemon.id);
           return {
             id: pokemon.id,
             name: getName(pokemon.id),
@@ -727,7 +722,7 @@ export class DraftService {
         .filter((tier) => tier.cost)
         .flatMap((tier) =>
           Array.from(rawTierList.pokemon.entries())
-            .filter(([, pokemon]) => pokemon.tier === tier.name)
+            .filter(([, pokemon]) => pokemon.tierId === tier.id)
             .filter(
               ([id]) =>
                 !drafted.some((team) => team.roster.some((p) => p.id === id)),

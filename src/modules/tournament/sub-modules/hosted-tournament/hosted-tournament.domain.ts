@@ -10,11 +10,11 @@ import {
 } from "./hosted-tournament.schema";
 
 export class TierRequirement {
-  tierName: string;
+  tierId: string;
   required: number;
 
-  constructor(props: { tierName: string; required: number }) {
-    this.tierName = props.tierName;
+  constructor(props: { tierId: string; required: number }) {
+    this.tierId = props.tierId;
     this.required = props.required;
   }
 }

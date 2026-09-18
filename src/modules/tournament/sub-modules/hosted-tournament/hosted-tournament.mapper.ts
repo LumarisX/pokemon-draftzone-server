@@ -71,7 +71,7 @@ export class HostedTournamentMapper {
       tierRequirements: doc.tierRequirements.map(
         (req) =>
           new TierRequirement({
-            tierName: req.tierName,
+            tierId: req.tierId.toString(),
             required: req.required,
           }),
       ),

@@ -1,4 +1,5 @@
 import { TeamRepository } from "@modules/team/team.repository";
+import { tierId } from "../tier-list/tier-list.test-ids";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Test } from "@nestjs/testing";
@@ -692,7 +693,8 @@ describe("TournamentTradeService", () => {
       );
       teamRepo.findManyByIds.mockResolvedValue([team]);
       tierListRepo.findById.mockResolvedValue({
-        pokemon: new Map([["pikachu", { tier: "B" }]]),
+        pokemon: new Map([["pikachu", { tierId: tierId("B") }]]),
+        getPokemonTier: jest.fn().mockReturnValue({ name: "B" }),
         getPokemonCost: jest.fn().mockReturnValue(12),
       } as any);
 

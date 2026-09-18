@@ -33,6 +33,7 @@ type TierPokemonView = {
 };
 
 type TierView = {
+  id?: string;
   name: string;
   cost?: number;
   pokemon: TierPokemonView[];
@@ -115,7 +116,7 @@ export class TierListService {
     const tiers: TierView[] = await Promise.all(
       tierList.tiers.map(async (tier) => {
         const pokemonEntries = Array.from(tierList.pokemon.entries()).filter(
-          ([, data]) => data.tier === tier.name && (showAll || !data.banned),
+          ([, data]) => data.tierId === tier.id && (showAll || !data.banned),
         );
 
         const pokemon = await Promise.all(
@@ -126,7 +127,7 @@ export class TierListService {
           }),
         );
 
-        return { name: tier.name, cost: tier.cost, pokemon };
+        return { id: tier.id, name: tier.name, cost: tier.cost, pokemon };
       }),
     );
 

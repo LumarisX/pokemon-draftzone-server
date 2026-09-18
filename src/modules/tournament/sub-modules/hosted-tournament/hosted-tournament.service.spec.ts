@@ -1,4 +1,5 @@
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { tierId } from "../../../tier-list/tier-list.test-ids";
 import { S3Service } from "@core/storage/s3.service";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { DiscordService } from "@modules/discord/discord.service";
@@ -376,7 +377,7 @@ function buildSettingsTierList(
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map(),
-    tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
+    tiers: [new Tier({ id: tierId("S"), name: "S", cost: 10 }), new Tier({ id: tierId("A"), name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -462,7 +463,7 @@ describe("HostedTournamentService settings", () => {
     it("rejects tierRequirements naming a tier that doesn't exist on the tier list", async () => {
       await expect(
         service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
-          tierRequirements: [{ tierName: "Nonexistent", required: 1 }],
+          tierRequirements: [{ tierId: tierId("Nonexistent"), required: 1 }],
         }),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
@@ -474,7 +475,7 @@ describe("HostedTournamentService settings", () => {
       await expect(
         service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           draftCount: { min: 1, max: 2 },
-          tierRequirements: [{ tierName: "S", required: 3 }],
+          tierRequirements: [{ tierId: tierId("S"), required: 3 }],
         }),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
@@ -487,14 +488,14 @@ describe("HostedTournamentService settings", () => {
         LEAGUE_KEY,
         TOURNAMENT_KEY,
         "auth0|owner",
-        { pointTotal: 100, tierRequirements: [{ tierName: "S", required: 1 }] },
+        { pointTotal: 100, tierRequirements: [{ tierId: tierId("S"), required: 1 }] },
       );
 
       expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
         tournament.id,
         {
           pointTotal: 100,
-          tierRequirements: [{ tierName: "S", required: 1 }],
+          tierRequirements: [{ tierId: tierId("S"), required: 1 }],
         },
       );
       expect(result).toEqual({ success: true });
@@ -524,9 +525,9 @@ describe("HostedTournamentService teams", () => {
   function buildRosterTierList() {
     return buildSettingsTierList({
       pokemon: new Map([
-        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-        ["eevee", new TierListPokemon({ name: "Eevee", tier: "A" })],
-        ["snorlax", new TierListPokemon({ name: "Snorlax", tier: "A" })],
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+        ["eevee", new TierListPokemon({ name: "Eevee", tierId: tierId("A") })],
+        ["snorlax", new TierListPokemon({ name: "Snorlax", tierId: tierId("A") })],
       ]),
     });
   }

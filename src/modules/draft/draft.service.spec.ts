@@ -10,6 +10,7 @@ import {
   TierList,
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
+import { tierId } from "../tier-list/tier-list.test-ids";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
 import {
@@ -54,8 +55,8 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     id: "tierlist-1",
     name: "Spring Tier List",
     createdBy: "auth0|owner",
-    pokemon: new Map([["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })]]),
-    tiers: [new Tier({ name: "S", cost: 10 })],
+    pokemon: new Map([["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })]]),
+    tiers: [new Tier({ id: tierId("S"), name: "S", cost: 10 })],
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -191,7 +192,7 @@ describe("DraftService", () => {
               pokemon: {
                 id: "pikachu",
                 name: "Pikachu",
-                tier: new Tier({ name: "S", cost: 10 }),
+                tier: new Tier({ id: tierId("S"), name: "S", cost: 10 }),
                 capt: { tera: true },
               },
               timestamp: team.pickLog[0].timestamp,

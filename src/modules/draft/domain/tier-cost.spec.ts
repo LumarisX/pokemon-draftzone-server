@@ -5,6 +5,7 @@ import {
   TierListPokemon,
   TierListPokemonAddon,
 } from "@modules/tier-list/tier-list.domain";
+import { tierId } from "../../tier-list/tier-list.test-ids";
 import { Types } from "mongoose";
 import {
   areAddonsValid,
@@ -24,17 +25,17 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map([
-      ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+      ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
       [
         "charizard",
         new TierListPokemon({
           name: "Charizard",
-          tier: "A",
+          tierId: tierId("A"),
           addons: [new TierListPokemonAddon({ name: "Tera Captain", cost: 2 })],
         }),
       ],
     ]),
-    tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
+    tiers: [new Tier({ id: tierId("S"), name: "S", cost: 10 }), new Tier({ id: tierId("A"), name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -100,7 +101,7 @@ describe("getPickCost", () => {
 
   it("returns 0 when the Pokemon's tier name doesn't match any real tier", () => {
     const tierList = buildTierList({
-      pokemon: new Map([["pikachu", new TierListPokemon({ name: "Pikachu", tier: "Untiered" })]]),
+      pokemon: new Map([["pikachu", new TierListPokemon({ name: "Pikachu", tierId: undefined })]]),
     });
 
     expect(getPickCost(tierList, { pokemonId: "pikachu" })).toBe(0);
@@ -237,7 +238,7 @@ describe("teamHasEnoughPoints", () => {
 
   it("allows a zero-cost pick under a pointTotal of 0", async () => {
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 5 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 0 }), new Tier({ id: tierId("A"), name: "A", cost: 5 })],
     });
     const tournament = buildTournament(tierList, { pointTotal: 0 });
     const draft = buildDraft();
@@ -254,7 +255,7 @@ describe("teamHasEnoughPoints", () => {
     // ceiling negative here and block every pick, even though nothing
     // actually costs points.
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 0 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 0 }), new Tier({ id: tierId("A"), name: "A", cost: 0 })],
     });
     const tournament = buildTournament(tierList, {
       pointTotal: 0,
@@ -272,7 +273,7 @@ describe("teamHasEnoughPoints", () => {
     // pointTotal 20, draftCount.min 4, no picks yet (this is pick #1):
     // pickCeiling = 20 + 1 - max(4, 1) = 17.
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 17 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 17 })],
     });
     const tournament = buildTournament(tierList, {
       pointTotal: 20,
@@ -288,7 +289,7 @@ describe("teamHasEnoughPoints", () => {
 
   it("rejects a pick that would exceed the reserved-for-minimum-picks ceiling", async () => {
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 18 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 18 })],
     });
     const tournament = buildTournament(tierList, {
       pointTotal: 20,
@@ -306,7 +307,7 @@ describe("teamHasEnoughPoints", () => {
     // 4 existing picks already meets draftCount.min (4); this 5th pick can
     // use the full remaining budget without reservation.
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 16 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 16 })],
     });
     const tournament = buildTournament(tierList, {
       pointTotal: 20,
@@ -426,14 +427,14 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
     it("allows a pick that strands a tier requirement", async () => {
       const tierList = buildTierList({
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-          ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
-          ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tier: "A" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+          ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
+          ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tierId: tierId("A") })],
         ]),
       });
       const tournament = buildTournament(tierList, {
         draftCount: new DraftCount({ min: 1, max: 2 }),
-        tierRequirements: [{ tierName: "S", required: 1 }],
+        tierRequirements: [{ tierId: tierId("S"), required: 1 }],
       });
       const draft = buildDraft({ teams: [] });
       const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
@@ -525,7 +526,7 @@ describe("isTeamDoneDrafting", () => {
 
   it("is not done after a 0-cost pick in an all-zero-cost tier list, even with pointTotal 0", async () => {
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 0 }), new Tier({ name: "A", cost: 0 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 0 }), new Tier({ id: tierId("A"), name: "A", cost: 0 })],
     });
     const tournament = buildTournament(tierList, {
       pointTotal: 0,
@@ -573,9 +574,9 @@ describe("tier requirement feasibility (canBeDrafted / canBeDraftedWithReason)",
   function buildRequirementTierList() {
     return buildTierList({
       pokemon: new Map([
-        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-        ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
-        ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tier: "A" })],
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+        ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
+        ["bulbasaur", new TierListPokemon({ name: "Bulbasaur", tierId: tierId("A") })],
       ]),
     });
   }
@@ -584,7 +585,7 @@ describe("tier requirement feasibility (canBeDrafted / canBeDraftedWithReason)",
     const tierList = buildRequirementTierList();
     const tournament = buildTournament(tierList, {
       draftCount: new DraftCount({ min: 1, max: 2 }),
-      tierRequirements: [{ tierName: "S", required: 1 }],
+      tierRequirements: [{ tierId: tierId("S"), required: 1 }],
     });
     const draft = buildDraft({ teams: [] });
     const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
@@ -604,7 +605,7 @@ describe("tier requirement feasibility (canBeDrafted / canBeDraftedWithReason)",
     const tierList = buildRequirementTierList();
     const tournament = buildTournament(tierList, {
       draftCount: new DraftCount({ min: 1, max: 2 }),
-      tierRequirements: [{ tierName: "S", required: 1 }],
+      tierRequirements: [{ tierId: tierId("S"), required: 1 }],
     });
     const draft = buildDraft({ teams: [] });
     const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });

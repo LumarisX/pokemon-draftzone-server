@@ -6,6 +6,7 @@ import {
   TierListPokemonAddon,
   UNTIERED_TIER_NAME,
 } from "./tier-list.domain";
+import { tierId } from "./tier-list.test-ids";
 
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
   return new TierList({
@@ -47,24 +48,24 @@ describe("TierList.canEdit", () => {
 
 describe("TierList.getTierByName", () => {
   it("returns the matching tier", () => {
-    const tier = new Tier({ name: "S", cost: 30 });
+    const tier = new Tier({ id: tierId("S"), name: "S", cost: 30 });
     const tierList = buildTierList({ tiers: [tier] });
 
-    expect(tierList.getTierByName("S")).toBe(tier);
+    expect(tierList.getTierById(tierId("S"))).toBe(tier);
   });
 
   it("returns undefined when no tier matches", () => {
     const tierList = buildTierList({ tiers: [] });
 
-    expect(tierList.getTierByName("S")).toBeUndefined();
+    expect(tierList.getTierById(tierId("S"))).toBeUndefined();
   });
 });
 
 describe("TierList.getPokemonIds", () => {
   it("returns the ids of every tracked Pokemon", () => {
     const pokemon = new Map([
-      ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-      ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+      ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+      ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
     ]);
     const tierList = buildTierList({ pokemon });
 
@@ -75,13 +76,13 @@ describe("TierList.getPokemonIds", () => {
 describe("TierList.getPokemonCost", () => {
   function tierListWithPikachu(pokemonOverrides: Partial<ConstructorParameters<typeof TierListPokemon>[0]> = {}) {
     return buildTierList({
-      tiers: [new Tier({ name: "S", cost: 30 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
       pokemon: new Map([
         [
           "pikachu",
           new TierListPokemon({
             name: "Pikachu",
-            tier: "S",
+            tierId: tierId("S"),
             ...pokemonOverrides,
           }),
         ],
@@ -136,7 +137,7 @@ describe("TierList.getPokemonCost", () => {
     const tierList = buildTierList({
       tiers: [],
       pokemon: new Map([
-        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
       ]),
     });
 
@@ -150,7 +151,7 @@ describe("TierList.applyTierUpdate", () => {
     cost: number,
     pokemon: ClientTierInput["pokemon"] = [],
   ): ClientTierInput {
-    return { name, cost, pokemon };
+    return { id: tierId(name), name, cost, pokemon };
   }
 
   it("rebuilds the tier list, excluding any client-submitted 'Untiered' tier", () => {
@@ -174,7 +175,7 @@ describe("TierList.applyTierUpdate", () => {
 
   it("preserves an existing tier's color and sets a new tier's color to undefined", () => {
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 30, color: "#ff0000" })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30, color: "#ff0000" })],
     });
 
     tierList.applyTierUpdate([
@@ -182,18 +183,24 @@ describe("TierList.applyTierUpdate", () => {
       buildClientTier("A", 20),
     ]);
 
-    expect(tierList.tiers).toEqual([
-      new Tier({ name: "S", cost: 35, color: "#ff0000" }),
-      new Tier({ name: "A", cost: 20, color: undefined }),
+    expect(
+      tierList.tiers.map((t) => ({
+        name: t.name,
+        cost: t.cost,
+        color: t.color,
+      })),
+    ).toEqual([
+      { name: "S", cost: 35, color: "#ff0000" },
+      { name: "A", cost: 20, color: undefined },
     ]);
   });
 
   it("assigns submitted Pokemon to their submitted tier, carrying over existing addons", () => {
     const addon = new TierListPokemonAddon({ name: "Light Ball", cost: 5 });
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 30 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
       pokemon: new Map([
-        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S", addons: [addon] })],
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S"), addons: [addon] })],
       ]),
     });
 
@@ -204,7 +211,7 @@ describe("TierList.applyTierUpdate", () => {
     expect(tierList.pokemon.get("pikachu")).toEqual(
       new TierListPokemon({
         name: "Pikachu",
-        tier: "S",
+        tierId: tierId("S"),
         notes: "great pick",
         addons: [addon],
         banned: undefined,
@@ -214,9 +221,9 @@ describe("TierList.applyTierUpdate", () => {
 
   it("drops any previously-tracked Pokemon that isn't present in the new submission at all", () => {
     const tierList = buildTierList({
-      tiers: [new Tier({ name: "S", cost: 30 })],
+      tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
       pokemon: new Map([
-        ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
       ]),
     });
 
@@ -276,7 +283,7 @@ describe("TierList.applyTierUpdate", () => {
       expect(tierList.pokemon.get("pikachu")).toEqual(
         new TierListPokemon({
           name: "Pikachu",
-          tier: UNTIERED_TIER_NAME,
+          tierId: undefined,
           banned: true,
           notes: "too good",
           addons: undefined,
@@ -288,7 +295,7 @@ describe("TierList.applyTierUpdate", () => {
       const tierList = buildTierList({
         tiers: [],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
         ]),
       });
 
@@ -298,7 +305,7 @@ describe("TierList.applyTierUpdate", () => {
         ]),
       ]);
 
-      expect(tierList.pokemon.get("pikachu")?.tier).toBe("S");
+      expect(tierList.pokemon.get("pikachu")?.tierId).toBe(tierId("S"));
       expect(tierList.pokemon.get("pikachu")?.banned).toBe(true);
     });
 
@@ -360,7 +367,7 @@ describe("TierList.applyTierUpdate", () => {
             "charizard",
             new TierListPokemon({
               name: "Charizard",
-              tier: "S",
+              tierId: tierId("S"),
               formes: ["charizardmegax"],
             }),
           ],

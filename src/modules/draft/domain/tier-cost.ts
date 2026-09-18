@@ -18,7 +18,8 @@ export function createPokemonTierMap(
   const tierMap = new Map<string, string>();
   const tierList = tournament.tierList;
   Array.from(tierList.pokemon.entries()).forEach(([pokemonId, data]) => {
-    tierMap.set(pokemonId, data.tier);
+    const tierName = tierList.getTierById(data.tierId)?.name;
+    if (tierName) tierMap.set(pokemonId, tierName);
   });
   return tierMap;
 }
@@ -28,9 +29,7 @@ function getBaseTierCost(tierList: TierList, pokemonId: string): number {
   if (!pokemonData) {
     return 0;
   }
-  return (
-    tierList.tiers.find((tier) => tier.name === pokemonData.tier)?.cost || 0
-  );
+  return tierList.getTierById(pokemonData.tierId)?.cost || 0;
 }
 
 function getAddonCost(
@@ -149,9 +148,9 @@ function countPicksByTier(
   const counts = new Map<string, number>();
   for (const draftPick of team.pickLog) {
     const pokemonId = getPokemonIdFromDraft(draftPick);
-    const tierName = tierList.pokemon.get(pokemonId)?.tier;
-    if (!tierName) continue;
-    counts.set(tierName, (counts.get(tierName) ?? 0) + 1);
+    const tierId = tierList.pokemon.get(pokemonId)?.tierId;
+    if (!tierId) continue;
+    counts.set(tierId, (counts.get(tierId) ?? 0) + 1);
   }
   return counts;
 }
@@ -165,7 +164,7 @@ function tierRequirementsAreFeasible(
   if (!requirements?.length) return true;
 
   const picksByTier = countPicksByTier(tournament, team);
-  const pickedTier = tournament.tierList.pokemon.get(pick.pokemonId)?.tier;
+  const pickedTier = tournament.tierList.pokemon.get(pick.pokemonId)?.tierId;
   if (pickedTier) {
     picksByTier.set(pickedTier, (picksByTier.get(pickedTier) ?? 0) + 1);
   }
@@ -174,7 +173,7 @@ function tierRequirementsAreFeasible(
   const slotsRemaining = tournament.draftCount.max - picksAfterThis;
 
   const totalShortfall = requirements.reduce((sum, req) => {
-    const have = picksByTier.get(req.tierName) ?? 0;
+    const have = picksByTier.get(req.tierId) ?? 0;
     return sum + Math.max(0, req.required - have);
   }, 0);
 
@@ -310,7 +309,7 @@ export async function isTeamRosterValid(
   if (requirements?.length) {
     const picksByTier = countPicksByTier(tournament, team);
     const meetsAll = requirements.every(
-      (req) => (picksByTier.get(req.tierName) ?? 0) >= req.required,
+      (req) => (picksByTier.get(req.tierId) ?? 0) >= req.required,
     );
     if (!meetsAll) return false;
   }

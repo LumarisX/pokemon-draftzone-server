@@ -1,5 +1,6 @@
 import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
+import { Types } from "mongoose";
 
 export const UNTIERED_TIER_NAME = "Untiered";
 export const BANNED_TIER_NAME = "Banned";
@@ -18,7 +19,8 @@ export class TierListPokemonAddon {
 
 export class TierListPokemon {
   name: string;
-  tier: string;
+  /** Unset means untiered. */
+  tierId?: string;
   notes?: string;
   addons?: TierListPokemonAddon[];
   banned?: boolean;
@@ -27,14 +29,14 @@ export class TierListPokemon {
 
   constructor(props: {
     name: string;
-    tier: string;
+    tierId?: string;
     notes?: string;
     addons?: TierListPokemonAddon[];
     banned?: boolean;
     formes?: string[];
   }) {
     this.name = props.name;
-    this.tier = props.tier;
+    this.tierId = props.tierId;
     this.notes = props.notes;
     this.addons = props.addons;
     this.banned = props.banned;
@@ -43,11 +45,18 @@ export class TierListPokemon {
 }
 
 export class Tier {
+  id: string;
   name: string;
   cost: number;
   color?: string;
 
-  constructor(props: { name: string; cost: number; color?: string }) {
+  constructor(props: {
+    id: string;
+    name: string;
+    cost: number;
+    color?: string;
+  }) {
+    this.id = props.id;
     this.name = props.name;
     this.cost = props.cost;
     this.color = props.color;
@@ -84,6 +93,8 @@ export type ClientTierPokemonInput = {
 };
 
 export type ClientTierInput = {
+  /** Absent for a tier the client just created; the server mints its id. */
+  id?: string;
   name: string;
   cost: number;
   pokemon: ClientTierPokemonInput[];
@@ -136,8 +147,13 @@ export class TierList {
     return this.createdBy === sub || this.collaborators.includes(sub);
   }
 
-  getTierByName(tierName: string): Tier | undefined {
-    return this.tiers.find((tier) => tier.name === tierName);
+  getTierById(tierId: string | undefined): Tier | undefined {
+    if (!tierId) return undefined;
+    return this.tiers.find((tier) => tier.id === tierId);
+  }
+
+  getPokemonTier(pokemonId: string): Tier | undefined {
+    return this.getTierById(this.pokemon.get(pokemonId)?.tierId);
   }
 
   getPokemonCost(pokemonId: string, addonNames?: string[]): number | undefined {
@@ -149,7 +165,7 @@ export class TierList {
       if (addon) return addon.cost;
     }
 
-    return this.getTierByName(pokemon.tier)?.cost;
+    return this.getTierById(pokemon.tierId)?.cost;
   }
 
   getPokemonIds(): string[] {
@@ -187,20 +203,25 @@ export class TierList {
       (tier) => tier.name.toLowerCase() !== UNTIERED_TIER_NAME.toLowerCase(),
     );
 
-    const existingTierMap = new Map(this.tiers.map((t) => [t.name, t]));
-    this.tiers = validTiers.map(
-      (tier) =>
-        new Tier({
+    const existingTierMap = new Map(this.tiers.map((t) => [t.id, t]));
+    const nextTiers = validTiers.map((tier) => {
+      const existing = tier.id ? existingTierMap.get(tier.id) : undefined;
+      return {
+        input: tier,
+        tier: new Tier({
+          id: existing?.id ?? new Types.ObjectId().toString(),
           name: tier.name,
           cost: tier.cost,
-          color: existingTierMap.get(tier.name)?.color,
+          color: existing?.color,
         }),
-    );
+      };
+    });
+    this.tiers = nextTiers.map((entry) => entry.tier);
 
     const nextBannedAbilities = new Set<string>();
     const pokemonMap = new Map<string, TierListPokemon>();
 
-    for (const tier of validTiers) {
+    for (const { input: tier, tier: resolvedTier } of nextTiers) {
       for (const pokemon of tier.pokemon) {
         pokemon.bannedAbilities?.forEach((ability) =>
           nextBannedAbilities.add(ability),
@@ -210,7 +231,7 @@ export class TierList {
           pokemon.id,
           new TierListPokemon({
             name: pokemon.name,
-            tier: tier.name,
+            tierId: resolvedTier.id,
             banned: pokemon.banned,
             notes: pokemon.notes,
             addons: existingData?.addons,
@@ -235,7 +256,7 @@ export class TierList {
           pokemon.id,
           new TierListPokemon({
             name: pokemon.name,
-            tier: existingData?.tier ?? UNTIERED_TIER_NAME,
+            tierId: existingData?.tierId,
             banned: true,
             notes: pokemon.notes,
             addons: existingData?.addons,

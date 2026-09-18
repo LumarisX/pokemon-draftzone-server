@@ -1,4 +1,5 @@
 import { BANNED_TIER_NAME, UNTIERED_TIER_NAME } from "./tier-list.domain";
+import { tierId } from "./tier-list.test-ids";
 import { Tier, TierList, TierListPokemon } from "./tier-list.domain";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import { TierListMapper } from "./tier-list.mapper";
@@ -56,9 +57,9 @@ describe("TierListService", () => {
 
     it("assembles the tier list view with tiered Pokemon mapped to their stored display name", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Sparky", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Sparky", tierId: tierId("S") })],
         ]),
       });
       tierListRepo.findById.mockResolvedValue(tierList);
@@ -71,6 +72,7 @@ describe("TierListService", () => {
       expect(result.divisions).toEqual({});
       expect(result.tierList).toEqual([
         {
+          id: tierId("S"),
           name: "S",
           cost: 30,
           pokemon: [
@@ -82,9 +84,9 @@ describe("TierListService", () => {
 
     it("filters banned moves down to ones the Pokemon can actually learn", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
         ]),
         banned: { moves: ["thunderbolt", "flamethrower"], abilities: [] },
       });
@@ -98,9 +100,9 @@ describe("TierListService", () => {
 
     it("filters banned abilities down to ones the Pokemon actually has", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
         ]),
         banned: { moves: [], abilities: ["Lightning Rod", "Levitate"] },
       });
@@ -114,9 +116,9 @@ describe("TierListService", () => {
 
     it("omits the banned field entirely when no banned move/ability applies", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
         ]),
         banned: { moves: ["flamethrower"], abilities: ["Levitate"] },
       });
@@ -130,13 +132,13 @@ describe("TierListService", () => {
 
     it("moves banned Pokemon out of their tier into a Banned bucket in view-only mode", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S", banned: true })],
-          ["raichu", new TierListPokemon({ name: "Raichu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S"), banned: true })],
+          ["raichu", new TierListPokemon({ name: "Raichu", tierId: tierId("S") })],
           [
             "bulbasaur",
-            new TierListPokemon({ name: "Bulbasaur", tier: UNTIERED_TIER_NAME, banned: true }),
+            new TierListPokemon({ name: "Bulbasaur", tierId: undefined, banned: true }),
           ],
         ]),
       });
@@ -155,9 +157,9 @@ describe("TierListService", () => {
 
     it("omits the Banned bucket in view-only mode when nothing is banned", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
         ]),
       });
       tierListRepo.findById.mockResolvedValue(tierList);
@@ -169,17 +171,17 @@ describe("TierListService", () => {
 
     it("includes addons only when present and non-empty", async () => {
       const tierList = buildTierList({
-        tiers: [new Tier({ name: "S", cost: 30 })],
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
         pokemon: new Map([
           [
             "pikachu",
             new TierListPokemon({
               name: "Pikachu",
-              tier: "S",
+              tierId: tierId("S"),
               addons: [{ name: "Light Ball", cost: 5 }],
             }),
           ],
-          ["raichu", new TierListPokemon({ name: "Raichu", tier: "S" })],
+          ["raichu", new TierListPokemon({ name: "Raichu", tierId: tierId("S") })],
         ]),
       });
       tierListRepo.findById.mockResolvedValue(tierList);
@@ -197,9 +199,9 @@ describe("TierListService", () => {
       it("appends an Untiered bucket containing every species not assigned to a named tier", async () => {
         const tierList = buildTierList({
           createdBy: "auth0|owner",
-          tiers: [new Tier({ name: "S", cost: 30 })],
+          tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
           pokemon: new Map([
-            ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
+            ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
           ]),
         });
         tierListRepo.findById.mockResolvedValue(tierList);
@@ -217,10 +219,10 @@ describe("TierListService", () => {
       it("keeps banned Pokemon in their stored tier flagged draftBanned, with no Banned bucket", async () => {
         const tierList = buildTierList({
           createdBy: "auth0|owner",
-          tiers: [new Tier({ name: "S", cost: 30 })],
+          tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
           pokemon: new Map([
-            ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S", banned: true })],
-            ["raichu", new TierListPokemon({ name: "Raichu", tier: "S" })],
+            ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S"), banned: true })],
+            ["raichu", new TierListPokemon({ name: "Raichu", tierId: tierId("S") })],
           ]),
         });
         tierListRepo.findById.mockResolvedValue(tierList);
@@ -240,7 +242,7 @@ describe("TierListService", () => {
           pokemon: new Map([
             [
               "pikachu",
-              new TierListPokemon({ name: "Pikachu", tier: UNTIERED_TIER_NAME, banned: true }),
+              new TierListPokemon({ name: "Pikachu", tierId: undefined, banned: true }),
             ],
           ]),
         });
@@ -254,7 +256,7 @@ describe("TierListService", () => {
       });
 
       it("doesn't append an Untiered bucket in view-only mode", async () => {
-        const tierList = buildTierList({ tiers: [new Tier({ name: "S", cost: 30 })] });
+        const tierList = buildTierList({ tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })] });
         tierListRepo.findById.mockResolvedValue(tierList);
 
         const result = await service.getTierList("tierlist-1", undefined, false);

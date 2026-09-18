@@ -5,6 +5,7 @@ import {
   TierListPokemonAddon,
   TierListSettings,
 } from "./tier-list.domain";
+import { Types } from "mongoose";
 import {
   TierEntity,
   TierListDocument,
@@ -20,7 +21,7 @@ export class TierListMapper {
         id,
         new TierListPokemon({
           name: data.name,
-          tier: data.tier,
+          tierId: data.tierId?.toString(),
           notes: data.notes,
           banned: data.banned,
           formes: data.formes ? [...data.formes] : undefined,
@@ -45,7 +46,12 @@ export class TierListMapper {
       pokemon,
       tiers: doc.tiers.map(
         (tier) =>
-          new Tier({ name: tier.name, cost: tier.cost, color: tier.color }),
+          new Tier({
+            id: tier._id.toString(),
+            name: tier.name,
+            cost: tier.cost,
+            color: tier.color,
+          }),
       ),
       banned: {
         moves: [...doc.banned.moves],
@@ -70,6 +76,7 @@ export class TierListMapper {
 
   static toTierEntities(tiers: Tier[]): TierEntity[] {
     return tiers.map((tier) => ({
+      _id: new Types.ObjectId(tier.id),
       name: tier.name,
       cost: tier.cost,
       color: tier.color,
@@ -83,7 +90,7 @@ export class TierListMapper {
     for (const [id, data] of pokemon.entries()) {
       entries.set(id, {
         name: data.name,
-        tier: data.tier,
+        tierId: data.tierId ? new Types.ObjectId(data.tierId) : undefined,
         notes: data.notes,
         banned: data.banned,
         formes: data.formes?.length ? [...data.formes] : undefined,

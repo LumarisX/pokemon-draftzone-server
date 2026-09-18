@@ -5,6 +5,7 @@
 jest.mock("agenda", () => ({}));
 
 import { AgendaService } from "@modules/agenda/agenda.service";
+import { tierId } from "../tier-list/tier-list.test-ids";
 import { DiscordService } from "@modules/discord/discord.service";
 import { ConfigService } from "@nestjs/config";
 import {
@@ -35,12 +36,12 @@ function buildTierList(
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map([
-      ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-      ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+      ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+      ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
     ]),
     tiers: [
-      new Tier({ name: "S", cost: 10 }),
-      new Tier({ name: "A", cost: 5 }),
+      new Tier({ id: tierId("S"), name: "S", cost: 10 }),
+      new Tier({ id: tierId("A"), name: "A", cost: 5 }),
     ],
     banned: { moves: [], abilities: [] },
     format: "Singles",
@@ -554,9 +555,9 @@ describe("DraftEngineService", () => {
     const threeMonTierList = () =>
       buildTierList({
         pokemon: new Map([
-          ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-          ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
-          ["blastoise", new TierListPokemon({ name: "Blastoise", tier: "A" })],
+          ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+          ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
+          ["blastoise", new TierListPokemon({ name: "Blastoise", tierId: tierId("A") })],
         ]),
       });
 

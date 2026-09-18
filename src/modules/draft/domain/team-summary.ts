@@ -191,7 +191,11 @@ export async function getDraftDetails(
     channelId: draft.channelId,
     rounds: numberOfRounds,
     minDraftCount: tournament.draftCount.min,
-    tierRequirements: tournament.tierRequirements,
+    tierRequirements: tournament.tierRequirements.map((requirement) => ({
+      tierId: requirement.tierId,
+      tierName: tournament.tierList.getTierById(requirement.tierId)?.name ?? "",
+      required: requirement.required,
+    })),
     teams: teams,
     currentPick,
     skipTime: draft.skipTime,

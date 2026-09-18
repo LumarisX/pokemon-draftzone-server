@@ -9,8 +9,8 @@ import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
 export class TierRequirementEntity {
-  @Prop({ required: true })
-  tierName!: string;
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
+  tierId!: Types.ObjectId;
 
   @Prop({ required: true })
   required!: number;

@@ -4,6 +4,7 @@ import {
   TierList,
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
+import { tierId } from "../../tier-list/tier-list.test-ids";
 // DraftCount lives on the tournament, not TierList — imported for tournament fixture use.
 import { Types } from "mongoose";
 import { getDraftDetails, getTeamsWithCoachStatus, isCoach } from "./team-summary";
@@ -14,10 +15,10 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map([
-      ["pikachu", new TierListPokemon({ name: "Pikachu", tier: "S" })],
-      ["charizard", new TierListPokemon({ name: "Charizard", tier: "A" })],
+      ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S") })],
+      ["charizard", new TierListPokemon({ name: "Charizard", tierId: tierId("A") })],
     ]),
-    tiers: [new Tier({ name: "S", cost: 10 }), new Tier({ name: "A", cost: 5 })],
+    tiers: [new Tier({ id: tierId("S"), name: "S", cost: 10 }), new Tier({ id: tierId("A"), name: "A", cost: 5 })],
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
@@ -172,7 +173,7 @@ describe("getTeamsWithCoachStatus", () => {
             "charizard",
             new TierListPokemon({
               name: "Charizard",
-              tier: "A",
+              tierId: tierId("A"),
               addons: [{ name: "Tera Captain", cost: 2 }],
             }),
           ],

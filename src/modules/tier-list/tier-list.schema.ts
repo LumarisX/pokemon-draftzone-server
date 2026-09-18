@@ -21,8 +21,8 @@ export class TierListPokemonEntity {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true })
-  tier!: string;
+  @Prop({ type: SchemaTypes.ObjectId })
+  tierId?: Types.ObjectId;
 
   @Prop()
   notes?: string;
@@ -40,8 +40,10 @@ export const TierListPokemonSchema = SchemaFactory.createForClass(
   TierListPokemonEntity,
 );
 
-@Schema({ _id: false })
+@Schema()
 export class TierEntity {
+  _id!: Types.ObjectId;
+
   @Prop({ required: true })
   name!: string;
 

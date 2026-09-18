@@ -59,6 +59,10 @@ export class TierListPokemonInputDto {
 
 export class TierListTierInputDto {
   @IsString()
+  @IsOptional()
+  id?: string;
+
+  @IsString()
   name!: string;
 
   @IsInt()

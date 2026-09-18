@@ -138,7 +138,7 @@ export class DraftEngineService {
     return {
       id: pick.pokemonId,
       name: getName(pick.pokemonId),
-      tier: tournament.tierList.pokemon.get(pick.pokemonId)?.tier,
+      tier: tournament.tierList.getPokemonTier(pick.pokemonId)?.name,
       cost: getPickCost(tournament.tierList, pick),
     };
   }
@@ -392,10 +392,7 @@ export class DraftEngineService {
         currentDraft.teams[teamIndex] = currentTeam;
       }
 
-      const pickedPokemonData = tournament.tierList.pokemon.get(pick.pokemonId);
-      const tier = pickedPokemonData
-        ? tournament.tierList.getTierByName(pickedPokemonData.tier)
-        : undefined;
+      const tier = tournament.tierList.getPokemonTier(pick.pokemonId);
 
       const snipeCount = await this.removePokemonFromPicks(
         currentDraft,

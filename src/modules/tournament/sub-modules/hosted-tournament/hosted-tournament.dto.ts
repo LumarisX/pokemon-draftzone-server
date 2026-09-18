@@ -99,7 +99,7 @@ export class UpdateRulesDto {
 export class TierRequirementDto {
   @IsString()
   @MinLength(1)
-  tierName!: string;
+  tierId!: string;
 
   @IsInt()
   @Min(0)

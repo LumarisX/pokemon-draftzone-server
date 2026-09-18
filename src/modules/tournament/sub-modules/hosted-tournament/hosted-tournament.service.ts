@@ -540,7 +540,7 @@ export class HostedTournamentService {
           id: pokemon.id,
           name: getName(pokemon.id),
           cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
-          tier: tierList?.pokemon.get(pokemon.id)?.tier,
+          tier: tierList?.getPokemonTier(pokemon.id)?.name,
         })),
       })),
     };
@@ -1071,13 +1071,13 @@ export class HostedTournamentService {
 
     const effectiveMax = dto.draftCount?.max ?? tournament.draftCount.max;
     if (dto.tierRequirements) {
-      const tierNames = new Set(tierList.tiers.map((tier) => tier.name));
+      const tierIds = new Set(tierList.tiers.map((tier) => tier.id));
       const unknownTier = dto.tierRequirements.find(
-        (req) => !tierNames.has(req.tierName),
+        (req) => !tierIds.has(req.tierId),
       );
       if (unknownTier) {
         throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: `Tier "${unknownTier.tierName}" does not exist on this tier list`,
+          reason: `Tier "${unknownTier.tierId}" does not exist on this tier list`,
         });
       }
       const totalRequired = dto.tierRequirements.reduce(

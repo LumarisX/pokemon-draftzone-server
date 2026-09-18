@@ -152,7 +152,7 @@ export class HostedTournamentRepository {
       ruleset: string;
       draftCount: { min: number; max: number };
       pointTotal: number | null;
-      tierRequirements: { tierName: string; required: number }[];
+      tierRequirements: { tierId: string; required: number }[];
       logo: string | null;
     }>,
   ): Promise<void> {
