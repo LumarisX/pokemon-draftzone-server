@@ -1494,6 +1494,9 @@ export class StageService {
           tera: p.addons?.includes("Tera Captain") || false,
           cost: tierList?.getPokemonCost(p.id, p.addons),
           tier: tierList?.getPokemonTier(p.id)?.name,
+          ...(tierList && !tierList.hasPokemon(p.id)
+            ? { missingFromTierList: true as const }
+            : {}),
         })),
         tradePoints: side.tradePoints ?? 0,
       };

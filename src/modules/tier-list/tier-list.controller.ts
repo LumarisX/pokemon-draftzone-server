@@ -10,7 +10,13 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
+import {
+  BrowseTierListsDto,
+  CreateTierListDto,
+  ForkTierListDto,
+  UpdateTierListDto,
+  UpdateTierListSettingsDto,
+} from "./tier-list.dto";
 import { TierListService } from "./tier-list.service";
 import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 
@@ -20,10 +26,30 @@ export class TierListController {
   constructor(private readonly tierListService: TierListService) {}
 
   @Get()
-  async getTierLists() {}
+  @OptionalAuth()
+  async getTierLists(
+    @Query() query: BrowseTierListsDto,
+    @User() sub: string | undefined,
+  ) {
+    return this.tierListService.browse(query, sub);
+  }
 
   @Post()
-  async createTierList() {}
+  async createTierList(
+    @User() sub: string,
+    @Body() body: CreateTierListDto,
+  ) {
+    return this.tierListService.create(body, sub);
+  }
+
+  @Post(":tierListId/fork")
+  async forkTierList(
+    @Param("tierListId") tierListId: string,
+    @User() sub: string,
+    @Body() body: ForkTierListDto,
+  ) {
+    return this.tierListService.fork(tierListId, body, sub);
+  }
 
   @Get(":tierListId")
   @OptionalAuth()

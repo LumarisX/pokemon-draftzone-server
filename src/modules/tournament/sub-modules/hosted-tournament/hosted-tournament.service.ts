@@ -265,6 +265,9 @@ export class HostedTournamentService {
         name: getName(pokemon.id),
         cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
         draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+        ...(tournament.tierList.hasPokemon(pokemon.id)
+          ? {}
+          : { missingFromTierList: true as const }),
       }));
       return {
         ...identity,
@@ -295,6 +298,9 @@ export class HostedTournamentService {
       name: getName(pokemon.id),
       cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
       draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+      ...(tournament.tierList.hasPokemon(pokemon.id)
+        ? {}
+        : { missingFromTierList: true as const }),
     }));
 
     // Every stage the team plays in, not just one: a coach's record covers the
@@ -416,7 +422,8 @@ export class HostedTournamentService {
     // do, just computed once here instead of separately on each page.
     const allTeamsById = new Map<string, PopulatedTeam>();
     for (const stage of composedStages) {
-      for (const team of stage.teams) allTeamsById.set(team._id.toString(), team);
+      for (const team of stage.teams)
+        allTeamsById.set(team._id.toString(), team);
     }
     const combinedStage = {
       rounds: [],
@@ -426,7 +433,11 @@ export class HostedTournamentService {
       visibleStages.map((s) => s._id),
     )) as unknown as PopulatedStageMatchup[];
     const { teamStandings: combinedTeamStandings, diffMode: combinedDiffMode } =
-      await calculateDivisionTeamStandings(allMatchups, combinedStage, tournament);
+      await calculateDivisionTeamStandings(
+        allMatchups,
+        combinedStage,
+        tournament,
+      );
     views.all = {
       teamStandings: {
         diffMode: combinedDiffMode,
@@ -541,6 +552,9 @@ export class HostedTournamentService {
           name: getName(pokemon.id),
           cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
           tier: tierList?.getPokemonTier(pokemon.id)?.name,
+          ...(tierList && !tierList.hasPokemon(pokemon.id)
+            ? { missingFromTierList: true as const }
+            : {}),
         })),
       })),
     };
@@ -621,6 +635,9 @@ export class HostedTournamentService {
                   pokemon.addons,
                 ),
                 draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+                ...(tournament.tierList.hasPokemon(pokemon.id)
+                  ? {}
+                  : { missingFromTierList: true as const }),
                 record: pokemonStandings.find(
                   (p) => p.id === pokemon.id && p.teamId === teamId,
                 )?.record,
@@ -1129,7 +1146,8 @@ export class HostedTournamentService {
     if (dto.archived !== undefined) update["archived"] = dto.archived;
     if (dto.matchSettings !== undefined)
       update["matchSettings"] = {
-        chat: dto.matchSettings.chat ?? tournament.matchSettings?.chat !== false,
+        chat:
+          dto.matchSettings.chat ?? tournament.matchSettings?.chat !== false,
         coachReporting:
           dto.matchSettings.coachReporting ??
           tournament.matchSettings?.coachReporting !== false,

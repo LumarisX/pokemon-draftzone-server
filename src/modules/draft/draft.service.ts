@@ -602,6 +602,9 @@ export class DraftService {
           capt: { tera: pokemon.addons?.includes("Tera Captain") },
           cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
           draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+          ...(tournament.tierList.hasPokemon(pokemon.id)
+            ? {}
+            : { missingFromTierList: true as const }),
         })),
         name: team.teamName,
         isCoach: team.coach.auth0Id === sub,
@@ -634,9 +637,7 @@ export class DraftService {
     );
 
     const teams = approvedTeams.map((team) => {
-      const standings = teamStandings.find(
-        (c) => c.id === team._id.toString(),
-      );
+      const standings = teamStandings.find((c) => c.id === team._id.toString());
       const record = standings
         ? {
             wins: standings.wins,
@@ -655,6 +656,9 @@ export class DraftService {
           capt: { tera: pokemon.addons?.includes("Tera Captain") },
           cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
           draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
+          ...(tournament.tierList.hasPokemon(pokemon.id)
+            ? {}
+            : { missingFromTierList: true as const }),
           record: pokemonStandings.find(
             (p) => p.id === pokemon.id && p.teamId === team._id.toString(),
           )?.record,

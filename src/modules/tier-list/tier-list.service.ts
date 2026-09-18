@@ -1,10 +1,23 @@
+import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
-import { Injectable } from "@nestjs/common";
+import {
+  HostedTournamentDocument,
+  HostedTournamentEntity,
+} from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
 import { ID } from "@pkmn/data";
-import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
+import { Model, Types } from "mongoose";
+import {
+  BrowseTierListsDto,
+  CreateTierListDto,
+  ForkTierListDto,
+  UpdateTierListDto,
+  UpdateTierListSettingsDto,
+} from "./tier-list.dto";
 import {
   BANNED_TIER_NAME,
   ClientTierInput,
@@ -41,7 +54,13 @@ type TierView = {
 
 @Injectable()
 export class TierListService {
-  constructor(private readonly tierListRepo: TierListRepository) {}
+  private readonly logger = new Logger(TierListService.name);
+
+  constructor(
+    private readonly tierListRepo: TierListRepository,
+    @InjectModel(HostedTournamentEntity.name)
+    private readonly tournamentModel: Model<HostedTournamentDocument>,
+  ) {}
 
   async getTierList(
     tierListId: string,
@@ -87,6 +106,74 @@ export class TierListService {
     return { success: true };
   }
 
+  async browse(dto: BrowseTierListsDto, sub: string | undefined) {
+    const scope = dto.scope ?? "public";
+    if (scope === "mine" && !sub) {
+      throw new PDZError(ErrorCodes.AUTH.UNAUTHORIZED);
+    }
+
+    const limit = dto.limit ?? 24;
+    const skip = dto.skip ?? 0;
+    const { rows, total } = await this.tierListRepo.browse({
+      sub,
+      scope,
+      query: dto.q,
+      format: dto.format,
+      ruleset: dto.ruleset,
+      limit,
+      skip,
+    });
+
+    return { tierLists: rows, total, limit, skip };
+  }
+
+  async create(dto: CreateTierListDto, sub: string) {
+    // Both throw on an unknown id, which is the validation — a list created
+    // with a bad format would only break later, when something tried to
+    // resolve its species.
+    getFormat(dto.format);
+    getRuleset(dto.ruleset);
+
+    const created = await this.tierListRepo.create({
+      name: dto.name.trim(),
+      description: dto.description?.trim() || undefined,
+      createdBy: sub,
+      format: dto.format,
+      ruleset: dto.ruleset,
+    });
+
+    return { id: created.id, name: created.name };
+  }
+
+  /**
+   * Copies a list rather than referencing it, so a later edit by the source's
+   * owner can never reprice a draft that has already happened.
+   */
+  async fork(tierListId: string, dto: ForkTierListDto, sub: string) {
+    const source = await this.tierListRepo.findDocument(tierListId);
+    const canSee =
+      source.settings.isPublic ||
+      source.createdBy === sub ||
+      source.collaborators.includes(sub);
+    if (!canSee) throw new PDZError(ErrorCodes.TIER_LIST.FORBIDDEN);
+
+    const created = await this.tierListRepo.create({
+      name: dto.name?.trim() || `${source.name} (copy)`,
+      description: source.description,
+      createdBy: sub,
+      format: source.format,
+      ruleset: source.ruleset,
+      copiedFrom: source._id,
+      tiers: source.tiers,
+      pokemon: source.pokemon,
+      banned: source.banned,
+    });
+
+    await this.tierListRepo.incrementForkCount(tierListId);
+
+    return { id: created.id, name: created.name, copiedFrom: tierListId };
+  }
+
   async updateTierList(
     tierListId: string,
     sub: string | undefined,
@@ -97,10 +184,71 @@ export class TierListService {
       throw new PDZError(ErrorCodes.TIER_LIST.FORBIDDEN);
     }
 
+    const tierIdsBefore = new Set(tierList.tiers.map((tier) => tier.id));
     tierList.applyTierUpdate(dto.tiers as ClientTierInput[]);
     await this.tierListRepo.save(tierList);
 
-    return { success: true, message: "Tier list updated successfully" };
+    const orphaned = await this.findOrphanedRequirements(
+      tierListId,
+      tierIdsBefore,
+      new Set(tierList.tiers.map((tier) => tier.id)),
+    );
+
+    return {
+      success: true,
+      message: "Tier list updated successfully",
+      orphanedRequirements: orphaned,
+    };
+  }
+
+  /**
+   * Tournaments left holding a requirement for a tier this save deleted. The
+   * draft engine ignores them so they cannot deadlock a draft, but nothing
+   * else would tell the organizer they now exist.
+   */
+  private async findOrphanedRequirements(
+    tierListId: string,
+    before: Set<string>,
+    after: Set<string>,
+  ): Promise<{ tournament: string; requirements: number }[]> {
+    const removed = new Set(
+      [...before].filter((tierId) => !after.has(tierId)),
+    );
+    if (removed.size === 0) return [];
+    if (!Types.ObjectId.isValid(tierListId)) return [];
+
+    // The save has already committed. This lookup is advisory, so a failure
+    // here must never turn a successful write into an error for the caller.
+    try {
+      const dependents = await this.tournamentModel
+        .find({ tierList: new Types.ObjectId(tierListId) })
+        .select("name tierRequirements")
+        .lean()
+        .exec();
+
+      const affected = dependents.flatMap((tournament) => {
+        const orphans = (tournament.tierRequirements ?? []).filter(
+          (requirement) => removed.has(requirement.tierId?.toString()),
+        );
+        return orphans.length
+          ? [{ tournament: tournament.name, requirements: orphans.length }]
+          : [];
+      });
+
+      for (const entry of affected) {
+        this.logger.warn(
+          `Tier list ${tierListId}: deleting a tier orphaned ${entry.requirements} requirement(s) on "${entry.tournament}"`,
+        );
+      }
+
+      return affected;
+    } catch (error) {
+      this.logger.warn(
+        `Tier list ${tierListId}: could not check for orphaned requirements`,
+        error,
+      );
+      return [];
+    }
   }
 
   private async buildTierView(

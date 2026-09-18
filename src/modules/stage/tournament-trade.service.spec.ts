@@ -695,6 +695,7 @@ describe("TournamentTradeService", () => {
       tierListRepo.findById.mockResolvedValue({
         pokemon: new Map([["pikachu", { tierId: tierId("B") }]]),
         getPokemonTier: jest.fn().mockReturnValue({ name: "B" }),
+        hasPokemon: jest.fn().mockReturnValue(true),
         getPokemonCost: jest.fn().mockReturnValue(12),
       } as any);
 

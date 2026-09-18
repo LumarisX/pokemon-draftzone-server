@@ -15,7 +15,11 @@ import {
   getDraftOrder,
   getPokemonIdFromDraft,
 } from "./pick-order";
-import { createPokemonTierMap, getPickCost } from "./tier-cost";
+import {
+  createPokemonTierMap,
+  enforceableTierRequirements,
+  getPickCost,
+} from "./tier-cost";
 
 export type TeamWithCoachStatus = {
   id: string;
@@ -191,11 +195,14 @@ export async function getDraftDetails(
     channelId: draft.channelId,
     rounds: numberOfRounds,
     minDraftCount: tournament.draftCount.min,
-    tierRequirements: tournament.tierRequirements.map((requirement) => ({
-      tierId: requirement.tierId,
-      tierName: tournament.tierList.getTierById(requirement.tierId)?.name ?? "",
-      required: requirement.required,
-    })),
+    tierRequirements: enforceableTierRequirements(tournament).map(
+      (requirement) => ({
+        tierId: requirement.tierId,
+        tierName:
+          tournament.tierList.getTierById(requirement.tierId)?.name ?? "",
+        required: requirement.required,
+      }),
+    ),
     teams: teams,
     currentPick,
     skipTime: draft.skipTime,

@@ -1,4 +1,6 @@
 import { BANNED_TIER_NAME, UNTIERED_TIER_NAME } from "./tier-list.domain";
+import { Model, Types } from "mongoose";
+import { HostedTournamentDocument } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { tierId } from "./tier-list.test-ids";
 import { Tier, TierList, TierListPokemon } from "./tier-list.domain";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
@@ -26,6 +28,7 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
 describe("TierListService", () => {
   let tierListRepo: jest.Mocked<TierListRepository>;
   let service: TierListService;
+  let tournamentModel: Model<HostedTournamentDocument>;
 
   beforeEach(() => {
     tierListRepo = {
@@ -33,7 +36,14 @@ describe("TierListService", () => {
       updateSettings: jest.fn(),
       save: jest.fn(),
     } as unknown as jest.Mocked<TierListRepository>;
-    service = new TierListService(tierListRepo);
+    tournamentModel = {
+      find: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([]),
+      }),
+    } as unknown as Model<HostedTournamentDocument>;
+    service = new TierListService(tierListRepo, tournamentModel);
   });
 
   describe("getTierList", () => {
@@ -343,7 +353,38 @@ describe("TierListService", () => {
       expect(result).toEqual({
         success: true,
         message: "Tier list updated successfully",
+        orphanedRequirements: [],
       });
+    });
+
+    it("reports tournaments left holding a requirement for a deleted tier", async () => {
+      const tierList = buildTierList({
+        createdBy: "auth0|owner",
+        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
+      });
+      tierListRepo.findById.mockResolvedValue(tierList);
+      (tournamentModel.find as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([
+          {
+            name: "Season 12",
+            tierRequirements: [{ tierId: tierId("S"), required: 2 }],
+          },
+        ]),
+      });
+
+      // The submitted layout drops tier "S" entirely.
+      const dto = { tiers: [] } as unknown as UpdateTierListDto;
+      const result = await service.updateTierList(
+        new Types.ObjectId().toString(),
+        "auth0|owner",
+        dto,
+      );
+
+      expect(result.orphanedRequirements).toEqual([
+        { tournament: "Season 12", requirements: 1 },
+      ]);
     });
   });
 });

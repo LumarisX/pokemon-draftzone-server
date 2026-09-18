@@ -156,6 +156,15 @@ export class TierList {
     return this.getTierById(this.pokemon.get(pokemonId)?.tierId);
   }
 
+  /**
+   * False for a Pokemon that is on a roster but no longer on this list —
+   * removing an entry drops its cost to 0, which reads as "free" rather than
+   * "illegal", so rosters flag it instead of quietly crediting the team.
+   */
+  hasPokemon(pokemonId: string): boolean {
+    return this.pokemon.has(pokemonId);
+  }
+
   getPokemonCost(pokemonId: string, addonNames?: string[]): number | undefined {
     const pokemon = this.pokemon.get(pokemonId);
     if (!pokemon) return undefined;

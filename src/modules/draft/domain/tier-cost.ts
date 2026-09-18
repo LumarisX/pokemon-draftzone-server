@@ -8,6 +8,24 @@ import { TierList } from "@modules/tier-list/tier-list.domain";
 import { getPokemonIdFromDraft, isAlreadyDrafted } from "./pick-order";
 
 /**
+ * Requirements whose tier still exists on the tournament's tier list.
+ *
+ * A requirement pointing at a deleted tier can never be satisfied — nothing
+ * is in that tier — so its shortfall would be permanent, and once the team
+ * ran low on slots every remaining pick would be rejected for every team.
+ * An unenforceable requirement is dropped rather than allowed to deadlock
+ * the draft; the settings page surfaces it for the organizer to resolve.
+ */
+export function enforceableTierRequirements(
+  tournament: PopulatedTournament,
+): { tierId: string; required: number }[] {
+  const tierList = tournament.tierList;
+  return (tournament.tierRequirements ?? []).filter((requirement) =>
+    Boolean(tierList.getTierById(requirement.tierId)),
+  );
+}
+
+/**
  * Creates a map of pokemonId to tier for faster lookups
  * @param tournament - The tournament document with a populated tierList
  * @returns A map where keys are pokemonIds and values are tier names
@@ -160,8 +178,8 @@ function tierRequirementsAreFeasible(
   team: PopulatedTeam,
   pick: { pokemonId: string },
 ): boolean {
-  const requirements = tournament.tierRequirements;
-  if (!requirements?.length) return true;
+  const requirements = enforceableTierRequirements(tournament);
+  if (!requirements.length) return true;
 
   const picksByTier = countPicksByTier(tournament, team);
   const pickedTier = tournament.tierList.pokemon.get(pick.pokemonId)?.tierId;
@@ -305,8 +323,8 @@ export async function isTeamRosterValid(
     if (teamPoints > tournament.pointTotal) return false;
   }
 
-  const requirements = tournament.tierRequirements;
-  if (requirements?.length) {
+  const requirements = enforceableTierRequirements(tournament);
+  if (requirements.length) {
     const picksByTier = countPicksByTier(tournament, team);
     const meetsAll = requirements.every(
       (req) => (picksByTier.get(req.tierId) ?? 0) >= req.required,

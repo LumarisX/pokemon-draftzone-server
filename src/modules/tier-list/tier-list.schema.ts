@@ -107,6 +107,10 @@ export class TierListEntity {
   @Prop({ type: SchemaTypes.ObjectId, ref: "TierListEntity" })
   copiedFrom?: Types.ObjectId;
 
+  /** How many lists have been forked from this one; drives browse ranking. */
+  @Prop({ default: 0 })
+  forkCount!: number;
+
   @Prop({ type: Map, of: TierListPokemonSchema, default: {} })
   pokemon!: Map<string, TierListPokemonEntity>;
 
@@ -137,3 +141,7 @@ export class TierListEntity {
 }
 
 export const TierListSchema = SchemaFactory.createForClass(TierListEntity);
+
+TierListSchema.index({ "settings.isPublic": 1, format: 1, ruleset: 1 });
+TierListSchema.index({ createdBy: 1 });
+TierListSchema.index({ collaborators: 1 });
