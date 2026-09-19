@@ -39,6 +39,7 @@ export class TierListMapper {
 
     return new TierList({
       id: doc._id.toString(),
+      slug: doc.slug,
       name: doc.name,
       description: doc.description,
       createdBy: doc.createdBy,

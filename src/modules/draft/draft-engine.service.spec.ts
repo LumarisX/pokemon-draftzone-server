@@ -33,6 +33,7 @@ function buildTierList(
 ) {
   return new TierList({
     id: "tierlist-1",
+    slug: "tierlist1",
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map([

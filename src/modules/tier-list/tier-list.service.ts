@@ -142,7 +142,7 @@ export class TierListService {
       ruleset: dto.ruleset,
     });
 
-    return { id: created.id, name: created.name };
+    return { id: created.id, slug: created.slug, name: created.name };
   }
 
   /**
@@ -171,7 +171,41 @@ export class TierListService {
 
     await this.tierListRepo.incrementForkCount(tierListId);
 
-    return { id: created.id, name: created.name, copiedFrom: tierListId };
+    return {
+      id: created.id,
+      slug: created.slug,
+      name: created.name,
+      copiedFrom: source.slug,
+    };
+  }
+
+  /**
+   * Only the owner can delete, and only while nothing depends on it — a
+   * tournament whose tier list vanished would 500 on every page that prices a
+   * roster.
+   */
+  async remove(tierListSlug: string, sub: string) {
+    const doc = await this.tierListRepo.findDocument(tierListSlug);
+    if (doc.createdBy !== sub) {
+      throw new PDZError(ErrorCodes.TIER_LIST.FORBIDDEN);
+    }
+
+    const dependents = await this.tournamentModel
+      .find({ tierList: doc._id })
+      .select("name")
+      .lean()
+      .exec();
+
+    if (dependents.length) {
+      throw new PDZError(ErrorCodes.TIER_LIST.INVALID_DATA, {
+        reason: `In use by ${dependents.length} tournament(s): ${dependents
+          .map((tournament) => tournament.name)
+          .join(", ")}`,
+      });
+    }
+
+    await this.tierListRepo.deleteById(doc._id.toString());
+    return { success: true };
   }
 
   async updateTierList(

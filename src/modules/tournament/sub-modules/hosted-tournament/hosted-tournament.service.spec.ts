@@ -374,6 +374,7 @@ function buildSettingsTierList(
 ) {
   return new TierList({
     id: "tier-1",
+    slug: "tier1",
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map(),

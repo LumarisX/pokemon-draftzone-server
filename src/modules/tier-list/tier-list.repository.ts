@@ -9,6 +9,7 @@ import { TierListDocument, TierListEntity } from "./tier-list.schema";
 
 export type TierListSummary = {
   id: string;
+  slug: string;
   name: string;
   description?: string;
   format: string;
@@ -31,9 +32,7 @@ export class TierListRepository {
   ) {}
 
   async findById(tierListId: string): Promise<TierList> {
-    const doc = await this.tierListModel.findById(tierListId).exec();
-    if (!doc) throw new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND);
-    return TierListMapper.fromDatabase(doc);
+    return TierListMapper.fromDatabase(await this.findDocument(tierListId));
   }
 
   async findManyByIds(tierListIds: string[]): Promise<Map<string, TierList>> {
@@ -122,15 +121,30 @@ export class TierListRepository {
       .exec();
   }
 
-  async findDocument(tierListId: string): Promise<TierListDocument> {
-    const doc = await this.tierListModel.findById(tierListId).exec();
+  /**
+   * Accepts a slug (what URLs carry) or an ObjectId (what a tournament's
+   * `tierList` ref holds). Slugs are 8 base62 characters and ObjectIds are 24
+   * hex, so the two can't be confused.
+   */
+  async findDocument(idOrSlug: string): Promise<TierListDocument> {
+    const doc = Types.ObjectId.isValid(idOrSlug)
+      ? await this.tierListModel.findById(idOrSlug).exec()
+      : await this.tierListModel.findOne({ slug: idOrSlug }).exec();
     if (!doc) throw new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND);
     return doc;
+  }
+
+  async deleteById(tierListId: string): Promise<void> {
+    const result = await this.tierListModel
+      .findByIdAndDelete(tierListId)
+      .exec();
+    if (!result) throw new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND);
   }
 
   private toSummary(doc: TierListDocument, sub?: string): TierListSummary {
     return {
       id: doc._id.toString(),
+      slug: doc.slug,
       name: doc.name,
       description: doc.description,
       format: doc.format,
@@ -155,7 +169,11 @@ export class TierListRepository {
     }>,
   ): Promise<TierList> {
     const doc = await this.tierListModel
-      .findByIdAndUpdate(tierListId, { $set: update }, { returnDocument: "after" })
+      .findByIdAndUpdate(
+        tierListId,
+        { $set: update },
+        { returnDocument: "after" },
+      )
       .exec();
     if (!doc) throw new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND);
     return TierListMapper.fromDatabase(doc);

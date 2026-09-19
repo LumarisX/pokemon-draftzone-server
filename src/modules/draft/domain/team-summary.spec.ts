@@ -12,6 +12,7 @@ import { getDraftDetails, getTeamsWithCoachStatus, isCoach } from "./team-summar
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
   return new TierList({
     id: "tierlist-1",
+    slug: "tierlist1",
     name: "Spring Tier List",
     createdBy: "auth0|owner",
     pokemon: new Map([

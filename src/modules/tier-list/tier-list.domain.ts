@@ -102,6 +102,7 @@ export type ClientTierInput = {
 
 export class TierList {
   id: string;
+  slug: string;
   name: string;
   description?: string;
   createdBy: string;
@@ -116,6 +117,7 @@ export class TierList {
 
   constructor(props: {
     id: string;
+    slug: string;
     name: string;
     description?: string;
     createdBy: string;
@@ -129,6 +131,7 @@ export class TierList {
     collaborators: string[];
   }) {
     this.id = props.id;
+    this.slug = props.slug;
     this.name = props.name;
     this.description = props.description;
     this.createdBy = props.createdBy;

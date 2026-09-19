@@ -11,6 +11,7 @@ import { TierListService } from "./tier-list.service";
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
   return new TierList({
     id: "tierlist-1",
+    slug: "tierlist1",
     name: "Spring Tier List",
     description: "desc",
     createdBy: "auth0|owner",

@@ -1,3 +1,4 @@
+import { generateSlug } from "@core/slug";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
@@ -97,6 +98,9 @@ export type TierListDocument = HydratedDocument<TierListEntity>;
 export class TierListEntity {
   @Prop({ required: true })
   name!: string;
+
+  @Prop({ required: true, unique: true, index: true, default: generateSlug })
+  slug!: string;
 
   @Prop()
   description?: string;

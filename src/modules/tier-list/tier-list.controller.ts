@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -42,49 +43,57 @@ export class TierListController {
     return this.tierListService.create(body, sub);
   }
 
-  @Post(":tierListId/fork")
+  @Post(":tierListSlug/fork")
   async forkTierList(
-    @Param("tierListId") tierListId: string,
+    @Param("tierListSlug") tierListSlug: string,
     @User() sub: string,
     @Body() body: ForkTierListDto,
   ) {
-    return this.tierListService.fork(tierListId, body, sub);
+    return this.tierListService.fork(tierListSlug, body, sub);
   }
 
-  @Get(":tierListId")
+  @Get(":tierListSlug")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getTierList(
-    @Param("tierListId") tierListId: string,
+    @Param("tierListSlug") tierListSlug: string,
     @User() sub: string | undefined,
     @Query("edit") edit?: string,
   ) {
-    return this.tierListService.getTierList(tierListId, sub, edit === "true");
+    return this.tierListService.getTierList(tierListSlug, sub, edit === "true");
   }
 
-  @Patch(":tierListId")
+  @Patch(":tierListSlug")
   @UseGuards(JwtAuthGuard)
   async updateTierList(
-    @Param("tierListId") tierListId: string,
+    @Param("tierListSlug") tierListSlug: string,
     @User() sub: string,
     @Body() body: UpdateTierListDto,
   ) {
-    return this.tierListService.updateTierList(tierListId, sub, body);
+    return this.tierListService.updateTierList(tierListSlug, sub, body);
   }
 
-  @Get(":tierListId/settings")
+  @Get(":tierListSlug/settings")
   @UseGuards(JwtAuthGuard)
-  async getTierListSettings(@Param("tierListId") tierListId: string) {
-    return this.tierListService.getSettings(tierListId);
+  async getTierListSettings(@Param("tierListSlug") tierListSlug: string) {
+    return this.tierListService.getSettings(tierListSlug);
   }
 
-  @Patch(":tierListId/settings")
+  @Delete(":tierListSlug")
+  async deleteTierList(
+    @Param("tierListSlug") tierListSlug: string,
+    @User() sub: string,
+  ) {
+    return this.tierListService.remove(tierListSlug, sub);
+  }
+
+  @Patch(":tierListSlug/settings")
   @UseGuards(JwtAuthGuard)
   async updateTierListSettings(
-    @Param("tierListId") tierListId: string,
+    @Param("tierListSlug") tierListSlug: string,
     @User() sub: string,
     @Body() body: UpdateTierListSettingsDto,
   ) {
-    return this.tierListService.updateSettings(tierListId, sub, body);
+    return this.tierListService.updateSettings(tierListSlug, sub, body);
   }
 }
