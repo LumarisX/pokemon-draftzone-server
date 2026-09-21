@@ -21,9 +21,10 @@ import {
   PopulatedStageMatchup,
 } from "../stage/domain/standings";
 import { DraftEngineService } from "./draft-engine.service";
-import { getDraftOrder } from "./domain/pick-order";
+import { getDraftOrder, isPreDraftStatus } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import {
+  CreateDraftDto,
   DraftDto,
   SetCurrentPickDto,
   SetDraftOrderDto,
@@ -435,6 +436,94 @@ export class DraftService {
     const { tournament: freshTournament, draft: freshDraft } =
       await this.loadContext(leagueSlug, tournamentSlug, draftSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  async listPools(leagueSlug: string, tournamentSlug: string, sub: string) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const drafts = await this.draftRepo.findAllByTournament(tournament.id);
+    return {
+      pools: drafts.map((draft) => ({
+        draftSlug: draft.slug,
+        name: draft.name,
+        status: draft.status,
+      })),
+    };
+  }
+
+  async createPool(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    dto: CreateDraftDto,
+  ) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    const start = dto.draftStart ? new Date(dto.draftStart) : undefined;
+    const end = dto.draftEnd ? new Date(dto.draftEnd) : undefined;
+    if (start && end && end < start)
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "This pool closes before it opens.",
+      });
+
+    const existing = await this.draftRepo.findAllByTournament(tournament.id);
+    const name = dto.name.trim();
+    if (existing.some((draft) => draft.name.trim() === name))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: `This tournament already has a pool called "${name}".`,
+      });
+
+    const draft = await this.draftRepo.create({
+      tournamentId: tournament.id,
+      name,
+      public: dto.public,
+      draftStart: start,
+      draftEnd: end,
+    });
+
+    return { draftSlug: draft.slug, name: draft.name };
+  }
+
+  async deletePool(
+    leagueSlug: string,
+    tournamentSlug: string,
+    draftSlug: string,
+    sub: string,
+  ) {
+    const { tournament, draft } = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+    );
+    this.assertOrganizer(tournament, sub);
+
+    if (!isPreDraftStatus(draft.status))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason:
+          "A pool can only be deleted before its draft starts. Pause and reset it first.",
+      });
+
+    const drafted = draft.teams.filter((team) => team.pickLog.length > 0);
+    if (drafted.length)
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: `${drafted.length} team${drafted.length === 1 ? " has" : "s have"} already made picks in this pool.`,
+      });
+
+    await this.draftEngine.cancelScheduledJobs(draft);
+    for (const team of draft.teams) {
+      await this.teamRepo.update(team._id, { draftId: null });
+    }
+    await this.draftRepo.delete(draft._id);
+
+    return { success: true, unassigned: draft.teams.length };
   }
 
   /** Organizer-only; see DraftEngineService.sendTestMessage. */

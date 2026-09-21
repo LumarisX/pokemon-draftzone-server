@@ -1,6 +1,7 @@
 import {
   IsArray,
   IsBoolean,
+  IsDateString,
   IsIn,
   IsInt,
   IsOptional,
@@ -107,6 +108,41 @@ export class UpdateDraftSettingsDto {
   @IsBoolean()
   @IsOptional()
   allowRemovals?: boolean;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  timerLength?: number;
+
+  @IsDateString()
+  @IsOptional()
+  draftStart?: string | null;
+
+  @IsDateString()
+  @IsOptional()
+  draftEnd?: string | null;
+
+  @IsBoolean()
+  @IsOptional()
+  public?: boolean;
+}
+
+export class CreateDraftDto {
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @IsDateString()
+  @IsOptional()
+  draftStart?: string;
+
+  @IsDateString()
+  @IsOptional()
+  draftEnd?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  public?: boolean;
 }
 
 /** `order` is required (and validated as a permutation of the draft's teams) when `useRandomSeeding` is false. */

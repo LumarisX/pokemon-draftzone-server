@@ -49,7 +49,11 @@ export class TeamService {
   }
 
   async deleteTeam(teamId: Types.ObjectId | string): Promise<void> {
-    return this.teamRepo.delete(teamId);
+    const team = await this.teamRepo.findById(teamId);
+    const coachId = team.coach?._id;
+
+    await this.teamRepo.delete(teamId);
+    if (coachId) await this.coachRepo.delete(coachId);
   }
 
   isCoachedBy(team: PopulatedTeam, sub: string | undefined): boolean {

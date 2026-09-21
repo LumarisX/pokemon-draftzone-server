@@ -2,6 +2,7 @@ import { StageDocument } from "@modules/stage/stage.schema";
 import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
   HostedTournament,
+  PrizeShare,
   TierRequirement,
   TournamentAdSettings,
   TournamentDiscordSettings,
@@ -73,7 +74,12 @@ export class HostedTournamentMapper {
           new TierRequirement({
             tierId: req.tierId.toString(),
             required: req.required,
+            max: req.max,
           }),
+      ),
+      prizeSplit: (doc.prizeSplit ?? []).map(
+        (share) =>
+          new PrizeShare({ place: share.place, percent: share.percent }),
       ),
       adSettings: doc.adSettings
         ? new TournamentAdSettings({
@@ -135,6 +141,7 @@ export class HostedTournamentMapper {
       pointTotal: tournament.pointTotal,
       tradePointLimit: tournament.tradePointLimit,
       tierRequirements: tournament.tierRequirements,
+      prizeSplit: tournament.prizeSplit,
       adSettings: tournament.adSettings,
       matchSettings: tournament.matchSettings,
       archived: tournament.archived,

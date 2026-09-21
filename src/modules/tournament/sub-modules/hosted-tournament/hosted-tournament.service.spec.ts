@@ -504,6 +504,122 @@ describe("HostedTournamentService settings", () => {
   });
 });
 
+describe("HostedTournamentService coach details", () => {
+  const COACH_ID = new Types.ObjectId();
+  const TEAM_ID = new Types.ObjectId();
+
+  let coachRepo: jest.Mocked<CoachRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let service: HostedTournamentService;
+
+  beforeEach(() => {
+    const tournament = buildTournament();
+    coachRepo = {
+      findById: jest.fn().mockResolvedValue({
+        _id: COACH_ID,
+        auth0Id: "auth0|coach",
+        teamId: TEAM_ID,
+      }),
+      update: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<CoachRepository>;
+    teamRepo = {
+      findByIdOrNull: jest.fn().mockResolvedValue({
+        _id: TEAM_ID,
+        tournamentId: { toString: () => tournament.id },
+      }),
+      update: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TeamRepository>;
+
+    service = new HostedTournamentService(
+      {
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      coachRepo,
+      {} as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+      {} as UserRepository,
+    );
+  });
+
+  it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
+    await expect(
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|stranger",
+        { name: "New Name" },
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    expect(coachRepo.update).not.toHaveBeenCalled();
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("lets the coach edit their own details", async () => {
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      COACH_ID.toString(),
+      "auth0|coach",
+      { timezone: "UTC+1" },
+    );
+
+    expect(coachRepo.update).toHaveBeenCalledWith(COACH_ID, {
+      timezone: "UTC+1",
+    });
+  });
+
+  it("splits coach fields from the team name across both documents", async () => {
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      COACH_ID.toString(),
+      "auth0|owner",
+      { name: "Ash", teamName: "Pallet Pioneers" },
+    );
+
+    expect(coachRepo.update).toHaveBeenCalledWith(COACH_ID, { name: "Ash" });
+    expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+      teamName: "Pallet Pioneers",
+    });
+  });
+
+  it("writes nothing when the payload is empty", async () => {
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      COACH_ID.toString(),
+      "auth0|owner",
+      {},
+    );
+
+    expect(coachRepo.update).not.toHaveBeenCalled();
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses a coach whose team belongs to another tournament", async () => {
+    teamRepo.findByIdOrNull.mockResolvedValue({
+      _id: TEAM_ID,
+      tournamentId: { toString: () => "another-tournament" },
+    } as never);
+
+    await expect(
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|owner",
+        { name: "Ash" },
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+  });
+});
+
 describe("HostedTournamentService teams", () => {
   const TEAM_ID = new Types.ObjectId();
   const OTHER_TEAM_ID = new Types.ObjectId();

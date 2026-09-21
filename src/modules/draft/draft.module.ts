@@ -8,6 +8,7 @@ import { DraftCoreModule } from "./draft-core.module";
 import { DraftEngineService } from "./draft-engine.service";
 import { DraftEventsService } from "./draft-events.service";
 import { DraftController } from "./draft.controller";
+import { DraftPoolsController } from "./draft-pools.controller";
 import { DraftGateway } from "./draft.gateway";
 import { DraftService } from "./draft.service";
 
@@ -20,7 +21,7 @@ import { DraftService } from "./draft.service";
     DiscordModule,
     forwardRef(() => AgendaModule),
   ],
-  controllers: [DraftController],
+  controllers: [DraftPoolsController, DraftController],
   providers: [DraftService, DraftEngineService, DraftEventsService, DraftGateway],
   exports: [DraftCoreModule, DraftEngineService],
 })

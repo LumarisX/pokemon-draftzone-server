@@ -97,6 +97,12 @@ export class DraftEntity {
 
   @Prop({ default: false })
   allowRemovals!: boolean;
+
+  @Prop()
+  draftStart?: Date;
+
+  @Prop()
+  draftEnd?: Date;
 }
 
 export const DraftSchema = SchemaFactory.createForClass(DraftEntity);

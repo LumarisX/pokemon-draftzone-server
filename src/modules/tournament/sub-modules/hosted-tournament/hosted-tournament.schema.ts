@@ -14,10 +14,23 @@ export class TierRequirementEntity {
 
   @Prop({ required: true })
   required!: number;
+
+  @Prop()
+  max?: number;
 }
 export const TierRequirementSchema = SchemaFactory.createForClass(
   TierRequirementEntity,
 );
+
+@Schema({ _id: false })
+export class PrizeShareEntity {
+  @Prop({ required: true })
+  place!: number;
+
+  @Prop({ required: true })
+  percent!: number;
+}
+export const PrizeShareSchema = SchemaFactory.createForClass(PrizeShareEntity);
 
 /**
  * One row of the tournament's schedule.
@@ -315,6 +328,9 @@ export class HostedTournamentEntity {
 
   @Prop({ type: [TierRequirementSchema], default: [] })
   tierRequirements!: TierRequirementEntity[];
+
+  @Prop({ type: [PrizeShareSchema], default: [] })
+  prizeSplit!: PrizeShareEntity[];
 
   @Prop()
   archived?: boolean;

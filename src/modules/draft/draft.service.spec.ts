@@ -33,6 +33,8 @@ jest.mock("./domain/team-summary", () => ({
 }));
 jest.mock("./domain/pick-order", () => ({
   getDraftOrder: jest.fn(),
+  isPreDraftStatus: (status: string) =>
+    !["IN_PROGRESS", "PAUSED", "COMPLETED"].includes(status),
 }));
 jest.mock("../stage/domain/roster", () => ({
   getLatestRoster: jest.fn(),
@@ -121,6 +123,9 @@ describe("DraftService", () => {
       findTournament: jest.fn(),
       findDraft: jest.fn(),
       findTeamInDraftOrThrow: jest.fn(),
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      delete: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<DraftRepository>;
     matchupRepo = {
       findByStage: jest.fn(),
@@ -135,6 +140,7 @@ describe("DraftService", () => {
     teamRepo = {
       findManyByIds: jest.fn(),
       updatePicks: jest.fn(),
+      update: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TeamRepository>;
     draftEngine = {
       draftPokemon: jest.fn(),
@@ -142,6 +148,7 @@ describe("DraftService", () => {
       setDraftState: jest.fn(),
       skipCurrentPick: jest.fn(),
       autoDraftFromQueueIfOnClock: jest.fn(),
+      cancelScheduledJobs: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<DraftEngineService>;
     service = new DraftService(draftRepo, matchupRepo, stageRepo, teamRepo, draftEngine);
   });
@@ -458,6 +465,114 @@ describe("DraftService", () => {
 
       expect(draftEngine.skipCurrentPick).toHaveBeenCalledWith(tournament, draft);
       expect(result).toEqual({ message: "Skip successful." });
+    });
+  });
+
+  describe("createPool", () => {
+    it("refuses a non-organizer", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+
+      await expect(
+        service.createPool("league-1", "tournament-1", "auth0|nobody", {
+          name: "Alpha",
+        }),
+      ).rejects.toThrow();
+      expect(draftRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a name another pool already uses", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findAllByTournament.mockResolvedValue([
+        buildDraft({ name: "Alpha" }),
+      ]);
+
+      await expect(
+        service.createPool("league-1", "tournament-1", "auth0|owner", {
+          name: "  Alpha  ",
+        }),
+      ).rejects.toThrow();
+      expect(draftRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a window that closes before it opens", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+
+      await expect(
+        service.createPool("league-1", "tournament-1", "auth0|owner", {
+          name: "Alpha",
+          draftStart: "2026-10-10T18:00:00.000Z",
+          draftEnd: "2026-10-09T18:00:00.000Z",
+        }),
+      ).rejects.toThrow();
+      expect(draftRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("creates the pool with a trimmed name", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.create.mockResolvedValue(
+        buildDraft({ slug: "alpha", name: "Alpha" }),
+      );
+
+      const result = await service.createPool(
+        "league-1",
+        "tournament-1",
+        "auth0|owner",
+        { name: "  Alpha  " },
+      );
+
+      expect(draftRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Alpha", tournamentId: "tournament-1" }),
+      );
+      expect(result).toEqual({ draftSlug: "alpha", name: "Alpha" });
+    });
+  });
+
+  describe("deletePool", () => {
+    it("refuses once the draft has started", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findDraft.mockResolvedValue(
+        buildDraft({ status: "IN_PROGRESS", teams: [] }),
+      );
+
+      await expect(
+        service.deletePool("league-1", "tournament-1", "draft-1", "auth0|owner"),
+      ).rejects.toThrow();
+      expect(draftRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("refuses when a team already has picks", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findDraft.mockResolvedValue(
+        buildDraft({
+          status: "PRE_DRAFT",
+          teams: [buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] })],
+        }),
+      );
+
+      await expect(
+        service.deletePool("league-1", "tournament-1", "draft-1", "auth0|owner"),
+      ).rejects.toThrow();
+      expect(draftRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it("unassigns its teams rather than deleting them", async () => {
+      const team = buildTeam();
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findDraft.mockResolvedValue(
+        buildDraft({ status: "PRE_DRAFT", teams: [team], _id: "draft-oid" }),
+      );
+
+      const result = await service.deletePool(
+        "league-1",
+        "tournament-1",
+        "draft-1",
+        "auth0|owner",
+      );
+
+      expect(draftEngine.cancelScheduledJobs).toHaveBeenCalled();
+      expect(teamRepo.update).toHaveBeenCalledWith(team._id, { draftId: null });
+      expect(draftRepo.delete).toHaveBeenCalledWith("draft-oid");
+      expect(result).toEqual({ success: true, unassigned: 1 });
     });
   });
 

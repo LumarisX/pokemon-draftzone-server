@@ -1323,6 +1323,11 @@ export class DraftEngineService {
           "Turn order settings can only be changed before the draft starts.",
       });
 
+    if (dto.timerLength !== undefined && !isPreDraftStatus(draft.status))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "The pick timer can only be changed before the draft starts.",
+      });
+
     if (dto.name !== undefined) draft.name = dto.name;
     if (dto.channelId === null) draft.channelId = undefined;
     else if (dto.channelId !== undefined) draft.channelId = dto.channelId;
@@ -1333,8 +1338,28 @@ export class DraftEngineService {
     if (dto.visibility !== undefined) draft.visibility = dto.visibility;
     if (dto.allowRemovals !== undefined)
       draft.allowRemovals = dto.allowRemovals;
+    if (dto.timerLength !== undefined) draft.timerLength = dto.timerLength;
+    if (dto.public !== undefined) draft.public = dto.public;
+    if (dto.draftStart !== undefined)
+      draft.draftStart = dto.draftStart ? new Date(dto.draftStart) : undefined;
+    if (dto.draftEnd !== undefined)
+      draft.draftEnd = dto.draftEnd ? new Date(dto.draftEnd) : undefined;
+
+    if (
+      draft.draftStart &&
+      draft.draftEnd &&
+      draft.draftEnd < draft.draftStart
+    ) {
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "This pool closes before it opens.",
+      });
+    }
 
     await draft.save();
+  }
+
+  async cancelScheduledJobs(draft: PopulatedDraft): Promise<void> {
+    await this.agendaService.cancelSkipPick(draft);
   }
 
   /** Organizer-only: verifies the saved channelId actually works, without waiting on a real draft event. */

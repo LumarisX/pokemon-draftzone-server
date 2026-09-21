@@ -12,10 +12,22 @@ import {
 export class TierRequirement {
   tierId: string;
   required: number;
+  max?: number;
 
-  constructor(props: { tierId: string; required: number }) {
+  constructor(props: { tierId: string; required: number; max?: number }) {
     this.tierId = props.tierId;
     this.required = props.required;
+    this.max = props.max;
+  }
+}
+
+export class PrizeShare {
+  place: number;
+  percent: number;
+
+  constructor(props: { place: number; percent: number }) {
+    this.place = props.place;
+    this.percent = props.percent;
   }
 }
 
@@ -124,6 +136,7 @@ export class HostedTournament {
   pointTotal?: number;
   tradePointLimit?: number;
   tierRequirements: TierRequirement[];
+  prizeSplit: PrizeShare[];
   adSettings?: TournamentAdSettings;
   matchSettings?: TournamentMatchSettings;
 
@@ -160,6 +173,7 @@ export class HostedTournament {
     pointTotal?: number;
     tradePointLimit?: number;
     tierRequirements: TierRequirement[];
+    prizeSplit?: PrizeShare[];
     adSettings?: TournamentAdSettings;
     matchSettings?: TournamentMatchSettings;
   }) {
@@ -195,6 +209,7 @@ export class HostedTournament {
     this.pointTotal = props.pointTotal;
     this.tradePointLimit = props.tradePointLimit;
     this.tierRequirements = props.tierRequirements;
+    this.prizeSplit = props.prizeSplit ?? [];
     this.adSettings = props.adSettings;
     this.matchSettings = props.matchSettings;
   }

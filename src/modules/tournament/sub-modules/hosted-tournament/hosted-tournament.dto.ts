@@ -59,6 +59,35 @@ export class UpdateCoachLogoDto {
   fileKey!: string;
 }
 
+export class UpdateCoachDetailsDto {
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  name?: string;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  gameName?: string;
+
+  @IsString()
+  @IsOptional()
+  discordName?: string;
+
+  @IsString()
+  @IsOptional()
+  timezone?: string;
+
+  @IsString()
+  @IsOptional()
+  experience?: string;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  teamName?: string;
+}
+
 export class CoachAssignmentDto {
   @IsString()
   @MinLength(1)
@@ -104,6 +133,21 @@ export class TierRequirementDto {
   @IsInt()
   @Min(0)
   required!: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  max?: number | null;
+}
+
+export class PrizeShareDto {
+  @IsInt()
+  @Min(1)
+  place!: number;
+
+  @IsInt()
+  @Min(0)
+  percent!: number;
 }
 
 export class TournamentDiscordSettingsDto {
@@ -259,6 +303,12 @@ export class UpdateHostedTournamentSettingsDto {
   @Type(() => TierRequirementDto)
   @IsOptional()
   tierRequirements?: TierRequirementDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PrizeShareDto)
+  @IsOptional()
+  prizeSplit?: PrizeShareDto[];
 
   @ValidateNested()
   @Type(() => TournamentAdSettingsDto)

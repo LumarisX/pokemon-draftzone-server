@@ -18,6 +18,7 @@ import {
   AddOrganizerDto,
   AssignCoachesDto,
   SignUpDto,
+  UpdateCoachDetailsDto,
   UpdateCoachLogoDto,
   UpdateHostedTournamentSettingsDto,
   UpdateRulesDto,
@@ -200,6 +201,24 @@ export class HostedTournamentController {
     @Param("coachId") coachId: string,
   ) {
     return this.tournamentService.getCoach(leagueSlug, tournamentSlug, coachId);
+  }
+
+  @Patch(":tournamentSlug/coaches/:coachId")
+  @UseGuards(JwtAuthGuard)
+  async updateTournamentCoach(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("coachId") coachId: string,
+    @User() sub: string,
+    @Body() body: UpdateCoachDetailsDto,
+  ) {
+    return this.tournamentService.updateCoachDetails(
+      leagueSlug,
+      tournamentSlug,
+      coachId,
+      sub,
+      body,
+    );
   }
 
   @Patch(":tournamentSlug/coaches/:coachId/logo")

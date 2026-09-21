@@ -40,6 +40,7 @@ import {
   CoachAssignmentDto,
   RuleSectionDto,
   SignUpDto,
+  UpdateCoachDetailsDto,
   UpdateCoachLogoDto,
   UpdateHostedTournamentSettingsDto,
 } from "./hosted-tournament.dto";
@@ -973,12 +974,39 @@ export class HostedTournamentService {
     };
   }
 
-  async setCoachLogo(
+  async updateCoachDetails(
     leagueSlug: string,
     tournamentSlug: string,
     coachId: string,
     sub: string,
-    dto: UpdateCoachLogoDto,
+    dto: UpdateCoachDetailsDto,
+  ) {
+    const { coach, team } = await this.loadCoachForEdit(
+      leagueSlug,
+      tournamentSlug,
+      coachId,
+      sub,
+    );
+
+    const { teamName, ...coachFields } = dto;
+    const changes = Object.fromEntries(
+      Object.entries(coachFields).filter(([, value]) => value !== undefined),
+    );
+    if (Object.keys(changes).length) {
+      await this.coachRepo.update(coach._id, changes);
+    }
+    if (teamName !== undefined) {
+      await this.teamRepo.update(team._id, { teamName });
+    }
+
+    return { message: "Details updated." };
+  }
+
+  private async loadCoachForEdit(
+    leagueSlug: string,
+    tournamentSlug: string,
+    coachId: string,
+    sub: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
@@ -995,9 +1023,25 @@ export class HostedTournamentService {
     if (!team || team.tournamentId.toString() !== tournament.id)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
-    const isOrganizer = tournament.isOrganizer(sub);
-    const isSelf = isOwnedBy(coach, sub);
-    if (!isOrganizer && !isSelf) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    if (!tournament.isOrganizer(sub) && !isOwnedBy(coach, sub))
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+
+    return { tournament, coach, team };
+  }
+
+  async setCoachLogo(
+    leagueSlug: string,
+    tournamentSlug: string,
+    coachId: string,
+    sub: string,
+    dto: UpdateCoachLogoDto,
+  ) {
+    const { team } = await this.loadCoachForEdit(
+      leagueSlug,
+      tournamentSlug,
+      coachId,
+      sub,
+    );
 
     if (this.s3Service.isEnabled()) {
       const { exists } = await this.s3Service.headObject(dto.fileKey);
@@ -1106,6 +1150,32 @@ export class HostedTournamentService {
           reason: `Required picks (${totalRequired}) exceed the maximum roster size (${effectiveMax})`,
         });
       }
+      const invertedTier = dto.tierRequirements.find(
+        (req) => req.max != null && req.max < req.required,
+      );
+      if (invertedTier) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: `Tier "${invertedTier.tierId}" allows at most ${invertedTier.max} picks but requires ${invertedTier.required}`,
+        });
+      }
+    }
+
+    if (dto.prizeSplit?.length) {
+      const places = new Set(dto.prizeSplit.map((share) => share.place));
+      if (places.size !== dto.prizeSplit.length) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: "Each place may appear only once in the prize split",
+        });
+      }
+      const totalPercent = dto.prizeSplit.reduce(
+        (sum, share) => sum + share.percent,
+        0,
+      );
+      if (totalPercent !== 100) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: `Prize shares total ${totalPercent}%, not 100%`,
+        });
+      }
     }
 
     const update: Record<string, unknown> = {};
@@ -1140,8 +1210,15 @@ export class HostedTournamentService {
     if (dto.ruleset !== undefined) update["ruleset"] = targetRuleset.name;
     if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
     if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
+    if (dto.tradePointLimit !== undefined)
+      update["tradePointLimit"] = dto.tradePointLimit;
     if (dto.tierRequirements !== undefined)
-      update["tierRequirements"] = dto.tierRequirements;
+      update["tierRequirements"] = dto.tierRequirements.map((req) => ({
+        tierId: req.tierId,
+        required: req.required,
+        ...(req.max == null ? {} : { max: req.max }),
+      }));
+    if (dto.prizeSplit !== undefined) update["prizeSplit"] = dto.prizeSplit;
     if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
     if (dto.archived !== undefined) update["archived"] = dto.archived;
     if (dto.matchSettings !== undefined)

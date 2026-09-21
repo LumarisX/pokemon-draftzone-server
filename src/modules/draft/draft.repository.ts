@@ -103,6 +103,32 @@ export class DraftRepository {
     return this.draftModel.find({ tournamentId }).exec();
   }
 
+  async countByTournament(
+    tournamentId: Types.ObjectId | string,
+  ): Promise<number> {
+    return this.draftModel.countDocuments({ tournamentId }).exec();
+  }
+
+  async create(data: {
+    tournamentId: Types.ObjectId | string;
+    name: string;
+    public?: boolean;
+    draftStart?: Date;
+    draftEnd?: Date;
+  }): Promise<DraftDocument> {
+    return this.draftModel.create({
+      tournamentId: new Types.ObjectId(data.tournamentId.toString()),
+      name: data.name,
+      public: data.public ?? false,
+      draftStart: data.draftStart,
+      draftEnd: data.draftEnd,
+    });
+  }
+
+  async delete(draftId: Types.ObjectId | string): Promise<void> {
+    await this.draftModel.deleteOne({ _id: draftId }).exec();
+  }
+
   async findTeamInDraftOrThrow(
     draft: PopulatedDraft,
     teamId: string,

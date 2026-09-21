@@ -45,6 +45,7 @@ describe("TeamService", () => {
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
       findById: jest.fn(),
+      delete: jest.fn(),
     } as unknown as jest.Mocked<CoachRepository>;
     service = new TeamService(teamRepo, coachRepo);
   });
@@ -93,10 +94,47 @@ describe("TeamService", () => {
       expect(teamRepo.update).toHaveBeenCalledWith("team-1", { teamName: "New Name" });
     });
 
-    it("deleteTeam delegates to the repository", async () => {
+  });
+
+  describe("deleteTeam", () => {
+    it("deletes the coach alongside the team", async () => {
+      const coachId = new Types.ObjectId();
+      teamRepo.findById.mockResolvedValue(
+        buildTeam({ coach: { _id: coachId } as CoachDocument }),
+      );
+
       await service.deleteTeam("team-1");
 
       expect(teamRepo.delete).toHaveBeenCalledWith("team-1");
+      expect(coachRepo.delete).toHaveBeenCalledWith(coachId);
+    });
+
+    it("deletes the team before the coach", async () => {
+      const order: string[] = [];
+      teamRepo.findById.mockResolvedValue(
+        buildTeam({ coach: { _id: new Types.ObjectId() } as CoachDocument }),
+      );
+      teamRepo.delete.mockImplementation(async () => {
+        order.push("team");
+      });
+      coachRepo.delete.mockImplementation(async () => {
+        order.push("coach");
+      });
+
+      await service.deleteTeam("team-1");
+
+      expect(order).toEqual(["team", "coach"]);
+    });
+
+    it("still deletes the team when its coach ref is already dangling", async () => {
+      teamRepo.findById.mockResolvedValue(
+        buildTeam({ coach: null as unknown as CoachDocument }),
+      );
+
+      await service.deleteTeam("team-1");
+
+      expect(teamRepo.delete).toHaveBeenCalledWith("team-1");
+      expect(coachRepo.delete).not.toHaveBeenCalled();
     });
   });
 
