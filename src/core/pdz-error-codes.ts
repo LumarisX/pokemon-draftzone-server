@@ -452,20 +452,15 @@ export const ErrorCodes = {
     },
   },
   TOURNAMENT: {
-    FORMAT_MISMATCH: {
-      code: "TRN-001",
-      status: 400,
-      message: "Tournament format does not match its tier list's format",
-    },
-    RULESET_MISMATCH: {
-      code: "TRN-002",
-      status: 400,
-      message: "Tournament ruleset does not match its tier list's ruleset",
-    },
     INVALID_SETTINGS: {
       code: "TRN-003",
       status: 400,
       message: "Invalid tournament settings",
+    },
+    TIER_LIST_REQUIRED: {
+      code: "TRN-004",
+      status: 409,
+      message: "Attach a tier list before doing this",
     },
   },
   TEAMBUILDER: {

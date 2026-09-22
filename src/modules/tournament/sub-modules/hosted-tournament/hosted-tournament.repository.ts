@@ -5,11 +5,18 @@ import { LeagueRepository } from "@modules/league/league.repository";
 import { LeagueDocument } from "@modules/league/league.schema";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { TeamRepository } from "@modules/team/team.repository";
+import {
+  TierListDocument,
+  TierListEntity,
+} from "@modules/tier-list/tier-list.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
-import { HostedTournamentMapper } from "./hosted-tournament.mapper";
+import {
+  HostedTournamentMapper,
+  TournamentTierListMeta,
+} from "./hosted-tournament.mapper";
 import {
   HostedTournamentDocument,
   HostedTournamentEntity,
@@ -20,6 +27,8 @@ export class HostedTournamentRepository {
   constructor(
     @InjectModel(HostedTournamentEntity.name)
     private readonly hostedTournamentModel: Model<HostedTournamentDocument>,
+    @InjectModel(TierListEntity.name)
+    private readonly tierListModel: Model<TierListDocument>,
     private readonly stageRepo: StageRepository,
     private readonly leagueRepo: LeagueRepository,
     private readonly coachRepo: CoachRepository,
@@ -37,8 +46,16 @@ export class HostedTournamentRepository {
       .exec();
     if (!doc)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
-    const stages = await this.resolveStages(doc.stages);
-    return HostedTournamentMapper.fromDatabase(doc, league, stages);
+    const [stages, tierListMeta] = await Promise.all([
+      this.resolveStages(doc.stages),
+      this.resolveTierListMeta(doc.tierList),
+    ]);
+    return HostedTournamentMapper.fromDatabase(
+      doc,
+      league,
+      stages,
+      tierListMeta,
+    );
   }
 
   async findById(
@@ -50,18 +67,34 @@ export class HostedTournamentRepository {
         tournamentId: tournamentId.toString(),
       });
     const league = await this.leagueRepo.findById(doc.league);
-    const stages = await this.resolveStages(doc.stages);
-    return HostedTournamentMapper.fromDatabase(doc, league, stages);
+    const [stages, tierListMeta] = await Promise.all([
+      this.resolveStages(doc.stages),
+      this.resolveTierListMeta(doc.tierList),
+    ]);
+    return HostedTournamentMapper.fromDatabase(
+      doc,
+      league,
+      stages,
+      tierListMeta,
+    );
   }
 
   async findAllByLeague(league: LeagueDocument): Promise<HostedTournament[]> {
     const docs = await this.hostedTournamentModel
       .find({ league: league._id })
       .exec();
+    const metas = await this.resolveTierListMetas(
+      docs.map((doc) => doc.tierList),
+    );
     return Promise.all(
       docs.map(async (doc) => {
         const stages = await this.resolveStages(doc.stages);
-        return HostedTournamentMapper.fromDatabase(doc, league, stages);
+        return HostedTournamentMapper.fromDatabase(
+          doc,
+          league,
+          stages,
+          doc.tierList ? (metas.get(doc.tierList.toString()) ?? null) : null,
+        );
       }),
     );
   }
@@ -93,6 +126,10 @@ export class HostedTournamentRepository {
       ),
     );
 
+    const metas = await this.resolveTierListMetas(
+      docs.map((doc) => doc.tierList),
+    );
+
     return Promise.all(
       docs.map(async (doc) => {
         const stages = await this.resolveStages(doc.stages);
@@ -100,8 +137,44 @@ export class HostedTournamentRepository {
           doc,
           leaguesById.get(doc.league.toString())!,
           stages,
+          doc.tierList ? (metas.get(doc.tierList.toString()) ?? null) : null,
         );
       }),
+    );
+  }
+
+  private async resolveTierListMeta(
+    tierListId: Types.ObjectId | undefined,
+  ): Promise<TournamentTierListMeta> {
+    if (!tierListId) return null;
+    const doc = await this.tierListModel
+      .findById(tierListId)
+      .select("format ruleset")
+      .lean()
+      .exec();
+    if (!doc) return null;
+    return { format: doc.format, ruleset: doc.ruleset };
+  }
+
+  private async resolveTierListMetas(
+    tierListIds: (Types.ObjectId | undefined)[],
+  ): Promise<Map<string, TournamentTierListMeta>> {
+    const ids = [
+      ...new Set(
+        tierListIds.flatMap((id) => (id ? [id.toString()] : [])),
+      ),
+    ];
+    if (ids.length === 0) return new Map();
+    const docs = await this.tierListModel
+      .find({ _id: { $in: ids } })
+      .select("format ruleset")
+      .lean()
+      .exec();
+    return new Map(
+      docs.map((doc) => [
+        doc._id.toString(),
+        { format: doc.format, ruleset: doc.ruleset },
+      ]),
     );
   }
 
@@ -148,8 +221,6 @@ export class HostedTournamentRepository {
     tournamentId: Types.ObjectId | string,
     update: Partial<{
       tierList: Types.ObjectId;
-      format: string;
-      ruleset: string;
       draftCount: { min: number; max: number };
       pointTotal: number | null;
       tierRequirements: { tierId: string; required: number }[];
@@ -196,7 +267,6 @@ export class HostedTournamentRepository {
         name: string;
         matchDeadline?: Date;
         tradeDeadline?: Date;
-        bestOf?: number;
       }[];
       stages: Types.ObjectId[];
       currentRoundIndex: number;

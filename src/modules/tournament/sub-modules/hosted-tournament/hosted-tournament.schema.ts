@@ -51,9 +51,6 @@ export class TournamentRoundEntity {
 
   @Prop()
   tradeDeadline?: Date;
-
-  @Prop()
-  bestOf?: number;
 }
 export const TournamentRoundSchema = SchemaFactory.createForClass(
   TournamentRoundEntity,
@@ -309,12 +306,6 @@ export class HostedTournamentEntity {
 
   @Prop({ type: String, enum: ["pokemon", "game"], required: true })
   diffMode!: "pokemon" | "game";
-
-  @Prop({ required: true })
-  format!: string;
-
-  @Prop({ required: true })
-  ruleset!: string;
 
   @Prop({ type: DraftCountSchema, required: true })
   draftCount!: DraftCountEntity;

@@ -38,8 +38,8 @@ export class DraftRepository {
       leagueSlug,
       tournamentSlug,
     );
+    tournament.requireTierList("draft");
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
-    tournament.validateTierListMatch(tierList);
     return Object.assign(tournament, { tierList }) as PopulatedTournament;
   }
 

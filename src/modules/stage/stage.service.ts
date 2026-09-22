@@ -633,7 +633,6 @@ export class StageService {
       name: round.name,
       matchDeadline: round.matchDeadline,
       tradeDeadline: round.tradeDeadline,
-      bestOf: round.bestOf,
     }));
 
     // ── Matches ──────────────────────────────────────────────────────────────
@@ -965,6 +964,9 @@ export class StageService {
       sub,
     );
 
+    const ruleset = tournament.requireRuleset("matchupAnalysis");
+    const format = tournament.requireFormat("matchupAnalysis");
+
     // The tier list decides which alternate formes each pick may run; a missing
     // or unresolvable tier list just means no formes are attached.
     const tierList = await this.tierListRepo
@@ -1000,7 +1002,7 @@ export class StageService {
                 draftFormes: tierList?.getPokemonFormeIds(pokemon.id) as
                   ID[] | undefined,
               },
-              tournament.ruleset,
+              ruleset,
             ),
           );
         } catch {
@@ -1018,8 +1020,8 @@ export class StageService {
     };
 
     const matchup = new ExternalMatchup({
-      ruleset: tournament.ruleset,
-      format: tournament.format,
+      ruleset,
+      format,
       tournamentName: tournament.name,
       stage: roundDoc?.name ?? stageDoc.name,
       aTeam: toSide(matchupDoc.side1),
@@ -1142,7 +1144,6 @@ export class StageService {
         ? {
             name: roundDoc.name,
             matchDeadline: roundDoc.matchDeadline,
-            bestOf: roundDoc.bestOf,
           }
         : null,
       viewer,

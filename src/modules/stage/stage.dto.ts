@@ -201,10 +201,6 @@ export class CreateStageRoundDto {
   @Type(() => Date)
   @IsOptional()
   tradeDeadline?: Date;
-
-  @IsNumber()
-  @IsOptional()
-  bestOf?: number;
 }
 
 export class CreateStageDto {

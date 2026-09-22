@@ -15,11 +15,14 @@ import { HostedTournamentDocument } from "./hosted-tournament.schema";
 /** The parts of the owning league a tournament needs to carry with it. */
 export type TournamentLeague = { owner: string; slug: string; name: string };
 
+export type TournamentTierListMeta = { format: string; ruleset: string } | null;
+
 export class HostedTournamentMapper {
   static fromDatabase(
     doc: HostedTournamentDocument,
     league: TournamentLeague,
     stages: StageDocument[],
+    tierListMeta: TournamentTierListMeta = null,
   ): HostedTournament {
     return new HostedTournament({
       id: doc._id.toString(),
@@ -61,8 +64,8 @@ export class HostedTournamentMapper {
         pokemonDiff: doc.forfeit.pokemonDiff,
       }),
       diffMode: doc.diffMode,
-      format: doc.format,
-      ruleset: doc.ruleset,
+      format: tierListMeta?.format ?? null,
+      ruleset: tierListMeta?.ruleset ?? null,
       draftCount: new DraftCount({
         min: doc.draftCount.min,
         max: doc.draftCount.max,
@@ -115,8 +118,8 @@ export class HostedTournamentMapper {
       logo: tournament.logo,
       discord: tournament.discord,
       tierListId: tournament.tierListId,
-      format: tournament.format.name,
-      ruleset: tournament.ruleset.name,
+      format: tournament.format?.name ?? null,
+      ruleset: tournament.ruleset?.name ?? null,
     };
   }
 
@@ -135,8 +138,8 @@ export class HostedTournamentMapper {
       forfeit: tournament.forfeit,
       diffMode: tournament.diffMode,
       tierListId: tournament.tierListId,
-      format: tournament.format.name,
-      ruleset: tournament.ruleset.name,
+      format: tournament.format?.name ?? null,
+      ruleset: tournament.ruleset?.name ?? null,
       draftCount: tournament.draftCount,
       pointTotal: tournament.pointTotal,
       tradePointLimit: tournament.tradePointLimit,

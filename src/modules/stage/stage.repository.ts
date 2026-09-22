@@ -17,7 +17,6 @@ export type CreateStageInput = {
     name: string;
     matchDeadline?: Date;
     tradeDeadline?: Date;
-    bestOf?: number;
   }[];
   pools?: {
     poolKey: string;

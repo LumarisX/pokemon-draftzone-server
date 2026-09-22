@@ -3,7 +3,7 @@ import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { StageDocument } from "@modules/stage/stage.schema";
-import { DraftCount, TierList } from "@modules/tier-list/tier-list.domain";
+import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
   TournamentRoundEntity,
   TournamentTradeEntity,
@@ -130,8 +130,8 @@ export class HostedTournament {
   trades: TournamentTradeEntity[];
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
-  format: Format;
-  ruleset: Ruleset;
+  format: Format | null;
+  ruleset: Ruleset | null;
   draftCount: DraftCount;
   pointTotal?: number;
   tradePointLimit?: number;
@@ -167,8 +167,8 @@ export class HostedTournament {
     trades?: TournamentTradeEntity[];
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
-    format: string;
-    ruleset: string;
+    format?: string | null;
+    ruleset?: string | null;
     draftCount: DraftCount;
     pointTotal?: number;
     tradePointLimit?: number;
@@ -203,8 +203,8 @@ export class HostedTournament {
     this.trades = props.trades ?? [];
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
-    this.format = getFormat(props.format);
-    this.ruleset = getRuleset(props.ruleset);
+    this.format = props.format ? getFormat(props.format) : null;
+    this.ruleset = props.ruleset ? getRuleset(props.ruleset) : null;
     this.draftCount = props.draftCount;
     this.pointTotal = props.pointTotal;
     this.tradePointLimit = props.tradePointLimit;
@@ -214,19 +214,39 @@ export class HostedTournament {
     this.matchSettings = props.matchSettings;
   }
 
-  validateTierListMatch(tierList: TierList): void {
-    if (tierList.format.name !== this.format.name) {
-      throw new PDZError(ErrorCodes.TOURNAMENT.FORMAT_MISMATCH, {
-        tournamentFormat: this.format.name,
-        tierListFormat: tierList.format.name,
+  get hasTierList(): boolean {
+    return this.tierListId !== "";
+  }
+
+  requireTierList(operation: string): void {
+    if (!this.hasTierList) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
+        tournamentSlug: this.slug,
+        operation,
       });
     }
-    if (tierList.ruleset.name !== this.ruleset.name) {
-      throw new PDZError(ErrorCodes.TOURNAMENT.RULESET_MISMATCH, {
-        tournamentRuleset: this.ruleset.name,
-        tierListRuleset: tierList.ruleset.name,
+  }
+
+  requireRuleset(operation: string): Ruleset {
+    this.requireTierList(operation);
+    if (!this.ruleset) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
+        tournamentSlug: this.slug,
+        operation,
       });
     }
+    return this.ruleset;
+  }
+
+  requireFormat(operation: string): Format {
+    this.requireTierList(operation);
+    if (!this.format) {
+      throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
+        tournamentSlug: this.slug,
+        operation,
+      });
+    }
+    return this.format;
   }
 
   getRoles(sub: string | undefined): string[] {

@@ -99,7 +99,6 @@ export class TournamentBracketService {
         name: round.name,
         matchDeadline: round.matchDeadline ?? null,
         tradeDeadline: round.tradeDeadline ?? null,
-        bestOf: round.bestOf ?? null,
       })),
       currentRoundIndex: tournament.currentRoundIndex,
       stages: stages.map((stage) => ({
@@ -257,7 +256,6 @@ export class TournamentBracketService {
       name: round.name,
       matchDeadline: round.matchDeadline,
       tradeDeadline: round.tradeDeadline,
-      bestOf: round.bestOf,
     }));
 
     // ── Matches ─────────────────────────────────────────────────────────────

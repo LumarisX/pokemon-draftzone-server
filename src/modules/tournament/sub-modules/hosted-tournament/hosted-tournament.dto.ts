@@ -273,14 +273,6 @@ export class UpdateHostedTournamentSettingsDto {
   @IsOptional()
   tierListId?: string;
 
-  @IsString()
-  @IsOptional()
-  format?: string;
-
-  @IsString()
-  @IsOptional()
-  ruleset?: string;
-
   @ValidateNested()
   @Type(() => DraftCountDto)
   @IsOptional()

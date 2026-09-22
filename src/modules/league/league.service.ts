@@ -139,8 +139,8 @@ export class LeagueService {
           teamSlug: team.slug,
           nextMatch: nextScheduledMatch(teamMatchups),
           draft: roster,
-          format: tournament.format.name,
-          ruleset: tournament.ruleset.name,
+          format: tournament.format?.name ?? null,
+          ruleset: tournament.ruleset?.name ?? null,
           // Undefined until the schedule exists, so the card shows no record
           // badge rather than a meaningless 0 - 0.
           score: record && {
@@ -166,20 +166,26 @@ export class LeagueService {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     const tournaments = await this.hostedTournamentRepo.findAllByLeague(league);
 
-    const tournamentSummaries = tournaments.map((tournament) => ({
-      name: tournament.name,
-      tournamentSlug: tournament.slug,
-      description: tournament.description,
-      format: tournament.format.name,
-      ruleset: tournament.ruleset.name,
-      signUpDeadline: tournament.signUpDeadline,
-      draftStart: tournament.draftStart,
-      draftEnd: tournament.draftEnd,
-      seasonStart: tournament.seasonStart,
-      seasonEnd: tournament.seasonEnd,
-      logo: tournament.logo,
-      discord: tournament.discord,
-    }));
+    const tournamentSummaries = tournaments.flatMap((tournament) => {
+      const { format, ruleset } = tournament;
+      if (!format || !ruleset) return [];
+      return [
+        {
+          name: tournament.name,
+          tournamentSlug: tournament.slug,
+          description: tournament.description,
+          format: format.name,
+          ruleset: ruleset.name,
+          signUpDeadline: tournament.signUpDeadline,
+          draftStart: tournament.draftStart,
+          draftEnd: tournament.draftEnd,
+          seasonStart: tournament.seasonStart,
+          seasonEnd: tournament.seasonEnd,
+          logo: tournament.logo,
+          discord: tournament.discord,
+        },
+      ];
+    });
 
     return {
       name: league.name,

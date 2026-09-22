@@ -77,6 +77,7 @@ export class TierListService {
     return {
       tierList: tiers,
       divisions: {},
+      format: tierList.format.name,
       ruleset: tierList.ruleset.name,
       name: tierList.name,
       description: tierList.description,

@@ -450,15 +450,34 @@ describe("HostedTournamentService settings", () => {
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
     });
 
-    it("rejects a format that doesn't match the linked tier list", async () => {
+    it("rejects tierRequirements before a tier list is attached", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ tierListId: "", format: null, ruleset: null }),
+      );
+
       await expect(
         service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
-          format: "Doubles",
+          tierRequirements: [{ tierId: tierId("Tier A"), required: 1 }],
         }),
       ).rejects.toMatchObject({
-        code: ErrorCodes.TOURNAMENT.FORMAT_MISMATCH.code,
+        code: ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED.code,
       });
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("saves settings that don't depend on a tier list before one is attached", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ tierListId: "", format: null, ruleset: null }),
+      );
+
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        name: "Summer Cup",
+      });
+
+      expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
+        "tournament-1",
+        expect.objectContaining({ name: "Summer Cup" }),
+      );
     });
 
     it("rejects tierRequirements naming a tier that doesn't exist on the tier list", async () => {

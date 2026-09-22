@@ -1,5 +1,9 @@
 import { LeagueCoreModule } from "@modules/league/league-core.module";
 import {
+  TierListEntity,
+  TierListSchema,
+} from "@modules/tier-list/tier-list.schema";
+import {
   HostedTournamentEntity,
   HostedTournamentSchema,
 } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
@@ -12,6 +16,7 @@ import { HostedTournamentAdService } from "./hosted-tournament-ad.service";
   imports: [
     MongooseModule.forFeature([
       { name: HostedTournamentEntity.name, schema: HostedTournamentSchema },
+      { name: TierListEntity.name, schema: TierListSchema },
     ]),
     LeagueCoreModule,
   ],

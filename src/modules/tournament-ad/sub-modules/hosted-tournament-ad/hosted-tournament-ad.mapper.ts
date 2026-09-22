@@ -10,6 +10,7 @@ export class HostedTournamentAdMapper {
   static toClientPayload(
     doc: Omit<HostedTournamentDocument, "league">,
     league: LeagueDocument,
+    tierListMeta: { format: string; ruleset: string },
   ) {
     const adSettings = doc.adSettings;
     const rawFrom = Number(
@@ -25,8 +26,8 @@ export class HostedTournamentAdMapper {
     const platforms = adSettings?.platforms?.length
       ? [...adSettings.platforms]
       : [SHOWDOWN_PLATFORMS[0]];
-    const formats = [doc.format];
-    const rulesets = [doc.ruleset];
+    const formats = [tierListMeta.format];
+    const rulesets = [tierListMeta.ruleset];
 
     const tags: { [tag: string]: boolean } = { hosted: true };
     tags.prize = prizeValue > 0;

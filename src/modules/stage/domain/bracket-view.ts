@@ -132,7 +132,6 @@ export function buildBracketView(
       name: round.name,
       matchDeadline: round.matchDeadline ?? null,
       tradeDeadline: round.tradeDeadline ?? null,
-      bestOf: round.bestOf ?? null,
     })),
     matches: matchups.map((matchup) => ({
       // `_id` stays: slots reference their upstream match by it, so renaming

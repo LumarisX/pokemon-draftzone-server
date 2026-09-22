@@ -485,8 +485,8 @@ export class HostedTournamentService {
       name: tournament.name,
       tournamentSlug: tournament.slug,
       description: tournament.description,
-      format: tournament.format.name,
-      ruleset: tournament.ruleset.name,
+      format: tournament.format?.name ?? null,
+      ruleset: tournament.ruleset?.name ?? null,
       signUpDeadline: tournament.signUpDeadline,
       draftStart: tournament.draftStart,
       draftEnd: tournament.draftEnd,
@@ -1112,26 +1112,18 @@ export class HostedTournamentService {
     }
 
     const targetTierListId = dto.tierListId ?? tournament.tierListId;
-    const tierList = await this.tierListRepo.findById(targetTierListId);
-
-    const targetFormat = getFormat(dto.format ?? tournament.format.name);
-    const targetRuleset = getRuleset(dto.ruleset ?? tournament.ruleset.name);
-
-    if (targetFormat.name !== tierList.format.name) {
-      throw new PDZError(ErrorCodes.TOURNAMENT.FORMAT_MISMATCH, {
-        tournamentFormat: targetFormat.name,
-        tierListFormat: tierList.format.name,
-      });
-    }
-    if (targetRuleset.name !== tierList.ruleset.name) {
-      throw new PDZError(ErrorCodes.TOURNAMENT.RULESET_MISMATCH, {
-        tournamentRuleset: targetRuleset.name,
-        tierListRuleset: tierList.ruleset.name,
-      });
-    }
+    const tierList = targetTierListId
+      ? await this.tierListRepo.findById(targetTierListId)
+      : null;
 
     const effectiveMax = dto.draftCount?.max ?? tournament.draftCount.max;
-    if (dto.tierRequirements) {
+    if (dto.tierRequirements?.length) {
+      if (!tierList) {
+        throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
+          tournamentSlug: tournament.slug,
+          operation: "tierRequirements",
+        });
+      }
       const tierIds = new Set(tierList.tiers.map((tier) => tier.id));
       const unknownTier = dto.tierRequirements.find(
         (req) => !tierIds.has(req.tierId),
@@ -1206,8 +1198,6 @@ export class HostedTournamentService {
         });
       update["tierList"] = new Types.ObjectId(dto.tierListId);
     }
-    if (dto.format !== undefined) update["format"] = targetFormat.name;
-    if (dto.ruleset !== undefined) update["ruleset"] = targetRuleset.name;
     if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
     if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
     if (dto.tradePointLimit !== undefined)

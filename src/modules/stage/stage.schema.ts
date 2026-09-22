@@ -84,9 +84,6 @@ export class StageRoundEntity {
 
   @Prop()
   tradeDeadline?: Date;
-
-  @Prop()
-  bestOf?: number;
 }
 export const StageRoundSchema = SchemaFactory.createForClass(StageRoundEntity);
 

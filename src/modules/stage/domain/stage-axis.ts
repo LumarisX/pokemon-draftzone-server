@@ -21,7 +21,6 @@ export interface RoundLike {
   name: string;
   matchDeadline?: Date;
   tradeDeadline?: Date;
-  bestOf?: number;
 }
 
 /** The fields both `StageTradeEntity` and `TournamentTradeEntity` share. */
