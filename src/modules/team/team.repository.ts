@@ -139,10 +139,12 @@ export class TeamRepository {
     return this.findById(team._id);
   }
 
-  async countByTournament(
+  async countApprovedByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<number> {
-    return this.teamModel.countDocuments({ tournamentId }).exec();
+    return this.teamModel
+      .countDocuments({ tournamentId, status: { $eq: "approved" } })
+      .exec();
   }
 
   /**

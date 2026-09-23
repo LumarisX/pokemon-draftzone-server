@@ -466,27 +466,31 @@ export class HostedTournamentService {
     const context = rosterContextForTournament(tournament);
 
     return {
-      teams: teams.map((team) => ({
-        id: team._id.toString(),
-        slug: team.slug,
-        teamName: team.teamName,
-        coachName: team.primaryCoach.name,
-        logo: team.logo,
-        pickCount: team.pickLog?.length ?? 0,
-        status: team.status,
-        draft: team.draftId
-          ? (draftById.get(team.draftId.toString()) ?? null)
-          : null,
-        roster: getLatestRoster(team, context).map((pokemon) => ({
-          id: pokemon.id,
-          name: getName(pokemon.id),
-          cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
-          tier: tierList?.getPokemonTier(pokemon.id)?.name,
-          ...(tierList && !tierList.hasPokemon(pokemon.id)
-            ? { missingFromTierList: true as const }
-            : {}),
+      teams: teams
+        .filter(
+          (team) => team.status === "approved" || team.status === "dropped",
+        )
+        .map((team) => ({
+          id: team._id.toString(),
+          slug: team.slug,
+          teamName: team.teamName,
+          coachName: team.primaryCoach.name,
+          logo: team.logo,
+          pickCount: team.pickLog?.length ?? 0,
+          status: team.status,
+          draft: team.draftId
+            ? (draftById.get(team.draftId.toString()) ?? null)
+            : null,
+          roster: getLatestRoster(team, context).map((pokemon) => ({
+            id: pokemon.id,
+            name: getName(pokemon.id),
+            cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
+            tier: tierList?.getPokemonTier(pokemon.id)?.name,
+            ...(tierList && !tierList.hasPokemon(pokemon.id)
+              ? { missingFromTierList: true as const }
+              : {}),
+          })),
         })),
-      })),
     };
   }
 
@@ -811,6 +815,11 @@ export class HostedTournamentService {
     if (application.tournamentId.toString() !== tournament.id)
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
+    if (dto.status !== "approved" && application.resultingTeamId)
+      throw new PDZError(ErrorCodes.LEAGUE.APPLICATION_HAS_TEAM, {
+        applicationId,
+      });
+
     if (dto.status !== "approved") {
       return this.applicationRepo.decide(applicationId, {
         status: dto.status,
@@ -1016,10 +1025,15 @@ export class HostedTournamentService {
     return { signUpToken, signUpTokenRotatedAt: new Date() };
   }
 
-  private async assertRosterHasRoom(tournament: HostedTournament) {
+  private async assertRosterHasRoom(
+    tournament: HostedTournament,
+    incoming = 1,
+  ) {
     if (tournament.maxTeams === undefined) return;
-    const approved = await this.teamRepo.countByTournament(tournament.id);
-    if (approved >= tournament.maxTeams)
+    const approved = await this.teamRepo.countApprovedByTournament(
+      tournament.id,
+    );
+    if (approved + incoming > tournament.maxTeams)
       throw new PDZError(ErrorCodes.LEAGUE.TOURNAMENT_FULL, {
         tournamentId: tournament.id,
         maxTeams: tournament.maxTeams,
@@ -1100,14 +1114,17 @@ export class HostedTournamentService {
         const team = application.resultingTeamId
           ? teamById.get(application.resultingTeamId.toString())
           : undefined;
+        const coach = application.resultingCoachId
+          ? team?.coaches?.find((member) =>
+              member._id.equals(application.resultingCoachId),
+            )
+          : undefined;
+        const discordName = coach?.discordName ?? application.discordName;
         const draft = team?.draftId
           ? draftIdToKey.get(team.draftId.toString())
           : undefined;
         const member = guildId
-          ? await this.discordService.findMember(
-              guildId,
-              application.discordName,
-            )
+          ? await this.discordService.findMember(guildId, discordName)
           : null;
         const inDiscordServer = Boolean(member);
         const hasDiscordRole = Boolean(
@@ -1122,10 +1139,10 @@ export class HostedTournamentService {
           applicationId: application._id.toString(),
           teamId: team?._id.toString(),
           teamSlug: team?.slug,
-          name: application.name,
-          gameName: application.gameName,
-          discordName: application.discordName,
-          timezone: application.timezone,
+          name: coach?.name ?? application.name,
+          gameName: coach?.gameName ?? application.gameName,
+          discordName,
+          timezone: coach?.timezone ?? application.timezone,
           experience: application.experience,
           dropped: application.droppedBefore
             ? application.droppedWhy
@@ -1177,38 +1194,66 @@ export class HostedTournamentService {
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftsByKey = new Map(drafts.map((d) => [d.slug, d]));
 
+    const planned: {
+      team: PopulatedTeam;
+      draftId: Types.ObjectId | null;
+      status?: CoachAssignmentDto["status"];
+    }[] = [];
+    const unresolvedCoachIds: string[] = [];
+
     for (const assignment of assignments) {
-      if (!Types.ObjectId.isValid(assignment.coachId)) continue;
-      const coach = await this.coachRepo
-        .findById(assignment.coachId)
-        .catch(() => null);
-      if (!coach) continue;
-
-      const team = await this.teamRepo.findByIdOrNull(coach.teamId);
-      if (!team || team.tournamentId.toString() !== tournament.id) continue;
-
-      if (!assignment.divisionKey) {
-        await this.teamRepo.update(team._id, {
-          draftId: null,
-          status: assignment.status,
-        });
+      const team = await this.findTournamentTeamByCoachId(
+        assignment.coachId,
+        tournament.id,
+      );
+      if (!team) {
+        unresolvedCoachIds.push(assignment.coachId);
         continue;
       }
 
-      const targetDraft = draftsByKey.get(assignment.divisionKey);
-      if (!targetDraft)
+      const targetDraft = assignment.divisionKey
+        ? draftsByKey.get(assignment.divisionKey)
+        : null;
+      if (assignment.divisionKey && !targetDraft)
         throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
           draftSlug: assignment.divisionKey,
           tournamentSlug: tournament.slug,
         });
 
-      await this.teamRepo.update(team._id, {
-        draftId: targetDraft._id,
+      planned.push({
+        team,
+        draftId: targetDraft?._id ?? null,
         status: assignment.status,
       });
     }
 
+    if (unresolvedCoachIds.length)
+      throw new PDZError(ErrorCodes.LEAGUE.ASSIGNMENT_COACHES_NOT_FOUND, {
+        coachIds: unresolvedCoachIds,
+      });
+
+    const reinstated = planned.filter(
+      ({ team, status }) => status === "approved" && team.status !== "approved",
+    ).length;
+    if (reinstated) await this.assertRosterHasRoom(tournament, reinstated);
+
+    for (const { team, draftId, status } of planned) {
+      await this.teamRepo.update(team._id, { draftId, status });
+    }
+
     return { message: "Update successful." };
+  }
+
+  private async findTournamentTeamByCoachId(
+    coachId: string,
+    tournamentId: string,
+  ): Promise<PopulatedTeam | null> {
+    if (!Types.ObjectId.isValid(coachId)) return null;
+    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    if (!coach) return null;
+    const team = await this.teamRepo.findByIdOrNull(coach.teamId);
+    if (!team || team.tournamentId.toString() !== tournamentId) return null;
+    return team;
   }
 
   async getCoach(leagueSlug: string, tournamentSlug: string, coachId: string) {
@@ -1510,9 +1555,9 @@ export class HostedTournamentService {
 
       if (!signUpChannelId) return;
 
-      const totalCoaches = await this.applicationRepo.countByStatus(
+      const totalCoaches = await this.applicationRepo.countByStatuses(
         tournament.id,
-        "pending",
+        ["pending", "waitlisted", "approved"],
       );
 
       const clamp = (value: string, limit: number) =>

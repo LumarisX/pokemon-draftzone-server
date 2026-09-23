@@ -86,6 +86,18 @@ export const ErrorCodes = {
       message:
         "This tournament is already at its team limit. Raise the limit or waitlist this applicant.",
     },
+    ASSIGNMENT_COACHES_NOT_FOUND: {
+      code: "LR-016",
+      status: 400,
+      message:
+        "Some sign-ups no longer belong to this tournament, so nothing was saved. Reload the page and try again.",
+    },
+    APPLICATION_HAS_TEAM: {
+      code: "LR-017",
+      status: 400,
+      message:
+        "This applicant is already on a team. Set the team to dropped instead.",
+    },
   },
   DIVISION: {
     NOT_FOUND: {

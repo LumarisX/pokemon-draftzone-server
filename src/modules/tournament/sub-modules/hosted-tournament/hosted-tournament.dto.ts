@@ -14,6 +14,7 @@ import {
 } from "@modules/tournament-application/tournament-application.schema";
 import { Transform, Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDate,
@@ -23,35 +24,55 @@ import {
   IsString,
   Length,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
   ValidateNested,
 } from "class-validator";
 
+export const SIGN_UP_LIMITS = {
+  name: 64,
+  gameName: 32,
+  discordName: 64,
+  teamName: 64,
+  timezone: 64,
+  logo: 256,
+  experience: 500,
+  reason: 500,
+  answer: 2000,
+  answerCount: 50,
+} as const;
+
 export class SignUpDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.name)
   name!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.gameName)
   gameName!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.discordName)
   discordName!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.teamName)
   teamName!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.timezone)
   timezone!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.logo)
   @IsOptional()
   logo?: string;
 
@@ -63,6 +84,7 @@ export class SignUpDto {
   intent?: TournamentApplicationIntent;
 
   @IsArray()
+  @ArrayMaxSize(SIGN_UP_LIMITS.answerCount)
   @ValidateNested({ each: true })
   @Type(() => SignUpAnswerDto)
   @IsOptional()
@@ -75,7 +97,9 @@ export class SignUpAnswerDto {
   questionId!: string;
 
   @IsArray()
+  @ArrayMaxSize(SIGN_UP_LIMITS.answerCount)
   @IsString({ each: true })
+  @MaxLength(SIGN_UP_LIMITS.answer, { each: true })
   values!: string[];
 }
 
@@ -114,6 +138,7 @@ export class SignUpQuestionDto {
 
   @IsInt()
   @Min(1)
+  @Max(SIGN_UP_LIMITS.answer)
   @IsOptional()
   maxLength?: number;
 
@@ -139,10 +164,12 @@ export class ReplaceCoachDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.teamName)
   @IsOptional()
   teamName?: string;
 
   @IsString()
+  @MaxLength(SIGN_UP_LIMITS.reason)
   @IsOptional()
   reason?: string;
 }
@@ -153,6 +180,7 @@ export class DecideApplicationDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.teamName)
   @IsOptional()
   teamName?: string;
 }
@@ -166,28 +194,34 @@ export class UpdateCoachLogoDto {
 export class UpdateCoachDetailsDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.name)
   @IsOptional()
   name?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.gameName)
   @IsOptional()
   gameName?: string;
 
   @IsString()
+  @MaxLength(SIGN_UP_LIMITS.discordName)
   @IsOptional()
   discordName?: string;
 
   @IsString()
+  @MaxLength(SIGN_UP_LIMITS.timezone)
   @IsOptional()
   timezone?: string;
 
   @IsString()
+  @MaxLength(SIGN_UP_LIMITS.experience)
   @IsOptional()
   experience?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.teamName)
   @IsOptional()
   teamName?: string;
 }

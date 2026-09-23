@@ -100,7 +100,7 @@ describe("HostedTournamentService signup", () => {
       findByIdOrNull: jest.fn(),
       findManyByIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
-      countByTournament: jest.fn().mockResolvedValue(0),
+      countApprovedByTournament: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
       findByAuth0Id: jest.fn().mockResolvedValue([]),
@@ -112,7 +112,7 @@ describe("HostedTournamentService signup", () => {
       findById: jest.fn(),
       create: jest.fn(),
       decide: jest.fn(),
-      countByStatus: jest.fn().mockResolvedValue(0),
+      countByStatuses: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<TournamentApplicationRepository>;
     draftRepo = {
       findById: jest.fn(),
@@ -479,6 +479,10 @@ describe("HostedTournamentService signup", () => {
       });
 
       expect(discordService.sendMessage).toHaveBeenCalledTimes(1);
+      expect(applicationRepo.countByStatuses).toHaveBeenCalledWith(
+        tournament.id,
+        ["pending", "waitlisted", "approved"],
+      );
     });
 
     it("does not grant the coach role at sign-up time", async () => {
@@ -729,11 +733,34 @@ describe("HostedTournamentService signup", () => {
       expect(teamRepo.create).not.toHaveBeenCalled();
     });
 
+    it("refuses to deny an application that already has a team", async () => {
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({
+          status: "approved",
+          resultingTeamId: new Types.ObjectId(),
+        }),
+      );
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          SUB,
+          { status: "denied" },
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.APPLICATION_HAS_TEAM.code,
+      });
+
+      expect(applicationRepo.decide).not.toHaveBeenCalled();
+    });
+
     it("refuses to approve past maxTeams", async () => {
       tournament = buildTournament({ organizers: [SUB], maxTeams: 8 });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
       applicationRepo.findById.mockResolvedValue(buildApplication());
-      teamRepo.countByTournament.mockResolvedValue(8);
+      teamRepo.countApprovedByTournament.mockResolvedValue(8);
 
       await expect(
         service.decideApplication(
@@ -1164,6 +1191,153 @@ describe("HostedTournamentService coach details", () => {
   });
 });
 
+describe("HostedTournamentService assignCoaches", () => {
+  const ORGANIZER = "auth0|owner";
+  const POOL_ID = new Types.ObjectId();
+
+  let tournament: HostedTournament;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let coachRepo: jest.Mocked<CoachRepository>;
+  let service: HostedTournamentService;
+  let teamsByCoach: Map<string, { _id: Types.ObjectId; status: string }>;
+
+  function addCoach(status: string) {
+    const coachId = new Types.ObjectId();
+    teamsByCoach.set(coachId.toString(), {
+      _id: new Types.ObjectId(),
+      status,
+    });
+    return coachId.toString();
+  }
+
+  beforeEach(() => {
+    tournament = buildTournament({ maxTeams: 2 });
+    teamsByCoach = new Map();
+
+    coachRepo = {
+      findById: jest.fn(async (coachId: string) => {
+        const team = teamsByCoach.get(coachId);
+        return team ? { _id: coachId, teamId: team._id } : null;
+      }),
+    } as unknown as jest.Mocked<CoachRepository>;
+    teamRepo = {
+      findByIdOrNull: jest.fn(async (teamId: Types.ObjectId) => {
+        const team = [...teamsByCoach.values()].find((t) =>
+          t._id.equals(teamId),
+        );
+        return team
+          ? { ...team, tournamentId: { toString: () => tournament.id } }
+          : null;
+      }),
+      countApprovedByTournament: jest.fn().mockResolvedValue(1),
+      update: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TeamRepository>;
+
+    service = new HostedTournamentService(
+      {
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      coachRepo,
+      {} as TournamentApplicationRepository,
+      {
+        findAllByTournament: jest
+          .fn()
+          .mockResolvedValue([{ _id: POOL_ID, slug: "pool-a" }]),
+      } as unknown as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+    );
+  });
+
+  it("moves a team into a pool", async () => {
+    const coachId = addCoach("approved");
+
+    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { coachId, divisionKey: "pool-a", status: "approved" },
+    ]);
+
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      teamsByCoach.get(coachId)!._id,
+      { draftId: POOL_ID, status: "approved" },
+    );
+  });
+
+  it("writes nothing and names the coaches it could not resolve", async () => {
+    const known = addCoach("approved");
+    const unknown = new Types.ObjectId().toString();
+
+    await expect(
+      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { coachId: known, divisionKey: "pool-a", status: "approved" },
+        { coachId: unknown, divisionKey: "pool-a", status: "approved" },
+        { coachId: "not-an-id", status: "approved" },
+      ]),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.LEAGUE.ASSIGNMENT_COACHES_NOT_FOUND.code,
+      details: { coachIds: [unknown, "not-an-id"] },
+    });
+
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when a pool does not exist, even after valid entries", async () => {
+    const first = addCoach("approved");
+    const second = addCoach("approved");
+
+    await expect(
+      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { coachId: first, divisionKey: "pool-a", status: "approved" },
+        { coachId: second, divisionKey: "missing-pool", status: "approved" },
+      ]),
+    ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.NOT_IN_LEAGUE.code });
+
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to reinstate dropped teams past maxTeams", async () => {
+    const first = addCoach("dropped");
+    const second = addCoach("dropped");
+
+    await expect(
+      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { coachId: first, status: "approved" },
+        { coachId: second, status: "approved" },
+      ]),
+    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.TOURNAMENT_FULL.code });
+
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("reinstates a dropped team while there is room", async () => {
+    const coachId = addCoach("dropped");
+
+    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { coachId, status: "approved" },
+    ]);
+
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      teamsByCoach.get(coachId)!._id,
+      { draftId: null, status: "approved" },
+    );
+  });
+
+  it("does not count an already-approved team against the limit", async () => {
+    teamRepo.countApprovedByTournament.mockResolvedValue(2);
+    const coachId = addCoach("approved");
+
+    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { coachId, divisionKey: "pool-a", status: "approved" },
+    ]);
+
+    expect(teamRepo.countApprovedByTournament).not.toHaveBeenCalled();
+    expect(teamRepo.update).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("HostedTournamentService teams", () => {
   const TEAM_ID = new Types.ObjectId();
   const OTHER_TEAM_ID = new Types.ObjectId();
@@ -1244,6 +1418,29 @@ describe("HostedTournamentService teams", () => {
   }
 
   describe("listTeams", () => {
+    it("leaves out pending and denied teams but keeps dropped ones", async () => {
+      const withStatus = (name: string, status: string) => ({
+        ...buildTeam(new Types.ObjectId(), name, []),
+        status,
+      });
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: [
+          withStatus("Approved", "approved"),
+          withStatus("Pending", "pending"),
+          withStatus("Denied", "denied"),
+          withStatus("Dropped", "dropped"),
+        ],
+      });
+
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(result.teams.map((team) => team.teamName)).toEqual([
+        "Approved",
+        "Dropped",
+      ]);
+    });
+
     it("returns each team's picks priced against the tier list", async () => {
       const { service } = buildService({
         tournament: buildTournament(),

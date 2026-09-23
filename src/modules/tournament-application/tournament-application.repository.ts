@@ -96,12 +96,12 @@ export class TournamentApplicationRepository {
     return existing[0] ?? null;
   }
 
-  async countByStatus(
+  async countByStatuses(
     tournamentId: Types.ObjectId | string,
-    status: TournamentApplicationStatus,
+    statuses: readonly TournamentApplicationStatus[],
   ): Promise<number> {
     return this.applicationModel
-      .countDocuments({ tournamentId, status: { $eq: status } })
+      .countDocuments({ tournamentId, status: { $in: statuses } })
       .exec();
   }
 
