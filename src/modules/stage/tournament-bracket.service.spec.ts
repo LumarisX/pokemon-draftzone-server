@@ -27,12 +27,18 @@ function buildRound(name: string) {
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
-  return {
+  const team = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
     logo: "logo-key",
     coach: { name: "Giovanni" },
     ...overrides,
+  };
+  const primaryCoach = overrides.primaryCoach ?? team.coach;
+  return {
+    ...team,
+    primaryCoach,
+    coaches: overrides.coaches ?? (primaryCoach ? [primaryCoach] : []),
   } as any;
 }
 

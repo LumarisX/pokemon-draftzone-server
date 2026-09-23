@@ -40,6 +40,10 @@ export class HostedTournamentMapper {
       leagueName: league.name,
       archived: doc.archived,
       organizers: [...doc.organizers],
+      organizerNames: (doc.organizerNames ?? []).map(({ sub, name }) => ({
+        sub,
+        name,
+      })),
       tierListId: doc.tierList?.toString() ?? "",
       rules: doc.rules.map(
         (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
@@ -51,6 +55,7 @@ export class HostedTournamentMapper {
             guildId: doc.discordSettings.guildId,
             coachRoleId: doc.discordSettings.coachRoleId,
             signUpChannelId: doc.discordSettings.signUpChannelId,
+            autoGrantCoachRole: doc.discordSettings.autoGrantCoachRole,
           })
         : undefined,
       stages,
@@ -71,6 +76,10 @@ export class HostedTournamentMapper {
         max: doc.draftCount.max,
       }),
       pointTotal: doc.pointTotal,
+      maxTeams: doc.maxTeams,
+      signUpQuestions: doc.signUpQuestions ?? [],
+      signUpAccess: doc.signUpAccess ?? "open",
+      signUpToken: doc.signUpToken,
       tradePointLimit: doc.tradePointLimit,
       tierRequirements: doc.tierRequirements.map(
         (req) =>
@@ -142,6 +151,10 @@ export class HostedTournamentMapper {
       ruleset: tournament.ruleset?.name ?? null,
       draftCount: tournament.draftCount,
       pointTotal: tournament.pointTotal,
+      maxTeams: tournament.maxTeams,
+      signUpQuestions: tournament.signUpQuestions,
+      signUpAccess: tournament.signUpAccess,
+      signUpToken: tournament.signUpToken,
       tradePointLimit: tournament.tradePointLimit,
       tierRequirements: tournament.tierRequirements,
       prizeSplit: tournament.prizeSplit,

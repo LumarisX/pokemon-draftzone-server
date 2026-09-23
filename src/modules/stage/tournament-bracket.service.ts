@@ -119,7 +119,7 @@ export class TournamentBracketService {
               teamId: team._id.toString(),
               teamSlug: team.slug,
               teamName: team.teamName,
-              coachName: team.coach.name,
+              coachName: team.primaryCoach.name,
               logo: team.logo,
             };
           })

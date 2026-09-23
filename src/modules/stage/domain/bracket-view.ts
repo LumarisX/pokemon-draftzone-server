@@ -52,7 +52,7 @@ interface BracketTeamDoc {
   slug: string;
   teamName: string;
   logo?: string;
-  coach: { name: string };
+  primaryCoach: { name: string };
 }
 
 interface BracketSlotDoc {
@@ -102,7 +102,7 @@ export function buildBracketView(
       return {
         seed: idx + 1,
         teamName: teamDoc.teamName,
-        coachName: teamDoc.coach.name,
+        coachName: teamDoc.primaryCoach.name,
         logo: teamDoc.logo,
         teamId: teamDoc._id.toString(),
         teamSlug: teamDoc.slug,

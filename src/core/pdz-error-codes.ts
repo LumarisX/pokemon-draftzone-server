@@ -51,12 +51,40 @@ export const ErrorCodes = {
     ORGANIZER_NOT_FOUND: {
       code: "LR-009",
       status: 404,
-      message: "No user found to add as an organizer",
+      message: "No participant found to add as an organizer",
     },
     ORGANIZER_IS_OWNER: {
       code: "LR-010",
       status: 400,
       message: "The tournament owner is always an organizer",
+    },
+    ORGANIZER_INVITE_INVALID: {
+      code: "LR-013",
+      status: 404,
+      message:
+        "This organizer invite is invalid, has expired, or has already been used.",
+    },
+    ORGANIZER_INVITE_LIMIT: {
+      code: "LR-014",
+      status: 400,
+      message:
+        "This tournament has too many pending organizer invites. Revoke one before creating another.",
+    },
+    ALREADY_ORGANIZER: {
+      code: "LR-015",
+      status: 400,
+      message: "You are already an organizer of this tournament.",
+    },
+    INVITE_REQUIRED: {
+      code: "LR-012",
+      status: 403,
+      message: "This tournament is invite-only. You need an invite link to sign up.",
+    },
+    TOURNAMENT_FULL: {
+      code: "LR-011",
+      status: 400,
+      message:
+        "This tournament is already at its team limit. Raise the limit or waitlist this applicant.",
     },
   },
   DIVISION: {

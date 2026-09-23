@@ -8,6 +8,17 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ _id: false })
+export class OrganizerNameEntity {
+  @Prop({ required: true })
+  sub!: string;
+
+  @Prop({ required: true })
+  name!: string;
+}
+export const OrganizerNameSchema =
+  SchemaFactory.createForClass(OrganizerNameEntity);
+
+@Schema({ _id: false })
 export class TierRequirementEntity {
   @Prop({ type: SchemaTypes.ObjectId, required: true })
   tierId!: Types.ObjectId;
@@ -150,6 +161,64 @@ export class TournamentRuleEntity {
 export const TournamentRuleSchema =
   SchemaFactory.createForClass(TournamentRuleEntity);
 
+export const SIGNUP_ACCESS_MODES = ["open", "invite", "closed"] as const;
+
+export type SignUpAccessMode = (typeof SIGNUP_ACCESS_MODES)[number];
+
+export const SIGNUP_QUESTION_TYPES = [
+  "short",
+  "long",
+  "choice",
+  "multi",
+  "boolean",
+] as const;
+
+export type SignUpQuestionType = (typeof SIGNUP_QUESTION_TYPES)[number];
+
+@Schema({ _id: false })
+export class SignUpQuestionDependencyEntity {
+  @Prop({ required: true })
+  questionId!: string;
+
+  @Prop({ required: true })
+  equals!: string;
+}
+export const SignUpQuestionDependencySchema = SchemaFactory.createForClass(
+  SignUpQuestionDependencyEntity,
+);
+
+@Schema({ _id: false })
+export class SignUpQuestionEntity {
+  @Prop({ required: true })
+  id!: string;
+
+  @Prop({ required: true })
+  label!: string;
+
+  @Prop()
+  help?: string;
+
+  @Prop({ type: String, enum: SIGNUP_QUESTION_TYPES, required: true })
+  type!: SignUpQuestionType;
+
+  @Prop({ type: [String], default: [] })
+  options!: string[];
+
+  @Prop({ required: true, default: false })
+  required!: boolean;
+
+  @Prop()
+  maxLength?: number;
+
+  @Prop({ type: SignUpQuestionDependencySchema })
+  dependsOn?: SignUpQuestionDependencyEntity;
+
+  @Prop({ required: true, default: false })
+  archived!: boolean;
+}
+export const SignUpQuestionSchema =
+  SchemaFactory.createForClass(SignUpQuestionEntity);
+
 @Schema({ _id: false })
 export class TournamentDiscordSettingsEntity {
   @Prop()
@@ -160,6 +229,9 @@ export class TournamentDiscordSettingsEntity {
 
   @Prop()
   signUpChannelId?: string;
+
+  @Prop({ default: true })
+  autoGrantCoachRole!: boolean;
 }
 export const TournamentDiscordSettingsSchema = SchemaFactory.createForClass(
   TournamentDiscordSettingsEntity,
@@ -261,6 +333,9 @@ export class HostedTournamentEntity {
   @Prop({ type: [String], default: [] })
   organizers!: string[];
 
+  @Prop({ type: [OrganizerNameSchema], default: [] })
+  organizerNames!: OrganizerNameEntity[];
+
   @Prop({ type: SchemaTypes.ObjectId })
   tierList?: Types.ObjectId;
 
@@ -312,6 +387,26 @@ export class HostedTournamentEntity {
 
   @Prop()
   pointTotal?: number;
+
+  @Prop()
+  maxTeams?: number;
+
+  @Prop({ type: [SignUpQuestionSchema], default: [] })
+  signUpQuestions!: SignUpQuestionEntity[];
+
+  @Prop({
+    type: String,
+    enum: SIGNUP_ACCESS_MODES,
+    required: true,
+    default: "open",
+  })
+  signUpAccess!: SignUpAccessMode;
+
+  @Prop()
+  signUpToken?: string;
+
+  @Prop()
+  signUpTokenRotatedAt?: Date;
 
   /** Trade points each team may spend across a stage. Unset means no cap. */
   @Prop()

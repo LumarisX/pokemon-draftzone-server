@@ -91,7 +91,7 @@ export class TournamentTradeService {
           ? {
               id: team._id.toString(),
               name: team.teamName,
-              coach: team.coach.name,
+              coach: team.primaryCoach.name,
               logo: team.logo,
             }
           : undefined,
@@ -204,7 +204,7 @@ export class TournamentTradeService {
       );
       if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
       const teams = await this.teamRepo.findManyByIds(teamIds);
-      if (!teams.some((team) => isCoachedBy(team, sub)))
+      if (!teams.some((team) => isCoachedBy(team, sub, "manageRoster")))
         throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
     }
 
@@ -370,7 +370,7 @@ export class TournamentTradeService {
     if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
     const teams = await this.teamRepo.findManyByIds(teamIds);
-    if (!teams.some((team) => isCoachedBy(team, sub)))
+    if (!teams.some((team) => isCoachedBy(team, sub, "manageRoster")))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 

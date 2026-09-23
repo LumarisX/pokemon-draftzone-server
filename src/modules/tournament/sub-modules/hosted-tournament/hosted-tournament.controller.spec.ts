@@ -51,6 +51,7 @@ describe("HostedTournamentController signup routes", () => {
       "spring-cup",
       "auth0|coach-1",
       body as any,
+      "tok-123",
     );
 
     expect(service.createSignup).toHaveBeenCalledWith(
@@ -58,6 +59,7 @@ describe("HostedTournamentController signup routes", () => {
       "spring-cup",
       "auth0|coach-1",
       body,
+      "tok-123",
     );
     expect(result).toBe(response);
   });

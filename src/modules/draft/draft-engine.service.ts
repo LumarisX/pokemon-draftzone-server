@@ -17,6 +17,7 @@ import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
 import { EmbedBuilder, EmbedField } from "discord.js";
 import { ClientSession, Connection, Types } from "mongoose";
+import { activeCoaches } from "@modules/tournament/membership";
 import {
   DraftDto,
   SetDraftOrderDto,
@@ -103,6 +104,15 @@ async function flushSideEffects(session: ClientSession) {
 
 function clearSideEffects(session: ClientSession) {
   sessionSideEffects.delete(session);
+}
+
+function pickerFor(team: PopulatedTeam): Types.ObjectId {
+  const picker = team.primaryCoach?._id ?? activeCoaches(team)[0]?._id;
+  if (!picker)
+    throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+      teamId: team._id.toString(),
+    });
+  return picker;
 }
 
 @Injectable()
@@ -198,10 +208,13 @@ export class DraftEngineService {
     const channelId = draft.channelId;
     const { round, pokemon, previous } = detail;
 
-    await team.populate<{ coach: CoachDocument }>("coach");
+    await team.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
+      "primaryCoach",
+      "coaches",
+    ]);
     const coachMention = await this.discordService.resolveMention(
       channelId,
-      team.coach?.discordName,
+      team.primaryCoach?.discordName,
     );
 
     const title = pokemon
@@ -360,7 +373,7 @@ export class DraftEngineService {
           reason: draftCheck.reason,
         });
 
-      const picker = currentTeam.coach?._id || currentTeam.coach;
+      const picker = pickerFor(currentTeam);
 
       currentTeam.pickLog.push({
         pokemon: { id: toID(pick.pokemonId) },
@@ -379,9 +392,10 @@ export class DraftEngineService {
 
       await currentTeam.save({ session });
 
-      currentTeam = (await currentTeam.populate<{ coach: CoachDocument }>(
-        "coach",
-      )) as unknown as PopulatedTeam;
+      currentTeam = (await currentTeam.populate<{
+        primaryCoach: CoachDocument;
+        coaches: CoachDocument[];
+      }>(["primaryCoach", "coaches"])) as unknown as PopulatedTeam;
 
       const currentTeamId = currentTeam._id.toString();
 
@@ -534,11 +548,14 @@ export class DraftEngineService {
     const pokemonName = getName(pick.pokemonId);
     const pokemonSpecie = getSpecies(pick.pokemonId);
 
-    await team.populate<{ coach: CoachDocument }>("coach");
+    await team.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
+      "primaryCoach",
+      "coaches",
+    ]);
 
     const coachMention = await this.discordService.resolveMention(
       channelId,
-      team.coach?.discordName,
+      team.primaryCoach?.discordName,
     );
     const messageContent = `${pokemonName} was drafted by ${coachMention ?? "a coach"}.`;
 
@@ -650,7 +667,10 @@ export class DraftEngineService {
       if (!nextTeam) return null;
     }
 
-    await nextTeam.populate<{ coach: CoachDocument }>("coach");
+    await nextTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
+      "primaryCoach",
+      "coaches",
+    ]);
     return nextTeam;
   }
 
@@ -740,7 +760,7 @@ export class DraftEngineService {
           const channelId = draft.channelId;
           const nextCoachMention = await this.discordService.resolveMention(
             channelId,
-            nextTeam.coach.discordName,
+            nextTeam.primaryCoach.discordName,
           );
           const mentionText = nextCoachMention
             ? `${nextCoachMention}, it is now your turn!`
@@ -850,7 +870,7 @@ export class DraftEngineService {
     if (draft.channelId) {
       const coachMention = await this.discordService.resolveMention(
         draft.channelId,
-        fullTeam?.coach?.discordName,
+        fullTeam?.primaryCoach?.discordName,
       );
       const coachLabel = coachMention ?? "coach";
       this.discordService.sendMessage(draft.channelId, {
@@ -977,7 +997,7 @@ export class DraftEngineService {
 
     currentTeam.pickLog.splice(round, 0, {
       pokemon: { id: toID(pick.pokemonId) },
-      picker: replaced?.picker ?? (currentTeam.coach?._id || currentTeam.coach),
+      picker: replaced?.picker ?? pickerFor(currentTeam),
       addons: pick.addons,
       timestamp: replaced?.timestamp ?? new Date(),
     });
@@ -1084,10 +1104,13 @@ export class DraftEngineService {
 
     if (draft.channelId && currentTeam) {
       const channelId = draft.channelId;
-      await currentTeam.populate<{ coach: CoachDocument }>("coach");
+      await currentTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
+      "primaryCoach",
+      "coaches",
+    ]);
       const coachMention = await this.discordService.resolveMention(
         channelId,
-        currentTeam.coach?.discordName,
+        currentTeam.primaryCoach?.discordName,
       );
       const embed = new EmbedBuilder()
         .setTitle(
@@ -1295,10 +1318,13 @@ export class DraftEngineService {
     const currentTeam = getCurrentPickingTeam(draft);
     if (!currentTeam || !draft.channelId) return "";
 
-    await currentTeam.populate<{ coach: CoachDocument }>("coach");
+    await currentTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
+      "primaryCoach",
+      "coaches",
+    ]);
     const mention = await this.discordService.resolveMention(
       draft.channelId,
-      currentTeam.coach?.discordName,
+      currentTeam.primaryCoach?.discordName,
     );
     return ` ${mention ?? currentTeam.teamName}, it is now your turn!`;
   }

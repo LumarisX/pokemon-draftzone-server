@@ -15,8 +15,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
-  AddOrganizerDto,
   AssignCoachesDto,
+  DecideApplicationDto,
+  ReplaceCoachDto,
   SignUpDto,
   UpdateCoachDetailsDto,
   UpdateCoachLogoDto,
@@ -62,68 +63,6 @@ export class HostedTournamentController {
     return this.tournamentService.getRoles(leagueSlug, tournamentSlug, sub);
   }
 
-  @Get(":tournamentSlug/organizers")
-  @UseGuards(JwtAuthGuard)
-  async getOrganizers(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @User() sub: string,
-  ) {
-    return this.tournamentService.getOrganizers(
-      leagueSlug,
-      tournamentSlug,
-      sub,
-    );
-  }
-
-  @Get(":tournamentSlug/organizers/search")
-  @UseGuards(JwtAuthGuard)
-  async searchOrganizerCandidates(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @User() sub: string,
-    @Query("q") query: string,
-  ) {
-    return this.tournamentService.searchOrganizerCandidates(
-      leagueSlug,
-      tournamentSlug,
-      sub,
-      query ?? "",
-    );
-  }
-
-  @Post(":tournamentSlug/organizers")
-  @UseGuards(JwtAuthGuard)
-  async addOrganizer(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @User() sub: string,
-    @Body() body: AddOrganizerDto,
-  ) {
-    return this.tournamentService.addOrganizer(
-      leagueSlug,
-      tournamentSlug,
-      sub,
-      body,
-    );
-  }
-
-  @Delete(":tournamentSlug/organizers/:organizerSub")
-  @UseGuards(JwtAuthGuard)
-  async removeOrganizer(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("organizerSub") organizerSub: string,
-    @User() sub: string,
-  ) {
-    return this.tournamentService.removeOrganizer(
-      leagueSlug,
-      tournamentSlug,
-      sub,
-      organizerSub,
-    );
-  }
-
   @Delete(":tournamentSlug/coaches/:coachId")
   @UseGuards(JwtAuthGuard)
   async removeParticipant(
@@ -158,10 +97,62 @@ export class HostedTournamentController {
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: SignUpDto,
+    @Query("invite") invite?: string,
   ) {
     return this.tournamentService.createSignup(
       leagueSlug,
       tournamentSlug,
+      sub,
+      body,
+      invite,
+    );
+  }
+
+  @Post(":tournamentSlug/signup-token/rotate")
+  @UseGuards(JwtAuthGuard)
+  async rotateSignUpToken(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+  ) {
+    return this.tournamentService.rotateSignUpToken(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+    );
+  }
+
+  @Patch(":tournamentSlug/applications/:applicationId")
+  @UseGuards(JwtAuthGuard)
+  async decideTournamentApplication(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("applicationId") applicationId: string,
+    @User() sub: string,
+    @Body() body: DecideApplicationDto,
+  ) {
+    return this.tournamentService.decideApplication(
+      leagueSlug,
+      tournamentSlug,
+      applicationId,
+      sub,
+      body,
+    );
+  }
+
+  @Post(":tournamentSlug/teams/:teamSlug/replace-coach")
+  @UseGuards(JwtAuthGuard)
+  async replaceTeamCoach(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("teamSlug") teamSlug: string,
+    @User() sub: string,
+    @Body() body: ReplaceCoachDto,
+  ) {
+    return this.tournamentService.replaceCoach(
+      leagueSlug,
+      tournamentSlug,
+      teamSlug,
       sub,
       body,
     );

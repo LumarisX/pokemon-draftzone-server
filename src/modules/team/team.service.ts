@@ -5,6 +5,7 @@ import {
   findTournamentByTeamId,
   isOrganizerOrOwner,
 } from "@modules/tournament/tournament-access";
+import { Capability } from "@modules/tournament/membership";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getDraftedPokemonIds, isCoachedBy } from "./team.domain";
@@ -50,14 +51,18 @@ export class TeamService {
 
   async deleteTeam(teamId: Types.ObjectId | string): Promise<void> {
     const team = await this.teamRepo.findById(teamId);
-    const coachId = team.coach?._id;
+    const coachIds = (team.coaches ?? []).map((coach) => coach._id);
 
     await this.teamRepo.delete(teamId);
-    if (coachId) await this.coachRepo.delete(coachId);
+    for (const coachId of coachIds) await this.coachRepo.delete(coachId);
   }
 
-  isCoachedBy(team: PopulatedTeam, sub: string | undefined): boolean {
-    return isCoachedBy(team, sub);
+  isCoachedBy(
+    team: PopulatedTeam,
+    sub: string | undefined,
+    capability: Capability,
+  ): boolean {
+    return isCoachedBy(team, sub, capability);
   }
 
   getDraftedPokemonIds(team: PopulatedTeam): string[] {
@@ -69,7 +74,7 @@ export class TeamService {
     team: PopulatedTeam,
     sub: string | undefined,
   ): Promise<boolean> {
-    if (isCoachedBy(team, sub)) return true;
+    if (isCoachedBy(team, sub, "manageRoster")) return true;
     const tournament = await findTournamentById(team.tournamentId);
     if (!tournament) return false;
     return isOrganizerOrOwner(tournament, sub);

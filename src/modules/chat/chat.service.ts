@@ -202,7 +202,9 @@ export class ChatService {
       teamId: team?._id.toString(),
       draftId: team?.draftId?.toString(),
       matchupTeamIds,
-      authorName: team?.coach.name ?? (base.isOrganizer ? "Organizer" : "Spectator"),
+      authorName:
+        team?.primaryCoach.name ??
+        (base.isOrganizer ? "Organizer" : "Spectator"),
     };
   }
 

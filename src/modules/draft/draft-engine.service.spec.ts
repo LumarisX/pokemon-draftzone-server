@@ -79,6 +79,8 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
     toObject: jest.fn(),
     ...overrides,
   };
+  team.primaryCoach = overrides.primaryCoach ?? team.coach;
+  team.coaches = overrides.coaches ?? (team.primaryCoach ? [team.primaryCoach] : []);
   team.toObject.mockImplementation(() => ({ ...team }));
   team.populate = jest.fn().mockResolvedValue(team);
   return team;

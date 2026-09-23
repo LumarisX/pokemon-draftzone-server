@@ -2,6 +2,7 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { tierId } from "../../../tier-list/tier-list.test-ids";
 import { S3Service } from "@core/storage/s3.service";
 import { CoachRepository } from "@modules/coach/coach.repository";
+import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
 import { DiscordService } from "@modules/discord/discord.service";
 import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
@@ -14,10 +15,10 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { UserRepository } from "@modules/user/user.repository";
 import { Types } from "mongoose";
 import { HostedTournament } from "./hosted-tournament.domain";
 import { SignUpDto } from "./hosted-tournament.dto";
+import { DEFAULT_SIGNUP_QUESTIONS } from "./signup-questions";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import { HostedTournamentService } from "./hosted-tournament.service";
 
@@ -32,7 +33,7 @@ function buildTournament(
     id: "tournament-1",
     name: "Spring Cup",
     slug: TOURNAMENT_KEY,
-    signUpDeadline: new Date("2026-01-01"),
+    signUpDeadline: new Date("2099-01-01"),
     owner: "auth0|owner",
     leagueId: "league-1",
     leagueSlug: "springleague",
@@ -52,6 +53,7 @@ function buildTournament(
     ruleset: "Gen9 NatDex",
     draftCount: new DraftCount({ min: 1, max: 6 }),
     tierRequirements: [],
+    signUpQuestions: DEFAULT_SIGNUP_QUESTIONS,
     ...overrides,
   });
 }
@@ -63,10 +65,11 @@ function buildSignUpDto(overrides: Partial<SignUpDto> = {}): SignUpDto {
     discordName: "ash#1234",
     teamName: "Team Rocket",
     timezone: "America/Los_Angeles",
-    experience: "5 years of competitive Pokemon",
-    droppedBefore: false,
-    droppedWhy: "",
     confirm: true,
+    answers: [
+      { questionId: "experience", values: ["5 years of competitive Pokemon"] },
+      { questionId: "droppedBefore", values: ["false"] },
+    ],
     ...overrides,
   };
 }
@@ -81,6 +84,7 @@ describe("HostedTournamentService signup", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let coachRepo: jest.Mocked<CoachRepository>;
+  let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
   let draftRepo: jest.Mocked<DraftRepository>;
   let discordService: jest.Mocked<DiscordService>;
   let service: HostedTournamentService;
@@ -94,13 +98,22 @@ describe("HostedTournamentService signup", () => {
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     teamRepo = {
       findByIdOrNull: jest.fn(),
+      findManyByIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       countByTournament: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
-      findByAuth0Id: jest.fn(),
+      findByAuth0Id: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
     } as unknown as jest.Mocked<CoachRepository>;
+    applicationRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+      findBlockingApplication: jest.fn().mockResolvedValue(null),
+      findById: jest.fn(),
+      create: jest.fn(),
+      decide: jest.fn(),
+      countByStatus: jest.fn().mockResolvedValue(0),
+    } as unknown as jest.Mocked<TournamentApplicationRepository>;
     draftRepo = {
       findById: jest.fn(),
     } as unknown as jest.Mocked<DraftRepository>;
@@ -120,13 +133,12 @@ describe("HostedTournamentService signup", () => {
       {} as TierListRepository,
       teamRepo,
       coachRepo,
+      applicationRepo,
       draftRepo,
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       discordService,
-      s3Service,
-      {} as UserRepository,
-    );
+      s3Service,    );
   });
 
   describe("getSignup", () => {
@@ -149,7 +161,7 @@ describe("HostedTournamentService signup", () => {
       coachRepo.findByAuth0Id.mockResolvedValue([
         { _id: new Types.ObjectId(), teamId: new Types.ObjectId() } as any,
       ]);
-      teamRepo.findByIdOrNull.mockResolvedValue(otherTournamentTeam as any);
+      teamRepo.findManyByIds.mockResolvedValue([otherTournamentTeam] as any);
 
       await expect(
         service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB),
@@ -177,7 +189,7 @@ describe("HostedTournamentService signup", () => {
         draftId: undefined,
       };
       coachRepo.findByAuth0Id.mockResolvedValue([coachDoc as any]);
-      teamRepo.findByIdOrNull.mockResolvedValue(teamDoc as any);
+      teamRepo.findManyByIds.mockResolvedValue([teamDoc] as any);
 
       const result = await service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB);
 
@@ -210,14 +222,16 @@ describe("HostedTournamentService signup", () => {
           teamId,
         } as any,
       ]);
-      teamRepo.findByIdOrNull.mockResolvedValue({
-        _id: teamId,
-        tournamentId: tournament.id,
-        teamName: "Team Rocket",
-        status: "approved",
-        logo: "logo-key",
-        draftId,
-      } as any);
+      teamRepo.findManyByIds.mockResolvedValue([
+        {
+          _id: teamId,
+          tournamentId: tournament.id,
+          teamName: "Team Rocket",
+          status: "approved",
+          logo: "logo-key",
+          draftId,
+        },
+      ] as any);
       draftRepo.findById.mockResolvedValue({
         slug: "draft-1",
         name: "Draft One",
@@ -239,15 +253,154 @@ describe("HostedTournamentService signup", () => {
   });
 
   describe("createSignup", () => {
-    it("rejects when droppedBefore is set without a droppedWhy reason", async () => {
-      const dto = buildSignUpDto({ droppedBefore: true, droppedWhy: "   " });
+    it("requires a dependent question once its trigger is answered", async () => {
+      const dto = buildSignUpDto({
+        answers: [
+          { questionId: "experience", values: ["5 years"] },
+          { questionId: "droppedBefore", values: ["true"] },
+          { questionId: "droppedWhy", values: ["   "] },
+        ],
+      });
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, dto),
       ).rejects.toMatchObject({
         code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
       });
-      expect(teamRepo.create).not.toHaveBeenCalled();
+      expect(applicationRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("skips a dependent question whose trigger is not met", async () => {
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto(),
+      );
+
+      const stored = applicationRepo.create.mock.calls[0][0].answers ?? [];
+      expect(stored.map((entry) => entry.questionId)).toEqual([
+        "experience",
+        "droppedBefore",
+      ]);
+    });
+
+    it("rejects an answer to a question this tournament does not ask", async () => {
+      const dto = buildSignUpDto({
+        answers: [
+          { questionId: "experience", values: ["5 years"] },
+          { questionId: "droppedBefore", values: ["false"] },
+          { questionId: "favourite-colour", values: ["blue"] },
+        ],
+      });
+
+      await expect(
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, dto),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.VALIDATION.INVALID_PARAMS.code,
+      });
+    });
+
+    it("enforces the sign-up deadline", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ signUpDeadline: new Date("2020-01-01") }),
+      );
+
+      await expect(
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.SIGNUP_CLOSED.code,
+      });
+    });
+
+    it("lets a valid invite bypass a passed deadline", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          signUpDeadline: new Date("2020-01-01"),
+          signUpToken: "tok-123",
+        }),
+      );
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto(),
+          "tok-123",
+        ),
+      ).resolves.toMatchObject({ message: "Sign up successful." });
+    });
+
+    it("refuses a closed tournament even with an invite", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ signUpAccess: "closed", signUpToken: "tok-123" }),
+      );
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto(),
+          "tok-123",
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.SIGNUP_CLOSED.code });
+    });
+
+    it("refuses an invite-only tournament without the token", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ signUpAccess: "invite", signUpToken: "tok-123" }),
+      );
+
+      await expect(
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
+      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.INVITE_REQUIRED.code });
+    });
+
+    it("refuses an invite-only tournament with a wrong token", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ signUpAccess: "invite", signUpToken: "tok-123" }),
+      );
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto(),
+          "tok-wrong",
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.INVITE_REQUIRED.code });
+    });
+
+    it("accepts an invite-only tournament with the right token", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ signUpAccess: "invite", signUpToken: "tok-123" }),
+      );
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto(),
+          "tok-123",
+        ),
+      ).resolves.toMatchObject({ message: "Sign up successful." });
     });
 
     it("rejects when the confirmation checkbox isn't checked", async () => {
@@ -266,10 +419,12 @@ describe("HostedTournamentService signup", () => {
       coachRepo.findByAuth0Id.mockResolvedValue([
         { _id: new Types.ObjectId(), teamId: existingTeamId } as any,
       ]);
-      teamRepo.findByIdOrNull.mockResolvedValue({
-        _id: existingTeamId,
-        tournamentId: tournament.id,
-      } as any);
+      teamRepo.findManyByIds.mockResolvedValue([
+        {
+          _id: existingTeamId,
+          tournamentId: tournament.id,
+        },
+      ] as any);
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
@@ -280,13 +435,13 @@ describe("HostedTournamentService signup", () => {
       expect(coachRepo.create).not.toHaveBeenCalled();
     });
 
-    it("creates the team and coach with matching cross-referenced ids on success", async () => {
+    it("records a pending application and creates no team or coach", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockImplementation(async (input) =>
-        buildCreatedTeam(input._id),
-      );
-      const createdCoachId = new Types.ObjectId();
-      coachRepo.create.mockResolvedValue({ _id: createdCoachId } as any);
+      const applicationId = new Types.ObjectId();
+      applicationRepo.create.mockResolvedValue({
+        _id: applicationId,
+        status: "pending",
+      } as any);
 
       const dto = buildSignUpDto();
       const result = await service.createSignup(
@@ -296,47 +451,70 @@ describe("HostedTournamentService signup", () => {
         dto,
       );
 
-      expect(teamRepo.create).toHaveBeenCalledTimes(1);
-      const teamInput = teamRepo.create.mock.calls[0][0];
-      expect(teamInput).toMatchObject({
+      expect(applicationRepo.create).toHaveBeenCalledTimes(1);
+      expect(applicationRepo.create.mock.calls[0][0]).toMatchObject({
         tournamentId: tournament.id,
-        teamName: dto.teamName,
-        logo: dto.logo,
-        status: "pending",
-      });
-      expect(teamInput!.draftId).toBeUndefined();
-
-      expect(coachRepo.create).toHaveBeenCalledTimes(1);
-      const coachInput = coachRepo.create.mock.calls[0][0];
-      expect(coachInput).toMatchObject({
         auth0Id: SUB,
         name: dto.name,
         gameName: dto.gameName,
         discordName: dto.discordName,
         timezone: dto.timezone,
-        experience: dto.experience,
-        droppedBefore: dto.droppedBefore,
-        droppedWhy: dto.droppedWhy,
+        experience: "5 years of competitive Pokemon",
+        droppedBefore: false,
         confirmed: dto.confirm,
+        preferredTeamName: dto.teamName,
+        preferredLogo: dto.logo,
+        intent: "team",
+        status: "pending",
       });
 
-      // The team and coach are pre-generated with each other's id so neither
-      // required ref is left dangling on first insert.
-      expect(teamInput!.coach).toEqual(coachInput!._id);
-      expect(coachInput!.teamId).toEqual(teamInput!._id);
+      expect(teamRepo.create).not.toHaveBeenCalled();
+      expect(coachRepo.create).not.toHaveBeenCalled();
 
       expect(result).toEqual({
         message: "Sign up successful.",
-        userId: createdCoachId.toString(),
+        applicationId: applicationId.toString(),
         tournamentId: tournament.id,
-        teamId: teamInput!._id!.toString(),
-        teamSlug: CREATED_TEAM_SLUG,
+        status: "pending",
       });
 
-      // Best-effort Discord side effects: announce in the signup channel,
-      // and grant the role if the coach's Discord name resolves to a member.
       expect(discordService.sendMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not grant the coach role at sign-up time", async () => {
+      coachRepo.findByAuth0Id.mockResolvedValue([]);
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+      discordService.findMember.mockResolvedValue({
+        id: "member-1",
+        roleIds: [],
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto(),
+      );
+
       expect(discordService.grantRole).not.toHaveBeenCalled();
+    });
+
+    it("rejects a second signup when an undecided application exists", async () => {
+      applicationRepo.findBlockingApplication.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await expect(
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+      });
+
+      expect(applicationRepo.create).not.toHaveBeenCalled();
     });
 
     it("skips Discord side effects when the tournament has no Discord settings", async () => {
@@ -344,8 +522,10 @@ describe("HostedTournamentService signup", () => {
         buildTournament({ discordSettings: undefined }),
       );
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockResolvedValue(buildCreatedTeam());
-      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
@@ -358,13 +538,355 @@ describe("HostedTournamentService signup", () => {
 
     it("doesn't fail the signup when the Discord notification throws", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      teamRepo.create.mockResolvedValue(buildCreatedTeam());
-      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
       discordService.sendMessage.mockRejectedValue(new Error("rate limited"));
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).resolves.toMatchObject({ message: "Sign up successful." });
+    });
+  });
+
+  describe("decideApplication", () => {
+    const APPLICATION_ID = new Types.ObjectId();
+
+    function buildApplication(overrides: Record<string, unknown> = {}) {
+      return {
+        _id: APPLICATION_ID,
+        tournamentId: tournament.id,
+        auth0Id: SUB,
+        name: "Ash Ketchum",
+        gameName: "AshK",
+        discordName: "ash#1234",
+        timezone: "America/Los_Angeles",
+        experience: "5 years",
+        droppedBefore: false,
+        droppedWhy: undefined,
+        confirmed: true,
+        preferredTeamName: "Team Rocket",
+        preferredLogo: undefined,
+        intent: "team",
+        status: "pending",
+        ...overrides,
+      } as any;
+    }
+
+    beforeEach(() => {
+      tournament = buildTournament({ organizers: [SUB] });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+      applicationRepo.decide.mockImplementation(
+        async (_id, data) => ({ ...data }) as any,
+      );
+    });
+
+    it("rejects a decision from someone who is not an organizer", async () => {
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          "auth0|stranger",
+          { status: "approved" },
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    });
+
+    it("creates the team and coach on approval, linked both ways", async () => {
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockImplementation(async (input) =>
+        buildCreatedTeam(input._id),
+      );
+      coachRepo.create.mockImplementation(async (input) => input as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      const teamInput = teamRepo.create.mock.calls[0][0];
+      const coachInput = coachRepo.create.mock.calls[0][0];
+
+      expect(teamInput).toMatchObject({
+        tournamentId: tournament.id,
+        teamName: "Team Rocket",
+        status: "approved",
+      });
+      expect(coachInput).toMatchObject({ auth0Id: SUB, name: "Ash Ketchum" });
+      expect(teamInput!.coach).toEqual(coachInput!._id);
+      expect(coachInput!.teamId).toEqual(teamInput!._id);
+
+      expect(applicationRepo.decide).toHaveBeenCalledWith(
+        APPLICATION_ID.toString(),
+        expect.objectContaining({ status: "approved", decidedBy: SUB }),
+      );
+    });
+
+    it("grants the Discord coach role on approval, not before", async () => {
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      discordService.findMember.mockResolvedValue({
+        id: "member-1",
+        roleIds: [],
+      } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(discordService.grantRole).toHaveBeenCalledWith(
+        "guild-1",
+        "member-1",
+        "role-1",
+      );
+    });
+
+    it("honours autoGrantCoachRole: false", async () => {
+      tournament = buildTournament({
+        organizers: [SUB],
+        discordSettings: {
+          guildId: "guild-1",
+          coachRoleId: "role-1",
+          signUpChannelId: "channel-1",
+          autoGrantCoachRole: false,
+        },
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(discordService.grantRole).not.toHaveBeenCalled();
+    });
+
+    it("creates no team when denying", async () => {
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "denied" },
+      );
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+      expect(coachRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("creates no team when approving a sub", async () => {
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({ intent: "sub" }),
+      );
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("does not create a second team when re-approving", async () => {
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({
+          status: "approved",
+          resultingTeamId: new Types.ObjectId(),
+        }),
+      );
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses to approve past maxTeams", async () => {
+      tournament = buildTournament({ organizers: [SUB], maxTeams: 8 });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.countByTournament.mockResolvedValue(8);
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          SUB,
+          { status: "approved" },
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.TOURNAMENT_FULL.code,
+      });
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("replaces the coach, renames the team and logs the rename", async () => {
+      const teamId = new Types.ObjectId();
+      const outgoingId = new Types.ObjectId();
+      const incomingId = new Types.ObjectId();
+
+      teamRepo.findBySlug = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "team-rocket-a1b2",
+        tournamentId: tournament.id,
+        teamName: "Old Name",
+        logo: "old-logo",
+        primaryCoach: { _id: outgoingId },
+      });
+      coachRepo.findAllByTeam = jest
+        .fn()
+        .mockResolvedValue([{ _id: outgoingId, leftAt: undefined }]);
+      coachRepo.update = jest.fn().mockResolvedValue({});
+      coachRepo.create.mockResolvedValue({ _id: incomingId } as any);
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({
+          preferredTeamName: "Storm Crows",
+          preferredLogo: "new-logo",
+        }),
+      );
+      teamRepo.replaceCoach = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "team-rocket-a1b2",
+        teamName: "Storm Crows",
+      });
+
+      const result = await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "team-rocket-a1b2",
+        SUB,
+        { applicationId: APPLICATION_ID.toString() },
+      );
+
+      expect(coachRepo.update).toHaveBeenCalledWith(
+        outgoingId,
+        expect.objectContaining({ leftAt: expect.any(Date) }),
+      );
+
+      const replaceArgs = (teamRepo.replaceCoach as jest.Mock).mock.calls[0][1];
+      expect(replaceArgs).toMatchObject({
+        primaryCoach: incomingId,
+        teamName: "Storm Crows",
+        logo: "new-logo",
+      });
+      expect(replaceArgs.nameChange).toMatchObject({
+        from: "Old Name",
+        to: "Storm Crows",
+        changedBy: SUB,
+      });
+
+      expect(applicationRepo.decide).toHaveBeenCalledWith(
+        APPLICATION_ID,
+        expect.objectContaining({
+          status: "approved",
+          resultingTeamId: teamId,
+          resultingCoachId: incomingId,
+        }),
+      );
+
+      expect(result.renamedFrom).toBe("Old Name");
+    });
+
+    it("logs no rename when the name is unchanged", async () => {
+      const teamId = new Types.ObjectId();
+      teamRepo.findBySlug = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "same",
+        tournamentId: tournament.id,
+        teamName: "Same Name",
+        primaryCoach: { _id: new Types.ObjectId() },
+      });
+      coachRepo.findAllByTeam = jest.fn().mockResolvedValue([]);
+      coachRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+      } as any);
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({ preferredTeamName: "Same Name" }),
+      );
+      teamRepo.replaceCoach = jest
+        .fn()
+        .mockResolvedValue({ _id: teamId, slug: "same", teamName: "Same Name" });
+
+      const result = await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "same",
+        SUB,
+        { applicationId: APPLICATION_ID.toString() },
+      );
+
+      const replaceArgs = (teamRepo.replaceCoach as jest.Mock).mock.calls[0][1];
+      expect(replaceArgs.nameChange).toBeUndefined();
+      expect(result.renamedFrom).toBeNull();
+    });
+
+    it("refuses an application that already produced a coach", async () => {
+      teamRepo.findBySlug = jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        slug: "team",
+        tournamentId: tournament.id,
+        teamName: "Team",
+        primaryCoach: { _id: new Types.ObjectId() },
+      });
+      applicationRepo.findById.mockResolvedValue(
+        buildApplication({ resultingCoachId: new Types.ObjectId() }),
+      );
+
+      await expect(
+        service.replaceCoach(LEAGUE_KEY, TOURNAMENT_KEY, "team", SUB, {
+          applicationId: APPLICATION_ID.toString(),
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+      });
+    });
+
+    it("uses the organizer's team name override when given", async () => {
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved", teamName: "Renamed Squad" },
+      );
+
+      expect(teamRepo.create.mock.calls[0][0]).toMatchObject({
+        teamName: "Renamed Squad",
+      });
     });
   });
 });
@@ -410,13 +932,12 @@ describe("HostedTournamentService settings", () => {
       tierListRepo,
       {} as TeamRepository,
       {} as CoachRepository,
+      {} as TournamentApplicationRepository,
       {} as DraftRepository,
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       {} as DiscordService,
-      {} as S3Service,
-      {} as UserRepository,
-    );
+      {} as S3Service,    );
   });
 
   describe("getSettings", () => {
@@ -528,6 +1049,7 @@ describe("HostedTournamentService coach details", () => {
   const TEAM_ID = new Types.ObjectId();
 
   let coachRepo: jest.Mocked<CoachRepository>;
+  let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let service: HostedTournamentService;
 
@@ -541,6 +1063,10 @@ describe("HostedTournamentService coach details", () => {
       }),
       update: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<CoachRepository>;
+    applicationRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+      findBlockingApplication: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<TournamentApplicationRepository>;
     teamRepo = {
       findByIdOrNull: jest.fn().mockResolvedValue({
         _id: TEAM_ID,
@@ -556,13 +1082,12 @@ describe("HostedTournamentService coach details", () => {
       {} as TierListRepository,
       teamRepo,
       coachRepo,
+      applicationRepo,
       {} as DraftRepository,
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       {} as DiscordService,
-      {} as S3Service,
-      {} as UserRepository,
-    );
+      {} as S3Service,    );
   });
 
   it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
@@ -648,12 +1173,14 @@ describe("HostedTournamentService teams", () => {
     teamName: string,
     pokemonIds: string[],
   ) {
+    const coach = { _id: new Types.ObjectId(), name: `${teamName} coach` };
     return {
       _id: id,
       slug: `${teamName.toLowerCase().replace(/\s+/g, "-")}-slug`,
       teamName,
       status: "approved",
-      coach: { _id: new Types.ObjectId(), name: `${teamName} coach` },
+      coach,
+      primaryCoach: coach,
       pickLog: pokemonIds.map((pokemonId) => ({ pokemon: { id: pokemonId } })),
     };
   }
@@ -707,13 +1234,12 @@ describe("HostedTournamentService teams", () => {
       tierListRepo,
       teamRepo,
       {} as CoachRepository,
+      {} as TournamentApplicationRepository,
       draftRepo,
       stageRepo,
       matchupRepo,
       {} as DiscordService,
-      {} as S3Service,
-      {} as UserRepository,
-    );
+      {} as S3Service,    );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
 

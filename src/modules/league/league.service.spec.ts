@@ -245,6 +245,7 @@ function buildParticipantTeam(
     tournamentId: new Types.ObjectId(tournamentId),
     teamName: "The Team",
     coach: { name: "Coach" },
+    primaryCoach: { name: "Coach" },
     pickLog: [],
     draftId: undefined,
     ...overrides,

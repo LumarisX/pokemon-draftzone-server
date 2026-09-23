@@ -15,6 +15,7 @@ const team = (teamName: string) =>
     teamName,
     logo: undefined,
     coach: { name: `${teamName} coach` },
+    primaryCoach: { name: `${teamName} coach` },
     pickLog: [],
   }) as any;
 

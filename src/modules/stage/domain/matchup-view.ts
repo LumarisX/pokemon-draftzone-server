@@ -44,9 +44,9 @@ function resultsView(results: MatchResultEntity[]) {
 function contactFor(team: PopulatedTeam, viewer: MatchupViewer) {
   const visible = viewer.isOrganizer || viewer.side !== null;
   return {
-    coachId: team.coach._id.toString(),
-    timezone: team.coach.timezone,
-    ...(visible ? { discordName: team.coach.discordName } : {}),
+    coachId: team.primaryCoach._id.toString(),
+    timezone: team.primaryCoach.timezone,
+    ...(visible ? { discordName: team.primaryCoach.discordName } : {}),
   };
 }
 

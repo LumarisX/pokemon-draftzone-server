@@ -197,7 +197,7 @@ function createTeamStanding(
   roundCount: number,
 ): TeamStanding {
   const teamKey = team._id.toString();
-  const coach = team.coach;
+  const coach = team.primaryCoach;
 
   return {
     name: team.teamName,

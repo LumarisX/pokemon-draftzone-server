@@ -1013,8 +1013,8 @@ export class StageService {
       return {
         team,
         teamName: side.team.teamName,
-        coach: side.team.coach.name,
-        owner: side.team.coach.auth0Id,
+        coach: side.team.primaryCoach.name,
+        owner: side.team.primaryCoach?.auth0Id,
         notes: side.notes,
       };
     };
@@ -1083,9 +1083,9 @@ export class StageService {
     const isOrganizer = sub ? this.isOrganizer(tournament, sub) : false;
     const side = !sub
       ? null
-      : isCoachedBy(matchupDoc.side1.team, sub)
+      : isCoachedBy(matchupDoc.side1.team, sub, "report")
         ? ("side1" as const)
-        : isCoachedBy(matchupDoc.side2.team, sub)
+        : isCoachedBy(matchupDoc.side2.team, sub, "report")
           ? ("side2" as const)
           : null;
 
@@ -1246,7 +1246,7 @@ export class StageService {
     matchupDoc.report = {
       team: reportingTeam._id,
       submittedBy: sub,
-      submittedByName: reportingTeam.coach.name,
+      submittedByName: reportingTeam.primaryCoach.name,
       submittedAt: new Date(),
       results,
       side1Score: score.team1,
@@ -1485,7 +1485,7 @@ export class StageService {
           ? {
               id: team._id.toString(),
               name: team.teamName,
-              coach: team.coach.name,
+              coach: team.primaryCoach.name,
               logo: team.logo,
             }
           : undefined,
@@ -1646,7 +1646,7 @@ export class StageService {
     if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
     const teams = await this.teamRepo.findManyByIds(teamIds);
-    if (!teams.some((team) => isCoachedBy(team, sub)))
+    if (!teams.some((team) => isCoachedBy(team, sub, "manageRoster")))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 

@@ -42,6 +42,12 @@ export class CoachEntity {
 
   @Prop({ default: () => new Date() })
   signedUpAt!: Date;
+
+  @Prop()
+  leftAt?: Date;
+
+  @Prop()
+  role?: string;
 }
 
 export const CoachSchema = SchemaFactory.createForClass(CoachEntity);

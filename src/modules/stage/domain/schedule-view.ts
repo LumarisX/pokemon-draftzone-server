@@ -105,7 +105,7 @@ export function toScheduleMatchup(
     if (!team) return unresolvedSide(matchup[which].slot, options);
     return {
       name: team.teamName,
-      coach: team.coach.name,
+      coach: team.primaryCoach.name,
       score: matchup.forfeit
         ? matchup.winner === which
           ? options.forfeitGameDiff

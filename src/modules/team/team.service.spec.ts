@@ -20,12 +20,21 @@ const mockedFindTournamentByTeamId = findTournamentByTeamId as jest.Mock;
 const mockedIsOrganizerOrOwner = isOrganizerOrOwner as jest.Mock;
 
 function buildTeam(overrides: Record<string, unknown> = {}): PopulatedTeam {
-  return {
+  const base = {
     _id: new Types.ObjectId(),
     tournamentId: new Types.ObjectId(),
-    coach: { auth0Id: "auth0|coach-1" } as CoachDocument,
+    coach: {
+      _id: new Types.ObjectId(),
+      auth0Id: "auth0|coach-1",
+    } as CoachDocument,
     pickLog: [],
     ...overrides,
+  };
+  const seat = (base as { coach?: unknown }).coach;
+  return {
+    ...base,
+    primaryCoach: seat,
+    coaches: seat ? [seat] : [],
   } as unknown as PopulatedTeam;
 }
 
@@ -141,18 +150,26 @@ describe("TeamService", () => {
   describe("isCoachedBy / getDraftedPokemonIds", () => {
     it("delegate to the team.domain helpers", () => {
       const team = buildTeam({
-        coach: { auth0Id: "auth0|coach-1" } as CoachDocument,
+        coach: {
+          _id: new Types.ObjectId(),
+          auth0Id: "auth0|coach-1",
+        } as CoachDocument,
         pickLog: [{ pokemon: { id: "pikachu" } }] as any,
       });
 
-      expect(service.isCoachedBy(team, "auth0|coach-1")).toBe(true);
+      expect(service.isCoachedBy(team, "auth0|coach-1", "chat")).toBe(true);
       expect(service.getDraftedPokemonIds(team)).toEqual(["pikachu"]);
     });
   });
 
   describe("canManageTeam", () => {
     it("returns true when sub is the team's own coach, without checking the tournament", async () => {
-      const team = buildTeam({ coach: { auth0Id: "auth0|coach-1" } as CoachDocument });
+      const team = buildTeam({
+        coach: {
+          _id: new Types.ObjectId(),
+          auth0Id: "auth0|coach-1",
+        } as CoachDocument,
+      });
 
       const result = await service.canManageTeam(team, "auth0|coach-1");
 

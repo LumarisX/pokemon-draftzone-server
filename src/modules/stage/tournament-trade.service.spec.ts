@@ -13,13 +13,19 @@ function buildRound(name: string) {
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
-  return {
+  const team = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
     logo: "logo-key",
-    coach: { name: "Giovanni", auth0Id: "auth0|giovanni" },
+    coach: { _id: new Types.ObjectId(), name: "Giovanni", auth0Id: "auth0|giovanni" },
     pickLog: [],
     ...overrides,
+  };
+  const primaryCoach = overrides.primaryCoach ?? team.coach;
+  return {
+    ...team,
+    primaryCoach,
+    coaches: overrides.coaches ?? (primaryCoach ? [primaryCoach] : []),
   } as any;
 }
 
@@ -126,7 +132,7 @@ describe("TournamentTradeService", () => {
 
     it("holds a coach's own trade for approval", async () => {
       const team = withRoster("pikachu", {
-        coach: { name: "Ash", auth0Id: "auth0|ash" },
+        coach: { _id: new Types.ObjectId(), name: "Ash", auth0Id: "auth0|ash" },
       });
 
       const result = await service.createTrade(
@@ -550,7 +556,7 @@ describe("TournamentTradeService", () => {
   describe("withdrawTrade", () => {
     it("lets a coach withdraw their own pending trade", async () => {
       const team = withRoster("pikachu", {
-        coach: { name: "Giovanni", auth0Id: "auth0|giovanni" },
+        coach: { _id: new Types.ObjectId(), name: "Giovanni", auth0Id: "auth0|giovanni" },
       });
       const trade = buildTrade({
         status: "PENDING",

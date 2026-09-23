@@ -1,3 +1,4 @@
+import { canOnTeam } from "@modules/tournament/membership";
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { getName, getSpecies } from "@modules/data/domain/pokedex";
 import {
@@ -63,14 +64,14 @@ export async function getTeamsWithCoachStatus(
   // picker names off this map costs no extra queries.
   const coachNames = new Map<string, string>(
     draft.teams
-      .map((team: PopulatedTeam) => team.coach)
+      .flatMap((team: PopulatedTeam) => team.coaches ?? [])
       .filter((coach) => !!coach?._id)
       .map((coach) => [coach._id.toString(), coach.name] as const),
   );
 
   const teams = await Promise.all(
     draft.teams.map(async (team: PopulatedTeam) => {
-      const isCoach = team.coach.auth0Id === userId;
+      const isCoach = canOnTeam(team, userId, "draft");
       const maxPicks = numberOfRounds - team.pickLog.length;
       let picks: any[] = [];
       const tierList = tournament.tierList;
@@ -129,7 +130,7 @@ export async function getTeamsWithCoachStatus(
         .filter((pokemon) => pokemon.tier)
         .reduce((total, pokemon) => total + (pokemon.cost || 0), 0);
 
-      const coach = team.coach;
+      const coach = team.primaryCoach;
 
       return {
         id: team._id.toString(),
@@ -154,9 +155,9 @@ export async function isCoach(
   team: PopulatedTeam,
   sub: string,
 ): Promise<boolean> {
-  await team.populate<{ coach: CoachDocument }>("coach");
+  await team.populate<{ coaches: CoachDocument[] }>("coaches");
 
-  return team.coach.auth0Id === sub;
+  return canOnTeam(team, sub, "draft");
 }
 
 export async function getDraftDetails(

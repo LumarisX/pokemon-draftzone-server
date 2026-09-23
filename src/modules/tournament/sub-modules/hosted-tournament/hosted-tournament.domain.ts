@@ -1,3 +1,7 @@
+import {
+  SignUpAccessMode,
+  SignUpQuestionEntity,
+} from "./hosted-tournament.schema";
 import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
@@ -55,15 +59,18 @@ export class TournamentDiscordSettings {
   guildId?: string;
   coachRoleId?: string;
   signUpChannelId?: string;
+  autoGrantCoachRole?: boolean;
 
   constructor(props: {
     guildId?: string;
     coachRoleId?: string;
     signUpChannelId?: string;
+    autoGrantCoachRole?: boolean;
   }) {
     this.guildId = props.guildId;
     this.coachRoleId = props.coachRoleId;
     this.signUpChannelId = props.signUpChannelId;
+    this.autoGrantCoachRole = props.autoGrantCoachRole;
   }
 }
 
@@ -113,6 +120,7 @@ export class HostedTournament {
   leagueName: string;
   archived: boolean;
   organizers: string[];
+  organizerNames: { sub: string; name: string }[];
   tierListId: string;
   rules: TournamentRule[];
   logo?: string;
@@ -134,6 +142,10 @@ export class HostedTournament {
   ruleset: Ruleset | null;
   draftCount: DraftCount;
   pointTotal?: number;
+  maxTeams?: number;
+  signUpQuestions: SignUpQuestionEntity[];
+  signUpAccess: SignUpAccessMode;
+  signUpToken?: string;
   tradePointLimit?: number;
   tierRequirements: TierRequirement[];
   prizeSplit: PrizeShare[];
@@ -156,6 +168,7 @@ export class HostedTournament {
     leagueName: string;
     archived?: boolean;
     organizers: string[];
+    organizerNames?: { sub: string; name: string }[];
     tierListId: string;
     rules: TournamentRule[];
     logo?: string;
@@ -171,6 +184,10 @@ export class HostedTournament {
     ruleset?: string | null;
     draftCount: DraftCount;
     pointTotal?: number;
+    maxTeams?: number;
+    signUpQuestions?: SignUpQuestionEntity[];
+    signUpAccess?: SignUpAccessMode;
+    signUpToken?: string;
     tradePointLimit?: number;
     tierRequirements: TierRequirement[];
     prizeSplit?: PrizeShare[];
@@ -192,6 +209,7 @@ export class HostedTournament {
     this.leagueName = props.leagueName;
     this.archived = props.archived ?? false;
     this.organizers = props.organizers;
+    this.organizerNames = props.organizerNames ?? [];
     this.tierListId = props.tierListId;
     this.rules = props.rules;
     this.logo = props.logo;
@@ -207,6 +225,10 @@ export class HostedTournament {
     this.ruleset = props.ruleset ? getRuleset(props.ruleset) : null;
     this.draftCount = props.draftCount;
     this.pointTotal = props.pointTotal;
+    this.maxTeams = props.maxTeams;
+    this.signUpQuestions = props.signUpQuestions ?? [];
+    this.signUpAccess = props.signUpAccess ?? "open";
+    this.signUpToken = props.signUpToken;
     this.tradePointLimit = props.tradePointLimit;
     this.tierRequirements = props.tierRequirements;
     this.prizeSplit = props.prizeSplit ?? [];

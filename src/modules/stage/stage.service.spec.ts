@@ -26,13 +26,19 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
-  return {
+  const team = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
     logo: "logo-key",
-    coach: { name: "Giovanni" },
+    coach: { _id: new Types.ObjectId(), name: "Giovanni" },
     pickLog: [],
     ...overrides,
+  };
+  const primaryCoach = overrides.primaryCoach ?? team.coach;
+  return {
+    ...team,
+    primaryCoach,
+    coaches: overrides.coaches ?? (primaryCoach ? [primaryCoach] : []),
   } as any;
 }
 
@@ -1057,7 +1063,7 @@ describe("StageService", () => {
   describe("trade points", () => {
     function coachedTeam(sub: string, overrides: Record<string, unknown> = {}) {
       return buildTeam({
-        coach: { name: "Giovanni", auth0Id: sub },
+        coach: { _id: new Types.ObjectId(), name: "Giovanni", auth0Id: sub },
         pickLog: [{ pokemon: { id: "pikachu" } }],
         ...overrides,
       });
@@ -1464,11 +1470,11 @@ describe("StageService", () => {
         results: [],
         side1: {
           score: 0,
-          team: buildTeam({ coach: { auth0Id: "auth0|coach-1" } }),
+          team: buildTeam({ coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-1" } }),
         },
         side2: {
           score: 0,
-          team: buildTeam({ coach: { auth0Id: "auth0|coach-2" } }),
+          team: buildTeam({ coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-2" } }),
         },
         save: jest.fn().mockResolvedValue(undefined),
       } as any;
@@ -1577,11 +1583,11 @@ describe("StageService", () => {
         results: [],
         side1: {
           score: 0,
-          team: buildTeam({ coach: { auth0Id: "auth0|coach-1" } }),
+          team: buildTeam({ coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-1" } }),
         },
         side2: {
           score: 0,
-          team: buildTeam({ coach: { auth0Id: "auth0|coach-2" } }),
+          team: buildTeam({ coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-2" } }),
         },
         save: jest.fn().mockResolvedValue(undefined),
       } as any;

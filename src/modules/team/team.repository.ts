@@ -6,7 +6,10 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { TeamDocument, TeamEntity, TeamStatus } from "./team.schema";
 
-export type PopulatedTeam = TeamDocument & { coach: CoachDocument };
+export type PopulatedTeam = TeamDocument & {
+  primaryCoach: CoachDocument;
+  coaches: CoachDocument[];
+};
 
 export type CreateTeamInput = {
   // Settable so HostedTournamentService.createSignup can pre-generate the id
@@ -31,7 +34,8 @@ export class TeamRepository {
   async findById(teamId: Types.ObjectId | string): Promise<PopulatedTeam> {
     const team = await this.teamModel
       .findById(teamId)
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId });
     return team as unknown as PopulatedTeam;
@@ -41,7 +45,8 @@ export class TeamRepository {
   async findBySlug(slug: string): Promise<PopulatedTeam> {
     const team = await this.teamModel
       .findOne({ slug: { $eq: slug } })
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamSlug: slug });
     return team as unknown as PopulatedTeam;
@@ -67,7 +72,8 @@ export class TeamRepository {
   ): Promise<PopulatedTeam[]> {
     const teams = await this.teamModel
       .find({ _id: { $in: teamIds } })
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     return teams as unknown as PopulatedTeam[];
   }
@@ -77,7 +83,8 @@ export class TeamRepository {
   ): Promise<PopulatedTeam | null> {
     const team = await this.teamModel
       .findById(teamId)
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     return team as unknown as PopulatedTeam | null;
   }
@@ -85,11 +92,13 @@ export class TeamRepository {
   async findByCoachId(
     coachId: Types.ObjectId | string,
   ): Promise<PopulatedTeam | null> {
-    const team = await this.teamModel
-      .findOne({ coach: { $eq: coachId } })
-      .populate<{ coach: CoachDocument }>("coach")
+    const coachModel = this.teamModel.db.model<CoachDocument>("CoachEntity");
+    const coach = await coachModel
+      .findById(coachId)
+      .select("teamId")
       .exec();
-    return team as unknown as PopulatedTeam | null;
+    if (!coach?.teamId) return null;
+    return this.findByIdOrNull(coach.teamId);
   }
 
   async findAllByDraft(
@@ -97,7 +106,8 @@ export class TeamRepository {
   ): Promise<PopulatedTeam[]> {
     const teams = await this.teamModel
       .find({ draftId })
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     return teams as unknown as PopulatedTeam[];
   }
@@ -107,7 +117,8 @@ export class TeamRepository {
   ): Promise<PopulatedTeam[]> {
     const teams = await this.teamModel
       .find({ tournamentId })
-      .populate<{ coach: CoachDocument }>("coach")
+      .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
+      .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
     return teams as unknown as PopulatedTeam[];
   }
@@ -117,7 +128,7 @@ export class TeamRepository {
       ...(data._id ? { _id: data._id } : {}),
       tournamentId: data.tournamentId,
       draftId: data.draftId,
-      coach: data.coach,
+      primaryCoach: data.coach,
       teamName: data.teamName,
       logo: data.logo,
       status: data.status ?? "pending",
@@ -173,6 +184,37 @@ export class TeamRepository {
     const team = await this.teamModel.findByIdAndUpdate(teamId, {
       ...(Object.keys(update).length ? { $set: update } : {}),
       ...(Object.keys(unset).length ? { $unset: unset } : {}),
+    });
+    if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId });
+    return this.findById(teamId);
+  }
+
+  async replaceCoach(
+    teamId: Types.ObjectId | string,
+    data: {
+      primaryCoach: Types.ObjectId;
+      teamName: string;
+      logo?: string;
+      nameChange?: {
+        from: string;
+        to: string;
+        round?: number;
+        reason?: string;
+        changedBy?: string;
+      };
+    },
+  ): Promise<PopulatedTeam> {
+    const set: Record<string, unknown> = {
+      primaryCoach: data.primaryCoach,
+      teamName: data.teamName,
+    };
+    if (data.logo !== undefined) set["logo"] = data.logo;
+
+    const team = await this.teamModel.findByIdAndUpdate(teamId, {
+      $set: set,
+      ...(data.nameChange
+        ? { $push: { nameHistory: { ...data.nameChange, changedAt: new Date() } } }
+        : {}),
     });
     if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId });
     return this.findById(teamId);

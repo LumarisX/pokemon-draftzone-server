@@ -1,6 +1,18 @@
 import { TEAM_STATUSES, TeamStatus } from "@modules/team/team.schema";
+import {
+  SIGNUP_ACCESS_MODES,
+  SIGNUP_QUESTION_TYPES,
+  SignUpAccessMode,
+  SignUpQuestionType,
+} from "./hosted-tournament.schema";
 import { DraftCountDto } from "@modules/tier-list/tier-list.dto";
-import { Type } from "class-transformer";
+import {
+  TOURNAMENT_APPLICATION_INTENTS,
+  TOURNAMENT_APPLICATION_STATUSES,
+  TournamentApplicationIntent,
+  TournamentApplicationStatus,
+} from "@modules/tournament-application/tournament-application.schema";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -9,6 +21,9 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Length,
+  Matches,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -36,21 +51,110 @@ export class SignUpDto {
   timezone!: string;
 
   @IsString()
-  experience!: string;
-
-  @IsBoolean()
-  droppedBefore!: boolean;
-
-  @IsString()
-  droppedWhy!: string;
-
-  @IsString()
   @MinLength(1)
   @IsOptional()
   logo?: string;
 
   @IsBoolean()
   confirm!: boolean;
+
+  @IsIn(TOURNAMENT_APPLICATION_INTENTS)
+  @IsOptional()
+  intent?: TournamentApplicationIntent;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SignUpAnswerDto)
+  @IsOptional()
+  answers?: SignUpAnswerDto[];
+}
+
+export class SignUpAnswerDto {
+  @IsString()
+  @MinLength(1)
+  questionId!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  values!: string[];
+}
+
+export class SignUpQuestionDependencyDto {
+  @IsString()
+  @MinLength(1)
+  questionId!: string;
+
+  @IsString()
+  equals!: string;
+}
+
+export class SignUpQuestionDto {
+  @IsString()
+  @MinLength(1)
+  id!: string;
+
+  @IsString()
+  @MinLength(1)
+  label!: string;
+
+  @IsString()
+  @IsOptional()
+  help?: string;
+
+  @IsIn(SIGNUP_QUESTION_TYPES)
+  type!: SignUpQuestionType;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  options?: string[];
+
+  @IsBoolean()
+  required!: boolean;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxLength?: number;
+
+  @ValidateNested()
+  @Type(() => SignUpQuestionDependencyDto)
+  @IsOptional()
+  dependsOn?: SignUpQuestionDependencyDto;
+
+  @IsBoolean()
+  @IsOptional()
+  archived?: boolean;
+}
+
+export class ReplaceCoachDto {
+  @IsString()
+  @MinLength(1)
+  applicationId!: string;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  outgoingCoachId?: string;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  teamName?: string;
+
+  @IsString()
+  @IsOptional()
+  reason?: string;
+}
+
+export class DecideApplicationDto {
+  @IsIn(TOURNAMENT_APPLICATION_STATUSES)
+  status!: TournamentApplicationStatus;
+
+  @IsString()
+  @MinLength(1)
+  @IsOptional()
+  teamName?: string;
 }
 
 export class UpdateCoachLogoDto {
@@ -286,6 +390,21 @@ export class UpdateHostedTournamentSettingsDto {
   pointTotal?: number | null;
 
   @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxTeams?: number | null;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SignUpQuestionDto)
+  @IsOptional()
+  signUpQuestions?: SignUpQuestionDto[];
+
+  @IsIn(SIGNUP_ACCESS_MODES)
+  @IsOptional()
+  signUpAccess?: SignUpAccessMode;
+
+  @IsInt()
   @Min(0)
   @IsOptional()
   tradePointLimit?: number | null;
@@ -320,11 +439,42 @@ export class UpdateHostedTournamentSettingsDto {
 export class AddOrganizerDto {
   @IsString()
   @MinLength(1)
-  @IsOptional()
-  coachId?: string;
+  coachId!: string;
+}
 
+export const ORGANIZER_NAME_MIN = 3;
+export const ORGANIZER_NAME_MAX = 24;
+export const ORGANIZER_NAME_PATTERN = /^[\p{L}\p{N}](?:[^\p{C}]*[\p{L}\p{N}])?$/u;
+
+const trimString = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
+
+export class OrganizerNameDto {
+  @Transform(trimString)
+  @IsString()
+  @Length(ORGANIZER_NAME_MIN, ORGANIZER_NAME_MAX)
+  @Matches(ORGANIZER_NAME_PATTERN, {
+    message: "name must start and end with a letter or number",
+  })
+  name!: string;
+}
+
+export class CreateOrganizerInviteDto extends OrganizerNameDto {}
+
+export class OrganizerInviteTokenDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
+  token!: string;
+}
+
+export class AcceptOrganizerInviteDto extends OrganizerInviteTokenDto {
+  @Transform(trimString)
+  @IsString()
+  @Length(ORGANIZER_NAME_MIN, ORGANIZER_NAME_MAX)
+  @Matches(ORGANIZER_NAME_PATTERN, {
+    message: "name must start and end with a letter or number",
+  })
   @IsOptional()
-  sub?: string;
+  name?: string;
 }

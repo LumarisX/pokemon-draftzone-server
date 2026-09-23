@@ -205,15 +205,39 @@ export class HostedTournamentRepository {
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
   }
 
-  async addOrganizer(tournamentId: Types.ObjectId | string, sub: string) {
+  async addOrganizer(
+    tournamentId: Types.ObjectId | string,
+    sub: string,
+    name: string,
+  ) {
     await this.hostedTournamentModel
       .updateOne({ _id: tournamentId }, { $addToSet: { organizers: sub } })
+      .exec();
+    await this.setOrganizerName(tournamentId, sub, name);
+  }
+
+  async setOrganizerName(
+    tournamentId: Types.ObjectId | string,
+    sub: string,
+    name: string,
+  ) {
+    await this.hostedTournamentModel
+      .updateOne({ _id: tournamentId }, { $pull: { organizerNames: { sub } } })
+      .exec();
+    await this.hostedTournamentModel
+      .updateOne(
+        { _id: tournamentId },
+        { $push: { organizerNames: { sub, name } } },
+      )
       .exec();
   }
 
   async removeOrganizer(tournamentId: Types.ObjectId | string, sub: string) {
     await this.hostedTournamentModel
-      .updateOne({ _id: tournamentId }, { $pull: { organizers: sub } })
+      .updateOne(
+        { _id: tournamentId },
+        { $pull: { organizers: sub, organizerNames: { sub } } },
+      )
       .exec();
   }
 
@@ -225,6 +249,8 @@ export class HostedTournamentRepository {
       pointTotal: number | null;
       tierRequirements: { tierId: string; required: number }[];
       logo: string | null;
+      signUpToken: string;
+      signUpTokenRotatedAt: Date;
     }>,
   ): Promise<void> {
     const setFields: Record<string, unknown> = {};

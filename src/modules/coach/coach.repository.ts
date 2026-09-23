@@ -30,6 +30,8 @@ export type UpdateCoachInput = Partial<{
   experience: string;
   droppedBefore: boolean;
   droppedWhy: string;
+  role: string;
+  leftAt: Date | null;
 }>;
 
 @Injectable()
@@ -59,6 +61,12 @@ export class CoachRepository {
   }
 
   /** A person can sign up for multiple tournaments, producing one Coach row per signup. */
+  async findAllByTeam(
+    teamId: Types.ObjectId | string,
+  ): Promise<CoachDocument[]> {
+    return this.coachModel.find({ teamId }).sort({ signedUpAt: 1 }).exec();
+  }
+
   async findByAuth0Id(auth0Id: string): Promise<CoachDocument[]> {
     return this.coachModel.find({ auth0Id }).exec();
   }

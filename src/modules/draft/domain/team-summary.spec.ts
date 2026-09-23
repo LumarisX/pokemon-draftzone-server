@@ -30,7 +30,7 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
-  return {
+  const team = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
     logo: "logo-key",
@@ -39,6 +39,18 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
     picks: [],
     skipCount: 0,
     ...overrides,
+  };
+  const seat = (overrides.primaryCoach ?? team.coach) as
+    | Record<string, unknown>
+    | undefined;
+  const primaryCoach = seat
+    ? { _id: new Types.ObjectId(), ...seat }
+    : undefined;
+  return {
+    ...team,
+    coach: primaryCoach,
+    primaryCoach,
+    coaches: overrides.coaches ?? (primaryCoach ? [primaryCoach] : []),
   } as any;
 }
 
@@ -204,18 +216,37 @@ describe("getTeamsWithCoachStatus", () => {
 });
 
 describe("isCoach", () => {
-  it("populates the coach and compares auth0Id", async () => {
+  it("populates the memberships and matches an active seat", async () => {
     const team = {
-      coach: { auth0Id: "auth0|coach-1" },
+      _id: new Types.ObjectId(),
+      coaches: [{ _id: new Types.ObjectId(), auth0Id: "auth0|coach-1" }],
       populate: jest.fn().mockImplementation(function (this: any) {
         return Promise.resolve(this);
       }),
     } as any;
 
     await expect(isCoach(team, "auth0|coach-1")).resolves.toBe(true);
-    expect(team.populate).toHaveBeenCalledWith("coach");
+    expect(team.populate).toHaveBeenCalledWith("coaches");
 
     await expect(isCoach(team, "auth0|other")).resolves.toBe(false);
+  });
+
+  it("does not match a coach who has left the team", async () => {
+    const team = {
+      _id: new Types.ObjectId(),
+      coaches: [
+        {
+          _id: new Types.ObjectId(),
+          auth0Id: "auth0|coach-1",
+          leftAt: new Date("2026-03-01"),
+        },
+      ],
+      populate: jest.fn().mockImplementation(function (this: any) {
+        return Promise.resolve(this);
+      }),
+    } as any;
+
+    await expect(isCoach(team, "auth0|coach-1")).resolves.toBe(false);
   });
 });
 

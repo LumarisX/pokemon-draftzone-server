@@ -41,6 +41,29 @@ export class PickLogEntity {
 }
 export const PickLogSchema = SchemaFactory.createForClass(PickLogEntity);
 
+@Schema({ _id: false })
+export class TeamNameChangeEntity {
+  @Prop({ required: true })
+  from!: string;
+
+  @Prop({ required: true })
+  to!: string;
+
+  @Prop()
+  round?: number;
+
+  @Prop()
+  reason?: string;
+
+  @Prop()
+  changedBy?: string;
+
+  @Prop({ default: () => new Date() })
+  changedAt!: Date;
+}
+export const TeamNameChangeSchema =
+  SchemaFactory.createForClass(TeamNameChangeEntity);
+
 export type TeamDocument = HydratedDocument<TeamEntity>;
 
 @Schema({
@@ -71,8 +94,8 @@ export class TeamEntity {
 
   // Ref name is a literal string (not CoachEntity.name) to avoid a circular
   // import with coach.schema.ts, which refs back to TeamEntity.
-  @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity", required: true, unique: true })
-  coach!: Types.ObjectId;
+  @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity" })
+  primaryCoach?: Types.ObjectId;
 
   @Prop({ required: true })
   teamName!: string;
@@ -95,6 +118,15 @@ export class TeamEntity {
 
   @Prop({ default: 0 })
   skipCount!: number;
+
+  @Prop({ type: [TeamNameChangeSchema], default: [] })
+  nameHistory!: TeamNameChangeEntity[];
 }
 
 export const TeamSchema = SchemaFactory.createForClass(TeamEntity);
+
+TeamSchema.virtual("coaches", {
+  ref: "CoachEntity",
+  localField: "_id",
+  foreignField: "teamId",
+});

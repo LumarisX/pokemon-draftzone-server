@@ -10,8 +10,14 @@ import {
 } from "./league-matchup.schema";
 
 const TEAM_POPULATE = [
-  { path: "side1.team", populate: { path: "coach" } },
-  { path: "side2.team", populate: { path: "coach" } },
+  {
+    path: "side1.team",
+    populate: [{ path: "primaryCoach" }, { path: "coaches" }],
+  },
+  {
+    path: "side2.team",
+    populate: [{ path: "primaryCoach" }, { path: "coaches" }],
+  },
 ];
 
 /**

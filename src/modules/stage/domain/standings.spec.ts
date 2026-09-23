@@ -17,6 +17,9 @@ describe("calculateDivisionTeamStandings", () => {
       coach: {
         name: "Coach One",
       },
+      primaryCoach: {
+        name: "Coach One",
+      },
     };
 
     const team2 = {
@@ -24,6 +27,9 @@ describe("calculateDivisionTeamStandings", () => {
       teamName: "Team Two",
       logo: "",
       coach: {
+        name: "Coach Two",
+      },
+      primaryCoach: {
         name: "Coach Two",
       },
     };
@@ -94,6 +100,9 @@ describe("calculateDivisionTeamStandings", () => {
       coach: {
         name: "Coach One",
       },
+      primaryCoach: {
+        name: "Coach One",
+      },
     };
 
     const stage = {
@@ -152,6 +161,9 @@ describe("calculateTeamScore", () => {
       coach: {
         name: "Coach One",
       },
+      primaryCoach: {
+        name: "Coach One",
+      },
     };
 
     const team2 = {
@@ -159,6 +171,9 @@ describe("calculateTeamScore", () => {
       teamName: "Team Two",
       logo: "",
       coach: {
+        name: "Coach Two",
+      },
+      primaryCoach: {
         name: "Coach Two",
       },
     };

@@ -2,6 +2,7 @@ import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { getName } from "@modules/data/domain/pokedex";
+import { canOnTeam } from "@modules/tournament/membership";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
@@ -683,7 +684,7 @@ export class DraftService {
     if (!stageDoc) {
       const teams = approvedTeams.map((team) => ({
         id: team._id.toString(),
-        coach: team.coach.name,
+        coach: team.primaryCoach.name,
         logo: team.logo,
         draft: getLatestRoster(team, roster).map((pokemon) => ({
           id: pokemon.id,
@@ -696,8 +697,8 @@ export class DraftService {
             : { missingFromTierList: true as const }),
         })),
         name: team.teamName,
-        isCoach: team.coach.auth0Id === sub,
-        timezone: team.coach.timezone,
+        isCoach: canOnTeam(team, sub, "draft"),
+        timezone: team.primaryCoach.timezone,
       }));
       return { teams };
     }
@@ -737,7 +738,7 @@ export class DraftService {
         : undefined;
       return {
         id: team._id.toString(),
-        coach: team.coach.name,
+        coach: team.primaryCoach.name,
         logo: team.logo,
         draft: getLatestRoster(team, roster).map((pokemon) => ({
           id: pokemon.id,
@@ -753,8 +754,8 @@ export class DraftService {
           )?.record,
         })),
         name: team.teamName,
-        isCoach: team.coach.auth0Id === sub,
-        timezone: team.coach.timezone,
+        isCoach: canOnTeam(team, sub, "draft"),
+        timezone: team.primaryCoach.timezone,
         record,
         diffMode,
       };
@@ -786,7 +787,7 @@ export class DraftService {
       .map((team: PopulatedTeam) => ({
         team: {
           name: team.teamName,
-          coachName: team.coach.name,
+          coachName: team.primaryCoach.name,
           id: team._id.toString(),
         },
         // Who currently owns what, so the free-agent half of this list is

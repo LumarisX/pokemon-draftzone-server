@@ -238,7 +238,7 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     const currentTeam = getCurrentPickingTeam(draft);
     if (!currentTeam || !draft.channelId) return;
 
-    const coach = currentTeam.coach;
+    const coach = currentTeam.primaryCoach;
     const teamName = currentTeam.teamName ?? "Unknown Team";
     const coachMention = await this.discordService.resolveMention(
       draft.channelId,

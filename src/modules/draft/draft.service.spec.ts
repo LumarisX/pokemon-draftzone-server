@@ -84,7 +84,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
 }
 
 function buildTeam(overrides: Record<string, unknown> = {}) {
-  return {
+  const team = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
     status: "approved",
@@ -97,6 +97,18 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
       return Promise.resolve(this);
     }),
     ...overrides,
+  };
+  const seat = (overrides.primaryCoach ?? team.coach) as
+    | Record<string, unknown>
+    | undefined;
+  const primaryCoach = seat
+    ? { _id: new Types.ObjectId(), ...seat }
+    : undefined;
+  return {
+    ...team,
+    coach: primaryCoach,
+    primaryCoach,
+    coaches: overrides.coaches ?? (primaryCoach ? [primaryCoach] : []),
   } as any;
 }
 
