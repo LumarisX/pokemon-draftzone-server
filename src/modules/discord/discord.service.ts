@@ -10,11 +10,16 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonInteraction,
+  ChatInputCommandInteraction,
   Client,
   EmbedBuilder,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
+  Guild,
   GuildMember,
   Interaction,
   MessageFlags,
+  PermissionFlagsBits,
+  Role,
 } from "discord.js";
 import { DISCORD_CLIENT } from "./discord.constants";
 
@@ -35,7 +40,31 @@ export type DiscordButtonHandler = (
   interaction: ButtonInteraction,
 ) => Promise<void>;
 
+export type DiscordCommandHandler = (
+  interaction: ChatInputCommandInteraction,
+) => Promise<void>;
+
 type MemberIndex = Map<string, DiscordMemberSummary>;
+
+export type DiscordTargets = {
+  guildId?: string;
+  roleId?: string;
+  channelIds?: (string | undefined)[];
+};
+
+const PRIVILEGED_PERMISSIONS = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageWebhooks,
+  PermissionFlagsBits.ManageMessages,
+  PermissionFlagsBits.ManageNicknames,
+  PermissionFlagsBits.ModerateMembers,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.MentionEveryone,
+];
 
 const MEMBER_INDEX_TTL_MS = 60_000;
 const MENTION_PATTERN = /^<@!?(\d{17,20})>$/;
@@ -56,7 +85,8 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
   >();
 
   private readonly buttonHandlers = new Map<string, DiscordButtonHandler>();
-  private buttonListenerAttached = false;
+  private readonly commandHandlers = new Map<string, DiscordCommandHandler>();
+  private interactionListenerAttached = false;
 
   constructor(
     @Inject(DISCORD_CLIENT) private readonly client: Client,
@@ -114,6 +144,16 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     if (!this.isEnabled()) return false;
     try {
       const guild = await this.client.guilds.fetch(guildId);
+      const role = await guild.roles.fetch(roleId);
+      const refusal = role
+        ? await this.roleRefusal(guild, role)
+        : "the role does not exist";
+      if (refusal) {
+        this.logger.warn(
+          `Refused to grant role ${roleId} in guild ${guildId}: ${refusal}`,
+        );
+        return false;
+      }
       const member = await guild.members.fetch(memberId);
       if (!member.roles.cache.has(roleId)) {
         await member.roles.add(roleId);
@@ -128,13 +168,117 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async findTargetProblems(targets: DiscordTargets): Promise<string[]> {
+    const channelIds = (targets.channelIds ?? []).filter(
+      (channelId): channelId is string => Boolean(channelId),
+    );
+
+    if (!targets.guildId)
+      return targets.roleId || channelIds.length
+        ? ["Set the Discord server before choosing a role or channel."]
+        : [];
+
+    if (!this.isEnabled()) return [];
+
+    const guild = await this.client.guilds
+      .fetch(targets.guildId)
+      .catch(() => null);
+    if (!guild) return ["The DraftZone bot is not in that Discord server."];
+
+    const problems: string[] = [];
+
+    if (targets.roleId) {
+      const role = await guild.roles.fetch(targets.roleId).catch(() => null);
+      const refusal = role
+        ? await this.roleRefusal(guild, role)
+        : "it is not a role in that Discord server";
+      if (refusal) problems.push(`The coach role can't be used: ${refusal}.`);
+    }
+
+    for (const channelId of channelIds) {
+      const channel = await this.client.channels
+        .fetch(channelId)
+        .catch(() => null);
+      const channelGuildId =
+        channel && "guildId" in channel ? channel.guildId : undefined;
+      if (channelGuildId !== guild.id)
+        problems.push(`Channel ${channelId} is not in that Discord server.`);
+    }
+
+    return problems;
+  }
+
+  private async roleRefusal(guild: Guild, role: Role): Promise<string | null> {
+    if (role.id === guild.id) return "it is the @everyone role";
+    if (role.managed) return "it is managed by an integration";
+    if (PRIVILEGED_PERMISSIONS.some((flag) => role.permissions.has(flag)))
+      return "it carries moderator or admin permissions";
+
+    const bot = await guild.members.fetchMe().catch(() => null);
+    if (!bot || role.position >= bot.roles.highest.position)
+      return "the DraftZone bot's role must sit above it";
+
+    return null;
+  }
+
   registerButtonHandler(scope: string, handler: DiscordButtonHandler): void {
     this.buttonHandlers.set(scope, handler);
-    if (!this.buttonListenerAttached) {
-      this.buttonListenerAttached = true;
-      this.client.on("interactionCreate", (interaction) => {
-        void this.dispatchButtonInteraction(interaction);
-      });
+    this.attachInteractionListener();
+  }
+
+  registerCommand(
+    definition: RESTPostAPIChatInputApplicationCommandsJSONBody,
+    handler: DiscordCommandHandler,
+  ): void {
+    this.commandHandlers.set(definition.name, handler);
+    this.attachInteractionListener();
+    if (!this.ready) return;
+    if (this.client.isReady()) void this.publishCommand(definition);
+    else this.client.once("ready", () => void this.publishCommand(definition));
+  }
+
+  private async publishCommand(
+    definition: RESTPostAPIChatInputApplicationCommandsJSONBody,
+  ): Promise<void> {
+    try {
+      await this.client.application?.commands.create(definition);
+      this.logger.log(`Registered the /${definition.name} command.`);
+    } catch (error) {
+      this.logger.warn(`Failed to register /${definition.name}`, error);
+    }
+  }
+
+  private attachInteractionListener(): void {
+    if (this.interactionListenerAttached) return;
+    this.interactionListenerAttached = true;
+    this.client.on("interactionCreate", (interaction) => {
+      void this.dispatchInteraction(interaction);
+    });
+  }
+
+  private async dispatchInteraction(interaction: Interaction): Promise<void> {
+    if (interaction.isChatInputCommand())
+      return this.dispatchCommand(interaction);
+    return this.dispatchButtonInteraction(interaction);
+  }
+
+  private async dispatchCommand(
+    interaction: ChatInputCommandInteraction,
+  ): Promise<void> {
+    const handler = this.commandHandlers.get(interaction.commandName);
+    if (!handler) return;
+    try {
+      await handler(interaction);
+    } catch (error) {
+      this.logger.warn(`Failed to handle /${interaction.commandName}`, error);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction
+          .reply({
+            content: "Something went wrong. Try again in a moment.",
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {});
+      }
     }
   }
 

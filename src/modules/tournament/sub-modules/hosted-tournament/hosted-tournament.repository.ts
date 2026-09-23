@@ -313,6 +313,84 @@ export class HostedTournamentRepository {
       });
   }
 
+  async setDiscordLinkCode(
+    tournamentId: Types.ObjectId | string,
+    code: { hash: string; expiresAt: Date; createdBy: string },
+  ): Promise<void> {
+    await this.hostedTournamentModel
+      .updateOne({ _id: tournamentId }, { $set: { discordLinkCode: code } })
+      .exec();
+  }
+
+  async consumeDiscordLinkCode(
+    hash: string,
+    link: { guildId: string; guildName: string; linkedBy: string },
+  ): Promise<{
+    tournamentId: string;
+    tournamentName: string;
+    previousGuildId?: string;
+  } | null> {
+    const now = new Date();
+    const previous = await this.hostedTournamentModel
+      .findOneAndUpdate(
+        {
+          "discordLinkCode.hash": { $eq: hash },
+          "discordLinkCode.expiresAt": { $gt: now },
+        },
+        {
+          $set: {
+            "discordSettings.guildId": link.guildId,
+            "discordSettings.guildName": link.guildName,
+            "discordSettings.linkedBy": link.linkedBy,
+            "discordSettings.linkedAt": now,
+          },
+          $unset: { discordLinkCode: "" },
+        },
+      )
+      .select("name discordSettings.guildId")
+      .lean()
+      .exec();
+    if (!previous) return null;
+    return {
+      tournamentId: previous._id.toString(),
+      tournamentName: previous.name,
+      previousGuildId: previous.discordSettings?.guildId,
+    };
+  }
+
+  async clearDiscordTargets(tournamentId: Types.ObjectId | string) {
+    await this.hostedTournamentModel
+      .updateOne(
+        { _id: tournamentId },
+        {
+          $unset: {
+            "discordSettings.coachRoleId": "",
+            "discordSettings.signUpChannelId": "",
+          },
+        },
+      )
+      .exec();
+  }
+
+  async unlinkDiscord(tournamentId: Types.ObjectId | string) {
+    await this.hostedTournamentModel
+      .updateOne(
+        { _id: tournamentId },
+        {
+          $unset: {
+            "discordSettings.guildId": "",
+            "discordSettings.guildName": "",
+            "discordSettings.linkedAt": "",
+            "discordSettings.linkedBy": "",
+            "discordSettings.coachRoleId": "",
+            "discordSettings.signUpChannelId": "",
+            discordLinkCode: "",
+          },
+        },
+      )
+      .exec();
+  }
+
   /** Replaces the tournament's trades wholesale. */
   async setTrades(
     tournamentId: Types.ObjectId | string,

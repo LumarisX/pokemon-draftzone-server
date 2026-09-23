@@ -232,9 +232,33 @@ export class TournamentDiscordSettingsEntity {
 
   @Prop({ default: true })
   autoGrantCoachRole!: boolean;
+
+  @Prop()
+  guildName?: string;
+
+  @Prop()
+  linkedAt?: Date;
+
+  @Prop()
+  linkedBy?: string;
 }
 export const TournamentDiscordSettingsSchema = SchemaFactory.createForClass(
   TournamentDiscordSettingsEntity,
+);
+
+@Schema({ _id: false })
+export class TournamentDiscordLinkCodeEntity {
+  @Prop({ required: true })
+  hash!: string;
+
+  @Prop({ required: true })
+  expiresAt!: Date;
+
+  @Prop({ required: true })
+  createdBy!: string;
+}
+export const TournamentDiscordLinkCodeSchema = SchemaFactory.createForClass(
+  TournamentDiscordLinkCodeEntity,
 );
 
 @Schema({ _id: false })
@@ -351,6 +375,9 @@ export class HostedTournamentEntity {
   @Prop({ type: TournamentDiscordSettingsSchema })
   discordSettings?: TournamentDiscordSettingsEntity;
 
+  @Prop({ type: TournamentDiscordLinkCodeSchema })
+  discordLinkCode?: TournamentDiscordLinkCodeEntity;
+
   @Prop({ type: [SchemaTypes.ObjectId], ref: "StageEntity", default: [] })
   stages!: Types.ObjectId[];
 
@@ -433,3 +460,5 @@ export class HostedTournamentEntity {
 export const HostedTournamentSchema = SchemaFactory.createForClass(
   HostedTournamentEntity,
 );
+
+HostedTournamentSchema.index({ "discordLinkCode.hash": 1 }, { sparse: true });

@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Min,
   MinLength,
   ValidateNested,
@@ -89,7 +90,7 @@ export class UpdateDraftSettingsDto {
   @IsOptional()
   name?: string;
 
-  @IsString()
+  @Matches(/^\d{17,20}$/, { message: "channelId must be a Discord ID" })
   @IsOptional()
   channelId?: string | null;
 

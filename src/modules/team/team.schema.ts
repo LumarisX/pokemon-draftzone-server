@@ -4,12 +4,7 @@ import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-t
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
-export const TEAM_STATUSES = [
-  "approved",
-  "pending",
-  "denied",
-  "dropped",
-] as const;
+export const TEAM_STATUSES = ["approved", "dropped"] as const;
 
 export type TeamStatus = (typeof TEAM_STATUSES)[number];
 
@@ -106,7 +101,7 @@ export class TeamEntity {
   @Prop({
     type: String,
     enum: TEAM_STATUSES,
-    default: "pending",
+    default: "approved",
   })
   status!: TeamStatus;
 

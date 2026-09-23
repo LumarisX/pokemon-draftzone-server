@@ -385,7 +385,8 @@ export class HostedTournamentService {
 
     const canSeeAllDrafts = sub
       ? tournament.isOrganizer(sub) ||
-        (await this.findSignupForTournament(sub, tournament.id)) !== null
+        (await this.findSignupForTournament(sub, tournament.id))?.team
+          .status === "approved"
       : false;
 
     const drafts = canSeeAllDrafts
@@ -466,31 +467,27 @@ export class HostedTournamentService {
     const context = rosterContextForTournament(tournament);
 
     return {
-      teams: teams
-        .filter(
-          (team) => team.status === "approved" || team.status === "dropped",
-        )
-        .map((team) => ({
-          id: team._id.toString(),
-          slug: team.slug,
-          teamName: team.teamName,
-          coachName: team.primaryCoach.name,
-          logo: team.logo,
-          pickCount: team.pickLog?.length ?? 0,
-          status: team.status,
-          draft: team.draftId
-            ? (draftById.get(team.draftId.toString()) ?? null)
-            : null,
-          roster: getLatestRoster(team, context).map((pokemon) => ({
-            id: pokemon.id,
-            name: getName(pokemon.id),
-            cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
-            tier: tierList?.getPokemonTier(pokemon.id)?.name,
-            ...(tierList && !tierList.hasPokemon(pokemon.id)
-              ? { missingFromTierList: true as const }
-              : {}),
-          })),
+      teams: teams.map((team) => ({
+        id: team._id.toString(),
+        slug: team.slug,
+        teamName: team.teamName,
+        coachName: team.primaryCoach.name,
+        logo: team.logo,
+        pickCount: team.pickLog?.length ?? 0,
+        status: team.status,
+        draft: team.draftId
+          ? (draftById.get(team.draftId.toString()) ?? null)
+          : null,
+        roster: getLatestRoster(team, context).map((pokemon) => ({
+          id: pokemon.id,
+          name: getName(pokemon.id),
+          cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
+          tier: tierList?.getPokemonTier(pokemon.id)?.name,
+          ...(tierList && !tierList.hasPokemon(pokemon.id)
+            ? { missingFromTierList: true as const }
+            : {}),
         })),
+      })),
     };
   }
 
@@ -1153,6 +1150,7 @@ export class HostedTournamentService {
             values: [...answer.values],
           })),
           status: team?.status === "dropped" ? "dropped" : application.status,
+          departed: Boolean(coach?.leftAt),
           intent: application.intent,
           teamName: team?.teamName ?? application.preferredTeamName,
           signedUpAt: application.submittedAt,
@@ -1330,7 +1328,8 @@ export class HostedTournamentService {
     if (!team || team.tournamentId.toString() !== tournament.id)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
-    if (!tournament.isOrganizer(sub) && !isOwnedBy(coach, sub))
+    const isActiveSelf = isOwnedBy(coach, sub) && isActiveCoach(coach);
+    if (!tournament.isOrganizer(sub) && !isActiveSelf)
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
     return { tournament, coach, team };
@@ -1494,8 +1493,23 @@ export class HostedTournamentService {
       }
       update["logo"] = dto.logo;
     }
-    if (dto.discordSettings !== undefined)
-      update["discordSettings"] = dto.discordSettings;
+    if (dto.discordSettings !== undefined) {
+      const { coachRoleId, signUpChannelId, autoGrantCoachRole } =
+        dto.discordSettings;
+      const problems = await this.discordService.findTargetProblems({
+        guildId: tournament.discordSettings?.guildId,
+        roleId: coachRoleId,
+        channelIds: [signUpChannelId],
+      });
+      if (problems.length)
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: problems.join(" "),
+        });
+      update["discordSettings.coachRoleId"] = coachRoleId ?? null;
+      update["discordSettings.signUpChannelId"] = signUpChannelId ?? null;
+      if (autoGrantCoachRole !== undefined)
+        update["discordSettings.autoGrantCoachRole"] = autoGrantCoachRole;
+    }
     if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;
     if (dto.diffMode !== undefined) update["diffMode"] = dto.diffMode;
     if (dto.tierListId !== undefined) {

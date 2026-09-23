@@ -103,6 +103,14 @@ export class DraftRepository {
     return this.draftModel.find({ tournamentId }).exec();
   }
 
+  async clearChannelsByTournament(
+    tournamentId: Types.ObjectId | string,
+  ): Promise<void> {
+    await this.draftModel
+      .updateMany({ tournamentId }, { $unset: { channelId: "" } })
+      .exec();
+  }
+
   async countByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<number> {

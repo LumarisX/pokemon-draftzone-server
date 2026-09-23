@@ -131,7 +131,7 @@ export class TeamRepository {
       primaryCoach: data.coach,
       teamName: data.teamName,
       logo: data.logo,
-      status: data.status ?? "pending",
+      status: data.status ?? "approved",
       picks: [],
       pickLog: [],
     });

@@ -288,18 +288,22 @@ export class PrizeShareDto {
   percent!: number;
 }
 
-export class TournamentDiscordSettingsDto {
-  @IsString()
-  @IsOptional()
-  guildId?: string;
+const DISCORD_SNOWFLAKE = /^\d{17,20}$/;
 
-  @IsString()
+export class TournamentDiscordSettingsDto {
+  @Matches(DISCORD_SNOWFLAKE, { message: "coachRoleId must be a Discord ID" })
   @IsOptional()
   coachRoleId?: string;
 
-  @IsString()
+  @Matches(DISCORD_SNOWFLAKE, {
+    message: "signUpChannelId must be a Discord ID",
+  })
   @IsOptional()
   signUpChannelId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  autoGrantCoachRole?: boolean;
 }
 
 export class AdSkillLevelRangeDto {

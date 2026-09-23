@@ -8,12 +8,6 @@ describe("StageController", () => {
   beforeEach(() => {
     service = {
       listStages: jest.fn(),
-      createStage: jest.fn(),
-      getSchedule: jest.fn(),
-      getTrades: jest.fn(),
-      createTrade: jest.fn(),
-      setPools: jest.fn(),
-      advanceCurrentRound: jest.fn(),
     } as unknown as jest.Mocked<StageService>;
     controller = new StageController(service);
   });
@@ -36,142 +30,10 @@ describe("StageController", () => {
     expect(result).toBe(stages);
   });
 
-  it("createStage forwards keys, sub, and body", async () => {
-    const body = {
-      order: 1,
-      name: "Regular Season",
-      type: "round-robin",
-    } as any;
-    const created = { _id: "stage-1" };
-    service.createStage.mockResolvedValue(created as any);
-
-    const result = await controller.createStage(
-      "league-1",
-      "tournament-1",
-      "auth0|owner",
-      body,
+  it("exposes no stage-scoped write routes", () => {
+    const routes = Object.getOwnPropertyNames(StageController.prototype).filter(
+      (name) => name !== "constructor",
     );
-
-    expect(service.createStage).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
-      "auth0|owner",
-      body,
-    );
-    expect(result).toBe(created);
-  });
-
-  it("getSchedule forwards stageSlug, teamId, and round query params", async () => {
-    const schedule = { rounds: [] };
-    service.getSchedule.mockResolvedValue(schedule as any);
-
-    const result = await controller.getSchedule(
-      "stage-1",
-      "team-1",
-      "current",
-      "auth0|coach",
-    );
-
-    expect(service.getSchedule).toHaveBeenCalledWith(
-      "stage-1",
-      "team-1",
-      "current",
-      "auth0|coach",
-    );
-    expect(result).toBe(schedule);
-  });
-
-  it("getTrades forwards stageSlug and teamId", async () => {
-    const trades = { rounds: [] };
-    service.getTrades.mockResolvedValue(trades as any);
-
-    const result = await controller.getTrades(
-      "stage-1",
-      "team-1",
-      "auth0|coach",
-    );
-
-    expect(service.getTrades).toHaveBeenCalledWith(
-      "stage-1",
-      "team-1",
-      "auth0|coach",
-    );
-    expect(result).toBe(trades);
-  });
-
-  it("createTrade forwards keys, stageSlug, sub, and body", async () => {
-    const body = {
-      side1: { pokemon: [] },
-      side2: { pokemon: [] },
-      roundIndex: 0,
-    } as any;
-    const response = {
-      message: "Trade processed successfully.",
-      status: "APPROVED",
-    };
-    service.createTrade.mockResolvedValue(response);
-
-    const result = await controller.createTrade(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-
-    expect(service.createTrade).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-    expect(result).toBe(response);
-  });
-
-  it("setPools forwards keys, stageSlug, sub, and body", async () => {
-    const body = { pools: [] };
-    const response = { _id: "stage-1" };
-    service.setPools.mockResolvedValue(response as any);
-
-    const result = await controller.setPools(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-
-    expect(service.setPools).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-    expect(result).toBe(response);
-  });
-
-  it("advanceCurrentRound forwards keys, stageSlug, sub, and body", async () => {
-    const body = { currentRoundIndex: 2 };
-    const response = { _id: "stage-1", currentRoundIndex: 2 };
-    service.advanceCurrentRound.mockResolvedValue(response as any);
-
-    const result = await controller.advanceCurrentRound(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-
-    expect(service.advanceCurrentRound).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
-      "stage-1",
-      "auth0|owner",
-      body,
-    );
-    expect(result).toBe(response);
+    expect(routes).toEqual(["listStages"]);
   });
 });

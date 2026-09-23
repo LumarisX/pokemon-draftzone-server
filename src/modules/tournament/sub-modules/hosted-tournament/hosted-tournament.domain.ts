@@ -57,17 +57,23 @@ export class TournamentForfeit {
 
 export class TournamentDiscordSettings {
   guildId?: string;
+  guildName?: string;
+  linkedAt?: Date;
   coachRoleId?: string;
   signUpChannelId?: string;
   autoGrantCoachRole?: boolean;
 
   constructor(props: {
     guildId?: string;
+    guildName?: string;
+    linkedAt?: Date;
     coachRoleId?: string;
     signUpChannelId?: string;
     autoGrantCoachRole?: boolean;
   }) {
     this.guildId = props.guildId;
+    this.guildName = props.guildName;
+    this.linkedAt = props.linkedAt;
     this.coachRoleId = props.coachRoleId;
     this.signUpChannelId = props.signUpChannelId;
     this.autoGrantCoachRole = props.autoGrantCoachRole;

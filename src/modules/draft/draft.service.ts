@@ -2,6 +2,7 @@ import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { getName } from "@modules/data/domain/pokedex";
+import { DiscordService } from "@modules/discord/discord.service";
 import { canOnTeam } from "@modules/tournament/membership";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
@@ -50,6 +51,7 @@ export class DraftService {
     private readonly stageRepo: StageRepository,
     private readonly teamRepo: TeamRepository,
     private readonly draftEngine: DraftEngineService,
+    private readonly discordService: DiscordService,
   ) {}
 
   private async loadContext(
@@ -431,6 +433,17 @@ export class DraftService {
       draftSlug,
     );
     this.assertOrganizer(tournament, sub);
+
+    if (dto.channelId) {
+      const problems = await this.discordService.findTargetProblems({
+        guildId: tournament.discordSettings?.guildId,
+        channelIds: [dto.channelId],
+      });
+      if (problems.length)
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: problems.join(" "),
+        });
+    }
 
     await this.draftEngine.updateSettings(tournament, draft, dto);
 

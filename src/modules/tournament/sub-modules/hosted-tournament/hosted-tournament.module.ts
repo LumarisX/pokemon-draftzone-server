@@ -16,6 +16,8 @@ import {
   OrganizerInviteEntity,
   OrganizerInviteSchema,
 } from "./organizer-invite.schema";
+import { TournamentDiscordController } from "./tournament-discord.controller";
+import { TournamentDiscordService } from "./tournament-discord.service";
 import { TournamentOrganizerController } from "./tournament-organizer.controller";
 import { TournamentOrganizerService } from "./tournament-organizer.service";
 
@@ -34,10 +36,15 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     StageModule,
     LeagueMatchupModule,
   ],
-  controllers: [HostedTournamentController, TournamentOrganizerController],
+  controllers: [
+    HostedTournamentController,
+    TournamentOrganizerController,
+    TournamentDiscordController,
+  ],
   providers: [
     HostedTournamentService,
     TournamentOrganizerService,
+    TournamentDiscordService,
     OrganizerInviteRepository,
   ],
   exports: [HostedTournamentCoreModule],

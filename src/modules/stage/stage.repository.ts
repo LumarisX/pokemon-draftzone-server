@@ -179,52 +179,6 @@ export class StageRepository {
     await this.stageModel.bulkWrite(ops as never);
   }
 
-  async setPublic(
-    stageId: Types.ObjectId | string,
-    isPublic: boolean,
-  ): Promise<StageDocument> {
-    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
-    const stage = await this.stageModel.findOneAndUpdate(
-      { _id: { $eq: normalizedStageId } },
-      { $set: { public: isPublic } },
-      { returnDocument: "after" },
-    );
-    if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-    return stage;
-  }
-
-  async setPools(
-    stageId: Types.ObjectId | string,
-    pools: {
-      poolKey: string;
-      name: string;
-      teamIds: (Types.ObjectId | string)[];
-    }[],
-  ): Promise<StageDocument> {
-    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
-    const stage = await this.stageModel.findOneAndUpdate(
-      { _id: { $eq: normalizedStageId } },
-      { $set: { pools } },
-      { returnDocument: "after" },
-    );
-    if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-    return stage;
-  }
-
-  async setCurrentRoundIndex(
-    stageId: Types.ObjectId | string,
-    currentRoundIndex: number,
-  ): Promise<StageDocument> {
-    const normalizedStageId = this.normalizeObjectId(stageId, "stageId");
-    const stage = await this.stageModel.findOneAndUpdate(
-      { _id: { $eq: normalizedStageId } },
-      { $set: { currentRoundIndex } },
-      { returnDocument: "after" },
-    );
-    if (!stage) throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId });
-    return stage;
-  }
-
   /**
    * The stage's teams in seed order, empty when it has none yet.
    *

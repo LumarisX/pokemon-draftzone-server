@@ -53,6 +53,8 @@ export class HostedTournamentMapper {
       discordSettings: doc.discordSettings
         ? new TournamentDiscordSettings({
             guildId: doc.discordSettings.guildId,
+            guildName: doc.discordSettings.guildName,
+            linkedAt: doc.discordSettings.linkedAt,
             coachRoleId: doc.discordSettings.coachRoleId,
             signUpChannelId: doc.discordSettings.signUpChannelId,
             autoGrantCoachRole: doc.discordSettings.autoGrantCoachRole,

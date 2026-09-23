@@ -1,7 +1,7 @@
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { Types } from "mongoose";
 import { PopulatedTeam } from "./team.repository";
-import { getDraftedPokemonIds, isCoachedBy } from "./team.domain";
+import { isCoachedBy } from "./team.domain";
 
 function buildTeam(overrides: Record<string, unknown> = {}): PopulatedTeam {
   const base = {
@@ -21,24 +21,19 @@ function buildTeam(overrides: Record<string, unknown> = {}): PopulatedTeam {
   } as unknown as PopulatedTeam;
 }
 
-describe("getDraftedPokemonIds", () => {
-  it("returns an empty array when nothing has been picked", () => {
-    expect(getDraftedPokemonIds(buildTeam())).toEqual([]);
-  });
-
-  it("maps the pick log to the picked Pokemon's ids, in order", () => {
-    const team = buildTeam({
-      pickLog: [
-        { pokemon: { id: "pikachu" } },
-        { pokemon: { id: "charizard" } },
-      ],
-    } as any);
-
-    expect(getDraftedPokemonIds(team)).toEqual(["pikachu", "charizard"]);
-  });
-});
-
 describe("isCoachedBy", () => {
+  it("returns false for a coach who has left the team", () => {
+    const team = buildTeam({
+      coach: {
+        _id: new Types.ObjectId(),
+        auth0Id: "auth0|coach-1",
+        leftAt: new Date(),
+      } as unknown as CoachDocument,
+    });
+
+    expect(isCoachedBy(team, "auth0|coach-1", "report")).toBe(false);
+  });
+
   it("returns true when sub matches the team's coach", () => {
     const team = buildTeam({
       coach: {

@@ -3,6 +3,7 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
+import { isActiveCoach } from "@modules/tournament/membership";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { Injectable } from "@nestjs/common";
@@ -193,32 +194,38 @@ export class ChatService {
       authorName: "Spectator",
     };
 
-    const team = sub ? await this.findViewerTeam(tournament, sub) : null;
+    const seat = sub ? await this.findViewerSeat(tournament, sub) : null;
     const matchupTeamIds =
       channel === "matchup" ? await this.matchupTeamIds(target) : undefined;
 
     return {
       ...base,
-      teamId: team?._id.toString(),
-      draftId: team?.draftId?.toString(),
+      teamId: seat?.team._id.toString(),
+      draftId: seat?.team.draftId?.toString(),
       matchupTeamIds,
       authorName:
-        team?.primaryCoach.name ??
-        (base.isOrganizer ? "Organizer" : "Spectator"),
+        seat?.coach.name ?? (base.isOrganizer ? "Organizer" : "Spectator"),
     };
   }
 
-  private async findViewerTeam(tournament: HostedTournament, sub: string) {
-    const coaches = await this.coachRepo.findByAuth0Id(sub);
+  private async findViewerSeat(tournament: HostedTournament, sub: string) {
+    const coaches = (await this.coachRepo.findByAuth0Id(sub)).filter(
+      isActiveCoach,
+    );
     if (!coaches.length) return null;
 
     const teams = await this.teamRepo.findManyByIds(
       coaches.map((coach) => coach.teamId),
     );
-    return (
-      teams.find((team) => team.tournamentId.toString() === tournament.id) ??
-      null
+    const team = teams.find(
+      (candidate) =>
+        candidate.tournamentId.toString() === tournament.id &&
+        candidate.status === "approved",
     );
+    if (!team) return null;
+
+    const coach = coaches.find((candidate) => candidate.teamId.equals(team._id));
+    return coach ? { team, coach } : null;
   }
 
   private async matchupTeamIds(matchupId: string): Promise<string[]> {

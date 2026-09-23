@@ -940,6 +940,7 @@ function buildSettingsTierList(
 describe("HostedTournamentService settings", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let discordService: jest.Mocked<DiscordService>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
 
@@ -953,6 +954,9 @@ describe("HostedTournamentService settings", () => {
     tierListRepo = {
       findById: jest.fn().mockResolvedValue(buildSettingsTierList()),
     } as unknown as jest.Mocked<TierListRepository>;
+    discordService = {
+      findTargetProblems: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DiscordService>;
 
     service = new HostedTournamentService(
       tournamentRepo,
@@ -963,7 +967,7 @@ describe("HostedTournamentService settings", () => {
       {} as DraftRepository,
       {} as StageRepository,
       {} as LeagueMatchupRepository,
-      {} as DiscordService,
+      discordService,
       {} as S3Service,    );
   });
 
@@ -996,6 +1000,47 @@ describe("HostedTournamentService settings", () => {
         service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|stranger", {}),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("validates the role and channel against the linked server, and saves nothing on a problem", async () => {
+      discordService.findTargetProblems.mockResolvedValue([
+        "The coach role can't be used: it carries moderator or admin permissions.",
+      ]);
+      const discordSettings = {
+        coachRoleId: "222222222222222222",
+        signUpChannelId: "333333333333333333",
+      };
+
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          discordSettings,
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(discordService.findTargetProblems).toHaveBeenCalledWith({
+        guildId: "guild-1",
+        roleId: discordSettings.coachRoleId,
+        channelIds: [discordSettings.signUpChannelId],
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("writes only the editable Discord fields, never the linked server", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        discordSettings: {
+          guildId: "999999999999999999",
+          coachRoleId: "222222222222222222",
+          autoGrantCoachRole: false,
+        } as never,
+      });
+
+      const [, update] = tournamentRepo.updateSettings.mock.calls[0];
+      expect(update).toEqual({
+        "discordSettings.coachRoleId": "222222222222222222",
+        "discordSettings.signUpChannelId": null,
+        "discordSettings.autoGrantCoachRole": false,
+      });
     });
 
     it("rejects tierRequirements before a tier list is attached", async () => {
@@ -1128,6 +1173,26 @@ describe("HostedTournamentService coach details", () => {
       ),
     ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
     expect(coachRepo.update).not.toHaveBeenCalled();
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("throws FORBIDDEN for a coach who has left the team", async () => {
+    coachRepo.findById.mockResolvedValue({
+      _id: COACH_ID,
+      auth0Id: "auth0|coach",
+      teamId: TEAM_ID,
+      leftAt: new Date(),
+    } as never);
+
+    await expect(
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|coach",
+        { teamName: "Takeover" },
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
     expect(teamRepo.update).not.toHaveBeenCalled();
   });
 
@@ -1418,29 +1483,6 @@ describe("HostedTournamentService teams", () => {
   }
 
   describe("listTeams", () => {
-    it("leaves out pending and denied teams but keeps dropped ones", async () => {
-      const withStatus = (name: string, status: string) => ({
-        ...buildTeam(new Types.ObjectId(), name, []),
-        status,
-      });
-      const { service } = buildService({
-        tournament: buildTournament(),
-        teams: [
-          withStatus("Approved", "approved"),
-          withStatus("Pending", "pending"),
-          withStatus("Denied", "denied"),
-          withStatus("Dropped", "dropped"),
-        ],
-      });
-
-      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
-
-      expect(result.teams.map((team) => team.teamName)).toEqual([
-        "Approved",
-        "Dropped",
-      ]);
-    });
-
     it("returns each team's picks priced against the tier list", async () => {
       const { service } = buildService({
         tournament: buildTournament(),
@@ -1675,4 +1717,69 @@ describe("HostedTournamentService teams", () => {
       expect(organizerResult.views["hidden-stage"]).toBeDefined();
     });
   });
+});
+
+describe("HostedTournamentService getInfo", () => {
+  const TEAM_ID = new Types.ObjectId();
+
+  let draftRepo: jest.Mocked<DraftRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let service: HostedTournamentService;
+
+  beforeEach(() => {
+    const tournament = buildTournament();
+    draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+      findPublicByTournament: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DraftRepository>;
+    teamRepo = {
+      findManyByIds: jest.fn(),
+    } as unknown as jest.Mocked<TeamRepository>;
+
+    service = new HostedTournamentService(
+      {
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      {
+        findByAuth0Id: jest.fn().mockResolvedValue([
+          { _id: new Types.ObjectId(), auth0Id: "auth0|coach", teamId: TEAM_ID },
+        ]),
+      } as unknown as CoachRepository,
+      {} as TournamentApplicationRepository,
+      draftRepo,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+    );
+
+    teamRepo.findManyByIds.mockImplementation(async () => [
+      {
+        _id: TEAM_ID,
+        tournamentId: { toString: () => tournament.id },
+        status: currentStatus,
+      },
+    ] as never);
+  });
+
+  let currentStatus = "approved";
+
+  it("shows every pool to a coach on an approved team", async () => {
+    currentStatus = "approved";
+    await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
+    expect(draftRepo.findAllByTournament).toHaveBeenCalled();
+    expect(draftRepo.findPublicByTournament).not.toHaveBeenCalled();
+  });
+
+  it.each(["dropped", "denied", "pending"])(
+    "shows only public pools to a coach whose team is %s",
+    async (status) => {
+      currentStatus = status;
+      await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
+      expect(draftRepo.findPublicByTournament).toHaveBeenCalled();
+      expect(draftRepo.findAllByTournament).not.toHaveBeenCalled();
+    },
+  );
 });

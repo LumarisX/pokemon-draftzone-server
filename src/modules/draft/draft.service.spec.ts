@@ -17,6 +17,7 @@ import {
   calculateDivisionPokemonStandings,
   calculateDivisionTeamStandings,
 } from "../stage/domain/standings";
+import { DiscordService } from "../discord/discord.service";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "../stage/stage.repository";
 import { TeamRepository } from "../team/team.repository";
@@ -128,6 +129,7 @@ describe("DraftService", () => {
   let stageRepo: jest.Mocked<StageRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let draftEngine: jest.Mocked<DraftEngineService>;
+  let discordService: jest.Mocked<DiscordService>;
   let service: DraftService;
 
   beforeEach(() => {
@@ -162,7 +164,17 @@ describe("DraftService", () => {
       autoDraftFromQueueIfOnClock: jest.fn(),
       cancelScheduledJobs: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<DraftEngineService>;
-    service = new DraftService(draftRepo, matchupRepo, stageRepo, teamRepo, draftEngine);
+    discordService = {
+      findTargetProblems: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DiscordService>;
+    service = new DraftService(
+      draftRepo,
+      matchupRepo,
+      stageRepo,
+      teamRepo,
+      draftEngine,
+      discordService,
+    );
   });
 
   describe("getDetails", () => {
@@ -454,6 +466,33 @@ describe("DraftService", () => {
     });
   });
 
+  describe("updateSettings", () => {
+    it("refuses a channel outside the tournament's Discord server and saves nothing", async () => {
+      const tournament = buildTournament({
+        owner: "auth0|owner",
+        discordSettings: { guildId: "111111111111111111" },
+      });
+      draftRepo.findTournament.mockResolvedValue(tournament);
+      draftRepo.findDraft.mockResolvedValue(buildDraft());
+      (draftEngine as any).updateSettings = jest.fn();
+      discordService.findTargetProblems.mockResolvedValue([
+        "Channel 222222222222222222 is not in that Discord server.",
+      ]);
+
+      await expect(
+        service.updateSettings("league-1", "tournament-1", "draft-1", "auth0|owner", {
+          channelId: "222222222222222222",
+        }),
+      ).rejects.toMatchObject({ code: "TRN-003" });
+
+      expect(discordService.findTargetProblems).toHaveBeenCalledWith({
+        guildId: "111111111111111111",
+        channelIds: ["222222222222222222"],
+      });
+      expect((draftEngine as any).updateSettings).not.toHaveBeenCalled();
+    });
+  });
+
   describe("skipPick", () => {
     it("throws FORBIDDEN for a non-organizer", async () => {
       const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
@@ -617,16 +656,15 @@ describe("DraftService", () => {
       ]);
     });
 
-    it("excludes pending and denied teams from the public listing", async () => {
+    it("excludes dropped teams from the public listing", async () => {
       const approved = buildTeam({ teamName: "Approved" });
-      const pending = buildTeam({ teamName: "Pending", status: "pending" });
-      const denied = buildTeam({ teamName: "Denied", status: "denied" });
+      const dropped = buildTeam({ teamName: "Dropped", status: "dropped" });
       const tournament = buildTournament();
-      const draft = buildDraft({ teams: [approved, pending, denied] });
+      const draft = buildDraft({ teams: [approved, dropped] });
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
       stageRepo.findAllByTournament.mockResolvedValue([]);
-      mockedGetDraftOrder.mockReturnValue([approved, pending, denied]);
+      mockedGetDraftOrder.mockReturnValue([approved, dropped]);
       mockedGetLatestRoster.mockReturnValue([]);
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub");
