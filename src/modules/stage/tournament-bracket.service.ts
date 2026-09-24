@@ -1,3 +1,4 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
@@ -20,27 +21,15 @@ import {
   UpdateTournamentBracketDto,
 } from "./tournament-bracket.dto";
 
-/** A payload stage paired with the document it resolved to. */
 interface ResolvedStage {
   _id: Types.ObjectId;
   dto: TournamentBracketStageDto;
-  /** Absent when this request is creating the stage. */
   existing?: StageDocument;
   order: number;
   seedOrder: string[];
-  /** Entries to append to the stage's permanent seeding log, if any. */
   newSeedingLog: StageSeedingEntity[];
 }
 
-/**
- * The bracket of a whole tournament: its round axis, its stages, and every
- * match, read and written as one unit.
- *
- * This replaces the per-stage bracket endpoints. Rounds belong to the
- * tournament, so a stage cannot own the list — editing it from one stage would
- * renumber every other stage's rounds and orphan their matchups. The builder
- * already holds all three together, so the endpoint matches what it edits.
- */
 @Injectable()
 export class TournamentBracketService {
   constructor(
@@ -49,6 +38,7 @@ export class TournamentBracketService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly advancement: BracketAdvancementService,
+    private readonly transactions: TransactionRunner,
   ) {}
 
   private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
@@ -60,8 +50,6 @@ export class TournamentBracketService {
     if (!this.isOrganizer(tournament, sub))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
-
-  // ── Read ──────────────────────────────────────────────────────────────────
 
   async getBracket(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.tournamentRepo.findBySlug(
@@ -109,7 +97,6 @@ export class TournamentBracketService {
         order: stage.order,
         public: stage.public !== false,
         seeding: summarizeSeeding(stage.seedingLog),
-        // Seed N is teams[N - 1]; the order is the seeding.
         teams: (teamIdsByStage.get(stage._id.toString()) ?? [])
           .map((teamId, index) => {
             const team = teamById.get(teamId.toString());
@@ -126,7 +113,6 @@ export class TournamentBracketService {
           .filter((team): team is NonNullable<typeof team> => team !== null),
       })),
       matches: matchups.map((matchup) => ({
-        // `_id` stays: a slot names its upstream match by it.
         _id: matchup._id.toString(),
         slug: matchup.slug,
         stage: matchup.stage?.toString() ?? null,
@@ -142,15 +128,9 @@ export class TournamentBracketService {
               ? 1
               : undefined,
         forfeit: matchup.forfeit ?? false,
-        // The organizer's override for who leaves this match. Only ever set
-        // where the result could not answer that — a double forfeit.
         advances: matchup.advances ?? null,
-        // Same convention as the schedule view: a forfeit shows the
-        // tournament's configured game difference rather than the recorded
-        // score, so the two views never disagree about a forfeit.
         score: this.seriesScore(matchup, tournament.forfeit?.gameDiff ?? 0),
         scheduledDate: matchup.scheduledDate?.toISOString() ?? null,
-        // Game 1's replay, kept for callers that predate the list below.
         replay: matchup.results?.[0]?.replay,
         replays: (matchup.results ?? [])
           .map((result) => result.replay)
@@ -159,7 +139,6 @@ export class TournamentBracketService {
     };
   }
 
-  /** Games won by each side, as `[side1, side2]`. */
   private seriesScore(
     matchup: LeagueMatchupEntity,
     forfeitGameDiff: number,
@@ -181,17 +160,6 @@ export class TournamentBracketService {
       : { type: slot.type, from: slot.matchId };
   }
 
-  // ── Write ─────────────────────────────────────────────────────────────────
-
-  /**
-   * Applies an edited bracket to a tournament that may already be under way.
-   *
-   * A diff, not a rebuild: rounds, stages and matchups the payload still lists
-   * keep their ids, so recorded results and any team already advanced into a
-   * slot survive the edit. Three things are refused rather than done quietly —
-   * deleting a matchup that has results, deleting a stage that still holds
-   * matchups, and re-drawing a seeding that has already happened.
-   */
   async updateBracket(
     leagueSlug: string,
     tournamentSlug: string,
@@ -214,7 +182,6 @@ export class TournamentBracketService {
     );
     const stages = await this.resolveStages(dto, existingStages, sub);
 
-    // ── Structure ───────────────────────────────────────────────────────────
     const structureErrors = validateTournamentBracket(
       dto.stages.map((stage) => ({
         key: stage.key,
@@ -238,10 +205,6 @@ export class TournamentBracketService {
         reasons: structureErrors,
       });
 
-    // ── Rounds ──────────────────────────────────────────────────────────────
-    // The array's order is the round index, so it is rebuilt in payload order.
-    // A round the payload still carries keeps its `_id`: matchups point at
-    // these subdocuments, and a fresh id would orphan every one of them.
     const existingRoundIds = new Set(
       tournament.rounds.map((round) => round._id.toString()),
     );
@@ -258,7 +221,6 @@ export class TournamentBracketService {
       tradeDeadline: round.tradeDeadline,
     }));
 
-    // ── Matches ─────────────────────────────────────────────────────────────
     const stageByKey = new Map(stages.map((stage) => [stage.dto.key, stage]));
     const keptStageIds = new Set(stages.map((stage) => stage._id.toString()));
     const removedStages = existingStages.filter(
@@ -291,8 +253,6 @@ export class TournamentBracketService {
           "results. Clear the results first, or keep the matchups.",
       });
 
-    // A stage is only gone once nothing points at it. Deleting one whose
-    // matchups the payload still lists would leave them orphaned.
     const orphaning = removedStages.filter((stage) =>
       dto.matches.some((match) =>
         stageByKey.get(match.stageKey)?._id.equals(stage._id),
@@ -333,10 +293,6 @@ export class TournamentBracketService {
       const sides = (["a", "b"] as const).map((key, index) => {
         const slot = toSlot(match[key] as BracketSlotInput);
         const side = index === 0 ? prior?.side1 : prior?.side2;
-        // A seed always names its team outright, from its own stage's order. A
-        // winner/loser slot only has one once the upstream match is decided —
-        // keep whatever was already resolved, unless the slot now points
-        // somewhere else.
         const team =
           slot.type === "seed"
             ? new Types.ObjectId(stage.seedOrder[slot.seed! - 1])
@@ -357,8 +313,6 @@ export class TournamentBracketService {
         continue;
       }
 
-      // Dotted paths so scores, results and notes on the surviving sides are
-      // left exactly as they are.
       updates.push({
         _id,
         set: {
@@ -371,76 +325,68 @@ export class TournamentBracketService {
       });
     }
 
-    // ── Commit ──────────────────────────────────────────────────────────────
-    await this.stageRepo.applyStageDiff({
-      creates: stages
-        .filter((stage) => !stage.existing)
-        .map((stage) => ({
-          _id: stage._id,
-          tournamentId: new Types.ObjectId(tournament.id),
-          order: stage.order,
-          name: stage.dto.name,
-          type: stage.dto.type as StageType,
-          public: stage.dto.public !== false,
-          teamIds: stage.seedOrder.map((id) => new Types.ObjectId(id)),
-          seedingLog: stage.newSeedingLog,
-        })),
-      updates: stages
-        .filter((stage) => stage.existing)
-        .map((stage) => ({
-          _id: stage._id,
-          set: {
+    await this.transactions.run(async () => {
+      await this.stageRepo.applyStageDiff({
+        creates: stages
+          .filter((stage) => !stage.existing)
+          .map((stage) => ({
+            _id: stage._id,
+            tournamentId: new Types.ObjectId(tournament.id),
             order: stage.order,
             name: stage.dto.name,
-            type: stage.dto.type,
-            // Only when the payload actually carries it. Visibility belongs to
-            // the organizer's show/hide control, and a bracket save that
-            // omitted the field used to read as "make it visible" — silently
-            // republishing a stage that had been hidden.
-            ...(stage.dto.public === undefined
-              ? {}
-              : { public: stage.dto.public }),
+            type: stage.dto.type as StageType,
+            public: stage.dto.public !== false,
             teamIds: stage.seedOrder.map((id) => new Types.ObjectId(id)),
-            seedingLog: [
-              ...(stage.existing!.seedingLog ?? []),
-              ...stage.newSeedingLog,
-            ],
-          },
-        })),
-      deletes: removedStages.map((stage) => stage._id),
+            seedingLog: stage.newSeedingLog,
+          })),
+        updates: stages
+          .filter((stage) => stage.existing)
+          .map((stage) => ({
+            _id: stage._id,
+            set: {
+              order: stage.order,
+              name: stage.dto.name,
+              type: stage.dto.type,
+              ...(stage.dto.public === undefined
+                ? {}
+                : { public: stage.dto.public }),
+              teamIds: stage.seedOrder.map((id) => new Types.ObjectId(id)),
+              seedingLog: [
+                ...(stage.existing!.seedingLog ?? []),
+                ...stage.newSeedingLog,
+              ],
+            },
+          })),
+        deletes: removedStages.map((stage) => stage._id),
+      });
+
+      const followed = nextRounds.findIndex(
+        (round) => round._id.toString() === currentRoundId,
+      );
+      const nextCurrent =
+        dto.currentRoundIndex !== undefined
+          ? dto.currentRoundIndex
+          : followed >= 0
+            ? followed
+            : Math.min(tournament.currentRoundIndex, nextRounds.length - 1);
+
+      await this.tournamentRepo.setSchedule(tournament.id, {
+        rounds: nextRounds,
+        stages: stages.map((stage) => stage._id),
+        currentRoundIndex: Math.max(
+          -1,
+          Math.min(nextCurrent, nextRounds.length - 1),
+        ),
+      });
+
+      await this.matchupRepo.applyStructureDiff({
+        creates,
+        updates,
+        deletes: removed.map((m) => m._id),
+      });
+
+      await this.advancement.applyToStages(stages.map((stage) => stage._id));
     });
-
-    // Follow the round the tournament was on rather than its old index, which
-    // the edit may have shifted.
-    const followed = nextRounds.findIndex(
-      (round) => round._id.toString() === currentRoundId,
-    );
-    const nextCurrent =
-      dto.currentRoundIndex !== undefined
-        ? dto.currentRoundIndex
-        : followed >= 0
-          ? followed
-          : Math.min(tournament.currentRoundIndex, nextRounds.length - 1);
-
-    await this.tournamentRepo.setSchedule(tournament.id, {
-      rounds: nextRounds,
-      stages: stages.map((stage) => stage._id),
-      currentRoundIndex: Math.max(
-        -1,
-        Math.min(nextCurrent, nextRounds.length - 1),
-      ),
-    });
-
-    await this.matchupRepo.applyStructureDiff({
-      creates,
-      updates,
-      deletes: removed.map((m) => m._id),
-    });
-
-    // A re-pointed slot may hang off a match that was decided long ago, so
-    // replay every settled result into whatever now consumes it. Not scoped to
-    // one stage: a playoff slot is fed by a match in the stage before it.
-    await this.advancement.applyToStages(stages.map((stage) => stage._id));
 
     return {
       message:
@@ -455,14 +401,6 @@ export class TournamentBracketService {
     };
   }
 
-  /**
-   * Pairs each payload stage with its stored document and works out its seed
-   * order, without writing anything.
-   *
-   * Seeding is the integrity-sensitive step and is resolved before any other
-   * decision, so a refused draw refuses the whole request rather than leaving
-   * a half-applied bracket behind.
-   */
   private async resolveStages(
     dto: UpdateTournamentBracketDto,
     existingStages: StageDocument[],
@@ -472,8 +410,6 @@ export class TournamentBracketService {
       existingStages.map((stage) => [stage._id.toString(), stage]),
     );
 
-    // Validated up front: a bad id would otherwise be read as "create a new
-    // stage", silently abandoning the one the organizer meant to edit.
     for (const stage of dto.stages) {
       if (stage._id && !existingById.has(stage._id))
         throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageId: stage._id });
@@ -514,22 +450,12 @@ export class TournamentBracketService {
     return resolved;
   }
 
-  /**
-   * Seed order for one stage of an edited bracket.
-   *
-   * A stage that has never been seeded is seeded now. A stage that has been
-   * seeded keeps its draw: the payload may only confirm the existing order and
-   * append to it, and appended teams are always manual — drawing them randomly
-   * would be a second roll of the same dice.
-   */
   private async resolveStageSeedOrder(
     stageDto: TournamentBracketStageDto,
     existing: StageDocument | undefined,
     sub: string,
     drawIsLive: boolean,
   ): Promise<{ seedOrder: string[]; newSeedingLog: StageSeedingEntity[] }> {
-    // Only a live draw is protected: with no matchups left, the stage's team
-    // list is a leftover of a deleted bracket rather than a seeding in force.
     const existingSeedOrder =
       existing && drawIsLive
         ? stageTeamIds(existing).map((id) => id.toString())
@@ -537,9 +463,6 @@ export class TournamentBracketService {
 
     if (!stageDto.seedGroups?.length) {
       if (existingSeedOrder.length === 0 && existing)
-        // Keep whatever the stage already had rather than emptying it: a
-        // payload that simply doesn't mention seeding is not a request to
-        // remove every team.
         return {
           seedOrder: stageTeamIds(existing).map((id) => id.toString()),
           newSeedingLog: [],
@@ -549,8 +472,6 @@ export class TournamentBracketService {
 
     const requested = stageDto.seedGroups.flatMap((group) => group.teamIds);
 
-    // Checked before anything touches the database: an attempt to re-draw a
-    // seeding is refused on its own terms, whether or not the teams resolve.
     const preservesDraw = existingSeedOrder.every(
       (teamId, index) => requested[index] === teamId,
     );
@@ -565,8 +486,6 @@ export class TournamentBracketService {
           reason: `Invalid team ID "${teamId}" in stage "${stageDto.name}"`,
         });
     }
-    // A team may enter several stages, so the same id can appear more than
-    // once across the payload — each appearance is a separate positional seed.
     const uniqueRequested = [...new Set(requested)];
     const teamDocs = await this.teamRepo.findManyByIds(
       uniqueRequested.map((id) => new Types.ObjectId(id)),
@@ -601,13 +520,6 @@ export class TournamentBracketService {
     };
   }
 
-  /**
-   * Moves the tournament to a different round.
-   *
-   * Separate from the bracket PATCH so advancing a week does not require
-   * resending every stage and match — and because it is the one schedule edit
-   * an organizer makes routinely, mid-season, with results already recorded.
-   */
   async setCurrentRound(
     leagueSlug: string,
     tournamentSlug: string,
@@ -645,13 +557,6 @@ export class TournamentBracketService {
     };
   }
 
-  /**
-   * Guard for callers that must not run against an unmigrated tournament.
-   *
-   * NOT_FOUND rather than a distinct code: from the client's side the
-   * tournament-level schedule genuinely does not exist yet, and the per-stage
-   * routes are still the ones to use.
-   */
   assertTournamentAxis(tournament: HostedTournament) {
     if (!usesTournamentAxis(tournament))
       throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, {

@@ -1,3 +1,4 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { tierId } from "../../../tier-list/tier-list.test-ids";
 import { S3Service } from "@core/storage/s3.service";
@@ -74,6 +75,34 @@ function buildSignUpDto(overrides: Partial<SignUpDto> = {}): SignUpDto {
   };
 }
 
+const inlineTransactions = {
+  run: (work: () => Promise<unknown>) => work(),
+} as unknown as TransactionRunner;
+
+function recordTransactions() {
+  const log: string[] = [];
+  const runner = {
+    run: async (work: () => Promise<unknown>) => {
+      log.push("begin");
+      try {
+        const result = await work();
+        log.push("commit");
+        return result;
+      } catch (error) {
+        log.push("abort");
+        throw error;
+      }
+    },
+  } as unknown as TransactionRunner;
+  const track =
+    <A extends unknown[], R>(name: string, result: (...args: A) => R) =>
+    async (...args: A) => {
+      log.push(name);
+      return result(...args);
+    };
+  return { runner, log, track };
+}
+
 const CREATED_TEAM_SLUG = "team-rocket-a1b2";
 
 function buildCreatedTeam(id: Types.ObjectId | string = new Types.ObjectId()) {
@@ -89,9 +118,11 @@ describe("HostedTournamentService signup", () => {
   let discordService: jest.Mocked<DiscordService>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
+  let transactions: ReturnType<typeof recordTransactions>;
 
   beforeEach(() => {
     tournament = buildTournament();
+    transactions = recordTransactions();
 
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(tournament),
@@ -138,7 +169,9 @@ describe("HostedTournamentService signup", () => {
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       discordService,
-      s3Service,    );
+      s3Service,
+      transactions.runner,
+    );
   });
 
   describe("getSignup", () => {
@@ -777,6 +810,118 @@ describe("HostedTournamentService signup", () => {
       expect(teamRepo.create).not.toHaveBeenCalled();
     });
 
+    it("writes the team, coach and decision in one transaction, then grants the role", async () => {
+      const { track, log } = transactions;
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockImplementation(
+        track("team.create", (input) => buildCreatedTeam(input._id)),
+      );
+      coachRepo.create.mockImplementation(
+        track("coach.create", (input) => input as any),
+      );
+      applicationRepo.decide.mockImplementation(
+        track("application.decide", (_id, data) => ({ ...data }) as any),
+      );
+      discordService.findMember.mockResolvedValue({
+        id: "member-1",
+        roleIds: [],
+      } as any);
+      discordService.grantRole.mockImplementation(
+        track("discord.grantRole", () => true),
+      );
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(log).toEqual([
+        "begin",
+        "team.create",
+        "coach.create",
+        "application.decide",
+        "commit",
+        "discord.grantRole",
+      ]);
+    });
+
+    it("aborts and grants no role when a write fails partway", async () => {
+      const { track, log } = transactions;
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      teamRepo.create.mockImplementation(
+        track("team.create", (input) => buildCreatedTeam(input._id)),
+      );
+      coachRepo.create.mockRejectedValue(new Error("write failed"));
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          SUB,
+          { status: "approved" },
+        ),
+      ).rejects.toThrow("write failed");
+
+      expect(log).toEqual(["begin", "team.create", "abort"]);
+      expect(applicationRepo.decide).not.toHaveBeenCalled();
+      expect(discordService.grantRole).not.toHaveBeenCalled();
+    });
+
+    it("retires the old coach and seats the new one in one transaction", async () => {
+      const { track, log } = transactions;
+      const teamId = new Types.ObjectId();
+      const outgoingId = new Types.ObjectId();
+
+      teamRepo.findBySlug = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "team-rocket-a1b2",
+        tournamentId: tournament.id,
+        teamName: "Team Rocket",
+        primaryCoach: { _id: outgoingId },
+      });
+      coachRepo.findAllByTeam = jest
+        .fn()
+        .mockResolvedValue([{ _id: outgoingId, leftAt: undefined }]);
+      coachRepo.update = jest.fn(
+        track("coach.update", () => ({}) as any),
+      ) as any;
+      coachRepo.create.mockImplementation(
+        track("coach.create", () => ({ _id: new Types.ObjectId() }) as any),
+      );
+      teamRepo.replaceCoach = jest.fn(
+        track("team.replaceCoach", () => ({
+          _id: teamId,
+          slug: "team-rocket-a1b2",
+          teamName: "Team Rocket",
+        })),
+      ) as any;
+      applicationRepo.decide.mockImplementation(
+        track("application.decide", () => ({}) as any),
+      );
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+
+      await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "team-rocket-a1b2",
+        SUB,
+        { applicationId: APPLICATION_ID.toString() },
+      );
+
+      expect(log).toEqual([
+        "begin",
+        "coach.update",
+        "coach.create",
+        "team.replaceCoach",
+        "application.decide",
+        "commit",
+      ]);
+    });
+
     it("replaces the coach, renames the team and logs the rename", async () => {
       const teamId = new Types.ObjectId();
       const outgoingId = new Types.ObjectId();
@@ -937,6 +1082,118 @@ function buildSettingsTierList(
   });
 }
 
+describe("HostedTournamentService removeParticipant", () => {
+  const ORGANIZER = "auth0|organizer";
+  const TEAM_ID = new Types.ObjectId();
+  const COACH_ID = new Types.ObjectId();
+
+  let transactions: ReturnType<typeof recordTransactions>;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let coachRepo: jest.Mocked<CoachRepository>;
+  let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
+  let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
+  let service: HostedTournamentService;
+
+  beforeEach(() => {
+    transactions = recordTransactions();
+    const { track } = transactions;
+    const tournament = buildTournament({ organizers: [ORGANIZER] });
+
+    teamRepo = {
+      findByIdOrNull: jest
+        .fn()
+        .mockResolvedValue({ _id: TEAM_ID, tournamentId: tournament.id }),
+      delete: jest.fn(track("team.delete", () => undefined)),
+    } as unknown as jest.Mocked<TeamRepository>;
+    coachRepo = {
+      findById: jest
+        .fn()
+        .mockResolvedValue({ _id: COACH_ID, teamId: TEAM_ID, leftAt: undefined }),
+      deleteAllByTeam: jest.fn(track("coach.deleteAllByTeam", () => 1)),
+    } as unknown as jest.Mocked<CoachRepository>;
+    applicationRepo = {
+      denyAllForTeam: jest.fn(track("application.denyAllForTeam", () => 1)),
+    } as unknown as jest.Mocked<TournamentApplicationRepository>;
+    matchupRepo = {
+      findByStages: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<LeagueMatchupRepository>;
+
+    service = new HostedTournamentService(
+      {
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      coachRepo,
+      applicationRepo,
+      {} as DraftRepository,
+      {
+        findAllByTournament: jest.fn().mockResolvedValue([]),
+      } as unknown as StageRepository,
+      matchupRepo,
+      {} as DiscordService,
+      {} as S3Service,
+      transactions.runner,
+    );
+  });
+
+  it("deletes the team and its coaches and denies its applications, in one transaction", async () => {
+    await service.removeParticipant(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      ORGANIZER,
+      COACH_ID.toString(),
+    );
+
+    expect(transactions.log).toEqual([
+      "begin",
+      "team.delete",
+      "coach.deleteAllByTeam",
+      "application.denyAllForTeam",
+      "commit",
+    ]);
+    expect(coachRepo.deleteAllByTeam).toHaveBeenCalledWith(TEAM_ID);
+    expect(applicationRepo.denyAllForTeam).toHaveBeenCalledWith(
+      TEAM_ID,
+      ORGANIZER,
+    );
+  });
+
+  it("refuses a coach who has already left the team", async () => {
+    coachRepo.findById.mockResolvedValue({
+      _id: COACH_ID,
+      teamId: TEAM_ID,
+      leftAt: new Date(),
+    } as any);
+
+    await expect(
+      service.removeParticipant(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        ORGANIZER,
+        COACH_ID.toString(),
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+
+    expect(transactions.log).toEqual([]);
+  });
+
+  it("refuses a team that has played", async () => {
+    matchupRepo.findByStages.mockResolvedValue([{ _id: "m1" }] as any);
+
+    await expect(
+      service.removeParticipant(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        ORGANIZER,
+        COACH_ID.toString(),
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_HAS_MATCHES.code });
+
+    expect(transactions.log).toEqual([]);
+  });
+});
+
 describe("HostedTournamentService settings", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
@@ -968,7 +1225,9 @@ describe("HostedTournamentService settings", () => {
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       discordService,
-      {} as S3Service,    );
+      {} as S3Service,
+      inlineTransactions,
+    );
   });
 
   describe("getSettings", () => {
@@ -1159,7 +1418,9 @@ describe("HostedTournamentService coach details", () => {
       {} as StageRepository,
       {} as LeagueMatchupRepository,
       {} as DiscordService,
-      {} as S3Service,    );
+      {} as S3Service,
+      inlineTransactions,
+    );
   });
 
   it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
@@ -1315,6 +1576,7 @@ describe("HostedTournamentService assignCoaches", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      inlineTransactions,
     );
   });
 
@@ -1478,7 +1740,9 @@ describe("HostedTournamentService teams", () => {
       stageRepo,
       matchupRepo,
       {} as DiscordService,
-      {} as S3Service,    );
+      {} as S3Service,
+      inlineTransactions,
+    );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
 
@@ -1667,7 +1931,6 @@ describe("HostedTournamentService teams", () => {
         playoffTeams.find((t) => t.id === TEAM_ID.toString()),
       ).toMatchObject({ wins: 0, losses: 1 });
 
-      // Combined: Team A and Team B split their two matches 1-1 overall.
       const allTeams = result.views["all"].teamStandings.teams as any[];
       expect(allTeams.find((t) => t.id === TEAM_ID.toString())).toMatchObject({
         wins: 1,
@@ -1753,6 +2016,7 @@ describe("HostedTournamentService getInfo", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      inlineTransactions,
     );
 
     teamRepo.findManyByIds.mockImplementation(async () => [

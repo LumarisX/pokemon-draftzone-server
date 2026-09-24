@@ -1,9 +1,6 @@
-// The real `agenda` package is ESM-only and breaks Jest's CJS transform.
-// draft.service.ts -> draft-engine.service.ts -> agenda.service.ts
-// transitively imports it (only for types/decorator metadata), so it must
-// be mocked before loading the SUT.
 jest.mock("agenda", () => ({}));
 
+import { TransactionRunner } from "@core/database/transaction-runner";
 import {
   DraftCount,
   Tier,
@@ -130,6 +127,7 @@ describe("DraftService", () => {
   let teamRepo: jest.Mocked<TeamRepository>;
   let draftEngine: jest.Mocked<DraftEngineService>;
   let discordService: jest.Mocked<DiscordService>;
+  let transactions: { run: jest.Mock };
   let service: DraftService;
 
   beforeEach(() => {
@@ -167,6 +165,9 @@ describe("DraftService", () => {
     discordService = {
       findTargetProblems: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DiscordService>;
+    transactions = {
+      run: jest.fn((work: () => Promise<unknown>) => work()),
+    };
     service = new DraftService(
       draftRepo,
       matchupRepo,
@@ -174,6 +175,7 @@ describe("DraftService", () => {
       teamRepo,
       draftEngine,
       discordService,
+      transactions as unknown as TransactionRunner,
     );
   });
 
@@ -258,10 +260,6 @@ describe("DraftService", () => {
 
   describe("getOrder", () => {
     it("uses getDraftOrder's (seeded) order rather than draft.teams' raw order", async () => {
-      // getDetails/getTeams resolve team order via getDraftOrder(draft), which
-      // shuffles when draft.useRandomSeeding is true (the schema default).
-      // getOrder must agree, so the publicly displayed draft order always
-      // matches the order actually used to determine whose turn it is.
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });
       const tournament = buildTournament();
@@ -272,7 +270,6 @@ describe("DraftService", () => {
       });
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
-      // Simulate getDraftOrder shuffling B ahead of A for this draft id.
       mockedGetDraftOrder.mockReturnValue([teamB, teamA]);
 
       const result = await service.getOrder("league-1", "tournament-1", "draft-1");
@@ -412,10 +409,6 @@ describe("DraftService", () => {
     });
 
     it("checks whether the newly-saved queue can be auto-drafted right away", async () => {
-      // updatePicks() is a raw $set that bypasses this in-memory team, so the
-      // engine needs to see dto.picks on it before checking whether this team
-      // is already on the clock (regression: a queued pick saved mid-turn
-      // used to just sit there, unused, until the timer skipped the team).
       const tournament = buildTournament();
       const team = buildTeam();
       const draft = buildDraft({ teams: [team] });
@@ -625,6 +618,25 @@ describe("DraftService", () => {
       expect(draftRepo.delete).toHaveBeenCalledWith("draft-oid");
       expect(result).toEqual({ success: true, unassigned: 1 });
     });
+
+    it("unassigns and deletes only inside the transaction", async () => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findDraft.mockResolvedValue(
+        buildDraft({ status: "PRE_DRAFT", teams: [buildTeam()] }),
+      );
+      transactions.run.mockResolvedValueOnce(undefined);
+
+      await service.deletePool(
+        "league-1",
+        "tournament-1",
+        "draft-1",
+        "auth0|owner",
+      );
+
+      expect(transactions.run).toHaveBeenCalledTimes(1);
+      expect(teamRepo.update).not.toHaveBeenCalled();
+      expect(draftRepo.delete).not.toHaveBeenCalled();
+    });
   });
 
   describe("getTeams", () => {
@@ -673,9 +685,6 @@ describe("DraftService", () => {
     });
 
     it("reads against a tournament with several stages without being told which", async () => {
-      // Several stages per tournament is the normal shape now — a group phase
-      // and a playoff bracket are two of them — so refusing to choose would
-      // break the page for every tournament that has both.
       const team = buildTeam({ teamName: "A" });
       const tournament = buildTournament();
       const draft = buildDraft({ teams: [team] });
@@ -700,7 +709,6 @@ describe("DraftService", () => {
         service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub"),
       ).resolves.toBeDefined();
 
-      // Records span every stage, so the query covers all of them.
       expect(matchupRepo.findByStages).toHaveBeenCalledWith(
         stages.map((s) => s._id),
       );
@@ -729,8 +737,6 @@ describe("DraftService", () => {
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
 
-      // An explicit stage slug still picks the axis, even though the matchup
-      // query itself now spans every stage.
       expect(stageRepo.findBySlug).toHaveBeenCalledWith("stage-1");
       expect((result.teams[0] as any).record).toEqual({ wins: 3, losses: 1, pokemonDiff: 2, gameDiff: 1 });
       expect((result.teams[0] as any).diffMode).toBe("pokemon");

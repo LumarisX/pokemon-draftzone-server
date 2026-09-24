@@ -1,4 +1,5 @@
 import { AppCacheModule } from "@core/cache/app-cache.module";
+import { DatabaseModule } from "@core/database/database.module";
 import { StorageModule } from "@core/storage/storage.module";
 import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
@@ -83,6 +84,7 @@ import { AuthModule } from "./modules/auth/auth.module";
         };
       },
     }),
+    DatabaseModule,
     AdminModule,
     AgendaModule,
     ArchiveModule,

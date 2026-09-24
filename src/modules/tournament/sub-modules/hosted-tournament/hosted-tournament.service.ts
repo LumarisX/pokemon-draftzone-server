@@ -1,52 +1,41 @@
-import { generateSlug } from "@core/slug";
-import { getFormat } from "@core/data/formats/formats";
-import { getRuleset } from "@core/data/rulesets/rulesets";
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { generateSlug } from "@core/slug";
 import { S3Service } from "@core/storage/s3.service";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
+import { getName } from "@modules/data/domain/pokedex";
 import { DiscordService } from "@modules/discord/discord.service";
+import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
 import {
   DraftRepository,
   PopulatedTournament,
 } from "@modules/draft/draft.repository";
-import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
-import { StageRepository } from "@modules/stage/stage.repository";
-import { StageDocument } from "@modules/stage/stage.schema";
-import { isCoachedBy } from "@modules/team/team.domain";
-import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
-import { isActiveCoach } from "@modules/tournament/membership";
-import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
-import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
-import {
-  SubmittedAnswer,
-  answerBool,
-  answerText,
-  DROPPED_BEFORE_QUESTION_ID,
-  DROPPED_WHY_QUESTION_ID,
-  EXPERIENCE_QUESTION_ID,
-  activeQuestions,
-  validateAnswers,
-} from "./signup-questions";
-import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { Injectable, Logger } from "@nestjs/common";
-import { EmbedBuilder } from "discord.js";
-import { Types } from "mongoose";
-import { getName } from "@modules/data/domain/pokedex";
+import { getLatestRoster } from "@modules/stage/domain/roster";
 import {
   rosterContextForTournament,
   stageRounds,
   usesTournamentAxis,
 } from "@modules/stage/domain/stage-axis";
-import { getLatestRoster } from "@modules/stage/domain/roster";
 import {
   calculateDivisionPokemonStandings,
   calculateDivisionTeamStandings,
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
+import { StageRepository } from "@modules/stage/stage.repository";
+import { StageDocument } from "@modules/stage/stage.schema";
+import { isCoachedBy } from "@modules/team/team.domain";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
+import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
+import { isActiveCoach } from "@modules/tournament/membership";
+import { Injectable, Logger } from "@nestjs/common";
+import { EmbedBuilder } from "discord.js";
+import { Types } from "mongoose";
 import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
 import {
   CoachAssignmentDto,
@@ -60,6 +49,16 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
+import {
+  activeQuestions,
+  answerBool,
+  answerText,
+  DROPPED_BEFORE_QUESTION_ID,
+  DROPPED_WHY_QUESTION_ID,
+  EXPERIENCE_QUESTION_ID,
+  SubmittedAnswer,
+  validateAnswers,
+} from "./signup-questions";
 
 const DISCORD_EMBED_FIELDS = 25;
 const BASE_EMBED_FIELDS = 4;
@@ -79,6 +78,7 @@ export class HostedTournamentService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly discordService: DiscordService,
     private readonly s3Service: S3Service,
+    private readonly transactions: TransactionRunner,
   ) {}
 
   async removeParticipant(
@@ -97,7 +97,7 @@ export class HostedTournamentService {
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
     const coach = await this.coachRepo.findById(coachId).catch(() => null);
-    if (!coach)
+    if (!coach || coach.leftAt)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
@@ -115,8 +115,11 @@ export class HostedTournamentService {
         matchups: played.length,
       });
 
-    await this.teamRepo.delete(team._id);
-    await this.coachRepo.delete(coach._id);
+    await this.transactions.run(async () => {
+      await this.teamRepo.delete(team._id);
+      await this.coachRepo.deleteAllByTeam(team._id);
+      await this.applicationRepo.denyAllForTeam(team._id, sub);
+    });
 
     return { message: "Participant removed." };
   }
@@ -134,16 +137,7 @@ export class HostedTournamentService {
     );
     const team = await this.teamRepo.findBySlug(teamSlug);
 
-    // A team's page is not a stage's page. Rounds and trades belong to the
-    // tournament now, and a team's record spans every stage it plays in — so
-    // there is nothing here to disambiguate, and asking the caller to pick a
-    // stage was the old model leaking out. Before the migration a stage did own
-    // both, and a tournament with several genuinely could not answer this,
-    // which is what the "pass stageId" error meant.
     const migrated = usesTournamentAxis(tournament);
-    // A hidden stage is invisible to everyone but an organizer, matches
-    // included — a team page must not be the hole the unreleased bracket
-    // leaks through.
     const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
@@ -153,7 +147,6 @@ export class HostedTournamentService {
       : await this.resolveStage(tournament.id, stageSlug);
     const coach = team.primaryCoach;
 
-    // Contact handles stay private to the team's own coach.
     const viewerIsCoach = isCoachedBy(team, sub, "chat");
     const identity = {
       id: team._id.toString(),
@@ -167,8 +160,6 @@ export class HostedTournamentService {
     };
 
     if (!stageDoc) {
-      // No stage still does not mean no trades: a migrated tournament holds
-      // them itself, so the walk runs off the tournament axis alone.
       const roster = getLatestRoster(
         team,
         rosterContextForTournament(tournament),
@@ -192,9 +183,6 @@ export class HostedTournamentService {
       };
     }
 
-    // The stage supplies the round axis and the legacy trade context, nothing
-    // more — a team page never reads the stage's own roster, so it does not
-    // matter here whether the stage has teams assigned yet.
     const stage = stageDoc;
 
     const draftRoster: ({
@@ -215,8 +203,6 @@ export class HostedTournamentService {
         : { missingFromTierList: true as const }),
     }));
 
-    // Every stage the team plays in, not just one: a coach's record covers the
-    // group phase and the playoffs together.
     const teamMatchups = (await this.matchupRepo.findByStages(
       migrated ? stages.map((s) => s._id) : [stage._id],
       { teamIds: [team._id] },
@@ -271,12 +257,6 @@ export class HostedTournamentService {
     });
   }
 
-  /**
-   * Every stage's standings in one response, plus an "all" view combining
-   * every stage's matchups together — the tournament no longer forces a
-   * choice of stage up front the way a `/stages/:stageSlug/standings` route
-   * would; the client picks which view to show from what's already here.
-   */
   async getStandings(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
@@ -329,9 +309,6 @@ export class HostedTournamentService {
       };
     }
 
-    // "All Stages": every visible stage's matchups combined, scored against
-    // the union of every stage's teams — the same merge the Team/Draft pages
-    // do, just computed once here instead of separately on each page.
     const allTeamsById = new Map<string, PopulatedTeam>();
     for (const stage of composedStages) {
       for (const team of stage.teams)
@@ -434,15 +411,6 @@ export class HostedTournamentService {
     };
   }
 
-  /**
-   * Flat team list, each with the roster it currently holds.
-   *
-   * The roster is here rather than on the tier list because it is tournament
-   * data: who owns what depends on this tournament's approved trades and the
-   * round it is on, and the same tier list can back several tournaments. It is
-   * what the trade tools read to know a team's Pokémon and which of the tier
-   * list's are still free.
-   */
   async listTeams(leagueSlug: string, tournamentSlug: string) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
@@ -455,8 +423,6 @@ export class HostedTournamentService {
         ? this.tierListRepo.findById(tournament.tierListId).catch(() => null)
         : null,
     ]);
-    // Which draft pool a team drafted in — organizers seed brackets across
-    // pools, so the pool has to be visible next to each team.
     const draftById = new Map(
       drafts.map((draft) => [
         draft._id.toString(),
@@ -491,14 +457,6 @@ export class HostedTournamentService {
     };
   }
 
-  /**
-   * Every approved team in the tournament, grouped by the draft pool it
-   * drafted in — what the tournament's teams page renders.
-   *
-   * Readable without a session: a league's teams are public information. A
-   * signed-in organizer additionally sees results from stages they have not
-   * released yet, so an unreleased bracket does not leak through the records.
-   */
   async listTeamsByDraft(
     leagueSlug: string,
     tournamentSlug: string,
@@ -519,12 +477,8 @@ export class HostedTournamentService {
     ).filter((stage) => stage.public !== false || canSeeHidden);
     const stage = stages[0];
 
-    // A stage only supplies the round axis and the legacy trade context; the
-    // roster walk itself runs off the tournament once it owns its trades.
     const roster = rosterContextForTournament(tournament, stage);
 
-    // Records span every stage a team plays in, not just one: a coach's
-    // record covers the group phase and the playoffs together.
     const matchups = stage
       ? ((await this.matchupRepo.findByStages(
           stages.map((s) => s._id),
@@ -602,8 +556,6 @@ export class HostedTournamentService {
         .map((entry) => entry.team),
     }));
 
-    // A team whose pool was deleted, or which was approved before being
-    // assigned one, still belongs on the page.
     const unassigned = composed
       .filter((entry) => !entry.draftId || !draftIds.has(entry.draftId))
       .map((entry) => entry.team);
@@ -840,39 +792,41 @@ export class HostedTournamentService {
       return decided;
     }
 
-    await this.assertRosterHasRoom(tournament);
-
     const coachId = new Types.ObjectId();
     const teamId = new Types.ObjectId();
 
-    const team = await this.teamRepo.create({
-      _id: teamId,
-      tournamentId: tournament.id,
-      coach: coachId,
-      teamName: dto.teamName?.trim() || application.preferredTeamName,
-      logo: application.preferredLogo,
-      status: "approved",
-    });
+    const decided = await this.transactions.run(async () => {
+      await this.assertRosterHasRoom(tournament);
 
-    const coach = await this.coachRepo.create({
-      _id: coachId,
-      auth0Id: application.auth0Id,
-      name: application.name,
-      gameName: application.gameName,
-      discordName: application.discordName,
-      timezone: application.timezone,
-      teamId,
-      experience: application.experience,
-      droppedBefore: application.droppedBefore,
-      droppedWhy: application.droppedWhy,
-      confirmed: application.confirmed,
-    });
+      const team = await this.teamRepo.create({
+        _id: teamId,
+        tournamentId: tournament.id,
+        coach: coachId,
+        teamName: dto.teamName?.trim() || application.preferredTeamName,
+        logo: application.preferredLogo,
+        status: "approved",
+      });
 
-    const decided = await this.applicationRepo.decide(applicationId, {
-      status: "approved",
-      decidedBy: sub,
-      resultingTeamId: team._id,
-      resultingCoachId: coach._id,
+      const coach = await this.coachRepo.create({
+        _id: coachId,
+        auth0Id: application.auth0Id,
+        name: application.name,
+        gameName: application.gameName,
+        discordName: application.discordName,
+        timezone: application.timezone,
+        teamId,
+        experience: application.experience,
+        droppedBefore: application.droppedBefore,
+        droppedWhy: application.droppedWhy,
+        confirmed: application.confirmed,
+      });
+
+      return this.applicationRepo.decide(applicationId, {
+        status: "approved",
+        decidedBy: sub,
+        resultingTeamId: team._id,
+        resultingCoachId: coach._id,
+      });
     });
 
     await this.grantCoachRole(tournament, application.discordName);
@@ -917,51 +871,55 @@ export class HostedTournamentService {
             candidate._id.toString() === team.primaryCoach?._id.toString(),
         ) ?? active[0]);
 
-    if (outgoing) {
-      await this.coachRepo.update(outgoing._id, { leftAt: new Date() });
-    }
-
-    const incoming = await this.coachRepo.create({
-      auth0Id: application.auth0Id,
-      name: application.name,
-      gameName: application.gameName,
-      discordName: application.discordName,
-      timezone: application.timezone,
-      teamId: team._id,
-      experience: application.experience,
-      droppedBefore: application.droppedBefore,
-      droppedWhy: application.droppedWhy,
-      confirmed: application.confirmed,
-    });
-
     const previousName = team.teamName;
     const nextName = dto.teamName?.trim() || application.preferredTeamName;
 
-    const updated = await this.teamRepo.replaceCoach(team._id, {
-      primaryCoach: incoming._id,
-      teamName: nextName,
-      logo: application.preferredLogo ?? team.logo,
-      ...(previousName === nextName
-        ? {}
-        : {
-            nameChange: {
-              from: previousName,
-              to: nextName,
-              round:
-                tournament.currentRoundIndex >= 0
-                  ? tournament.currentRoundIndex
-                  : undefined,
-              reason: dto.reason?.trim() || "Coach replacement",
-              changedBy: sub,
-            },
-          }),
-    });
+    const { incoming, updated } = await this.transactions.run(async () => {
+      if (outgoing) {
+        await this.coachRepo.update(outgoing._id, { leftAt: new Date() });
+      }
 
-    await this.applicationRepo.decide(application._id, {
-      status: "approved",
-      decidedBy: sub,
-      resultingTeamId: team._id,
-      resultingCoachId: incoming._id,
+      const incoming = await this.coachRepo.create({
+        auth0Id: application.auth0Id,
+        name: application.name,
+        gameName: application.gameName,
+        discordName: application.discordName,
+        timezone: application.timezone,
+        teamId: team._id,
+        experience: application.experience,
+        droppedBefore: application.droppedBefore,
+        droppedWhy: application.droppedWhy,
+        confirmed: application.confirmed,
+      });
+
+      const updated = await this.teamRepo.replaceCoach(team._id, {
+        primaryCoach: incoming._id,
+        teamName: nextName,
+        logo: application.preferredLogo ?? team.logo,
+        ...(previousName === nextName
+          ? {}
+          : {
+              nameChange: {
+                from: previousName,
+                to: nextName,
+                round:
+                  tournament.currentRoundIndex >= 0
+                    ? tournament.currentRoundIndex
+                    : undefined,
+                reason: dto.reason?.trim() || "Coach replacement",
+                changedBy: sub,
+              },
+            }),
+      });
+
+      await this.applicationRepo.decide(application._id, {
+        status: "approved",
+        decidedBy: sub,
+        resultingTeamId: team._id,
+        resultingCoachId: incoming._id,
+      });
+
+      return { incoming, updated };
     });
 
     await this.grantCoachRole(tournament, application.discordName);
@@ -1175,7 +1133,6 @@ export class HostedTournamentService {
     };
   }
 
-  /** Bulk assign/move/remove coaches across drafts. Replaces the old POST /signup/manage. */
   async assignCoaches(
     leagueSlug: string,
     tournamentSlug: string,

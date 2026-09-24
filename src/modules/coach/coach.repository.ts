@@ -6,9 +6,6 @@ import { Model, Types } from "mongoose";
 import { CoachDocument, CoachEntity } from "./coach.schema";
 
 export type CreateCoachInput = {
-  // Settable so HostedTournamentService.createSignup can pre-generate the id
-  // and create the Coach + Team pair without a temporary invalid state on
-  // either side's required ref to the other.
   _id?: Types.ObjectId;
   auth0Id: string;
   name: string;
@@ -60,7 +57,6 @@ export class CoachRepository {
     return coach;
   }
 
-  /** A person can sign up for multiple tournaments, producing one Coach row per signup. */
   async findAllByTeam(
     teamId: Types.ObjectId | string,
   ): Promise<CoachDocument[]> {
@@ -100,5 +96,12 @@ export class CoachRepository {
     const result = await this.coachModel.findByIdAndDelete(safeCoachId);
     if (!result)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+  }
+
+  async deleteAllByTeam(teamId: Types.ObjectId | string): Promise<number> {
+    const result = await this.coachModel
+      .deleteMany({ teamId: this.toObjectId(teamId) })
+      .exec();
+    return result.deletedCount;
   }
 }

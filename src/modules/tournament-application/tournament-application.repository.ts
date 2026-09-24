@@ -153,6 +153,22 @@ export class TournamentApplicationRepository {
     return application;
   }
 
+  async denyAllForTeam(
+    teamId: Types.ObjectId | string,
+    decidedBy: string,
+  ): Promise<number> {
+    const result = await this.applicationModel
+      .updateMany(
+        { resultingTeamId: this.toObjectId(teamId) },
+        {
+          $set: { status: "denied", decidedBy, decidedAt: new Date() },
+          $unset: { resultingTeamId: "", resultingCoachId: "" },
+        },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
   async delete(id: Types.ObjectId | string): Promise<void> {
     await this.applicationModel.deleteOne({ _id: this.toObjectId(id) }).exec();
   }

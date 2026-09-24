@@ -1,3 +1,4 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -67,6 +68,7 @@ describe("TournamentBracketService", () => {
   let teamRepo: jest.Mocked<TeamRepository>;
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let transactions: { run: jest.Mock };
   let service: TournamentBracketService;
 
   beforeEach(async () => {
@@ -76,8 +78,6 @@ describe("TournamentBracketService", () => {
     } as unknown as jest.Mocked<StageRepository>;
 
     teamRepo = {
-      // Echoes back whatever was asked for, so a fixture never has to keep a
-      // separate list of "teams that exist" in sync with the payload.
       findManyByIds: jest
         .fn()
         .mockImplementation(async (ids: any[]) =>
@@ -98,9 +98,14 @@ describe("TournamentBracketService", () => {
       setSchedule: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
 
+    transactions = {
+      run: jest.fn((work: () => Promise<unknown>) => work()),
+    };
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         TournamentBracketService,
+        { provide: TransactionRunner, useValue: transactions },
         { provide: StageRepository, useValue: stageRepo },
         { provide: TeamRepository, useValue: teamRepo },
         { provide: LeagueMatchupRepository, useValue: matchupRepo },
@@ -119,7 +124,6 @@ describe("TournamentBracketService", () => {
     service = moduleRef.get(TournamentBracketService);
   });
 
-  /** Two teams, one stage, one round, one match — the smallest valid payload. */
   function buildDto(overrides: Partial<UpdateTournamentBracketDto> = {}) {
     const teamIds = [
       new Types.ObjectId().toString(),
@@ -179,6 +183,17 @@ describe("TournamentBracketService", () => {
       const matchDiff = matchupRepo.applyStructureDiff.mock.calls[0][0];
       expect(matchDiff.creates).toHaveLength(1);
       expect(matchDiff.deletes).toEqual([]);
+    });
+
+    it("writes stages, schedule and matches only inside the transaction", async () => {
+      transactions.run.mockResolvedValueOnce(undefined);
+
+      await update(buildDto());
+
+      expect(transactions.run).toHaveBeenCalledTimes(1);
+      expect(stageRepo.applyStageDiff).not.toHaveBeenCalled();
+      expect(tournamentRepo.setSchedule).not.toHaveBeenCalled();
+      expect(matchupRepo.applyStructureDiff).not.toHaveBeenCalled();
     });
 
     it("points a match at the stage it named, not the first stage", async () => {
@@ -276,7 +291,6 @@ describe("TournamentBracketService", () => {
       await update(dto);
 
       const creates = matchupRepo.applyStructureDiff.mock.calls[0][0].creates;
-      // Seed 1 means a different team in each stage.
       expect(creates[0].side1!.team!.toString()).toBe(aTeams[0]);
       expect(creates[1].side1!.team!.toString()).toBe(bTeams[0]);
     });
@@ -411,7 +425,6 @@ describe("TournamentBracketService", () => {
       );
 
       const dto = buildDto({
-        // A new round is inserted before both, pushing Week 2 from 1 to 2.
         rounds: [
           { name: "Week 0" },
           { _id: week1._id.toString(), name: "Week 1" },
@@ -516,16 +529,12 @@ describe("TournamentBracketService", () => {
     });
 
     it("refuses to remove a stage the payload still assigns matches to", async () => {
-      // Only reachable by naming a stage in `matches` while dropping its `_id`
-      // from `stages` — which would leave the matchups pointing at nothing.
       const stage = buildStage({ name: "Doomed" });
       stageRepo.findAllByTournament.mockResolvedValue([stage]);
 
       const dto = buildDto();
       await expect(update(dto)).resolves.toBeDefined();
 
-      // The stage was dropped from the payload and had no matches of its own,
-      // so removing it is fine.
       expect(
         stageRepo.applyStageDiff.mock.calls[0][0].deletes.map(String),
       ).toEqual([stage._id.toString()]);
@@ -549,7 +558,6 @@ describe("TournamentBracketService", () => {
             type: "round-robin",
             seedGroups: [
               {
-                // A different order than the stage already holds.
                 teamIds: [
                   new Types.ObjectId().toString(),
                   new Types.ObjectId().toString(),
@@ -610,7 +618,6 @@ describe("TournamentBracketService", () => {
       expect(
         (stageUpdate.set.teamIds as Types.ObjectId[]).map(String),
       ).toEqual([...seeded.map(String), added]);
-      // The appended block is recorded as its own manual draw.
       expect(stageUpdate.set.seedingLog).toHaveLength(1);
     });
 
@@ -735,8 +742,6 @@ describe("TournamentBracketService", () => {
     });
 
     it("refuses a tournament that has no axis of its own yet", async () => {
-      // Unmigrated: its rounds still live on its stages, so the stage-scoped
-      // route is the one that works.
       tournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ rounds: [] }),
       );

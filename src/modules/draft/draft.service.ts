@@ -1,18 +1,18 @@
-import { getRuleset } from "@core/data/rulesets/rulesets";
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { getName } from "@modules/data/domain/pokedex";
 import { DiscordService } from "@modules/discord/discord.service";
-import { canOnTeam } from "@modules/tournament/membership";
-import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
 import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
+import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
+import { canOnTeam } from "@modules/tournament/membership";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
@@ -22,9 +22,9 @@ import {
   calculateDivisionTeamStandings,
   PopulatedStageMatchup,
 } from "../stage/domain/standings";
-import { DraftEngineService } from "./draft-engine.service";
 import { getDraftOrder, isPreDraftStatus } from "./domain/pick-order";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
+import { DraftEngineService } from "./draft-engine.service";
 import {
   CreateDraftDto,
   DraftDto,
@@ -52,6 +52,7 @@ export class DraftService {
     private readonly teamRepo: TeamRepository,
     private readonly draftEngine: DraftEngineService,
     private readonly discordService: DiscordService,
+    private readonly transactions: TransactionRunner,
   ) {}
 
   private async loadContext(
@@ -76,15 +77,6 @@ export class DraftService {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
-  /**
-   * The stage the draft's mixed roster/record views are read against.
-   *
-   * Several stages per tournament is the normal shape now — a group phase and
-   * a playoff bracket are two of them — so this no longer refuses to choose.
-   * It only ever supplies the round axis and the trade context for the roster
-   * walk, and once a tournament owns its rounds and trades every stage gives
-   * the same answer. `stageSlug` still wins when the caller names one.
-   */
   private async resolveStage(
     tournamentId: Types.ObjectId,
     stageSlug?: string,
@@ -95,7 +87,6 @@ export class DraftService {
     return stages[0];
   }
 
-  /** Composes `.teams` onto a Stage the same way DraftRepository does for Draft. */
   private async composeStageTeams(
     stage: StageDocument,
   ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
@@ -130,9 +121,6 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    // `teams` is composed in memory (not a real Draft schema path), so each
-    // team document is populated individually rather than via
-    // draft.populate("teams.pickLog.picker").
     await Promise.all(
       draft.teams.map((team) => team.populate("pickLog.picker")),
     );
@@ -234,8 +222,6 @@ export class DraftService {
     );
 
     const ruleset = tournament.tierList.ruleset;
-    // Ranked on what each team holds now, not what it drafted — a typechart
-    // built from the pick log rates a team on Pokémon it traded away.
     const roster = rosterContextForTournament(tournament);
     const teams = await Promise.all(
       draft.teams.map(async (team: PopulatedTeam, index) => {
@@ -256,7 +242,6 @@ export class DraftService {
     return teams;
   }
 
-  /** A team's own coach, or a tournament organizer/owner overriding for them, may draft. */
   async draftPick(
     leagueSlug: string,
     tournamentSlug: string,
@@ -307,12 +292,6 @@ export class DraftService {
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
-  /**
-   * `updatePicks()` is a raw $set that bypasses the in-memory team documents,
-   * so the copy sitting in `draft.teams` (which draftPokemon() operates on)
-   * needs the same picks before checking whether that team is now on the
-   * clock with a usable queued pick.
-   */
   private async autoDraftFromQueueIfOnClock(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -329,7 +308,6 @@ export class DraftService {
     );
   }
 
-  /** Organizer-only edit of one turn's pick; see DraftEngineService.setPickAtRound. */
   async setRoundPick(
     leagueSlug: string,
     tournamentSlug: string,
@@ -419,7 +397,6 @@ export class DraftService {
     return { message: "Timer mode updated successfully." };
   }
 
-  /** Organizer-only; see DraftEngineService.updateSettings. */
   async updateSettings(
     leagueSlug: string,
     tournamentSlug: string,
@@ -532,15 +509,16 @@ export class DraftService {
       });
 
     await this.draftEngine.cancelScheduledJobs(draft);
-    for (const team of draft.teams) {
-      await this.teamRepo.update(team._id, { draftId: null });
-    }
-    await this.draftRepo.delete(draft._id);
+    await this.transactions.run(async () => {
+      for (const team of draft.teams) {
+        await this.teamRepo.update(team._id, { draftId: null });
+      }
+      await this.draftRepo.delete(draft._id);
+    });
 
     return { success: true, unassigned: draft.teams.length };
   }
 
-  /** Organizer-only; see DraftEngineService.sendTestMessage. */
   async sendTestMessage(
     leagueSlug: string,
     tournamentSlug: string,
@@ -563,7 +541,6 @@ export class DraftService {
     return { success };
   }
 
-  /** Organizer-only; see DraftEngineService.setDraftOrder. */
   async setOrder(
     leagueSlug: string,
     tournamentSlug: string,
@@ -585,7 +562,6 @@ export class DraftService {
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
-  /** Organizer-only rewind; see DraftEngineService.setCurrentPick. */
   async setCurrentPick(
     leagueSlug: string,
     tournamentSlug: string,
@@ -663,12 +639,6 @@ export class DraftService {
     return { message: "Skip successful." };
   }
 
-  /**
-   * Mixed view: roster is a pure draft concern, but each team's W/L record
-   * needs a Stage. If `stageSlug` is omitted, the tournament's first stage
-   * supplies the axis; a tournament with none returns roster-only data with
-   * no `record` field.
-   */
   async getTeams(
     leagueSlug: string,
     tournamentSlug: string,
@@ -688,10 +658,6 @@ export class DraftService {
       (team) => team.status === "approved",
     );
 
-    // Rosters no longer need a stage: trades and the rounds they take effect
-    // in belong to the tournament. A stage is only consulted for a tournament
-    // the sections-to-stages migration has not reached, which still keeps its
-    // trades on the stage.
     const roster = rosterContextForTournament(tournament, stageDoc);
 
     if (!stageDoc) {
@@ -718,11 +684,6 @@ export class DraftService {
 
     const stage = await this.composeStageTeams(stageDoc);
 
-    // Across every stage, not just the one supplying the axis: a coach's
-    // record on the draft page covers the whole tournament, and a stage is no
-    // longer the unit a season is played in. Hidden stages are excluded for
-    // everyone but an organizer — a result from an unreleased bracket would
-    // otherwise show up in the records here.
     const canSeeHidden = this.isOrganizer(tournament, sub);
     const stages = (
       await this.stageRepo.findAllByTournament(draft.tournamentId)
@@ -803,9 +764,6 @@ export class DraftService {
           coachName: team.primaryCoach.name,
           id: team._id.toString(),
         },
-        // Who currently owns what, so the free-agent half of this list is
-        // everything no team holds right now — a traded Pokémon has to move
-        // with the trade, not stay listed under whoever drafted it.
         roster: getLatestRoster(
           team,
           rosterContextForTournament(tournament, stage),
