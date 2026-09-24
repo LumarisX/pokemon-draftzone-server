@@ -66,6 +66,9 @@ describe("TournamentTradeService", () => {
       findManyByIds: jest.fn().mockResolvedValue([]),
       findByIdOrNull: jest.fn().mockResolvedValue(null),
       findIdsBySlugs: jest.fn().mockResolvedValue([]),
+      countInTournament: jest.fn(
+        async (_tournamentId: string, ids: string[]) => ids.length,
+      ),
     } as unknown as jest.Mocked<TeamRepository>;
 
     tournamentRepo = {
@@ -212,6 +215,32 @@ describe("TournamentTradeService", () => {
           tradeDto({ roundIndex: 5 }),
         ),
       ).rejects.toMatchObject({ code: "STG-002" });
+    });
+
+    it("refuses a side whose team belongs to another tournament", async () => {
+      const team = withRoster("pikachu");
+      teamRepo.countInTournament.mockResolvedValue(1);
+
+      await expect(
+        service.createTrade(
+          "league-1",
+          "tournament-1",
+          "auth0|owner",
+          tradeDto({
+            side1: {
+              team: team._id.toString(),
+              pokemon: [{ id: "pikachu", tera: false }],
+              tradePoints: 0,
+            },
+            side2: {
+              team: new Types.ObjectId().toString(),
+              pokemon: [],
+              tradePoints: 0,
+            },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "LR-TEAM-001" });
+      expect(tournamentRepo.pushTrade).not.toHaveBeenCalled();
     });
 
     it("rejects offering a Pokemon the team does not hold", async () => {
@@ -922,7 +951,10 @@ describe("TournamentTradeService", () => {
         "team-a-slug",
       );
 
-      expect(teamRepo.findIdsBySlugs).toHaveBeenCalledWith(["team-a-slug"]);
+      expect(teamRepo.findIdsBySlugs).toHaveBeenCalledWith(
+        TOURNAMENT_ID.toString(),
+        ["team-a-slug"],
+      );
       expect(result.rounds[0].trades).toHaveLength(1);
     });
   });

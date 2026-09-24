@@ -73,7 +73,7 @@ export class DraftService {
     tournamentId: Types.ObjectId,
     stageSlug?: string,
   ): Promise<StageDocument | undefined> {
-    if (stageSlug) return this.stageRepo.findBySlug(stageSlug);
+    if (stageSlug) return this.stageRepo.findBySlug(tournamentId, stageSlug);
 
     const stages = await this.stageRepo.findAllByTournament(tournamentId);
     return stages[0];

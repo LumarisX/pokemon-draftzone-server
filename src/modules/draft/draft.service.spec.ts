@@ -737,7 +737,10 @@ describe("DraftService", () => {
 
       const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
 
-      expect(stageRepo.findBySlug).toHaveBeenCalledWith("stage-1");
+      expect(stageRepo.findBySlug).toHaveBeenCalledWith(
+        draft.tournamentId,
+        "stage-1",
+      );
       expect((result.teams[0] as any).record).toEqual({ wins: 3, losses: 1, pokemonDiff: 2, gameDiff: 1 });
       expect((result.teams[0] as any).diffMode).toBe("pokemon");
     });

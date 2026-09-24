@@ -20,14 +20,6 @@ const TEAM_POPULATE = [
   },
 ];
 
-/**
- * Fills in the URL slug for documents about to be bulk-inserted.
- *
- * The bulk paths hand Mongo pre-built objects rather than saving documents, so
- * they cannot rely on the schema default the single-document path gets — a
- * matchup created by bracket generation would otherwise have no page to link
- * to.
- */
 function withSlugs<T extends Partial<LeagueMatchupEntity>>(docs: T[]): T[] {
   return docs.map((doc) => (doc.slug ? doc : { ...doc, slug: generateSlug() }));
 }
@@ -60,11 +52,6 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  /**
-   * Scoped to the stage as well as the rounds. Rounds belong to the tournament
-   * now, so every stage running at the same time shares them — filtering on
-   * round alone would return the other stages' matchups too.
-   */
   async findByRoundsInStage(
     stageId: Types.ObjectId | string,
     roundIds: (Types.ObjectId | string)[],
@@ -84,9 +71,6 @@ export class LeagueMatchupRepository {
             }
           : undefined),
       })
-      // Insertion order. The bracket view renders matches in the order it
-      // receives them, so an unsorted query would reshuffle a bracket between
-      // identical requests.
       .sort({ _id: 1 })
       .populate(TEAM_POPULATE)
       .exec();
@@ -96,11 +80,6 @@ export class LeagueMatchupRepository {
     return this.matchupModel.countDocuments({ stage: stageId }).exec();
   }
 
-  /**
-   * Bulk-insert pre-built matchup documents (bracket generation). Callers
-   * are expected to have already assigned `_id`s so slot.matchId references
-   * between the inserted matchups resolve.
-   */
   async createMany(
     matchups: (Partial<LeagueMatchupEntity> & { _id: Types.ObjectId })[],
   ): Promise<LeagueMatchupDocument[]> {
@@ -108,10 +87,6 @@ export class LeagueMatchupRepository {
     return inserted as unknown as LeagueMatchupDocument[];
   }
 
-  /**
-   * A stage's matchups without team population — enough to diff structure
-   * (slots, placement) and to tell which ones carry recorded results.
-   */
   async findStructureByStage(stageId: Types.ObjectId | string) {
     return this.matchupModel
       .find({ stage: stageId })
@@ -120,7 +95,6 @@ export class LeagueMatchupRepository {
       .lean();
   }
 
-  /** As `findStructureByStage`, across a whole tournament's stages. */
   async findStructureByStages(stageIds: (Types.ObjectId | string)[]) {
     if (stageIds.length === 0) return [];
     return this.matchupModel
@@ -132,12 +106,6 @@ export class LeagueMatchupRepository {
       .lean();
   }
 
-  /**
-   * Just the fields `buildMatchLabels` numbers by. The schedule labels every
-   * card, so this runs on every schedule read — it stays a narrow projection
-   * rather than reusing `findStructureByStages`, which also drags along both
-   * sides and every recorded result.
-   */
   async findLabelFieldsByStages(stageIds: (Types.ObjectId | string)[]) {
     if (stageIds.length === 0) return [];
     return this.matchupModel
@@ -147,13 +115,6 @@ export class LeagueMatchupRepository {
       .lean();
   }
 
-  /**
-   * Matchups in any of these stages that fall in any of these rounds.
-   *
-   * The stage filter is not redundant with the round filter: rounds belong to
-   * the tournament, so a round is shared by every stage running in it, and a
-   * hidden stage's matches must not leak into a public schedule.
-   */
   async findByRoundsAcrossStages(
     stageIds: (Types.ObjectId | string)[],
     roundIds: (Types.ObjectId | string)[],
@@ -179,7 +140,6 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  /** Every matchup across several stages, teams populated, in insertion order. */
   async findByStages(
     stageIds: (Types.ObjectId | string)[],
     options?: { teamIds?: (Types.ObjectId | string)[] },
@@ -203,15 +163,6 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  /**
-   * Just enough of several stages' matchups to score the given teams: the
-   * result fields, plus each side's raw team ref.
-   *
-   * Deliberately unpopulated. Scoring only ever reads a side's team `_id`, and
-   * Mongoose defines `_id` on ObjectId itself, so an unpopulated ref answers
-   * that the same way a populated document does — two populate round-trips per
-   * call, each dragging a team and its coach along, would buy nothing.
-   */
   async findScoringByStages(
     stageIds: (Types.ObjectId | string)[],
     teamIds: (Types.ObjectId | string)[],
@@ -232,11 +183,6 @@ export class LeagueMatchupRepository {
       .exec();
   }
 
-  /**
-   * Applies a whole bracket edit in one round-trip: inserts new matchups,
-   * `$set`s structural fields on existing ones, and removes the rest. Updates
-   * are dotted-path sets so recorded results and scores are left untouched.
-   */
   async applyStructureDiff(options: {
     creates: (Partial<LeagueMatchupEntity> & { _id: Types.ObjectId })[];
     updates: { _id: Types.ObjectId; set: Record<string, unknown> }[];
@@ -264,26 +210,30 @@ export class LeagueMatchupRepository {
     return result.deletedCount;
   }
 
-  async findByIdOrNull(matchupId: Types.ObjectId | string) {
-    return this.matchupModel.findById(matchupId).exec();
+  async findByIdInTournament(
+    tournamentId: Types.ObjectId | string,
+    matchupId: Types.ObjectId | string,
+  ) {
+    return this.matchupModel
+      .findOne({ _id: matchupId, tournamentId })
+      .exec();
   }
 
-  /**
-   * The matchup a URL names. Not scoped to a stage — the slug is unique across
-   * the collection, so the stage would only ever confirm what the slug already
-   * decided. Callers still have to check the matchup's stage belongs to the
-   * tournament in the URL, which is an authorization question, not a lookup.
-   */
-  async findBySlug(slug: string) {
-    const matchup = await this.matchupModel.findOne({ slug }).exec();
+  async findBySlug(tournamentId: Types.ObjectId | string, slug: string) {
+    const matchup = await this.matchupModel
+      .findOne({ slug: { $eq: slug }, tournamentId })
+      .exec();
     if (!matchup)
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug: slug });
     return matchup;
   }
 
-  async findBySlugPopulated(slug: string) {
+  async findBySlugPopulated(
+    tournamentId: Types.ObjectId | string,
+    slug: string,
+  ) {
     const matchup = await this.matchupModel
-      .findOne({ slug })
+      .findOne({ slug: { $eq: slug }, tournamentId })
       .populate(TEAM_POPULATE)
       .exec();
     if (!matchup)
@@ -291,13 +241,6 @@ export class LeagueMatchupRepository {
     return matchup;
   }
 
-  /**
-   * Every field the advancement resolver reads, across a tournament's stages.
-   *
-   * Narrow on purpose: this runs on each recorded result, and the resolver only
-   * ever needs each side's slot, the team currently sitting in it, and the two
-   * fields that decide who leaves the match.
-   */
   async findAdvancementFieldsByStages(stageIds: (Types.ObjectId | string)[]) {
     if (stageIds.length === 0) return [];
     return this.matchupModel
@@ -307,13 +250,6 @@ export class LeagueMatchupRepository {
       .lean();
   }
 
-  /**
-   * Writes resolved advancement into the sides it belongs to.
-   *
-   * A `null` team unsets the field rather than storing null: a slot nothing
-   * advances into has to read as unresolved again, which is what lets an
-   * organizer correct an advancement they had already made.
-   */
   async applyAdvancementDiff(
     changes: {
       _id: Types.ObjectId | string;

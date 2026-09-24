@@ -135,7 +135,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    const team = await this.teamRepo.findBySlug(teamSlug);
+    const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
 
     const migrated = usesTournamentAxis(tournament);
     const canSeeHidden = can(tournament, sub, "viewHidden");
@@ -246,7 +246,7 @@ export class HostedTournamentService {
     tournamentId: Types.ObjectId | string,
     stageSlug?: string,
   ): Promise<StageDocument | undefined> {
-    if (stageSlug) return this.stageRepo.findBySlug(stageSlug);
+    if (stageSlug) return this.stageRepo.findBySlug(tournamentId, stageSlug);
 
     const stages = await this.stageRepo.findAllByTournament(tournamentId);
     if (stages.length === 0) return undefined;
@@ -759,9 +759,10 @@ export class HostedTournamentService {
     );
     assertCan(tournament, sub, "manageParticipants");
 
-    const application = await this.applicationRepo.findById(applicationId);
-    if (application.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    const application = await this.applicationRepo.findInTournament(
+      tournament.id,
+      applicationId,
+    );
 
     if (dto.status !== "approved" && application.resultingTeamId)
       throw new PDZError(ErrorCodes.LEAGUE.APPLICATION_HAS_TEAM, {
@@ -846,13 +847,12 @@ export class HostedTournamentService {
     );
     assertCan(tournament, sub, "manageParticipants");
 
-    const team = await this.teamRepo.findBySlug(teamSlug);
-    if (team.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
 
-    const application = await this.applicationRepo.findById(dto.applicationId);
-    if (application.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    const application = await this.applicationRepo.findInTournament(
+      tournament.id,
+      dto.applicationId,
+    );
     if (application.resultingCoachId)
       throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
         tournamentId: tournament.id,

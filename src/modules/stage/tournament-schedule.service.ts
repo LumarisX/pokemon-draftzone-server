@@ -63,6 +63,7 @@ export class TournamentScheduleService {
     );
 
     const teamIds = await this.teamRepo.findIdsBySlugs(
+      tournament.id,
       (Array.isArray(options.teamSlug)
         ? options.teamSlug
         : [options.teamSlug]

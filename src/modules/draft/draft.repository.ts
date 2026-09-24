@@ -74,11 +74,6 @@ export class DraftRepository {
     return Object.assign(draft, { teams }) as PopulatedDraft;
   }
 
-  async findTeamById(teamId: string): Promise<PopulatedTeam> {
-    return this.teamRepo.findById(teamId);
-  }
-
-  /** Plain lookups (no composed teams array) for listing/membership checks. */
   async findById(
     draftId: Types.ObjectId | string,
   ): Promise<DraftDocument | null> {
@@ -141,9 +136,10 @@ export class DraftRepository {
     draft: PopulatedDraft,
     teamId: string,
   ): Promise<PopulatedTeam> {
-    const team = await this.teamRepo.findById(teamId);
-    const teams: PopulatedTeam[] = draft.teams;
-    if (!teams.some((t: PopulatedTeam) => t._id.equals(team._id)))
+    const team = draft.teams.find(
+      (candidate: PopulatedTeam) => candidate._id.toString() === teamId,
+    );
+    if (!team)
       throw new PDZError(ErrorCodes.TEAM.NOT_IN_DRAFT, {
         teamId,
         draftSlug: draft.slug,

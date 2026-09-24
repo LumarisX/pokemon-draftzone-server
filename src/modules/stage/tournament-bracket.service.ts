@@ -317,6 +317,7 @@ export class TournamentBracketService {
       if (!prior) {
         creates.push({
           _id,
+          tournamentId: new Types.ObjectId(tournament.id),
           ...placement,
           side1: { slot: sides[0].slot, team: sides[0].team },
           side2: { slot: sides[1].slot, team: sides[1].team },

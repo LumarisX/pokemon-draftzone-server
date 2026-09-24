@@ -193,7 +193,9 @@ export class ChatService {
 
     const seat = sub ? await this.findViewerSeat(tournament, sub) : null;
     const matchupTeamIds =
-      channel === "matchup" ? await this.matchupTeamIds(target) : undefined;
+      channel === "matchup"
+        ? await this.matchupTeamIds(tournament.id, target)
+        : undefined;
 
     return {
       ...base,
@@ -225,13 +227,19 @@ export class ChatService {
     return coach ? { team, coach } : null;
   }
 
-  private async matchupTeamIds(matchupId: string): Promise<string[]> {
+  private async matchupTeamIds(
+    tournamentId: string,
+    matchupId: string,
+  ): Promise<string[]> {
     if (!isValidObjectId(matchupId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
         reason: "Invalid matchup ID",
       });
 
-    const matchup = await this.matchupRepo.findByIdOrNull(matchupId);
+    const matchup = await this.matchupRepo.findByIdInTournament(
+      tournamentId,
+      matchupId,
+    );
     if (!matchup) throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupId });
 
     return [matchup.side1.team, matchup.side2.team]

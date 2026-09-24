@@ -169,6 +169,7 @@ export class StageService {
       tournamentSlug,
     );
     const matchupDoc = (await this.matchupRepo.findBySlugPopulated(
+      tournament.id,
       matchupSlug,
     )) as unknown as PopulatedStageMatchup;
 
@@ -499,7 +500,7 @@ export class StageService {
     );
     assertCan(tournament, sub, "manageSchedule");
 
-    const matchup = await this.matchupRepo.findBySlug(matchupSlug);
+    const matchup = await this.matchupRepo.findBySlug(tournament.id, matchupSlug);
     const stageDoc = matchup.stage
       ? await this.stageRepo.findByIdOrNull(matchup.stage)
       : null;
@@ -537,7 +538,7 @@ export class StageService {
     );
     assertCan(tournament, sub, "manageResults");
 
-    const matchup = await this.matchupRepo.findBySlug(matchupSlug);
+    const matchup = await this.matchupRepo.findBySlug(tournament.id, matchupSlug);
     const stageDoc = matchup.stage
       ? await this.stageRepo.findByIdOrNull(matchup.stage)
       : null;

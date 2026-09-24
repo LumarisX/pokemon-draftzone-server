@@ -185,6 +185,13 @@ describe("TournamentBracketService", () => {
       expect(matchDiff.deletes).toEqual([]);
     });
 
+    it("stamps each new match with its tournament", async () => {
+      await update(buildDto());
+
+      const [created] = matchupRepo.applyStructureDiff.mock.calls[0][0].creates;
+      expect(created.tournamentId?.toString()).toBe(TOURNAMENT_ID.toString());
+    });
+
     it("writes stages, schedule and matches only inside the transaction", async () => {
       transactions.run.mockResolvedValueOnce(undefined);
 

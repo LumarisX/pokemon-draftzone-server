@@ -70,6 +70,21 @@ export class TournamentApplicationRepository {
     return application;
   }
 
+  async findInTournament(
+    tournamentId: Types.ObjectId | string,
+    id: Types.ObjectId | string,
+  ): Promise<TournamentApplicationDocument> {
+    const application = await this.applicationModel
+      .findOne({ _id: this.toObjectId(id), tournamentId })
+      .exec();
+    if (!application) {
+      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+        applicationId: String(id),
+      });
+    }
+    return application;
+  }
+
   async findAllByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<TournamentApplicationDocument[]> {

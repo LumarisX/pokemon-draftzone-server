@@ -38,9 +38,12 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam;
   }
 
-  async findBySlug(slug: string): Promise<PopulatedTeam> {
+  async findBySlug(
+    tournamentId: Types.ObjectId | string,
+    slug: string,
+  ): Promise<PopulatedTeam> {
     const team = await this.teamModel
-      .findOne({ slug: { $eq: slug } })
+      .findOne({ slug: { $eq: slug }, tournamentId })
       .populate<{ primaryCoach: CoachDocument }>("primaryCoach")
       .populate<{ coaches: CoachDocument[] }>("coaches")
       .exec();
@@ -48,13 +51,26 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam;
   }
 
-  async findIdsBySlugs(slugs: string[]): Promise<Types.ObjectId[]> {
+  async findIdsBySlugs(
+    tournamentId: Types.ObjectId | string,
+    slugs: string[],
+  ): Promise<Types.ObjectId[]> {
     if (slugs.length === 0) return [];
     const teams = await this.teamModel
-      .find({ slug: { $in: slugs } }, { _id: 1 })
+      .find({ slug: { $in: slugs }, tournamentId }, { _id: 1 })
       .lean()
       .exec();
     return teams.map((team) => team._id);
+  }
+
+  async countInTournament(
+    tournamentId: Types.ObjectId | string,
+    teamIds: (Types.ObjectId | string)[],
+  ): Promise<number> {
+    if (teamIds.length === 0) return 0;
+    return this.teamModel
+      .countDocuments({ _id: { $in: teamIds }, tournamentId })
+      .exec();
   }
 
   async findManyByIds(

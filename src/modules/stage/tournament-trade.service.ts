@@ -40,6 +40,7 @@ export class TournamentTradeService {
 
     const filterIds = (
       await this.teamRepo.findIdsBySlugs(
+        tournament.id,
         (Array.isArray(teamSlug) ? teamSlug : [teamSlug]).filter(
           (slug): slug is string => Boolean(slug),
         ),
@@ -198,6 +199,19 @@ export class TournamentTradeService {
         throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
           reason: "A trade needs at least one team",
         });
+
+      const sideTeamIds = [
+        ...new Set(
+          [side1.team, side2.team]
+            .filter((id): id is Types.ObjectId => id !== undefined)
+            .map((id) => id.toString()),
+        ),
+      ];
+      if (
+        (await this.teamRepo.countInTournament(tournament.id, sideTeamIds)) !==
+        sideTeamIds.length
+      )
+        throw new PDZError(ErrorCodes.TEAM.NOT_FOUND);
 
       const status = isOrganizer ? "APPROVED" : "PENDING";
       const candidate = {

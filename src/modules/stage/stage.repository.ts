@@ -62,9 +62,13 @@ export class StageRepository {
     return stage;
   }
 
-  /** The stage a URL names. Slugs are unique across the collection. */
-  async findBySlug(slug: string): Promise<StageDocument> {
-    const stage = await this.stageModel.findOne({ slug: { $eq: slug } }).exec();
+  async findBySlug(
+    tournamentId: Types.ObjectId | string,
+    slug: string,
+  ): Promise<StageDocument> {
+    const stage = await this.stageModel
+      .findOne({ slug: { $eq: slug }, tournamentId })
+      .exec();
     if (!stage)
       throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug: slug });
     return stage;
@@ -100,7 +104,6 @@ export class StageRepository {
       .exec();
   }
 
-  /** What stage/pool is this team currently grouped under, if any. */
   async findByTeamId(
     tournamentId: Types.ObjectId | string,
     teamId: Types.ObjectId | string,
@@ -113,8 +116,6 @@ export class StageRepository {
     return this.stageModel
       .findOne({
         tournamentId: { $eq: normalizedTournamentId },
-        // Either field may hold the roster: `teamIds` on a migrated stage,
-        // `pools` on one that predates the split.
         $or: [
           { teamIds: { $eq: normalizedTeamId } },
           { "pools.teamIds": { $eq: normalizedTeamId } },
@@ -129,7 +130,6 @@ export class StageRepository {
       order: data.order,
       name: data.name,
       type: data.type,
-      // Omitted rather than defaulted to undefined, so the schema default wins.
       ...(data.public === undefined ? {} : { public: data.public }),
       rounds: data.rounds ?? [],
       pools: data.pools ?? [],
@@ -140,14 +140,6 @@ export class StageRepository {
     return stage;
   }
 
-  /**
-   * Applies a whole tournament's stage edit in one round-trip: inserts stages
-   * the payload introduced, updates the ones it kept, and removes the rest.
-   *
-   * Ids are supplied by the caller because matchups reference stages, and the
-   * bracket path pre-allocates them so a match created in the same request can
-   * name the stage it belongs to.
-   */
   async applyStageDiff(options: {
     creates: {
       _id: Types.ObjectId;
@@ -163,8 +155,6 @@ export class StageRepository {
     deletes: Types.ObjectId[];
   }): Promise<void> {
     const ops = [
-      // Slugged here rather than by the schema default: a bulk insert hands
-      // Mongo plain objects, so nothing would fill the URL identifier in.
       ...options.creates.map((doc) => ({
         insertOne: { document: { ...doc, slug: generateSlug() } },
       })),
@@ -179,17 +169,6 @@ export class StageRepository {
     await this.stageModel.bulkWrite(ops as never);
   }
 
-  /**
-   * The stage's teams in seed order, empty when it has none yet.
-   *
-   * Reads `teamIds` first and falls back to flattening `pools`, because a stage
-   * created by the sections-to-stages migration has only the former and a stage
-   * predating it has only the latter.
-   *
-   * Deliberately total. A stage whose bracket has not been built yet has no
-   * teams, which is a normal state — the reads that hang off this (a team page,
-   * a standings table) show an empty competition rather than failing.
-   */
   teamIdsInSeedOrder(stage: StageDocument): Types.ObjectId[] {
     return stageTeamIds(stage);
   }

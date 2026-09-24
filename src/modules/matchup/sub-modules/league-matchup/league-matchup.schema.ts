@@ -129,8 +129,6 @@ export const MatchSideSlotSchema = SchemaFactory.createForClass(
 
 @Schema({ _id: false })
 export class MatchSideEntity {
-  // Ref name is a literal string to avoid pulling team.schema.ts into the
-  // matchup/division/team import chain unnecessarily.
   @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
   team?: Types.ObjectId;
 
@@ -155,33 +153,21 @@ export type LeagueMatchupDocument = HydratedDocument<LeagueMatchupEntity>;
   collection: "leaguematchups",
 })
 export class LeagueMatchupEntity {
-  /**
-   * URL identifier for the matchup page. Globally unique, so the route needs
-   * no stage segment to disambiguate it — `slot.matchId` and the chat room's
-   * `target` still key off `_id`, which is what actually joins documents.
-   */
   @Prop({ required: true, unique: true, index: true, default: generateSlug })
   slug!: string;
 
-  // References a subdocument _id inside StageEntity.rounds[], not a
-  // top-level collection — same as the legacy schema, intentionally no ref.
+  @Prop({ type: SchemaTypes.ObjectId, index: true })
+  tournamentId?: Types.ObjectId;
+
   @Prop({ type: SchemaTypes.ObjectId, index: true })
   round?: Types.ObjectId;
 
-  // Ref name is a literal string to avoid pulling stage.schema.ts into the
-  // matchup/stage/team import chain unnecessarily.
   @Prop({ type: SchemaTypes.ObjectId, ref: "StageEntity", index: true })
   stage?: Types.ObjectId;
 
-  // Denormalized copy of StagePoolEntity.poolKey — lets matchup queries
-  // filter by pool without cross-referencing team membership.
   @Prop()
   pool?: string;
 
-  // Bracket layout metadata, set at generation time. `section` groups
-  // matches into visual groups (winners/losers/finals for double elim);
-  // `bracketRound`/`position` are the column/row within that section. Flat
-  // schedule views ignore all three.
   @Prop()
   section?: string;
 
@@ -218,15 +204,6 @@ export class LeagueMatchupEntity {
   @Prop({ type: String, enum: MATCH_STATUSES })
   status?: LeagueMatchupStatus;
 
-  /**
-   * Organizer override for which side leaves this match, used when `winner`
-   * cannot answer that on its own.
-   *
-   * A double forfeit is the case it exists for: it is a settled result with no
-   * winning side, so every downstream `winner`/`loser` slot would otherwise
-   * stay empty forever and the rest of the bracket could never be played.
-   * `"none"` says nobody advances — a deliberate answer, not an unanswered one.
-   */
   @Prop({ type: String, enum: MATCH_ADVANCEMENTS })
   advances?: LeagueMatchupAdvancement;
 
@@ -240,8 +217,5 @@ export const LeagueMatchupSchema = SchemaFactory.createForClass(
 
 LeagueMatchupSchema.index({ "side1.team": 1 });
 LeagueMatchupSchema.index({ "side2.team": 1 });
-// Advancing a result looks matchups up by the match their slot consumes, and
-// that lookup is not scoped to a stage — a playoff slot is fed by a match in
-// the group stage before it. Without these it is a full collection scan.
 LeagueMatchupSchema.index({ "side1.slot.matchId": 1 });
 LeagueMatchupSchema.index({ "side2.slot.matchId": 1 });

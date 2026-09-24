@@ -141,7 +141,7 @@ describe("HostedTournamentService signup", () => {
     applicationRepo = {
       findAllByTournament: jest.fn().mockResolvedValue([]),
       findBlockingApplication: jest.fn().mockResolvedValue(null),
-      findById: jest.fn(),
+      findInTournament: jest.fn(),
       create: jest.fn(),
       decide: jest.fn(),
       countByStatuses: jest.fn().mockResolvedValue(0),
@@ -621,7 +621,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("rejects a decision from someone who is not an organizer", async () => {
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
       await expect(
         service.decideApplication(
@@ -635,7 +635,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("creates the team and coach on approval, linked both ways", async () => {
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockImplementation(async (input) =>
         buildCreatedTeam(input._id),
       );
@@ -668,7 +668,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("grants the Discord coach role on approval, not before", async () => {
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       discordService.findMember.mockResolvedValue({
@@ -702,7 +702,7 @@ describe("HostedTournamentService signup", () => {
         },
       });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
@@ -718,7 +718,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("creates no team when denying", async () => {
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
       await service.decideApplication(
         LEAGUE_KEY,
@@ -733,7 +733,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("creates no team when approving a sub", async () => {
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({ intent: "sub" }),
       );
 
@@ -749,7 +749,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("does not create a second team when re-approving", async () => {
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({
           status: "approved",
           resultingTeamId: new Types.ObjectId(),
@@ -768,7 +768,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("refuses to deny an application that already has a team", async () => {
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({
           status: "approved",
           resultingTeamId: new Types.ObjectId(),
@@ -793,7 +793,7 @@ describe("HostedTournamentService signup", () => {
     it("refuses to approve past maxTeams", async () => {
       tournament = buildTournament({ staff: [{ sub: SUB, role: "organizer" }], maxTeams: 8 });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.countApprovedByTournament.mockResolvedValue(8);
 
       await expect(
@@ -815,7 +815,7 @@ describe("HostedTournamentService signup", () => {
       const { track, log } = transactions;
       tournament = buildTournament({ staff: [{ sub: SUB, role: "organizer" }], maxTeams: 8 });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       tournamentRepo.bumpRosterVersion.mockImplementation(
         track("tournament.bumpRosterVersion", () => undefined),
       );
@@ -845,7 +845,7 @@ describe("HostedTournamentService signup", () => {
 
     it("writes the team, coach and decision in one transaction, then grants the role", async () => {
       const { track, log } = transactions;
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockImplementation(
         track("team.create", (input) => buildCreatedTeam(input._id)),
       );
@@ -883,7 +883,7 @@ describe("HostedTournamentService signup", () => {
 
     it("aborts and grants no role when a write fails partway", async () => {
       const { track, log } = transactions;
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockImplementation(
         track("team.create", (input) => buildCreatedTeam(input._id)),
       );
@@ -935,7 +935,7 @@ describe("HostedTournamentService signup", () => {
       applicationRepo.decide.mockImplementation(
         track("application.decide", () => ({}) as any),
       );
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
       await service.replaceCoach(
         LEAGUE_KEY,
@@ -973,7 +973,7 @@ describe("HostedTournamentService signup", () => {
         .mockResolvedValue([{ _id: outgoingId, leftAt: undefined }]);
       coachRepo.update = jest.fn().mockResolvedValue({});
       coachRepo.create.mockResolvedValue({ _id: incomingId } as any);
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({
           preferredTeamName: "Storm Crows",
           preferredLogo: "new-logo",
@@ -1035,7 +1035,7 @@ describe("HostedTournamentService signup", () => {
       coachRepo.create.mockResolvedValue({
         _id: new Types.ObjectId(),
       } as any);
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({ preferredTeamName: "Same Name" }),
       );
       teamRepo.replaceCoach = jest
@@ -1063,7 +1063,7 @@ describe("HostedTournamentService signup", () => {
         teamName: "Team",
         primaryCoach: { _id: new Types.ObjectId() },
       });
-      applicationRepo.findById.mockResolvedValue(
+      applicationRepo.findInTournament.mockResolvedValue(
         buildApplication({ resultingCoachId: new Types.ObjectId() }),
       );
 
@@ -1077,7 +1077,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("uses the organizer's team name override when given", async () => {
-      applicationRepo.findById.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
