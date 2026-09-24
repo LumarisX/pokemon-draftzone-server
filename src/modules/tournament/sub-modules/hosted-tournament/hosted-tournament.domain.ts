@@ -121,7 +121,6 @@ export class HostedTournament {
   seasonEnd?: Date;
   owner: string;
   leagueId: string;
-  /** The league's URL slug — needed to build client links (/leagues/:leagueSlug/...). */
   leagueSlug: string;
   leagueName: string;
   archived: boolean;
@@ -133,15 +132,10 @@ export class HostedTournament {
   discord?: string;
   discordSettings?: TournamentDiscordSettings;
   stages: StageDocument[];
-  /**
-   * The schedule every stage is laid out against. Empty on tournaments that
-   * predate the sections-to-stages migration — their stages still carry their
-   * own rounds, and `stageRounds()` is what picks between the two.
-   */
   rounds: TournamentRoundEntity[];
-  /** Index into `rounds`; -1 before the season starts. */
   currentRoundIndex: number;
   trades: TournamentTradeEntity[];
+  tradesVersion: number;
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
   format: Format | null;
@@ -184,6 +178,7 @@ export class HostedTournament {
     rounds?: TournamentRoundEntity[];
     currentRoundIndex?: number;
     trades?: TournamentTradeEntity[];
+    tradesVersion?: number;
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
     format?: string | null;
@@ -225,6 +220,7 @@ export class HostedTournament {
     this.rounds = props.rounds ?? [];
     this.currentRoundIndex = props.currentRoundIndex ?? -1;
     this.trades = props.trades ?? [];
+    this.tradesVersion = props.tradesVersion ?? 0;
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
     this.format = props.format ? getFormat(props.format) : null;

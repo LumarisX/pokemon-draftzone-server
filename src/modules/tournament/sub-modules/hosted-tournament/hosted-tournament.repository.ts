@@ -273,18 +273,6 @@ export class HostedTournamentRepository {
       });
   }
 
-  /**
-   * Writes the round axis, the stage list and the current round together.
-   *
-   * One update because they are one fact: `stages` order is the phase sequence,
-   * `rounds` is the schedule those phases sit on, and `currentRoundIndex`
-   * points into it. Saving them separately would leave a window where a client
-   * could read an index past the end of the rounds.
-   *
-   * Round subdocument `_id`s are supplied by the caller and written verbatim —
-   * matchups reference them, so letting Mongoose mint fresh ones would orphan
-   * every matchup in the tournament.
-   */
   async setSchedule(
     tournamentId: Types.ObjectId | string,
     schedule: {
@@ -296,21 +284,31 @@ export class HostedTournamentRepository {
       }[];
       stages: Types.ObjectId[];
       currentRoundIndex: number;
+      tradesVersion?: number;
     },
   ): Promise<void> {
+    const guarded = schedule.tradesVersion !== undefined;
     const result = await this.hostedTournamentModel
-      .findByIdAndUpdate(tournamentId, {
-        $set: {
-          rounds: schedule.rounds,
-          stages: schedule.stages,
-          currentRoundIndex: schedule.currentRoundIndex,
+      .findOneAndUpdate(
+        guarded
+          ? this.atTradesVersion(tournamentId, schedule.tradesVersion!)
+          : { _id: new Types.ObjectId(tournamentId.toString()) },
+        {
+          $set: {
+            rounds: schedule.rounds,
+            stages: schedule.stages,
+            currentRoundIndex: schedule.currentRoundIndex,
+          },
+          ...(guarded ? { $inc: { tradesVersion: 1 } } : {}),
         },
-      })
+      )
       .exec();
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-        tournamentId: tournamentId.toString(),
-      });
+      throw guarded
+        ? new PDZError(ErrorCodes.STAGE.TRADES_CHANGED)
+        : new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+            tournamentId: tournamentId.toString(),
+          });
   }
 
   async setDiscordLinkCode(
@@ -391,17 +389,89 @@ export class HostedTournamentRepository {
       .exec();
   }
 
-  /** Replaces the tournament's trades wholesale. */
-  async setTrades(
+  async pushTrade(
     tournamentId: Types.ObjectId | string,
-    trades: Record<string, unknown>[],
-  ): Promise<void> {
+    tradesVersion: number,
+    trade: object,
+  ): Promise<boolean> {
     const result = await this.hostedTournamentModel
-      .findByIdAndUpdate(tournamentId, { $set: { trades } })
+      .updateOne(this.atTradesVersion(tournamentId, tradesVersion), {
+        $push: { trades: trade },
+        $inc: { tradesVersion: 1 },
+      })
       .exec();
-    if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
-        tournamentId: tournamentId.toString(),
-      });
+    return result.modifiedCount === 1;
+  }
+
+  async resolvePendingTrade(
+    tournamentId: Types.ObjectId | string,
+    tradesVersion: number,
+    tradeId: Types.ObjectId,
+    patch: {
+      status: "PENDING" | "APPROVED" | "REJECTED";
+      activeRoundId: Types.ObjectId;
+      resolvedBy?: string;
+    },
+  ): Promise<boolean> {
+    const set: Record<string, unknown> = {
+      "trades.$.status": patch.status,
+      "trades.$.activeRoundId": patch.activeRoundId,
+    };
+    if (patch.resolvedBy !== undefined)
+      set["trades.$.resolvedBy"] = patch.resolvedBy;
+
+    const result = await this.hostedTournamentModel
+      .updateOne(
+        {
+          ...this.atTradesVersion(tournamentId, tradesVersion),
+          trades: { $elemMatch: { _id: tradeId, status: "PENDING" } },
+        },
+        {
+          $set: set,
+          $unset: { "trades.$.activeRound": "" },
+          $inc: { tradesVersion: 1 },
+        },
+      )
+      .exec();
+    return result.modifiedCount === 1;
+  }
+
+  async pullPendingTrade(
+    tournamentId: Types.ObjectId | string,
+    tradesVersion: number,
+    tradeId: Types.ObjectId,
+  ): Promise<boolean> {
+    const result = await this.hostedTournamentModel
+      .updateOne(
+        {
+          ...this.atTradesVersion(tournamentId, tradesVersion),
+          trades: { $elemMatch: { _id: tradeId, status: "PENDING" } },
+        },
+        {
+          $pull: { trades: { _id: tradeId } },
+          $inc: { tradesVersion: 1 },
+        },
+      )
+      .exec();
+    return result.modifiedCount === 1;
+  }
+
+  async bumpRosterVersion(tournamentId: Types.ObjectId | string): Promise<void> {
+    await this.hostedTournamentModel
+      .updateOne(
+        { _id: new Types.ObjectId(tournamentId.toString()) },
+        { $inc: { rosterVersion: 1 } },
+      )
+      .exec();
+  }
+
+  private atTradesVersion(
+    tournamentId: Types.ObjectId | string,
+    tradesVersion: number,
+  ) {
+    return {
+      _id: new Types.ObjectId(tournamentId.toString()),
+      tradesVersion: tradesVersion === 0 ? { $in: [0, null] } : tradesVersion,
+    };
   }
 }

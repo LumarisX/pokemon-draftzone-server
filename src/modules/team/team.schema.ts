@@ -29,8 +29,6 @@ export class PickLogEntity {
   @Prop({ default: () => new Date() })
   timestamp!: Date;
 
-  // Ref name is a literal string (not CoachEntity.name) to avoid a circular
-  // import with coach.schema.ts, which refs back to TeamEntity.
   @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity", required: true })
   picker!: Types.ObjectId;
 }
@@ -46,6 +44,9 @@ export class TeamNameChangeEntity {
 
   @Prop()
   round?: number;
+
+  @Prop({ type: SchemaTypes.ObjectId })
+  roundId?: Types.ObjectId;
 
   @Prop()
   reason?: string;
@@ -66,11 +67,6 @@ export type TeamDocument = HydratedDocument<TeamEntity>;
   collection: "leagueteams",
 })
 export class TeamEntity {
-  /**
-   * URL identifier for the team page. Payloads keep emitting the ObjectId as
-   * `id` alongside it — schedule filtering, standings and the chat policy all
-   * join on that, and only the link needs the slug.
-   */
   @Prop({ required: true, unique: true, index: true, default: generateSlug })
   slug!: string;
 
@@ -82,13 +78,9 @@ export class TeamEntity {
   })
   tournamentId!: Types.ObjectId;
 
-  // Ref name is a literal string to avoid pulling draft.schema.ts into the
-  // team/draft/stage import chain unnecessarily.
   @Prop({ type: SchemaTypes.ObjectId, ref: "DraftEntity", index: true })
   draftId?: Types.ObjectId;
 
-  // Ref name is a literal string (not CoachEntity.name) to avoid a circular
-  // import with coach.schema.ts, which refs back to TeamEntity.
   @Prop({ type: SchemaTypes.ObjectId, ref: "CoachEntity" })
   primaryCoach?: Types.ObjectId;
 

@@ -12,9 +12,6 @@ export type PopulatedTeam = TeamDocument & {
 };
 
 export type CreateTeamInput = {
-  // Settable so HostedTournamentService.createSignup can pre-generate the id
-  // and create the Coach + Team pair without a temporary invalid state on
-  // either side's required ref to the other.
   _id?: Types.ObjectId;
   tournamentId: Types.ObjectId | string;
   draftId?: Types.ObjectId | string;
@@ -41,7 +38,6 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam;
   }
 
-  /** The team a URL names. Slugs are unique across the collection. */
   async findBySlug(slug: string): Promise<PopulatedTeam> {
     const team = await this.teamModel
       .findOne({ slug: { $eq: slug } })
@@ -52,12 +48,6 @@ export class TeamRepository {
     return team as unknown as PopulatedTeam;
   }
 
-  /**
-   * The ObjectIds behind a set of slugs, for the read filters that take a slug
-   * from the URL but join on the id. Unknown slugs are dropped rather than
-   * throwing: a filter naming a team that does not exist is an empty result,
-   * not an error.
-   */
   async findIdsBySlugs(slugs: string[]): Promise<Types.ObjectId[]> {
     if (slugs.length === 0) return [];
     const teams = await this.teamModel
@@ -147,12 +137,6 @@ export class TeamRepository {
       .exec();
   }
 
-  /**
-   * Raw $set update instead of load+mutate+save — draftPick() may have just
-   * saved this same team document (via a different in-memory instance) inside
-   * batchDraftPokemon's transaction, so a versioned save() here would race
-   * against that __v bump and throw a VersionError, silently dropping picks.
-   */
   async updatePicks(
     teamId: Types.ObjectId | string,
     picks: TeamEntity["picks"],
@@ -200,7 +184,7 @@ export class TeamRepository {
       nameChange?: {
         from: string;
         to: string;
-        round?: number;
+        roundId?: Types.ObjectId;
         reason?: string;
         changedBy?: string;
       };

@@ -7,7 +7,7 @@ import {
   getRostersBeforeRound,
   updateRosterWithTrades,
 } from "./roster";
-import { rosterContext } from "./stage-axis";
+import { rosterContext, tournamentRosterContext } from "./stage-axis";
 
 function buildTeam(pickLog: { pokemon: { id: string }; addons?: string[] }[]) {
   return {
@@ -202,7 +202,6 @@ describe("getLatestRoster", () => {
     });
     const stage = buildStage({ trades: [trade], currentRoundIndex: 0 });
 
-    // getRosterByRound stops at the current round and still sees the old mon.
     expect(getRosterByRound(team, rosterContext(stage))).toEqual([{ id: "pikachu" }]);
     expect(getLatestRoster(team, rosterContext(stage))).toEqual([{ id: "mewtwo" }]);
   });
@@ -210,7 +209,6 @@ describe("getLatestRoster", () => {
   it("applies a trade in the stage's last round", () => {
     const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
     const trade = buildTrade({
-      // buildStage has 3 rounds, so index 2 is the last one.
       activeRound: 2,
       side1: { team: team._id, pokemon: [{ id: "pikachu" }] },
       side2: { team: new Types.ObjectId(), pokemon: [{ id: "mewtwo" }] },
@@ -255,9 +253,9 @@ describe("getRostersBeforeRound", () => {
     const result = getRostersBeforeRound(team, rosterContext(stage), 2);
 
     expect(result).toEqual([
-      [{ id: "pikachu" }], // start of round 0: raw pick log
-      [{ id: "pikachu" }], // start of round 1: round 0 had no trade for this team
-      [{ id: "mewtwo" }], // start of round 2: round 1's trade has now applied
+      [{ id: "pikachu" }],
+      [{ id: "pikachu" }],
+      [{ id: "mewtwo" }],
     ]);
   });
 
@@ -267,7 +265,31 @@ describe("getRostersBeforeRound", () => {
 
     const result = getRostersBeforeRound(team, rosterContext(stage));
 
-    // 1 initial snapshot + 1 per round (2 rounds) = 3 total.
     expect(result).toHaveLength(3);
+  });
+});
+
+describe("rosters on a tournament axis with pinned round ids", () => {
+  it("applies a trade at the round it names, even after a round is inserted ahead of it", () => {
+    const team = buildTeam([{ pokemon: { id: "pikachu" } }]);
+    const week1 = { _id: new Types.ObjectId(), name: "Week 1" };
+    const week2 = { _id: new Types.ObjectId(), name: "Week 2" };
+    const bye = { _id: new Types.ObjectId(), name: "Bye" };
+    const trade = {
+      ...buildTrade({
+        side1: { team: team._id, pokemon: [{ id: "pikachu" }] },
+        side2: { team: new Types.ObjectId(), pokemon: [{ id: "mewtwo" }] },
+      }),
+      activeRound: 0,
+      activeRoundId: week2._id,
+    };
+    const context = tournamentRosterContext({
+      rounds: [bye, week1, week2],
+      trades: [trade],
+      currentRoundIndex: 0,
+    });
+
+    expect(getRosterByRound(team, context, 1)).toEqual([{ id: "pikachu" }]);
+    expect(getRosterByRound(team, context, 2)).toEqual([{ id: "mewtwo" }]);
   });
 });

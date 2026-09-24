@@ -11,7 +11,11 @@ import { isValidObjectId, Types } from "mongoose";
 import { BracketSlotInput } from "./domain/bracket";
 import { summarizeSeeding } from "./domain/bracket-view";
 import { resolveSeedGroups } from "./domain/seeding";
-import { stageTeamIds, usesTournamentAxis } from "./domain/stage-axis";
+import {
+  stageTeamIds,
+  tradeRoundIndex,
+  usesTournamentAxis,
+} from "./domain/stage-axis";
 import { validateTournamentBracket } from "./domain/tournament-bracket";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
@@ -221,6 +225,23 @@ export class TournamentBracketService {
       tradeDeadline: round.tradeDeadline,
     }));
 
+    const keptRoundIds = new Set(nextRounds.map((round) => round._id.toString()));
+    const tradedAwayRounds = [
+      ...new Set(
+        tournament.trades
+          .filter((trade) => trade.status !== "REJECTED")
+          .map((trade) => tournament.rounds[tradeRoundIndex(trade, tournament.rounds)])
+          .filter(
+            (round): round is (typeof tournament.rounds)[number] =>
+              !!round && !keptRoundIds.has(round._id.toString()),
+          ),
+      ),
+    ];
+    if (tradedAwayRounds.length > 0)
+      throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
+        reason: `Round(s) ${tradedAwayRounds.map((round) => round.name).join(", ")} are being removed but trades take effect in them. Move or reject those trades first, or keep the rounds.`,
+      });
+
     const stageByKey = new Map(stages.map((stage) => [stage.dto.key, stage]));
     const keptStageIds = new Set(stages.map((stage) => stage._id.toString()));
     const removedStages = existingStages.filter(
@@ -377,6 +398,7 @@ export class TournamentBracketService {
           -1,
           Math.min(nextCurrent, nextRounds.length - 1),
         ),
+        tradesVersion: tournament.tradesVersion,
       });
 
       await this.matchupRepo.applyStructureDiff({

@@ -127,7 +127,15 @@ export class TournamentApplicationRepository {
       joinTeamId: data.joinTeamId,
       submittedAt: data.submittedAt ?? new Date(),
     });
-    await application.save();
+    try {
+      await application.save();
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000)
+        throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+          tournamentId: String(data.tournamentId),
+        });
+      throw error;
+    }
     return application;
   }
 

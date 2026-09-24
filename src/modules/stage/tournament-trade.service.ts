@@ -9,22 +9,16 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getRosterByRound } from "./domain/roster";
-import { TradeLike, tournamentRosterContext } from "./domain/stage-axis";
+import {
+  TradeLike,
+  tournamentRosterContext,
+  tradeRoundIndex,
+} from "./domain/stage-axis";
 import { assertTradePointsWithinLimit } from "./domain/trades";
 import { MakeTradeDto, UpdateTradeDto } from "./stage.dto";
 
-/**
- * Trades, held by the tournament rather than by a stage.
- *
- * A trade takes effect at a round, and rounds are tournament-wide — a roster
- * change made during the group phase still holds when the playoffs start. That
- * is the whole reason trades moved up: on a stage they could only ever describe
- * that stage's schedule.
- *
- * Consequently nothing here takes a stage. Replaying a team's trades needs its
- * pick log, the tournament's trades and a round index, none of which a stage
- * owns any more.
- */
+const TRADE_WRITE_ATTEMPTS = 3;
+
 @Injectable()
 export class TournamentTradeService {
   constructor(
@@ -43,13 +37,6 @@ export class TournamentTradeService {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
-  // ── Read ──────────────────────────────────────────────────────────────────
-
-  /**
-   * @param teamSlug Restricts to trades one team is a party to. A slug because
-   *   that is what the team's page has in its URL; the trades themselves store
-   *   the ObjectId behind it.
-   */
   async getTrades(
     leagueSlug: string,
     tournamentSlug: string,
@@ -78,8 +65,6 @@ export class TournamentTradeService {
       return id ? teamById.get(id) : undefined;
     };
 
-    // A tier list that no longer resolves only costs the picks their tier and
-    // cost; the trades themselves still read fine without them.
     const tierList = await this.tierListRepo
       .findById(tournament.tierListId)
       .catch(() => undefined);
@@ -130,7 +115,8 @@ export class TournamentTradeService {
     }
 
     for (const trade of tournament.trades) {
-      if (trade.activeRound < 0 || trade.activeRound >= rounds.length) continue;
+      const activeRound = tradeRoundIndex(trade, tournament.rounds);
+      if (activeRound < 0 || activeRound >= rounds.length) continue;
 
       if (
         teamSlug &&
@@ -139,11 +125,11 @@ export class TournamentTradeService {
       )
         continue;
 
-      rounds[trade.activeRound].trades.push({
+      rounds[activeRound].trades.push({
         id: trade._id?.toString(),
         side1: buildSide(trade.side1),
         side2: buildSide(trade.side2),
-        activeRound: trade.activeRound,
+        activeRound,
         timestamp: trade.timestamp,
         status: trade.status,
       });
@@ -161,20 +147,12 @@ export class TournamentTradeService {
     };
   }
 
-  // ── Write ─────────────────────────────────────────────────────────────────
-
   async createTrade(
     leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: MakeTradeDto,
   ) {
-    const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
-    const isOrganizer = this.isOrganizer(tournament, sub);
-
     for (const [label, side] of [
       ["side1", dto.side1],
       ["side2", dto.side2],
@@ -183,29 +161,6 @@ export class TournamentTradeService {
         throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
           reason: `Invalid team ID for ${label}`,
         });
-    }
-
-    if (dto.roundIndex < 0 || dto.roundIndex >= tournament.rounds.length)
-      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
-        reason: `Round ${dto.roundIndex} is outside this tournament's ${tournament.rounds.length} round(s)`,
-      });
-
-    const tradeDeadline = tournament.rounds[dto.roundIndex]?.tradeDeadline;
-    if (!isOrganizer && tradeDeadline && new Date() > new Date(tradeDeadline))
-      throw new PDZError(ErrorCodes.STAGE.TRADE_DEADLINE_PASSED, {
-        roundIndex: dto.roundIndex,
-        tradeDeadline,
-      });
-
-    // A coach may only file a trade their own team is a side of.
-    if (!isOrganizer) {
-      const teamIds = [dto.side1.team, dto.side2.team].filter(
-        (id): id is string => Boolean(id),
-      );
-      if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-      const teams = await this.teamRepo.findManyByIds(teamIds);
-      if (!teams.some((team) => isCoachedBy(team, sub, "manageRoster")))
-        throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
     }
 
     const toSide = (side: MakeTradeDto["side1"]) => ({
@@ -219,42 +174,74 @@ export class TournamentTradeService {
     const side1 = toSide(dto.side1);
     const side2 = toSide(dto.side2);
 
-    if (side1.team === undefined && side2.team === undefined)
-      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
-        reason: "A trade needs at least one team",
-      });
+    return this.retryOnTradeConflict(async () => {
+      const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
+        tournamentSlug,
+      );
+      const isOrganizer = this.isOrganizer(tournament, sub);
 
-    const status = isOrganizer ? "APPROVED" : "PENDING";
-    const candidate = {
-      side1,
-      side2,
-      timestamp: new Date(),
-      activeRound: dto.roundIndex,
-      status,
-      submittedBy: sub,
-      resolvedBy: isOrganizer ? sub : undefined,
-    };
+      if (dto.roundIndex < 0 || dto.roundIndex >= tournament.rounds.length)
+        throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+          reason: `Round ${dto.roundIndex} is outside this tournament's ${tournament.rounds.length} round(s)`,
+        });
 
-    if (status === "APPROVED") {
-      assertTradePointsWithinLimit({
-        trades: tournament.trades,
-        limit: tournament.tradePointLimit,
-        trade: candidate,
-      });
-      await this.assertRostersValid(tournament, candidate, dto.roundIndex);
-    }
+      const tradeDeadline = tournament.rounds[dto.roundIndex]?.tradeDeadline;
+      if (!isOrganizer && tradeDeadline && new Date() > new Date(tradeDeadline))
+        throw new PDZError(ErrorCodes.STAGE.TRADE_DEADLINE_PASSED, {
+          roundIndex: dto.roundIndex,
+          tradeDeadline,
+        });
 
-    await this.tournamentRepo.setTrades(tournament.id, [
-      ...(tournament.trades as unknown as Record<string, unknown>[]),
-      candidate as unknown as Record<string, unknown>,
-    ]);
+      if (!isOrganizer) {
+        const teamIds = [dto.side1.team, dto.side2.team].filter(
+          (id): id is string => Boolean(id),
+        );
+        if (!teamIds.length) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+        const teams = await this.teamRepo.findManyByIds(teamIds);
+        if (!teams.some((team) => isCoachedBy(team, sub, "manageRoster")))
+          throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+      }
 
-    return {
-      message: isOrganizer
-        ? "Trade processed successfully."
-        : "Trade submitted for approval.",
-      status,
-    };
+      if (side1.team === undefined && side2.team === undefined)
+        throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+          reason: "A trade needs at least one team",
+        });
+
+      const status = isOrganizer ? "APPROVED" : "PENDING";
+      const candidate = {
+        side1,
+        side2,
+        timestamp: new Date(),
+        activeRoundId: tournament.rounds[dto.roundIndex]._id,
+        status,
+        submittedBy: sub,
+        resolvedBy: isOrganizer ? sub : undefined,
+      };
+
+      if (status === "APPROVED") {
+        assertTradePointsWithinLimit({
+          trades: tournament.trades,
+          limit: tournament.tradePointLimit,
+          trade: candidate,
+        });
+        await this.assertRostersValid(tournament, candidate, dto.roundIndex);
+      }
+
+      const written = await this.tournamentRepo.pushTrade(
+        tournament.id,
+        tournament.tradesVersion,
+        candidate,
+      );
+      if (!written) return undefined;
+
+      return {
+        message: isOrganizer
+          ? "Trade processed successfully."
+          : "Trade submitted for approval.",
+        status,
+      };
+    });
   }
 
   async updateTrade(
@@ -264,68 +251,53 @@ export class TournamentTradeService {
     sub: string,
     dto: UpdateTradeDto,
   ) {
-    const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
-    this.assertOrganizer(tournament, sub);
+    return this.retryOnTradeConflict(async () => {
+      const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
+        tournamentSlug,
+      );
+      this.assertOrganizer(tournament, sub);
 
-    if (dto.status === undefined && dto.activeRound === undefined)
-      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
-        reason: "Nothing to update",
-      });
+      if (dto.status === undefined && dto.activeRound === undefined)
+        throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+          reason: "Nothing to update",
+        });
 
-    const trade = tournament.trades.find(
-      (t) => t._id?.toString() === tradeId,
-    ) as TradeLike | undefined;
-    if (!trade) throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, { tradeId });
+      const trade = this.findPendingTrade(tournament, tradeId);
 
-    if (trade.status !== "PENDING")
-      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
-        reason: `Trade is already ${trade.status}`,
-      });
+      const activeRound =
+        dto.activeRound ?? tradeRoundIndex(trade, tournament.rounds);
+      if (activeRound < 0 || activeRound >= tournament.rounds.length)
+        throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
+          reason: `Round ${activeRound} is outside this tournament's ${tournament.rounds.length} round(s)`,
+        });
 
-    const activeRound = dto.activeRound ?? trade.activeRound;
-    if (activeRound < 0 || activeRound >= tournament.rounds.length)
-      throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
-        reason: `Round ${activeRound} is outside this tournament's ${tournament.rounds.length} round(s)`,
-      });
+      const status = dto.status ?? trade.status;
 
-    const status = dto.status ?? trade.status;
+      if (status === "APPROVED") {
+        assertTradePointsWithinLimit({
+          trades: tournament.trades,
+          limit: tournament.tradePointLimit,
+          trade,
+          exclude: trade,
+        });
+        await this.assertRostersValid(tournament, trade, activeRound);
+      }
 
-    if (status === "APPROVED") {
-      // Re-checked at approval time: a pending trade can go stale behind other
-      // trades approved after it was filed.
-      assertTradePointsWithinLimit({
-        trades: tournament.trades,
-        limit: tournament.tradePointLimit,
-        trade,
-        exclude: trade,
-      });
-      await this.assertRostersValid(tournament, trade, activeRound);
-    }
+      const written = await this.tournamentRepo.resolvePendingTrade(
+        tournament.id,
+        tournament.tradesVersion,
+        trade._id!,
+        {
+          status,
+          activeRoundId: tournament.rounds[activeRound]._id,
+          ...(dto.status ? { resolvedBy: sub } : {}),
+        },
+      );
+      if (!written) return undefined;
 
-    const updated = {
-      _id: trade._id,
-      side1: trade.side1,
-      side2: trade.side2,
-      timestamp: trade.timestamp,
-      activeRound,
-      status,
-      submittedBy: trade.submittedBy,
-      resolvedBy: dto.status ? sub : trade.resolvedBy,
-    };
-
-    await this.tournamentRepo.setTrades(
-      tournament.id,
-      tournament.trades.map((t) =>
-        t._id?.toString() === tradeId
-          ? (updated as unknown as Record<string, unknown>)
-          : (t as unknown as Record<string, unknown>),
-      ),
-    );
-
-    return { message: `Trade ${status.toLowerCase()}.`, status, activeRound };
+      return { message: `Trade ${status.toLowerCase()}.`, status, activeRound };
+    });
   }
 
   async withdrawTrade(
@@ -334,11 +306,42 @@ export class TournamentTradeService {
     tradeId: string,
     sub: string,
   ) {
-    const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
+    return this.retryOnTradeConflict(async () => {
+      const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
+        tournamentSlug,
+      );
 
+      const trade = this.findPendingTrade(tournament, tradeId);
+
+      if (!this.isOrganizer(tournament, sub))
+        await this.assertTradeParticipant(trade, sub);
+
+      const written = await this.tournamentRepo.pullPendingTrade(
+        tournament.id,
+        tournament.tradesVersion,
+        trade._id!,
+      );
+      if (!written) return undefined;
+
+      return { message: "Trade withdrawn." };
+    });
+  }
+
+  private async retryOnTradeConflict<T>(
+    attempt: () => Promise<T | undefined>,
+  ): Promise<T> {
+    for (let tries = 0; tries < TRADE_WRITE_ATTEMPTS; tries++) {
+      const result = await attempt();
+      if (result !== undefined) return result;
+    }
+    throw new PDZError(ErrorCodes.STAGE.TRADES_CHANGED);
+  }
+
+  private findPendingTrade(
+    tournament: HostedTournament,
+    tradeId: string,
+  ): TradeLike {
     const trade = tournament.trades.find(
       (t) => t._id?.toString() === tradeId,
     ) as TradeLike | undefined;
@@ -349,17 +352,7 @@ export class TournamentTradeService {
         reason: `Trade is already ${trade.status}`,
       });
 
-    if (!this.isOrganizer(tournament, sub))
-      await this.assertTradeParticipant(trade, sub);
-
-    await this.tournamentRepo.setTrades(
-      tournament.id,
-      tournament.trades
-        .filter((t) => t._id?.toString() !== tradeId)
-        .map((t) => t as unknown as Record<string, unknown>),
-    );
-
-    return { message: "Trade withdrawn." };
+    return trade;
   }
 
   private async assertTradeParticipant(trade: TradeLike, sub: string) {
@@ -374,10 +367,6 @@ export class TournamentTradeService {
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
-  /**
-   * Each side may only offer Pokémon its team actually holds at that round,
-   * counting every trade already approved before it.
-   */
   private async assertRostersValid(
     tournament: HostedTournament,
     trade: { side1: TradeLike["side1"]; side2: TradeLike["side2"] },

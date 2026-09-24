@@ -126,6 +126,7 @@ describe("HostedTournamentService signup", () => {
 
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(tournament),
+      bumpRosterVersion: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     teamRepo = {
       findByIdOrNull: jest.fn(),
@@ -808,6 +809,38 @@ describe("HostedTournamentService signup", () => {
       });
 
       expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("bumps the roster version first inside the transaction when there is a cap", async () => {
+      const { track, log } = transactions;
+      tournament = buildTournament({ organizers: [SUB], maxTeams: 8 });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+      applicationRepo.findById.mockResolvedValue(buildApplication());
+      tournamentRepo.bumpRosterVersion.mockImplementation(
+        track("tournament.bumpRosterVersion", () => undefined),
+      );
+      teamRepo.countApprovedByTournament.mockImplementation(
+        track("team.countApproved", () => 3),
+      );
+      teamRepo.create.mockImplementation(
+        track("team.create", (input) => buildCreatedTeam(input._id)),
+      );
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(log.slice(0, 4)).toEqual([
+        "begin",
+        "tournament.bumpRosterVersion",
+        "team.countApproved",
+        "team.create",
+      ]);
     });
 
     it("writes the team, coach and decision in one transaction, then grants the role", async () => {
@@ -1522,6 +1555,7 @@ describe("HostedTournamentService assignCoaches", () => {
   const POOL_ID = new Types.ObjectId();
 
   let tournament: HostedTournament;
+  let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let coachRepo: jest.Mocked<CoachRepository>;
   let service: HostedTournamentService;
@@ -1558,11 +1592,13 @@ describe("HostedTournamentService assignCoaches", () => {
       countApprovedByTournament: jest.fn().mockResolvedValue(1),
       update: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TeamRepository>;
+    tournamentRepo = {
+      findBySlug: jest.fn().mockResolvedValue(tournament),
+      bumpRosterVersion: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<HostedTournamentRepository>;
 
     service = new HostedTournamentService(
-      {
-        findBySlug: jest.fn().mockResolvedValue(tournament),
-      } as unknown as HostedTournamentRepository,
+      tournamentRepo,
       {} as TierListRepository,
       teamRepo,
       coachRepo,
@@ -1650,6 +1686,34 @@ describe("HostedTournamentService assignCoaches", () => {
       teamsByCoach.get(coachId)!._id,
       { draftId: null, status: "approved" },
     );
+  });
+
+  it("bumps the roster version before counting, so concurrent reinstatements conflict", async () => {
+    const order: string[] = [];
+    tournamentRepo.bumpRosterVersion.mockImplementation(async () => {
+      order.push("bump");
+    });
+    teamRepo.countApprovedByTournament.mockImplementation(async () => {
+      order.push("count");
+      return 1;
+    });
+    const coachId = addCoach("dropped");
+
+    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { coachId, status: "approved" },
+    ]);
+
+    expect(order).toEqual(["bump", "count"]);
+  });
+
+  it("leaves the roster version alone when nothing is reinstated", async () => {
+    const coachId = addCoach("approved");
+
+    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { coachId, divisionKey: "pool-a", status: "approved" },
+    ]);
+
+    expect(tournamentRepo.bumpRosterVersion).not.toHaveBeenCalled();
   });
 
   it("does not count an already-approved team against the limit", async () => {

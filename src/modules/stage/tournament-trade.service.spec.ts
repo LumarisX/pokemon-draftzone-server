@@ -49,6 +49,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
     rounds: [buildRound("Week 1"), buildRound("Week 2")],
     currentRoundIndex: 0,
     trades: [],
+    tradesVersion: 0,
     tradePointLimit: undefined,
     ...overrides,
   } as any;
@@ -69,7 +70,9 @@ describe("TournamentTradeService", () => {
 
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(buildTournament()),
-      setTrades: jest.fn().mockResolvedValue(undefined),
+      pushTrade: jest.fn().mockResolvedValue(true),
+      resolvePendingTrade: jest.fn().mockResolvedValue(true),
+      pullPendingTrade: jest.fn().mockResolvedValue(true),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
 
     tierListRepo = {
@@ -88,7 +91,6 @@ describe("TournamentTradeService", () => {
     service = moduleRef.get(TournamentTradeService);
   });
 
-  /** A team holding one Pokémon, wired through both repository lookups. */
   function withRoster(pokemonId: string, overrides: Record<string, unknown> = {}) {
     const team = buildTeam({
       pickLog: [{ pokemon: { id: pokemonId }, addons: undefined }],
@@ -108,14 +110,17 @@ describe("TournamentTradeService", () => {
     }) as any;
 
   describe("createTrade", () => {
-    it("approves an organizer's trade immediately", async () => {
+    it("approves an organizer's trade immediately, pinned to the round's id", async () => {
       const team = withRoster("pikachu");
+      const tournament = buildTournament();
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       const result = await service.createTrade(
         "league-1",
         "tournament-1",
         "auth0|owner",
         tradeDto({
+          roundIndex: 1,
           side1: {
             team: team._id.toString(),
             pokemon: [{ id: "pikachu", tera: false }],
@@ -125,9 +130,12 @@ describe("TournamentTradeService", () => {
       );
 
       expect(result.status).toBe("APPROVED");
-      const written = tournamentRepo.setTrades.mock.calls[0][1];
-      expect(written).toHaveLength(1);
-      expect(written[0]).toMatchObject({ status: "APPROVED", activeRound: 0 });
+      const written = tournamentRepo.pushTrade.mock.calls[0][2] as any;
+      expect(written).toMatchObject({
+        status: "APPROVED",
+        activeRoundId: tournament.rounds[1]._id,
+      });
+      expect(written.activeRound).toBeUndefined();
     });
 
     it("holds a coach's own trade for approval", async () => {
@@ -149,10 +157,9 @@ describe("TournamentTradeService", () => {
       );
 
       expect(result.status).toBe("PENDING");
-      const written = tournamentRepo.setTrades.mock.calls[0][1];
-      // Filed but not yet resolved: an organizer still has to act on it.
-      expect(written[0]).toMatchObject({ submittedBy: "auth0|ash" });
-      expect(written[0].resolvedBy).toBeUndefined();
+      const written = tournamentRepo.pushTrade.mock.calls[0][2] as any;
+      expect(written).toMatchObject({ submittedBy: "auth0|ash" });
+      expect(written.resolvedBy).toBeUndefined();
     });
 
     it("records the organizer as both submitter and resolver", async () => {
@@ -171,7 +178,7 @@ describe("TournamentTradeService", () => {
         }),
       );
 
-      expect(tournamentRepo.setTrades.mock.calls[0][1][0]).toMatchObject({
+      expect(tournamentRepo.pushTrade.mock.calls[0][2]).toMatchObject({
         submittedBy: "auth0|owner",
         resolvedBy: "auth0|owner",
       });
@@ -197,8 +204,6 @@ describe("TournamentTradeService", () => {
     });
 
     it("rejects a round outside the tournament's axis", async () => {
-      // The point of moving trades up: activeRound indexes the tournament's
-      // rounds, so the bound is the tournament's, not any stage's.
       await expect(
         service.createTrade(
           "league-1",
@@ -257,11 +262,10 @@ describe("TournamentTradeService", () => {
       ).rejects.toMatchObject({ code: "STG-002" });
     });
 
-    it("appends rather than replacing the tournament's existing trades", async () => {
+    it("pushes the new trade at the version it was validated against", async () => {
       const team = withRoster("pikachu");
-      const existing = buildTrade();
       tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ trades: [existing] }),
+        buildTournament({ trades: [buildTrade()], tradesVersion: 4 }),
       );
 
       await service.createTrade(
@@ -277,7 +281,94 @@ describe("TournamentTradeService", () => {
         }),
       );
 
-      expect(tournamentRepo.setTrades.mock.calls[0][1]).toHaveLength(2);
+      expect(tournamentRepo.pushTrade).toHaveBeenCalledWith(
+        TOURNAMENT_ID.toString(),
+        4,
+        expect.objectContaining({ status: "APPROVED" }),
+      );
+    });
+
+    it("retries against fresh state when the trades changed underneath", async () => {
+      const team = withRoster("pikachu");
+      tournamentRepo.findBySlug
+        .mockResolvedValueOnce(buildTournament({ tradesVersion: 0 }))
+        .mockResolvedValueOnce(buildTournament({ tradesVersion: 1 }));
+      tournamentRepo.pushTrade
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+
+      const result = await service.createTrade(
+        "league-1",
+        "tournament-1",
+        "auth0|owner",
+        tradeDto({
+          side1: {
+            team: team._id.toString(),
+            pokemon: [{ id: "pikachu", tera: false }],
+            tradePoints: 0,
+          },
+        }),
+      );
+
+      expect(result.status).toBe("APPROVED");
+      expect(tournamentRepo.pushTrade.mock.calls.map((call) => call[1])).toEqual(
+        [0, 1],
+      );
+    });
+
+    it("refuses on retry when a concurrent trade used up the point limit", async () => {
+      const team = withRoster("pikachu");
+      tournamentRepo.findBySlug
+        .mockResolvedValueOnce(buildTournament({ tradePointLimit: 5 }))
+        .mockResolvedValueOnce(
+          buildTournament({
+            tradePointLimit: 5,
+            tradesVersion: 1,
+            trades: [
+              buildTrade({
+                side1: { team: team._id, pokemon: [], tradePoints: 4 },
+              }),
+            ],
+          }),
+        );
+      tournamentRepo.pushTrade.mockResolvedValueOnce(false);
+
+      await expect(
+        service.createTrade(
+          "league-1",
+          "tournament-1",
+          "auth0|owner",
+          tradeDto({
+            side1: {
+              team: team._id.toString(),
+              pokemon: [{ id: "pikachu", tera: false }],
+              tradePoints: 2,
+            },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
+      expect(tournamentRepo.pushTrade).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up with STG-009 when every attempt conflicts", async () => {
+      const team = withRoster("pikachu");
+      tournamentRepo.pushTrade.mockResolvedValue(false);
+
+      await expect(
+        service.createTrade(
+          "league-1",
+          "tournament-1",
+          "auth0|owner",
+          tradeDto({
+            side1: {
+              team: team._id.toString(),
+              pokemon: [{ id: "pikachu", tera: false }],
+              tradePoints: 0,
+            },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "STG-009" });
+      expect(tournamentRepo.pushTrade).toHaveBeenCalledTimes(3);
     });
 
     it("records a tera pick as the Tera Captain add-on", async () => {
@@ -296,7 +387,7 @@ describe("TournamentTradeService", () => {
         }),
       );
 
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
+      const written = tournamentRepo.pushTrade.mock.calls[0][2] as any;
       expect(written.side1.pokemon[0].addons).toEqual(["Tera Captain"]);
     });
   });
@@ -333,9 +424,8 @@ describe("TournamentTradeService", () => {
 
     it("writes a rejection through", async () => {
       const trade = buildTrade({ status: "PENDING" });
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ trades: [trade] }),
-      );
+      const tournament = buildTournament({ trades: [trade] });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       const result = await service.updateTrade(
         "league-1",
@@ -346,17 +436,21 @@ describe("TournamentTradeService", () => {
       );
 
       expect(result).toMatchObject({ status: "REJECTED" });
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
-      expect(written.status).toBe("REJECTED");
-      expect(written._id.toString()).toBe(trade._id.toString());
-      expect(written.resolvedBy).toBe("auth0|owner");
+      const [, version, tradeId, patch] =
+        tournamentRepo.resolvePendingTrade.mock.calls[0];
+      expect(version).toBe(0);
+      expect(tradeId.toString()).toBe(trade._id.toString());
+      expect(patch).toEqual({
+        status: "REJECTED",
+        activeRoundId: tournament.rounds[0]._id,
+        resolvedBy: "auth0|owner",
+      });
     });
 
     it("leaves a still-pending trade unresolved when only its round moves", async () => {
       const trade = buildTrade({ status: "PENDING", submittedBy: "auth0|ash" });
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ trades: [trade] }),
-      );
+      const tournament = buildTournament({ trades: [trade] });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       await service.updateTrade(
         "league-1",
@@ -366,22 +460,26 @@ describe("TournamentTradeService", () => {
         { activeRound: 1 },
       );
 
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
-      expect(written).toMatchObject({
+      expect(tournamentRepo.resolvePendingTrade.mock.calls[0][3]).toEqual({
         status: "PENDING",
-        activeRound: 1,
-        submittedBy: "auth0|ash",
+        activeRoundId: tournament.rounds[1]._id,
       });
-      expect(written.resolvedBy).toBeUndefined();
     });
 
-    it("writes the resolved trade as a plain object", async () => {
-      const trade = buildTrade({ status: "PENDING" });
+    it("keeps a pinned trade on its round after a round is inserted ahead of it", async () => {
+      const inserted = buildRound("Bye Week");
+      const week1 = buildRound("Week 1");
+      const week2 = buildRound("Week 2");
+      const trade = buildTrade({
+        status: "PENDING",
+        activeRound: undefined,
+        activeRoundId: week1._id,
+      });
       tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ trades: [trade] }),
+        buildTournament({ rounds: [inserted, week1, week2], trades: [trade] }),
       );
 
-      await service.updateTrade(
+      const result = await service.updateTrade(
         "league-1",
         "tournament-1",
         trade._id.toString(),
@@ -389,16 +487,40 @@ describe("TournamentTradeService", () => {
         { status: "REJECTED" },
       );
 
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
-      expect(written.$__).toBeUndefined();
-      expect(written._doc).toBeUndefined();
+      expect(result.activeRound).toBe(1);
+      expect(tournamentRepo.resolvePendingTrade.mock.calls[0][3]).toMatchObject(
+        { activeRoundId: week1._id },
+      );
+    });
+
+    it("refuses on retry once a concurrent decision resolved the trade", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug
+        .mockResolvedValueOnce(buildTournament({ trades: [trade] }))
+        .mockResolvedValueOnce(
+          buildTournament({
+            tradesVersion: 1,
+            trades: [{ ...trade, status: "APPROVED" }],
+          }),
+        );
+      tournamentRepo.resolvePendingTrade.mockResolvedValueOnce(false);
+
+      await expect(
+        service.updateTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|owner",
+          { status: "REJECTED" },
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
+      expect(tournamentRepo.resolvePendingTrade).toHaveBeenCalledTimes(1);
     });
 
     it("moves a pending trade to another round", async () => {
       const trade = buildTrade({ status: "PENDING", activeRound: 0 });
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ trades: [trade] }),
-      );
+      const tournament = buildTournament({ trades: [trade] });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
       const result = await service.updateTrade(
         "league-1",
@@ -409,9 +531,9 @@ describe("TournamentTradeService", () => {
       );
 
       expect(result).toMatchObject({ activeRound: 1, status: "PENDING" });
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
-      expect(written.activeRound).toBe(1);
-      expect(written.status).toBe("PENDING");
+      expect(tournamentRepo.resolvePendingTrade.mock.calls[0][3]).toMatchObject(
+        { activeRoundId: tournament.rounds[1]._id, status: "PENDING" },
+      );
     });
 
     it("rejects a round outside the tournament's axis", async () => {
@@ -494,13 +616,12 @@ describe("TournamentTradeService", () => {
         { status: "APPROVED" },
       );
 
-      const written = tournamentRepo.setTrades.mock.calls[0][1][0] as any;
-      expect(written.status).toBe("APPROVED");
+      expect(tournamentRepo.resolvePendingTrade.mock.calls[0][3].status).toBe(
+        "APPROVED",
+      );
     });
 
     it("rejects approving a trade that went stale behind another", async () => {
-      // Filed when the team held Pikachu; another approved trade has since
-      // sent it away, so the offer can no longer be honoured.
       const team = withRoster("mewtwo");
       const trade = buildTrade({
         status: "PENDING",
@@ -573,7 +694,11 @@ describe("TournamentTradeService", () => {
         "auth0|giovanni",
       );
 
-      expect(tournamentRepo.setTrades.mock.calls[0][1]).toHaveLength(0);
+      expect(tournamentRepo.pullPendingTrade).toHaveBeenCalledWith(
+        TOURNAMENT_ID.toString(),
+        0,
+        trade._id,
+      );
     });
 
     it("lets an organizer withdraw any pending trade", async () => {
@@ -589,10 +714,10 @@ describe("TournamentTradeService", () => {
         "auth0|owner",
       );
 
-      expect(tournamentRepo.setTrades.mock.calls[0][1]).toHaveLength(0);
+      expect(tournamentRepo.pullPendingTrade).toHaveBeenCalledTimes(1);
     });
 
-    it("leaves the other trades in place", async () => {
+    it("pulls only the withdrawn trade", async () => {
       const trade = buildTrade({ status: "PENDING" });
       const other = buildTrade({ status: "APPROVED" });
       tournamentRepo.findBySlug.mockResolvedValue(
@@ -606,9 +731,29 @@ describe("TournamentTradeService", () => {
         "auth0|owner",
       );
 
-      const written = tournamentRepo.setTrades.mock.calls[0][1] as any[];
-      expect(written).toHaveLength(1);
-      expect(written[0]._id.toString()).toBe(other._id.toString());
+      expect(tournamentRepo.pullPendingTrade.mock.calls[0][2]).toBe(trade._id);
+    });
+
+    it("refuses on retry once a concurrent approval resolved the trade", async () => {
+      const trade = buildTrade({ status: "PENDING" });
+      tournamentRepo.findBySlug
+        .mockResolvedValueOnce(buildTournament({ trades: [trade] }))
+        .mockResolvedValueOnce(
+          buildTournament({
+            tradesVersion: 1,
+            trades: [{ ...trade, status: "APPROVED" }],
+          }),
+        );
+      tournamentRepo.pullPendingTrade.mockResolvedValueOnce(false);
+
+      await expect(
+        service.withdrawTrade(
+          "league-1",
+          "tournament-1",
+          trade._id.toString(),
+          "auth0|owner",
+        ),
+      ).rejects.toMatchObject({ code: "STG-002" });
     });
 
     it("rejects a coach who is not a party to the trade", async () => {
@@ -673,8 +818,6 @@ describe("TournamentTradeService", () => {
 
       expect(result.rounds[0].trades).toEqual([]);
       expect(result.rounds[1].trades).toHaveLength(1);
-      // Both participants are listed — a team that spent nothing on a trade
-      // still took part in it, and the view is a per-team spend table.
       expect(result.tradePoints.byTeam).toEqual([
         { teamId: teamA._id.toString(), teamName: "A", spent: 2 },
         { teamId: teamB._id.toString(), teamName: "B", spent: 0 },
@@ -722,6 +865,36 @@ describe("TournamentTradeService", () => {
       expect(result.rounds.every((r) => r.trades.length === 0)).toBe(true);
     });
 
+    it("buckets a pinned trade by its round id, not its stored index", async () => {
+      const week1 = buildRound("Week 1");
+      const week2 = buildRound("Week 2");
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          rounds: [week1, week2],
+          trades: [buildTrade({ activeRound: 0, activeRoundId: week2._id })],
+        }),
+      );
+
+      const result = await service.getTrades("league-1", "tournament-1");
+
+      expect(result.rounds[0].trades).toHaveLength(0);
+      expect(result.rounds[1].trades).toEqual([
+        expect.objectContaining({ activeRound: 1 }),
+      ]);
+    });
+
+    it("drops a trade whose round id no longer exists", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          trades: [buildTrade({ activeRoundId: new Types.ObjectId() })],
+        }),
+      );
+
+      const result = await service.getTrades("league-1", "tournament-1");
+
+      expect(result.rounds.every((r) => r.trades.length === 0)).toBe(true);
+    });
+
     it("filters to trades involving the given team", async () => {
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });
@@ -741,8 +914,6 @@ describe("TournamentTradeService", () => {
         }),
       );
       teamRepo.findManyByIds.mockResolvedValue([teamA, teamB, teamC]);
-      // The filter arrives as a slug — the URL's identifier — and is resolved
-      // to the ObjectId the trades actually store.
       teamRepo.findIdsBySlugs.mockResolvedValue([teamA._id]);
 
       const result = await service.getTrades(

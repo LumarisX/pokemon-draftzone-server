@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { PopulatedTeam } from "@modules/team/team.repository";
-import { RosterContext, TradeLike } from "./stage-axis";
+import { RosterContext, TradeLike, tradeRoundIndex } from "./stage-axis";
 
 function getTradeTeamId(team?: Types.ObjectId | { _id: Types.ObjectId }) {
   if (!team) return undefined;
@@ -10,10 +10,6 @@ function getTradeTeamId(team?: Types.ObjectId | { _id: Types.ObjectId }) {
   return team._id.toString();
 }
 
-/**
- * Applies a batch of trades (all scoped to the same round) to a team's
- * roster, swapping out anything they sent for whatever they received.
- */
 export function updateRosterWithTrades(
   teamId: Types.ObjectId,
   roster: { id: string; addons?: string[] }[],
@@ -42,45 +38,43 @@ export function updateRosterWithTrades(
   return roster;
 }
 
-/**
- * Returns the roster snapshot at the start of every round, from round 0
- * (the raw post-draft pick log, before any trade) through `roundIndex`
- * inclusive (defaults to every round in the stage).
- *
- * If `context` is undefined, there's no trade context to walk — returns just
- * the raw pick log wrapped in a single-element array (covers DraftService's
- * "no stage" raw pick-history views).
- */
+function approvedTradesByRound(
+  team: PopulatedTeam,
+  context: RosterContext,
+): Map<number, TradeLike[]> {
+  const teamIdString = team._id.toString();
+  const byRound = new Map<number, TradeLike[]>();
+  for (const trade of context.trades) {
+    if (trade.status !== "APPROVED") continue;
+    if (
+      getTradeTeamId(trade.side1.team) !== teamIdString &&
+      getTradeTeamId(trade.side2.team) !== teamIdString
+    )
+      continue;
+    const round = tradeRoundIndex(trade, context.rounds);
+    byRound.set(round, [...(byRound.get(round) ?? []), trade]);
+  }
+  return byRound;
+}
+
+function pickLogRoster(team: PopulatedTeam) {
+  return team.pickLog.map((p) => ({
+    id: p.pokemon.id,
+    addons: p.addons,
+  })) as { id: string; addons?: string[] }[];
+}
+
 export function getRostersBeforeRound(
   team: PopulatedTeam,
   context: RosterContext | undefined,
   roundIndex?: number,
 ) {
-  let roster: {
-    id: string;
-    addons?: string[];
-  }[] = team.pickLog.map((p) => ({
-    id: p.pokemon.id,
-    addons: p.addons,
-  }));
+  let roster = pickLogRoster(team);
   const rosters = [[...roster]];
 
   if (!context) return rosters;
 
-  const teamIdString = team._id.toString();
-  const roundTrades = context.trades
-    .filter(
-      (t) =>
-        t.status === "APPROVED" &&
-        (getTradeTeamId(t.side1.team) === teamIdString ||
-          getTradeTeamId(t.side2.team) === teamIdString),
-    )
-    .reduce((map, t) => {
-      const existing = map.get(t.activeRound);
-      map.set(t.activeRound, existing ? [...existing, t] : [t]);
-      return map;
-    }, new Map<number, TradeLike[]>());
-
+  const roundTrades = approvedTradesByRound(team, context);
   for (let r = 0; r < (roundIndex ?? context.rounds.length); r++) {
     const trades = roundTrades.get(r);
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
@@ -89,41 +83,16 @@ export function getRostersBeforeRound(
   return rosters;
 }
 
-/**
- * Returns a team's roster as of `roundIndex` (defaults to the context's
- * current round). `team.pickLog` is always the base roster; if `context` is
- * undefined, the trade-walk is skipped entirely and the raw pick log is
- * returned as-is (covers DraftService's no-stage "raw pick history" views).
- */
 export function getRosterByRound(
   team: PopulatedTeam,
   context: RosterContext | undefined,
   roundIndex?: number,
 ) {
-  let roster: {
-    id: string;
-    addons?: string[];
-  }[] = team.pickLog.map((p) => ({
-    id: p.pokemon.id,
-    addons: p.addons,
-  }));
+  let roster = pickLogRoster(team);
 
   if (!context) return roster;
 
-  const teamIdString = team._id.toString();
-  const roundTrades = context.trades
-    .filter(
-      (t) =>
-        t.status === "APPROVED" &&
-        (getTradeTeamId(t.side1.team) === teamIdString ||
-          getTradeTeamId(t.side2.team) === teamIdString),
-    )
-    .reduce((map, t) => {
-      const existing = map.get(t.activeRound);
-      map.set(t.activeRound, existing ? [...existing, t] : [t]);
-      return map;
-    }, new Map<number, TradeLike[]>());
-
+  const roundTrades = approvedTradesByRound(team, context);
   for (let r = 0; r <= (roundIndex ?? context.currentRoundIndex); r++) {
     const trades = roundTrades.get(r);
     if (trades) roster = updateRosterWithTrades(team._id, roster, trades);
@@ -131,15 +100,6 @@ export function getRosterByRound(
   return roster;
 }
 
-/**
- * A team's roster with every approved trade applied, including ones that take
- * effect in a round that has not been reached yet.
- *
- * This is what a roster listing wants: a coach looking at the teams page is
- * asking who holds what now, not who held what during the round currently
- * being played. Match views still read {@link getRosterByRound}, because a
- * result has to be scored against the roster in force when it was played.
- */
 export function getLatestRoster(
   team: PopulatedTeam,
   context: RosterContext | undefined,

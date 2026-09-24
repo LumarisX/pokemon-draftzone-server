@@ -7,6 +7,7 @@ import {
   stageRounds,
   stageTeamIds,
   stageTrades,
+  tradeRoundIndex,
   usesTournamentAxis,
 } from "./stage-axis";
 
@@ -21,7 +22,6 @@ const trade = (activeRound: number) => ({
   status: "APPROVED" as const,
 });
 
-/** A stage as it exists before the sections-to-stages migration. */
 function legacyStage(overrides: Record<string, unknown> = {}) {
   return {
     rounds: [round("Week 1"), round("Week 2")],
@@ -36,7 +36,6 @@ function legacyStage(overrides: Record<string, unknown> = {}) {
   } as unknown as StageDocument;
 }
 
-/** A stage as the migration creates it: teams only, no schedule of its own. */
 function migratedStage(overrides: Record<string, unknown> = {}) {
   return {
     rounds: [],
@@ -47,6 +46,34 @@ function migratedStage(overrides: Record<string, unknown> = {}) {
     ...overrides,
   } as unknown as StageDocument;
 }
+
+describe("tradeRoundIndex", () => {
+  const rounds = [round("Week 1"), round("Week 2"), round("Week 3")];
+
+  it("resolves a pinned round id to its current position", () => {
+    expect(
+      tradeRoundIndex({ activeRoundId: rounds[2]._id, activeRound: 0 }, rounds),
+    ).toBe(2);
+  });
+
+  it("follows the round when another is inserted ahead of it", () => {
+    const pinned = { activeRoundId: rounds[1]._id };
+    const reordered = [round("Bye"), ...rounds];
+    expect(tradeRoundIndex(pinned, rounds)).toBe(1);
+    expect(tradeRoundIndex(pinned, reordered)).toBe(2);
+  });
+
+  it("returns -1 for a round id no longer on the axis", () => {
+    expect(
+      tradeRoundIndex({ activeRoundId: new Types.ObjectId() }, rounds),
+    ).toBe(-1);
+  });
+
+  it("falls back to the stored index on a trade that predates round ids", () => {
+    expect(tradeRoundIndex({ activeRound: 1 }, rounds)).toBe(1);
+    expect(tradeRoundIndex({}, rounds)).toBe(-1);
+  });
+});
 
 describe("stageRounds", () => {
   it("uses the stage's own rounds when the tournament has none", () => {
@@ -62,9 +89,6 @@ describe("stageRounds", () => {
   });
 
   it("prefers the tournament's rounds over a stage's leftover copy", () => {
-    // A single-section stage keeps its `_id` through the migration, so it also
-    // keeps its old rounds. Reading those would point matchups at subdocuments
-    // no longer on the axis.
     const rounds = [round("Week 1")];
 
     expect(stageRounds(legacyStage(), { rounds })).toBe(rounds);
@@ -113,8 +137,6 @@ describe("stageTeamIds", () => {
   });
 
   it("prefers teamIds over pools when a stage carries both", () => {
-    // Seeds are numbered positionally, so reading the wrong list would
-    // renumber every seed in the bracket.
     const stage = legacyStage({ teamIds: [new Types.ObjectId()] });
 
     expect(stageTeamIds(stage)).toBe(stage.teamIds);
@@ -133,8 +155,6 @@ describe("stageTrades", () => {
   });
 
   it("reads the tournament's trades after it, ignoring the stage's copy", () => {
-    // The migration leaves the stage's trades in place for rollback. Counting
-    // both would double every roster change.
     const trades = [trade(0), trade(2)];
 
     expect(
@@ -188,8 +208,6 @@ describe("rosterContext", () => {
 
 describe("rosterContextForTournament", () => {
   it("reads the tournament's own axis when it has one, with no stage at all", () => {
-    // The case every roster listing used to get wrong: it passed undefined
-    // whenever it had not resolved a stage, silently dropping every trade.
     const trades = [trade(0)];
 
     const context = rosterContextForTournament({
@@ -233,8 +251,6 @@ describe("rosterContextForTournament", () => {
   });
 
   it("returns no context when a pre-migration tournament has several stages", () => {
-    // Each carries its own rounds, so there is no single axis to replay
-    // against — the caller has to name the stage it means.
     expect(
       rosterContextForTournament({
         rounds: [],

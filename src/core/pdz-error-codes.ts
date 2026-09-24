@@ -189,11 +189,6 @@ export const ErrorCodes = {
       status: 400,
       message: "League name must contain at least one letter or number",
     },
-    /**
-     * Unreachable since slugs became random base62 rather than name-derived —
-     * two drafts may now share a league name. Kept so existing clients that
-     * branch on DR-011 keep compiling.
-     */
     DUPLICATE_NAME: {
       code: "DR-011",
       status: 409,
@@ -248,6 +243,11 @@ export const ErrorCodes = {
       code: "STG-008",
       status: 409,
       message: "The trade deadline for this round has passed",
+    },
+    TRADES_CHANGED: {
+      code: "STG-009",
+      status: 409,
+      message: "Trades changed while this was being saved. Please try again.",
     },
   },
   SYSTEM: {

@@ -796,7 +796,7 @@ export class HostedTournamentService {
     const teamId = new Types.ObjectId();
 
     const decided = await this.transactions.run(async () => {
-      await this.assertRosterHasRoom(tournament);
+      await this.reserveRosterRoom(tournament);
 
       const team = await this.teamRepo.create({
         _id: teamId,
@@ -902,10 +902,7 @@ export class HostedTournamentService {
               nameChange: {
                 from: previousName,
                 to: nextName,
-                round:
-                  tournament.currentRoundIndex >= 0
-                    ? tournament.currentRoundIndex
-                    : undefined,
+                roundId: tournament.rounds[tournament.currentRoundIndex]?._id,
                 reason: dto.reason?.trim() || "Coach replacement",
                 changedBy: sub,
               },
@@ -980,11 +977,12 @@ export class HostedTournamentService {
     return { signUpToken, signUpTokenRotatedAt: new Date() };
   }
 
-  private async assertRosterHasRoom(
+  private async reserveRosterRoom(
     tournament: HostedTournament,
     incoming = 1,
   ) {
     if (tournament.maxTeams === undefined) return;
+    await this.tournamentRepo.bumpRosterVersion(tournament.id);
     const approved = await this.teamRepo.countApprovedByTournament(
       tournament.id,
     );
@@ -1190,11 +1188,13 @@ export class HostedTournamentService {
     const reinstated = planned.filter(
       ({ team, status }) => status === "approved" && team.status !== "approved",
     ).length;
-    if (reinstated) await this.assertRosterHasRoom(tournament, reinstated);
+    await this.transactions.run(async () => {
+      if (reinstated) await this.reserveRosterRoom(tournament, reinstated);
 
-    for (const { team, draftId, status } of planned) {
-      await this.teamRepo.update(team._id, { draftId, status });
-    }
+      for (const { team, draftId, status } of planned) {
+        await this.teamRepo.update(team._id, { draftId, status });
+      }
+    });
 
     return { message: "Update successful." };
   }

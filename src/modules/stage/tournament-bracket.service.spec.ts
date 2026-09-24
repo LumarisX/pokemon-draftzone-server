@@ -394,6 +394,57 @@ describe("TournamentBracketService", () => {
       expect(schedule.rounds[0].name).toBe("Week 1 (renamed)");
     });
 
+    it("refuses to remove a round that a live trade takes effect in", async () => {
+      const kept = buildRound("Week 1");
+      const traded = buildRound("Week 2");
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          rounds: [kept, traded],
+          trades: [{ status: "APPROVED", activeRoundId: traded._id }],
+        }),
+      );
+
+      await expect(
+        update(
+          buildDto({
+            rounds: [{ _id: kept._id.toString(), name: "Week 1" }],
+          } as Partial<UpdateTournamentBracketDto>),
+        ),
+      ).rejects.toMatchObject({ code: "STG-004" });
+      expect(tournamentRepo.setSchedule).not.toHaveBeenCalled();
+    });
+
+    it("lets a round go when its only trade was rejected", async () => {
+      const kept = buildRound("Week 1");
+      const dropped = buildRound("Week 2");
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          rounds: [kept, dropped],
+          trades: [{ status: "REJECTED", activeRoundId: dropped._id }],
+        }),
+      );
+
+      await update(
+        buildDto({
+          rounds: [{ _id: kept._id.toString(), name: "Week 1" }],
+        } as Partial<UpdateTournamentBracketDto>),
+      );
+
+      expect(tournamentRepo.setSchedule).toHaveBeenCalled();
+    });
+
+    it("guards the schedule write with the trades version it validated", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ tradesVersion: 7 }),
+      );
+
+      await update(buildDto());
+
+      expect(tournamentRepo.setSchedule.mock.calls[0][1]).toMatchObject({
+        tradesVersion: 7,
+      });
+    });
+
     it("clears a deadline the payload leaves out, because rounds are replaced wholesale", async () => {
       const round = buildRound("Week 1");
       (round as Record<string, unknown>)["matchDeadline"] = new Date(

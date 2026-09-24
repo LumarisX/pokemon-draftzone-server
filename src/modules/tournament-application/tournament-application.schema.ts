@@ -122,5 +122,8 @@ export const TournamentApplicationSchema = SchemaFactory.createForClass(
   TournamentApplicationEntity,
 );
 
-TournamentApplicationSchema.index({ tournamentId: 1, auth0Id: 1 });
+TournamentApplicationSchema.index(
+  { tournamentId: 1, auth0Id: 1 },
+  { unique: true },
+);
 TournamentApplicationSchema.index({ tournamentId: 1, status: 1 });

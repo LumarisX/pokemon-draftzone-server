@@ -12,7 +12,6 @@ import {
 } from "./hosted-tournament.domain";
 import { HostedTournamentDocument } from "./hosted-tournament.schema";
 
-/** The parts of the owning league a tournament needs to carry with it. */
 export type TournamentLeague = { owner: string; slug: string; name: string };
 
 export type TournamentTierListMeta = { format: string; ruleset: string } | null;
@@ -61,11 +60,10 @@ export class HostedTournamentMapper {
           })
         : undefined,
       stages,
-      // Passed through as stored subdocuments rather than remapped: the round
-      // `_id`s are what matchups reference, so they have to survive intact.
       rounds: doc.rounds,
       currentRoundIndex: doc.currentRoundIndex,
       trades: doc.trades,
+      tradesVersion: doc.tradesVersion ?? 0,
       forfeit: new TournamentForfeit({
         gameDiff: doc.forfeit.gameDiff,
         pokemonDiff: doc.forfeit.pokemonDiff,
