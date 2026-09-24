@@ -15,7 +15,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     id: TOURNAMENT_ID.toString(),
     owner: "auth0|owner",
-    organizers: [],
+    staff: [],
     rounds: [],
     currentRoundIndex: -1,
     trades: [],

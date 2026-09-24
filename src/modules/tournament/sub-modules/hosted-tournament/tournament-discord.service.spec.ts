@@ -48,7 +48,7 @@ describe("TournamentDiscordService", () => {
       findBySlug: jest.fn().mockResolvedValue({
         id: "tournament-1",
         owner: "auth0|owner",
-        organizers: [],
+        staff: [],
       }),
       setDiscordLinkCode: jest.fn().mockResolvedValue(undefined),
       consumeDiscordLinkCode: jest.fn(),

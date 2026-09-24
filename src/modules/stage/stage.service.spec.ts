@@ -17,7 +17,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     id: "tournament-1",
     owner: "auth0|owner",
-    organizers: [],
+    staff: [],
     forfeit: { gameDiff: 3 },
     diffMode: "pokemon",
     ...overrides,
@@ -174,7 +174,7 @@ describe("StageService", () => {
 
     it("rejects a non-organizer", async () => {
       hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ owner: "auth0|owner", organizers: [] }),
+        buildTournament({ owner: "auth0|owner", staff: [] }),
       );
 
       await expect(

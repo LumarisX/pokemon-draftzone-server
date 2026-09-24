@@ -19,7 +19,9 @@ const ORGANIZER = "auth0|organizer";
 const OTHER_ORGANIZER = "auth0|other-organizer";
 const OUTSIDER = "auth0|outsider";
 
-function buildTournament() {
+function buildTournament(
+  overrides: Partial<ConstructorParameters<typeof HostedTournament>[0]> = {},
+) {
   return new HostedTournament({
     id: new Types.ObjectId().toString(),
     name: "Spring Cup",
@@ -29,11 +31,11 @@ function buildTournament() {
     leagueId: "league-1",
     leagueSlug: LEAGUE_KEY,
     leagueName: "Spring League",
-    organizers: [ORGANIZER, OTHER_ORGANIZER],
-    organizerNames: [
-      { sub: OWNER, name: "Brock" },
-      { sub: ORGANIZER, name: "Nurse Joy" },
+    staff: [
+      { sub: ORGANIZER, name: "Nurse Joy", role: "organizer" },
+      { sub: OTHER_ORGANIZER, role: "organizer" },
     ],
+    ownerName: { sub: OWNER, name: "Brock" },
     tierListId: "tier-1",
     rules: [],
     stages: [],
@@ -44,6 +46,7 @@ function buildTournament() {
     draftCount: new DraftCount({ min: 1, max: 6 }),
     tierRequirements: [],
     signUpQuestions: [],
+    ...overrides,
   });
 }
 
@@ -78,9 +81,10 @@ describe("TournamentOrganizerService", () => {
     tournament = buildTournament();
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(tournament),
-      addOrganizer: jest.fn().mockResolvedValue(undefined),
-      setOrganizerName: jest.fn().mockResolvedValue(undefined),
-      removeOrganizer: jest.fn().mockResolvedValue(undefined),
+      addStaff: jest.fn().mockResolvedValue(undefined),
+      setStaffName: jest.fn().mockResolvedValue(undefined),
+      setOwnerName: jest.fn().mockResolvedValue(undefined),
+      removeStaff: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     inviteRepo = {
       create: jest.fn().mockImplementation(async (input) => ({
@@ -123,6 +127,36 @@ describe("TournamentOrganizerService", () => {
         { sub: ORGANIZER, name: "Nurse Joy", isOwner: false, isYou: true },
         { sub: OTHER_ORGANIZER, name: null, isOwner: false, isYou: false },
       ]);
+    });
+
+    it("does not show a previous owner's stored name to a new owner", async () => {
+      tournament = buildTournament({
+        ownerName: { sub: "auth0|previous-owner", name: "Giovanni" },
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+
+      const result = await service.getOrganizers(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        OWNER,
+      );
+
+      expect(result.organizers[0]).toMatchObject({ sub: OWNER, name: null });
+    });
+
+    it("lists the owner once even if they also appear on the staff list", async () => {
+      tournament = buildTournament({
+        staff: [{ sub: OWNER, role: "organizer" }],
+      });
+      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+
+      const result = await service.getOrganizers(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        OWNER,
+      );
+
+      expect(result.organizers.map((entry) => entry.sub)).toEqual([OWNER]);
     });
 
     it("hides invites and candidates from organizers who are not the owner", async () => {
@@ -169,7 +203,7 @@ describe("TournamentOrganizerService", () => {
   });
 
   describe("addOrganizer", () => {
-    it("promotes a coach under their sign-up name", async () => {
+    it("promotes a coach under their sign-up name, as an organizer", async () => {
       const misty = { ...coach("auth0|misty", "Misty"), teamId: "team-1" };
       coachRepo.findById.mockResolvedValue(misty);
       teamRepo.findByIdOrNull.mockResolvedValue({
@@ -180,10 +214,26 @@ describe("TournamentOrganizerService", () => {
         coachId: misty._id.toString(),
       });
 
-      expect(tournamentRepo.addOrganizer).toHaveBeenCalledWith(
+      expect(tournamentRepo.addStaff).toHaveBeenCalledWith(tournament.id, {
+        sub: "auth0|misty",
+        name: "Misty",
+        role: "organizer",
+      });
+    });
+  });
+
+  describe("removeOrganizer", () => {
+    it("pulls the organizer from the staff list", async () => {
+      await service.removeOrganizer(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        OWNER,
+        ORGANIZER,
+      );
+
+      expect(tournamentRepo.removeStaff).toHaveBeenCalledWith(
         tournament.id,
-        "auth0|misty",
-        "Misty",
+        ORGANIZER,
       );
     });
   });
@@ -198,7 +248,7 @@ describe("TournamentOrganizerService", () => {
         "Joy",
       );
 
-      expect(tournamentRepo.setOrganizerName).toHaveBeenCalledWith(
+      expect(tournamentRepo.setStaffName).toHaveBeenCalledWith(
         tournament.id,
         ORGANIZER,
         "Joy",
@@ -214,11 +264,28 @@ describe("TournamentOrganizerService", () => {
         "Officer Jenny",
       );
 
-      expect(tournamentRepo.setOrganizerName).toHaveBeenCalledWith(
+      expect(tournamentRepo.setStaffName).toHaveBeenCalledWith(
         tournament.id,
         OTHER_ORGANIZER,
         "Officer Jenny",
       );
+    });
+
+    it("stores the owner's own name on the owner, not the staff list", async () => {
+      await service.renameOrganizer(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        OWNER,
+        OWNER,
+        "Gym Leader Brock",
+      );
+
+      expect(tournamentRepo.setOwnerName).toHaveBeenCalledWith(
+        tournament.id,
+        OWNER,
+        "Gym Leader Brock",
+      );
+      expect(tournamentRepo.setStaffName).not.toHaveBeenCalled();
     });
 
     it("stops an organizer renaming someone else", async () => {
@@ -231,7 +298,7 @@ describe("TournamentOrganizerService", () => {
           "Nope",
         ),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
-      expect(tournamentRepo.setOrganizerName).not.toHaveBeenCalled();
+      expect(tournamentRepo.setStaffName).not.toHaveBeenCalled();
     });
 
     it("will not name someone who is not an organizer", async () => {
@@ -301,11 +368,11 @@ describe("TournamentOrganizerService", () => {
         hashInviteToken("tok"),
         OUTSIDER,
       );
-      expect(tournamentRepo.addOrganizer).toHaveBeenCalledWith(
-        tournament.id,
-        OUTSIDER,
-        "Misty",
-      );
+      expect(tournamentRepo.addStaff).toHaveBeenCalledWith(tournament.id, {
+        sub: OUTSIDER,
+        name: "Misty",
+        role: "organizer",
+      });
     });
 
     it("uses the name the invitee chose over the suggested one", async () => {
@@ -321,10 +388,9 @@ describe("TournamentOrganizerService", () => {
         "Gym Leader Misty",
       );
 
-      expect(tournamentRepo.addOrganizer).toHaveBeenCalledWith(
+      expect(tournamentRepo.addStaff).toHaveBeenCalledWith(
         tournament.id,
-        OUTSIDER,
-        "Gym Leader Misty",
+        expect.objectContaining({ name: "Gym Leader Misty" }),
       );
     });
 
@@ -338,7 +404,7 @@ describe("TournamentOrganizerService", () => {
       ).rejects.toMatchObject({
         code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID.code,
       });
-      expect(tournamentRepo.addOrganizer).not.toHaveBeenCalled();
+      expect(tournamentRepo.addStaff).not.toHaveBeenCalled();
     });
 
     it("rejects an expired invite", async () => {
@@ -362,7 +428,7 @@ describe("TournamentOrganizerService", () => {
       ).rejects.toMatchObject({
         code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID.code,
       });
-      expect(tournamentRepo.addOrganizer).not.toHaveBeenCalled();
+      expect(tournamentRepo.addStaff).not.toHaveBeenCalled();
     });
 
     it("leaves the invite unused when the caller is already an organizer", async () => {
@@ -380,7 +446,7 @@ describe("TournamentOrganizerService", () => {
       const invite = buildInvite(tournament);
       inviteRepo.findByTokenHash.mockResolvedValue(invite);
       inviteRepo.claim.mockResolvedValue(invite);
-      tournamentRepo.addOrganizer.mockRejectedValue(new Error("db down"));
+      tournamentRepo.addStaff.mockRejectedValue(new Error("db down"));
 
       await expect(
         service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),

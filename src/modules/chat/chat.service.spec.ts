@@ -55,7 +55,7 @@ describe("ChatService", () => {
         findBySlug: jest.fn().mockResolvedValue({
           id: TOURNAMENT_ID.toString(),
           owner: "auth0|owner",
-          organizers: [],
+          staff: [],
           matchSettings: {},
         }),
       } as unknown as HostedTournamentRepository,

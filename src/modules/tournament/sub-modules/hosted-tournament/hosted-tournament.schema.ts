@@ -1,5 +1,6 @@
 import { generateSlug } from "@core/slug";
 import { LeagueEntity } from "@modules/league/league.schema";
+import { STAFF_ROLES, StaffRole } from "@modules/tournament/tournament-policy";
 import {
   DraftCountEntity,
   DraftCountSchema,
@@ -17,6 +18,21 @@ export class OrganizerNameEntity {
 }
 export const OrganizerNameSchema =
   SchemaFactory.createForClass(OrganizerNameEntity);
+
+@Schema({ _id: false })
+export class TournamentStaffEntity {
+  @Prop({ required: true })
+  sub!: string;
+
+  @Prop()
+  name?: string;
+
+  @Prop({ type: String, enum: STAFF_ROLES, required: true })
+  role!: StaffRole;
+}
+export const TournamentStaffSchema = SchemaFactory.createForClass(
+  TournamentStaffEntity,
+);
 
 @Schema({ _id: false })
 export class TierRequirementEntity {
@@ -327,11 +343,11 @@ export class HostedTournamentEntity {
   })
   league!: Types.ObjectId;
 
-  @Prop({ type: [String], default: [] })
-  organizers!: string[];
+  @Prop({ type: [TournamentStaffSchema], default: [] })
+  staff!: TournamentStaffEntity[];
 
-  @Prop({ type: [OrganizerNameSchema], default: [] })
-  organizerNames!: OrganizerNameEntity[];
+  @Prop({ type: OrganizerNameSchema })
+  ownerName?: OrganizerNameEntity;
 
   @Prop({ type: SchemaTypes.ObjectId })
   tierList?: Types.ObjectId;

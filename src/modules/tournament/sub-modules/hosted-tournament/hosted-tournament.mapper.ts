@@ -38,11 +38,14 @@ export class HostedTournamentMapper {
       leagueSlug: league.slug,
       leagueName: league.name,
       archived: doc.archived,
-      organizers: [...doc.organizers],
-      organizerNames: (doc.organizerNames ?? []).map(({ sub, name }) => ({
+      staff: (doc.staff ?? []).map(({ sub, name, role }) => ({
         sub,
         name,
+        role,
       })),
+      ownerName: doc.ownerName
+        ? { sub: doc.ownerName.sub, name: doc.ownerName.name }
+        : undefined,
       tierListId: doc.tierList?.toString() ?? "",
       rules: doc.rules.map(
         (rule) => new TournamentRule({ title: rule.title, body: rule.body }),

@@ -6,7 +6,10 @@ import {
   TOURNAMENT_ACTIONS,
 } from "./tournament-policy";
 
-const tournament = { owner: "auth0|owner", organizers: ["auth0|org"] };
+const tournament = {
+  owner: "auth0|owner",
+  staff: [{ sub: "auth0|org", role: "organizer" as const }],
+};
 
 describe("tournament policy", () => {
   it("gives the owner both roles and every action", () => {
@@ -28,6 +31,18 @@ describe("tournament policy", () => {
       for (const action of TOURNAMENT_ACTIONS)
         expect(can(tournament, sub, action)).toBe(false);
     }
+  });
+
+  it("grants nothing extra to the owner when they also appear on the staff list", () => {
+    expect(
+      rolesOf(
+        {
+          owner: "auth0|owner",
+          staff: [{ sub: "auth0|owner", role: "organizer" }],
+        },
+        "auth0|owner",
+      ),
+    ).toEqual(["owner", "organizer"]);
   });
 
   it("maps every role to actions that exist", () => {

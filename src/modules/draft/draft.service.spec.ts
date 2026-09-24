@@ -72,7 +72,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     id: "tournament-1",
     owner: "auth0|owner",
-    organizers: [],
+    staff: [],
     tierList,
     draftCount: new DraftCount({ min: 1, max: 2 }),
     pointTotal: undefined,
@@ -313,7 +313,7 @@ describe("DraftService", () => {
 
   describe("draftPick", () => {
     it("throws FORBIDDEN when the caller is neither an organizer nor the team's coach", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
+      const tournament = buildTournament({ owner: "auth0|owner", staff: [] });
       const team = buildTeam();
       const draft = buildDraft({ teams: [team] });
       draftRepo.findTournament.mockResolvedValue(tournament);
@@ -431,7 +431,7 @@ describe("DraftService", () => {
 
   describe("setState", () => {
     it("throws FORBIDDEN for a non-organizer", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
+      const tournament = buildTournament({ owner: "auth0|owner", staff: [] });
       const draft = buildDraft();
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
@@ -488,7 +488,7 @@ describe("DraftService", () => {
 
   describe("skipPick", () => {
     it("throws FORBIDDEN for a non-organizer", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", organizers: [] });
+      const tournament = buildTournament({ owner: "auth0|owner", staff: [] });
       const draft = buildDraft();
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);

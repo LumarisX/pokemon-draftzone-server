@@ -16,7 +16,11 @@ export const TOURNAMENT_ACTIONS = [
 
 export type TournamentAction = (typeof TOURNAMENT_ACTIONS)[number];
 
-export const TOURNAMENT_ROLES = ["owner", "organizer"] as const;
+export const STAFF_ROLES = ["organizer"] as const;
+
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export const TOURNAMENT_ROLES = ["owner", ...STAFF_ROLES] as const;
 
 export type TournamentRole = (typeof TOURNAMENT_ROLES)[number];
 
@@ -26,9 +30,15 @@ export const ROLE_ACTIONS: Record<TournamentRole, readonly TournamentAction[]> =
     organizer: TOURNAMENT_ACTIONS.filter((action) => action !== "manageStaff"),
   };
 
+export interface StaffMember {
+  sub: string;
+  name?: string;
+  role: StaffRole;
+}
+
 export interface TournamentStaff {
   owner: string;
-  organizers: readonly string[];
+  staff: readonly StaffMember[];
 }
 
 export function rolesOf(
@@ -36,11 +46,14 @@ export function rolesOf(
   sub: string | undefined,
 ): TournamentRole[] {
   if (!sub) return [];
-  const roles: TournamentRole[] = [];
-  if (tournament.owner === sub) roles.push("owner");
-  if (tournament.owner === sub || tournament.organizers.includes(sub))
-    roles.push("organizer");
-  return roles;
+  const roles = new Set<TournamentRole>();
+  if (tournament.owner === sub) {
+    roles.add("owner");
+    roles.add("organizer");
+  }
+  for (const member of tournament.staff)
+    if (member.sub === sub) roles.add(member.role);
+  return [...roles];
 }
 
 export function isStaff(

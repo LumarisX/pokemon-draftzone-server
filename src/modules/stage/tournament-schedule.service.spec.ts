@@ -69,7 +69,7 @@ describe("TournamentScheduleService", () => {
     return {
       id: new Types.ObjectId().toString(),
       owner: "auth0|owner",
-      organizers: [],
+      staff: [],
       rounds: [week1, week2],
       currentRoundIndex: 0,
       trades: [],
@@ -148,7 +148,6 @@ describe("TournamentScheduleService", () => {
   it("orders stages within a round by the tournament's phase order", async () => {
     const late = buildStage({ name: "Playoffs", order: 5 });
     const early = buildStage({ name: "Groups", order: 1 });
-    // Returned late-first, so the ordering has to come from `order`.
     stageRepo.findAllByTournament.mockResolvedValue([late, early]);
     matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
       buildMatchup(late._id, week1._id, team("A"), team("B")),
@@ -189,8 +188,6 @@ describe("TournamentScheduleService", () => {
 
     await get({ sub: "auth0|stranger" });
 
-    // The hidden stage is excluded from the query, not filtered afterwards —
-    // otherwise its matchups would still be fetched and could leak.
     expect(matchupRepo.findByRoundsAcrossStages).toHaveBeenCalledWith(
       [],
       expect.anything(),
@@ -224,7 +221,6 @@ describe("TournamentScheduleService", () => {
   });
 
   describe("a tournament the migration has not reached", () => {
-    // Its rounds still live on its stages, so the axis is built from those.
     const stageWeek1 = round("Stage Week 1");
     const stageWeek2 = round("Stage Week 2");
 
@@ -248,10 +244,6 @@ describe("TournamentScheduleService", () => {
     });
 
     it("walks a stage's trades against that stage's round index", async () => {
-      // The trade is active from the stage's round 0. Read against the
-      // concatenated axis, the second stage's rounds sit at index 2 and 3, so
-      // using the global index would apply this stage's trades in the wrong
-      // week entirely.
       const first = buildStage({
         name: "First",
         order: 0,
@@ -266,7 +258,6 @@ describe("TournamentScheduleService", () => {
         trades: [
           {
             _id: new Types.ObjectId(),
-            // teamA sends the Pokemon it holds and receives the other.
             side1: { team: teamA._id, pokemon: [{ id: "pikachu" }] },
             side2: { team: team("Z")._id, pokemon: [{ id: "mewtwo" }] },
             timestamp: new Date(),
@@ -288,8 +279,6 @@ describe("TournamentScheduleService", () => {
       const result = await get();
       const week2 = result.rounds.find((r) => r.name === "Stage Week 2")!;
 
-      // Stage round 1 — the trade has applied, so the roster shows what the
-      // team received.
       expect(week2.stages[0].matchups[0].team1.draft).toEqual([
         { id: "mewtwo", capt: {} },
       ]);
@@ -305,7 +294,6 @@ describe("TournamentScheduleService", () => {
 
     const result = await get();
 
-    // No teams to show yet, so the round has nothing from that stage.
     expect(result.rounds[0].stages).toEqual([]);
   });
 
@@ -318,7 +306,6 @@ describe("TournamentScheduleService", () => {
         side1: { slot: { type: "winner", matchId: sourceId.toString() } },
       }),
     ]);
-    // Two unlabelled semi-finals in week 1; the slot points at the second.
     matchupRepo.findLabelFieldsByStages.mockResolvedValue([
       {
         _id: new Types.ObjectId(),
@@ -398,8 +385,6 @@ describe("TournamentScheduleService", () => {
       expect(card.advances).toBeNull();
     });
 
-    // A stranded match has a side no result will ever fill, so the ordinary
-    // "both sides resolved" filter would hide the one card that needs acting on.
     it("keeps a blocked match whose opponent slot can never be filled", async () => {
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
@@ -425,9 +410,6 @@ describe("TournamentScheduleService", () => {
       );
     });
 
-    // The walkover an organizer records on a stranded match: a real result, on
-    // a card that still has one empty side. Dropping it would hide a recorded
-    // result the organizer may need to correct.
     it("keeps a match that has a recorded result but an empty side", async () => {
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
@@ -459,7 +441,6 @@ describe("TournamentScheduleService", () => {
       expect(result.rounds[0].stages).toHaveLength(0);
     });
 
-    // The flag drives an organizer-only control, and the set costs a query.
     it("does not compute blocked matches for a public read", async () => {
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);

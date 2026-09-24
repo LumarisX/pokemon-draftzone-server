@@ -5,6 +5,7 @@ import { LeagueRepository } from "@modules/league/league.repository";
 import { LeagueDocument } from "@modules/league/league.schema";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { TeamRepository } from "@modules/team/team.repository";
+import { StaffRole } from "@modules/tournament/tournament-policy";
 import {
   TierListDocument,
   TierListEntity,
@@ -223,39 +224,44 @@ export class HostedTournamentRepository {
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
   }
 
-  async addOrganizer(
+  async addStaff(
+    tournamentId: Types.ObjectId | string,
+    member: { sub: string; name: string; role: StaffRole },
+  ) {
+    await this.hostedTournamentModel
+      .updateOne(
+        { _id: tournamentId, "staff.sub": { $ne: member.sub } },
+        { $push: { staff: member } },
+      )
+      .exec();
+  }
+
+  async setStaffName(
     tournamentId: Types.ObjectId | string,
     sub: string,
     name: string,
   ) {
     await this.hostedTournamentModel
-      .updateOne({ _id: tournamentId }, { $addToSet: { organizers: sub } })
+      .updateOne(
+        { _id: tournamentId, "staff.sub": sub },
+        { $set: { "staff.$.name": name } },
+      )
       .exec();
-    await this.setOrganizerName(tournamentId, sub, name);
   }
 
-  async setOrganizerName(
+  async setOwnerName(
     tournamentId: Types.ObjectId | string,
     sub: string,
     name: string,
   ) {
     await this.hostedTournamentModel
-      .updateOne({ _id: tournamentId }, { $pull: { organizerNames: { sub } } })
-      .exec();
-    await this.hostedTournamentModel
-      .updateOne(
-        { _id: tournamentId },
-        { $push: { organizerNames: { sub, name } } },
-      )
+      .updateOne({ _id: tournamentId }, { $set: { ownerName: { sub, name } } })
       .exec();
   }
 
-  async removeOrganizer(tournamentId: Types.ObjectId | string, sub: string) {
+  async removeStaff(tournamentId: Types.ObjectId | string, sub: string) {
     await this.hostedTournamentModel
-      .updateOne(
-        { _id: tournamentId },
-        { $pull: { organizers: sub, organizerNames: { sub } } },
-      )
+      .updateOne({ _id: tournamentId }, { $pull: { staff: { sub } } })
       .exec();
   }
 

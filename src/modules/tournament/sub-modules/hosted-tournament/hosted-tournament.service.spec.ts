@@ -39,7 +39,7 @@ function buildTournament(
     leagueId: "league-1",
     leagueSlug: "springleague",
     leagueName: "Spring League",
-    organizers: [],
+    staff: [],
     tierListId: "tier-1",
     rules: [],
     stages: [],
@@ -613,7 +613,7 @@ describe("HostedTournamentService signup", () => {
     }
 
     beforeEach(() => {
-      tournament = buildTournament({ organizers: [SUB] });
+      tournament = buildTournament({ staff: [{ sub: SUB, role: "organizer" }] });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
       applicationRepo.decide.mockImplementation(
         async (_id, data) => ({ ...data }) as any,
@@ -693,7 +693,7 @@ describe("HostedTournamentService signup", () => {
 
     it("honours autoGrantCoachRole: false", async () => {
       tournament = buildTournament({
-        organizers: [SUB],
+        staff: [{ sub: SUB, role: "organizer" }],
         discordSettings: {
           guildId: "guild-1",
           coachRoleId: "role-1",
@@ -791,7 +791,7 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("refuses to approve past maxTeams", async () => {
-      tournament = buildTournament({ organizers: [SUB], maxTeams: 8 });
+      tournament = buildTournament({ staff: [{ sub: SUB, role: "organizer" }], maxTeams: 8 });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
       applicationRepo.findById.mockResolvedValue(buildApplication());
       teamRepo.countApprovedByTournament.mockResolvedValue(8);
@@ -813,7 +813,7 @@ describe("HostedTournamentService signup", () => {
 
     it("bumps the roster version first inside the transaction when there is a cap", async () => {
       const { track, log } = transactions;
-      tournament = buildTournament({ organizers: [SUB], maxTeams: 8 });
+      tournament = buildTournament({ staff: [{ sub: SUB, role: "organizer" }], maxTeams: 8 });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
       applicationRepo.findById.mockResolvedValue(buildApplication());
       tournamentRepo.bumpRosterVersion.mockImplementation(
@@ -1130,7 +1130,9 @@ describe("HostedTournamentService removeParticipant", () => {
   beforeEach(() => {
     transactions = recordTransactions();
     const { track } = transactions;
-    const tournament = buildTournament({ organizers: [ORGANIZER] });
+    const tournament = buildTournament({
+      staff: [{ sub: ORGANIZER, role: "organizer" }],
+    });
 
     teamRepo = {
       findByIdOrNull: jest

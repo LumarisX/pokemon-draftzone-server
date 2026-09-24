@@ -64,11 +64,11 @@ export class TournamentOrganizerService {
     if (coach.auth0Id === tournament.owner)
       throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
 
-    await this.tournamentRepo.addOrganizer(
-      tournament.id,
-      coach.auth0Id,
-      coach.name,
-    );
+    await this.tournamentRepo.addStaff(tournament.id, {
+      sub: coach.auth0Id,
+      name: coach.name,
+      role: "organizer",
+    });
     return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
@@ -91,11 +91,10 @@ export class TournamentOrganizerService {
         organizerSub,
       });
 
-    await this.tournamentRepo.setOrganizerName(
-      tournament.id,
-      organizerSub,
-      name,
-    );
+    if (organizerSub === tournament.owner)
+      await this.tournamentRepo.setOwnerName(tournament.id, organizerSub, name);
+    else
+      await this.tournamentRepo.setStaffName(tournament.id, organizerSub, name);
     return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
@@ -109,7 +108,7 @@ export class TournamentOrganizerService {
     if (organizerSub === tournament.owner)
       throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
 
-    await this.tournamentRepo.removeOrganizer(tournament.id, organizerSub);
+    await this.tournamentRepo.removeStaff(tournament.id, organizerSub);
     return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
@@ -174,7 +173,7 @@ export class TournamentOrganizerService {
     return {
       tournamentName: tournament.name,
       leagueName: tournament.leagueName,
-      invitedBy: organizerName(tournament, invite.createdBy),
+      invitedBy: tournament.staffName(invite.createdBy),
       suggestedName: invite.name,
       expiresAt: invite.expiresAt,
       alreadyOrganizer: isStaff(tournament, sub),
@@ -204,11 +203,11 @@ export class TournamentOrganizerService {
       throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID);
 
     try {
-      await this.tournamentRepo.addOrganizer(
-        tournament.id,
+      await this.tournamentRepo.addStaff(tournament.id, {
         sub,
-        name ?? invite.name,
-      );
+        name: name ?? invite.name,
+        role: "organizer",
+      });
     } catch (error) {
       await this.inviteRepo.release(claimed._id);
       throw error;
@@ -230,7 +229,12 @@ export class TournamentOrganizerService {
 
   private async organizersPayload(tournament: HostedTournament, sub: string) {
     const canEdit = can(tournament, sub, "manageStaff");
-    const organizerSubs = [tournament.owner, ...tournament.organizers];
+    const organizerSubs = [
+      tournament.owner,
+      ...tournament.staff
+        .map((member) => member.sub)
+        .filter((staffSub) => staffSub !== tournament.owner),
+    ];
     const [invites, candidates] = canEdit
       ? await Promise.all([
           this.inviteRepo.findPendingByTournament(tournament.id),
@@ -242,7 +246,7 @@ export class TournamentOrganizerService {
       canEdit,
       organizers: organizerSubs.map((organizerSub) => ({
         sub: organizerSub,
-        name: organizerName(tournament, organizerSub),
+        name: tournament.staffName(organizerSub),
         isOwner: organizerSub === tournament.owner,
         isYou: organizerSub === sub,
       })),
@@ -303,11 +307,4 @@ export class TournamentOrganizerService {
     if (!team || team.tournamentId.toString() !== tournamentId) return null;
     return coach;
   }
-}
-
-function organizerName(
-  tournament: HostedTournament,
-  sub: string,
-): string | null {
-  return tournament.organizerNames.find((entry) => entry.sub === sub)?.name ?? null;
 }

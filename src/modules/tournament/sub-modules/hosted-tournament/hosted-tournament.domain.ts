@@ -8,7 +8,11 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { DraftCount } from "@modules/tier-list/tier-list.domain";
-import { rolesOf, TournamentRole } from "@modules/tournament/tournament-policy";
+import {
+  rolesOf,
+  StaffMember,
+  TournamentRole,
+} from "@modules/tournament/tournament-policy";
 import {
   TournamentRoundEntity,
   TournamentTradeEntity,
@@ -125,8 +129,8 @@ export class HostedTournament {
   leagueSlug: string;
   leagueName: string;
   archived: boolean;
-  organizers: string[];
-  organizerNames: { sub: string; name: string }[];
+  staff: StaffMember[];
+  ownerName?: { sub: string; name: string };
   tierListId: string;
   rules: TournamentRule[];
   logo?: string;
@@ -168,8 +172,8 @@ export class HostedTournament {
     leagueSlug: string;
     leagueName: string;
     archived?: boolean;
-    organizers: string[];
-    organizerNames?: { sub: string; name: string }[];
+    staff?: StaffMember[];
+    ownerName?: { sub: string; name: string };
     tierListId: string;
     rules: TournamentRule[];
     logo?: string;
@@ -210,8 +214,8 @@ export class HostedTournament {
     this.leagueSlug = props.leagueSlug;
     this.leagueName = props.leagueName;
     this.archived = props.archived ?? false;
-    this.organizers = props.organizers;
-    this.organizerNames = props.organizerNames ?? [];
+    this.staff = props.staff ?? [];
+    this.ownerName = props.ownerName;
     this.tierListId = props.tierListId;
     this.rules = props.rules;
     this.logo = props.logo;
@@ -276,6 +280,12 @@ export class HostedTournament {
 
   getRoles(sub: string | undefined): TournamentRole[] {
     return rolesOf(this, sub);
+  }
+
+  staffName(sub: string): string | null {
+    if (sub === this.owner)
+      return this.ownerName?.sub === sub ? this.ownerName.name : null;
+    return this.staff.find((member) => member.sub === sub)?.name ?? null;
   }
 
   getPlayoffsStage(): StageDocument | undefined {
