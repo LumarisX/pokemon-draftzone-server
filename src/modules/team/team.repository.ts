@@ -3,7 +3,7 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
+import { ClientSession, Model, Types } from "mongoose";
 import { TeamDocument, TeamEntity, TeamStatus } from "./team.schema";
 
 export type PopulatedTeam = TeamDocument & {
@@ -61,6 +61,18 @@ export class TeamRepository {
       .lean()
       .exec();
     return teams.map((team) => team._id);
+  }
+
+  async isPokemonTakenInDraft(
+    draftId: Types.ObjectId | string,
+    pokemonId: string,
+    session?: ClientSession,
+  ): Promise<boolean> {
+    const taken = await this.teamModel
+      .exists({ draftId, "pickLog.pokemon.id": pokemonId })
+      .session(session ?? null)
+      .exec();
+    return taken !== null;
   }
 
   async countInTournament(

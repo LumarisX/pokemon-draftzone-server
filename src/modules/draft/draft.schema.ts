@@ -46,8 +46,6 @@ export class DraftEntity {
   @Prop({ default: false })
   public!: boolean;
 
-  // Draft-state machine fields, promoted from the old embedded
-  // DivisionDraftEntity to top-level fields on this collection.
   @Prop({
     type: String,
     enum: ["PRE_DRAFT", "IN_PROGRESS", "PAUSED", "COMPLETED"],
@@ -66,6 +64,9 @@ export class DraftEntity {
 
   @Prop({ default: 0 })
   counter!: number;
+
+  @Prop({ default: 0 })
+  pickVersion!: number;
 
   @Prop({ type: [DraftEventLogSchema], default: [] })
   eventLog!: DraftEventLogEntity[];
@@ -88,7 +89,6 @@ export class DraftEntity {
   @Prop({ default: true })
   useRandomSeeding?: boolean;
 
-  /** Manual seed order (team ids) used when `useRandomSeeding` is false. */
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   teamOrder!: Types.ObjectId[];
 

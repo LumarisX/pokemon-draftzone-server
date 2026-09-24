@@ -17,7 +17,7 @@ import {
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Types } from "mongoose";
-import { HostedTournament } from "./hosted-tournament.domain";
+import { HostedTournament, TierRequirement } from "./hosted-tournament.domain";
 import { SignUpDto } from "./hosted-tournament.dto";
 import { DEFAULT_SIGNUP_QUESTIONS } from "./signup-questions";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
@@ -1388,6 +1388,63 @@ describe("HostedTournamentService settings", () => {
         code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
       });
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects switching tier lists when the saved requirements name tiers the new list lacks", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          tierRequirements: [
+            new TierRequirement({ tierId: tierId("Nonexistent"), required: 1 }),
+          ],
+        }),
+      );
+
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          tierListId: new Types.ObjectId().toString(),
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects lowering the roster max below the saved requirements", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          tierRequirements: [
+            new TierRequirement({ tierId: tierId("S"), required: 3 }),
+          ],
+        }),
+      );
+
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          draftCount: { min: 1, max: 2 },
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("rejects a roster minimum above the maximum", async () => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          draftCount: { min: 8, max: 6 },
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+    });
+
+    it("does not load the tier list for a save that touches no roster rule", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        name: "Summer Cup",
+      });
+
+      expect(tierListRepo.findById).not.toHaveBeenCalled();
+      expect(tournamentRepo.updateSettings).toHaveBeenCalled();
     });
 
     it("persists only the provided keys on a valid update", async () => {

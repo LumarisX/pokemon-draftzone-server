@@ -150,220 +150,172 @@ describe("StageService", () => {
     });
   });
 
-  describe("updateMatchup", () => {
+  describe("match reports", () => {
     const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
 
-    function buildMatchupDoc(overrides: Record<string, unknown> = {}) {
-      return {
-        stage: new Types.ObjectId(),
+    function setup(overrides: Record<string, unknown> = {}) {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: TOURNAMENT_ID.toString() }),
+      );
+      const matchup = {
+        _id: new Types.ObjectId(),
+        slug: "match-1",
+        stage: stageId,
         results: [],
-        side1: { score: 0 },
-        side2: { score: 0 },
+        side1: {
+          score: 0,
+          team: buildTeam({
+            coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-1" },
+          }),
+        },
+        side2: {
+          score: 0,
+          team: buildTeam({
+            coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-2" },
+          }),
+        },
         save: jest.fn().mockResolvedValue(undefined),
         ...overrides,
       } as any;
-    }
-
-    function inTournament(matchup: any) {
-      matchupRepo.findBySlug.mockResolvedValue(matchup);
+      matchupRepo.findBySlugPopulated.mockResolvedValue(matchup);
       stageRepo.findByIdOrNull.mockResolvedValue(
-        buildStage({ tournamentId: TOURNAMENT_ID }),
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
       );
       return matchup;
     }
 
-    it("rejects a non-organizer", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ owner: "auth0|owner", staff: [] }),
-      );
-
-      await expect(
-        service.updateMatchup(
-          "league-1",
-          "tournament-1",
-          new Types.ObjectId().toString(),
-          "auth0|stranger",
-          { matches: [] } as any,
-        ),
-      ).rejects.toMatchObject({ code: "AUTH-002" });
-    });
-
-    it("rejects a matchup whose stage belongs to another tournament", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      matchupRepo.findBySlug.mockResolvedValue(buildMatchupDoc());
-      stageRepo.findByIdOrNull.mockResolvedValue(
-        buildStage({ tournamentId: new Types.ObjectId() }),
-      );
-
-      await expect(
-        service.updateMatchup(
-          "league-1",
-          "tournament-1",
-          "someslug",
-          "auth0|owner",
-          { matches: [] } as any,
-        ),
-      ).rejects.toMatchObject({ code: "MU-001" });
-    });
-
-    it("rebuilds results, dropping pokemon entries with a null/undefined status", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      const matchup = buildMatchupDoc();
-      inTournament(matchup);
-
-      await service.updateMatchup(
-        "league-1",
-        "tournament-1",
-        new Types.ObjectId().toString(),
-        "auth0|owner",
+    const twoNil = {
+      matches: [
         {
-          matches: [
-            {
-              link: "  replay-link  ",
-              winner: "side1",
-              team1: {
-                score: 2,
-                pokemon: {
-                  pikachu: { status: "survived" },
-                  mew: { status: null as any },
-                },
-              },
-              team2: { score: 1, pokemon: { mewtwo: { status: "fainted" } } },
-            },
-          ],
-        } as any,
-      );
-
-      expect(matchup.results).toEqual([
-        {
-          replay: "replay-link",
           winner: "side1",
-          side1: {
-            score: 2,
-            pokemon: new Map([["pikachu", { status: "survived" }]]),
-          },
-          side2: {
-            score: 1,
-            pokemon: new Map([["mewtwo", { status: "fainted" }]]),
-          },
+          team1: { score: 2, pokemon: { pikachu: { status: "survived" } } },
+          team2: { score: 0, pokemon: { mewtwo: { status: "fainted" } } },
         },
-      ]);
-      expect(matchup.save).toHaveBeenCalled();
-    });
+      ],
+    } as any;
 
-    it("applies dto.score to both sides when given", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      const matchup = buildMatchupDoc();
-      inTournament(matchup);
+    function storedReport(overrides: Record<string, unknown> = {}) {
+      return {
+        submittedBy: "auth0|coach-2",
+        submittedAt: new Date(),
+        results: [],
+        side1Score: 0,
+        side2Score: 2,
+        winner: "side2",
+        ...overrides,
+      };
+    }
 
-      await service.updateMatchup(
+    it("holds a coach's report for review", async () => {
+      const matchup = setup();
+
+      const result = await service.submitMatchupReport(
         "league-1",
         "tournament-1",
-        new Types.ObjectId().toString(),
-        "auth0|owner",
-        { matches: [], score: { team1: 3, team2: 1 } } as any,
+        matchup.slug,
+        "auth0|coach-1",
+        twoNil,
       );
 
-      expect(matchup.side1.score).toBe(3);
-      expect(matchup.side2.score).toBe(1);
+      expect(result.status).toBe("pending");
+      expect(matchup.status).toBe("pending");
+      expect(matchup.report).toMatchObject({
+        side1Score: 1,
+        side2Score: 0,
+        winner: "side1",
+      });
     });
 
-    it.each([
-      ["side1", { winner: "side1", forfeit: undefined }],
-      ["side2", { winner: "side2", forfeit: undefined }],
-      ["draw", { winner: "draw", forfeit: undefined }],
-      ["side1ffw", { winner: "side1", forfeit: true }],
-      ["side2ffw", { winner: "side2", forfeit: true }],
-      ["dffl", { winner: "draw", forfeit: true }],
-    ])(
-      "maps dto.winner %s to matchup {winner, forfeit}",
-      async (dtoWinner, expected) => {
-        hostedTournamentRepo.findBySlug.mockResolvedValue(
-          buildTournament({ id: TOURNAMENT_ID.toString() }),
-        );
-        const matchup = buildMatchupDoc();
-        inTournament(matchup);
+    it("refuses a coach's report on a result that is already approved", async () => {
+      const matchup = setup({ status: "approved", winner: "side2" });
 
-        await service.updateMatchup(
+      await expect(
+        service.submitMatchupReport(
           "league-1",
           "tournament-1",
-          new Types.ObjectId().toString(),
-          "auth0|owner",
-          { matches: [], winner: dtoWinner } as any,
-        );
-
-        expect(matchup.winner).toBe(expected.winner);
-        expect(matchup.forfeit).toBe(expected.forfeit);
-      },
-    );
-
-    it("returns a confirmation message", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      inTournament(buildMatchupDoc());
-
-      const result = await service.updateMatchup(
-        "league-1",
-        "tournament-1",
-        new Types.ObjectId().toString(),
-        "auth0|owner",
-        { matches: [] } as any,
-      );
-
-      expect(result).toEqual({ message: "Schedule updated." });
+          matchup.slug,
+          "auth0|coach-1",
+          twoNil,
+        ),
+      ).rejects.toMatchObject({ code: "MU-005" });
+      expect(matchup.status).toBe("approved");
+      expect(matchup.save).not.toHaveBeenCalled();
     });
 
-    it("re-resolves the tournament's bracket after a result is recorded", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      const stageId = new Types.ObjectId();
-      const matchupId = new Types.ObjectId();
-      const matchup = buildMatchupDoc({
-        _id: matchupId,
-        stage: stageId,
-        side1: { score: 0, team: new Types.ObjectId() },
-        side2: { score: 0, team: new Types.ObjectId() },
-      });
-      inTournament(matchup);
+    it("clears a stale forfeit when an organizer records a played result", async () => {
+      const matchup = setup({ forfeit: true, winner: "side2" });
 
-      await service.updateMatchup(
+      await service.submitMatchupReport(
         "league-1",
         "tournament-1",
-        matchupId.toString(),
+        matchup.slug,
         "auth0|owner",
-        { matches: [], winner: "side1" } as any,
+        twoNil,
       );
 
+      expect(matchup).toMatchObject({
+        forfeit: false,
+        winner: "side1",
+        status: "approved",
+      });
       expect(advancement.applyToTournament).toHaveBeenCalledWith(TOURNAMENT_ID);
     });
 
-    it("does not re-resolve when dto.winner is absent", async () => {
-      hostedTournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ id: TOURNAMENT_ID.toString() }),
-      );
-      const matchup = buildMatchupDoc({
-        _id: new Types.ObjectId(),
-        stage: new Types.ObjectId(),
-      });
-      inTournament(matchup);
+    it("rejecting a report on an unplayed match leaves it unplayed", async () => {
+      const matchup = setup({ status: "pending", report: storedReport() });
 
-      await service.updateMatchup(
+      await service.reviewMatchupReport(
         "league-1",
         "tournament-1",
-        new Types.ObjectId().toString(),
+        matchup.slug,
         "auth0|owner",
-        { matches: [] } as any,
+        false,
       );
 
-      expect(advancement.applyToTournament).not.toHaveBeenCalled();
+      expect(matchup.status).toBeUndefined();
+      expect(matchup.report).toBeUndefined();
+    });
+
+    it("rejecting a report restores a result that was already recorded", async () => {
+      const matchup = setup({
+        status: "pending",
+        winner: "side1",
+        report: storedReport(),
+      });
+
+      await service.reviewMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|owner",
+        false,
+      );
+
+      expect(matchup.status).toBe("approved");
+      expect(matchup.winner).toBe("side1");
+    });
+
+    it("approving a report with no winner takes it from the reported score", async () => {
+      const matchup = setup({
+        status: "pending",
+        winner: "side1",
+        report: storedReport({ winner: undefined }),
+      });
+
+      await service.reviewMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|owner",
+        true,
+      );
+
+      expect(matchup).toMatchObject({
+        winner: "side2",
+        status: "approved",
+        forfeit: false,
+      });
     });
   });
 

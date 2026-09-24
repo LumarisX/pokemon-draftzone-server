@@ -55,32 +55,9 @@ export class MatchResultDto {
   team2!: MatchTeamResultDto;
 }
 
-/**
- * Names the side that leaves a match whose recorded result cannot.
- *
- * `null` withdraws the decision and puts the bracket back on the result, so
- * the field is nullable rather than merely optional — omitting it and clearing
- * it are different requests.
- */
 export class SetMatchupAdvancementDto {
   @IsIn(["side1", "side2", "none", null])
   advances!: "side1" | "side2" | "none" | null;
-}
-
-export class UpdateMatchupDto {
-  @ValidateNested()
-  @Type(() => MatchupScoreDto)
-  @IsOptional()
-  score?: MatchupScoreDto;
-
-  @IsIn(["side1", "side2", "draw", "side1ffw", "side2ffw", "dffl"])
-  @IsOptional()
-  winner?: "side1" | "side2" | "draw" | "side1ffw" | "side2ffw" | "dffl";
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => MatchResultDto)
-  matches!: MatchResultDto[];
 }
 
 export class SetMatchupScheduleDto {
@@ -107,7 +84,6 @@ export class SubmitMatchupReportDto {
   @IsOptional()
   winner?: "side1" | "side2" | "draw";
 
-  /** Set alongside `winner` to report a forfeit rather than played games. */
   @IsBoolean()
   @IsOptional()
   forfeit?: boolean;
@@ -220,12 +196,6 @@ export class BracketSlotDto {
   from?: string;
 }
 
-/**
- * One block of the bracket's seeding. Groups own consecutive seed numbers in
- * array order — group 0 gets seeds 1..n, group 1 the n following, and so on —
- * and each resolves independently, so a random group is shuffled only among
- * its own teams and never leaks a team into another section.
- */
 export class SeedGroupDto {
   @IsArray()
   @IsString({ each: true })
@@ -234,7 +204,6 @@ export class SeedGroupDto {
   @IsIn(["certified-random", "manual"])
   method!: "certified-random" | "manual";
 
-  /** Section name, recorded on the seeding log entry this group produces. */
   @IsString()
   @IsOptional()
   label?: string;

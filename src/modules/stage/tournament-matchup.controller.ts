@@ -14,19 +14,9 @@ import {
   SetMatchupNotesDto,
   SetMatchupScheduleDto,
   SubmitMatchupReportDto,
-  UpdateMatchupDto,
 } from "./stage.dto";
 import { StageService } from "./stage.service";
 
-/**
- * A single match, addressed at tournament level.
- *
- * The stage segment these routes used to carry was never doing any work: a
- * matchup slug is unique across the collection, and rounds and stages both
- * belong to the tournament, so the tournament is the smallest scope that
- * actually contains a match. Which stage it sits in is something the service
- * reads off the matchup — and checks against the tournament in the URL.
- */
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/matchups")
 export class TournamentMatchupController {
   constructor(private readonly stageService: StageService) {}
@@ -153,13 +143,6 @@ export class TournamentMatchupController {
     );
   }
 
-  /**
-   * Unsticks a bracket that a result could not resolve.
-   *
-   * Its own route rather than a field on the result: the advancement is a
-   * separate decision from the score, is made after the fact, and must not
-   * require resending a result to change.
-   */
   @Post(":matchupSlug/advancement")
   @UseGuards(JwtAuthGuard)
   async setMatchupAdvancement(
@@ -175,24 +158,6 @@ export class TournamentMatchupController {
       matchupSlug,
       sub,
       body.advances,
-    );
-  }
-
-  @Post(":matchupSlug")
-  @UseGuards(JwtAuthGuard)
-  async updateMatchup(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("matchupSlug") matchupSlug: string,
-    @User() sub: string,
-    @Body() body: UpdateMatchupDto,
-  ) {
-    return this.stageService.updateMatchup(
-      leagueSlug,
-      tournamentSlug,
-      matchupSlug,
-      sub,
-      body,
     );
   }
 }

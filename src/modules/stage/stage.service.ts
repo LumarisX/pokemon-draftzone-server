@@ -31,7 +31,6 @@ import {
   SetMatchupNotesDto,
   SetMatchupScheduleDto,
   SubmitMatchupReportDto,
-  UpdateMatchupDto,
 } from "./stage.dto";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
@@ -358,6 +357,9 @@ export class StageService {
       return { message: "Result recorded.", status: "approved" as const };
     }
 
+    if (matchupDoc.status === "approved")
+      throw new PDZError(ErrorCodes.MATCHUP.ALREADY_APPROVED, { matchupSlug });
+
     const reportingSide =
       viewer.side === "side1" ? matchupDoc.side1 : matchupDoc.side2;
     const reportingTeam = reportingSide.team!;
@@ -410,7 +412,7 @@ export class StageService {
 
     if (!approve) {
       matchupDoc.report = undefined;
-      matchupDoc.status = undefined;
+      matchupDoc.status = matchupDoc.winner ? "approved" : undefined;
       await matchupDoc.save();
       return { message: "Report rejected.", status: "rejected" as const };
     }
@@ -431,7 +433,12 @@ export class StageService {
     matchupDoc.side2.score = report.side2Score ?? 0;
     matchupDoc.side1.paste = report.side1Paste ?? matchupDoc.side1.paste;
     matchupDoc.side2.paste = report.side2Paste ?? matchupDoc.side2.paste;
-    if (report.winner) matchupDoc.winner = report.winner;
+    matchupDoc.winner =
+      report.winner ??
+      this.tallyWinner({
+        team1: report.side1Score ?? 0,
+        team2: report.side2Score ?? 0,
+      });
     matchupDoc.forfeit = report.forfeit ?? false;
     matchupDoc.status = "approved";
     matchupDoc.report = undefined;
@@ -523,60 +530,5 @@ export class StageService {
             : `Advancement set; ${changed} bracket slot(s) updated.`,
       advances: advances ?? null,
     };
-  }
-
-  async updateMatchup(
-    leagueSlug: string,
-    tournamentSlug: string,
-    matchupSlug: string,
-    sub: string,
-    dto: UpdateMatchupDto,
-  ) {
-    const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
-    assertCan(tournament, sub, "manageResults");
-
-    const matchup = await this.matchupRepo.findBySlug(tournament.id, matchupSlug);
-    const stageDoc = matchup.stage
-      ? await this.stageRepo.findByIdOrNull(matchup.stage)
-      : null;
-    if (!stageDoc || stageDoc.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
-
-    matchup.results = this.buildMatchResults(dto.matches);
-
-    if (dto.score) {
-      matchup.side1.score = dto.score.team1;
-      matchup.side2.score = dto.score.team2;
-    }
-
-    if (dto.winner) {
-      if (
-        dto.winner === "side1" ||
-        dto.winner === "side2" ||
-        dto.winner === "draw"
-      ) {
-        matchup.winner = dto.winner;
-      } else if (dto.winner === "side1ffw") {
-        matchup.winner = "side1";
-        matchup.forfeit = true;
-      } else if (dto.winner === "side2ffw") {
-        matchup.winner = "side2";
-        matchup.forfeit = true;
-      } else if (dto.winner === "dffl") {
-        matchup.winner = "draw";
-        matchup.forfeit = true;
-      }
-    }
-
-    if (dto.winner || matchup.results.length) matchup.status = "approved";
-    matchup.report = undefined;
-    await matchup.save();
-
-    if (dto.winner) await this.advanceBracket(matchup);
-
-    return { message: "Schedule updated." };
   }
 }

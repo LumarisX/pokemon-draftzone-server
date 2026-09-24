@@ -40,6 +40,71 @@ export class PrizeShare {
   }
 }
 
+export function assertRosterRules(rules: {
+  tierIds: ReadonlySet<string> | null;
+  draftCount: { min: number; max: number };
+  tierRequirements: readonly {
+    tierId: string;
+    required: number;
+    max?: number | null;
+  }[];
+}): void {
+  const { tierIds, draftCount, tierRequirements } = rules;
+
+  if (draftCount.min > draftCount.max)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: `The minimum roster size (${draftCount.min}) is above the maximum (${draftCount.max})`,
+    });
+
+  if (tierRequirements.length === 0) return;
+
+  if (!tierIds)
+    throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
+      operation: "tierRequirements",
+    });
+
+  const unknownTier = tierRequirements.find((req) => !tierIds.has(req.tierId));
+  if (unknownTier)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: `The tier requirements name tier "${unknownTier.tierId}", which is not on this tier list. Update or clear them in the same save.`,
+    });
+
+  const totalRequired = tierRequirements.reduce(
+    (sum, req) => sum + req.required,
+    0,
+  );
+  if (totalRequired > draftCount.max)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: `Required picks (${totalRequired}) exceed the maximum roster size (${draftCount.max})`,
+    });
+
+  const invertedTier = tierRequirements.find(
+    (req) => req.max != null && req.max < req.required,
+  );
+  if (invertedTier)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: `Tier "${invertedTier.tierId}" allows at most ${invertedTier.max} picks but requires ${invertedTier.required}`,
+    });
+}
+
+export function assertPrizeSplit(
+  shares: readonly { place: number; percent: number }[],
+): void {
+  if (shares.length === 0) return;
+
+  const places = new Set(shares.map((share) => share.place));
+  if (places.size !== shares.length)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: "Each place may appear only once in the prize split",
+    });
+
+  const totalPercent = shares.reduce((sum, share) => sum + share.percent, 0);
+  if (totalPercent !== 100)
+    throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+      reason: `Prize shares total ${totalPercent}%, not 100%`,
+    });
+}
+
 export class TournamentRule {
   title: string;
   body: string;

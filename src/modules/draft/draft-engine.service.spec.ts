@@ -1,7 +1,3 @@
-// The real `agenda` package is ESM-only and breaks Jest's CJS transform.
-// draft-engine.service.ts -> agenda.service.ts transitively imports it
-// (only for types/decorator metadata), so it must be mocked before loading
-// the SUT.
 jest.mock("agenda", () => ({}));
 
 import { AgendaService } from "@modules/agenda/agenda.service";
@@ -18,6 +14,20 @@ import mongoose, { ClientSession, Connection, Types } from "mongoose";
 import { DraftEngineService } from "./draft-engine.service";
 import { DraftEventsService } from "./draft-events.service";
 import { TeamRepository } from "../team/team.repository";
+
+const draftsById = new Map<string, { counter: number; status: string }>();
+
+function buildFakeDraftModel() {
+  return {
+    findOneAndUpdate: jest.fn((filter: { _id: Types.ObjectId }) => {
+      const draft = draftsById.get(filter._id.toString());
+      const state = draft
+        ? { counter: draft.counter, status: draft.status }
+        : null;
+      return { lean: () => ({ exec: async () => state }) };
+    }),
+  };
+}
 
 function buildFakeSession(): jest.Mocked<ClientSession> {
   return {
@@ -104,6 +114,7 @@ function buildDraft(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
   draft.toObject.mockImplementation(() => ({ ...draft }));
+  draftsById.set(draft._id.toString(), draft);
   return draft;
 }
 
@@ -116,10 +127,12 @@ describe("DraftEngineService", () => {
   let engine: DraftEngineService;
   let fakeSession: jest.Mocked<ClientSession>;
   let fakeConnection: jest.Mocked<Connection>;
+  let fakeDraftModel: ReturnType<typeof buildFakeDraftModel>;
 
   beforeEach(() => {
     teamRepo = {
       findByIdOrNull: jest.fn(),
+      isPokemonTakenInDraft: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<TeamRepository>;
     discordService = {
       resolveMention: jest.fn().mockResolvedValue(null),
@@ -137,8 +150,10 @@ describe("DraftEngineService", () => {
       cancelSkipPick: jest.fn().mockResolvedValue(undefined),
       resumeSkipPick: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AgendaService>;
+    fakeDraftModel = buildFakeDraftModel();
     fakeConnection = {
       startSession: jest.fn(),
+      model: jest.fn(() => fakeDraftModel),
     } as unknown as jest.Mocked<Connection>;
     configService = {
       get: jest.fn().mockReturnValue(undefined),
@@ -176,7 +191,7 @@ describe("DraftEngineService", () => {
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });
       const tournament = buildTournament();
-      const draft = buildDraft({ teams: [teamA, teamB], counter: 0 }); // A's turn
+      const draft = buildDraft({ teams: [teamA, teamB], counter: 0 });
 
       await expect(
         engine.draftPokemon(tournament, draft, teamB, { pokemonId: "pikachu" }),
@@ -229,6 +244,94 @@ describe("DraftEngineService", () => {
     });
   });
 
+  describe("draftPokemon under concurrency", () => {
+    function readyToPick() {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team] });
+      return { team, tournament, draft };
+    }
+
+    it("claims the draft inside the transaction before writing the pick", async () => {
+      const { team, tournament, draft } = readyToPick();
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      expect(fakeDraftModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: draft._id },
+        { $inc: { pickVersion: 1 } },
+        expect.objectContaining({ session: fakeSession }),
+      );
+      expect(teamRepo.isPokemonTakenInDraft).toHaveBeenCalledWith(
+        draft._id,
+        "pikachu",
+        fakeSession,
+      );
+    });
+
+    it("refuses a Pokemon another team drafted after this request loaded the draft", async () => {
+      const { team, tournament, draft } = readyToPick();
+      teamRepo.isPokemonTakenInDraft.mockResolvedValue(true);
+
+      await expect(
+        engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" }),
+      ).rejects.toMatchObject({ code: "DR-003" });
+      expect(team.save).not.toHaveBeenCalled();
+      expect(fakeSession.abortTransaction).toHaveBeenCalled();
+    });
+
+    it("refuses a pick made against a turn counter that has since moved", async () => {
+      const { team, tournament, draft } = readyToPick();
+      fakeDraftModel.findOneAndUpdate.mockReturnValueOnce({
+        lean: () => ({
+          exec: async () => ({ counter: 1, status: "IN_PROGRESS" }),
+        }),
+      });
+
+      await expect(
+        engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" }),
+      ).rejects.toMatchObject({ code: "DR-013" });
+      expect(team.save).not.toHaveBeenCalled();
+    });
+
+    it("lets an organizer override ignore a moved turn counter", async () => {
+      const { team, tournament, draft } = readyToPick();
+      fakeDraftModel.findOneAndUpdate.mockReturnValueOnce({
+        lean: () => ({
+          exec: async () => ({ counter: 1, status: "IN_PROGRESS" }),
+        }),
+      });
+
+      await engine.draftPokemon(
+        tournament,
+        draft,
+        team,
+        { pokemonId: "pikachu" },
+        undefined,
+        true,
+      );
+
+      expect(team.save).toHaveBeenCalled();
+    });
+
+    it("answers a write conflict with a retryable draft-changed error", async () => {
+      const { team, tournament, draft } = readyToPick();
+      team.save.mockRejectedValueOnce(
+        Object.assign(new Error("WriteConflict"), { code: 112 }),
+      );
+
+      await expect(
+        engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" }),
+      ).rejects.toMatchObject({ code: "DR-013" });
+      expect(fakeSession.abortTransaction).toHaveBeenCalled();
+    });
+  });
+
   describe("draftPokemon success", () => {
     it("appends the pick to pickLog and persists the team", async () => {
       const tierList = buildTierList();
@@ -250,10 +353,6 @@ describe("DraftEngineService", () => {
     });
 
     it("removes the drafted Pokemon from every other team's queued picks (snipe protection)", async () => {
-      // teamC (not up next) holds the queued picks under test, so the
-      // engine's own auto-draft-on-turn behavior (which would otherwise
-      // consume teamB's queue the moment it becomes their turn) doesn't
-      // interfere with observing the snipe-removal in isolation.
       const tierList = buildTierList();
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });
@@ -430,7 +529,6 @@ describe("DraftEngineService", () => {
         tierList,
         draftCount: new DraftCount({ min: 1, max: 2 }),
       });
-      // counter 0 means teamA (first in draft order) is on the clock, not teamB.
       const draft = buildDraft({ teams: [teamA, teamB], counter: 0 });
 
       await engine.autoDraftFromQueueIfOnClock(tournament, draft, teamB);
@@ -516,7 +614,6 @@ describe("DraftEngineService", () => {
         previous: expect.objectContaining({ id: "pikachu" }),
         team: expect.objectContaining({ draft: [] }),
       });
-      // Absent `pokemon` is what tells a client the slot was cleared, not set.
       expect(event.pokemon).toBeUndefined();
     });
 
@@ -627,8 +724,6 @@ describe("DraftEngineService", () => {
     });
 
     it("validates a replacement without counting the pick it replaces", async () => {
-      // Re-setting a slot to the Pokemon it already holds only works because the
-      // slot is spliced out before the already-drafted check runs.
       const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
       const tournament = buildTournament({
         tierList: threeMonTierList(),
@@ -648,7 +743,7 @@ describe("DraftEngineService", () => {
       const tournament = buildTournament({
         tierList: threeMonTierList(),
         draftCount: new DraftCount({ min: 1, max: 2 }),
-        pointTotal: 5, // Pikachu costs 10 on its own
+        pointTotal: 5,
       });
       const draft = buildDraft({ teams: [team] });
 
@@ -663,8 +758,6 @@ describe("DraftEngineService", () => {
     });
 
     it("lets an organizer strand a tier requirement", async () => {
-      // Last open slot with an unmet S requirement — a coach could not spend it
-      // on an A-tier mon, but an organizer correcting the roster can.
       const team = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
       const tournament = buildTournament({
         tierList: threeMonTierList(),
@@ -796,8 +889,6 @@ describe("DraftEngineService", () => {
         tierList: threeMonTierList(),
         draftCount: new DraftCount({ min: 1, max: 3 }),
       });
-      // Counter is on round 0 position 0, but that slot is already filled — a
-      // replacement there is a correction, not a turn being taken.
       const draft = buildDraft({ teams: [team, next], counter: 0 });
 
       await engine.setPickAtRound(tournament, draft, team, 0, {

@@ -23,6 +23,7 @@ import {
   SetDraftOrderDto,
   UpdateDraftSettingsDto,
 } from "./draft.dto";
+import { DraftDocument, DraftEntity } from "./draft.schema";
 import { DraftEventsService } from "./draft-events.service";
 import type { DraftPickUpdatedEvent } from "./draft-events.service";
 import {
@@ -75,8 +76,20 @@ const typeColorMap = new Map<TypeName, number>([
   ["Water", 0x2980ef],
 ]);
 
-/** Used when CLIENT_URL isn't configured, so production keeps working as-is. */
 const DEFAULT_CLIENT_URL = "https://pokemondraftzone.com";
+
+const WRITE_CONFLICT = 112;
+
+function isTransactionConflict(error: unknown): boolean {
+  const mongoError = error as {
+    code?: number;
+    hasErrorLabel?: (label: string) => boolean;
+  };
+  return (
+    mongoError?.code === WRITE_CONFLICT ||
+    mongoError?.hasErrorLabel?.("TransientTransactionError") === true
+  );
+}
 
 function queueSideEffect(
   session: ClientSession | undefined,
@@ -129,10 +142,6 @@ export class DraftEngineService {
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Link to a draft's live draft board on the client. Mirrors the Angular route
-   * `/leagues/:leagueSlug/tournaments/:tournamentSlug/drafts/:draftSlug/draft`.
-   */
   private draftUrl(tournament: PopulatedTournament, draft: PopulatedDraft) {
     const baseUrl = (
       this.configService.get<string>("CLIENT_URL") ?? DEFAULT_CLIENT_URL
@@ -140,7 +149,6 @@ export class DraftEngineService {
     return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/drafts/${draft.slug}/draft`;
   }
 
-  /** One roster entry, shaped the way the websocket payloads describe picks. */
   private pickSummary(
     tournament: PopulatedTournament,
     pick: { pokemonId: string; addons?: string[] },
@@ -162,10 +170,6 @@ export class DraftEngineService {
     );
   }
 
-  /**
-   * Broadcasts an out-of-band roster edit so every open board re-syncs the
-   * affected team — nobody else is watching the HTTP response the organizer got.
-   */
   private emitPickUpdated(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -193,10 +197,6 @@ export class DraftEngineService {
     });
   }
 
-  /**
-   * Posts an organizer's roster correction to the draft channel. Coaches watch
-   * that feed rather than the board, so a silent edit reads as a lost pick.
-   */
   private async sendDiscordPickUpdate(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -295,13 +295,6 @@ export class DraftEngineService {
     return picks;
   }
 
-  /**
-   * A coach who saves their queue while it's already their turn never gets a
-   * turn-transition to trigger consumption — advanceSequentialCounter() only
-   * fires when the counter moves onto a team, and setDraftState()'s play
-   * action only fires on start/resume. Without this, a picks[0] entry saved
-   * mid-turn just sits unused until the timer skips them.
-   */
   async autoDraftFromQueueIfOnClock(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -372,6 +365,13 @@ export class DraftEngineService {
         throw new PDZError(ErrorCodes.DRAFT.INVALID_POKEMON, {
           reason: draftCheck.reason,
         });
+
+      await this.claimPick(
+        currentDraft,
+        pick.pokemonId,
+        session,
+        !isOrganizerOverride,
+      );
 
       const picker = pickerFor(currentTeam);
 
@@ -488,9 +488,11 @@ export class DraftEngineService {
       }
     } catch (error) {
       if (newSession) {
-        await session.abortTransaction();
+        await session.abortTransaction().catch(() => undefined);
         clearSideEffects(session);
       }
+      if (isTransactionConflict(error))
+        throw new PDZError(ErrorCodes.DRAFT.CHANGED);
       throw error;
     } finally {
       if (newSession) {
@@ -498,6 +500,39 @@ export class DraftEngineService {
         session.endSession();
       }
     }
+  }
+
+  private async claimPick(
+    draft: PopulatedDraft,
+    pokemonId: string,
+    session: ClientSession,
+    checkTurn: boolean,
+  ) {
+    const fresh = await this.connection
+      .model<DraftDocument>(DraftEntity.name)
+      .findOneAndUpdate(
+        { _id: draft._id },
+        { $inc: { pickVersion: 1 } },
+        { session, projection: { counter: 1, status: 1 } },
+      )
+      .lean()
+      .exec();
+    if (!fresh) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+
+    if (
+      checkTurn &&
+      (fresh.counter !== draft.counter || fresh.status !== draft.status)
+    )
+      throw new PDZError(ErrorCodes.DRAFT.CHANGED);
+
+    if (
+      await this.teamRepo.isPokemonTakenInDraft(
+        draft._id,
+        toID(pokemonId),
+        session,
+      )
+    )
+      throw new PDZError(ErrorCodes.DRAFT.ALREADY_DRAFTED, { pokemonId });
   }
 
   private async removePokemonFromPicks(
@@ -563,9 +598,6 @@ export class DraftEngineService {
       ? typeColorMap.get(pokemonSpecie.types[0])
       : undefined;
 
-    // The team's own pick count, not the draft's live counter — this pick may be
-    // a make-up for a round the team fell behind on, which the shared counter has
-    // already moved past.
     const pickSlot = getTeamPickSlot(draft, team, team.pickLog.length - 1);
     const fields: EmbedField[] = [
       { name: "Round", value: `${pickSlot.round + 1}`, inline: true },
@@ -716,12 +748,8 @@ export class DraftEngineService {
       );
       draft.skipTime = newSkipTime;
     }
-    // A leftover pause value would otherwise be restored the next time the
-    // draft is played, overriding this pick's fresh timer.
     draft.remainingTime = undefined;
 
-    // resumeSkipPick() reconciles the stored jobs against draft.skipTime, so it
-    // covers the noTimer case (no skipTime -> jobs deleted) as well.
     if (session) {
       queueSideEffect(session, () =>
         this.agendaService.resumeSkipPick(tournament, draft),
@@ -895,8 +923,6 @@ export class DraftEngineService {
         reason: "Draft does not allow removals.",
       });
 
-    // The broadcast reads every roster off draft.teams, so mutate that instance
-    // rather than the separately-loaded copy the caller handed us.
     const currentTeam =
       draft.teams.find((t: PopulatedTeam) => t._id.equals(team._id)) ?? team;
 
@@ -915,7 +941,6 @@ export class DraftEngineService {
       pokemonId,
       addons: removed?.addons,
     });
-    // pickLog is dense, so the removed entry's index was its round.
     const detail = { round: pickIndex, previous };
 
     this.emitPickUpdated(tournament, draft, currentTeam, detail);
@@ -923,16 +948,6 @@ export class DraftEngineService {
       await this.sendDiscordPickUpdate(tournament, draft, currentTeam, detail);
   }
 
-  /**
-   * Organizer-only correction of a single turn: writes `pick` into the team's
-   * round-`round` slot instead of appending like a normal draft pick would.
-   * Replacing an earlier round is the whole point (a coach's round-2 pick was
-   * wrong), so this deliberately bypasses turn order.
-   *
-   * Filling the empty slot that is *on the clock* is the exception: that is the
-   * turn being taken, so it advances the counter and timer exactly as a coach's
-   * own pick would. Every other edit leaves the counter where it is.
-   */
   async setPickAtRound(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -950,29 +965,19 @@ export class DraftEngineService {
         reason: `Draft only has ${tournament.draftCount.max} rounds.`,
       });
 
-    // canBeDraftedWithReason reads every roster off draft.teams, so mutate that
-    // instance rather than the separately-loaded copy the caller handed us —
-    // otherwise the slot we clear below is still "taken" during validation.
     const currentTeam =
       draft.teams.find((t: PopulatedTeam) => t._id.equals(team._id)) ?? team;
 
-    // pickLog is dense (index === round), so a slot past the end would leave a
-    // hole. Organizers fill rounds in order or replace an existing one.
     if (round > currentTeam.pickLog.length)
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
         reason: `Cannot set round ${round + 1} before round ${currentTeam.pickLog.length + 1} is filled.`,
       });
 
-    // Validate against the roster *without* the pick being replaced, so the slot
-    // being swapped doesn't count itself as already drafted.
     const [replaced] =
       round < currentTeam.pickLog.length
         ? currentTeam.pickLog.splice(round, 1)
         : [];
 
-    // An organizer setting a pick here is overriding the draft rules on purpose
-    // — going over the point total or stranding a tier requirement is their
-    // call to make, so only the coherence checks are enforced.
     const check = await canBeDraftedWithReason(
       tournament,
       draft,
@@ -987,8 +992,6 @@ export class DraftEngineService {
       });
     }
 
-    // Whether this edit is the turn on the clock has to be read *before* the
-    // slot is written, since filling it is what satisfies the check.
     const fillsCurrentTurn =
       !replaced &&
       draft.sequentialTurns &&
@@ -1004,8 +1007,6 @@ export class DraftEngineService {
 
     await currentTeam.save();
 
-    // A corrected pick can take a Pokemon out from under another team that had
-    // it queued — drop it from their queues the same way a live pick would.
     await this.removePokemonFromPicks(
       draft,
       pick.pokemonId,
@@ -1030,11 +1031,6 @@ export class DraftEngineService {
       await this.handlePostPickState(tournament, draft, currentTeam);
   }
 
-  /**
-   * Organizer rewind: points the draft at an explicit round and position and
-   * hands that team a fresh clock. Undoes an accidental skip, or re-opens a turn
-   * whose pick the organizer just cleared.
-   */
   async setCurrentPick(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -1079,8 +1075,6 @@ export class DraftEngineService {
       draft.skipTime = newSkipTime;
       draft.remainingTime = undefined;
     } else {
-      // Bank a full turn instead of whatever was left on the turn we jumped
-      // away from, so play hands this team a clean clock.
       draft.skipTime = undefined;
       draft.remainingTime = teamTimer;
     }
@@ -1150,7 +1144,6 @@ export class DraftEngineService {
       let currentTeam: PopulatedTeam =
         teamIndex !== -1 ? (draft.teams[teamIndex] as PopulatedTeam) : team;
 
-      // Removes first — frees points before adds are validated
       if (dto.remove?.length) {
         if (draft.sequentialTurns && !draft.allowRemovals)
           throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
@@ -1171,7 +1164,6 @@ export class DraftEngineService {
         if (teamIndex !== -1) draft.teams[teamIndex] = currentTeam;
       }
 
-      // Adds — each call validates, mutates draft.teams in-memory, and queues WS events
       if (dto.add?.length) {
         for (const pick of dto.add) {
           await this.draftPokemon(
@@ -1182,7 +1174,6 @@ export class DraftEngineService {
             session,
             isOrganizerOverride,
           );
-          // draftPokemon() updates draft.teams[teamIndex] in-memory; refresh reference
           if (teamIndex !== -1)
             currentTeam = draft.teams[teamIndex] as PopulatedTeam;
         }
@@ -1213,8 +1204,6 @@ export class DraftEngineService {
           draft.skipTime = undefined;
           draft.remainingTime = undefined;
         } else {
-          // Restore whatever the pause banked; fall back to a full turn when
-          // the draft was never paused (or was paused with the timer off).
           const teamTimer = currentTeam
             ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
             : (draft.timerLength ?? 30);
@@ -1231,8 +1220,6 @@ export class DraftEngineService {
           ? await this.currentTeamPicks(tournament, draft, currentTeam)
           : null;
         if (currentTeam && queuedPicks?.length) {
-          // draftPokemon() advances the draft, which reschedules the timer
-          // itself.
           await this.draftPokemon(
             tournament,
             draft,
@@ -1246,8 +1233,6 @@ export class DraftEngineService {
       },
       pause: async () => {
         draft.status = "PAUSED";
-        // Bank the time left before clearing the deadline, so play can hand the
-        // coach back exactly what they had.
         cancelSkipTime(draft);
         draft.skipTime = undefined;
         await this.agendaService.cancelSkipPick(draft);
@@ -1263,9 +1248,6 @@ export class DraftEngineService {
       return;
     }
 
-    // Play can auto-draft a queued pick, which advances the counter and pings
-    // the next coach itself — compare against this so that team isn't pinged
-    // twice below.
     const counterBeforeAction = draft.counter;
 
     await action();
@@ -1286,9 +1268,6 @@ export class DraftEngineService {
           : draft.status.toLowerCase();
 
     if (draft.channelId) {
-      // Starting (or resuming) leaves a coach on the clock with nothing
-      // announcing it — advanceSequentialCounter only pings once a pick lands,
-      // so without this the first coach of the draft is never told it's on them.
       const turnText = await this.openingTurnText(
         draft,
         state,
@@ -1300,11 +1279,6 @@ export class DraftEngineService {
     }
   }
 
-  /**
-   * Trailing "it is now your turn" for the play/pause announcement, empty when
-   * nobody is newly on the clock (paused, non-sequential free-for-all, or a
-   * queued pick already advanced the draft and pinged the next coach).
-   */
   private async openingTurnText(
     draft: PopulatedDraft,
     state: "play" | "pause",
@@ -1329,13 +1303,6 @@ export class DraftEngineService {
     return ` ${mention ?? currentTeam.teamName}, it is now your turn!`;
   }
 
-  /**
-   * Organizer-only: update draft metadata/settings. `orderProgression` and
-   * `sequentialTurns` feed directly into pick-order calculation the same way
-   * team order does, so — like setDraftOrder — those two are only allowed
-   * pre-draft; `name`, `channelId`, `visibility`, and `allowRemovals` don't
-   * affect turn order and can be changed anytime.
-   */
   async updateSettings(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -1388,7 +1355,6 @@ export class DraftEngineService {
     await this.agendaService.cancelSkipPick(draft);
   }
 
-  /** Organizer-only: verifies the saved channelId actually works, without waiting on a real draft event. */
   async sendTestMessage(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
@@ -1399,12 +1365,6 @@ export class DraftEngineService {
     });
   }
 
-  /**
-   * Organizer-only: switch between random and manual seeding, and/or write a
-   * manual order. Only allowed pre-draft — once picks exist, `draft.counter`
-   * and every logged pick are tied to the order teams drafted in, so changing
-   * it afterward would desync whose turn it is.
-   */
   async setDraftOrder(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,

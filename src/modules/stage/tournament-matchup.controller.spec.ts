@@ -11,7 +11,6 @@ describe("TournamentMatchupController", () => {
       getMatchupAnalysis: jest.fn(),
       submitMatchupReport: jest.fn(),
       reviewMatchupReport: jest.fn(),
-      updateMatchup: jest.fn(),
     } as unknown as jest.Mocked<StageService>;
     controller = new TournamentMatchupController(service);
   });
@@ -107,26 +106,9 @@ describe("TournamentMatchupController", () => {
     expect(result).toBe(response);
   });
 
-  it("updateMatchup forwards the slugs, sub, and body", async () => {
-    const body = { matches: [] } as any;
-    const response = { message: "Schedule updated." };
-    service.updateMatchup.mockResolvedValue(response as any);
-
-    const result = await controller.updateMatchup(
-      "league-1",
-      "tournament-1",
-      "matchup-1",
-      "auth0|owner",
-      body,
-    );
-
-    expect(service.updateMatchup).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
-      "matchup-1",
-      "auth0|owner",
-      body,
-    );
-    expect(result).toBe(response);
+  it("no longer exposes a bare update route", () => {
+    expect(
+      (controller as unknown as Record<string, unknown>)["updateMatchup"],
+    ).toBeUndefined();
   });
 });

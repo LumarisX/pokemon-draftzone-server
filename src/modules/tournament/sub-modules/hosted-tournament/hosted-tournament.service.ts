@@ -37,7 +37,12 @@ import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
-import { HostedTournament, TournamentRule } from "./hosted-tournament.domain";
+import {
+  assertPrizeSplit,
+  assertRosterRules,
+  HostedTournament,
+  TournamentRule,
+} from "./hosted-tournament.domain";
 import {
   CoachAssignmentDto,
   DecideApplicationDto,
@@ -1364,64 +1369,31 @@ export class HostedTournamentService {
     );
     assertCan(tournament, sub, "manageSettings");
 
-    const targetTierListId = dto.tierListId ?? tournament.tierListId;
-    const tierList = targetTierListId
-      ? await this.tierListRepo.findById(targetTierListId)
-      : null;
+    if (
+      dto.tierListId !== undefined &&
+      !Types.ObjectId.isValid(dto.tierListId)
+    )
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        tierListId: dto.tierListId,
+      });
 
-    const effectiveMax = dto.draftCount?.max ?? tournament.draftCount.max;
-    if (dto.tierRequirements?.length) {
-      if (!tierList) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.TIER_LIST_REQUIRED, {
-          tournamentSlug: tournament.slug,
-          operation: "tierRequirements",
-        });
-      }
-      const tierIds = new Set(tierList.tiers.map((tier) => tier.id));
-      const unknownTier = dto.tierRequirements.find(
-        (req) => !tierIds.has(req.tierId),
-      );
-      if (unknownTier) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: `Tier "${unknownTier.tierId}" does not exist on this tier list`,
-        });
-      }
-      const totalRequired = dto.tierRequirements.reduce(
-        (sum, req) => sum + req.required,
-        0,
-      );
-      if (totalRequired > effectiveMax) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: `Required picks (${totalRequired}) exceed the maximum roster size (${effectiveMax})`,
-        });
-      }
-      const invertedTier = dto.tierRequirements.find(
-        (req) => req.max != null && req.max < req.required,
-      );
-      if (invertedTier) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: `Tier "${invertedTier.tierId}" allows at most ${invertedTier.max} picks but requires ${invertedTier.required}`,
-        });
-      }
+    if (
+      dto.tierListId !== undefined ||
+      dto.tierRequirements !== undefined ||
+      dto.draftCount !== undefined
+    ) {
+      const targetTierListId = dto.tierListId ?? tournament.tierListId;
+      const tierList = targetTierListId
+        ? await this.tierListRepo.findById(targetTierListId)
+        : null;
+      assertRosterRules({
+        tierIds: tierList ? new Set(tierList.tiers.map((tier) => tier.id)) : null,
+        draftCount: dto.draftCount ?? tournament.draftCount,
+        tierRequirements: dto.tierRequirements ?? tournament.tierRequirements,
+      });
     }
 
-    if (dto.prizeSplit?.length) {
-      const places = new Set(dto.prizeSplit.map((share) => share.place));
-      if (places.size !== dto.prizeSplit.length) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: "Each place may appear only once in the prize split",
-        });
-      }
-      const totalPercent = dto.prizeSplit.reduce(
-        (sum, share) => sum + share.percent,
-        0,
-      );
-      if (totalPercent !== 100) {
-        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-          reason: `Prize shares total ${totalPercent}%, not 100%`,
-        });
-      }
-    }
+    if (dto.prizeSplit !== undefined) assertPrizeSplit(dto.prizeSplit);
 
     const update: Record<string, unknown> = {};
     if (dto.name !== undefined) update["name"] = dto.name;
@@ -1459,13 +1431,8 @@ export class HostedTournamentService {
     }
     if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;
     if (dto.diffMode !== undefined) update["diffMode"] = dto.diffMode;
-    if (dto.tierListId !== undefined) {
-      if (!Types.ObjectId.isValid(dto.tierListId))
-        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-          tierListId: dto.tierListId,
-        });
+    if (dto.tierListId !== undefined)
       update["tierList"] = new Types.ObjectId(dto.tierListId);
-    }
     if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
     if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
     if (dto.maxTeams !== undefined) update["maxTeams"] = dto.maxTeams;

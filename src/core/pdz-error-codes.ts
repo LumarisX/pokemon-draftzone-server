@@ -194,6 +194,12 @@ export const ErrorCodes = {
       status: 409,
       message: "You already have a draft with this league name",
     },
+    CHANGED: {
+      code: "DR-013",
+      status: 409,
+      message:
+        "The draft changed while this pick was being made. Refresh and try again.",
+    },
     SLUG_GENERATION_FAILED: {
       code: "DR-012",
       status: 500,
@@ -412,6 +418,12 @@ export const ErrorCodes = {
       code: "MU-004",
       status: 403,
       message: "This tournament has coach result reporting turned off",
+    },
+    ALREADY_APPROVED: {
+      code: "MU-005",
+      status: 409,
+      message:
+        "This result has already been approved. Ask an organizer to correct it.",
     },
   },
   CHAT: {
