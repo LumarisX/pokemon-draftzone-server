@@ -6,6 +6,7 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { isActiveCoach } from "@modules/tournament/membership";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { PostChatMessageDto } from "./chat.dto";
@@ -126,7 +127,7 @@ export class ChatService {
     if (message.tournament.toString() !== tournament.id)
       throw new PDZError(ErrorCodes.CHAT.MESSAGE_NOT_FOUND, { messageId });
 
-    const isOrganizer = this.isOrganizer(tournament, sub);
+    const isOrganizer = can(tournament, sub, "moderateChat");
     if (!isOrganizer && message.author !== sub)
       throw new PDZError(ErrorCodes.CHAT.FORBIDDEN, { messageId });
 
@@ -136,10 +137,6 @@ export class ChatService {
 
   private chatSettings(tournament: HostedTournament): ChatSettings {
     return { matchupChat: tournament.matchSettings?.chat !== false };
-  }
-
-  private isOrganizer(tournament: HostedTournament, sub: string): boolean {
-    return tournament.owner === sub || tournament.organizers.includes(sub);
   }
 
   private async resolveRoom(
@@ -190,7 +187,7 @@ export class ChatService {
   ): Promise<ChatViewer & { authorName: string }> {
     const base = {
       sub,
-      isOrganizer: sub ? this.isOrganizer(tournament, sub) : false,
+      isOrganizer: can(tournament, sub, "moderateChat"),
       authorName: "Spectator",
     };
 

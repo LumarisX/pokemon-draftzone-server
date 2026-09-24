@@ -502,6 +502,11 @@ export const ErrorCodes = {
       status: 409,
       message: "Attach a tier list before doing this",
     },
+    ARCHIVED: {
+      code: "TRN-005",
+      status: 409,
+      message: "This tournament is archived and can no longer be changed",
+    },
   },
   TEAMBUILDER: {
     TEAM_NOT_FOUND: {

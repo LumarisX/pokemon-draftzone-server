@@ -5,6 +5,7 @@ import { isCoachedBy } from "@modules/team/team.domain";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
@@ -26,16 +27,6 @@ export class TournamentTradeService {
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
   ) {}
-
-  private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
-    if (!sub) return false;
-    return tournament.owner === sub || tournament.organizers.includes(sub);
-  }
-
-  private assertOrganizer(tournament: HostedTournament, sub: string) {
-    if (!this.isOrganizer(tournament, sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-  }
 
   async getTrades(
     leagueSlug: string,
@@ -179,7 +170,7 @@ export class TournamentTradeService {
         leagueSlug,
         tournamentSlug,
       );
-      const isOrganizer = this.isOrganizer(tournament, sub);
+      const isOrganizer = can(tournament, sub, "manageTrades");
 
       if (dto.roundIndex < 0 || dto.roundIndex >= tournament.rounds.length)
         throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
@@ -256,7 +247,7 @@ export class TournamentTradeService {
         leagueSlug,
         tournamentSlug,
       );
-      this.assertOrganizer(tournament, sub);
+      assertCan(tournament, sub, "manageTrades");
 
       if (dto.status === undefined && dto.activeRound === undefined)
         throw new PDZError(ErrorCodes.STAGE.INVALID_TRADE, {
@@ -314,7 +305,7 @@ export class TournamentTradeService {
 
       const trade = this.findPendingTrade(tournament, tradeId);
 
-      if (!this.isOrganizer(tournament, sub))
+      if (!can(tournament, sub, "manageTrades"))
         await this.assertTradeParticipant(trade, sub);
 
       const written = await this.tournamentRepo.pullPendingTrade(

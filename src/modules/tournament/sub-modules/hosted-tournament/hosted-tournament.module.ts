@@ -7,6 +7,7 @@ import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentApplicationModule } from "@modules/tournament-application/tournament-application.module";
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
 import { HostedTournamentCoreModule } from "./hosted-tournament-core.module";
 import { HostedTournamentController } from "./hosted-tournament.controller";
@@ -19,6 +20,7 @@ import {
 import { TournamentDiscordController } from "./tournament-discord.controller";
 import { TournamentDiscordService } from "./tournament-discord.service";
 import { TournamentOrganizerController } from "./tournament-organizer.controller";
+import { TournamentOpenGuard } from "./tournament-open.guard";
 import { TournamentOrganizerService } from "./tournament-organizer.service";
 
 @Module({
@@ -46,6 +48,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     TournamentOrganizerService,
     TournamentDiscordService,
     OrganizerInviteRepository,
+    { provide: APP_GUARD, useClass: TournamentOpenGuard },
   ],
   exports: [HostedTournamentCoreModule],
 })

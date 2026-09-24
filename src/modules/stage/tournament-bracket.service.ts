@@ -6,6 +6,7 @@ import { LeagueMatchupEntity } from "@modules/matchup/sub-modules/league-matchup
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { BracketSlotInput } from "./domain/bracket";
@@ -45,22 +46,12 @@ export class TournamentBracketService {
     private readonly transactions: TransactionRunner,
   ) {}
 
-  private isOrganizer(tournament: HostedTournament, sub?: string): boolean {
-    if (!sub) return false;
-    return tournament.owner === sub || tournament.organizers.includes(sub);
-  }
-
-  private assertOrganizer(tournament: HostedTournament, sub: string) {
-    if (!this.isOrganizer(tournament, sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-  }
-
   async getBracket(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
-    const canSeeHidden = this.isOrganizer(tournament, sub);
+    const canSeeHidden = can(tournament, sub, "viewHidden");
 
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
@@ -174,7 +165,7 @@ export class TournamentBracketService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageSchedule");
 
     if (dto.rounds.length === 0)
       throw new PDZError(ErrorCodes.STAGE.INVALID_BRACKET, {
@@ -552,7 +543,7 @@ export class TournamentBracketService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageSchedule");
     this.assertTournamentAxis(tournament);
 
     if (

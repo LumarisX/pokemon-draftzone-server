@@ -19,6 +19,7 @@ import {
   OrganizerInviteTokenDto,
   OrganizerNameDto,
 } from "./hosted-tournament.dto";
+import { AllowWhileArchived } from "./tournament-open.guard";
 import { TournamentOrganizerService } from "./tournament-organizer.service";
 
 @Controller("leagues/:leagueSlug/tournaments")
@@ -114,6 +115,7 @@ export class TournamentOrganizerController {
 
   @Post(":tournamentSlug/organizer-invites/preview")
   @HttpCode(HttpStatus.OK)
+  @AllowWhileArchived()
   async previewInvite(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,

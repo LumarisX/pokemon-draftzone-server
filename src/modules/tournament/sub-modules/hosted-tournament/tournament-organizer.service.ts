@@ -5,6 +5,11 @@ import { CoachRepository } from "@modules/coach/coach.repository";
 import { CoachDocument } from "@modules/coach/coach.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { isActiveCoach } from "@modules/tournament/membership";
+import {
+  assertCan,
+  can,
+  isStaff,
+} from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { createHash } from "crypto";
 import { Types } from "mongoose";
@@ -39,8 +44,7 @@ export class TournamentOrganizerService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "viewStaff");
     return this.organizersPayload(tournament, sub);
   }
 
@@ -79,10 +83,10 @@ export class TournamentOrganizerService {
       leagueSlug,
       tournamentSlug,
     );
-    const isOwner = tournament.getRoles(sub).includes("owner");
-    const isSelf = organizerSub === sub && tournament.isOrganizer(sub);
-    if (!isOwner && !isSelf) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-    if (!tournament.isOrganizer(organizerSub))
+    const isSelf = organizerSub === sub && isStaff(tournament, sub);
+    if (!can(tournament, sub, "manageStaff") && !isSelf)
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    if (!isStaff(tournament, organizerSub))
       throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_NOT_FOUND, {
         organizerSub,
       });
@@ -173,7 +177,7 @@ export class TournamentOrganizerService {
       invitedBy: organizerName(tournament, invite.createdBy),
       suggestedName: invite.name,
       expiresAt: invite.expiresAt,
-      alreadyOrganizer: tournament.isOrganizer(sub),
+      alreadyOrganizer: isStaff(tournament, sub),
     };
   }
 
@@ -192,7 +196,7 @@ export class TournamentOrganizerService {
     const invite = await this.inviteRepo.findByTokenHash(tokenHash);
     if (!invite || !this.isUsable(invite, tournament))
       throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID);
-    if (tournament.isOrganizer(sub))
+    if (isStaff(tournament, sub))
       throw new PDZError(ErrorCodes.LEAGUE.ALREADY_ORGANIZER);
 
     const claimed = await this.inviteRepo.claim(tokenHash, sub);
@@ -225,7 +229,7 @@ export class TournamentOrganizerService {
   }
 
   private async organizersPayload(tournament: HostedTournament, sub: string) {
-    const canEdit = tournament.getRoles(sub).includes("owner");
+    const canEdit = can(tournament, sub, "manageStaff");
     const organizerSubs = [tournament.owner, ...tournament.organizers];
     const [invites, candidates] = canEdit
       ? await Promise.all([
@@ -284,8 +288,7 @@ export class TournamentOrganizerService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.getRoles(sub).includes("owner"))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageStaff");
     return tournament;
   }
 

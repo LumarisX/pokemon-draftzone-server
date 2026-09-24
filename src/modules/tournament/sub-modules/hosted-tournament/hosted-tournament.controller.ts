@@ -25,6 +25,10 @@ import {
   UpdateRulesDto,
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
+import {
+  AllowWhileArchived,
+  unarchivesTournament,
+} from "./tournament-open.guard";
 
 @Controller("leagues/:leagueSlug/tournaments")
 export class HostedTournamentController {
@@ -37,10 +41,6 @@ export class HostedTournamentController {
   ) {
     return this.tournamentService.getTournament(leagueSlug, tournamentSlug);
   }
-
-  // GET :tournamentSlug/bracket lives on TournamentBracketController, which
-  // serves rounds, stages and matches together and hides stages an organizer
-  // has not released. A second handler here only shadowed it.
 
   @Get(":tournamentSlug/info")
   @OptionalAuth()
@@ -238,7 +238,6 @@ export class HostedTournamentController {
     return this.tournamentService.listTeams(leagueSlug, tournamentSlug);
   }
 
-  // Declared before `teams/:teamSlug` so the literal segment wins the match.
   @Get(":tournamentSlug/teams/by-draft")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
@@ -296,6 +295,7 @@ export class HostedTournamentController {
 
   @Patch(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
+  @AllowWhileArchived(unarchivesTournament)
   async updateTournamentSettings(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,

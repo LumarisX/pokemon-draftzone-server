@@ -8,6 +8,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { DraftCount } from "@modules/tier-list/tier-list.domain";
+import { rolesOf, TournamentRole } from "@modules/tournament/tournament-policy";
 import {
   TournamentRoundEntity,
   TournamentTradeEntity,
@@ -273,17 +274,8 @@ export class HostedTournament {
     return this.format;
   }
 
-  getRoles(sub: string | undefined): string[] {
-    if (!sub) return [];
-    const roles: string[] = [];
-    const isOwner = this.owner === sub;
-    if (isOwner) roles.push("owner");
-    if (isOwner || this.organizers.includes(sub)) roles.push("organizer");
-    return roles;
-  }
-
-  isOrganizer(sub: string | undefined): boolean {
-    return this.getRoles(sub).includes("organizer");
+  getRoles(sub: string | undefined): TournamentRole[] {
+    return rolesOf(this, sub);
   }
 
   getPlayoffsStage(): StageDocument | undefined {

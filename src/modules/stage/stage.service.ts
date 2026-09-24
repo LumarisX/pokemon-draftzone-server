@@ -14,8 +14,8 @@ import {
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { isCoachedBy } from "@modules/team/team.domain";
 import { PopulatedTeam } from "@modules/team/team.repository";
-import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { MatchupAdvancement } from "./domain/advancement";
@@ -47,39 +47,27 @@ export class StageService {
     private readonly advancement: BracketAdvancementService,
   ) {}
 
-  private isOrganizer(tournament: HostedTournament, sub: string): boolean {
-    return tournament.owner === sub || tournament.organizers.includes(sub);
-  }
-
-  private assertOrganizer(tournament: HostedTournament, sub: string) {
-    if (!this.isOrganizer(tournament, sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-  }
-
   private async assertStageVisible(
     stage: StageDocument,
     sub?: string,
   ): Promise<StageDocument> {
-    // Only an explicit `false` hides a stage: documents written before this
-    // field existed carry no value, and those must stay visible.
     if (stage.public !== false) return stage;
     if (sub) {
       const tournament = await this.hostedTournamentRepo.findById(
         stage.tournamentId,
       );
-      if (this.isOrganizer(tournament, sub)) return stage;
+      if (can(tournament, sub, "viewHidden")) return stage;
     }
     throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug: stage.slug });
   }
 
-  /** Lightweight ordered list for the client's stage switcher. */
   async listStages(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
     );
     const stages = await this.stageRepo.findAllByTournament(tournament.id);
-    const canSeeHidden = sub ? this.isOrganizer(tournament, sub) : false;
+    const canSeeHidden = can(tournament, sub, "viewHidden");
 
     return stages
       .filter((stage) => stage.public !== false || canSeeHidden)
@@ -94,12 +82,6 @@ export class StageService {
       }));
   }
 
-  /**
-   * Full analysis view (summary/speed/coverage/type/move charts) for one
-   * league matchup, shaped like the external matchup breakdown payload so
-   * the client's matchup overview page can render either. `sub` only
-   * affects side order (a coach sees their own team first).
-   */
   async getMatchupAnalysis(
     leagueSlug: string,
     tournamentSlug: string,
@@ -116,8 +98,6 @@ export class StageService {
     const ruleset = tournament.requireRuleset("matchupAnalysis");
     const format = tournament.requireFormat("matchupAnalysis");
 
-    // The tier list decides which alternate formes each pick may run; a missing
-    // or unresolvable tier list just means no formes are attached.
     const tierList = await this.tierListRepo
       .findById(tournament.tierListId)
       .catch(() => undefined);
@@ -155,8 +135,7 @@ export class StageService {
             ),
           );
         } catch {
-          // A species that no longer resolves against the ruleset is
-          // dropped from the analysis rather than failing the whole page.
+          continue;
         }
       }
       return {
@@ -179,14 +158,6 @@ export class StageService {
     return matchup.analyze(sub);
   }
 
-  /**
-   * The matchup a URL names, with the stage and tournament it belongs to.
-   *
-   * A matchup slug is unique across the collection, so it identifies the match
-   * on its own — but that also means the league and tournament in the URL are
-   * a claim rather than a fact, and a matchup reached through the wrong
-   * tournament has to read as missing rather than as somebody else's match.
-   */
   private async resolveMatchup(
     leagueSlug: string,
     tournamentSlug: string,
@@ -208,8 +179,6 @@ export class StageService {
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
     await this.assertStageVisible(stageDoc, sub);
 
-    // Bracket matchups with unresolved winner/loser slots have no teams yet —
-    // treat them like a missing matchup.
     if (!hasResolvedSides(matchupDoc))
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
 
@@ -229,7 +198,7 @@ export class StageService {
       sub,
     );
 
-    const isOrganizer = sub ? this.isOrganizer(tournament, sub) : false;
+    const isOrganizer = can(tournament, sub, "manageResults");
     const side = !sub
       ? null
       : isCoachedBy(matchupDoc.side1.team, sub, "report")
@@ -426,7 +395,7 @@ export class StageService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageResults");
 
     const { matchupDoc } = await this.loadMatchupContext(
       leagueSlug,
@@ -510,13 +479,6 @@ export class StageService {
     return "draw" as const;
   }
 
-  /**
-   * Re-resolves the bracket after a result changed.
-   *
-   * The whole tournament, not just the slots this match feeds: an advancement
-   * can be corrected as well as made, and a correction has to travel past the
-   * next match into everything that was already resolved behind it.
-   */
   private async advanceBracket(matchup: LeagueMatchupDocument) {
     if (!matchup.stage) return;
     const stageDoc = await this.stageRepo.findByIdOrNull(matchup.stage);
@@ -524,15 +486,6 @@ export class StageService {
     await this.advancement.applyToTournament(stageDoc.tournamentId);
   }
 
-  /**
-   * Names the side that leaves a match whose result cannot say so itself.
-   *
-   * The soft lock this exists for: a double forfeit is a settled result with
-   * no winning side, so every `winner`/`loser` slot below it stays empty and
-   * the rest of the bracket becomes unplayable. The organizer picks a side to
-   * advance anyway, or `"none"` to declare that nobody does — and `null`
-   * withdraws the decision, putting the bracket back on the recorded result.
-   */
   async setMatchupAdvancement(
     leagueSlug: string,
     tournamentSlug: string,
@@ -544,11 +497,9 @@ export class StageService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageSchedule");
 
     const matchup = await this.matchupRepo.findBySlug(matchupSlug);
-    // The slug alone does not say which tournament the match belongs to, and
-    // organizing one tournament must not authorize a write to another's.
     const stageDoc = matchup.stage
       ? await this.stageRepo.findByIdOrNull(matchup.stage)
       : null;
@@ -584,12 +535,9 @@ export class StageService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageResults");
 
     const matchup = await this.matchupRepo.findBySlug(matchupSlug);
-    // The slug alone does not say which tournament the match belongs to, and
-    // being an organizer of one tournament must not authorize a write to
-    // another's results.
     const stageDoc = matchup.stage
       ? await this.stageRepo.findByIdOrNull(matchup.stage)
       : null;
@@ -626,9 +574,6 @@ export class StageService {
     matchup.report = undefined;
     await matchup.save();
 
-    // Bracket advancement: fill in the winner/loser side of any downstream
-    // matchup that references this one, so it becomes resolvable (visible
-    // on the schedule) as soon as this result is recorded.
     if (dto.winner) await this.advanceBracket(matchup);
 
     return { message: "Schedule updated." };

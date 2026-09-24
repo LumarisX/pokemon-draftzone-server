@@ -33,6 +33,7 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
 import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
 import { isActiveCoach } from "@modules/tournament/membership";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
 import { Types } from "mongoose";
@@ -91,8 +92,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageParticipants");
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
@@ -138,7 +138,7 @@ export class HostedTournamentService {
     const team = await this.teamRepo.findBySlug(teamSlug);
 
     const migrated = usesTournamentAxis(tournament);
-    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const canSeeHidden = can(tournament, sub, "viewHidden");
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
     ).filter((stage) => stage.public !== false || canSeeHidden);
@@ -263,7 +263,7 @@ export class HostedTournamentService {
       tournamentSlug,
     );
 
-    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const canSeeHidden = can(tournament, sub, "viewHidden");
     const visibleStages = (
       await this.stageRepo.findAllByTournament(tournament.id)
     ).filter((stage) => stage.public !== false || canSeeHidden);
@@ -361,7 +361,7 @@ export class HostedTournamentService {
     );
 
     const canSeeAllDrafts = sub
-      ? tournament.isOrganizer(sub) ||
+      ? can(tournament, sub, "viewHidden") ||
         (await this.findSignupForTournament(sub, tournament.id))?.team
           .status === "approved"
       : false;
@@ -471,7 +471,7 @@ export class HostedTournamentService {
       this.draftRepo.findAllByTournament(tournament.id),
     ]);
 
-    const canSeeHidden = sub ? tournament.isOrganizer(sub) : false;
+    const canSeeHidden = can(tournament, sub, "viewHidden");
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
     ).filter((stage) => stage.public !== false || canSeeHidden);
@@ -757,8 +757,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageParticipants");
 
     const application = await this.applicationRepo.findById(applicationId);
     if (application.tournamentId.toString() !== tournament.id)
@@ -845,8 +844,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageParticipants");
 
     const team = await this.teamRepo.findBySlug(teamSlug);
     if (team.tournamentId.toString() !== tournament.id)
@@ -965,8 +963,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageSettings");
 
     const signUpToken = generateSlug(22);
     await this.tournamentRepo.updateSettings(tournament.id, {
@@ -1027,7 +1024,7 @@ export class HostedTournamentService {
     );
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
 
-    if (!tournament.isOrganizer(sub)) {
+    if (!can(tournament, sub, "manageParticipants")) {
       return teams
         .filter((team) => team.status === "approved")
         .map((team) => ({
@@ -1141,8 +1138,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageParticipants");
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftsByKey = new Map(drafts.map((d) => [d.slug, d]));
@@ -1286,7 +1282,7 @@ export class HostedTournamentService {
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
     const isActiveSelf = isOwnedBy(coach, sub) && isActiveCoach(coach);
-    if (!tournament.isOrganizer(sub) && !isActiveSelf)
+    if (!can(tournament, sub, "manageParticipants") && !isActiveSelf)
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
     return { tournament, coach, team };
@@ -1334,9 +1330,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub)) {
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-    }
+    assertCan(tournament, sub, "manageSettings");
 
     const rules = ruleSections.map(
       (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
@@ -1354,9 +1348,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub)) {
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-    }
+    assertCan(tournament, sub, "manageSettings");
     return HostedTournamentMapper.toSettingsPayload(tournament);
   }
 
@@ -1370,9 +1362,7 @@ export class HostedTournamentService {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub)) {
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
-    }
+    assertCan(tournament, sub, "manageSettings");
 
     const targetTierListId = dto.tierListId ?? tournament.tierListId;
     const tierList = targetTierListId

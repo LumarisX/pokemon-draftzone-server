@@ -58,6 +58,24 @@ export class HostedTournamentRepository {
     );
   }
 
+  async isArchived(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<boolean> {
+    const league = await this.leagueRepo
+      .findBySlug(leagueSlug)
+      .catch(() => null);
+    if (!league) return false;
+    const doc = await this.hostedTournamentModel
+      .findOne(
+        { slug: { $eq: tournamentSlug }, league: league._id },
+        { archived: 1 },
+      )
+      .lean()
+      .exec();
+    return doc?.archived === true;
+  }
+
   async findById(
     tournamentId: Types.ObjectId | string,
   ): Promise<HostedTournament> {

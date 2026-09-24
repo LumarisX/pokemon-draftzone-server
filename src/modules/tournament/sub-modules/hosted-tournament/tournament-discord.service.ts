@@ -1,8 +1,7 @@
-import { PDZError } from "@core/pdz-error";
-import { ErrorCodes } from "@core/pdz-error-codes";
 import { generateSlug } from "@core/slug";
 import { DiscordService } from "@modules/discord/discord.service";
 import { DraftRepository } from "@modules/draft/draft.repository";
+import { assertCan } from "@modules/tournament/tournament-policy";
 import { Injectable, OnModuleInit } from "@nestjs/common";
 import {
   ChatInputCommandInteraction,
@@ -54,8 +53,7 @@ export class TournamentDiscordService implements OnModuleInit {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageSettings");
 
     const code = generateSlug(DISCORD_LINK_CODE_LENGTH);
     const expiresAt = new Date(Date.now() + DISCORD_LINK_CODE_TTL_MS);
@@ -73,8 +71,7 @@ export class TournamentDiscordService implements OnModuleInit {
       leagueSlug,
       tournamentSlug,
     );
-    if (!tournament.isOrganizer(sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    assertCan(tournament, sub, "manageSettings");
 
     await this.tournamentRepo.unlinkDiscord(tournament.id);
     await this.draftRepo.clearChannelsByTournament(tournament.id);

@@ -13,6 +13,7 @@ import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { canOnTeam } from "@modules/tournament/membership";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
@@ -66,15 +67,6 @@ export class DraftService {
     );
     const draft = await this.draftRepo.findDraft(tournament, draftSlug);
     return { tournament, draft };
-  }
-
-  private isOrganizer(tournament: PopulatedTournament, sub: string): boolean {
-    return tournament.owner === sub || tournament.organizers.includes(sub);
-  }
-
-  private assertOrganizer(tournament: PopulatedTournament, sub: string) {
-    if (!this.isOrganizer(tournament, sub))
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
   }
 
   private async resolveStage(
@@ -262,7 +254,7 @@ export class DraftService {
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
-    const isOrganizerOverride = this.isOrganizer(tournament, sub);
+    const isOrganizerOverride = can(tournament, sub, "manageDrafts");
     if (!isOrganizerOverride && !(await isCoach(team, sub)))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
         reason: "User is not a coach on this team or a tournament organizer",
@@ -322,7 +314,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
@@ -351,7 +343,7 @@ export class DraftService {
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
-    if (!this.isOrganizer(tournament, sub) && !(await isCoach(team, sub)))
+    if (!can(tournament, sub, "manageDrafts") && !(await isCoach(team, sub)))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
         reason: "User is not a coach on this team or a tournament organizer",
       });
@@ -373,7 +365,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     await this.draftEngine.setDraftState(tournament, draft, dto.state);
     return { message: "Timer set successfully." };
@@ -391,7 +383,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     await this.draftEngine.setNoTimer(tournament, draft, dto.noTimer);
     return { message: "Timer mode updated successfully." };
@@ -409,7 +401,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     if (dto.channelId) {
       const problems = await this.discordService.findTargetProblems({
@@ -434,7 +426,7 @@ export class DraftService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     return {
@@ -456,7 +448,7 @@ export class DraftService {
       leagueSlug,
       tournamentSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     const start = dto.draftStart ? new Date(dto.draftStart) : undefined;
     const end = dto.draftEnd ? new Date(dto.draftEnd) : undefined;
@@ -494,7 +486,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     if (!isPreDraftStatus(draft.status))
       throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
@@ -530,7 +522,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     if (!draft.channelId)
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
@@ -553,7 +545,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     await this.draftEngine.setDraftOrder(tournament, draft, dto);
 
@@ -574,7 +566,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     await this.draftEngine.setCurrentPick(
       tournament,
@@ -603,7 +595,7 @@ export class DraftService {
     );
     const team = await this.draftRepo.findTeamInDraftOrThrow(draft, teamId);
 
-    const isOrganizerOverride = this.isOrganizer(tournament, sub);
+    const isOrganizerOverride = can(tournament, sub, "manageDrafts");
     if (!isOrganizerOverride && !(await isCoach(team, sub)))
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
         reason: "User is not a coach on this team or a tournament organizer",
@@ -633,7 +625,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     await this.draftEngine.skipCurrentPick(tournament, draft);
     return { message: "Skip successful." };
@@ -684,7 +676,7 @@ export class DraftService {
 
     const stage = await this.composeStageTeams(stageDoc);
 
-    const canSeeHidden = this.isOrganizer(tournament, sub);
+    const canSeeHidden = can(tournament, sub, "viewHidden");
     const stages = (
       await this.stageRepo.findAllByTournament(draft.tournamentId)
     ).filter((stage) => stage.public !== false || canSeeHidden);
@@ -750,7 +742,7 @@ export class DraftService {
       tournamentSlug,
       draftSlug,
     );
-    this.assertOrganizer(tournament, sub);
+    assertCan(tournament, sub, "manageDrafts");
 
     const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);
     const stage = stageDoc ? await this.composeStageTeams(stageDoc) : undefined;
