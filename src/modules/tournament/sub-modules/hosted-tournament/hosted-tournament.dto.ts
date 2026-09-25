@@ -13,8 +13,10 @@ import {
   TournamentApplicationStatus,
 } from "@modules/tournament-application/tournament-application.schema";
 import { Transform, Type } from "class-transformer";
+import { TIEBREAKERS, Tiebreaker } from "@modules/stage/domain/scoring";
 import {
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsDate,
@@ -339,6 +341,39 @@ export class TournamentAdSettingsDto {
   platforms?: string[];
 }
 
+export const MAX_STANDINGS_POINTS = 10;
+
+export class StandingsPointsDto {
+  @IsInt()
+  @Min(0)
+  @Max(MAX_STANDINGS_POINTS)
+  win!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(MAX_STANDINGS_POINTS)
+  draw!: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(MAX_STANDINGS_POINTS)
+  loss!: number;
+}
+
+export class StandingsRulesDto {
+  @ValidateNested()
+  @Type(() => StandingsPointsDto)
+  @IsOptional()
+  points?: StandingsPointsDto;
+
+  @IsArray()
+  @IsIn(TIEBREAKERS, { each: true })
+  @ArrayUnique()
+  @ArrayMaxSize(TIEBREAKERS.length)
+  @IsOptional()
+  tiebreakers?: Tiebreaker[];
+}
+
 export class TournamentForfeitDto {
   @IsInt()
   @Min(0)
@@ -415,6 +450,11 @@ export class UpdateHostedTournamentSettingsDto {
   @IsIn(["pokemon", "game"])
   @IsOptional()
   diffMode?: "pokemon" | "game";
+
+  @ValidateNested()
+  @Type(() => StandingsRulesDto)
+  @IsOptional()
+  standingsRules?: StandingsRulesDto;
 
   @IsString()
   @MinLength(1)

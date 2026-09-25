@@ -72,6 +72,20 @@ export class HostedTournamentMapper {
         pokemonDiff: doc.forfeit.pokemonDiff,
       }),
       diffMode: doc.diffMode,
+      standingsRules: doc.standingsRules
+        ? {
+            points: doc.standingsRules.points
+              ? {
+                  win: doc.standingsRules.points.win,
+                  draw: doc.standingsRules.points.draw,
+                  loss: doc.standingsRules.points.loss,
+                }
+              : undefined,
+            tiebreakers: doc.standingsRules.tiebreakers
+              ? [...doc.standingsRules.tiebreakers]
+              : undefined,
+          }
+        : undefined,
       format: tierListMeta?.format ?? null,
       ruleset: tierListMeta?.ruleset ?? null,
       draftCount: new DraftCount({
@@ -149,6 +163,8 @@ export class HostedTournamentMapper {
       discordSettings: tournament.discordSettings,
       forfeit: tournament.forfeit,
       diffMode: tournament.diffMode,
+      standingsRules: tournament.effectiveStandingsRules(),
+      standingsRulesCustomized: !!tournament.standingsRules?.tiebreakers?.length,
       tierListId: tournament.tierListId,
       format: tournament.format?.name ?? null,
       ruleset: tournament.ruleset?.name ?? null,

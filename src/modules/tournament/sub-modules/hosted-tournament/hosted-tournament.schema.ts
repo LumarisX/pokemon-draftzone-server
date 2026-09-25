@@ -1,5 +1,6 @@
 import { generateSlug } from "@core/slug";
 import { LeagueEntity } from "@modules/league/league.schema";
+import { TIEBREAKERS, Tiebreaker } from "@modules/stage/domain/scoring";
 import { STAFF_ROLES, StaffRole } from "@modules/tournament/tournament-policy";
 import {
   DraftCountEntity,
@@ -293,6 +294,33 @@ export const TournamentForfeitSchema = SchemaFactory.createForClass(
 );
 
 @Schema({ _id: false })
+export class StandingsPointsEntity {
+  @Prop({ required: true, min: 0 })
+  win!: number;
+
+  @Prop({ required: true, min: 0 })
+  draw!: number;
+
+  @Prop({ required: true, min: 0 })
+  loss!: number;
+}
+export const StandingsPointsSchema = SchemaFactory.createForClass(
+  StandingsPointsEntity,
+);
+
+@Schema({ _id: false })
+export class StandingsRulesEntity {
+  @Prop({ type: StandingsPointsSchema })
+  points?: StandingsPointsEntity;
+
+  @Prop({ type: [String], enum: TIEBREAKERS, default: undefined })
+  tiebreakers?: Tiebreaker[];
+}
+export const StandingsRulesSchema = SchemaFactory.createForClass(
+  StandingsRulesEntity,
+);
+
+@Schema({ _id: false })
 export class TournamentMatchSettingsEntity {
   @Prop({ default: true })
   chat!: boolean;
@@ -393,6 +421,9 @@ export class HostedTournamentEntity {
 
   @Prop({ type: String, enum: ["pokemon", "game"], required: true })
   diffMode!: "pokemon" | "game";
+
+  @Prop({ type: StandingsRulesSchema })
+  standingsRules?: StandingsRulesEntity;
 
   @Prop({ type: DraftCountSchema, required: true })
   draftCount!: DraftCountEntity;

@@ -4,6 +4,7 @@ import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
 import { LeagueDocument } from "@modules/league/league.schema";
 import { StageRepository } from "@modules/stage/stage.repository";
+import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { StaffRole } from "@modules/tournament/tournament-policy";
 import {
@@ -43,7 +44,7 @@ export class HostedTournamentRepository {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
 
     const doc = await this.hostedTournamentModel
-      .findOne({ slug: tournamentSlug, league: league._id })
+      .findOne({ slug: { $eq: tournamentSlug }, league: league._id })
       .exec();
     if (!doc)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
@@ -56,6 +57,25 @@ export class HostedTournamentRepository {
       league,
       stages,
       tierListMeta,
+    );
+  }
+
+  async findRulesBySlug(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<TournamentRule[]> {
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
+    const doc = await this.hostedTournamentModel
+      .findOne(
+        { slug: { $eq: tournamentSlug }, league: league._id },
+        { rules: 1 },
+      )
+      .lean()
+      .exec();
+    if (!doc)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
+    return (doc.rules ?? []).map(
+      (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
     );
   }
 
@@ -102,19 +122,17 @@ export class HostedTournamentRepository {
     const docs = await this.hostedTournamentModel
       .find({ league: league._id })
       .exec();
-    const metas = await this.resolveTierListMetas(
-      docs.map((doc) => doc.tierList),
-    );
-    return Promise.all(
-      docs.map(async (doc) => {
-        const stages = await this.resolveStages(doc.stages);
-        return HostedTournamentMapper.fromDatabase(
-          doc,
-          league,
-          stages,
-          doc.tierList ? (metas.get(doc.tierList.toString()) ?? null) : null,
-        );
-      }),
+    const [metas, stagesByDoc] = await Promise.all([
+      this.resolveTierListMetas(docs.map((doc) => doc.tierList)),
+      this.resolveStagesFor(docs.map((doc) => doc.stages)),
+    ]);
+    return docs.map((doc, index) =>
+      HostedTournamentMapper.fromDatabase(
+        doc,
+        league,
+        stagesByDoc[index],
+        doc.tierList ? (metas.get(doc.tierList.toString()) ?? null) : null,
+      ),
     );
   }
 
@@ -136,30 +154,27 @@ export class HostedTournamentRepository {
       .exec();
 
     const leagueIds = [...new Set(docs.map((doc) => doc.league.toString()))];
+    const [leagues, metas, stagesByDoc] = await Promise.all([
+      this.leagueRepo.findManyByIds(leagueIds),
+      this.resolveTierListMetas(docs.map((doc) => doc.tierList)),
+      this.resolveStagesFor(docs.map((doc) => doc.stages)),
+    ]);
     const leaguesById = new Map(
-      await Promise.all(
-        leagueIds.map(async (leagueId) => {
-          const league = await this.leagueRepo.findById(leagueId);
-          return [leagueId, league] as const;
-        }),
-      ),
+      leagues.map((league) => [league._id.toString(), league]),
     );
 
-    const metas = await this.resolveTierListMetas(
-      docs.map((doc) => doc.tierList),
-    );
-
-    return Promise.all(
-      docs.map(async (doc) => {
-        const stages = await this.resolveStages(doc.stages);
-        return HostedTournamentMapper.fromDatabase(
+    return docs.flatMap((doc, index) => {
+      const league = leaguesById.get(doc.league.toString());
+      if (!league) return [];
+      return [
+        HostedTournamentMapper.fromDatabase(
           doc,
-          leaguesById.get(doc.league.toString())!,
-          stages,
+          league,
+          stagesByDoc[index],
           doc.tierList ? (metas.get(doc.tierList.toString()) ?? null) : null,
-        );
-      }),
-    );
+        ),
+      ];
+    });
   }
 
   private async resolveTierListMeta(
@@ -198,11 +213,21 @@ export class HostedTournamentRepository {
   }
 
   private async resolveStages(stageIds: Types.ObjectId[]) {
-    const stages = await Promise.all(
-      stageIds.map((id) => this.stageRepo.findByIdOrNull(id)),
-    );
-    return stages.filter(
-      (stage): stage is NonNullable<typeof stage> => stage !== null,
+    const [stages] = await this.resolveStagesFor([stageIds]);
+    return stages;
+  }
+
+  private async resolveStagesFor(
+    stageIdLists: Types.ObjectId[][],
+  ): Promise<StageDocument[][]> {
+    const ids = [
+      ...new Set(stageIdLists.flat().map((id) => id.toString())),
+    ];
+    if (ids.length === 0) return stageIdLists.map(() => []);
+    const stages = await this.stageRepo.findManyByIds(ids);
+    const byId = new Map(stages.map((stage) => [stage._id.toString(), stage]));
+    return stageIdLists.map((list) =>
+      list.flatMap((id) => byId.get(id.toString()) ?? []),
     );
   }
 

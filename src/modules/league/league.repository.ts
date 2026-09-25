@@ -18,6 +18,13 @@ export class LeagueRepository {
     return league;
   }
 
+  async findManyByIds(
+    leagueIds: (Types.ObjectId | string)[],
+  ): Promise<LeagueDocument[]> {
+    if (leagueIds.length === 0) return [];
+    return this.leagueModel.find({ _id: { $in: leagueIds } }).exec();
+  }
+
   async findById(leagueId: Types.ObjectId | string): Promise<LeagueDocument> {
     const league = await this.leagueModel.findById(leagueId).exec();
     if (!league)

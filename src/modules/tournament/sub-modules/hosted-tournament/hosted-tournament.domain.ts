@@ -6,6 +6,10 @@ import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import {
+  resolveStandingsRules,
+  StoredStandingsRules,
+} from "@modules/stage/domain/scoring";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import {
@@ -208,6 +212,7 @@ export class HostedTournament {
   tradesVersion: number;
   forfeit: TournamentForfeit;
   diffMode: "pokemon" | "game";
+  standingsRules?: StoredStandingsRules;
   format: Format | null;
   ruleset: Ruleset | null;
   draftCount: DraftCount;
@@ -251,6 +256,7 @@ export class HostedTournament {
     tradesVersion?: number;
     forfeit: TournamentForfeit;
     diffMode: "pokemon" | "game";
+    standingsRules?: StoredStandingsRules;
     format?: string | null;
     ruleset?: string | null;
     draftCount: DraftCount;
@@ -293,6 +299,7 @@ export class HostedTournament {
     this.tradesVersion = props.tradesVersion ?? 0;
     this.forfeit = props.forfeit;
     this.diffMode = props.diffMode;
+    this.standingsRules = props.standingsRules;
     this.format = props.format ? getFormat(props.format) : null;
     this.ruleset = props.ruleset ? getRuleset(props.ruleset) : null;
     this.draftCount = props.draftCount;
@@ -310,6 +317,10 @@ export class HostedTournament {
 
   get hasTierList(): boolean {
     return this.tierListId !== "";
+  }
+
+  effectiveStandingsRules() {
+    return resolveStandingsRules(this);
   }
 
   requireTierList(operation: string): void {

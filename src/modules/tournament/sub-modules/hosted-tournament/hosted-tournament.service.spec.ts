@@ -1284,6 +1284,55 @@ describe("HostedTournamentService settings", () => {
     );
   });
 
+  describe("standings rules", () => {
+    it("stores points and the tiebreaker order", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        standingsRules: {
+          points: { win: 2, draw: 1, loss: 0 },
+          tiebreakers: ["headToHead", "gameDiff"],
+        },
+      });
+
+      expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
+        tournament.id,
+        expect.objectContaining({
+          "standingsRules.points": { win: 2, draw: 1, loss: 0 },
+          "standingsRules.tiebreakers": ["headToHead", "gameDiff"],
+        }),
+      );
+    });
+
+    it.each([
+      ["a draw worth more than a win", { win: 1, draw: 2, loss: 0 }],
+      ["a loss worth more than a draw", { win: 3, draw: 0, loss: 1 }],
+    ])("refuses %s and saves nothing", async (_, points) => {
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          standingsRules: { points },
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+      });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
+
+    it("reports the effective rules, derived from the diff mode until customized", async () => {
+      const settings = await service.getSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+      );
+
+      expect(settings).toMatchObject({
+        standingsRules: {
+          points: { win: 3, draw: 1, loss: 0 },
+          tiebreakers: ["pokemonDiff", "gameDiff", "headToHead"],
+        },
+        standingsRulesCustomized: false,
+      });
+    });
+  });
+
   describe("logo", () => {
     it("claims a new logo as the organizer's own tournament-logo upload", async () => {
       await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {

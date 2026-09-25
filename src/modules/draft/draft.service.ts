@@ -730,7 +730,9 @@ export class DraftService {
       const record = standings
         ? {
             wins: standings.wins,
+            draws: standings.draws,
             losses: standings.losses,
+            points: standings.points,
             pokemonDiff: standings.pokemonDiff,
             gameDiff: standings.gameDiff,
           }

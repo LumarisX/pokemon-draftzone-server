@@ -43,8 +43,6 @@ function buildTierList(
   overrides: { format?: string; ruleset?: string } & Record<string, unknown> = {},
 ) {
   const { format = "Singles", ruleset = "Gen9 NatDex", ...rest } = overrides;
-  // Mirror the TierList domain, which resolves format/ruleset to objects;
-  // the service only sends their `name` to the client.
   return {
     format: { name: format },
     ruleset: { name: ruleset },
@@ -169,31 +167,18 @@ describe("LeagueService.getLeagueSummary", () => {
   });
 });
 
-/** A side's result block with `fainted` pokemon, which is what diffs count. */
-function buildSideResult(fainted: number) {
-  return {
-    score: 0,
-    pokemon: new Map(
-      Array.from({ length: fainted }, (_, i) => [
-        `mon${i}`,
-        { status: "fainted" },
-      ]),
-    ),
-  };
+function buildSideResult(left: number) {
+  return { score: left, pokemon: new Map() };
 }
 
-/**
- * A matchup shaped the way `findScoringByStages` returns them — unpopulated, so
- * each side's `team` is a raw ObjectId rather than a team document.
- */
 function buildScoringMatchup(options: {
   round: Types.ObjectId;
   side1Team: Types.ObjectId;
   side2Team: Types.ObjectId;
   side1Score: number;
   side2Score: number;
-  side1Fainted: number;
-  side2Fainted: number;
+  side1Left: number;
+  side2Left: number;
   winner: "side1" | "side2" | "draw";
 }) {
   return {
@@ -205,8 +190,8 @@ function buildScoringMatchup(options: {
     results: [
       {
         winner: options.winner,
-        side1: buildSideResult(options.side1Fainted),
-        side2: buildSideResult(options.side2Fainted),
+        side1: buildSideResult(options.side1Left),
+        side2: buildSideResult(options.side2Left),
       },
     ],
   } as any;
@@ -324,8 +309,8 @@ describe("LeagueService.getLeagues", () => {
         side2Team: opponent,
         side1Score: 2,
         side2Score: 0,
-        side1Fainted: 1,
-        side2Fainted: 5,
+        side1Left: 4,
+        side2Left: 0,
         winner: "side1",
       }),
       buildScoringMatchup({
@@ -334,19 +319,17 @@ describe("LeagueService.getLeagues", () => {
         side2Team: team._id,
         side1Score: 3,
         side2Score: 1,
-        side1Fainted: 2,
-        side2Fainted: 4,
+        side1Left: 2,
+        side2Left: 0,
         winner: "side1",
       }),
     ] as any);
 
     const result = await service.getLeagues("auth0|coach");
 
-    // Pokemon diff is the opponent's faints less the team's own: +4 on the win
-    // (5 against 1), -2 on the loss (2 against 4). The game diff would be 0
-    // over the same two matches, so this also pins which one is reported.
     expect(result.tournaments[0].score).toEqual({
       wins: 1,
+      draws: 0,
       losses: 1,
       diff: 2,
     });
@@ -364,8 +347,8 @@ describe("LeagueService.getLeagues", () => {
         side2Team: new Types.ObjectId(),
         side1Score: 2,
         side2Score: 0,
-        side1Fainted: 1,
-        side2Fainted: 5,
+        side1Left: 4,
+        side2Left: 0,
         winner: "side1",
       }),
     ] as any);
@@ -374,6 +357,7 @@ describe("LeagueService.getLeagues", () => {
 
     expect(result.tournaments[0].score).toEqual({
       wins: 1,
+      draws: 0,
       losses: 0,
       diff: 2,
     });
@@ -401,8 +385,6 @@ describe("LeagueService.getLeagues", () => {
       tournamentB,
     ]);
     teamRepo.findManyByIds.mockResolvedValue([teamA, teamB]);
-    // Both tournaments' matchups come back from the one query; only team A's
-    // may land on team A's card.
     matchupRepo.findScoringByStages.mockResolvedValue([
       buildScoringMatchup({
         round: tournamentA.rounds[0]._id,
@@ -410,8 +392,8 @@ describe("LeagueService.getLeagues", () => {
         side2Team: new Types.ObjectId(),
         side1Score: 2,
         side2Score: 0,
-        side1Fainted: 0,
-        side2Fainted: 2,
+        side1Left: 2,
+        side2Left: 0,
         winner: "side1",
       }),
       buildScoringMatchup({
@@ -420,8 +402,8 @@ describe("LeagueService.getLeagues", () => {
         side2Team: new Types.ObjectId(),
         side1Score: 0,
         side2Score: 2,
-        side1Fainted: 3,
-        side2Fainted: 0,
+        side1Left: 0,
+        side2Left: 3,
         winner: "side2",
       }),
     ] as any);
@@ -431,8 +413,8 @@ describe("LeagueService.getLeagues", () => {
     const bySlug = new Map(
       result.tournaments.map((t) => [t.tournamentSlug, t.score]),
     );
-    expect(bySlug.get("a")).toEqual({ wins: 1, losses: 0, diff: 2 });
-    expect(bySlug.get("b")).toEqual({ wins: 0, losses: 1, diff: -3 });
+    expect(bySlug.get("a")).toEqual({ wins: 1, draws: 0, losses: 0, diff: 2 });
+    expect(bySlug.get("b")).toEqual({ wins: 0, draws: 0, losses: 1, diff: -3 });
   });
 
   it("asks for every stage's matchups in one query", async () => {

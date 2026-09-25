@@ -1,23 +1,27 @@
-import { StageDocument, StageRoundEntity } from "@modules/stage/stage.schema";
+import { StageDocument } from "@modules/stage/stage.schema";
 import { LeagueMatchupDocument } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PopulatedTeam } from "@modules/team/team.repository";
 import { getName } from "@modules/data/domain/pokedex";
+import {
+  DiffMode,
+  ForfeitConfig,
+  MatchOutcome,
+  PlayedGame,
+  pointsFor,
+  rankStandings,
+  resolveStandingsRules,
+  SideResult,
+  sideResult,
+  StandingsRules,
+  StoredStandingsRules,
+} from "./scoring";
 import { AxisTournament, RoundLike, stageRounds } from "./stage-axis";
 
-/**
- * A LeagueMatchup with its team sides populated (coach included), matching
- * the new Nest LeagueMatchupEntity shape (stage-scoped, not division-scoped).
- * Co-located here rather than in classes/matchup.ts because that file's
- * PopulatedLeagueMatchup type is still used by legacy-route-only code this
- * migration doesn't touch.
- */
 export type PopulatedStageMatchup = LeagueMatchupDocument & {
-  // Absent on bracket matchups whose winner/loser slots are unresolved.
   side1: { team?: PopulatedTeam };
   side2: { team?: PopulatedTeam };
 };
 
-/** Both participants are known (i.e. not an unresolved bracket slot). */
 export function hasResolvedSides(
   matchup: PopulatedStageMatchup,
 ): matchup is PopulatedStageMatchup & {
@@ -85,7 +89,6 @@ export async function calculateDivisionPokemonStandings(
         }
       }
 
-      // Process team2 pokemon
       if (result.side2?.pokemon) {
         for (const [pokemonId, stats] of result.side2.pokemon.entries()) {
           if (filterTeamId && team2Key !== filterTeamId) {
@@ -144,219 +147,114 @@ export async function calculateDivisionPokemonStandings(
     });
 }
 
+export type StandingResult = {
+  outcome: MatchOutcome | "t";
+  score: number;
+} | null;
+
+export type ScoringTournament = {
+  diffMode: DiffMode;
+  forfeit?: ForfeitConfig;
+  standingsRules?: StoredStandingsRules;
+};
+
 type TeamStanding = {
   name: string;
-  results: ({
-    outcome: "w" | "l" | "t" | "ff";
-    score: number;
-  } | null)[];
+  results: StandingResult[];
   coach: string;
   wins: number;
+  draws: number;
   losses: number;
+  points: number;
   pokemonDiff: number;
   gameDiff: number;
   logo?: string;
   teamId: string;
-  /** For the link to the team's page; `teamId` is what the table keys on. */
   teamSlug: string;
-};
-
-type ForfeitConfig = {
-  gameDiff: number;
-  pokemonDiff: number;
-};
-
-type TeamSide = "side1" | "side2";
-
-type ResolvedMatchupResult = {
-  wins: number;
-  losses: number;
-  unplayed: number;
-  outcome: "w" | "l" | "t" | "ff";
-  stageDiff: number;
-  pokemonDiff: number;
 };
 
 export type TeamScore = {
   teamId: string;
   wins: number;
+  draws: number;
   losses: number;
+  points: number;
   unplayed: number;
   streak: number;
   gameDiff: number;
   pokemonDiff: number;
-  results: ({
-    outcome: "w" | "l" | "t" | "ff";
-    score: number;
-  } | null)[];
-  diffMode: "pokemon" | "game";
+  results: StandingResult[];
+  diffMode: DiffMode;
 };
+
+type Side = "side1" | "side2";
+const SIDES: readonly Side[] = ["side1", "side2"];
 
 function createTeamStanding(
   team: PopulatedTeam,
   roundCount: number,
 ): TeamStanding {
-  const teamKey = team._id.toString();
-  const coach = team.primaryCoach;
-
   return {
     name: team.teamName,
     results: Array(roundCount).fill(null),
-    coach: coach.name,
+    coach: team.primaryCoach.name,
     logo: team.logo,
     wins: 0,
+    draws: 0,
     losses: 0,
+    points: 0,
     pokemonDiff: 0,
     gameDiff: 0,
-    teamId: teamKey,
+    teamId: team._id.toString(),
     teamSlug: team.slug,
   };
 }
 
-function getOrCreateTeamStanding(
-  teamStandingsMap: Map<string, TeamStanding>,
-  team: PopulatedTeam,
-  roundCount: number,
-): TeamStanding {
-  const teamKey = team._id.toString();
-  const existingStanding = teamStandingsMap.get(teamKey);
-  if (existingStanding) {
-    return existingStanding;
-  }
-
-  const newStanding = createTeamStanding(team, roundCount);
-  teamStandingsMap.set(teamKey, newStanding);
-  return newStanding;
-}
-
-function countTeamFainted(
-  teamResult?: PopulatedStageMatchup["results"][number]["side1"],
-): number {
-  if (!teamResult?.pokemon) return 0;
-  return Array.from(teamResult.pokemon.values()).reduce((pokemonSum, stats) => {
-    const survived = stats.status === "fainted" ? 1 : 0;
-    return pokemonSum + survived;
-  }, 0);
-}
-
-function calculateMatchupFainted(
-  matchup: PopulatedStageMatchup,
-  teamSide: "side1" | "side2",
-): number {
-  return (
-    matchup.results?.reduce((sum, result) => {
-      return sum + countTeamFainted(result[teamSide]);
-    }, 0) ?? 0
-  );
-}
-
-function applyMatchupDiffs(
+function applySideResult(
   standing: TeamStanding,
   roundIndex: number,
-  stageDiff: number,
-  pokemonDiff: number,
-  diffMode: "game" | "pokemon",
-  outcome: "w" | "l" | "t" | "ff",
+  result: SideResult,
+  rules: StandingsRules,
+  diffMode: DiffMode,
 ) {
+  if (result.outcome === "w") standing.wins += 1;
+  else if (result.outcome === "d") standing.draws += 1;
+  else standing.losses += 1;
+  standing.points += pointsFor(result.outcome, rules.points);
+  standing.gameDiff += result.gameDiff;
+  standing.pokemonDiff += result.pokemonDiff;
   if (roundIndex >= 0 && roundIndex < standing.results.length) {
     standing.results[roundIndex] = {
-      outcome,
-      score: diffMode === "game" ? stageDiff : pokemonDiff,
+      outcome: result.outcome,
+      score: diffMode === "game" ? result.gameDiff : result.pokemonDiff,
     };
   }
-  standing.gameDiff += stageDiff;
-  standing.pokemonDiff += pokemonDiff;
 }
 
-function resolveTeamMatchupResult({
-  winner,
-  forfeit,
-  teamSide,
-  stageDiff,
-  pokemonDiff,
-  forfeitConfig,
-}: {
-  winner: LeagueMatchupDocument["winner"];
-  forfeit?: boolean;
-  teamSide: TeamSide;
-  stageDiff: number;
-  pokemonDiff: number;
-  forfeitConfig?: ForfeitConfig;
-}): ResolvedMatchupResult {
-  const opponentSide: TeamSide = teamSide === "side1" ? "side2" : "side1";
-
-  if (forfeit === true) {
-    const didWin = winner === teamSide;
-    const didLose = winner === opponentSide || winner === "draw";
-    const gameDiff = forfeitConfig?.gameDiff ?? 0;
-    const forfeitPokemonDiff = forfeitConfig?.pokemonDiff ?? 0;
-
-    return {
-      wins: didWin ? 1 : 0,
-      losses: didLose ? 1 : 0,
-      unplayed: didWin || didLose ? 0 : 1,
-      outcome: didWin ? "w" : didLose ? "ff" : "t",
-      stageDiff: didWin ? gameDiff : didLose ? -gameDiff : 0,
-      pokemonDiff: didWin
-        ? forfeitPokemonDiff
-        : didLose
-          ? -forfeitPokemonDiff
-          : 0,
-    };
-  }
-
-  const didWin = winner === teamSide;
-  const didLose = winner === opponentSide;
-
-  return {
-    wins: didWin ? 1 : 0,
-    losses: didLose ? 1 : 0,
-    unplayed: didWin || didLose ? 0 : 1,
-    outcome: didWin ? "w" : didLose ? "l" : "t",
-    stageDiff,
-    pokemonDiff,
-  };
+function markScheduled(standing: TeamStanding, roundIndex: number) {
+  if (
+    roundIndex >= 0 &&
+    roundIndex < standing.results.length &&
+    !standing.results[roundIndex]
+  )
+    standing.results[roundIndex] = { outcome: "t", score: 0 };
 }
 
-function applyResolvedMatchupResult(
-  standing: TeamStanding,
-  roundIndex: number,
-  diffMode: "game" | "pokemon",
-  result: ResolvedMatchupResult,
-) {
-  standing.wins += result.wins;
-  standing.losses += result.losses;
-  applyMatchupDiffs(
-    standing,
-    roundIndex,
-    result.stageDiff,
-    result.pokemonDiff,
-    diffMode,
-    result.outcome,
+function roundIndexOf(matchup: PopulatedStageMatchup, rounds: RoundLike[]) {
+  return rounds.findIndex(
+    (round) => matchup.round && round._id.equals(matchup.round),
   );
 }
 
-function calculateStreak(
-  results: ({
-    score: number;
-  } | null)[],
-): number {
+function calculateStreak(results: StandingResult[]): number {
   let streak = 0;
 
   for (const result of results) {
     if (!result) continue;
     if (result.score > 0) {
-      if (streak >= 0) {
-        streak += 1;
-      } else {
-        streak = 1;
-      }
+      streak = streak >= 0 ? streak + 1 : 1;
     } else if (result.score < 0) {
-      if (streak <= 0) {
-        streak -= 1;
-      } else {
-        streak = -1;
-      }
+      streak = streak <= 0 ? streak - 1 : -1;
     }
   }
 
@@ -366,107 +264,73 @@ function calculateStreak(
 export async function calculateDivisionTeamStandings(
   matchups: PopulatedStageMatchup[],
   stage: StageDocument & { teams: PopulatedTeam[] },
-  tournament: AxisTournament & {
-    diffMode: "pokemon" | "game";
-    forfeit?: ForfeitConfig;
-  },
+  tournament: AxisTournament & ScoringTournament,
 ) {
-  const teamStandingsMap = new Map<string, TeamStanding>();
+  const rules = resolveStandingsRules(tournament);
   const diffMode = tournament.diffMode;
-  // A standing has one cell per round, so the axis has to be the one the
-  // matchups' `round` ids actually belong to.
   const rounds = stageRounds(stage, tournament);
+  const standings = new Map<string, TeamStanding>();
   for (const team of stage.teams) {
-    const teamStanding = createTeamStanding(team, rounds.length);
-    teamStandingsMap.set(teamStanding.teamId, teamStanding);
+    const standing = createTeamStanding(team, rounds.length);
+    standings.set(standing.teamId, standing);
   }
 
+  const games: PlayedGame[] = [];
   for (const matchup of matchups) {
-    const roundIndex = rounds.findIndex(
-      (r) => matchup.round && r._id.equals(matchup.round),
-    );
-
-    const team1Score = matchup.side1.score ?? 0;
-    const team2Score = matchup.side2.score ?? 0;
-
-    const team1PokemonDiff = matchup.results.reduce(
-      (sum, result) =>
-        sum +
-        (result.winner === "side1"
-          ? result.side1.score || 0
-          : -1 * (result.side2.score || 0)),
-      0,
-    );
-
-    const team2PokemonDiff = matchup.results.reduce(
-      (sum, result) =>
-        sum +
-        (result.winner === "side2"
-          ? result.side2.score || 0
-          : -1 * (result.side1.score || 0)),
-      0,
-    );
-
-    const sides = [
-      {
-        teamSide: "side1" as const,
-        team: matchup.side1.team,
-        stageDiff: team1Score - team2Score,
-        pokemonDiff: team1PokemonDiff,
-      },
-      {
-        teamSide: "side2" as const,
-        team: matchup.side2.team,
-        stageDiff: team2Score - team1Score,
-        pokemonDiff: team2PokemonDiff,
-      },
-    ];
-
-    for (const { teamSide, team, stageDiff, pokemonDiff } of sides) {
+    const roundIndex = roundIndexOf(matchup, rounds);
+    for (const side of SIDES) {
+      const team = matchup[side].team;
       if (!team) continue;
-      const standing = getOrCreateTeamStanding(
-        teamStandingsMap,
-        team,
-        rounds.length,
-      );
-      const result = resolveTeamMatchupResult({
-        winner: matchup.winner,
-        forfeit: matchup.forfeit,
-        teamSide,
-        stageDiff,
-        pokemonDiff,
-        forfeitConfig: tournament.forfeit,
-      });
-      applyResolvedMatchupResult(standing, roundIndex, diffMode, result);
+
+      const teamId = team._id.toString();
+      let standing = standings.get(teamId);
+      if (!standing) {
+        standing = createTeamStanding(team, rounds.length);
+        standings.set(teamId, standing);
+      }
+
+      const result = sideResult(matchup, side, tournament.forfeit);
+      if (!result) {
+        markScheduled(standing, roundIndex);
+        continue;
+      }
+      applySideResult(standing, roundIndex, result, rules, diffMode);
+
+      const opponent = matchup[side === "side1" ? "side2" : "side1"].team;
+      if (opponent)
+        games.push({
+          teamId,
+          opponentId: opponent._id.toString(),
+          points: pointsFor(result.outcome, rules.points),
+        });
     }
   }
 
+  const ranked = rankStandings(
+    Array.from(standings.values()),
+    games,
+    rules.tiebreakers,
+  );
+
   return {
-    teamStandings: Array.from(teamStandingsMap.values())
-      .map((team) => {
-        return {
-          name: team.name,
-          results: team.results,
-          coach: team.coach,
-          streak: calculateStreak(team.results),
-          wins: team.wins,
-          losses: team.losses,
-          gameDiff: team.gameDiff,
-          pokemonDiff: team.pokemonDiff,
-          logo: team.logo,
-          diffMode,
-          id: team.teamId,
-          teamSlug: team.teamSlug,
-        };
-      })
-      .sort((a, b) => {
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        if (b.gameDiff !== a.gameDiff) return b.gameDiff - a.gameDiff;
-        if (b.pokemonDiff !== a.pokemonDiff)
-          return b.pokemonDiff - a.pokemonDiff;
-        return 0;
-      }),
+    teamStandings: ranked.map((team) => ({
+      name: team.name,
+      results: team.results,
+      coach: team.coach,
+      streak: calculateStreak(team.results),
+      wins: team.wins,
+      draws: team.draws,
+      losses: team.losses,
+      points: team.points,
+      gameDiff: team.gameDiff,
+      pokemonDiff: team.pokemonDiff,
+      logo: team.logo,
+      diffMode,
+      id: team.teamId,
+      teamSlug: team.teamSlug,
+    })),
     diffMode,
+    rules,
   };
 }
 
@@ -474,56 +338,40 @@ export async function calculateTeamScore(
   matchups: PopulatedStageMatchup[],
   rounds: RoundLike[],
   team: PopulatedTeam,
-  forfeitConfig?: ForfeitConfig,
+  tournament: ScoringTournament,
 ): Promise<TeamScore> {
-  const teamStanding = createTeamStanding(team, rounds.length);
-  const teamId = team._id.toString();
-  let diffMode: "pokemon" | "game" = "pokemon";
+  const rules = resolveStandingsRules(tournament);
+  const diffMode = tournament.diffMode;
+  const standing = createTeamStanding(team, rounds.length);
   let unplayed = 0;
 
   for (const matchup of matchups) {
-    const team1Id = matchup.side1.team?._id.toString();
-    const team2Id = matchup.side2.team?._id.toString();
-    const teamSide =
-      team1Id === teamId ? "side1" : team2Id === teamId ? "side2" : null;
-
-    if (!teamSide) continue;
-    if (matchup.results.length > 1) diffMode = "game";
-
-    const opponentSide = teamSide === "side1" ? "side2" : "side1";
-    const teamScore = matchup[teamSide].score ?? 0;
-    const opponentScore = matchup[opponentSide].score ?? 0;
-    const teamPokemonFainted = calculateMatchupFainted(matchup, teamSide);
-    const opponentPokemonFainted = calculateMatchupFainted(
-      matchup,
-      opponentSide,
+    const side = SIDES.find(
+      (candidate) => matchup[candidate].team?._id.equals(team._id),
     );
-    const roundIndex = rounds.findIndex(
-      (r) => matchup.round && r._id.equals(matchup.round),
-    );
+    if (!side) continue;
 
-    const result = resolveTeamMatchupResult({
-      winner: matchup.winner,
-      forfeit: matchup.forfeit,
-      teamSide,
-      stageDiff: teamScore - opponentScore,
-      pokemonDiff: opponentPokemonFainted - teamPokemonFainted,
-      forfeitConfig,
-    });
-
-    applyResolvedMatchupResult(teamStanding, roundIndex, diffMode, result);
-    unplayed += result.unplayed;
+    const roundIndex = roundIndexOf(matchup, rounds);
+    const result = sideResult(matchup, side, tournament.forfeit);
+    if (!result) {
+      unplayed += 1;
+      markScheduled(standing, roundIndex);
+      continue;
+    }
+    applySideResult(standing, roundIndex, result, rules, diffMode);
   }
 
   return {
-    teamId,
-    wins: teamStanding.wins,
-    losses: teamStanding.losses,
+    teamId: standing.teamId,
+    wins: standing.wins,
+    draws: standing.draws,
+    losses: standing.losses,
+    points: standing.points,
     unplayed,
-    streak: calculateStreak(teamStanding.results),
-    gameDiff: teamStanding.gameDiff,
-    pokemonDiff: teamStanding.pokemonDiff,
-    results: teamStanding.results,
+    streak: calculateStreak(standing.results),
+    gameDiff: standing.gameDiff,
+    pokemonDiff: standing.pokemonDiff,
+    results: standing.results,
     diffMode,
   };
 }

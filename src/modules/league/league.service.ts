@@ -14,12 +14,6 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { LeagueRepository } from "./league.repository";
 
-/**
- * When this team next plays. The card shows a countdown, and the record query
- * has already loaded every one of the team's matchups, so this costs no extra
- * round trip. Matchups with a result recorded are skipped: a score entered
- * late would otherwise keep the card pointing at a match already played.
- */
 function nextScheduledMatch(
   matchups: { scheduledDate?: Date | null; results?: unknown[] }[],
 ): string | null {
@@ -62,9 +56,6 @@ export class LeagueService {
       teams.map((team) => [team.tournamentId.toString(), team]),
     );
 
-    // One query for every card's matches rather than one per card: a team only
-    // ever appears in its own tournament's stages, so the results can be
-    // bucketed by team afterwards without any risk of crossing tournaments.
     const [drafts, scoringMatchups] = await Promise.all([
       this.draftRepo.findManyByIds(
         teams.flatMap((team) => (team.draftId ? [team.draftId] : [])),
@@ -80,8 +71,6 @@ export class LeagueService {
       drafts.map((draft) => [draft._id.toString(), draft.slug]),
     );
 
-    // Every matchup has one of these teams on it, but the other side is an
-    // opponent whose record no card here shows, so only ours get a bucket.
     const ownTeamIds = new Set(teams.map((team) => team._id.toString()));
     const matchupsByTeam = new Map<string, typeof scoringMatchups>();
     for (const matchup of scoringMatchups) {
@@ -103,24 +92,19 @@ export class LeagueService {
         const team = teamsByTournament.get(tournament.id);
         if (!team) return null;
         const tierList = tierListsById.get(tournament.tierListId);
-        // The tournament card is a "what do I have now" view, so it takes the
-        // roster with every approved trade applied, including ones that land in
-        // a round the season has not reached.
         const context = rosterContextForTournament(tournament);
         const roster = getLatestRoster(team, context).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           draftFormes: tierList?.getPokemonFormes(pokemon.id),
         }));
-        // Across every stage the team plays in, matching the team page: a
-        // coach's record covers the group phase and the playoffs together.
         const teamMatchups = matchupsByTeam.get(team._id.toString()) ?? [];
         const record = teamMatchups.length
           ? await calculateTeamScore(
               teamMatchups as unknown as PopulatedStageMatchup[],
               context?.rounds ?? [],
               team,
-              tournament.forfeit,
+              tournament,
             )
           : undefined;
         return {
@@ -141,10 +125,9 @@ export class LeagueService {
           draft: roster,
           format: tournament.format?.name ?? null,
           ruleset: tournament.ruleset?.name ?? null,
-          // Undefined until the schedule exists, so the card shows no record
-          // badge rather than a meaningless 0 - 0.
           score: record && {
             wins: record.wins,
+            draws: record.draws,
             losses: record.losses,
             diff:
               tournament.diffMode === "game"

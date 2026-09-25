@@ -32,6 +32,7 @@ import {
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
+import { StandingsRules } from "@modules/stage/domain/scoring";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { isCoachedBy } from "@modules/team/team.domain";
@@ -244,7 +245,7 @@ export class HostedTournamentService {
       teamMatchups,
       stageRounds(stage, tournament),
       team,
-      tournament.forfeit,
+      tournament,
     );
 
     return {
@@ -257,7 +258,9 @@ export class HostedTournamentService {
       matchups: teamMatchups,
       record: {
         wins: teamRecord.wins,
+        draws: teamRecord.draws,
         losses: teamRecord.losses,
+        points: teamRecord.points,
         pokemonDiff: teamRecord.pokemonDiff,
         gameDiff: teamRecord.gameDiff,
       },
@@ -307,6 +310,7 @@ export class HostedTournamentService {
       {
         teamStandings: {
           diffMode: "game" | "pokemon";
+          rules: StandingsRules;
           teams: unknown[];
         };
         pokemonStandings: unknown[];
@@ -320,13 +324,10 @@ export class HostedTournamentService {
         axisRounds.map((r) => r._id),
       )) as unknown as PopulatedStageMatchup[];
 
-      const { teamStandings, diffMode } = await calculateDivisionTeamStandings(
-        matchups,
-        stage,
-        tournament,
-      );
+      const { teamStandings, diffMode, rules } =
+        await calculateDivisionTeamStandings(matchups, stage, tournament);
       views[stage.slug] = {
-        teamStandings: { diffMode, teams: teamStandings },
+        teamStandings: { diffMode, rules, teams: teamStandings },
         pokemonStandings: await calculateDivisionPokemonStandings(matchups),
       };
     }
@@ -343,16 +344,16 @@ export class HostedTournamentService {
     const allMatchups = (await this.matchupRepo.findByStages(
       visibleStages.map((s) => s._id),
     )) as unknown as PopulatedStageMatchup[];
-    const { teamStandings: combinedTeamStandings, diffMode: combinedDiffMode } =
-      await calculateDivisionTeamStandings(
-        allMatchups,
-        combinedStage,
-        tournament,
-      );
+    const combined = await calculateDivisionTeamStandings(
+      allMatchups,
+      combinedStage,
+      tournament,
+    );
     views.all = {
       teamStandings: {
-        diffMode: combinedDiffMode,
-        teams: combinedTeamStandings,
+        diffMode: combined.diffMode,
+        rules: combined.rules,
+        teams: combined.teamStandings,
       },
       pokemonStandings: await calculateDivisionPokemonStandings(allMatchups),
     };
@@ -533,12 +534,7 @@ export class HostedTournamentService {
         .map(async (team) => {
           const teamId = team._id.toString();
           const score = stage
-            ? await calculateTeamScore(
-                matchups,
-                rounds,
-                team,
-                tournament.forfeit,
-              )
+            ? await calculateTeamScore(matchups, rounds, team, tournament)
             : undefined;
           const picksHidden = this.picksHiddenFor(
             tournament,
@@ -581,7 +577,9 @@ export class HostedTournamentService {
                 ? {
                     record: {
                       wins: score.wins,
+                      draws: score.draws,
                       losses: score.losses,
+                      points: score.points,
                       pokemonDiff: score.pokemonDiff,
                       gameDiff: score.gameDiff,
                     },
@@ -1361,11 +1359,7 @@ export class HostedTournamentService {
   }
 
   async getRules(leagueSlug: string, tournamentSlug: string) {
-    const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
-    return tournament.rules;
+    return this.tournamentRepo.findRulesBySlug(leagueSlug, tournamentSlug);
   }
 
   async updateRules(
@@ -1476,6 +1470,16 @@ export class HostedTournamentService {
     }
     if (dto.forfeit !== undefined) update["forfeit"] = dto.forfeit;
     if (dto.diffMode !== undefined) update["diffMode"] = dto.diffMode;
+    if (dto.standingsRules?.points !== undefined) {
+      const { win, draw, loss } = dto.standingsRules.points;
+      if (!(loss <= draw && draw <= win))
+        throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
+          reason: "Points must not rank a loss above a draw or a draw above a win.",
+        });
+      update["standingsRules.points"] = { win, draw, loss };
+    }
+    if (dto.standingsRules?.tiebreakers !== undefined)
+      update["standingsRules.tiebreakers"] = dto.standingsRules.tiebreakers;
     if (dto.tierListId !== undefined)
       update["tierList"] = new Types.ObjectId(dto.tierListId);
     if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;

@@ -114,9 +114,6 @@ describe("calculateDivisionTeamStandings", () => {
       diffMode: "pokemon",
     };
 
-    // A bracket matchup can have one seeded team while the other side is an
-    // undetermined winner/loser slot; the seeded team is still scheduled to
-    // play that round.
     const matchups = [
       {
         side1: {
@@ -145,6 +142,115 @@ describe("calculateDivisionTeamStandings", () => {
     expect(teamOneStanding?.wins).toBe(0);
     expect(teamOneStanding?.losses).toBe(0);
     expect(teamOneStanding?.results[0]).toEqual({ outcome: "t", score: 0 });
+  });
+});
+
+describe("calculateDivisionTeamStandings ranking", () => {
+  const roundId = new Types.ObjectId();
+
+  function team(name: string) {
+    return {
+      _id: new Types.ObjectId(),
+      teamName: name,
+      slug: name.toLowerCase(),
+      primaryCoach: { name: `${name} coach` },
+    };
+  }
+
+  function played(
+    side1: ReturnType<typeof team>,
+    side2: ReturnType<typeof team>,
+    winner: "side1" | "side2" | "draw",
+    games: [number, number],
+    left: [number, number] = [0, 0],
+  ) {
+    return {
+      side1: { team: side1, score: games[0] },
+      side2: { team: side2, score: games[1] },
+      round: roundId,
+      winner,
+      results: [
+        {
+          winner: winner === "draw" ? "draw" : winner,
+          side1: { score: left[0] },
+          side2: { score: left[1] },
+        },
+      ],
+    };
+  }
+
+  it("records a draw and ranks by points", async () => {
+    const a = team("A");
+    const b = team("B");
+    const c = team("C");
+
+    const { teamStandings, rules } = await calculateDivisionTeamStandings(
+      [played(a, b, "draw", [1, 1]), played(c, b, "side2", [0, 2])] as any,
+      { teams: [a, b, c], rounds: [{ _id: roundId }] } as any,
+      { diffMode: "pokemon" } as any,
+    );
+
+    expect(rules.points).toEqual({ win: 3, draw: 1, loss: 0 });
+    expect(teamStandings.map((row) => [row.name, row.points])).toEqual([
+      ["B", 4],
+      ["A", 1],
+      ["C", 0],
+    ]);
+    expect(teamStandings[1]).toMatchObject({ wins: 0, draws: 1, losses: 0 });
+    expect(teamStandings[1].results[0]).toEqual({ outcome: "d", score: 0 });
+  });
+
+  it("orders ties by the diff mode's differential first", async () => {
+    const bigGames = team("BigGames");
+    const bigPokemon = team("BigPokemon");
+    const loser1 = team("Loser1");
+    const loser2 = team("Loser2");
+    const matchups = [
+      played(bigGames, loser1, "side1", [3, 0], [1, 0]),
+      played(bigPokemon, loser2, "side1", [2, 1], [6, 0]),
+    ];
+    const stage = {
+      teams: [bigGames, bigPokemon, loser1, loser2],
+      rounds: [{ _id: roundId }],
+    };
+
+    const byPokemon = await calculateDivisionTeamStandings(
+      matchups as any,
+      stage as any,
+      { diffMode: "pokemon" } as any,
+    );
+    const byGame = await calculateDivisionTeamStandings(
+      matchups as any,
+      stage as any,
+      { diffMode: "game" } as any,
+    );
+
+    expect(byPokemon.teamStandings[0].name).toBe("BigPokemon");
+    expect(byGame.teamStandings[0].name).toBe("BigGames");
+  });
+
+  it("follows the organizer's tiebreaker order over the diff mode", async () => {
+    const bigGames = team("BigGames");
+    const bigPokemon = team("BigPokemon");
+    const loser1 = team("Loser1");
+    const loser2 = team("Loser2");
+
+    const { teamStandings } = await calculateDivisionTeamStandings(
+      [
+        played(bigGames, loser1, "side1", [3, 0], [1, 0]),
+        played(bigPokemon, loser2, "side1", [2, 1], [6, 0]),
+      ] as any,
+      {
+        teams: [bigGames, bigPokemon, loser1, loser2],
+        rounds: [{ _id: roundId }],
+      } as any,
+      {
+        diffMode: "pokemon",
+        standingsRules: { tiebreakers: ["gameDiff"] },
+      } as any,
+    );
+
+    expect(teamStandings[0].name).toBe("BigGames");
   });
 });
 
@@ -199,10 +305,7 @@ describe("calculateTeamScore", () => {
       matchups as any,
       [{ _id: roundId }] as any,
       team1 as any,
-      {
-        gameDiff: 1,
-        pokemonDiff: 6,
-      },
+      { diffMode: "pokemon", forfeit: { gameDiff: 1, pokemonDiff: 6 } },
     );
 
     expect(teamScore.wins).toBe(0);
