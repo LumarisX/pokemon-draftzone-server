@@ -1579,14 +1579,10 @@ describe("HostedTournamentService coach details", () => {
   let coachRepo: jest.Mocked<CoachRepository>;
   let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
-  let uploads: jest.Mocked<UploadsService>;
   let service: HostedTournamentService;
 
   beforeEach(() => {
     const tournament = buildTournament();
-    uploads = {
-      claimUpload: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<UploadsService>;
     coachRepo = {
       findById: jest.fn().mockResolvedValue({
         _id: COACH_ID,
@@ -1620,68 +1616,9 @@ describe("HostedTournamentService coach details", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
-      uploads,
+      {} as UploadsService,
       inlineTransactions,
     );
-  });
-
-  describe("setCoachLogo", () => {
-    it.each([
-      ["the coach", "auth0|coach"],
-      ["an organizer", "auth0|owner"],
-    ])("claims the key as %s's own team-logo upload", async (_, sub) => {
-      await service.setCoachLogo(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
-        COACH_ID.toString(),
-        sub,
-        { fileKey: "team-logos/new.png" },
-      );
-
-      expect(uploads.claimUpload).toHaveBeenCalledWith("team-logos/new.png", {
-        uploadedBy: sub,
-        folder: UploadFolder.TEAM_LOGOS,
-        relatedEntityId: TEAM_ID.toString(),
-      });
-      expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
-        logo: "team-logos/new.png",
-      });
-    });
-
-    it("does not re-claim the team's current logo", async () => {
-      teamRepo.findByIdOrNull.mockResolvedValue({
-        _id: TEAM_ID,
-        tournamentId: { toString: () => "tournament-1" },
-        logo: "team-logos/current.png",
-      } as never);
-
-      await service.setCoachLogo(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
-        COACH_ID.toString(),
-        "auth0|coach",
-        { fileKey: "team-logos/current.png" },
-      );
-
-      expect(uploads.claimUpload).not.toHaveBeenCalled();
-    });
-
-    it("leaves the logo alone when the key can't be claimed", async () => {
-      uploads.claimUpload.mockRejectedValue(
-        Object.assign(new Error("File not found"), { code: "FILE-003" }),
-      );
-
-      await expect(
-        service.setCoachLogo(
-          LEAGUE_KEY,
-          TOURNAMENT_KEY,
-          COACH_ID.toString(),
-          "auth0|coach",
-          { fileKey: "team-logos/someone-elses.png" },
-        ),
-      ).rejects.toMatchObject({ code: "FILE-003" });
-      expect(teamRepo.update).not.toHaveBeenCalled();
-    });
   });
 
   it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
@@ -1712,10 +1649,10 @@ describe("HostedTournamentService coach details", () => {
         TOURNAMENT_KEY,
         COACH_ID.toString(),
         "auth0|coach",
-        { teamName: "Takeover" },
+        { timezone: "UTC+1" },
       ),
     ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
-    expect(teamRepo.update).not.toHaveBeenCalled();
+    expect(coachRepo.update).not.toHaveBeenCalled();
   });
 
   it("lets the coach edit their own details", async () => {
@@ -1732,19 +1669,17 @@ describe("HostedTournamentService coach details", () => {
     });
   });
 
-  it("splits coach fields from the team name across both documents", async () => {
+  it("lets an organizer edit a coach's details", async () => {
     await service.updateCoachDetails(
       LEAGUE_KEY,
       TOURNAMENT_KEY,
       COACH_ID.toString(),
       "auth0|owner",
-      { name: "Ash", teamName: "Pallet Pioneers" },
+      { name: "Ash" },
     );
 
     expect(coachRepo.update).toHaveBeenCalledWith(COACH_ID, { name: "Ash" });
-    expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
-      teamName: "Pallet Pioneers",
-    });
+    expect(teamRepo.update).not.toHaveBeenCalled();
   });
 
   it("writes nothing when the payload is empty", async () => {
@@ -1778,45 +1713,179 @@ describe("HostedTournamentService coach details", () => {
   });
 });
 
-describe("HostedTournamentService assignCoaches", () => {
+describe("HostedTournamentService updateTeam", () => {
+  const TEAM_ID = new Types.ObjectId();
+  const ROUND_ID = new Types.ObjectId();
+
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let uploads: jest.Mocked<UploadsService>;
+  let service: HostedTournamentService;
+
+  function coach(auth0Id: string, leftAt?: Date) {
+    return { _id: new Types.ObjectId(), auth0Id, name: auth0Id, leftAt };
+  }
+
+  beforeEach(() => {
+    const tournament = buildTournament({
+      rounds: [{ _id: ROUND_ID, name: "Week 1" }] as any,
+      currentRoundIndex: 0,
+    });
+    const primary = coach("auth0|primary");
+    uploads = {
+      claimUpload: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UploadsService>;
+    teamRepo = {
+      findBySlug: jest.fn().mockResolvedValue({
+        _id: TEAM_ID,
+        slug: "team-rocket",
+        teamName: "Team Rocket",
+        logo: "team-logos/current.png",
+        primaryCoach: primary,
+        coaches: [
+          primary,
+          coach("auth0|co-coach"),
+          coach("auth0|former", new Date()),
+        ],
+      }),
+      update: jest.fn(async (_id, data: { teamName?: string; logo?: string }) => ({
+        teamName: data.teamName ?? "Team Rocket",
+        logo: data.logo ?? "team-logos/current.png",
+      })),
+    } as unknown as jest.Mocked<TeamRepository>;
+
+    service = new HostedTournamentService(
+      {
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      {} as CoachRepository,
+      {} as TournamentApplicationRepository,
+      {} as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+      uploads,
+      inlineTransactions,
+    );
+  });
+
+  it.each([
+    ["the primary coach", "auth0|primary"],
+    ["a co-coach", "auth0|co-coach"],
+    ["an organizer", "auth0|owner"],
+  ])("lets %s rename the team, recording the change", async (_, sub) => {
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      sub,
+      { teamName: "Team Aqua" },
+    );
+
+    expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+      teamName: "Team Aqua",
+      nameChange: {
+        from: "Team Rocket",
+        to: "Team Aqua",
+        roundId: ROUND_ID,
+        reason: "Renamed",
+        changedBy: sub,
+      },
+    });
+    expect(result.teamName).toBe("Team Aqua");
+  });
+
+  it.each([
+    ["a stranger", "auth0|stranger"],
+    ["a coach who has left", "auth0|former"],
+  ])("refuses %s", async (_, sub) => {
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", sub, {
+        teamName: "Takeover",
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("claims a new logo as the caller's own team-logo upload", async () => {
+    await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|co-coach",
+      { logo: "team-logos/new.png" },
+    );
+
+    expect(uploads.claimUpload).toHaveBeenCalledWith("team-logos/new.png", {
+      uploadedBy: "auth0|co-coach",
+      folder: UploadFolder.TEAM_LOGOS,
+      relatedEntityId: TEAM_ID.toString(),
+    });
+    expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+      logo: "team-logos/new.png",
+    });
+  });
+
+  it("leaves the team alone when the logo can't be claimed", async () => {
+    uploads.claimUpload.mockRejectedValue(
+      Object.assign(new Error("File not found"), { code: "FILE-003" }),
+    );
+
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+        teamName: "Team Aqua",
+        logo: "team-logos/someone-elses.png",
+      }),
+    ).rejects.toMatchObject({ code: "FILE-003" });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when neither the name nor the logo changed", async () => {
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|primary",
+      { teamName: "Team Rocket", logo: "team-logos/current.png" },
+    );
+
+    expect(uploads.claimUpload).not.toHaveBeenCalled();
+    expect(teamRepo.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      teamName: "Team Rocket",
+      logo: "team-logos/current.png",
+    });
+  });
+});
+
+describe("HostedTournamentService assignTeams", () => {
   const ORGANIZER = "auth0|owner";
   const POOL_ID = new Types.ObjectId();
 
   let tournament: HostedTournament;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
-  let coachRepo: jest.Mocked<CoachRepository>;
   let service: HostedTournamentService;
-  let teamsByCoach: Map<string, { _id: Types.ObjectId; status: string }>;
+  let teams: { _id: Types.ObjectId; slug: string; status: string }[];
 
-  function addCoach(status: string) {
-    const coachId = new Types.ObjectId();
-    teamsByCoach.set(coachId.toString(), {
+  function addTeam(status: string) {
+    const team = {
       _id: new Types.ObjectId(),
+      slug: `team-${teams.length + 1}`,
       status,
-    });
-    return coachId.toString();
+    };
+    teams.push(team);
+    return team;
   }
 
   beforeEach(() => {
     tournament = buildTournament({ maxTeams: 2 });
-    teamsByCoach = new Map();
+    teams = [];
 
-    coachRepo = {
-      findById: jest.fn(async (coachId: string) => {
-        const team = teamsByCoach.get(coachId);
-        return team ? { _id: coachId, teamId: team._id } : null;
-      }),
-    } as unknown as jest.Mocked<CoachRepository>;
     teamRepo = {
-      findByIdOrNull: jest.fn(async (teamId: Types.ObjectId) => {
-        const team = [...teamsByCoach.values()].find((t) =>
-          t._id.equals(teamId),
-        );
-        return team
-          ? { ...team, tournamentId: { toString: () => tournament.id } }
-          : null;
-      }),
+      findAllByTournament: jest.fn(async () => teams),
       countApprovedByTournament: jest.fn().mockResolvedValue(1),
       update: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TeamRepository>;
@@ -1829,7 +1898,7 @@ describe("HostedTournamentService assignCoaches", () => {
       tournamentRepo,
       {} as TierListRepository,
       teamRepo,
-      coachRepo,
+      {} as CoachRepository,
       {} as TournamentApplicationRepository,
       {
         findAllByTournament: jest
@@ -1846,44 +1915,55 @@ describe("HostedTournamentService assignCoaches", () => {
   });
 
   it("moves a team into a pool", async () => {
-    const coachId = addCoach("approved");
+    const team = addTeam("approved");
 
-    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { coachId, divisionKey: "pool-a", status: "approved" },
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
     ]);
 
-    expect(teamRepo.update).toHaveBeenCalledWith(
-      teamsByCoach.get(coachId)!._id,
-      { draftId: POOL_ID, status: "approved" },
-    );
+    expect(teamRepo.update).toHaveBeenCalledWith(team._id, {
+      draftId: POOL_ID,
+      status: "approved",
+    });
   });
 
-  it("writes nothing and names the coaches it could not resolve", async () => {
-    const known = addCoach("approved");
-    const unknown = new Types.ObjectId().toString();
+  it("looks the teams up once, not once per assignment", async () => {
+    const first = addTeam("approved");
+    const second = addTeam("approved");
+
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: first.slug, divisionKey: "pool-a", status: "approved" },
+      { teamSlug: second.slug, divisionKey: "pool-a", status: "approved" },
+    ]);
+
+    expect(teamRepo.findAllByTournament).toHaveBeenCalledTimes(1);
+    expect(teamRepo.findAllByTournament).toHaveBeenCalledWith(tournament.id);
+  });
+
+  it("writes nothing and names the teams it could not resolve", async () => {
+    const known = addTeam("approved");
 
     await expect(
-      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-        { coachId: known, divisionKey: "pool-a", status: "approved" },
-        { coachId: unknown, divisionKey: "pool-a", status: "approved" },
-        { coachId: "not-an-id", status: "approved" },
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { teamSlug: known.slug, divisionKey: "pool-a", status: "approved" },
+        { teamSlug: "other-tournaments-team", status: "approved" },
       ]),
     ).rejects.toMatchObject({
-      code: ErrorCodes.LEAGUE.ASSIGNMENT_COACHES_NOT_FOUND.code,
-      details: { coachIds: [unknown, "not-an-id"] },
+      code: ErrorCodes.LEAGUE.ASSIGNMENT_TEAMS_NOT_FOUND.code,
+      details: { teamSlugs: ["other-tournaments-team"] },
     });
 
     expect(teamRepo.update).not.toHaveBeenCalled();
   });
 
   it("writes nothing when a pool does not exist, even after valid entries", async () => {
-    const first = addCoach("approved");
-    const second = addCoach("approved");
+    const first = addTeam("approved");
+    const second = addTeam("approved");
 
     await expect(
-      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-        { coachId: first, divisionKey: "pool-a", status: "approved" },
-        { coachId: second, divisionKey: "missing-pool", status: "approved" },
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { teamSlug: first.slug, divisionKey: "pool-a", status: "approved" },
+        { teamSlug: second.slug, divisionKey: "missing-pool", status: "approved" },
       ]),
     ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.NOT_IN_LEAGUE.code });
 
@@ -1891,13 +1971,13 @@ describe("HostedTournamentService assignCoaches", () => {
   });
 
   it("refuses to reinstate dropped teams past maxTeams", async () => {
-    const first = addCoach("dropped");
-    const second = addCoach("dropped");
+    const first = addTeam("dropped");
+    const second = addTeam("dropped");
 
     await expect(
-      service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-        { coachId: first, status: "approved" },
-        { coachId: second, status: "approved" },
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { teamSlug: first.slug, status: "approved" },
+        { teamSlug: second.slug, status: "approved" },
       ]),
     ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.TOURNAMENT_FULL.code });
 
@@ -1905,16 +1985,16 @@ describe("HostedTournamentService assignCoaches", () => {
   });
 
   it("reinstates a dropped team while there is room", async () => {
-    const coachId = addCoach("dropped");
+    const team = addTeam("dropped");
 
-    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { coachId, status: "approved" },
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, status: "approved" },
     ]);
 
-    expect(teamRepo.update).toHaveBeenCalledWith(
-      teamsByCoach.get(coachId)!._id,
-      { draftId: null, status: "approved" },
-    );
+    expect(teamRepo.update).toHaveBeenCalledWith(team._id, {
+      draftId: null,
+      status: "approved",
+    });
   });
 
   it("bumps the roster version before counting, so concurrent reinstatements conflict", async () => {
@@ -1926,20 +2006,20 @@ describe("HostedTournamentService assignCoaches", () => {
       order.push("count");
       return 1;
     });
-    const coachId = addCoach("dropped");
+    const team = addTeam("dropped");
 
-    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { coachId, status: "approved" },
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, status: "approved" },
     ]);
 
     expect(order).toEqual(["bump", "count"]);
   });
 
   it("leaves the roster version alone when nothing is reinstated", async () => {
-    const coachId = addCoach("approved");
+    const team = addTeam("approved");
 
-    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { coachId, divisionKey: "pool-a", status: "approved" },
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
     ]);
 
     expect(tournamentRepo.bumpRosterVersion).not.toHaveBeenCalled();
@@ -1947,10 +2027,10 @@ describe("HostedTournamentService assignCoaches", () => {
 
   it("does not count an already-approved team against the limit", async () => {
     teamRepo.countApprovedByTournament.mockResolvedValue(2);
-    const coachId = addCoach("approved");
+    const team = addTeam("approved");
 
-    await service.assignCoaches(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { coachId, divisionKey: "pool-a", status: "approved" },
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
     ]);
 
     expect(teamRepo.countApprovedByTournament).not.toHaveBeenCalled();

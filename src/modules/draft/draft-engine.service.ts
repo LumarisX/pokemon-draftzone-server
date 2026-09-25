@@ -17,7 +17,7 @@ import { InjectConnection } from "@nestjs/mongoose";
 import { toID, TypeName } from "@pkmn/data";
 import { EmbedBuilder, EmbedField } from "discord.js";
 import { ClientSession, Connection, Types } from "mongoose";
-import { activeCoaches } from "@modules/tournament/membership";
+import { actingCoach, activeCoaches } from "@modules/tournament/membership";
 import {
   DraftDto,
   SetDraftOrderDto,
@@ -120,8 +120,11 @@ function clearSideEffects(session: ClientSession) {
   sessionSideEffects.delete(session);
 }
 
-function pickerFor(team: PopulatedTeam): Types.ObjectId {
-  const picker = team.primaryCoach?._id ?? activeCoaches(team)[0]?._id;
+function pickerFor(team: PopulatedTeam, actor?: string): Types.ObjectId {
+  const picker =
+    actingCoach(team, actor, "draft")?._id ??
+    team.primaryCoach?._id ??
+    activeCoaches(team)[0]?._id;
   if (!picker)
     throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
       teamId: team._id.toString(),
@@ -324,6 +327,7 @@ export class DraftEngineService {
     pick: TeamPickEntity,
     session?: ClientSession,
     isOrganizerOverride = false,
+    actor?: string,
   ) {
     let newSession = false;
     if (!session) {
@@ -375,7 +379,7 @@ export class DraftEngineService {
         !isOrganizerOverride,
       );
 
-      const picker = pickerFor(currentTeam);
+      const picker = pickerFor(currentTeam, actor);
 
       currentTeam.pickLog.push({
         pokemon: { id: toID(pick.pokemonId) },
@@ -1146,6 +1150,7 @@ export class DraftEngineService {
     team: PopulatedTeam,
     dto: DraftDto,
     isOrganizerOverride = false,
+    actor?: string,
   ) {
     const session = await this.connection.startSession();
     session.startTransaction();
@@ -1183,6 +1188,7 @@ export class DraftEngineService {
             pick,
             session,
             isOrganizerOverride,
+            actor,
           );
           if (teamIndex !== -1)
             currentTeam = draft.teams[teamIndex] as PopulatedTeam;

@@ -18,13 +18,13 @@ import {
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
-  AssignCoachesDto,
+  AssignTeamsDto,
   DecideApplicationDto,
   ReplaceCoachDto,
   SignUpDto,
   UpdateCoachDetailsDto,
-  UpdateCoachLogoDto,
   UpdateHostedTournamentSettingsDto,
+  UpdateTeamDto,
   UpdateRulesDto,
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
@@ -174,22 +174,6 @@ export class HostedTournamentController {
     return this.tournamentService.getCoaches(leagueSlug, tournamentSlug, sub);
   }
 
-  @Patch(":tournamentSlug/coaches")
-  @UseGuards(JwtAuthGuard)
-  async assignTournamentCoaches(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @User() sub: string,
-    @Body() body: AssignCoachesDto,
-  ) {
-    return this.tournamentService.assignCoaches(
-      leagueSlug,
-      tournamentSlug,
-      sub,
-      body.assignments,
-    );
-  }
-
   @Get(":tournamentSlug/coaches/:coachId")
   async getTournamentCoach(
     @Param("leagueSlug") leagueSlug: string,
@@ -217,19 +201,35 @@ export class HostedTournamentController {
     );
   }
 
-  @Patch(":tournamentSlug/coaches/:coachId/logo")
+  @Patch(":tournamentSlug/teams")
   @UseGuards(JwtAuthGuard)
-  async setTournamentCoachLogo(
+  async assignTournamentTeams(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("coachId") coachId: string,
     @User() sub: string,
-    @Body() body: UpdateCoachLogoDto,
+    @Body() body: AssignTeamsDto,
   ) {
-    return this.tournamentService.setCoachLogo(
+    return this.tournamentService.assignTeams(
       leagueSlug,
       tournamentSlug,
-      coachId,
+      sub,
+      body.assignments,
+    );
+  }
+
+  @Patch(":tournamentSlug/teams/:teamSlug")
+  @UseGuards(JwtAuthGuard)
+  async updateTournamentTeam(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("teamSlug") teamSlug: string,
+    @User() sub: string,
+    @Body() body: UpdateTeamDto,
+  ) {
+    return this.tournamentService.updateTeam(
+      leagueSlug,
+      tournamentSlug,
+      teamSlug,
       sub,
       body,
     );

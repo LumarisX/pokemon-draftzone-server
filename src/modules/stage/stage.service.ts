@@ -14,6 +14,7 @@ import {
 } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { isCoachedBy } from "@modules/team/team.domain";
+import { actingCoach } from "@modules/tournament/membership";
 import { PopulatedTeam } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
@@ -378,11 +379,13 @@ export class StageService {
     const reportingSide =
       viewer.side === "side1" ? matchupDoc.side1 : matchupDoc.side2;
     const reportingTeam = reportingSide.team!;
+    const reporter =
+      actingCoach(reportingTeam, sub, "report") ?? reportingTeam.primaryCoach;
 
     matchupDoc.report = {
       team: reportingTeam._id,
       submittedBy: sub,
-      submittedByName: reportingTeam.primaryCoach.name,
+      submittedByName: reporter.name,
       submittedAt: new Date(),
       results,
       side1Score: score.team1,

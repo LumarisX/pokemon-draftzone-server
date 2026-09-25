@@ -39,7 +39,7 @@ import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
 import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
-import { isActiveCoach } from "@modules/tournament/membership";
+import { actingCoach, isActiveCoach } from "@modules/tournament/membership";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable, Logger } from "@nestjs/common";
 import { EmbedBuilder } from "discord.js";
@@ -51,14 +51,14 @@ import {
   TournamentRule,
 } from "./hosted-tournament.domain";
 import {
-  CoachAssignmentDto,
   DecideApplicationDto,
   ReplaceCoachDto,
   RuleSectionDto,
   SignUpDto,
+  TeamAssignmentDto,
   UpdateCoachDetailsDto,
-  UpdateCoachLogoDto,
   UpdateHostedTournamentSettingsDto,
+  UpdateTeamDto,
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
@@ -1185,11 +1185,11 @@ export class HostedTournamentService {
     };
   }
 
-  async assignCoaches(
+  async assignTeams(
     leagueSlug: string,
     tournamentSlug: string,
     sub: string,
-    assignments: CoachAssignmentDto[],
+    assignments: TeamAssignmentDto[],
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
@@ -1199,21 +1199,20 @@ export class HostedTournamentService {
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const draftsByKey = new Map(drafts.map((d) => [d.slug, d]));
+    const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    const teamsBySlug = new Map(teams.map((team) => [team.slug, team]));
 
     const planned: {
       team: PopulatedTeam;
       draftId: Types.ObjectId | null;
-      status?: CoachAssignmentDto["status"];
+      status?: TeamAssignmentDto["status"];
     }[] = [];
-    const unresolvedCoachIds: string[] = [];
+    const unresolvedTeamSlugs: string[] = [];
 
     for (const assignment of assignments) {
-      const team = await this.findTournamentTeamByCoachId(
-        assignment.coachId,
-        tournament.id,
-      );
+      const team = teamsBySlug.get(assignment.teamSlug);
       if (!team) {
-        unresolvedCoachIds.push(assignment.coachId);
+        unresolvedTeamSlugs.push(assignment.teamSlug);
         continue;
       }
 
@@ -1233,9 +1232,9 @@ export class HostedTournamentService {
       });
     }
 
-    if (unresolvedCoachIds.length)
-      throw new PDZError(ErrorCodes.LEAGUE.ASSIGNMENT_COACHES_NOT_FOUND, {
-        coachIds: unresolvedCoachIds,
+    if (unresolvedTeamSlugs.length)
+      throw new PDZError(ErrorCodes.LEAGUE.ASSIGNMENT_TEAMS_NOT_FOUND, {
+        teamSlugs: unresolvedTeamSlugs,
       });
 
     const reinstated = planned.filter(
@@ -1250,18 +1249,6 @@ export class HostedTournamentService {
     });
 
     return { message: "Update successful." };
-  }
-
-  private async findTournamentTeamByCoachId(
-    coachId: string,
-    tournamentId: string,
-  ): Promise<PopulatedTeam | null> {
-    if (!Types.ObjectId.isValid(coachId)) return null;
-    const coach = await this.coachRepo.findById(coachId).catch(() => null);
-    if (!coach) return null;
-    const team = await this.teamRepo.findByIdOrNull(coach.teamId);
-    if (!team || team.tournamentId.toString() !== tournamentId) return null;
-    return team;
   }
 
   async getCoach(leagueSlug: string, tournamentSlug: string, coachId: string) {
@@ -1296,22 +1283,18 @@ export class HostedTournamentService {
     sub: string,
     dto: UpdateCoachDetailsDto,
   ) {
-    const { coach, team } = await this.loadCoachForEdit(
+    const { coach } = await this.loadCoachForEdit(
       leagueSlug,
       tournamentSlug,
       coachId,
       sub,
     );
 
-    const { teamName, ...coachFields } = dto;
     const changes = Object.fromEntries(
-      Object.entries(coachFields).filter(([, value]) => value !== undefined),
+      Object.entries(dto).filter(([, value]) => value !== undefined),
     );
     if (Object.keys(changes).length) {
       await this.coachRepo.update(coach._id, changes);
-    }
-    if (teamName !== undefined) {
-      await this.teamRepo.update(team._id, { teamName });
     }
 
     return { message: "Details updated." };
@@ -1345,30 +1328,53 @@ export class HostedTournamentService {
     return { tournament, coach, team };
   }
 
-  async setCoachLogo(
+  async updateTeam(
     leagueSlug: string,
     tournamentSlug: string,
-    coachId: string,
+    teamSlug: string,
     sub: string,
-    dto: UpdateCoachLogoDto,
+    dto: UpdateTeamDto,
   ) {
-    const { team } = await this.loadCoachForEdit(
+    const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
-      coachId,
-      sub,
     );
+    const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
+    if (
+      !can(tournament, sub, "manageParticipants") &&
+      !actingCoach(team, sub, "manageRoster")
+    )
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
 
-    if (dto.fileKey !== team.logo)
-      await this.uploads.claimUpload(dto.fileKey, {
+    const renamed = dto.teamName !== undefined && dto.teamName !== team.teamName;
+    const relogo = dto.logo !== undefined && dto.logo !== team.logo;
+    if (!renamed && !relogo)
+      return { teamName: team.teamName, logo: team.logo ?? null };
+
+    if (relogo)
+      await this.uploads.claimUpload(dto.logo!, {
         uploadedBy: sub,
         folder: UploadFolder.TEAM_LOGOS,
         relatedEntityId: team._id.toString(),
       });
 
-    await this.teamRepo.update(team._id, { logo: dto.fileKey });
+    const updated = await this.teamRepo.update(team._id, {
+      ...(renamed
+        ? {
+            teamName: dto.teamName,
+            nameChange: {
+              from: team.teamName,
+              to: dto.teamName!,
+              roundId: tournament.rounds[tournament.currentRoundIndex]?._id,
+              reason: "Renamed",
+              changedBy: sub,
+            },
+          }
+        : {}),
+      ...(relogo ? { logo: dto.logo } : {}),
+    });
 
-    return { message: "Logo updated.", logo: dto.fileKey };
+    return { teamName: updated.teamName, logo: updated.logo ?? null };
   }
 
   async getRules(leagueSlug: string, tournamentSlug: string) {

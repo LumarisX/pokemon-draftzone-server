@@ -436,7 +436,7 @@ describe("DraftService", () => {
       );
 
       expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
-        tournament, draft, team, dto, false,
+        tournament, draft, team, dto, false, "auth0|coach-1",
       );
       expect(result).toBe(details);
     });
@@ -457,7 +457,7 @@ describe("DraftService", () => {
       );
 
       expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
-        tournament, draft, team, dto, true,
+        tournament, draft, team, dto, true, "auth0|owner-2",
       );
     });
   });

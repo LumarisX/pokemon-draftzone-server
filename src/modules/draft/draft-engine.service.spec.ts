@@ -255,6 +255,40 @@ describe("DraftEngineService", () => {
       return { team, tournament, draft };
     }
 
+    it("records the co-coach who picked, not the primary coach", async () => {
+      const { team, tournament, draft } = readyToPick();
+      const coCoach = { _id: new Types.ObjectId(), auth0Id: "auth0|co-coach" };
+      team.coaches = [team.primaryCoach, coCoach];
+
+      await engine.draftPokemon(
+        tournament,
+        draft,
+        team,
+        { pokemonId: "pikachu" },
+        undefined,
+        false,
+        "auth0|co-coach",
+      );
+
+      expect(team.pickLog[0].picker).toBe(coCoach._id);
+    });
+
+    it("falls back to the primary coach when the picker has no seat", async () => {
+      const { team, tournament, draft } = readyToPick();
+
+      await engine.draftPokemon(
+        tournament,
+        draft,
+        team,
+        { pokemonId: "pikachu" },
+        undefined,
+        true,
+        "auth0|organizer",
+      );
+
+      expect(team.pickLog[0].picker).toBe(team.primaryCoach._id);
+    });
+
     it("claims the draft inside the transaction before writing the pick", async () => {
       const { team, tournament, draft } = readyToPick();
 

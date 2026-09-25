@@ -293,6 +293,7 @@ export class DraftService {
         team,
         dto,
         isOrganizerOverride,
+        sub,
       );
 
     if (dto.picks !== undefined) {

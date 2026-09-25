@@ -11,6 +11,14 @@ export type PopulatedTeam = TeamDocument & {
   coaches: CoachDocument[];
 };
 
+export type TeamNameChange = {
+  from: string;
+  to: string;
+  roundId?: Types.ObjectId;
+  reason?: string;
+  changedBy?: string;
+};
+
 export type CreateTeamInput = {
   _id?: Types.ObjectId;
   tournamentId: Types.ObjectId | string;
@@ -183,6 +191,7 @@ export class TeamRepository {
       logo?: string;
       status?: TeamStatus;
       draftId?: Types.ObjectId | string | null;
+      nameChange?: TeamNameChange;
     },
   ): Promise<PopulatedTeam> {
     const update: Record<string, unknown> = {};
@@ -198,6 +207,9 @@ export class TeamRepository {
     const team = await this.teamModel.findByIdAndUpdate(teamId, {
       ...(Object.keys(update).length ? { $set: update } : {}),
       ...(Object.keys(unset).length ? { $unset: unset } : {}),
+      ...(data.nameChange
+        ? { $push: { nameHistory: { ...data.nameChange, changedAt: new Date() } } }
+        : {}),
     });
     if (!team) throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { teamId });
     return this.findById(teamId);
@@ -209,13 +221,7 @@ export class TeamRepository {
       primaryCoach: Types.ObjectId;
       teamName: string;
       logo?: string;
-      nameChange?: {
-        from: string;
-        to: string;
-        roundId?: Types.ObjectId;
-        reason?: string;
-        changedBy?: string;
-      };
+      nameChange?: TeamNameChange;
     },
   ): Promise<PopulatedTeam> {
     const set: Record<string, unknown> = {

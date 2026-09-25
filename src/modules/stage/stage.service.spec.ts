@@ -242,6 +242,37 @@ describe("StageService", () => {
       });
     });
 
+    it("names the co-coach who submitted, not the primary coach", async () => {
+      const primary = {
+        _id: new Types.ObjectId(),
+        auth0Id: "auth0|coach-1",
+        name: "Primary",
+      };
+      const coCoach = {
+        _id: new Types.ObjectId(),
+        auth0Id: "auth0|co-coach",
+        name: "Co-coach",
+      };
+      const matchup = setup();
+      matchup.side1.team = buildTeam({
+        primaryCoach: primary,
+        coaches: [primary, coCoach],
+      });
+
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|co-coach",
+        twoNil,
+      );
+
+      expect(matchup.report).toMatchObject({
+        submittedBy: "auth0|co-coach",
+        submittedByName: "Co-coach",
+      });
+    });
+
     it("stores only the known stat fields for each Pokémon", async () => {
       const matchup = setup();
 

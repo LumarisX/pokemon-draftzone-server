@@ -31,6 +31,9 @@ import {
   ValidateNested,
 } from "class-validator";
 
+const trimString = ({ value }: { value: unknown }) =>
+  typeof value === "string" ? value.trim() : value;
+
 export const SIGN_UP_LIMITS = {
   name: 64,
   gameName: 32,
@@ -185,10 +188,19 @@ export class DecideApplicationDto {
   teamName?: string;
 }
 
-export class UpdateCoachLogoDto {
+export class UpdateTeamDto {
+  @Transform(trimString)
   @IsString()
   @MinLength(1)
-  fileKey!: string;
+  @MaxLength(SIGN_UP_LIMITS.teamName)
+  @IsOptional()
+  teamName?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(SIGN_UP_LIMITS.logo)
+  @IsOptional()
+  logo?: string;
 }
 
 export class UpdateCoachDetailsDto {
@@ -218,18 +230,12 @@ export class UpdateCoachDetailsDto {
   @MaxLength(SIGN_UP_LIMITS.experience)
   @IsOptional()
   experience?: string;
-
-  @IsString()
-  @MinLength(1)
-  @MaxLength(SIGN_UP_LIMITS.teamName)
-  @IsOptional()
-  teamName?: string;
 }
 
-export class CoachAssignmentDto {
+export class TeamAssignmentDto {
   @IsString()
   @MinLength(1)
-  coachId!: string;
+  teamSlug!: string;
 
   @IsString()
   @MinLength(1)
@@ -241,11 +247,11 @@ export class CoachAssignmentDto {
   status?: TeamStatus;
 }
 
-export class AssignCoachesDto {
+export class AssignTeamsDto {
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CoachAssignmentDto)
-  assignments!: CoachAssignmentDto[];
+  @Type(() => TeamAssignmentDto)
+  assignments!: TeamAssignmentDto[];
 }
 
 export class RuleSectionDto {
@@ -423,8 +429,6 @@ export class UpdateHostedTournamentSettingsDto {
   @IsInt()
   @Min(0)
   @IsOptional()
-  // `null` explicitly clears an existing point cap (vs. `undefined`, which
-  // leaves it untouched) - see HostedTournamentRepository.updateSettings.
   pointTotal?: number | null;
 
   @IsInt()
@@ -484,8 +488,6 @@ export const ORGANIZER_NAME_MIN = 3;
 export const ORGANIZER_NAME_MAX = 24;
 export const ORGANIZER_NAME_PATTERN = /^[\p{L}\p{N}](?:[^\p{C}]*[\p{L}\p{N}])?$/u;
 
-const trimString = ({ value }: { value: unknown }) =>
-  typeof value === "string" ? value.trim() : value;
 
 export class OrganizerNameDto {
   @Transform(trimString)

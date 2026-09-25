@@ -45,6 +45,18 @@ export function activeCoaches(team: TeamWithCoaches): CoachDocument[] {
   return (team.coaches ?? []).filter(isActiveCoach);
 }
 
+export function actingCoach(
+  team: TeamWithCoaches,
+  sub: string | undefined,
+  capability: Capability,
+): CoachDocument | undefined {
+  if (!sub) return undefined;
+  const teamId = team._id.toString();
+  return (team.coaches ?? []).find(
+    (coach) => coach.auth0Id === sub && can(seatFor(coach, teamId), capability),
+  );
+}
+
 export function canOnTeam(
   team: TeamWithCoaches,
   sub: string | undefined,
