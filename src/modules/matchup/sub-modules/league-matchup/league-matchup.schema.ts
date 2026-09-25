@@ -6,7 +6,7 @@ const MATCH_SIDES = ["side1", "side2"] as const;
 const MATCH_WINNERS = [...MATCH_SIDES, "draw"] as const;
 const MATCH_STATUSES = ["pending", "approved"] as const;
 const MATCH_ADVANCEMENTS = ["side1", "side2", "none"] as const;
-const POKEMON_STATUSES = ["brought", "survived", "fainted"] as const;
+export const POKEMON_STATUSES = ["brought", "survived", "fainted"] as const;
 
 export type LeagueMatchupWinner = (typeof MATCH_WINNERS)[number];
 export type LeagueMatchupStatus = (typeof MATCH_STATUSES)[number];

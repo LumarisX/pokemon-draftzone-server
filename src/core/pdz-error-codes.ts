@@ -425,6 +425,12 @@ export const ErrorCodes = {
       message:
         "This result has already been approved. Ask an organizer to correct it.",
     },
+    NOT_ON_ROSTER: {
+      code: "MU-006",
+      status: 400,
+      message:
+        "This result lists a Pokémon that isn't on that team's roster for this round",
+    },
   },
   CHAT: {
     FORBIDDEN: {

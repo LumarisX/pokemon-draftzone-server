@@ -182,16 +182,31 @@ describe("StageService", () => {
       stageRepo.findByIdOrNull.mockResolvedValue(
         buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
       );
+      mockedGetRosterByRound.mockImplementation((team) =>
+        team === matchup.side1.team
+          ? [{ id: "pikachu" }, { id: "raichu" }]
+          : [{ id: "mewtwo" }, { id: "mew" }],
+      );
       return matchup;
+    }
+
+    function game(
+      side1: Record<string, unknown>,
+      side2: Record<string, unknown>,
+    ) {
+      return {
+        winner: "side1",
+        team1: { score: 2, pokemon: new Map(Object.entries(side1)) },
+        team2: { score: 0, pokemon: new Map(Object.entries(side2)) },
+      };
     }
 
     const twoNil = {
       matches: [
-        {
-          winner: "side1",
-          team1: { score: 2, pokemon: { pikachu: { status: "survived" } } },
-          team2: { score: 0, pokemon: { mewtwo: { status: "fainted" } } },
-        },
+        game(
+          { pikachu: { status: "survived" } },
+          { mewtwo: { status: "fainted" } },
+        ),
       ],
     } as any;
 
@@ -225,6 +240,101 @@ describe("StageService", () => {
         side2Score: 0,
         winner: "side1",
       });
+    });
+
+    it("stores only the known stat fields for each Pokémon", async () => {
+      const matchup = setup();
+
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|coach-1",
+        {
+          matches: [
+            game(
+              {
+                pikachu: {
+                  status: "survived",
+                  kills: { direct: 2, indirect: 1, teammate: 0 },
+                },
+              },
+              { mewtwo: { status: "fainted" } },
+            ),
+          ],
+        } as any,
+      );
+
+      const [result] = matchup.report.results;
+      expect(result.side1.pokemon.get("pikachu")).toEqual({
+        status: "survived",
+        kills: { direct: 2, indirect: 1, teammate: 0 },
+      });
+      expect(result.side2.pokemon.get("mewtwo")).toEqual({
+        status: "fainted",
+        kills: undefined,
+      });
+    });
+
+    it.each([
+      ["a coach", "auth0|coach-1"],
+      ["an organizer", "auth0|owner"],
+    ])(
+      "refuses a result from %s crediting a Pokémon off that side's roster",
+      async (_, sub) => {
+        const matchup = setup();
+
+        await expect(
+          service.submitMatchupReport(
+            "league-1",
+            "tournament-1",
+            matchup.slug,
+            sub,
+            {
+              matches: [
+                game(
+                  { pikachu: { status: "survived", kills: { direct: 6 } } },
+                  { mewtwo: { status: "fainted" } },
+                ),
+                game(
+                  { mewtwo: { status: "survived", kills: { direct: 6 } } },
+                  { mew: { status: "fainted" } },
+                ),
+              ],
+            } as any,
+          ),
+        ).rejects.toMatchObject({
+          code: "MU-006",
+          details: { side: "side1", pokemon: "mewtwo" },
+        });
+        expect(matchup.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it("checks the roster at the matchup's own round", async () => {
+      const matchup = setup({ round: new Types.ObjectId() });
+      const tournamentRound = { _id: matchup.round, name: "Week 2" };
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          id: TOURNAMENT_ID.toString(),
+          rounds: [{ _id: new Types.ObjectId(), name: "Week 1" }, tournamentRound],
+          currentRoundIndex: 0,
+        }),
+      );
+
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|coach-1",
+        twoNil,
+      );
+
+      expect(mockedGetRosterByRound).toHaveBeenCalledWith(
+        matchup.side1.team,
+        expect.anything(),
+        1,
+      );
     });
 
     it("refuses a coach's report on a result that is already approved", async () => {

@@ -4,34 +4,12 @@ import { getRosterByRound } from "./roster";
 import { RosterContext } from "./stage-axis";
 import { hasResolvedSides, PopulatedStageMatchup } from "./standings";
 
-/**
- * Shapes a matchup for the schedule views.
- *
- * Extracted so the stage-scoped and tournament-scoped schedules render the
- * same payload. The forfeit handling in particular is easy to get subtly
- * different: a forfeited match shows the tournament's configured game
- * difference for the winner and zero for the loser, rather than the recorded
- * score, and the `winner` field carries a distinct "ffw"/"dffl" marker.
- */
 export interface ScheduleViewOptions {
-  /** Trades and rounds to replay a roster against. */
   roster: RosterContext;
-  /** Index into the round axis, for the roster snapshot. */
   roundIndex: number;
-  /** `tournament.forfeit.gameDiff` — the score a forfeit is displayed as. */
   forfeitGameDiff: number;
   keepUnresolvedOpponent?: boolean;
-  /**
-   * Bracket names for every match in the stage, keyed by matchup id. Supplies
-   * both the card's own label and the name an unresolved slot points at, so
-   * "Winner of Match 4" and the card called Match 4 always agree.
-   */
   matchLabels?: Map<string, MatchLabel>;
-  /**
-   * Matches that have stopped the bracket — settled with no side leaving them
-   * while something downstream still waits on one. Computed over the whole
-   * bracket, so it has to be passed in rather than derived per card.
-   */
   blockedMatchIds?: ReadonlySet<string>;
 }
 
@@ -140,9 +118,6 @@ export function toScheduleMatchup(
       },
     })),
     score: { team1: matchup.side1.score, team2: matchup.side2.score },
-    // The organizer's override for who leaves this match, and whether one is
-    // still needed. A double forfeit decides nothing, so a match below it can
-    // never be filled until somebody says who moves on.
     advances: (matchup.advances ?? null) as MatchupAdvancement | null,
     advancementBlocked:
       options.blockedMatchIds?.has(matchup._id.toString()) ?? false,
@@ -160,16 +135,6 @@ export function scheduleMatchups(
   matchups: PopulatedStageMatchup[],
   options: ScheduleViewOptions,
 ) {
-  // Two reasons to keep a match whose sides are not both filled.
-  //
-  // Blocked: that side is empty for good — it is fed by a slot nothing will
-  // ever arrive in — so dropping it as "not resolved yet" hides the one card an
-  // organizer has to act on.
-  //
-  // Walked over: the organizer already answered, by recording a result for the
-  // side that does have a team. That clears the blocked flag, so without this
-  // the card would vanish the moment it was dealt with — taking a real recorded
-  // result out of view along with it.
   const isBlocked = (matchup: PopulatedStageMatchup) =>
     options.blockedMatchIds?.has(matchup._id.toString()) ?? false;
   const isWalkover = (matchup: PopulatedStageMatchup) =>

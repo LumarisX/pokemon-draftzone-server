@@ -1,45 +1,120 @@
-import { Transform, Type } from "class-transformer";
 import {
+  POKEMON_STATUSES,
+  PokemonResultStatus,
+} from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
+import { plainToInstance, Transform, Type } from "class-transformer";
+import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDate,
   IsDateString,
   IsIn,
+  IsInt,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
+  IsUrl,
+  Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateBy,
   ValidateIf,
   ValidateNested,
+  ValidationOptions,
 } from "class-validator";
 
+export const MAX_GAMES_PER_MATCHUP = 15;
+export const MAX_POKEMON_PER_SIDE = 30;
+export const MAX_KILLS_PER_POKEMON = 20;
+
 export class MatchupScoreDto {
-  @IsNumber()
+  @IsInt()
+  @Min(0)
   team1!: number;
 
-  @IsNumber()
+  @IsInt()
+  @Min(0)
   team2!: number;
 }
 
+export class PokemonKillsDto {
+  @IsInt()
+  @Min(0)
+  @Max(MAX_KILLS_PER_POKEMON)
+  @IsOptional()
+  direct?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(MAX_KILLS_PER_POKEMON)
+  @IsOptional()
+  indirect?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(MAX_KILLS_PER_POKEMON)
+  @IsOptional()
+  teammate?: number;
+}
+
+export class PokemonResultDto {
+  @IsIn(POKEMON_STATUSES)
+  status!: PokemonResultStatus;
+
+  @ValidateNested()
+  @Type(() => PokemonKillsDto)
+  @IsOptional()
+  kills?: PokemonKillsDto;
+}
+
+function toPokemonResults(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  return new Map(
+    Object.entries(value)
+      .filter(
+        ([, stats]) =>
+          !stats || typeof stats !== "object" || stats.status !== null,
+      )
+      .map(([id, stats]) => [id, plainToInstance(PokemonResultDto, stats)]),
+  );
+}
+
+function IsPokemonResultMap(maxSize: number, options?: ValidationOptions) {
+  return ValidateBy(
+    {
+      name: "isPokemonResultMap",
+      validator: {
+        validate: (value) => value instanceof Map && value.size <= maxSize,
+        defaultMessage: (args) =>
+          `${args?.property ?? "pokemon"} must be an object of at most ${maxSize} Pokémon`,
+      },
+    },
+    options,
+  );
+}
+
 export class MatchTeamResultDto {
-  @IsNumber()
+  @IsInt()
+  @Min(0)
   score!: number;
 
-  @IsObject()
-  pokemon!: Record<
-    string,
-    {
-      kills?: { direct?: number; indirect?: number; teammate?: number };
-      status: "brought" | "survived" | "fainted" | null;
-    }
-  >;
+  @Transform(({ value }) => toPokemonResults(value))
+  @IsPokemonResultMap(MAX_POKEMON_PER_SIDE)
+  @ValidateNested({ each: true })
+  pokemon!: Map<string, PokemonResultDto>;
 }
 
 export class MatchResultDto {
-  @IsString()
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim() || undefined : value,
+  )
+  @IsUrl(
+    { protocols: ["https"], require_protocol: true },
+    { message: "Replay links must be full https:// links" },
+  )
+  @MaxLength(500)
   @IsOptional()
   link?: string;
 
@@ -89,6 +164,7 @@ export class SubmitMatchupReportDto {
   forfeit?: boolean;
 
   @IsArray()
+  @ArrayMaxSize(MAX_GAMES_PER_MATCHUP)
   @ValidateNested({ each: true })
   @Type(() => MatchResultDto)
   matches!: MatchResultDto[];

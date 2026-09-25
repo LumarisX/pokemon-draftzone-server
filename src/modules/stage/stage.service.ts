@@ -1,6 +1,7 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { ID } from "@pkmn/data";
+import { Types } from "mongoose";
 import {
   ExternalMatchup,
   MatchupSide,
@@ -21,13 +22,20 @@ import { Injectable } from "@nestjs/common";
 import { MatchupAdvancement } from "./domain/advancement";
 import { MatchupViewer, toMatchupDetail } from "./domain/matchup-view";
 import { getRosterByRound } from "./domain/roster";
-import { rosterContext, stageRounds } from "./domain/stage-axis";
+import {
+  AxisStage,
+  AxisTournament,
+  rosterContext,
+  RosterContext,
+  stageRounds,
+} from "./domain/stage-axis";
 import {
   hasResolvedSides,
   PopulatedStageMatchup,
 } from "./domain/standings";
 import {
   MatchResultDto,
+  PokemonResultDto,
   SetMatchupNotesDto,
   SetMatchupScheduleDto,
   SubmitMatchupReportDto,
@@ -101,12 +109,12 @@ export class StageService {
       .findById(tournament.tierListId)
       .catch(() => undefined);
 
-    const axisRounds = stageRounds(stageDoc, tournament);
     const rosterCtx = rosterContext(stageDoc, tournament);
-    const roundIndex = matchupDoc.round
-      ? axisRounds.findIndex((round) => round._id.equals(matchupDoc.round!))
-      : -1;
-    const roundDoc = roundIndex === -1 ? undefined : axisRounds[roundIndex];
+    const { roundIndex, roundDoc } = this.matchupRound(
+      stageDoc,
+      tournament,
+      matchupDoc,
+    );
 
     const toSide = (side: {
       team: PopulatedTeam;
@@ -243,11 +251,11 @@ export class StageService {
         sub,
       );
 
-    const axisRounds = stageRounds(stageDoc, tournament);
-    const roundIndex = matchupDoc.round
-      ? axisRounds.findIndex((round) => round._id.equals(matchupDoc.round!))
-      : -1;
-    const roundDoc = roundIndex === -1 ? undefined : axisRounds[roundIndex];
+    const { roundIndex, roundDoc } = this.matchupRound(
+      stageDoc,
+      tournament,
+      matchupDoc,
+    );
 
     return toMatchupDetail(matchupDoc, {
       roster: rosterContext(stageDoc, tournament),
@@ -325,18 +333,25 @@ export class StageService {
     sub: string,
     dto: SubmitMatchupReportDto,
   ) {
-    const { matchupDoc, viewer } = await this.loadMatchupContext(
-      leagueSlug,
-      tournamentSlug,
-      matchupSlug,
-      sub,
-    );
+    const { stageDoc, tournament, matchupDoc, viewer } =
+      await this.loadMatchupContext(
+        leagueSlug,
+        tournamentSlug,
+        matchupSlug,
+        sub,
+      );
     if (!viewer.isOrganizer && viewer.side === null)
       throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
     if (!viewer.isOrganizer && !viewer.coachReportingEnabled)
       throw new PDZError(ErrorCodes.MATCHUP.REPORTING_DISABLED);
 
     const results = this.buildMatchResults(dto.matches);
+    this.assertResultsOnRoster(
+      results,
+      matchupDoc,
+      rosterContext(stageDoc, tournament),
+      this.matchupRound(stageDoc, tournament, matchupDoc).roundIndex,
+    );
     const score = dto.score ?? this.tallyScore(results);
     const winner = dto.winner ?? this.tallyWinner(score);
     const side1Paste = dto.side1Paste?.trim() || undefined;
@@ -449,26 +464,71 @@ export class StageService {
   }
 
   private buildMatchResults(matches: MatchResultDto[]): MatchResultEntity[] {
+    const toStats = (
+      pokemon: Map<string, PokemonResultDto>,
+    ): Map<string, PokemonResultStatsEntity> =>
+      new Map(
+        [...pokemon].map(([id, stats]) => [
+          id,
+          {
+            status: stats.status,
+            kills: stats.kills
+              ? {
+                  direct: stats.kills.direct,
+                  indirect: stats.kills.indirect,
+                  teammate: stats.kills.teammate,
+                }
+              : undefined,
+          },
+        ]),
+      );
+
     return matches.map((match) => ({
-      replay: match.link?.trim() || undefined,
+      replay: match.link,
       winner: match.winner,
-      side1: {
-        score: match.team1.score,
-        pokemon: new Map(
-          Object.entries(match.team1.pokemon).filter(
-            ([, stats]) => stats.status !== null && stats.status !== undefined,
-          ) as [string, PokemonResultStatsEntity][],
-        ),
-      },
-      side2: {
-        score: match.team2.score,
-        pokemon: new Map(
-          Object.entries(match.team2.pokemon).filter(
-            ([, stats]) => stats.status !== null && stats.status !== undefined,
-          ) as [string, PokemonResultStatsEntity][],
-        ),
-      },
+      side1: { score: match.team1.score, pokemon: toStats(match.team1.pokemon) },
+      side2: { score: match.team2.score, pokemon: toStats(match.team2.pokemon) },
     }));
+  }
+
+  private matchupRound(
+    stageDoc: AxisStage,
+    tournament: AxisTournament,
+    matchupDoc: { round?: Types.ObjectId },
+  ) {
+    const rounds = stageRounds(stageDoc, tournament);
+    const roundIndex = matchupDoc.round
+      ? rounds.findIndex((round) => round._id.equals(matchupDoc.round!))
+      : -1;
+    return {
+      roundIndex,
+      roundDoc: roundIndex === -1 ? undefined : rounds[roundIndex],
+    };
+  }
+
+  private assertResultsOnRoster(
+    results: MatchResultEntity[],
+    matchupDoc: {
+      side1: { team: PopulatedTeam };
+      side2: { team: PopulatedTeam };
+    },
+    rosterCtx: RosterContext,
+    roundIndex: number,
+  ) {
+    for (const side of ["side1", "side2"] as const) {
+      const roster = new Set(
+        getRosterByRound(matchupDoc[side].team, rosterCtx, roundIndex).map(
+          (pokemon) => pokemon.id,
+        ),
+      );
+      for (const result of results)
+        for (const pokemon of result[side].pokemon.keys())
+          if (!roster.has(pokemon))
+            throw new PDZError(ErrorCodes.MATCHUP.NOT_ON_ROSTER, {
+              side,
+              pokemon,
+            });
+    }
   }
 
   private tallyScore(results: MatchResultEntity[]) {
