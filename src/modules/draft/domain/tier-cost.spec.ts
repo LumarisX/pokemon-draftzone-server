@@ -117,7 +117,6 @@ describe("getPickCost", () => {
         addons: ["Tera Captain"],
       });
 
-      // Charizard's tier (A) costs 5, and Tera Captain costs 2.
       expect(cost).toBe(7);
     });
 
@@ -224,9 +223,6 @@ describe("teamHasEnoughPoints", () => {
   });
 
   it("treats a pointTotal of exactly 0 as a real budget, not as unlimited", async () => {
-    // A tournament that deliberately has no point cap should leave pointTotal
-    // undefined (see test above), not 0 - a real 0 budget must still reject
-    // a pick that costs points.
     const tierList = buildTierList();
     const tournament = buildTournament(tierList, { pointTotal: 0 });
     const draft = buildDraft();
@@ -251,10 +247,6 @@ describe("teamHasEnoughPoints", () => {
   });
 
   it("allows drafting in an all-zero-cost tier list even with several required picks remaining", async () => {
-    // Free/BST-cap formats set every tier's cost to 0 and leave pointTotal
-    // at 0. A flat "reserve 1 point per remaining pick" would push the
-    // ceiling negative here and block every pick, even though nothing
-    // actually costs points.
     const tierList = buildTierList({
       tiers: [new Tier({ id: tierId("S"), name: "S", cost: 0 }), new Tier({ id: tierId("A"), name: "A", cost: 0 })],
     });
@@ -271,8 +263,6 @@ describe("teamHasEnoughPoints", () => {
   });
 
   it("allows spending up to the budget minus what must be reserved for remaining minimum picks", async () => {
-    // pointTotal 20, draftCount.min 4, no picks yet (this is pick #1):
-    // pickCeiling = 20 + 1 - max(4, 1) = 17.
     const tierList = buildTierList({
       tiers: [new Tier({ id: tierId("S"), name: "S", cost: 17 })],
     });
@@ -305,8 +295,6 @@ describe("teamHasEnoughPoints", () => {
   });
 
   it("stops reserving budget once the minimum pick count has already been met", async () => {
-    // 4 existing picks already meets draftCount.min (4); this 5th pick can
-    // use the full remaining budget without reservation.
     const tierList = buildTierList({
       tiers: [new Tier({ id: tierId("S"), name: "S", cost: 16 })],
     });
@@ -372,6 +360,31 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
     });
   });
 
+  it("allows a Pokemon another team has drafted when duplicates are allowed", async () => {
+    const { tournament, team } = setup();
+    const otherTeam = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+    const draft = buildDraft({ teams: [otherTeam, team], allowDuplicates: true });
+    const pick = { pokemonId: "pikachu" } as any;
+
+    await expect(canBeDrafted(tournament, draft, team, pick)).resolves.toBe(true);
+    await expect(canBeDraftedWithReason(tournament, draft, team, pick)).resolves.toEqual({
+      canDraft: true,
+    });
+  });
+
+  it("rejects a Pokemon the team already has even when duplicates are allowed", async () => {
+    const { tournament } = setup();
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+    const draft = buildDraft({ teams: [team], allowDuplicates: true });
+    const pick = { pokemonId: "pikachu" } as any;
+
+    await expect(canBeDrafted(tournament, draft, team, pick)).resolves.toBe(false);
+    await expect(canBeDraftedWithReason(tournament, draft, team, pick)).resolves.toEqual({
+      canDraft: false,
+      reason: "This team has already drafted this Pokemon",
+    });
+  });
+
   it("rejects a pick the team can't afford", async () => {
     const tierList = buildTierList();
     const tournament = buildTournament(tierList, {
@@ -380,7 +393,7 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
     });
     const draft = buildDraft({ teams: [] });
     const team = buildTeam();
-    const pick = { pokemonId: "pikachu" } as any; // costs 10, budget is 5
+    const pick = { pokemonId: "pikachu" } as any;
 
     await expect(canBeDrafted(tournament, draft, team, pick)).resolves.toBe(false);
     await expect(canBeDraftedWithReason(tournament, draft, team, pick)).resolves.toEqual({
@@ -418,7 +431,7 @@ describe("canBeDrafted / canBeDraftedWithReason", () => {
       });
       const draft = buildDraft({ teams: [] });
       const team = buildTeam();
-      const pick = { pokemonId: "pikachu" } as any; // costs 10, budget is 5
+      const pick = { pokemonId: "pikachu" } as any;
 
       await expect(
         canBeDraftedWithReason(tournament, draft, team, pick, { ignoreLimits: true }),
@@ -496,7 +509,7 @@ describe("isTeamDoneDrafting", () => {
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
     const draft = buildDraft();
-    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
   });
@@ -508,7 +521,7 @@ describe("isTeamDoneDrafting", () => {
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
     const draft = buildDraft();
-    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10 of 100
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(false);
   });
@@ -520,7 +533,7 @@ describe("isTeamDoneDrafting", () => {
       draftCount: new DraftCount({ min: 1, max: 6 }),
     });
     const draft = buildDraft();
-    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 10, 0.5 remains
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
   });
@@ -534,7 +547,7 @@ describe("isTeamDoneDrafting", () => {
       draftCount: new DraftCount({ min: 11, max: 11 }),
     });
     const draft = buildDraft();
-    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }); // costs 0
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
     await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(false);
   });

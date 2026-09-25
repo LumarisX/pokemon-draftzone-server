@@ -65,8 +65,14 @@ export class DraftController {
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
   ) {
-    return this.draftService.getPicks(leagueSlug, tournamentSlug, draftSlug);
+    return this.draftService.getPicks(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+    );
   }
 
   @Get("order")
@@ -74,8 +80,14 @@ export class DraftController {
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
   ) {
-    return this.draftService.getOrder(leagueSlug, tournamentSlug, draftSlug);
+    return this.draftService.getOrder(
+      leagueSlug,
+      tournamentSlug,
+      draftSlug,
+      sub,
+    );
   }
 
   @Get("power-rankings")
@@ -83,11 +95,13 @@ export class DraftController {
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
+    @User() sub: string,
   ) {
     return this.draftService.getPowerRankings(
       leagueSlug,
       tournamentSlug,
       draftSlug,
+      sub,
     );
   }
 

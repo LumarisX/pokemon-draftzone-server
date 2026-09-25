@@ -231,11 +231,14 @@ export class HostedTournamentController {
   }
 
   @Get(":tournamentSlug/teams")
+  @OptionalAuth()
+  @UseGuards(JwtAuthGuard)
   async listTeams(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string | undefined,
   ) {
-    return this.tournamentService.listTeams(leagueSlug, tournamentSlug);
+    return this.tournamentService.listTeams(leagueSlug, tournamentSlug, sub);
   }
 
   @Get(":tournamentSlug/teams/by-draft")

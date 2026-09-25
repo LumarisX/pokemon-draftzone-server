@@ -6,16 +6,8 @@ import {
 import { TeamPickEntity } from "@modules/team/team.schema";
 import { TierList } from "@modules/tier-list/tier-list.domain";
 import { getPokemonIdFromDraft, isAlreadyDrafted } from "./pick-order";
+import { duplicatesAllowed } from "./pick-visibility";
 
-/**
- * Requirements whose tier still exists on the tournament's tier list.
- *
- * A requirement pointing at a deleted tier can never be satisfied — nothing
- * is in that tier — so its shortfall would be permanent, and once the team
- * ran low on slots every remaining pick would be rejected for every team.
- * An unenforceable requirement is dropped rather than allowed to deadlock
- * the draft; the settings page surfaces it for the organizer to resolve.
- */
 export function enforceableTierRequirements(
   tournament: PopulatedTournament,
 ): { tierId: string; required: number }[] {
@@ -25,11 +17,6 @@ export function enforceableTierRequirements(
   );
 }
 
-/**
- * Creates a map of pokemonId to tier for faster lookups
- * @param tournament - The tournament document with a populated tierList
- * @returns A map where keys are pokemonIds and values are tier names
- */
 export function createPokemonTierMap(
   tournament: PopulatedTournament,
 ): Map<string, string> {
@@ -136,8 +123,6 @@ export async function teamHasEnoughPoints(
 
   const pickCost = getPickCost(tierList, pick);
   const maxPoints = tournament.pointTotal;
-  // `null` (explicitly cleared by an organizer) means "no cap", same as
-  // `undefined` (never set) - only a real number is an enforceable budget.
   if (maxPoints == null) return true;
 
   const currentTeamPoints = await getTeamPoints(tournament, team);
@@ -145,10 +130,6 @@ export async function teamHasEnoughPoints(
   const picksAfterThis = team.pickLog.length + 1;
   const minPicksRequired = Math.max(tournament.draftCount.min, picksAfterThis);
   const remainingRequired = minPicksRequired - picksAfterThis;
-  // Reserve 1 point per remaining required pick as a cheap safety margin —
-  // but never more than the tier list can actually charge. A tier list
-  // where every tier costs 0 (a free/BST-cap format) has nothing to
-  // reserve, so don't manufacture a budget deficit out of it.
   const cheapestTierCost = tierList.tiers.length
     ? Math.min(...tierList.tiers.map((tier) => tier.cost))
     : 1;
@@ -211,23 +192,26 @@ export async function canBeDrafted(
     return false;
   }
 
-  const alreadyTaken =
-    draft.sequentialTurns !== false && isAlreadyDrafted(draft, pick.pokemonId);
-
   return (
-    !alreadyTaken &&
+    !takenReason(draft, team, pick.pokemonId) &&
     tierRequirementsAreFeasible(tournament, team, pick) &&
     (await teamHasEnoughPoints(tournament, draft, team, pick))
   );
 }
 
+function takenReason(
+  draft: PopulatedDraft,
+  team: PopulatedTeam,
+  pokemonId: string,
+): string | null {
+  if (team.pickLog.some((pick) => getPokemonIdFromDraft(pick) === pokemonId))
+    return "This team has already drafted this Pokemon";
+  if (!duplicatesAllowed(draft) && isAlreadyDrafted(draft, pokemonId))
+    return "Pokemon has already been drafted by another team";
+  return null;
+}
+
 export type DraftEligibilityOptions = {
-  /**
-   * Skips the point budget and tier-requirement feasibility checks. Those are
-   * the rules an organizer is correcting when they edit a roster by hand, so
-   * only their edits set this — the checks that keep the draft coherent (real
-   * Pokemon, valid addons, not already taken) still apply.
-   */
   ignoreLimits?: boolean;
 };
 
@@ -254,15 +238,8 @@ export async function canBeDraftedWithReason(
     };
   }
 
-  if (
-    draft.sequentialTurns !== false &&
-    isAlreadyDrafted(draft, pick.pokemonId)
-  ) {
-    return {
-      canDraft: false,
-      reason: "Pokemon has already been drafted by another team",
-    };
-  }
+  const taken = takenReason(draft, team, pick.pokemonId);
+  if (taken) return { canDraft: false, reason: taken };
 
   if (options.ignoreLimits) return { canDraft: true };
 
@@ -297,9 +274,6 @@ export async function isTeamDoneDrafting(
   if (tournament.pointTotal != null) {
     const teamPoints = await getTeamPoints(tournament, team);
     const pointsRemaining = tournament.pointTotal - teamPoints;
-    // A team is only out of picks once it can no longer afford even the
-    // cheapest tier — not just once it has spent its whole (possibly 0)
-    // budget, since an all-zero-cost tier list has nothing to exhaust.
     const tierList = tournament.tierList;
     const cheapestTierCost = tierList.tiers.length
       ? Math.min(...tierList.tiers.map((tier) => tier.cost))

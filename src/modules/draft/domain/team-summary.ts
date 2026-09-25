@@ -17,6 +17,11 @@ import {
   getPokemonIdFromDraft,
 } from "./pick-order";
 import {
+  canSeeAllPicks,
+  canSeeTeamPicks,
+  picksAreBlind,
+} from "./pick-visibility";
+import {
   createPokemonTierMap,
   enforceableTierRequirements,
   getPickCost,
@@ -50,6 +55,8 @@ export type TeamWithCoachStatus = {
   pointTotal: number;
   timezone?: string;
   skipCount: number;
+  picksHidden: boolean;
+  pickCount: number;
 };
 
 export async function getTeamsWithCoachStatus(
@@ -59,9 +66,6 @@ export async function getTeamsWithCoachStatus(
   numberOfRounds: number,
 ): Promise<TeamWithCoachStatus[]> {
   const pokemonTierMap = createPokemonTierMap(tournament);
-  // Every picker recorded so far is the coach of one of this draft's teams, and
-  // those coaches are already populated on the team documents — so resolving
-  // picker names off this map costs no extra queries.
   const coachNames = new Map<string, string>(
     draft.teams
       .flatMap((team: PopulatedTeam) => team.coaches ?? [])
@@ -131,18 +135,21 @@ export async function getTeamsWithCoachStatus(
         .reduce((total, pokemon) => total + (pokemon.cost || 0), 0);
 
       const coach = team.primaryCoach;
+      const picksHidden = !canSeeTeamPicks(tournament, draft, team, userId);
 
       return {
         id: team._id.toString(),
         name: team.teamName,
-        draft: draftPicks,
+        draft: picksHidden ? [] : draftPicks,
         logo: team.logo,
         coach: coach?.name ?? "",
         isCoach,
         picks,
-        pointTotal,
+        pointTotal: picksHidden ? 0 : pointTotal,
         timezone: coach.timezone,
         skipCount: team.skipCount || 0,
+        picksHidden,
+        pickCount: team.pickLog.length,
       };
     }),
   );
@@ -189,7 +196,10 @@ export async function getDraftDetails(
     draftName: draft.name,
     orderProgression: draft.orderProgression,
     sequentialTurns: draft.sequentialTurns,
-    visibility: draft.visibility,
+    picksVisibleTo: draft.picksVisibleTo,
+    allowDuplicates: draft.allowDuplicates,
+    picksBlind: picksAreBlind(draft),
+    canSeeAllPicks: canSeeAllPicks(tournament, draft, userId),
     allowRemovals: draft.allowRemovals,
     teamOrder: initialTeamOrder.map((team) => team._id),
     useRandomSeeding: draft.useRandomSeeding,

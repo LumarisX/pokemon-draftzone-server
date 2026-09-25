@@ -1,5 +1,8 @@
 import { AgendaModule } from "@modules/agenda/agenda.module";
+import { AuthModule } from "@modules/auth/auth.module";
+import { CoachModule } from "@modules/coach/coach.module";
 import { DiscordModule } from "@modules/discord/discord.module";
+import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { StageModule } from "@modules/stage/stage.module";
 import { TeamModule } from "@modules/team/team.module";
@@ -15,6 +18,9 @@ import { DraftService } from "./draft.service";
 @Module({
   imports: [
     DraftCoreModule,
+    AuthModule,
+    CoachModule,
+    HostedTournamentCoreModule,
     TeamModule,
     StageModule,
     LeagueMatchupModule,

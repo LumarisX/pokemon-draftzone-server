@@ -77,6 +77,16 @@ export class HostedTournamentRepository {
     return doc?.archived === true;
   }
 
+  async findBySlugAnyLeague(
+    tournamentSlug: string,
+  ): Promise<HostedTournament | null> {
+    const doc = await this.hostedTournamentModel
+      .findOne({ slug: { $eq: tournamentSlug } }, { _id: 1 })
+      .lean()
+      .exec();
+    return doc ? this.findById(doc._id) : null;
+  }
+
   async findById(
     tournamentId: Types.ObjectId | string,
   ): Promise<HostedTournament> {

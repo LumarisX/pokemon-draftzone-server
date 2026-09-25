@@ -2,6 +2,7 @@ import { generateSlug } from "@core/slug";
 import { HostedTournamentEntity } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
+import { PICKS_VISIBLE_TO, PicksVisibleTo } from "./domain/pick-visibility";
 
 @Schema({ _id: false })
 export class DraftEventLogEntity {
@@ -92,8 +93,11 @@ export class DraftEntity {
   @Prop({ type: [SchemaTypes.ObjectId], default: [] })
   teamOrder!: Types.ObjectId[];
 
-  @Prop({ type: String, enum: ["ALL", "SELF"], default: "ALL" })
-  visibility!: "ALL" | "SELF";
+  @Prop({ type: String, enum: PICKS_VISIBLE_TO, default: "everyone" })
+  picksVisibleTo!: PicksVisibleTo;
+
+  @Prop({ default: false })
+  allowDuplicates!: boolean;
 
   @Prop({ default: false })
   allowRemovals!: boolean;

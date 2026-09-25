@@ -12,6 +12,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { PICKS_VISIBLE_TO, PicksVisibleTo } from "./domain/pick-visibility";
 
 export class DraftPickDto {
   @IsString()
@@ -68,7 +69,6 @@ export class SetDraftTimerDto {
   noTimer!: boolean;
 }
 
-/** Both indices are zero-based, matching `calculateCurrentPick`. */
 export class SetCurrentPickDto {
   @IsInt()
   @Min(0)
@@ -79,11 +79,6 @@ export class SetCurrentPickDto {
   position!: number;
 }
 
-/**
- * Every field is optional so an organizer can save just what they changed.
- * `channelId: null` explicitly clears it (vs. `undefined`, which leaves it
- * untouched) — same convention as HostedTournament's `pointTotal`.
- */
 export class UpdateDraftSettingsDto {
   @IsString()
   @MinLength(1)
@@ -102,9 +97,13 @@ export class UpdateDraftSettingsDto {
   @IsOptional()
   sequentialTurns?: boolean;
 
-  @IsIn(["ALL", "SELF"])
+  @IsIn(PICKS_VISIBLE_TO)
   @IsOptional()
-  visibility?: "ALL" | "SELF";
+  picksVisibleTo?: PicksVisibleTo;
+
+  @IsBoolean()
+  @IsOptional()
+  allowDuplicates?: boolean;
 
   @IsBoolean()
   @IsOptional()
@@ -146,7 +145,6 @@ export class CreateDraftDto {
   public?: boolean;
 }
 
-/** `order` is required (and validated as a permutation of the draft's teams) when `useRandomSeeding` is false. */
 export class SetDraftOrderDto {
   @IsBoolean()
   useRandomSeeding!: boolean;

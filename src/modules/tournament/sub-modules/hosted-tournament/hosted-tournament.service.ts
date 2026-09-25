@@ -7,7 +7,12 @@ import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { getName } from "@modules/data/domain/pokedex";
 import { DiscordService } from "@modules/discord/discord.service";
+import {
+  canSeeTeamPicks,
+  duplicatesAllowed,
+} from "@modules/draft/domain/pick-visibility";
 import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
+import { DraftDocument } from "@modules/draft/draft.schema";
 import {
   DraftRepository,
   PopulatedTournament,
@@ -153,20 +158,28 @@ export class HostedTournamentService {
     const coach = team.primaryCoach;
 
     const viewerIsCoach = isCoachedBy(team, sub, "chat");
+    const teamDraft = team.draftId
+      ? await this.draftRepo.findById(team.draftId)
+      : null;
+    const picksHidden =
+      !!teamDraft && !canSeeTeamPicks(tournament, teamDraft, team, sub);
+    const visibleRoster = (context: ReturnType<typeof rosterContextForTournament>) =>
+      picksHidden ? [] : getLatestRoster(team, context);
     const identity = {
       id: team._id.toString(),
       slug: team.slug,
       coachId: coach._id.toString(),
       isCoach: viewerIsCoach,
       pointTotal: tournament.pointTotal,
+      picksHidden,
+      pickCount: team.pickLog?.length ?? 0,
       ...(viewerIsCoach
         ? { gameName: coach.gameName, discordName: coach.discordName }
         : {}),
     };
 
     if (!stageDoc) {
-      const roster = getLatestRoster(
-        team,
+      const roster = visibleRoster(
         rosterContextForTournament(tournament),
       ).map((pokemon) => ({
         id: pokemon.id,
@@ -195,8 +208,7 @@ export class HostedTournamentService {
       name: string;
       cost: number | undefined;
       draftFormes?: { id: string; name: string }[];
-    } & { record?: unknown })[] = getLatestRoster(
-      team,
+    } & { record?: unknown })[] = visibleRoster(
       rosterContextForTournament(tournament, stage),
     ).map((pokemon) => ({
       id: pokemon.id,
@@ -416,7 +428,19 @@ export class HostedTournamentService {
     };
   }
 
-  async listTeams(leagueSlug: string, tournamentSlug: string) {
+  private picksHiddenFor(
+    tournament: HostedTournament,
+    drafts: DraftDocument[],
+    team: PopulatedTeam,
+    sub: string | undefined,
+  ): boolean {
+    const draft = team.draftId
+      ? drafts.find((candidate) => candidate._id.equals(team.draftId))
+      : undefined;
+    return !!draft && !canSeeTeamPicks(tournament, draft, team, sub);
+  }
+
+  async listTeams(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
@@ -438,27 +462,33 @@ export class HostedTournamentService {
     const context = rosterContextForTournament(tournament);
 
     return {
-      teams: teams.map((team) => ({
-        id: team._id.toString(),
-        slug: team.slug,
-        teamName: team.teamName,
-        coachName: team.primaryCoach.name,
-        logo: team.logo,
-        pickCount: team.pickLog?.length ?? 0,
-        status: team.status,
-        draft: team.draftId
-          ? (draftById.get(team.draftId.toString()) ?? null)
-          : null,
-        roster: getLatestRoster(team, context).map((pokemon) => ({
-          id: pokemon.id,
-          name: getName(pokemon.id),
-          cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
-          tier: tierList?.getPokemonTier(pokemon.id)?.name,
-          ...(tierList && !tierList.hasPokemon(pokemon.id)
-            ? { missingFromTierList: true as const }
-            : {}),
-        })),
-      })),
+      teams: teams.map((team) => {
+        const picksHidden = this.picksHiddenFor(tournament, drafts, team, sub);
+        return {
+          id: team._id.toString(),
+          slug: team.slug,
+          teamName: team.teamName,
+          coachName: team.primaryCoach.name,
+          logo: team.logo,
+          pickCount: team.pickLog?.length ?? 0,
+          status: team.status,
+          picksHidden,
+          draft: team.draftId
+            ? (draftById.get(team.draftId.toString()) ?? null)
+            : null,
+          roster: (picksHidden ? [] : getLatestRoster(team, context)).map(
+            (pokemon) => ({
+              id: pokemon.id,
+              name: getName(pokemon.id),
+              cost: tierList?.getPokemonCost(pokemon.id, pokemon.addons),
+              tier: tierList?.getPokemonTier(pokemon.id)?.name,
+              ...(tierList && !tierList.hasPokemon(pokemon.id)
+                ? { missingFromTierList: true as const }
+                : {}),
+            }),
+          ),
+        };
+      }),
     };
   }
 
@@ -505,6 +535,12 @@ export class HostedTournamentService {
                 tournament.forfeit,
               )
             : undefined;
+          const picksHidden = this.picksHiddenFor(
+            tournament,
+            drafts,
+            team,
+            sub,
+          );
 
           return {
             draftId: team.draftId?.toString() ?? null,
@@ -516,7 +552,10 @@ export class HostedTournamentService {
               logo: team.logo,
               timezone: team.primaryCoach.timezone,
               isCoach: isCoachedBy(team, sub, "chat"),
-              draft: getLatestRoster(team, roster).map((pokemon) => ({
+              picksHidden,
+              pickCount: team.pickLog?.length ?? 0,
+              draft: (picksHidden ? [] : getLatestRoster(team, roster)).map(
+                (pokemon) => ({
                 id: pokemon.id,
                 name: getName(pokemon.id),
                 capt: { tera: pokemon.addons?.includes("Tera Captain") },
@@ -531,7 +570,8 @@ export class HostedTournamentService {
                 record: pokemonStandings.find(
                   (p) => p.id === pokemon.id && p.teamId === teamId,
                 )?.record,
-              })),
+              }),
+              ),
               ...(score
                 ? {
                     record: {
@@ -552,10 +592,12 @@ export class HostedTournamentService {
     const groups: {
       draftSlug: string | null;
       name: string;
+      allowDuplicates: boolean;
       teams: (typeof composed)[number]["team"][];
     }[] = drafts.map((draft) => ({
       draftSlug: draft.slug,
       name: draft.name,
+      allowDuplicates: duplicatesAllowed(draft),
       teams: composed
         .filter((entry) => entry.draftId === draft._id.toString())
         .map((entry) => entry.team),
@@ -565,7 +607,12 @@ export class HostedTournamentService {
       .filter((entry) => !entry.draftId || !draftIds.has(entry.draftId))
       .map((entry) => entry.team);
     if (unassigned.length)
-      groups.push({ draftSlug: null, name: "Unassigned", teams: unassigned });
+      groups.push({
+        draftSlug: null,
+        name: "Unassigned",
+        allowDuplicates: false,
+        teams: unassigned,
+      });
 
     return { drafts: groups };
   }

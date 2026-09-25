@@ -24,6 +24,7 @@ import {
   PopulatedStageMatchup,
 } from "../stage/domain/standings";
 import { getDraftOrder, isPreDraftStatus } from "./domain/pick-order";
+import { canSeeTeamPicks } from "./domain/pick-visibility";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import { DraftEngineService } from "./draft-engine.service";
 import {
@@ -107,6 +108,7 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     draftSlug: string,
+    sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -119,6 +121,15 @@ export class DraftService {
 
     const allPicks = await Promise.all(
       draft.teams.map(async (team: PopulatedTeam) => {
+        if (!canSeeTeamPicks(tournament, draft, team, sub))
+          return {
+            name: team.teamName,
+            picks: [],
+            id: team._id.toString(),
+            picksHidden: true,
+            pickCount: team.pickLog.length,
+          };
+
         const picks = await Promise.all(
           team.pickLog.map(async (pickItem) => {
             const tier = tournament.tierList.getPokemonTier(
@@ -140,7 +151,13 @@ export class DraftService {
           }),
         );
 
-        return { name: team.teamName, picks, id: team._id.toString() };
+        return {
+          name: team.teamName,
+          picks,
+          id: team._id.toString(),
+          picksHidden: false,
+          pickCount: team.pickLog.length,
+        };
       }),
     );
 
@@ -151,6 +168,7 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     draftSlug: string,
+    sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -165,6 +183,7 @@ export class DraftService {
     type DraftPick = {
       teamName: string;
       pokemon?: { id: string; name: string };
+      hidden?: true;
       skipTime?: Date;
     };
     type DraftRound = DraftPick[];
@@ -181,9 +200,12 @@ export class DraftService {
       for (const [index, team] of pickingOrder.entries()) {
         const draftPick: DraftPick = { teamName: team.teamName };
         if (team.pickLog[round]) {
-          const pokemonId = team.pickLog[round].pokemon.id;
-          const pokemonName = getName(pokemonId);
-          draftPick.pokemon = { id: pokemonId, name: pokemonName };
+          if (canSeeTeamPicks(tournament, draft, team, sub)) {
+            const pokemonId = team.pickLog[round].pokemon.id;
+            draftPick.pokemon = { id: pokemonId, name: getName(pokemonId) };
+          } else {
+            draftPick.hidden = true;
+          }
         }
         if (draft.counter === round * pickingOrder.length + index) {
           const now = new Date();
@@ -206,6 +228,7 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     draftSlug: string,
+    sub: string,
   ): Promise<unknown[]> {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -215,8 +238,11 @@ export class DraftService {
 
     const ruleset = tournament.tierList.ruleset;
     const roster = rosterContextForTournament(tournament);
+    const visible = draft.teams
+      .map((team: PopulatedTeam, index) => ({ team, index }))
+      .filter(({ team }) => canSeeTeamPicks(tournament, draft, team, sub));
     const teams = await Promise.all(
-      draft.teams.map(async (team: PopulatedTeam, index) => {
+      visible.map(async ({ team, index }) => {
         const draftTeam = getLatestRoster(team, roster).map(
           (pokemon) => new PDZPokemon({ id: pokemon.id }, ruleset),
         );
@@ -652,12 +678,18 @@ export class DraftService {
 
     const roster = rosterContextForTournament(tournament, stageDoc);
 
+    const picksHidden = (team: PopulatedTeam) =>
+      !canSeeTeamPicks(tournament, draft, team, sub);
+    const visibleRoster = (team: PopulatedTeam) =>
+      picksHidden(team) ? [] : getLatestRoster(team, roster);
+
     if (!stageDoc) {
       const teams = approvedTeams.map((team) => ({
         id: team._id.toString(),
         coach: team.primaryCoach.name,
         logo: team.logo,
-        draft: getLatestRoster(team, roster).map((pokemon) => ({
+        picksHidden: picksHidden(team),
+        draft: visibleRoster(team).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           capt: { tera: pokemon.addons?.includes("Tera Captain") },
@@ -706,7 +738,8 @@ export class DraftService {
         id: team._id.toString(),
         coach: team.primaryCoach.name,
         logo: team.logo,
-        draft: getLatestRoster(team, roster).map((pokemon) => ({
+        picksHidden: picksHidden(team),
+        draft: visibleRoster(team).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
           capt: { tera: pokemon.addons?.includes("Tera Captain") },

@@ -1,7 +1,3 @@
-// The real `agenda` package is ESM-only and breaks Jest's CJS transform.
-// draft.controller.ts -> draft.service.ts -> draft-engine.service.ts ->
-// agenda.service.ts transitively imports it (only for types/decorator
-// metadata), so it must be mocked before loading the SUT.
 jest.mock("agenda", () => ({}));
 
 import { DraftController } from "./draft.controller";
@@ -58,9 +54,19 @@ describe("DraftController", () => {
     const picks = [] as any;
     service.getPicks.mockResolvedValue(picks);
 
-    const result = await controller.getPicks("league-1", "tournament-1", "draft-1");
+    const result = await controller.getPicks(
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
+    );
 
-    expect(service.getPicks).toHaveBeenCalledWith("league-1", "tournament-1", "draft-1");
+    expect(service.getPicks).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
+    );
     expect(result).toBe(picks);
   });
 
@@ -68,9 +74,19 @@ describe("DraftController", () => {
     const order = [] as any;
     service.getOrder.mockResolvedValue(order);
 
-    const result = await controller.getOrder("league-1", "tournament-1", "draft-1");
+    const result = await controller.getOrder(
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
+    );
 
-    expect(service.getOrder).toHaveBeenCalledWith("league-1", "tournament-1", "draft-1");
+    expect(service.getOrder).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
+    );
     expect(result).toBe(order);
   });
 
@@ -78,10 +94,18 @@ describe("DraftController", () => {
     const rankings = [] as any;
     service.getPowerRankings.mockResolvedValue(rankings);
 
-    const result = await controller.getPowerRankings("league-1", "tournament-1", "draft-1");
+    const result = await controller.getPowerRankings(
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
+    );
 
     expect(service.getPowerRankings).toHaveBeenCalledWith(
-      "league-1", "tournament-1", "draft-1",
+      "league-1",
+      "tournament-1",
+      "draft-1",
+      "auth0|sub",
     );
     expect(result).toBe(rankings);
   });

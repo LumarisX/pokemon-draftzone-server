@@ -214,7 +214,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1");
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
 
       expect(team.populate).toHaveBeenCalledWith("pickLog.picker");
       expect(result).toEqual([
@@ -233,6 +233,8 @@ describe("DraftService", () => {
               picker: "auth0|coach-1",
             },
           ],
+          picksHidden: false,
+          pickCount: 1,
         },
       ]);
     });
@@ -252,7 +254,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1");
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0].picks[0].picker).toBeUndefined();
     });
@@ -272,7 +274,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamB, teamA]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1");
+      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
 
       expect(mockedGetDraftOrder).toHaveBeenCalledWith(draft);
       expect(result[0].map((p: any) => p.teamName)).toEqual(["B", "A"]);
@@ -287,7 +289,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamA, teamB]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1");
+      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0].map((p: any) => p.teamName)).toEqual(["A", "B"]);
       expect(result[1].map((p: any) => p.teamName)).toEqual(["B", "A"]);
@@ -304,10 +306,99 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamA]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1");
+      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0][0].pokemon).toEqual({ id: "pikachu", name: "Pikachu" });
       expect(result[1][0].pokemon).toBeUndefined();
+    });
+  });
+
+  describe("blind drafts", () => {
+    function blindSetup(status = "IN_PROGRESS") {
+      const own = buildTeam({
+        teamName: "Own",
+        coach: { name: "Ash", auth0Id: "auth0|coach-1", timezone: "UTC" },
+        pickLog: [{ pokemon: { id: "pikachu" }, timestamp: new Date() }],
+      });
+      const rival = buildTeam({
+        teamName: "Rival",
+        coach: { name: "Gary", auth0Id: "auth0|coach-2", timezone: "UTC" },
+        pickLog: [{ pokemon: { id: "pikachu" }, timestamp: new Date() }],
+      });
+      const draft = buildDraft({
+        teams: [own, rival],
+        picksVisibleTo: "ownTeam",
+        status,
+      });
+      draftRepo.findTournament.mockResolvedValue(buildTournament());
+      draftRepo.findDraft.mockResolvedValue(draft);
+      mockedGetDraftOrder.mockReturnValue([own, rival]);
+      return { own, rival };
+    }
+
+    it("getPicks hides other teams' picks but reports their count", async () => {
+      blindSetup();
+
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+
+      expect(result[0].picksHidden).toBe(false);
+      expect(result[0].picks).toHaveLength(1);
+      expect(result[1]).toMatchObject({ picksHidden: true, picks: [], pickCount: 1 });
+    });
+
+    it("getPicks shows every team to staff", async () => {
+      blindSetup();
+
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|owner");
+
+      expect(result.map((team) => team.picksHidden)).toEqual([false, false]);
+    });
+
+    it("getPicks reveals everything once the draft is completed", async () => {
+      blindSetup("COMPLETED");
+
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+
+      expect(result.map((team) => team.picksHidden)).toEqual([false, false]);
+    });
+
+    it("getOrder marks other teams' slots hidden instead of naming the Pokemon", async () => {
+      blindSetup();
+
+      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+
+      expect(result[0][0]).toMatchObject({ teamName: "Own", pokemon: { id: "pikachu" } });
+      expect(result[0][1]).toMatchObject({ teamName: "Rival", hidden: true });
+      expect(result[0][1].pokemon).toBeUndefined();
+    });
+
+    it("getPowerRankings leaves out teams the viewer cannot see", async () => {
+      blindSetup();
+      mockedGetLatestRoster.mockReturnValue([]);
+
+      const result = (await service.getPowerRankings(
+        "league-1",
+        "tournament-1",
+        "draft-1",
+        "auth0|coach-1",
+      )) as { info: { name: string; index: number } }[];
+
+      expect(result.map((team) => team.info)).toEqual([
+        expect.objectContaining({ name: "Own", index: 0 }),
+      ]);
+    });
+
+    it("getTeams empties hidden rosters", async () => {
+      blindSetup();
+      stageRepo.findAllByTournament.mockResolvedValue([]);
+      mockedGetLatestRoster.mockReturnValue([{ id: "pikachu", addons: undefined }]);
+
+      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+
+      expect(result.teams.map((team: any) => [team.picksHidden, team.draft.length])).toEqual([
+        [false, 1],
+        [true, 0],
+      ]);
     });
   });
 
@@ -660,10 +751,19 @@ describe("DraftService", () => {
           id: team._id.toString(),
           coach: "Ash",
           logo: undefined,
-          draft: [{ id: "pikachu", name: "Pikachu", capt: { tera: undefined }, cost: 10 }],
+          draft: [
+            {
+              id: "pikachu",
+              name: "Pikachu",
+              capt: { tera: undefined },
+              cost: 10,
+              draftFormes: undefined,
+            },
+          ],
           name: "A",
           isCoach: true,
           timezone: "UTC",
+          picksHidden: false,
         },
       ]);
     });

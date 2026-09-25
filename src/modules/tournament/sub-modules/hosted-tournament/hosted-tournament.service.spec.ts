@@ -1824,6 +1824,7 @@ describe("HostedTournamentService teams", () => {
     teams?: unknown[];
     stages?: unknown[];
     team?: unknown;
+    drafts?: unknown[];
   }) {
     const tierList = buildRosterTierList();
     const tournamentRepo = {
@@ -1837,8 +1838,12 @@ describe("HostedTournamentService teams", () => {
       findById: jest.fn().mockResolvedValue(overrides.team),
       findBySlug: jest.fn().mockResolvedValue(overrides.team),
     } as unknown as jest.Mocked<TeamRepository>;
+    const drafts = (overrides.drafts ?? []) as { _id: Types.ObjectId }[];
     const draftRepo = {
-      findAllByTournament: jest.fn().mockResolvedValue([]),
+      findAllByTournament: jest.fn().mockResolvedValue(drafts),
+      findById: jest.fn(async (id: Types.ObjectId) =>
+        drafts.find((draft) => draft._id.equals(id)) ?? null,
+      ),
       findTournament: jest
         .fn()
         .mockResolvedValue(Object.assign(overrides.tournament, { tierList })),
@@ -1910,6 +1915,108 @@ describe("HostedTournamentService teams", () => {
         "pikachu",
         "snorlax",
       ]);
+    });
+  });
+
+  describe("blind drafts", () => {
+    const DRAFT_ID = new Types.ObjectId();
+
+    function blindDraft(status = "IN_PROGRESS") {
+      return {
+        _id: DRAFT_ID,
+        slug: "pool-a",
+        name: "Pool A",
+        status,
+        picksVisibleTo: "ownTeam",
+        allowDuplicates: true,
+      };
+    }
+
+    function draftedTeam(id: Types.ObjectId, name: string, sub: string) {
+      const team = buildTeam(id, name, ["pikachu"]);
+      return {
+        ...team,
+        draftId: DRAFT_ID,
+        coaches: [{ ...team.primaryCoach, auth0Id: sub }],
+      };
+    }
+
+    function blindService(status?: string) {
+      const own = draftedTeam(TEAM_ID, "Team One", SUB);
+      const rival = draftedTeam(OTHER_TEAM_ID, "Team Two", "auth0|rival");
+      return buildService({
+        tournament: buildTournament(),
+        teams: [own, rival],
+        team: rival,
+        drafts: [blindDraft(status)],
+      }).service;
+    }
+
+    it("listTeams empties other teams' rosters for a coach", async () => {
+      const result = await blindService().listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+      );
+
+      expect(
+        result.teams.map((team) => [team.picksHidden, team.roster.length]),
+      ).toEqual([
+        [false, 1],
+        [true, 0],
+      ]);
+      expect(result.teams[1].pickCount).toBe(1);
+    });
+
+    it("listTeams hides every roster from a signed-out visitor", async () => {
+      const result = await blindService().listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(result.teams.every((team) => team.picksHidden)).toBe(true);
+    });
+
+    it("listTeams shows everything to an organizer and after the draft", async () => {
+      const organizer = await blindService().listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+      );
+      const finished = await blindService("COMPLETED").listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+      );
+
+      expect(organizer.teams.some((team) => team.picksHidden)).toBe(false);
+      expect(finished.teams.some((team) => team.picksHidden)).toBe(false);
+    });
+
+    it("listTeamsByDraft hides rival rosters and reports allowDuplicates", async () => {
+      const result = await blindService().listTeamsByDraft(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+      );
+
+      const group = result.drafts.find((entry) => entry.draftSlug === "pool-a")!;
+      expect(group.allowDuplicates).toBe(true);
+      expect(
+        group.teams.map((team) => [team.picksHidden, team.draft.length]),
+      ).toEqual([
+        [false, 1],
+        [true, 0],
+      ]);
+    });
+
+    it("getTeam hides a rival team's roster", async () => {
+      const result = await blindService().getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "team-two-slug",
+        SUB,
+      );
+
+      expect(result.picksHidden).toBe(true);
+      expect(result.draft).toEqual([]);
     });
   });
 

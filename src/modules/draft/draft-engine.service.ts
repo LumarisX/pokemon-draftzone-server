@@ -24,7 +24,8 @@ import {
   UpdateDraftSettingsDto,
 } from "./draft.dto";
 import { DraftDocument, DraftEntity } from "./draft.schema";
-import { DraftEventsService } from "./draft-events.service";
+import { draftAudience, DraftEventsService } from "./draft-events.service";
+import { duplicatesAllowed, picksAreBlind } from "./domain/pick-visibility";
 import type { DraftPickUpdatedEvent } from "./draft-events.service";
 import {
   calculateCanDraft,
@@ -185,6 +186,7 @@ export class DraftEngineService {
     this.draftEvents.emitDraftPickUpdated({
       tournamentSlug: tournament.slug,
       draftSlug: draft.slug,
+      audience: draftAudience(draft, team._id.toString()),
       ...detail,
       team: {
         id: team._id.toString(),
@@ -203,7 +205,7 @@ export class DraftEngineService {
     team: PopulatedTeam,
     detail: Pick<DraftPickUpdatedEvent, "round" | "pokemon" | "previous">,
   ): Promise<void> {
-    if (!draft.channelId) return;
+    if (!draft.channelId || picksAreBlind(draft)) return;
 
     const channelId = draft.channelId;
     const { round, pokemon, previous } = detail;
@@ -441,6 +443,7 @@ export class DraftEngineService {
         this.draftEvents.emitDraftAdded({
           tournamentSlug: tournament.slug,
           draftSlug: currentDraft.slug,
+          audience: draftAudience(currentDraft, currentTeamId),
           pick: {
             pokemon: {
               id: pick.pokemonId,
@@ -526,11 +529,12 @@ export class DraftEngineService {
       throw new PDZError(ErrorCodes.DRAFT.CHANGED);
 
     if (
-      await this.teamRepo.isPokemonTakenInDraft(
+      !duplicatesAllowed(draft) &&
+      (await this.teamRepo.isPokemonTakenInDraft(
         draft._id,
         toID(pokemonId),
         session,
-      )
+      ))
     )
       throw new PDZError(ErrorCodes.DRAFT.ALREADY_DRAFTED, { pokemonId });
   }
@@ -541,6 +545,8 @@ export class DraftEngineService {
     session?: ClientSession,
     skipTeamId?: string,
   ) {
+    if (duplicatesAllowed(draft)) return 0;
+
     let teamsToProcess = draft.teams;
     if (skipTeamId) {
       teamsToProcess = teamsToProcess.filter(
@@ -577,7 +583,7 @@ export class DraftEngineService {
     snipeCount: number,
     session: ClientSession | undefined,
   ): Promise<void> {
-    if (!draft.channelId) return;
+    if (!draft.channelId || picksAreBlind(draft)) return;
 
     const channelId = draft.channelId;
     const pokemonName = getName(pick.pokemonId);
@@ -778,6 +784,7 @@ export class DraftEngineService {
         this.draftEvents.emitDraftCounter({
           tournamentSlug: tournament.slug,
           draftSlug: draft.slug,
+          audience: draftAudience(draft),
           currentPick: calculateCurrentPick(draft),
           nextTeam: nextTeam._id.toString(),
           canDraftTeams: calculateCanDraft(draft, pickOrder),
@@ -823,6 +830,7 @@ export class DraftEngineService {
       this.draftEvents.emitDraftCompleted({
         tournamentSlug: tournament.slug,
         draftSlug: draft.slug,
+        audience: draftAudience(draft),
         draftName: draft.name,
       });
 
@@ -890,6 +898,7 @@ export class DraftEngineService {
     this.draftEvents.emitDraftSkip({
       tournamentSlug: tournament.slug,
       draftSlug: draft.slug,
+      audience: draftAudience(draft),
       teamName,
       skipCount: fullTeam?.skipCount || 1,
       newTimerLength,
@@ -1090,6 +1099,7 @@ export class DraftEngineService {
     this.draftEvents.emitDraftCounter({
       tournamentSlug: tournament.slug,
       draftSlug: draft.slug,
+      audience: draftAudience(draft),
       currentPick: calculateCurrentPick(draft),
       nextTeam: currentTeam?._id.toString() ?? "",
       canDraftTeams: calculateCanDraft(draft, pickOrder),
@@ -1255,6 +1265,7 @@ export class DraftEngineService {
     this.draftEvents.emitDraftStatus({
       tournamentSlug: tournament.slug,
       draftSlug: draft.slug,
+      audience: draftAudience(draft),
       status: draft.status,
       noTimer: draft.noTimer,
       currentPick: calculateCurrentPick(draft),
@@ -1308,12 +1319,14 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     dto: UpdateDraftSettingsDto,
   ) {
-    const changesTurnOrder =
-      dto.orderProgression !== undefined || dto.sequentialTurns !== undefined;
-    if (changesTurnOrder && !isPreDraftStatus(draft.status))
+    const changesDraftRules =
+      dto.orderProgression !== undefined ||
+      dto.sequentialTurns !== undefined ||
+      dto.allowDuplicates !== undefined;
+    if (changesDraftRules && !isPreDraftStatus(draft.status))
       throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
         reason:
-          "Turn order settings can only be changed before the draft starts.",
+          "Turn order and duplicate settings can only be changed before the draft starts.",
       });
 
     if (dto.timerLength !== undefined && !isPreDraftStatus(draft.status))
@@ -1328,7 +1341,10 @@ export class DraftEngineService {
       draft.orderProgression = dto.orderProgression;
     if (dto.sequentialTurns !== undefined)
       draft.sequentialTurns = dto.sequentialTurns;
-    if (dto.visibility !== undefined) draft.visibility = dto.visibility;
+    if (dto.picksVisibleTo !== undefined)
+      draft.picksVisibleTo = dto.picksVisibleTo;
+    if (dto.allowDuplicates !== undefined)
+      draft.allowDuplicates = dto.allowDuplicates;
     if (dto.allowRemovals !== undefined)
       draft.allowRemovals = dto.allowRemovals;
     if (dto.timerLength !== undefined) draft.timerLength = dto.timerLength;
@@ -1430,6 +1446,7 @@ export class DraftEngineService {
     this.draftEvents.emitDraftStatus({
       tournamentSlug: tournament.slug,
       draftSlug: draft.slug,
+      audience: draftAudience(draft),
       status: draft.status,
       noTimer: draft.noTimer,
       currentPick: calculateCurrentPick(draft),

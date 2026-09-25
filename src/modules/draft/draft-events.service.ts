@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { calculateCurrentPick } from "./domain/pick-order";
+import { picksAreBlind, PicksVisibleTo } from "./domain/pick-visibility";
 
 type DraftPickSummary = {
   id: string;
@@ -9,9 +10,30 @@ type DraftPickSummary = {
   cost?: number;
 };
 
-export type DraftAddedEvent = {
+export type DraftEventAudience = {
+  draftPublic: boolean;
+  blindTeamId?: string;
+};
+
+export function draftAudience(
+  draft: { public?: boolean; picksVisibleTo?: PicksVisibleTo; status?: string },
+  revealsTeamId?: string,
+): DraftEventAudience {
+  return {
+    draftPublic: draft.public !== false,
+    ...(revealsTeamId && picksAreBlind(draft)
+      ? { blindTeamId: revealsTeamId }
+      : {}),
+  };
+}
+
+type AudiencedEvent = {
   tournamentSlug: string;
   draftSlug: string;
+  audience: DraftEventAudience;
+};
+
+export type DraftAddedEvent = AudiencedEvent & {
   pick: {
     pokemon: DraftPickSummary;
     team: { id: string; name: string };
@@ -27,23 +49,14 @@ export type DraftAddedEvent = {
   currentPick: ReturnType<typeof calculateCurrentPick>;
 };
 
-export type DraftCounterEvent = {
-  tournamentSlug: string;
-  draftSlug: string;
+export type DraftCounterEvent = AudiencedEvent & {
   currentPick: ReturnType<typeof calculateCurrentPick>;
   nextTeam: string;
   canDraftTeams: string[];
   canDraftCounts: Record<string, number>;
 };
 
-/**
- * An organizer edited a roster slot out of band — set, swapped, or cleared.
- * Distinct from `added` because it isn't a turn being taken: it can land on any
- * round, and `pokemon` is absent when the slot was cleared.
- */
-export type DraftPickUpdatedEvent = {
-  tournamentSlug: string;
-  draftSlug: string;
+export type DraftPickUpdatedEvent = AudiencedEvent & {
   round?: number;
   pokemon?: DraftPickSummary;
   previous?: DraftPickSummary;
@@ -57,34 +70,22 @@ export type DraftPickUpdatedEvent = {
   currentPick: ReturnType<typeof calculateCurrentPick>;
 };
 
-export type DraftCompletedEvent = {
-  tournamentSlug: string;
-  draftSlug: string;
+export type DraftCompletedEvent = AudiencedEvent & {
   draftName: string;
 };
 
-export type DraftSkipEvent = {
-  tournamentSlug: string;
-  draftSlug: string;
+export type DraftSkipEvent = AudiencedEvent & {
   teamName: string;
   skipCount: number;
   newTimerLength?: number;
 };
 
-export type DraftStatusEvent = {
-  tournamentSlug: string;
-  draftSlug: string;
+export type DraftStatusEvent = AudiencedEvent & {
   status: string;
   noTimer?: boolean;
   currentPick: ReturnType<typeof calculateCurrentPick>;
 };
 
-/**
- * Anti-corruption layer between DraftEngineService and the underlying event
- * bus. Keeps DraftEngineService depending on an injected, mockable service
- * instead of EventEmitter2 directly, so the websocket layer that eventually
- * subscribes to these events (out of scope here) can change independently.
- */
 @Injectable()
 export class DraftEventsService {
   constructor(private readonly eventEmitter: EventEmitter2) {}

@@ -374,6 +374,59 @@ describe("DraftEngineService", () => {
       expect(teamC.save).toHaveBeenCalled();
     });
 
+    it("leaves other teams' queued picks alone when duplicates are allowed", async () => {
+      const teamA = buildTeam({ teamName: "A" });
+      const teamB = buildTeam({ teamName: "B" });
+      const teamC = buildTeam({
+        teamName: "C",
+        picks: [[{ pokemonId: "pikachu" }]],
+      });
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [teamA, teamB, teamC],
+        allowDuplicates: true,
+      });
+
+      await engine.draftPokemon(tournament, draft, teamA, {
+        pokemonId: "pikachu",
+      });
+
+      expect(teamC.picks[0]).toEqual([{ pokemonId: "pikachu" }]);
+      expect(teamRepo.isPokemonTakenInDraft).not.toHaveBeenCalled();
+    });
+
+    it("keeps a blind draft's picks out of Discord and tags the event with the picking team", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList: buildTierList(),
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        channelId: "channel-1",
+        picksVisibleTo: "ownTeam",
+      });
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      const announcements = discordService.sendMessage.mock.calls.filter(
+        ([, payload]) => "embeds" in (payload as object),
+      );
+      expect(announcements).toEqual([]);
+      expect(draftEvents.emitDraftAdded).toHaveBeenCalledWith(
+        expect.objectContaining({
+          audience: expect.objectContaining({
+            blindTeamId: team._id.toString(),
+          }),
+        }),
+      );
+    });
+
     it("emits a draft.added event with the pick/team summary", async () => {
       const tierList = buildTierList();
       const team = buildTeam();
@@ -1198,20 +1251,20 @@ describe("DraftEngineService", () => {
         status: "IN_PROGRESS",
         name: "Old Name",
         channelId: "old-channel",
-        visibility: "ALL",
+        picksVisibleTo: "everyone",
         allowRemovals: false,
       });
 
       await engine.updateSettings(tournament, draft, {
         name: "New Name",
         channelId: "new-channel",
-        visibility: "SELF",
+        picksVisibleTo: "ownTeam",
         allowRemovals: true,
       });
 
       expect(draft.name).toBe("New Name");
       expect(draft.channelId).toBe("new-channel");
-      expect(draft.visibility).toBe("SELF");
+      expect(draft.picksVisibleTo).toBe("ownTeam");
       expect(draft.allowRemovals).toBe(true);
       expect(draft.save).toHaveBeenCalled();
     });
@@ -1253,7 +1306,26 @@ describe("DraftEngineService", () => {
       await expect(
         engine.updateSettings(tournament, draft, { sequentialTurns: false }),
       ).rejects.toThrow();
+      await expect(
+        engine.updateSettings(tournament, draft, { allowDuplicates: true }),
+      ).rejects.toThrow();
       expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it("lets pick visibility change mid-draft so an organizer can reveal early", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({
+        teams: [],
+        status: "IN_PROGRESS",
+        picksVisibleTo: "ownTeam",
+      });
+
+      await engine.updateSettings(tournament, draft, {
+        picksVisibleTo: "everyone",
+      });
+
+      expect(draft.picksVisibleTo).toBe("everyone");
+      expect(draft.save).toHaveBeenCalled();
     });
 
     it("allows turn-order changes while pre-draft (including legacy NOT_STARTED)", async () => {
