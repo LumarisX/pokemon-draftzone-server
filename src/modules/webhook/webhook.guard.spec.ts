@@ -37,6 +37,32 @@ describe("WebhookGuard", () => {
     ).toThrow(UnauthorizedException);
   });
 
+  it("rejects a key that only shares the secret's prefix", () => {
+    const guard = new WebhookGuard(buildConfigService("shared-secret"));
+
+    expect(() =>
+      guard.canActivate(buildContext({ "x-api-key": "shared-secret-and-more" })),
+    ).toThrow(UnauthorizedException);
+  });
+
+  it("rejects a repeated header, which arrives as an array", () => {
+    const guard = new WebhookGuard(buildConfigService("shared-secret"));
+
+    expect(() =>
+      guard.canActivate(
+        buildContext({ "x-api-key": ["shared-secret", "shared-secret"] as any }),
+      ),
+    ).toThrow(UnauthorizedException);
+  });
+
+  it("rejects an empty key even when the configured secret is empty", () => {
+    const guard = new WebhookGuard(buildConfigService(""));
+
+    expect(() => guard.canActivate(buildContext({ "x-api-key": "" }))).toThrow(
+      UnauthorizedException,
+    );
+  });
+
   it("rejects the request even with a literal 'undefined' header value when no secret is configured", () => {
     const guard = new WebhookGuard(buildConfigService(undefined));
 

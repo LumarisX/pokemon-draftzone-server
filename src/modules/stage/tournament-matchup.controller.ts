@@ -1,4 +1,6 @@
 import { User } from "@core/decorators/user.decorator";
+import { SkipGlobalThrottle } from "@core/guards/skip-global-throttle.decorator";
+import { UserThrottlerGuard } from "@core/guards/user-throttler.guard";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
@@ -9,6 +11,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   SetMatchupAdvancementDto,
   SetMatchupNotesDto,
@@ -92,7 +95,9 @@ export class TournamentMatchupController {
   }
 
   @Post(":matchupSlug/report")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, UserThrottlerGuard)
+  @SkipGlobalThrottle()
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async submitMatchupReport(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,

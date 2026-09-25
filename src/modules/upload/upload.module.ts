@@ -4,7 +4,6 @@ import { FileUploadEntity, FileUploadSchema } from "./file-upload.schema";
 import { FileUploadRepository } from "./file-upload.repository";
 import { UploadsController } from "./upload.controller";
 import { UploadsService } from "./upload.service";
-import { UploadsThrottlerGuard } from "./upload-throttler.guard";
 
 @Module({
   imports: [
@@ -13,7 +12,7 @@ import { UploadsThrottlerGuard } from "./upload-throttler.guard";
     ]),
   ],
   controllers: [UploadsController],
-  providers: [UploadsService, UploadsThrottlerGuard, FileUploadRepository],
+  providers: [UploadsService, FileUploadRepository],
   exports: [UploadsService],
 })
 export class UploadsModule {}

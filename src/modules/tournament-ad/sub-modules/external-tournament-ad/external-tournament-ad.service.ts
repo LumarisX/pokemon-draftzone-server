@@ -151,6 +151,16 @@ export class ExternalTournamentAdService implements OnModuleInit {
     interaction: ButtonInteraction,
   ): Promise<void> {
     if (action !== "approve" && action !== "deny") return;
+    if (interaction.channelId !== REVIEW_CHANNEL_ID) {
+      this.logger.warn(
+        `Refused league ad ${action} for ${adId} from channel ${interaction.channelId} by ${interaction.user.id}`,
+      );
+      await interaction.reply({
+        content: "League ads can only be reviewed in the review channel.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
     const status = action === "approve" ? "Approved" : "Denied";
 
     const updated = Types.ObjectId.isValid(adId)

@@ -6,6 +6,16 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { createHash, timingSafeEqual } from "crypto";
+
+function digest(value: string): Buffer {
+  return createHash("sha256").update(value).digest();
+}
+
+export function secretsMatch(incoming: unknown, expected?: string): boolean {
+  if (!expected || typeof incoming !== "string" || !incoming) return false;
+  return timingSafeEqual(digest(incoming), digest(expected));
+}
 
 @Injectable()
 export class WebhookGuard implements CanActivate {
@@ -15,9 +25,8 @@ export class WebhookGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const incomingKey = request.headers["x-api-key"];
     const validKey = this.configService.get<string>("AUTH0_WEBHOOK_SECRET");
-    if (!incomingKey || incomingKey !== validKey) {
+    if (!secretsMatch(request.headers["x-api-key"], validKey)) {
       this.logger.error(
         `Rejected webhook call from ${request.ip}: invalid or missing x-api-key`,
       );

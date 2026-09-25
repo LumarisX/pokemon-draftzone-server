@@ -282,6 +282,11 @@ export const ErrorCodes = {
       status: 404,
       message: "API path not found",
     },
+    RATE_LIMITED: {
+      code: "SYS-006",
+      status: 429,
+      message: "You're doing that too often. Please wait a moment and try again.",
+    },
   },
   VALIDATION: {
     INVALID_BODY: {

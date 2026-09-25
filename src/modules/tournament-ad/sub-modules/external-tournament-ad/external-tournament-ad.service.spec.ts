@@ -116,13 +116,30 @@ describe("ExternalTournamentAdService", () => {
       return discord.registerButtonHandler.mock.calls[0][1];
     }
 
-    function buildInteraction() {
+    function buildInteraction(channelId = "1293333149471871108") {
       return {
+        channelId,
+        user: { id: "reviewer-1" },
         message: { embeds: [] },
         update: jest.fn(),
         reply: jest.fn(),
       } as any;
     }
+
+    it("refuses a click from outside the review channel", async () => {
+      const handler = getRegisteredHandler();
+      const interaction = buildInteraction("999999999999999999");
+
+      await handler("approve", new Types.ObjectId().toString(), interaction);
+
+      expect(repo.updateStatus).not.toHaveBeenCalled();
+      expect(interaction.update).not.toHaveBeenCalled();
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: "League ads can only be reviewed in the review channel.",
+        }),
+      );
+    });
 
     it("approves the ad and disables the buttons on the message", async () => {
       const adId = new Types.ObjectId().toString();

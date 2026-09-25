@@ -1,4 +1,6 @@
 import { User } from "@core/decorators/user.decorator";
+import { SkipGlobalThrottle } from "@core/guards/skip-global-throttle.decorator";
+import { UserThrottlerGuard } from "@core/guards/user-throttler.guard";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
@@ -11,6 +13,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { PostChatMessageDto } from "./chat.dto";
 import { ChatService } from "./chat.service";
 import { ChatChannel } from "./chat.schema";
@@ -39,7 +42,9 @@ export class ChatController {
   }
 
   @Post(":channel")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, UserThrottlerGuard)
+  @SkipGlobalThrottle()
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async postMessage(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,

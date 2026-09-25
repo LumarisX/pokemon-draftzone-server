@@ -1,4 +1,6 @@
 import { User } from "@core/decorators/user.decorator";
+import { SkipGlobalThrottle } from "@core/guards/skip-global-throttle.decorator";
+import { UserThrottlerGuard } from "@core/guards/user-throttler.guard";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
@@ -14,6 +16,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   AssignCoachesDto,
   DecideApplicationDto,
@@ -90,7 +93,9 @@ export class HostedTournamentController {
   }
 
   @Post(":tournamentSlug/signup")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, UserThrottlerGuard)
+  @SkipGlobalThrottle()
+  @Throttle({ default: { ttl: 10 * 60_000, limit: 5 } })
   @HttpCode(HttpStatus.CREATED)
   async createTournamentSignup(
     @Param("leagueSlug") leagueSlug: string,
