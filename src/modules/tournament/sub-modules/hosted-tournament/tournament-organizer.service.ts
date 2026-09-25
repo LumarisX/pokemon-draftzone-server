@@ -301,7 +301,7 @@ export class TournamentOrganizerService {
     coachId: string,
   ): Promise<CoachDocument | null> {
     if (!Types.ObjectId.isValid(coachId)) return null;
-    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach || !isActiveCoach(coach)) return null;
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournamentId) return null;

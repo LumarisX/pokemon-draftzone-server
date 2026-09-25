@@ -1,4 +1,4 @@
-import { PDZError } from "@core/pdz-error";
+import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { ID } from "@pkmn/data";
 import { Types } from "mongoose";
@@ -103,9 +103,9 @@ export class StageService {
     const ruleset = tournament.requireRuleset("matchupAnalysis");
     const format = tournament.requireFormat("matchupAnalysis");
 
-    const tierList = await this.tierListRepo
-      .findById(tournament.tierListId)
-      .catch(() => undefined);
+    const tierList = await nullIfNotFound(
+      this.tierListRepo.findById(tournament.tierListId),
+    );
 
     const rosterCtx = rosterContext(tournament);
     const { roundIndex, roundDoc } = this.matchupRound(tournament, matchupDoc);
@@ -225,10 +225,6 @@ export class StageService {
     };
 
     return { stageDoc, tournament, matchupDoc, viewer };
-  }
-
-  private assertMatchupParticipant(viewer: MatchupViewer) {
-    if (!viewer.canChat) throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
   }
 
   async getMatchupDetail(

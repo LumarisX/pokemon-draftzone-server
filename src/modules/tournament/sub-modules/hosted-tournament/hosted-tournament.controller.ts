@@ -13,6 +13,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -324,7 +325,7 @@ export class HostedTournamentController {
     return this.tournamentService.getRules(leagueSlug, tournamentSlug);
   }
 
-  @Post(":tournamentSlug/rules")
+  @Put(":tournamentSlug/rules")
   @UseGuards(JwtAuthGuard)
   async updateTournamentRules(
     @Param("leagueSlug") leagueSlug: string,

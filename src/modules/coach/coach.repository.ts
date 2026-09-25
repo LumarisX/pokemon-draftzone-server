@@ -57,6 +57,14 @@ export class CoachRepository {
     return coach;
   }
 
+  async findByIdOrNull(
+    coachId: Types.ObjectId | string,
+  ): Promise<CoachDocument | null> {
+    if (!(coachId instanceof Types.ObjectId) && !Types.ObjectId.isValid(coachId))
+      return null;
+    return this.coachModel.findById(coachId).exec();
+  }
+
   async findAllByTeam(
     teamId: Types.ObjectId | string,
   ): Promise<CoachDocument[]> {

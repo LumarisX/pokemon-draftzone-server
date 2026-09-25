@@ -1,3 +1,5 @@
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { TeamRepository } from "@modules/team/team.repository";
 import { tierId } from "../tier-list/tier-list.test-ids";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -79,7 +81,9 @@ describe("TournamentTradeService", () => {
     } as unknown as jest.Mocked<HostedTournamentRepository>;
 
     tierListRepo = {
-      findById: jest.fn().mockRejectedValue(new Error("no tier list")),
+      findById: jest
+        .fn()
+        .mockRejectedValue(new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND)),
     } as unknown as jest.Mocked<TierListRepository>;
 
     const moduleRef = await Test.createTestingModule({

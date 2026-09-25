@@ -1,4 +1,4 @@
-import { PDZError } from "@core/pdz-error";
+import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { getName } from "@modules/data/domain/pokedex";
 import { isCoachedBy } from "@modules/team/team.domain";
@@ -57,9 +57,9 @@ export class TournamentTradeService {
       return id ? teamById.get(id) : undefined;
     };
 
-    const tierList = await this.tierListRepo
-      .findById(tournament.tierListId)
-      .catch(() => undefined);
+    const tierList = await nullIfNotFound(
+      this.tierListRepo.findById(tournament.tierListId),
+    );
 
     const buildSide = (side: TradeLike["side1"]) => {
       const team = teamOf(side);

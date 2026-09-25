@@ -1,3 +1,4 @@
+import { nullIfNotFound } from "@core/pdz-error";
 import { getCurrentPickingTeam } from "@modules/draft/domain/pick-order";
 import { DraftEngineService } from "@modules/draft/draft-engine.service";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Agenda, Job } from "agenda";
+import { Types } from "mongoose";
 import { AGENDA_CLIENT } from "./agenda.constants";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -88,9 +90,9 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
   private async findPopulatedTournament(
     tournamentId: string,
   ): Promise<PopulatedTournament | null> {
-    const tournament = await this.hostedTournamentRepo
-      .findById(tournamentId)
-      .catch(() => null);
+    const tournament = await nullIfNotFound(
+      this.hostedTournamentRepo.findById(tournamentId),
+    );
     if (!tournament) return null;
 
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
@@ -115,9 +117,7 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
-    const draft = await this.draftRepo
-      .findPopulatedById(draftId)
-      .catch(() => null);
+    const draft = await nullIfNotFound(this.draftRepo.findPopulatedById(draftId));
     if (!draft) {
       this.logger.error(`Draft not found for skip-draft-pick job: ${draftId}`);
       return;
@@ -188,16 +188,14 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
   private async handleSkipDraftReminder(job: Job) {
     if (this.isDev()) return;
     const { tournamentId, draftId, skipTime } = job.attrs.data as SkipJobData;
-    const tournament = await this.hostedTournamentRepo
-      .findById(tournamentId)
-      .catch(() => null);
+    const tournament = await nullIfNotFound(
+      this.hostedTournamentRepo.findById(tournamentId),
+    );
     if (!tournament) {
       this.logger.error(`Tournament not found: ${tournamentId}`);
       return;
     }
-    const draft = await this.draftRepo
-      .findPopulatedById(draftId)
-      .catch(() => null);
+    const draft = await nullIfNotFound(this.draftRepo.findPopulatedById(draftId));
     if (!draft) {
       this.logger.error(
         `Draft not found: ${draftId} in league ${tournamentId}`,
@@ -378,7 +376,9 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       let removed = 0;
       for (const [key, jobs] of groups) {
         const [name, draftId] = key.split("|");
-        const draft = await this.draftRepo.findById(draftId).catch(() => null);
+        const draft = Types.ObjectId.isValid(draftId)
+          ? await this.draftRepo.findById(draftId)
+          : null;
         const skipTime = draft?.skipTime;
         const timerRunning =
           !!draft && draft.status === "IN_PROGRESS" && !draft.noTimer && !!skipTime;

@@ -1,5 +1,5 @@
 import { TransactionRunner } from "@core/database/transaction-runner";
-import { PDZError } from "@core/pdz-error";
+import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { generateSlug } from "@core/slug";
 import { S3Service } from "@core/storage/s3.service";
@@ -21,6 +21,10 @@ import {
 } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { getLatestRoster } from "@modules/stage/domain/roster";
+import {
+  captainRosterRow,
+  rosterRow,
+} from "@modules/stage/domain/roster-row";
 import { rosterContext } from "@modules/stage/domain/stage-axis";
 import {
   calculateDivisionPokemonStandings,
@@ -38,7 +42,7 @@ import { TournamentApplicationRepository } from "@modules/tournament-application
 import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
 import { actingCoach, isActiveCoach } from "@modules/tournament/membership";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Types } from "mongoose";
 import {
@@ -76,8 +80,6 @@ import {
 
 @Injectable()
 export class HostedTournamentService {
-  private readonly logger = new Logger(HostedTournamentService.name);
-
   constructor(
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
@@ -108,7 +110,7 @@ export class HostedTournamentService {
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
-    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach || coach.leftAt)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
@@ -181,15 +183,7 @@ export class HostedTournamentService {
       draftFormes?: { id: string; name: string }[];
     } & { record?: unknown })[] = (
       picksHidden ? [] : getLatestRoster(team, roster)
-    ).map((pokemon) => ({
-      id: pokemon.id,
-      name: getName(pokemon.id),
-      cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-      draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-      ...(tournament.tierList.hasPokemon(pokemon.id)
-        ? {}
-        : { missingFromTierList: true as const }),
-    }));
+    ).map((pokemon) => rosterRow(pokemon, tournament.tierList));
 
     if (stages.length === 0)
       return {
@@ -414,7 +408,7 @@ export class HostedTournamentService {
       this.teamRepo.findAllByTournament(tournament.id),
       this.draftRepo.findAllByTournament(tournament.id),
       tournament.tierListId
-        ? this.tierListRepo.findById(tournament.tierListId).catch(() => null)
+        ? nullIfNotFound(this.tierListRepo.findById(tournament.tierListId))
         : null,
     ]);
     const draftById = new Map(
@@ -516,17 +510,7 @@ export class HostedTournamentService {
               pickCount: team.pickLog?.length ?? 0,
               draft: (picksHidden ? [] : getLatestRoster(team, roster)).map(
                 (pokemon) => ({
-                id: pokemon.id,
-                name: getName(pokemon.id),
-                capt: { tera: pokemon.addons?.includes("Tera Captain") },
-                cost: tournament.tierList.getPokemonCost(
-                  pokemon.id,
-                  pokemon.addons,
-                ),
-                draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-                ...(tournament.tierList.hasPokemon(pokemon.id)
-                  ? {}
-                  : { missingFromTierList: true as const }),
+                ...captainRosterRow(pokemon, tournament.tierList),
                 record: pokemonStandings.find(
                   (p) => p.id === pokemon.id && p.teamId === teamId,
                 )?.record,
@@ -1199,7 +1183,7 @@ export class HostedTournamentService {
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
-    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
@@ -1253,7 +1237,7 @@ export class HostedTournamentService {
     if (!Types.ObjectId.isValid(coachId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { coachId });
 
-    const coach = await this.coachRepo.findById(coachId).catch(() => null);
+    const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach)
       throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
 
@@ -1336,7 +1320,7 @@ export class HostedTournamentService {
     const rules = ruleSections.map(
       (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
     );
-    await this.tournamentRepo.updateRules(tournamentSlug, rules);
+    await this.tournamentRepo.updateRules(tournament.id, rules);
     return { message: "Rules updated successfully" };
   }
 

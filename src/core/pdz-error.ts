@@ -27,3 +27,12 @@ export class PDZError extends HttpException {
 export function isPDZError(error: any): error is PDZError {
   return error instanceof PDZError;
 }
+
+export async function nullIfNotFound<T>(lookup: Promise<T>): Promise<T | null> {
+  try {
+    return await lookup;
+  } catch (error) {
+    if (isPDZError(error) && error.getStatus() === 404) return null;
+    throw error;
+  }
+}

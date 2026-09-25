@@ -1152,7 +1152,7 @@ describe("HostedTournamentService removeParticipant", () => {
       delete: jest.fn(track("team.delete", () => undefined)),
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
-      findById: jest
+      findByIdOrNull: jest
         .fn()
         .mockResolvedValue({ _id: COACH_ID, teamId: TEAM_ID, leftAt: undefined }),
       deleteAllByTeam: jest.fn(track("coach.deleteAllByTeam", () => 1)),
@@ -1208,7 +1208,7 @@ describe("HostedTournamentService removeParticipant", () => {
   });
 
   it("refuses a coach who has already left the team", async () => {
-    coachRepo.findById.mockResolvedValue({
+    coachRepo.findByIdOrNull.mockResolvedValue({
       _id: COACH_ID,
       teamId: TEAM_ID,
       leftAt: new Date(),
@@ -1601,7 +1601,7 @@ describe("HostedTournamentService coach details", () => {
   beforeEach(() => {
     const tournament = buildTournament();
     coachRepo = {
-      findById: jest.fn().mockResolvedValue({
+      findByIdOrNull: jest.fn().mockResolvedValue({
         _id: COACH_ID,
         auth0Id: "auth0|coach",
         teamId: TEAM_ID,
@@ -1654,7 +1654,7 @@ describe("HostedTournamentService coach details", () => {
   });
 
   it("throws FORBIDDEN for a coach who has left the team", async () => {
-    coachRepo.findById.mockResolvedValue({
+    coachRepo.findByIdOrNull.mockResolvedValue({
       _id: COACH_ID,
       auth0Id: "auth0|coach",
       teamId: TEAM_ID,

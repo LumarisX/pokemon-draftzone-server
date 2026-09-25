@@ -1,6 +1,6 @@
 import { HttpException } from "@nestjs/common";
 import { ErrorCodes } from "./pdz-error-codes";
-import { isPDZError, PDZError } from "./pdz-error";
+import { isPDZError, nullIfNotFound, PDZError } from "./pdz-error";
 
 describe("PDZError", () => {
   it("extends HttpException and carries the error definition's status", () => {
@@ -62,5 +62,33 @@ describe("isPDZError", () => {
     expect(isPDZError(null)).toBe(false);
     expect(isPDZError(undefined)).toBe(false);
     expect(isPDZError("error")).toBe(false);
+  });
+});
+
+describe("nullIfNotFound", () => {
+  it("passes a found value through", async () => {
+    await expect(nullIfNotFound(Promise.resolve("found"))).resolves.toBe(
+      "found",
+    );
+  });
+
+  it("turns a 404 PDZError into null", async () => {
+    await expect(
+      nullIfNotFound(Promise.reject(new PDZError(ErrorCodes.LEAGUE.NOT_FOUND))),
+    ).resolves.toBeNull();
+  });
+
+  it("rethrows a PDZError that is not a 404", async () => {
+    const forbidden = new PDZError(ErrorCodes.LEAGUE.UNAUTHORIZED);
+
+    await expect(nullIfNotFound(Promise.reject(forbidden))).rejects.toBe(
+      forbidden,
+    );
+  });
+
+  it("rethrows a database failure instead of reporting it as missing", async () => {
+    const outage = new Error("connection reset");
+
+    await expect(nullIfNotFound(Promise.reject(outage))).rejects.toBe(outage);
   });
 });

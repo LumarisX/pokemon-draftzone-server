@@ -4,7 +4,6 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { LeagueMatchupEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { TeamRepository } from "@modules/team/team.repository";
-import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";

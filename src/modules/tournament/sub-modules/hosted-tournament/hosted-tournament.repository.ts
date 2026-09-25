@@ -1,4 +1,4 @@
-import { PDZError } from "@core/pdz-error";
+import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
@@ -83,9 +83,7 @@ export class HostedTournamentRepository {
     leagueSlug: string,
     tournamentSlug: string,
   ): Promise<boolean> {
-    const league = await this.leagueRepo
-      .findBySlug(leagueSlug)
-      .catch(() => null);
+    const league = await nullIfNotFound(this.leagueRepo.findBySlug(leagueSlug));
     if (!league) return false;
     const doc = await this.hostedTournamentModel
       .findOne(
@@ -231,10 +229,13 @@ export class HostedTournamentRepository {
     );
   }
 
-  async updateRules(tournamentSlug: string, rules: TournamentRule[]) {
+  async updateRules(
+    tournamentId: Types.ObjectId | string,
+    rules: TournamentRule[],
+  ) {
     const result = await this.hostedTournamentModel
       .findOneAndUpdate(
-        { slug: tournamentSlug },
+        { _id: { $eq: tournamentId } },
         {
           $set: {
             rules: rules.map((rule) => ({
@@ -246,7 +247,7 @@ export class HostedTournamentRepository {
       )
       .exec();
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentId });
   }
 
   async addStaff(

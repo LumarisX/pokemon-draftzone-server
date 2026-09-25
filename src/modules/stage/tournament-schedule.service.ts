@@ -4,7 +4,6 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
-import { isValidObjectId, Types } from "mongoose";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { buildMatchLabels } from "./domain/match-labels";
 import { scheduleMatchups } from "./domain/schedule-view";

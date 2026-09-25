@@ -17,6 +17,7 @@ import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
+import { captainRosterRow } from "../stage/domain/roster-row";
 import { rosterContext } from "../stage/domain/stage-axis";
 import {
   calculateDivisionPokemonStandings,
@@ -690,16 +691,9 @@ export class DraftService {
         coach: team.primaryCoach.name,
         logo: team.logo,
         picksHidden: picksHidden(team),
-        draft: visibleRoster(team).map((pokemon) => ({
-          id: pokemon.id,
-          name: getName(pokemon.id),
-          capt: { tera: pokemon.addons?.includes("Tera Captain") },
-          cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-          draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-          ...(tournament.tierList.hasPokemon(pokemon.id)
-            ? {}
-            : { missingFromTierList: true as const }),
-        })),
+        draft: visibleRoster(team).map((pokemon) =>
+          captainRosterRow(pokemon, tournament.tierList),
+        ),
         name: team.teamName,
         isCoach: canOnTeam(team, sub, "draft"),
         timezone: team.primaryCoach.timezone,
@@ -743,14 +737,7 @@ export class DraftService {
         logo: team.logo,
         picksHidden: picksHidden(team),
         draft: visibleRoster(team).map((pokemon) => ({
-          id: pokemon.id,
-          name: getName(pokemon.id),
-          capt: { tera: pokemon.addons?.includes("Tera Captain") },
-          cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-          draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-          ...(tournament.tierList.hasPokemon(pokemon.id)
-            ? {}
-            : { missingFromTierList: true as const }),
+          ...captainRosterRow(pokemon, tournament.tierList),
           record: pokemonStandings.find(
             (p) => p.id === pokemon.id && p.teamId === team._id.toString(),
           )?.record,

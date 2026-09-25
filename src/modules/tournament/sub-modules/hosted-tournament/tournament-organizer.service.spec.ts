@@ -103,7 +103,7 @@ describe("TournamentOrganizerService", () => {
       findByIdOrNull: jest.fn(),
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
-      findById: jest.fn(),
+      findByIdOrNull: jest.fn(),
     } as unknown as jest.Mocked<CoachRepository>;
 
     service = new TournamentOrganizerService(
@@ -205,7 +205,7 @@ describe("TournamentOrganizerService", () => {
   describe("addOrganizer", () => {
     it("promotes a coach under their sign-up name, as an organizer", async () => {
       const misty = { ...coach("auth0|misty", "Misty"), teamId: "team-1" };
-      coachRepo.findById.mockResolvedValue(misty);
+      coachRepo.findByIdOrNull.mockResolvedValue(misty);
       teamRepo.findByIdOrNull.mockResolvedValue({
         tournamentId: new Types.ObjectId(tournament.id),
       } as any);
