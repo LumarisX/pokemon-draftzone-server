@@ -42,7 +42,7 @@ import { TournamentApplicationDocument } from "@modules/tournament-application/t
 import { actingCoach, isActiveCoach } from "@modules/tournament/membership";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable, Logger } from "@nestjs/common";
-import { EmbedBuilder } from "discord.js";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Types } from "mongoose";
 import {
   assertPrizeSplit,
@@ -69,12 +69,13 @@ import {
   DROPPED_BEFORE_QUESTION_ID,
   DROPPED_WHY_QUESTION_ID,
   EXPERIENCE_QUESTION_ID,
-  SubmittedAnswer,
   validateAnswers,
 } from "./signup-questions";
-
-const DISCORD_EMBED_FIELDS = 25;
-const BASE_EMBED_FIELDS = 4;
+import {
+  ApplicationSubmittedEvent,
+  CoachSeatedEvent,
+  TOURNAMENT_EVENTS,
+} from "./tournament-events";
 
 @Injectable()
 export class HostedTournamentService {
@@ -93,6 +94,7 @@ export class HostedTournamentService {
     private readonly s3Service: S3Service,
     private readonly uploads: UploadsService,
     private readonly transactions: TransactionRunner,
+    private readonly events: EventEmitter2,
   ) {}
 
   async removeParticipant(
@@ -793,7 +795,11 @@ export class HostedTournamentService {
       answers,
     });
 
-    await this.notifySignup(tournament, dto, answers);
+    this.events.emit(TOURNAMENT_EVENTS.applicationSubmitted, {
+      tournament,
+      signUp: dto,
+      answers,
+    } satisfies ApplicationSubmittedEvent);
 
     return {
       message: "Sign up successful.",
@@ -845,7 +851,7 @@ export class HostedTournamentService {
         status: "approved",
         decidedBy: sub,
       });
-      await this.grantCoachRole(tournament, application.discordName);
+      this.announceCoachSeated(tournament, application.discordName);
       return decided;
     }
 
@@ -886,7 +892,7 @@ export class HostedTournamentService {
       });
     });
 
-    await this.grantCoachRole(tournament, application.discordName);
+    this.announceCoachSeated(tournament, application.discordName);
 
     return decided;
   }
@@ -974,7 +980,7 @@ export class HostedTournamentService {
       return { incoming, updated };
     });
 
-    await this.grantCoachRole(tournament, application.discordName);
+    this.announceCoachSeated(tournament, application.discordName);
 
     return {
       teamId: updated._id.toString(),
@@ -1045,29 +1051,6 @@ export class HostedTournamentService {
         tournamentId: tournament.id,
         maxTeams: tournament.maxTeams,
       });
-  }
-
-  private async grantCoachRole(
-    tournament: HostedTournament,
-    discordName: string | undefined,
-  ) {
-    try {
-      const { guildId, coachRoleId, autoGrantCoachRole } =
-        tournament.discordSettings ?? {};
-      if (autoGrantCoachRole === false) return;
-
-      const handle = discordName?.trim();
-      if (!handle || !guildId || !coachRoleId) return;
-
-      const member = await this.discordService.findMember(guildId, handle);
-      if (member) {
-        await this.discordService.grantRole(guildId, member.id, coachRoleId);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to grant the coach role: ${(error as Error).message}`,
-      );
-    }
   }
 
   async getCoaches(
@@ -1535,60 +1518,13 @@ export class HostedTournamentService {
     return { success: true };
   }
 
-  private async notifySignup(
+  private announceCoachSeated(
     tournament: HostedTournament,
-    dto: SignUpDto,
-    answers: SubmittedAnswer[],
+    discordName: string | undefined,
   ) {
-    try {
-      const { signUpChannelId } = tournament.discordSettings ?? {};
-
-      if (!signUpChannelId) return;
-
-      const totalCoaches = await this.applicationRepo.countByStatuses(
-        tournament.id,
-        ["pending", "waitlisted", "approved"],
-      );
-
-      const clamp = (value: string, limit: number) =>
-        value.length > limit ? `${value.slice(0, limit - 3)}...` : value;
-
-      const labels = new Map(
-        activeQuestions(tournament.signUpQuestions).map((question) => [
-          question.id,
-          question.label,
-        ]),
-      );
-      const answerFields = answers
-        .slice(0, DISCORD_EMBED_FIELDS - BASE_EMBED_FIELDS)
-        .map((answer) => ({
-          name: clamp(labels.get(answer.questionId) ?? answer.questionId, 256),
-          value: clamp(answer.values.join(", ") || "-", 1024),
-          inline: false,
-        }));
-
-      const embed = new EmbedBuilder()
-        .setTitle(clamp(dto.name, 256))
-        .setColor("#2F80ED")
-        .setTimestamp(new Date())
-        .addFields(
-          { name: "Team Name", value: dto.teamName, inline: true },
-          { name: "In-Game Name", value: dto.gameName, inline: true },
-          { name: "Discord Name", value: dto.discordName, inline: true },
-          { name: "Timezone", value: dto.timezone, inline: true },
-          ...answerFields,
-        );
-
-      if (dto.logo && this.s3Service.isEnabled()) {
-        embed.setImage(this.s3Service.getPublicUrl(dto.logo));
-      }
-
-      await this.discordService.sendMessage(signUpChannelId, {
-        content: `There's a new sign up for **${tournament.name}**! Total sign ups: ${totalCoaches}`,
-        embeds: [embed],
-      });
-    } catch (discordError) {
-      this.logger.warn("Failed to send Discord notification", discordError);
-    }
+    this.events.emit(TOURNAMENT_EVENTS.coachSeated, {
+      tournament,
+      discordName,
+    } satisfies CoachSeatedEvent);
   }
 }

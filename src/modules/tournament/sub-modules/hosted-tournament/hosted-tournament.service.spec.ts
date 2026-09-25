@@ -18,6 +18,7 @@ import {
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { UploadFolder } from "@modules/upload/upload-folder.enum";
 import { UploadsService } from "@modules/upload/upload.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Types } from "mongoose";
 import { HostedTournament, TierRequirement } from "./hosted-tournament.domain";
 import { SignUpDto } from "./hosted-tournament.dto";
@@ -81,6 +82,8 @@ const inlineTransactions = {
   run: (work: () => Promise<unknown>) => work(),
 } as unknown as TransactionRunner;
 
+const silentEvents = { emit: jest.fn() } as unknown as EventEmitter2;
+
 function recordTransactions() {
   const log: string[] = [];
   const runner = {
@@ -119,6 +122,7 @@ describe("HostedTournamentService signup", () => {
   let draftRepo: jest.Mocked<DraftRepository>;
   let discordService: jest.Mocked<DiscordService>;
   let uploads: jest.Mocked<UploadsService>;
+  let events: jest.Mocked<EventEmitter2>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
   let transactions: ReturnType<typeof recordTransactions>;
@@ -165,6 +169,7 @@ describe("HostedTournamentService signup", () => {
     uploads = {
       claimUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<UploadsService>;
+    events = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
     service = new HostedTournamentService(
       tournamentRepo,
@@ -179,6 +184,7 @@ describe("HostedTournamentService signup", () => {
       s3Service,
       uploads,
       transactions.runner,
+      events,
     );
   });
 
@@ -519,11 +525,11 @@ describe("HostedTournamentService signup", () => {
         status: "pending",
       });
 
-      expect(discordService.sendMessage).toHaveBeenCalledTimes(1);
-      expect(applicationRepo.countByStatuses).toHaveBeenCalledWith(
-        tournament.id,
-        ["pending", "waitlisted", "approved"],
+      expect(events.emit).toHaveBeenCalledWith(
+        "tournament.application.submitted",
+        expect.objectContaining({ tournament, signUp: dto }),
       );
+      expect(discordService.sendMessage).not.toHaveBeenCalled();
     });
 
     it("claims the logo as the applicant's own team-logo upload", async () => {
@@ -564,15 +570,11 @@ describe("HostedTournamentService signup", () => {
       expect(applicationRepo.create).not.toHaveBeenCalled();
     });
 
-    it("does not grant the coach role at sign-up time", async () => {
+    it("does not seat a coach at sign-up time", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
       applicationRepo.create.mockResolvedValue({
         _id: new Types.ObjectId(),
         status: "pending",
-      } as any);
-      discordService.findMember.mockResolvedValue({
-        id: "member-1",
-        roleIds: [],
       } as any);
 
       await service.createSignup(
@@ -582,7 +584,10 @@ describe("HostedTournamentService signup", () => {
         buildSignUpDto(),
       );
 
-      expect(discordService.grantRole).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalledWith(
+        "tournament.coach.seated",
+        expect.anything(),
+      );
     });
 
     it("rejects a second signup when an undecided application exists", async () => {
@@ -600,36 +605,15 @@ describe("HostedTournamentService signup", () => {
       expect(applicationRepo.create).not.toHaveBeenCalled();
     });
 
-    it("skips Discord side effects when the tournament has no Discord settings", async () => {
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ discordSettings: undefined }),
-      );
+    it("announces nothing when the application isn't recorded", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
-      applicationRepo.create.mockResolvedValue({
-        _id: new Types.ObjectId(),
-        status: "pending",
-      } as any);
+      applicationRepo.create.mockRejectedValue(new Error("write failed"));
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
-      ).resolves.toMatchObject({ message: "Sign up successful." });
+      ).rejects.toThrow("write failed");
 
-      expect(discordService.findMember).not.toHaveBeenCalled();
-      expect(discordService.grantRole).not.toHaveBeenCalled();
-      expect(discordService.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it("doesn't fail the signup when the Discord notification throws", async () => {
-      coachRepo.findByAuth0Id.mockResolvedValue([]);
-      applicationRepo.create.mockResolvedValue({
-        _id: new Types.ObjectId(),
-        status: "pending",
-      } as any);
-      discordService.sendMessage.mockRejectedValue(new Error("rate limited"));
-
-      await expect(
-        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
-      ).resolves.toMatchObject({ message: "Sign up successful." });
+      expect(events.emit).not.toHaveBeenCalled();
     });
   });
 
@@ -712,14 +696,10 @@ describe("HostedTournamentService signup", () => {
       );
     });
 
-    it("grants the Discord coach role on approval, not before", async () => {
+    it("announces the seated coach on approval, without waiting on Discord", async () => {
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
-      discordService.findMember.mockResolvedValue({
-        id: "member-1",
-        roleIds: [],
-      } as any);
 
       await service.decideApplication(
         LEAGUE_KEY,
@@ -729,37 +709,26 @@ describe("HostedTournamentService signup", () => {
         { status: "approved" },
       );
 
-      expect(discordService.grantRole).toHaveBeenCalledWith(
-        "guild-1",
-        "member-1",
-        "role-1",
-      );
+      expect(events.emit).toHaveBeenCalledWith("tournament.coach.seated", {
+        tournament,
+        discordName: "ash#1234",
+      });
+      expect(discordService.findMember).not.toHaveBeenCalled();
+      expect(discordService.grantRole).not.toHaveBeenCalled();
     });
 
-    it("honours autoGrantCoachRole: false", async () => {
-      tournament = buildTournament({
-        staff: [{ sub: SUB, role: "organizer" }],
-        discordSettings: {
-          guildId: "guild-1",
-          coachRoleId: "role-1",
-          signUpChannelId: "channel-1",
-          autoGrantCoachRole: false,
-        },
-      });
-      tournamentRepo.findBySlug.mockResolvedValue(tournament);
+    it("seats nobody when denying", async () => {
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
-      teamRepo.create.mockResolvedValue(buildCreatedTeam());
-      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
       await service.decideApplication(
         LEAGUE_KEY,
         TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
-        { status: "approved" },
+        { status: "denied" },
       );
 
-      expect(discordService.grantRole).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
     });
 
     it("creates no team when denying", async () => {
@@ -888,7 +857,7 @@ describe("HostedTournamentService signup", () => {
       ]);
     });
 
-    it("writes the team, coach and decision in one transaction, then grants the role", async () => {
+    it("writes the team, coach and decision in one transaction, then announces the seat", async () => {
       const { track, log } = transactions;
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
       teamRepo.create.mockImplementation(
@@ -900,13 +869,10 @@ describe("HostedTournamentService signup", () => {
       applicationRepo.decide.mockImplementation(
         track("application.decide", (_id, data) => ({ ...data }) as any),
       );
-      discordService.findMember.mockResolvedValue({
-        id: "member-1",
-        roleIds: [],
-      } as any);
-      discordService.grantRole.mockImplementation(
-        track("discord.grantRole", () => true),
-      );
+      events.emit.mockImplementation((name) => {
+        log.push(String(name));
+        return true;
+      });
 
       await service.decideApplication(
         LEAGUE_KEY,
@@ -922,7 +888,7 @@ describe("HostedTournamentService signup", () => {
         "coach.create",
         "application.decide",
         "commit",
-        "discord.grantRole",
+        "tournament.coach.seated",
       ]);
     });
 
@@ -946,7 +912,7 @@ describe("HostedTournamentService signup", () => {
 
       expect(log).toEqual(["begin", "team.create", "abort"]);
       expect(applicationRepo.decide).not.toHaveBeenCalled();
-      expect(discordService.grantRole).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
     });
 
     it("retires the old coach and seats the new one in one transaction", async () => {
@@ -1215,6 +1181,7 @@ describe("HostedTournamentService removeParticipant", () => {
       {} as S3Service,
       {} as UploadsService,
       transactions.runner,
+      silentEvents,
     );
   });
 
@@ -1313,6 +1280,7 @@ describe("HostedTournamentService settings", () => {
       {} as S3Service,
       uploads,
       inlineTransactions,
+      silentEvents,
     );
   });
 
@@ -1618,6 +1586,7 @@ describe("HostedTournamentService coach details", () => {
       {} as S3Service,
       {} as UploadsService,
       inlineTransactions,
+      silentEvents,
     );
   });
 
@@ -1768,6 +1737,7 @@ describe("HostedTournamentService updateTeam", () => {
       {} as S3Service,
       uploads,
       inlineTransactions,
+      silentEvents,
     );
   });
 
@@ -1911,6 +1881,7 @@ describe("HostedTournamentService assignTeams", () => {
       {} as S3Service,
       {} as UploadsService,
       inlineTransactions,
+      silentEvents,
     );
   });
 
@@ -2121,6 +2092,7 @@ describe("HostedTournamentService teams", () => {
       {} as S3Service,
       {} as UploadsService,
       inlineTransactions,
+      silentEvents,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
@@ -2499,6 +2471,7 @@ describe("HostedTournamentService getInfo", () => {
       {} as S3Service,
       {} as UploadsService,
       inlineTransactions,
+      silentEvents,
     );
 
     teamRepo.findManyByIds.mockImplementation(async () => [

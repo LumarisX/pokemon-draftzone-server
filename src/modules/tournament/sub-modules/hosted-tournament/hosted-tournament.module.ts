@@ -20,6 +20,7 @@ import {
 } from "./organizer-invite.schema";
 import { TournamentDiscordController } from "./tournament-discord.controller";
 import { TournamentDiscordService } from "./tournament-discord.service";
+import { TournamentNotificationsService } from "./tournament-notifications.service";
 import { TournamentOrganizerController } from "./tournament-organizer.controller";
 import { TournamentOpenGuard } from "./tournament-open.guard";
 import { TournamentOrganizerService } from "./tournament-organizer.service";
@@ -49,6 +50,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     HostedTournamentService,
     TournamentOrganizerService,
     TournamentDiscordService,
+    TournamentNotificationsService,
     OrganizerInviteRepository,
     { provide: APP_GUARD, useClass: TournamentOpenGuard },
   ],
