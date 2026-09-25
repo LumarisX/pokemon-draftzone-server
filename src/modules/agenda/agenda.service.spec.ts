@@ -1,10 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import type { Agenda } from "agenda";
 
-// The real `agenda` package is ESM-only and breaks Jest's CJS transform.
-// AgendaService never constructs an Agenda itself (one is injected), but
-// `@Inject(AGENDA_CLIENT) ...: Agenda` still forces a runtime import via
-// emitDecoratorMetadata, so the package must be mocked before loading the SUT.
 jest.mock("agenda", () => ({}));
 
 import { AgendaService } from "./agenda.service";
@@ -16,10 +12,6 @@ type StoredJob = {
   data: { draftId?: unknown; tournamentId?: string; skipTime?: Date };
 };
 
-/**
- * Minimal in-memory stand-in for the agenda job collection, enough to assert
- * the "one job per draft" invariant across create/unique/cancel/queryJobs.
- */
 function buildAgendaStub(stored: StoredJob[] = []) {
   let nextId = stored.length + 1;
 
@@ -53,7 +45,6 @@ function buildAgendaStub(stored: StoredJob[] = []) {
           return builder;
         },
         save: async () => {
-          // Mirrors the backend's upsert on (name, data.draftId).
           const existing = stored.find(
             (job) =>
               job.name === name && String(job.data.draftId) === String(uniqueDraftId),
@@ -106,16 +97,15 @@ describe("AgendaService.onModuleInit", () => {
     expect(agenda.every).not.toHaveBeenCalled();
   });
 
-  it("TEMPORARILY DISABLED: does not schedule cleanup-file-uploads even outside development", async () => {
-    // confirmUpload() isn't wired into any module that persists upload keys
-    // yet, so this cron would delete every upload (not just orphans) if it
-    // ran. Re-enable in agenda.service.ts once that's fixed, and update this
-    // test to expect the schedule call.
+  it("schedules cleanup-file-uploads daily outside development", async () => {
     const { service, agenda } = buildService("production");
 
     await service.onModuleInit();
 
-    expect(agenda.every).not.toHaveBeenCalled();
+    expect(agenda.every).toHaveBeenCalledWith(
+      "0 3 * * *",
+      "cleanup-file-uploads",
+    );
   });
 
   it("still defines the cleanup-file-uploads job handler regardless of environment", async () => {
@@ -188,7 +178,6 @@ describe("AgendaService skip-job scheduling", () => {
         _id: "legacy-1",
         name: "skip-draft-pick",
         nextRunAt: new Date(Date.now() + 10_000),
-        // Old jobs stored the raw ObjectId rather than a string.
         data: { draftId: { toString: () => "draft-1" } },
       },
       {
@@ -214,7 +203,6 @@ describe("AgendaService skip-job scheduling", () => {
     await service.resumeSkipPick(tournament, draft);
     expect(stored.length).toBeGreaterThan(0);
 
-    // What draft control does on pause: bank the time, clear the deadline.
     draft.status = "PAUSED";
     draft.skipTime = undefined;
     await service.cancelSkipPick(draft);

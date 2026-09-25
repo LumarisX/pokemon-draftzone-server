@@ -1,9 +1,9 @@
 const mockSend = jest.fn();
 const mockGetSignedUrl = jest.fn();
+const mockCreatePresignedPost = jest.fn();
 
 jest.mock("@aws-sdk/client-s3", () => ({
   S3Client: jest.fn().mockImplementation((config: any) => ({ send: mockSend, config })),
-  PutObjectCommand: jest.fn((input: any) => ({ commandType: "PutObjectCommand", input })),
   GetObjectCommand: jest.fn((input: any) => ({ commandType: "GetObjectCommand", input })),
   HeadObjectCommand: jest.fn((input: any) => ({ commandType: "HeadObjectCommand", input })),
   DeleteObjectCommand: jest.fn((input: any) => ({ commandType: "DeleteObjectCommand", input })),
@@ -12,6 +12,10 @@ jest.mock("@aws-sdk/client-s3", () => ({
 
 jest.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: mockGetSignedUrl,
+}));
+
+jest.mock("@aws-sdk/s3-presigned-post", () => ({
+  createPresignedPost: mockCreatePresignedPost,
 }));
 
 jest.mock("crypto", () => ({
@@ -117,12 +121,12 @@ describe("S3Service.buildKey", () => {
 });
 
 describe("S3Service guarded methods (not configured)", () => {
-  it("throws FILE.SERVICE_UNAVAILABLE from getPresignedUploadUrl when S3 isn't configured", async () => {
+  it("throws FILE.SERVICE_UNAVAILABLE from getPresignedUploadPost when S3 isn't configured", async () => {
     const service = new S3Service(buildConfigService({}));
     service.onModuleInit();
 
     await expect(
-      service.getPresignedUploadUrl("key", "image/png"),
+      service.getPresignedUploadPost("key", "image/png", 1024),
     ).rejects.toMatchObject({ code: "FILE-001" });
   });
 
@@ -144,25 +148,40 @@ describe("S3Service guarded methods (not configured)", () => {
   });
 });
 
-describe("S3Service.getPresignedUploadUrl / getPresignedDownloadUrl", () => {
+describe("S3Service.getPresignedUploadPost / getPresignedDownloadUrl", () => {
   beforeEach(() => {
     mockGetSignedUrl.mockResolvedValue("https://s3.example.com/presigned-url");
+    mockCreatePresignedPost.mockResolvedValue({
+      url: "https://my-bucket.s3.amazonaws.com/",
+      fields: { key: "team-logos/a.png", Policy: "policy" },
+    });
   });
 
-  it("signs a PutObjectCommand with the given content type and expiry", async () => {
+  it("signs a POST policy that caps the size and pins the content type", async () => {
     const service = buildConfiguredService();
 
-    const url = await service.getPresignedUploadUrl("team-logos/a.png", "image/png", 60);
+    const post = await service.getPresignedUploadPost(
+      "team-logos/a.png",
+      "image/png",
+      5000,
+      60,
+    );
 
-    expect(url).toBe("https://s3.example.com/presigned-url");
-    const [, command, options] = mockGetSignedUrl.mock.calls[0];
-    expect(command.commandType).toBe("PutObjectCommand");
-    expect(command.input).toEqual({
+    expect(post).toEqual({
+      url: "https://my-bucket.s3.amazonaws.com/",
+      fields: { key: "team-logos/a.png", Policy: "policy" },
+    });
+    const [, options] = mockCreatePresignedPost.mock.calls[0];
+    expect(options).toEqual({
       Bucket: "my-bucket",
       Key: "team-logos/a.png",
-      ContentType: "image/png",
+      Fields: { "Content-Type": "image/png" },
+      Conditions: [
+        ["content-length-range", 1, 5000],
+        ["eq", "$Content-Type", "image/png"],
+      ],
+      Expires: 60,
     });
-    expect(options.expiresIn).toBe(60);
   });
 
   it("signs a GetObjectCommand for downloads", async () => {

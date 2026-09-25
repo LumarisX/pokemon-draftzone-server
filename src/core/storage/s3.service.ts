@@ -5,9 +5,9 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -19,15 +19,14 @@ export type S3ObjectMetadata = {
   contentType?: string;
 };
 
+export type PresignedPost = {
+  url: string;
+  fields: Record<string, string>;
+};
+
 const DEFAULT_UPLOAD_EXPIRY_SECONDS = 120;
 const DEFAULT_DOWNLOAD_EXPIRY_SECONDS = 300;
 
-/**
- * Thin, entity-agnostic wrapper around S3 for presigned uploads/downloads.
- * Any feature module can inject this directly - it is provided globally by
- * StorageModule. Stays disabled (rather than throwing on boot) when AWS env
- * vars are absent so local/dev/test environments don't require S3 access.
- */
 @Injectable()
 export class S3Service implements OnModuleInit {
   private readonly logger = new Logger(S3Service.name);
@@ -57,8 +56,6 @@ export class S3Service implements OnModuleInit {
       return;
     }
 
-    // Explicit keys are used for local dev; in deployed environments the
-    // default credential provider chain (EC2/ECS IAM role) is preferred.
     this.client =
       accessKeyId && secretAccessKey
         ? new S3Client({ region, credentials: { accessKeyId, secretAccessKey } })
@@ -86,11 +83,6 @@ export class S3Service implements OnModuleInit {
     return { client: this.client, bucket: this.bucket };
   }
 
-  /**
-   * Builds a collision-resistant key under `folder`. The random prefix
-   * means re-uploading a file with the same name never clobbers a
-   * previous object, and keys can't be guessed from the filename alone.
-   */
   buildKey(folder: string, fileName: string): string {
     const sanitized = fileName
       .trim()
@@ -100,30 +92,25 @@ export class S3Service implements OnModuleInit {
     return `${folder}/${randomUUID()}-${sanitized}`;
   }
 
-  /** Presigned URL for a direct client -> S3 PUT upload. */
-  async getPresignedUploadUrl(
+  async getPresignedUploadPost(
     key: string,
     contentType: string,
+    maxBytes: number,
     expiresInSeconds: number = DEFAULT_UPLOAD_EXPIRY_SECONDS,
-  ): Promise<string> {
+  ): Promise<PresignedPost> {
     const { client, bucket } = this.assertConfigured();
-    const command = new PutObjectCommand({
+    return createPresignedPost(client, {
       Bucket: bucket,
       Key: key,
-      ContentType: contentType,
-    });
-    // Signing Content-Type forces the upload to use the same type that was
-    // validated when the URL was requested. Max file size can't be enforced
-    // on a presigned PUT - validate size with headObject() after upload, or
-    // switch to a presigned POST policy if hard server-side enforcement
-    // is required.
-    return getSignedUrl(client, command, {
-      expiresIn: expiresInSeconds,
-      signableHeaders: new Set(["content-type"]),
+      Fields: { "Content-Type": contentType },
+      Conditions: [
+        ["content-length-range", 1, maxBytes],
+        ["eq", "$Content-Type", contentType],
+      ],
+      Expires: expiresInSeconds,
     });
   }
 
-  /** Presigned URL for a direct client <- S3 GET, e.g. private (non-public-bucket) downloads. */
   async getPresignedDownloadUrl(
     key: string,
     expiresInSeconds: number = DEFAULT_DOWNLOAD_EXPIRY_SECONDS,
@@ -160,7 +147,6 @@ export class S3Service implements OnModuleInit {
     await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
-  /** Best-effort batch delete (e.g. cleaning up a replaced logo + its old key). */
   async deleteObjects(keys: string[]): Promise<void> {
     if (keys.length === 0) return;
     const { client, bucket } = this.assertConfigured();
@@ -172,7 +158,6 @@ export class S3Service implements OnModuleInit {
     );
   }
 
-  /** Public URL for a key, preferring a CDN base URL (e.g. CloudFront) when configured. */
   getPublicUrl(key: string): string {
     const { bucket } = this.assertConfigured();
     if (this.publicBaseUrl) {

@@ -20,7 +20,13 @@ describe("UploadsController", () => {
       fileName: "logo.png",
       contentType: "image/png",
     };
-    const presigned = { url: "https://s3.example.com", key: "team-logos/logo.png", expiresIn: 120 };
+    const presigned = {
+      url: "https://s3.example.com",
+      fields: { key: "team-logos/logo.png" },
+      key: "team-logos/logo.png",
+      expiresIn: 120,
+      maxBytes: 1024,
+    };
     service.createPresignedUpload.mockResolvedValue(presigned);
 
     const result = await controller.createPresignedUrl("auth0|user-1", body);

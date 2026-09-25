@@ -6,7 +6,7 @@ export type FileUploadDocument = HydratedDocument<FileUploadEntity>;
 
 @Schema({ timestamps: true, collection: "fileuploads" })
 export class FileUploadEntity {
-  @Prop({ required: true })
+  @Prop({ required: true, index: true })
   key!: string;
 
   @Prop({ required: true })
@@ -22,8 +22,6 @@ export class FileUploadEntity {
   @Prop({ required: true })
   fileName!: string;
 
-  // Unknown until the client finishes uploading directly to S3 - the
-  // presigned-URL request that creates this record happens beforehand.
   @Prop()
   fileSize?: number;
 
@@ -49,8 +47,12 @@ export class FileUploadEntity {
   @Prop()
   deletedAt?: Date;
 
+  @Prop()
+  claimDeadline?: Date;
+
   createdAt!: Date;
 }
 
 export const FileUploadSchema = SchemaFactory.createForClass(FileUploadEntity);
 FileUploadSchema.index({ uploadedBy: 1, createdAt: -1 });
+FileUploadSchema.index({ status: 1, claimDeadline: 1 });

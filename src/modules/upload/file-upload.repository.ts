@@ -10,6 +10,7 @@ export type CreateFileUploadInput = {
   uploadType: UploadFolder;
   fileName: string;
   contentType: string;
+  claimDeadline: Date;
 };
 
 @Injectable()
@@ -25,15 +26,30 @@ export class FileUploadRepository {
     return doc;
   }
 
-  async markConfirmed(key: string): Promise<void> {
-    await this.fileUploadModel
-      .updateOne({ key, status: "pending" }, { $set: { status: "confirmed" } })
-      .exec();
+  findByKey(key: string): Promise<FileUploadDocument | null> {
+    return this.fileUploadModel.findOne({ key: { $eq: key } }).exec();
   }
 
-  findOrphaned(olderThan: Date): Promise<FileUploadDocument[]> {
+  async markConfirmed(
+    key: string,
+    details: { fileSize?: number; relatedEntityId?: string },
+  ): Promise<boolean> {
+    const set: Record<string, unknown> = { status: "confirmed" };
+    if (details.fileSize !== undefined) set["fileSize"] = details.fileSize;
+    if (details.relatedEntityId !== undefined)
+      set["relatedEntityId"] = details.relatedEntityId;
+    const result = await this.fileUploadModel
+      .updateOne(
+        { key: { $eq: key }, status: { $in: ["pending", "confirmed"] } },
+        { $set: set, $unset: { claimDeadline: 1 } },
+      )
+      .exec();
+    return result.matchedCount > 0;
+  }
+
+  findOrphaned(now: Date): Promise<FileUploadDocument[]> {
     return this.fileUploadModel
-      .find({ status: "pending", createdAt: { $lt: olderThan } })
+      .find({ status: "pending", claimDeadline: { $lt: now } })
       .exec();
   }
 

@@ -16,6 +16,8 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { UploadFolder } from "@modules/upload/upload-folder.enum";
+import { UploadsService } from "@modules/upload/upload.service";
 import { Types } from "mongoose";
 import { HostedTournament, TierRequirement } from "./hosted-tournament.domain";
 import { SignUpDto } from "./hosted-tournament.dto";
@@ -116,6 +118,7 @@ describe("HostedTournamentService signup", () => {
   let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
   let draftRepo: jest.Mocked<DraftRepository>;
   let discordService: jest.Mocked<DiscordService>;
+  let uploads: jest.Mocked<UploadsService>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
   let transactions: ReturnType<typeof recordTransactions>;
@@ -159,6 +162,9 @@ describe("HostedTournamentService signup", () => {
       headObject: jest.fn(),
       getPublicUrl: jest.fn(),
     } as unknown as jest.Mocked<S3Service>;
+    uploads = {
+      claimUpload: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UploadsService>;
 
     service = new HostedTournamentService(
       tournamentRepo,
@@ -171,6 +177,7 @@ describe("HostedTournamentService signup", () => {
       {} as LeagueMatchupRepository,
       discordService,
       s3Service,
+      uploads,
       transactions.runner,
     );
   });
@@ -517,6 +524,44 @@ describe("HostedTournamentService signup", () => {
         tournament.id,
         ["pending", "waitlisted", "approved"],
       );
+    });
+
+    it("claims the logo as the applicant's own team-logo upload", async () => {
+      coachRepo.findByAuth0Id.mockResolvedValue([]);
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto({ logo: "team-logos/mine.png" }),
+      );
+
+      expect(uploads.claimUpload).toHaveBeenCalledWith("team-logos/mine.png", {
+        uploadedBy: SUB,
+        folder: UploadFolder.TEAM_LOGOS,
+        relatedEntityId: tournament.id,
+      });
+    });
+
+    it("refuses a logo the applicant can't claim and records nothing", async () => {
+      coachRepo.findByAuth0Id.mockResolvedValue([]);
+      uploads.claimUpload.mockRejectedValue(
+        Object.assign(new Error("File not found"), { code: "FILE-003" }),
+      );
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto({ logo: "team-logos/someone-elses.png" }),
+        ),
+      ).rejects.toMatchObject({ code: "FILE-003" });
+      expect(applicationRepo.create).not.toHaveBeenCalled();
     });
 
     it("does not grant the coach role at sign-up time", async () => {
@@ -1168,6 +1213,7 @@ describe("HostedTournamentService removeParticipant", () => {
       matchupRepo,
       {} as DiscordService,
       {} as S3Service,
+      {} as UploadsService,
       transactions.runner,
     );
   });
@@ -1233,11 +1279,12 @@ describe("HostedTournamentService settings", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
   let discordService: jest.Mocked<DiscordService>;
+  let uploads: jest.Mocked<UploadsService>;
   let service: HostedTournamentService;
   let tournament: HostedTournament;
 
   beforeEach(() => {
-    tournament = buildTournament();
+    tournament = buildTournament({ logo: "tournament-logos/current.png" });
 
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(tournament),
@@ -1249,6 +1296,9 @@ describe("HostedTournamentService settings", () => {
     discordService = {
       findTargetProblems: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DiscordService>;
+    uploads = {
+      claimUpload: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UploadsService>;
 
     service = new HostedTournamentService(
       tournamentRepo,
@@ -1261,8 +1311,63 @@ describe("HostedTournamentService settings", () => {
       {} as LeagueMatchupRepository,
       discordService,
       {} as S3Service,
+      uploads,
       inlineTransactions,
     );
+  });
+
+  describe("logo", () => {
+    it("claims a new logo as the organizer's own tournament-logo upload", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        logo: "tournament-logos/new.png",
+      });
+
+      expect(uploads.claimUpload).toHaveBeenCalledWith(
+        "tournament-logos/new.png",
+        {
+          uploadedBy: "auth0|owner",
+          folder: UploadFolder.TOURNAMENT_LOGOS,
+          relatedEntityId: tournament.id,
+        },
+      );
+      expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
+        tournament.id,
+        expect.objectContaining({ logo: "tournament-logos/new.png" }),
+      );
+    });
+
+    it("does not re-claim the logo the tournament already has", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        logo: "tournament-logos/current.png",
+      });
+
+      expect(uploads.claimUpload).not.toHaveBeenCalled();
+    });
+
+    it("clears the logo without claiming anything", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        logo: null,
+      });
+
+      expect(uploads.claimUpload).not.toHaveBeenCalled();
+      expect(tournamentRepo.updateSettings).toHaveBeenCalledWith(
+        tournament.id,
+        expect.objectContaining({ logo: null }),
+      );
+    });
+
+    it("saves nothing when the logo can't be claimed", async () => {
+      uploads.claimUpload.mockRejectedValue(
+        Object.assign(new Error("File not found"), { code: "FILE-003" }),
+      );
+
+      await expect(
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+          logo: "team-logos/not-mine.png",
+        }),
+      ).rejects.toMatchObject({ code: "FILE-003" });
+      expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
+    });
   });
 
   describe("getSettings", () => {
@@ -1474,10 +1579,14 @@ describe("HostedTournamentService coach details", () => {
   let coachRepo: jest.Mocked<CoachRepository>;
   let applicationRepo: jest.Mocked<TournamentApplicationRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
+  let uploads: jest.Mocked<UploadsService>;
   let service: HostedTournamentService;
 
   beforeEach(() => {
     const tournament = buildTournament();
+    uploads = {
+      claimUpload: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UploadsService>;
     coachRepo = {
       findById: jest.fn().mockResolvedValue({
         _id: COACH_ID,
@@ -1511,8 +1620,68 @@ describe("HostedTournamentService coach details", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      uploads,
       inlineTransactions,
     );
+  });
+
+  describe("setCoachLogo", () => {
+    it.each([
+      ["the coach", "auth0|coach"],
+      ["an organizer", "auth0|owner"],
+    ])("claims the key as %s's own team-logo upload", async (_, sub) => {
+      await service.setCoachLogo(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        sub,
+        { fileKey: "team-logos/new.png" },
+      );
+
+      expect(uploads.claimUpload).toHaveBeenCalledWith("team-logos/new.png", {
+        uploadedBy: sub,
+        folder: UploadFolder.TEAM_LOGOS,
+        relatedEntityId: TEAM_ID.toString(),
+      });
+      expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+        logo: "team-logos/new.png",
+      });
+    });
+
+    it("does not re-claim the team's current logo", async () => {
+      teamRepo.findByIdOrNull.mockResolvedValue({
+        _id: TEAM_ID,
+        tournamentId: { toString: () => "tournament-1" },
+        logo: "team-logos/current.png",
+      } as never);
+
+      await service.setCoachLogo(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|coach",
+        { fileKey: "team-logos/current.png" },
+      );
+
+      expect(uploads.claimUpload).not.toHaveBeenCalled();
+    });
+
+    it("leaves the logo alone when the key can't be claimed", async () => {
+      uploads.claimUpload.mockRejectedValue(
+        Object.assign(new Error("File not found"), { code: "FILE-003" }),
+      );
+
+      await expect(
+        service.setCoachLogo(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          COACH_ID.toString(),
+          "auth0|coach",
+          { fileKey: "team-logos/someone-elses.png" },
+        ),
+      ).rejects.toMatchObject({ code: "FILE-003" });
+      expect(teamRepo.update).not.toHaveBeenCalled();
+    });
   });
 
   it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
@@ -1671,6 +1840,7 @@ describe("HostedTournamentService assignCoaches", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      {} as UploadsService,
       inlineTransactions,
     );
   });
@@ -1869,6 +2039,7 @@ describe("HostedTournamentService teams", () => {
       matchupRepo,
       {} as DiscordService,
       {} as S3Service,
+      {} as UploadsService,
       inlineTransactions,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
@@ -2246,6 +2417,7 @@ describe("HostedTournamentService getInfo", () => {
       {} as LeagueMatchupRepository,
       {} as DiscordService,
       {} as S3Service,
+      {} as UploadsService,
       inlineTransactions,
     );
 

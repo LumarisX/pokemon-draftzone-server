@@ -3,6 +3,8 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { generateSlug } from "@core/slug";
 import { S3Service } from "@core/storage/s3.service";
+import { UploadFolder } from "@modules/upload/upload-folder.enum";
+import { UploadsService } from "@modules/upload/upload.service";
 import { isOwnedBy } from "@modules/coach/coach.domain";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { getName } from "@modules/data/domain/pokedex";
@@ -89,6 +91,7 @@ export class HostedTournamentService {
     private readonly matchupRepo: LeagueMatchupRepository,
     private readonly discordService: DiscordService,
     private readonly s3Service: S3Service,
+    private readonly uploads: UploadsService,
     private readonly transactions: TransactionRunner,
   ) {}
 
@@ -760,10 +763,12 @@ export class HostedTournamentService {
         tournamentId: tournament.id,
       });
 
-    if (dto.logo && this.s3Service.isEnabled()) {
-      const { exists } = await this.s3Service.headObject(dto.logo);
-      if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
-    }
+    if (dto.logo)
+      await this.uploads.claimUpload(dto.logo, {
+        uploadedBy: sub,
+        folder: UploadFolder.TEAM_LOGOS,
+        relatedEntityId: tournament.id,
+      });
 
     const answers = validateAnswers(
       tournament.signUpQuestions,
@@ -1354,10 +1359,12 @@ export class HostedTournamentService {
       sub,
     );
 
-    if (this.s3Service.isEnabled()) {
-      const { exists } = await this.s3Service.headObject(dto.fileKey);
-      if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
-    }
+    if (dto.fileKey !== team.logo)
+      await this.uploads.claimUpload(dto.fileKey, {
+        uploadedBy: sub,
+        folder: UploadFolder.TEAM_LOGOS,
+        relatedEntityId: team._id.toString(),
+      });
 
     await this.teamRepo.update(team._id, { logo: dto.fileKey });
 
@@ -1453,10 +1460,12 @@ export class HostedTournamentService {
     if (dto.seasonEnd !== undefined) update["seasonEnd"] = dto.seasonEnd;
     if (dto.discord !== undefined) update["discord"] = dto.discord;
     if (dto.logo !== undefined) {
-      if (dto.logo && this.s3Service.isEnabled()) {
-        const { exists } = await this.s3Service.headObject(dto.logo);
-        if (!exists) throw new PDZError(ErrorCodes.FILE.NOT_FOUND);
-      }
+      if (dto.logo && dto.logo !== tournament.logo)
+        await this.uploads.claimUpload(dto.logo, {
+          uploadedBy: sub,
+          folder: UploadFolder.TOURNAMENT_LOGOS,
+          relatedEntityId: tournament.id,
+        });
       update["logo"] = dto.logo;
     }
     if (dto.discordSettings !== undefined) {

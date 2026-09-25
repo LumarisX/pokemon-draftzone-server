@@ -508,6 +508,11 @@ export const ErrorCodes = {
       status: 404,
       message: "File not found",
     },
+    TOO_LARGE: {
+      code: "FILE-004",
+      status: 400,
+      message: "That file is too large",
+    },
   },
   TOURNAMENT: {
     INVALID_SETTINGS: {
