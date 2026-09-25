@@ -1,5 +1,4 @@
 import { AgendaModule } from "@modules/agenda/agenda.module";
-import { AuthModule } from "@modules/auth/auth.module";
 import { CoachModule } from "@modules/coach/coach.module";
 import { DiscordModule } from "@modules/discord/discord.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
@@ -12,13 +11,13 @@ import { DraftEngineService } from "./draft-engine.service";
 import { DraftEventsService } from "./draft-events.service";
 import { DraftController } from "./draft.controller";
 import { DraftPoolsController } from "./draft-pools.controller";
-import { DraftGateway } from "./draft.gateway";
+import { DraftStreamController } from "./draft-stream.controller";
+import { DraftStreamService } from "./draft-stream.service";
 import { DraftService } from "./draft.service";
 
 @Module({
   imports: [
     DraftCoreModule,
-    AuthModule,
     CoachModule,
     HostedTournamentCoreModule,
     TeamModule,
@@ -27,8 +26,13 @@ import { DraftService } from "./draft.service";
     DiscordModule,
     forwardRef(() => AgendaModule),
   ],
-  controllers: [DraftPoolsController, DraftController],
-  providers: [DraftService, DraftEngineService, DraftEventsService, DraftGateway],
+  controllers: [DraftPoolsController, DraftController, DraftStreamController],
+  providers: [
+    DraftService,
+    DraftEngineService,
+    DraftEventsService,
+    DraftStreamService,
+  ],
   exports: [DraftCoreModule, DraftEngineService],
 })
 export class DraftModule {}
