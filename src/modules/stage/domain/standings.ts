@@ -15,7 +15,7 @@ import {
   StandingsRules,
   StoredStandingsRules,
 } from "./scoring";
-import { AxisTournament, RoundLike, stageRounds } from "./stage-axis";
+import { AxisTournament, RoundLike } from "./stage-axis";
 
 export type PopulatedStageMatchup = LeagueMatchupDocument & {
   side1: { team?: PopulatedTeam };
@@ -268,7 +268,7 @@ export async function calculateDivisionTeamStandings(
 ) {
   const rules = resolveStandingsRules(tournament);
   const diffMode = tournament.diffMode;
-  const rounds = stageRounds(stage, tournament);
+  const rounds = tournament.rounds ?? [];
   const standings = new Map<string, TeamStanding>();
   for (const team of stage.teams) {
     const standing = createTeamStanding(team, rounds.length);

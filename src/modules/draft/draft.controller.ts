@@ -111,14 +111,12 @@ export class DraftController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("draftSlug") draftSlug: string,
     @User() sub: string,
-    @Query("stageSlug") stageSlug?: string,
   ) {
     return this.draftService.getPokemonList(
       leagueSlug,
       tournamentSlug,
       draftSlug,
       sub,
-      stageSlug,
     );
   }
 

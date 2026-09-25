@@ -17,7 +17,7 @@ import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
-import { rosterContextForTournament } from "../stage/domain/stage-axis";
+import { rosterContext } from "../stage/domain/stage-axis";
 import {
   calculateDivisionPokemonStandings,
   calculateDivisionTeamStandings,
@@ -237,7 +237,7 @@ export class DraftService {
     );
 
     const ruleset = tournament.tierList.ruleset;
-    const roster = rosterContextForTournament(tournament);
+    const roster = rosterContext(tournament);
     const visible = draft.teams
       .map((team: PopulatedTeam, index) => ({ team, index }))
       .filter(({ team }) => canSeeTeamPicks(tournament, draft, team, sub));
@@ -677,7 +677,7 @@ export class DraftService {
       (team) => team.status === "approved",
     );
 
-    const roster = rosterContextForTournament(tournament, stageDoc);
+    const roster = rosterContext(tournament);
 
     const picksHidden = (team: PopulatedTeam) =>
       !canSeeTeamPicks(tournament, draft, team, sub);
@@ -771,7 +771,6 @@ export class DraftService {
     tournamentSlug: string,
     draftSlug: string,
     sub: string,
-    stageSlug?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
       leagueSlug,
@@ -780,9 +779,7 @@ export class DraftService {
     );
     assertCan(tournament, sub, "manageDrafts");
 
-    const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);
-    const stage = stageDoc ? await this.composeStageTeams(stageDoc) : undefined;
-
+    const roster = rosterContext(tournament);
     const rawTierList = tournament.tierList;
 
     const drafted = draft.teams
@@ -792,10 +789,7 @@ export class DraftService {
           coachName: team.primaryCoach.name,
           id: team._id.toString(),
         },
-        roster: getLatestRoster(
-          team,
-          rosterContextForTournament(tournament, stage),
-        ).map((pokemon) => {
+        roster: getLatestRoster(team, roster).map((pokemon) => {
           const pokemonTier = rawTierList.pokemon.get(pokemon.id);
           const tier = rawTierList.getPokemonTier(pokemon.id);
           return {
@@ -832,12 +826,8 @@ export class DraftService {
     const groups = [undrafted, ...drafted];
     return {
       groups,
-      ...(stage
-        ? {
-            stages: stage.rounds.map((r) => r.name),
-            currentStage: stage.currentRoundIndex,
-          }
-        : {}),
+      stages: tournament.rounds.map((round) => round.name),
+      currentStage: tournament.currentRoundIndex,
     };
   }
 }

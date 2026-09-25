@@ -12,11 +12,7 @@ import { isValidObjectId, Types } from "mongoose";
 import { BracketSlotInput } from "./domain/bracket";
 import { summarizeSeeding } from "./domain/bracket-view";
 import { resolveSeedGroups } from "./domain/seeding";
-import {
-  stageTeamIds,
-  tradeRoundIndex,
-  usesTournamentAxis,
-} from "./domain/stage-axis";
+import { tradeRoundIndex } from "./domain/stage-axis";
 import { validateTournamentBracket } from "./domain/tournament-bracket";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { StageRepository } from "./stage.repository";
@@ -58,7 +54,7 @@ export class TournamentBracketService {
     ).filter((stage) => stage.public !== false || canSeeHidden);
 
     const teamIdsByStage = new Map(
-      stages.map((stage) => [stage._id.toString(), stageTeamIds(stage)]),
+      stages.map((stage) => [stage._id.toString(), stage.teamIds]),
     );
     const allTeamIds = [
       ...new Set(
@@ -472,13 +468,13 @@ export class TournamentBracketService {
   ): Promise<{ seedOrder: string[]; newSeedingLog: StageSeedingEntity[] }> {
     const existingSeedOrder =
       existing && drawIsLive
-        ? stageTeamIds(existing).map((id) => id.toString())
+        ? existing.teamIds.map((id) => id.toString())
         : [];
 
     if (!stageDto.seedGroups?.length) {
       if (existingSeedOrder.length === 0 && existing)
         return {
-          seedOrder: stageTeamIds(existing).map((id) => id.toString()),
+          seedOrder: existing.teamIds.map((id) => id.toString()),
           newSeedingLog: [],
         };
       return { seedOrder: existingSeedOrder, newSeedingLog: [] };
@@ -545,7 +541,6 @@ export class TournamentBracketService {
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSchedule");
-    this.assertTournamentAxis(tournament);
 
     if (
       !Number.isInteger(currentRoundIndex) ||
@@ -569,12 +564,5 @@ export class TournamentBracketService {
           : `Now on ${tournament.rounds[currentRoundIndex].name}.`,
       currentRoundIndex,
     };
-  }
-
-  assertTournamentAxis(tournament: HostedTournament) {
-    if (!usesTournamentAxis(tournament))
-      throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, {
-        tournamentId: tournament.id,
-      });
   }
 }

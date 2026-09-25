@@ -15,13 +15,6 @@ import {
 import { MakeTradeDto, UpdateTradeDto } from "./stage.dto";
 import { TournamentTradeService } from "./tournament-trade.service";
 
-/**
- * Trades at tournament level, where the round a trade takes effect in lives.
- *
- * The per-stage trade routes on `StageController` stay for tournaments the
- * sections-to-stages migration has not reached; they refuse once a tournament
- * owns its rounds (`STG-007`).
- */
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/trades")
 export class TournamentTradeController {
   constructor(private readonly tradeService: TournamentTradeService) {}

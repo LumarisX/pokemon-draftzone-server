@@ -110,16 +110,16 @@ describe("DraftController", () => {
     expect(result).toBe(rankings);
   });
 
-  it("getPokemonList forwards leagueSlug/tournamentSlug/draftSlug/sub/stageId", async () => {
+  it("getPokemonList forwards leagueSlug/tournamentSlug/draftSlug/sub", async () => {
     const list = { groups: [] } as any;
     service.getPokemonList.mockResolvedValue(list);
 
     const result = await controller.getPokemonList(
-      "league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1",
+      "league-1", "tournament-1", "draft-1", "auth0|sub",
     );
 
     expect(service.getPokemonList).toHaveBeenCalledWith(
-      "league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1",
+      "league-1", "tournament-1", "draft-1", "auth0|sub",
     );
     expect(result).toBe(list);
   });

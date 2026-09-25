@@ -220,69 +220,16 @@ describe("TournamentScheduleService", () => {
     expect(matchup.winner).toBe("side1ffw");
   });
 
-  describe("a tournament the migration has not reached", () => {
-    const stageWeek1 = round("Stage Week 1");
-    const stageWeek2 = round("Stage Week 2");
+  it("returns no rounds before a bracket is built", async () => {
+    stageRepo.findAllByTournament.mockResolvedValue([buildStage()]);
+    tournamentRepo.findBySlug.mockResolvedValue(
+      buildTournament({ rounds: [], currentRoundIndex: -1 }),
+    );
 
-    it("builds the axis from the stages' own rounds", async () => {
-      const groups = buildStage({
-        rounds: [stageWeek1, stageWeek2],
-        currentRoundIndex: 1,
-      });
-      stageRepo.findAllByTournament.mockResolvedValue([groups]);
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ rounds: [], currentRoundIndex: -1 }),
-      );
+    const result = await get();
 
-      const result = await get();
-
-      expect(result.rounds.map((r) => r.name)).toEqual([
-        "Stage Week 1",
-        "Stage Week 2",
-      ]);
-      expect(result.currentRoundIndex).toBe(1);
-    });
-
-    it("walks a stage's trades against that stage's round index", async () => {
-      const first = buildStage({
-        name: "First",
-        order: 0,
-        rounds: [round("A")],
-      });
-      const teamA = team("A");
-      const second = buildStage({
-        name: "Second",
-        order: 1,
-        rounds: [stageWeek1, stageWeek2],
-        currentRoundIndex: 0,
-        trades: [
-          {
-            _id: new Types.ObjectId(),
-            side1: { team: teamA._id, pokemon: [{ id: "pikachu" }] },
-            side2: { team: team("Z")._id, pokemon: [{ id: "mewtwo" }] },
-            timestamp: new Date(),
-            activeRound: 1,
-            status: "APPROVED",
-          },
-        ],
-      });
-      teamA.pickLog = [{ pokemon: { id: "pikachu" }, addons: undefined }];
-
-      stageRepo.findAllByTournament.mockResolvedValue([first, second]);
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({ rounds: [] }),
-      );
-      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
-        buildMatchup(second._id, stageWeek2._id, teamA, team("B")),
-      ]);
-
-      const result = await get();
-      const week2 = result.rounds.find((r) => r.name === "Stage Week 2")!;
-
-      expect(week2.stages[0].matchups[0].team1.draft).toEqual([
-        { id: "mewtwo", capt: {} },
-      ]);
-    });
+    expect(result.rounds).toEqual([]);
+    expect(result.currentRoundIndex).toBe(-1);
   });
 
   it("omits a bracket matchup whose slots are still unresolved", async () => {

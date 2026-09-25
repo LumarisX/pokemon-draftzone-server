@@ -101,7 +101,6 @@ describe("StageService", () => {
         name: "Regular Season",
         type: "round-robin",
         order: 1,
-        currentRoundIndex: 2,
       });
       stageRepo.findAllByTournament.mockResolvedValue([stage]);
 
@@ -113,7 +112,6 @@ describe("StageService", () => {
           name: "Regular Season",
           type: "round-robin",
           order: 1,
-          currentRoundIndex: 2,
           public: true,
         },
       ]);

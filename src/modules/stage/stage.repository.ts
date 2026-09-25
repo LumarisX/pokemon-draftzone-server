@@ -4,26 +4,7 @@ import { generateSlug } from "@core/slug";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
-import { stageTeamIds } from "./domain/stage-axis";
 import { StageDocument, StageEntity, StageType } from "./stage.schema";
-
-export type CreateStageInput = {
-  tournamentId: Types.ObjectId | string;
-  order: number;
-  name: string;
-  type: StageType;
-  public?: boolean;
-  rounds?: {
-    name: string;
-    matchDeadline?: Date;
-    tradeDeadline?: Date;
-  }[];
-  pools?: {
-    poolKey: string;
-    name: string;
-    teamIds: (Types.ObjectId | string)[];
-  }[];
-};
 
 @Injectable()
 export class StageRepository {
@@ -104,42 +85,6 @@ export class StageRepository {
       .exec();
   }
 
-  async findByTeamId(
-    tournamentId: Types.ObjectId | string,
-    teamId: Types.ObjectId | string,
-  ): Promise<StageDocument | null> {
-    const normalizedTournamentId = this.normalizeObjectId(
-      tournamentId,
-      "tournamentId",
-    );
-    const normalizedTeamId = this.normalizeObjectId(teamId, "teamId");
-    return this.stageModel
-      .findOne({
-        tournamentId: { $eq: normalizedTournamentId },
-        $or: [
-          { teamIds: { $eq: normalizedTeamId } },
-          { "pools.teamIds": { $eq: normalizedTeamId } },
-        ],
-      })
-      .exec();
-  }
-
-  async create(data: CreateStageInput): Promise<StageDocument> {
-    const stage = new this.stageModel({
-      tournamentId: data.tournamentId,
-      order: data.order,
-      name: data.name,
-      type: data.type,
-      ...(data.public === undefined ? {} : { public: data.public }),
-      rounds: data.rounds ?? [],
-      pools: data.pools ?? [],
-      trades: [],
-      currentRoundIndex: -1,
-    });
-    await stage.save();
-    return stage;
-  }
-
   async applyStageDiff(options: {
     creates: {
       _id: Types.ObjectId;
@@ -170,6 +115,6 @@ export class StageRepository {
   }
 
   teamIdsInSeedOrder(stage: StageDocument): Types.ObjectId[] {
-    return stageTeamIds(stage);
+    return stage.teamIds ?? [];
   }
 }

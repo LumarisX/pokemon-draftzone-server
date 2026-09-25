@@ -4,11 +4,6 @@ import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import { TournamentScheduleService } from "./tournament-schedule.service";
 
-/**
- * The tournament's schedule: rounds, each carrying its matches grouped by
- * stage. The per-stage route on `StageController` stays for tournaments the
- * sections-to-stages migration has not reached.
- */
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/schedule")
 export class TournamentScheduleController {
   constructor(private readonly scheduleService: TournamentScheduleService) {}

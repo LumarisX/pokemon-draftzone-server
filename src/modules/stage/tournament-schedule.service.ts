@@ -8,11 +8,7 @@ import { isValidObjectId, Types } from "mongoose";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { buildMatchLabels } from "./domain/match-labels";
 import { scheduleMatchups } from "./domain/schedule-view";
-import {
-  rosterContext,
-  tournamentRosterContext,
-  usesTournamentAxis,
-} from "./domain/stage-axis";
+import { rosterContext } from "./domain/stage-axis";
 import { PopulatedStageMatchup } from "./domain/standings";
 import { StageRepository } from "./stage.repository";
 
@@ -71,16 +67,8 @@ export class TournamentScheduleService {
     );
     const hasTeamFilter = options.teamSlug !== undefined;
 
-    const axis = usesTournamentAxis(tournament)
-      ? tournament.rounds
-      : stages.flatMap((stage) => stage.rounds);
-    const currentIndex = usesTournamentAxis(tournament)
-      ? tournament.currentRoundIndex
-      : axis.findIndex((round) =>
-          stages.some((stage) =>
-            stage.rounds[stage.currentRoundIndex]?._id.equals(round._id),
-          ),
-        );
+    const axis = tournament.rounds;
+    const currentIndex = tournament.currentRoundIndex;
 
     const currentOnly = options.roundFilter?.toLowerCase() === "current";
     const current = axis[currentIndex];
@@ -118,20 +106,7 @@ export class TournamentScheduleService {
       byRound.set(roundKey, stagesInRound);
     }
 
-    const migrated = usesTournamentAxis(tournament);
-    const rosterFor = (stageId: string) => {
-      const stage = stageById.get(stageId);
-      return migrated || !stage
-        ? tournamentRosterContext(tournament)
-        : rosterContext(stage, tournament);
-    };
-    const roundIndexFor = (stageId: string, globalIndex: number) => {
-      if (migrated) return globalIndex;
-      const stage = stageById.get(stageId);
-      if (!stage) return globalIndex;
-      const round = axis[globalIndex];
-      return stage.rounds.findIndex((r) => r._id.equals(round._id));
-    };
+    const roster = rosterContext(tournament);
 
     const view = axis
       .map((round, roundIndex) => ({ round, roundIndex }))
@@ -150,10 +125,9 @@ export class TournamentScheduleService {
             .filter((entry) => entry.stage)
             .sort((a, b) => a.stage!.order - b.stage!.order)
             .map(({ stage, stageMatchups }) => {
-              const stageId = stage!._id.toString();
               const scheduled = scheduleMatchups(stageMatchups, {
-                roster: rosterFor(stageId),
-                roundIndex: roundIndexFor(stageId, roundIndex),
+                roster,
+                roundIndex,
                 forfeitGameDiff: tournament.forfeit.gameDiff,
                 keepUnresolvedOpponent: hasTeamFilter,
                 matchLabels,

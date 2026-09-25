@@ -21,11 +21,7 @@ import {
 } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { getLatestRoster } from "@modules/stage/domain/roster";
-import {
-  rosterContextForTournament,
-  stageRounds,
-  usesTournamentAxis,
-} from "@modules/stage/domain/stage-axis";
+import { rosterContext } from "@modules/stage/domain/stage-axis";
 import {
   calculateDivisionPokemonStandings,
   calculateDivisionTeamStandings,
@@ -145,7 +141,6 @@ export class HostedTournamentService {
     tournamentSlug: string,
     teamSlug: string,
     sub?: string,
-    stageSlug?: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
@@ -153,14 +148,10 @@ export class HostedTournamentService {
     );
     const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
 
-    const migrated = usesTournamentAxis(tournament);
     const canSeeHidden = can(tournament, sub, "viewHidden");
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
     ).filter((stage) => stage.public !== false || canSeeHidden);
-    const stageDoc = migrated
-      ? stages[0]
-      : await this.resolveStage(tournament.id, stageSlug);
     const coach = team.primaryCoach;
 
     const viewerIsCoach = isCoachedBy(team, sub, "chat");
@@ -169,8 +160,7 @@ export class HostedTournamentService {
       : null;
     const picksHidden =
       !!teamDraft && !canSeeTeamPicks(tournament, teamDraft, team, sub);
-    const visibleRoster = (context: ReturnType<typeof rosterContextForTournament>) =>
-      picksHidden ? [] : getLatestRoster(team, context);
+    const roster = rosterContext(tournament);
     const identity = {
       id: team._id.toString(),
       slug: team.slug,
@@ -184,38 +174,13 @@ export class HostedTournamentService {
         : {}),
     };
 
-    if (!stageDoc) {
-      const roster = visibleRoster(
-        rosterContextForTournament(tournament),
-      ).map((pokemon) => ({
-        id: pokemon.id,
-        name: getName(pokemon.id),
-        cost: tournament.tierList.getPokemonCost(pokemon.id, pokemon.addons),
-        draftFormes: tournament.tierList.getPokemonFormes(pokemon.id),
-        ...(tournament.tierList.hasPokemon(pokemon.id)
-          ? {}
-          : { missingFromTierList: true as const }),
-      }));
-      return {
-        ...identity,
-        name: team.teamName,
-        timezone: coach.timezone,
-        coach: coach.name,
-        logo: team.logo,
-        draft: roster,
-        matchups: [],
-      };
-    }
-
-    const stage = stageDoc;
-
     const draftRoster: ({
       id: string;
       name: string;
       cost: number | undefined;
       draftFormes?: { id: string; name: string }[];
-    } & { record?: unknown })[] = visibleRoster(
-      rosterContextForTournament(tournament, stage),
+    } & { record?: unknown })[] = (
+      picksHidden ? [] : getLatestRoster(team, roster)
     ).map((pokemon) => ({
       id: pokemon.id,
       name: getName(pokemon.id),
@@ -226,8 +191,19 @@ export class HostedTournamentService {
         : { missingFromTierList: true as const }),
     }));
 
+    if (stages.length === 0)
+      return {
+        ...identity,
+        name: team.teamName,
+        timezone: coach.timezone,
+        coach: coach.name,
+        logo: team.logo,
+        draft: draftRoster,
+        matchups: [],
+      };
+
     const teamMatchups = (await this.matchupRepo.findByStages(
-      migrated ? stages.map((s) => s._id) : [stage._id],
+      stages.map((s) => s._id),
       { teamIds: [team._id] },
     )) as unknown as PopulatedStageMatchup[];
 
@@ -243,7 +219,7 @@ export class HostedTournamentService {
 
     const teamRecord = await calculateTeamScore(
       teamMatchups,
-      stageRounds(stage, tournament),
+      roster.rounds,
       team,
       tournament,
     );
@@ -265,21 +241,6 @@ export class HostedTournamentService {
         gameDiff: teamRecord.gameDiff,
       },
     };
-  }
-
-  private async resolveStage(
-    tournamentId: Types.ObjectId | string,
-    stageSlug?: string,
-  ): Promise<StageDocument | undefined> {
-    if (stageSlug) return this.stageRepo.findBySlug(tournamentId, stageSlug);
-
-    const stages = await this.stageRepo.findAllByTournament(tournamentId);
-    if (stages.length === 0) return undefined;
-    if (stages.length === 1) return stages[0];
-
-    throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-      reason: "Multiple stages exist for this tournament; pass stageSlug",
-    });
   }
 
   async getStandings(leagueSlug: string, tournamentSlug: string, sub?: string) {
@@ -318,10 +279,9 @@ export class HostedTournamentService {
     > = {};
 
     for (const stage of composedStages) {
-      const axisRounds = stageRounds(stage, tournament);
       const matchups = (await this.matchupRepo.findByRoundsInStage(
         stage._id,
-        axisRounds.map((r) => r._id),
+        tournament.rounds.map((r) => r._id),
       )) as unknown as PopulatedStageMatchup[];
 
       const { teamStandings, diffMode, rules } =
@@ -338,7 +298,6 @@ export class HostedTournamentService {
         allTeamsById.set(team._id.toString(), team);
     }
     const combinedStage = {
-      rounds: [],
       teams: Array.from(allTeamsById.values()),
     } as unknown as StageDocument & { teams: PopulatedTeam[] };
     const allMatchups = (await this.matchupRepo.findByStages(
@@ -465,7 +424,7 @@ export class HostedTournamentService {
       ]),
     );
 
-    const context = rosterContextForTournament(tournament);
+    const context = rosterContext(tournament);
 
     return {
       teams: teams.map((team) => {
@@ -516,24 +475,24 @@ export class HostedTournamentService {
     const stages = (
       await this.stageRepo.findAllByTournament(tournament.id)
     ).filter((stage) => stage.public !== false || canSeeHidden);
-    const stage = stages[0];
+    const hasStages = stages.length > 0;
 
-    const roster = rosterContextForTournament(tournament, stage);
+    const roster = rosterContext(tournament);
 
-    const matchups = stage
+    const matchups = hasStages
       ? ((await this.matchupRepo.findByStages(
           stages.map((s) => s._id),
         )) as unknown as PopulatedStageMatchup[])
       : [];
     const pokemonStandings = await calculateDivisionPokemonStandings(matchups);
-    const rounds = stage ? stageRounds(stage, tournament) : [];
+    const rounds = roster.rounds;
 
     const composed = await Promise.all(
       teams
         .filter((team) => team.status === "approved")
         .map(async (team) => {
           const teamId = team._id.toString();
-          const score = stage
+          const score = hasStages
             ? await calculateTeamScore(matchups, rounds, team, tournament)
             : undefined;
           const picksHidden = this.picksHiddenFor(

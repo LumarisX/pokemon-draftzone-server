@@ -11,8 +11,8 @@ import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { getRosterByRound } from "./domain/roster";
 import {
+  rosterContext,
   TradeLike,
-  tournamentRosterContext,
   tradeRoundIndex,
 } from "./domain/stage-axis";
 import { assertTradePointsWithinLimit } from "./domain/trades";
@@ -377,7 +377,7 @@ export class TournamentTradeService {
     trade: { side1: TradeLike["side1"]; side2: TradeLike["side2"] },
     roundIndex: number,
   ) {
-    const context = tournamentRosterContext(tournament);
+    const context = rosterContext(tournament);
 
     for (const side of [trade.side1, trade.side2]) {
       const teamId = this.sideTeamId(side);

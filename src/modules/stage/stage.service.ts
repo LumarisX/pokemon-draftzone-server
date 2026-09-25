@@ -24,11 +24,9 @@ import { MatchupAdvancement } from "./domain/advancement";
 import { MatchupViewer, toMatchupDetail } from "./domain/matchup-view";
 import { getRosterByRound } from "./domain/roster";
 import {
-  AxisStage,
   AxisTournament,
   rosterContext,
   RosterContext,
-  stageRounds,
 } from "./domain/stage-axis";
 import {
   hasResolvedSides,
@@ -85,7 +83,6 @@ export class StageService {
         name: stage.name,
         type: stage.type,
         order: stage.order,
-        currentRoundIndex: stage.currentRoundIndex,
         public: stage.public !== false,
       }));
   }
@@ -110,12 +107,8 @@ export class StageService {
       .findById(tournament.tierListId)
       .catch(() => undefined);
 
-    const rosterCtx = rosterContext(stageDoc, tournament);
-    const { roundIndex, roundDoc } = this.matchupRound(
-      stageDoc,
-      tournament,
-      matchupDoc,
-    );
+    const rosterCtx = rosterContext(tournament);
+    const { roundIndex, roundDoc } = this.matchupRound(tournament, matchupDoc);
 
     const toSide = (side: {
       team: PopulatedTeam;
@@ -252,14 +245,10 @@ export class StageService {
         sub,
       );
 
-    const { roundIndex, roundDoc } = this.matchupRound(
-      stageDoc,
-      tournament,
-      matchupDoc,
-    );
+    const { roundIndex, roundDoc } = this.matchupRound(tournament, matchupDoc);
 
     return toMatchupDetail(matchupDoc, {
-      roster: rosterContext(stageDoc, tournament),
+      roster: rosterContext(tournament),
       roundIndex,
       forfeitGameDiff: tournament.forfeit.gameDiff,
       stage: {
@@ -334,13 +323,12 @@ export class StageService {
     sub: string,
     dto: SubmitMatchupReportDto,
   ) {
-    const { stageDoc, tournament, matchupDoc, viewer } =
-      await this.loadMatchupContext(
-        leagueSlug,
-        tournamentSlug,
-        matchupSlug,
-        sub,
-      );
+    const { tournament, matchupDoc, viewer } = await this.loadMatchupContext(
+      leagueSlug,
+      tournamentSlug,
+      matchupSlug,
+      sub,
+    );
     if (!viewer.isOrganizer && viewer.side === null)
       throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
     if (!viewer.isOrganizer && !viewer.coachReportingEnabled)
@@ -350,8 +338,8 @@ export class StageService {
     this.assertResultsOnRoster(
       results,
       matchupDoc,
-      rosterContext(stageDoc, tournament),
-      this.matchupRound(stageDoc, tournament, matchupDoc).roundIndex,
+      rosterContext(tournament),
+      this.matchupRound(tournament, matchupDoc).roundIndex,
     );
     const score = dto.score ?? this.tallyScore(results);
     const winner = dto.winner ?? this.tallyWinner(score);
@@ -495,11 +483,10 @@ export class StageService {
   }
 
   private matchupRound(
-    stageDoc: AxisStage,
     tournament: AxisTournament,
     matchupDoc: { round?: Types.ObjectId },
   ) {
-    const rounds = stageRounds(stageDoc, tournament);
+    const rounds = tournament.rounds ?? [];
     const roundIndex = matchupDoc.round
       ? rounds.findIndex((round) => round._id.equals(matchupDoc.round!))
       : -1;

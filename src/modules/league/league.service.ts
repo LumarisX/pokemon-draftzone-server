@@ -7,7 +7,7 @@ import {
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
-import { rosterContextForTournament } from "@modules/stage/domain/stage-axis";
+import { rosterContext } from "@modules/stage/domain/stage-axis";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
@@ -92,7 +92,7 @@ export class LeagueService {
         const team = teamsByTournament.get(tournament.id);
         if (!team) return null;
         const tierList = tierListsById.get(tournament.tierListId);
-        const context = rosterContextForTournament(tournament);
+        const context = rosterContext(tournament);
         const roster = getLatestRoster(team, context).map((pokemon) => ({
           id: pokemon.id,
           name: getName(pokemon.id),
@@ -102,7 +102,7 @@ export class LeagueService {
         const record = teamMatchups.length
           ? await calculateTeamScore(
               teamMatchups as unknown as PopulatedStageMatchup[],
-              context?.rounds ?? [],
+              context.rounds,
               team,
               tournament,
             )

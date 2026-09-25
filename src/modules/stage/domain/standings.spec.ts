@@ -36,11 +36,11 @@ describe("calculateDivisionTeamStandings", () => {
 
     const stage = {
       teams: [team1, team2],
-      rounds: [{ _id: roundId }],
     };
 
     const tournament = {
       diffMode: "pokemon",
+      rounds: [{ _id: roundId }],
       forfeit: {
         gameDiff: 1,
         pokemonDiff: 6,
@@ -107,11 +107,11 @@ describe("calculateDivisionTeamStandings", () => {
 
     const stage = {
       teams: [team1],
-      rounds: [{ _id: roundId }],
     };
 
     const tournament = {
       diffMode: "pokemon",
+      rounds: [{ _id: roundId }],
     };
 
     const matchups = [
@@ -186,8 +186,8 @@ describe("calculateDivisionTeamStandings ranking", () => {
 
     const { teamStandings, rules } = await calculateDivisionTeamStandings(
       [played(a, b, "draw", [1, 1]), played(c, b, "side2", [0, 2])] as any,
-      { teams: [a, b, c], rounds: [{ _id: roundId }] } as any,
-      { diffMode: "pokemon" } as any,
+      { teams: [a, b, c] } as any,
+      { diffMode: "pokemon", rounds: [{ _id: roundId }] } as any,
     );
 
     expect(rules.points).toEqual({ win: 3, draw: 1, loss: 0 });
@@ -211,18 +211,18 @@ describe("calculateDivisionTeamStandings ranking", () => {
     ];
     const stage = {
       teams: [bigGames, bigPokemon, loser1, loser2],
-      rounds: [{ _id: roundId }],
     };
+    const rounds = [{ _id: roundId }];
 
     const byPokemon = await calculateDivisionTeamStandings(
       matchups as any,
       stage as any,
-      { diffMode: "pokemon" } as any,
+      { diffMode: "pokemon", rounds } as any,
     );
     const byGame = await calculateDivisionTeamStandings(
       matchups as any,
       stage as any,
-      { diffMode: "game" } as any,
+      { diffMode: "game", rounds } as any,
     );
 
     expect(byPokemon.teamStandings[0].name).toBe("BigPokemon");
@@ -242,10 +242,10 @@ describe("calculateDivisionTeamStandings ranking", () => {
       ] as any,
       {
         teams: [bigGames, bigPokemon, loser1, loser2],
-        rounds: [{ _id: roundId }],
       } as any,
       {
         diffMode: "pokemon",
+        rounds: [{ _id: roundId }],
         standingsRules: { tiebreakers: ["gameDiff"] },
       } as any,
     );

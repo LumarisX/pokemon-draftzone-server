@@ -269,14 +269,12 @@ export class HostedTournamentController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("teamSlug") teamSlug: string,
     @User() sub: string | undefined,
-    @Query("stageSlug") stageSlug?: string,
   ) {
     return this.tournamentService.getTeam(
       leagueSlug,
       tournamentSlug,
       teamSlug,
       sub,
-      stageSlug,
     );
   }
 

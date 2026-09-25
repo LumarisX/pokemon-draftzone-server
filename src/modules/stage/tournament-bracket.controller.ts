@@ -6,14 +6,6 @@ import { SetCurrentRoundDto } from "./stage.dto";
 import { UpdateTournamentBracketDto } from "./tournament-bracket.dto";
 import { TournamentBracketService } from "./tournament-bracket.service";
 
-/**
- * The tournament's bracket: rounds, stages and matches together.
- *
- * Separate from the per-stage bracket routes on `StageController`, which stay
- * for tournaments the sections-to-stages migration has not reached. Those
- * refuse to run once a tournament owns its rounds (`STG-007`), because editing
- * a shared axis from one stage would renumber the others.
- */
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/bracket")
 export class TournamentBracketController {
   constructor(private readonly bracketService: TournamentBracketService) {}
@@ -45,7 +37,6 @@ export class TournamentBracketController {
     );
   }
 
-  /** Advancing a week, without resending every stage and match. */
   @Patch("current-round")
   @UseGuards(JwtAuthGuard)
   async setCurrentRound(

@@ -799,12 +799,12 @@ describe("TournamentBracketService", () => {
       });
     });
 
-    it("refuses a tournament that has no axis of its own yet", async () => {
+    it("rejects any round before a bracket is built", async () => {
       tournamentRepo.findBySlug.mockResolvedValue(
         buildTournament({ rounds: [] }),
       );
 
-      await expect(advance(0)).rejects.toMatchObject({ code: "STG-001" });
+      await expect(advance(0)).rejects.toMatchObject({ code: "VAL-002" });
     });
   });
 
