@@ -44,10 +44,6 @@ export class TierListRepository {
     );
   }
 
-  /**
-   * Browse rows carry counts rather than the full pokemon map — a list can
-   * hold hundreds of entries and the browser only shows totals.
-   */
   async browse(filter: {
     sub?: string;
     scope: "mine" | "public";
@@ -72,7 +68,6 @@ export class TierListRepository {
     if (filter.format) conditions.format = filter.format;
     if (filter.ruleset) conditions.ruleset = filter.ruleset;
     if (filter.query?.trim()) {
-      // Regex rather than $text so a partial word matches while typing.
       const safe = filter.query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       conditions.name = { $regex: safe, $options: "i" };
     }
@@ -121,11 +116,6 @@ export class TierListRepository {
       .exec();
   }
 
-  /**
-   * Accepts a slug (what URLs carry) or an ObjectId (what a tournament's
-   * `tierList` ref holds). Slugs are 8 base62 characters and ObjectIds are 24
-   * hex, so the two can't be confused.
-   */
   async findDocument(idOrSlug: string): Promise<TierListDocument> {
     const doc = Types.ObjectId.isValid(idOrSlug)
       ? await this.tierListModel.findById(idOrSlug).exec()

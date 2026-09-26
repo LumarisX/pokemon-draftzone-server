@@ -16,9 +16,12 @@ describe("LeagueController", () => {
     const summary = { name: "Spring League" } as any;
     service.getLeagueSummary.mockResolvedValue(summary);
 
-    const result = await controller.getLeague("springleague");
+    const result = await controller.getLeague("springleague", "auth0|viewer");
 
-    expect(service.getLeagueSummary).toHaveBeenCalledWith("springleague");
+    expect(service.getLeagueSummary).toHaveBeenCalledWith(
+      "springleague",
+      "auth0|viewer",
+    );
     expect(result).toBe(summary);
   });
 });

@@ -111,7 +111,6 @@ export class TierListEntity {
   @Prop({ type: SchemaTypes.ObjectId, ref: "TierListEntity" })
   copiedFrom?: Types.ObjectId;
 
-  /** How many lists have been forked from this one; drives browse ranking. */
   @Prop({ default: 0 })
   forkCount!: number;
 

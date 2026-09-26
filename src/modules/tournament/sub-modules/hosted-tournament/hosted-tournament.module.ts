@@ -1,6 +1,7 @@
 import { CoachModule } from "@modules/coach/coach.module";
 import { DiscordModule } from "@modules/discord/discord.module";
 import { DraftCoreModule } from "@modules/draft/draft-core.module";
+import { LeagueCoreModule } from "@modules/league/league-core.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { StageCoreModule } from "@modules/stage/stage-core.module";
 import { TeamModule } from "@modules/team/team.module";
@@ -18,6 +19,8 @@ import {
   OrganizerInviteEntity,
   OrganizerInviteSchema,
 } from "./organizer-invite.schema";
+import { TournamentCreationController } from "./tournament-creation.controller";
+import { TournamentCreationService } from "./tournament-creation.service";
 import { TournamentDiscordController } from "./tournament-discord.controller";
 import { TournamentDiscordService } from "./tournament-discord.service";
 import { TournamentNotificationsService } from "./tournament-notifications.service";
@@ -31,6 +34,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
       { name: OrganizerInviteEntity.name, schema: OrganizerInviteSchema },
     ]),
     HostedTournamentCoreModule,
+    LeagueCoreModule,
     TournamentApplicationModule,
     TierListModule,
     TeamModule,
@@ -45,9 +49,11 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     HostedTournamentController,
     TournamentOrganizerController,
     TournamentDiscordController,
+    TournamentCreationController,
   ],
   providers: [
     HostedTournamentService,
+    TournamentCreationService,
     TournamentOrganizerService,
     TournamentDiscordService,
     TournamentNotificationsService,

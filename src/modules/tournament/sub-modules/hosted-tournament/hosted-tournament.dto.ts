@@ -20,6 +20,7 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsDefined,
   IsIn,
   IsInt,
   IsOptional,
@@ -30,8 +31,10 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { applyDecorators } from "@nestjs/common";
 
 const trimString = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() : value;
@@ -528,15 +531,50 @@ export const ORGANIZER_NAME_MIN = 3;
 export const ORGANIZER_NAME_MAX = 24;
 export const ORGANIZER_NAME_PATTERN = /^[\p{L}\p{N}](?:[^\p{C}]*[\p{L}\p{N}])?$/u;
 
+export const IsOrganizerName = () =>
+  applyDecorators(
+    Transform(trimString),
+    IsString(),
+    Length(ORGANIZER_NAME_MIN, ORGANIZER_NAME_MAX),
+    Matches(ORGANIZER_NAME_PATTERN, {
+      message: "name must start and end with a letter or number",
+    }),
+  );
 
 export class OrganizerNameDto {
+  @IsOrganizerName()
+  name!: string;
+}
+
+export class CreateTournamentDto {
   @Transform(trimString)
   @IsString()
-  @Length(ORGANIZER_NAME_MIN, ORGANIZER_NAME_MAX)
-  @Matches(ORGANIZER_NAME_PATTERN, {
-    message: "name must start and end with a letter or number",
-  })
+  @MinLength(1)
+  @MaxLength(80)
   name!: string;
+
+  @IsOrganizerName()
+  ownerName!: string;
+
+  @IsDate()
+  @Type(() => Date)
+  signUpDeadline!: Date;
+
+  @ValidateIf((dto: CreateTournamentDto) => dto.copyFrom === undefined)
+  @IsIn(["pokemon", "game"])
+  diffMode?: "pokemon" | "game";
+
+  @ValidateIf((dto: CreateTournamentDto) => dto.copyFrom === undefined)
+  @ValidateNested()
+  @Type(() => DraftCountDto)
+  @IsDefined()
+  draftCount?: DraftCountDto;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  @IsOptional()
+  copyFrom?: string;
 }
 
 export class CreateOrganizerInviteDto extends OrganizerNameDto {}
@@ -549,12 +587,7 @@ export class OrganizerInviteTokenDto {
 }
 
 export class AcceptOrganizerInviteDto extends OrganizerInviteTokenDto {
-  @Transform(trimString)
-  @IsString()
-  @Length(ORGANIZER_NAME_MIN, ORGANIZER_NAME_MAX)
-  @Matches(ORGANIZER_NAME_PATTERN, {
-    message: "name must start and end with a letter or number",
-  })
+  @IsOrganizerName()
   @IsOptional()
   name?: string;
 }

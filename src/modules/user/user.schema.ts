@@ -5,6 +5,7 @@ export enum UserRole {
   OWNER = "owner",
   ADMIN = "admin",
   DEV = "dev",
+  LEAGUE_CREATOR = "league-creator",
 }
 
 export type UserDocument = HydratedDocument<UserEntity>;

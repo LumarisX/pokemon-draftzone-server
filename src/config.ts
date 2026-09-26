@@ -23,6 +23,8 @@ const optionalEnvVars = [
   "AWS_SECRET_ACCESS_KEY",
   "AWS_REGION",
   "AWS_S3_BUCKET",
+  "LEAGUE_CREATION",
+  "MAX_OWNED_LEAGUES",
 ] as const;
 
 type Config = { [key in (typeof requiredEnvVars)[number]]: string } & Partial<{

@@ -11,6 +11,22 @@ export const ErrorCodes = {
       status: 404,
       message: "League not found",
     },
+    CREATION_RESTRICTED: {
+      code: "LR-002",
+      status: 403,
+      message:
+        "Creating leagues is in beta. Ask in the DraftZone Discord for access.",
+    },
+    OWNED_LIMIT: {
+      code: "LR-003",
+      status: 400,
+      message: "You already own the maximum number of leagues.",
+    },
+    NOT_OWNER: {
+      code: "LR-004",
+      status: 403,
+      message: "Only the league owner can do this.",
+    },
   },
   TEAM: {
     NOT_FOUND: {
@@ -447,6 +463,11 @@ export const ErrorCodes = {
       code: "TRN-020",
       status: 404,
       message: "Pool not found in this tournament",
+    },
+    COPY_SOURCE_INVALID: {
+      code: "TRN-021",
+      status: 400,
+      message: "Settings can only be copied from a tournament in this league.",
     },
     INVALID_SETTINGS: {
       code: "TRN-003",

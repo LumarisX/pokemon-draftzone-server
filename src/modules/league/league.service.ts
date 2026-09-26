@@ -11,7 +11,17 @@ import { rosterContext } from "@modules/stage/domain/stage-axis";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { UserService } from "@modules/user/user.service";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import {
+  decideLeagueCreation,
+  leagueCreationMode,
+  maxOwnedLeagues,
+} from "./league-creation";
+import { CreateLeagueDto } from "./league.dto";
 import { LeagueRepository } from "./league.repository";
 
 function nextScheduledMatch(
@@ -40,6 +50,8 @@ export class LeagueService {
     private readonly teamRepo: TeamRepository,
     private readonly draftRepo: DraftRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
+    private readonly userService: UserService,
+    private readonly config: ConfigService,
   ) {}
 
   async getLeagues(sub: string) {
@@ -145,30 +157,27 @@ export class LeagueService {
     };
   }
 
-  async getLeagueSummary(leagueSlug: string) {
+  async getLeagueSummary(leagueSlug: string, sub?: string) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     const tournaments = await this.hostedTournamentRepo.findAllByLeague(league);
 
-    const tournamentSummaries = tournaments.flatMap((tournament) => {
-      const { format, ruleset } = tournament;
-      if (!format || !ruleset) return [];
-      return [
-        {
-          name: tournament.name,
-          tournamentSlug: tournament.slug,
-          description: tournament.description,
-          format: format.name,
-          ruleset: ruleset.name,
-          signUpDeadline: tournament.signUpDeadline,
-          draftStart: tournament.draftStart,
-          draftEnd: tournament.draftEnd,
-          seasonStart: tournament.seasonStart,
-          seasonEnd: tournament.seasonEnd,
-          logo: tournament.logo,
-          discord: tournament.discord,
-        },
-      ];
-    });
+    const tournamentSummaries = tournaments.map((tournament) => ({
+      name: tournament.name,
+      tournamentSlug: tournament.slug,
+      description: tournament.description,
+      format: tournament.format?.name ?? null,
+      ruleset: tournament.ruleset?.name ?? null,
+      signUpDeadline: tournament.signUpDeadline,
+      draftStart: tournament.draftStart,
+      draftEnd: tournament.draftEnd,
+      seasonStart: tournament.seasonStart,
+      seasonEnd: tournament.seasonEnd,
+      logo: tournament.logo,
+      discord: tournament.discord,
+    }));
+
+    const isOwner = sub !== undefined && sub === league.owner;
+    const latest = tournaments.at(-1);
 
     return {
       name: league.name,
@@ -176,6 +185,67 @@ export class LeagueService {
       description: league.description,
       logo: league.logo,
       tournaments: tournamentSummaries,
+      isOwner,
+      newTournamentDefaults: isOwner
+        ? {
+            ownerName:
+              latest?.ownerName?.sub === league.owner
+                ? latest.ownerName.name
+                : null,
+            copyFrom: latest
+              ? { tournamentSlug: latest.slug, name: latest.name }
+              : null,
+          }
+        : null,
     };
+  }
+
+  async getCapabilities(sub: string) {
+    const decision = await this.decideLeagueCreation(sub);
+    return {
+      canCreateLeague: decision.allowed,
+      reason: decision.allowed ? null : decision.reason,
+    };
+  }
+
+  async createLeague(sub: string, dto: CreateLeagueDto) {
+    const decision = await this.decideLeagueCreation(sub);
+    if (!decision.allowed)
+      throw new PDZError(
+        decision.reason === "limit"
+          ? ErrorCodes.LEAGUE.OWNED_LIMIT
+          : ErrorCodes.LEAGUE.CREATION_RESTRICTED,
+      );
+
+    const league = await this.leagueRepo.create({
+      name: dto.name,
+      description: dto.description || undefined,
+      owner: sub,
+    });
+    return { leagueSlug: league.slug };
+  }
+
+  async getOwnedLeagues(sub: string) {
+    const leagues = await this.leagueRepo.findByOwner(sub);
+    return {
+      leagues: leagues.map((league) => ({
+        name: league.name,
+        leagueSlug: league.slug,
+        logo: league.logo,
+      })),
+    };
+  }
+
+  private async decideLeagueCreation(sub: string) {
+    const [user, ownedCount] = await Promise.all([
+      this.userService.getMe(sub),
+      this.leagueRepo.countByOwner(sub),
+    ]);
+    return decideLeagueCreation({
+      mode: leagueCreationMode(this.config.get<string>("LEAGUE_CREATION")),
+      roles: user.roles ?? [],
+      ownedCount,
+      maxOwned: maxOwnedLeagues(this.config.get<string>("MAX_OWNED_LEAGUES")),
+    });
   }
 }

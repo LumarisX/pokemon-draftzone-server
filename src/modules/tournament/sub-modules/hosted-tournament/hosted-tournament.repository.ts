@@ -116,9 +116,27 @@ export class HostedTournamentRepository {
     );
   }
 
+  async create(
+    tournament: Partial<HostedTournamentEntity>,
+  ): Promise<HostedTournamentDocument> {
+    const [doc] = await this.hostedTournamentModel.create([tournament]);
+    return doc;
+  }
+
+  async findPlainInLeague(
+    leagueId: Types.ObjectId,
+    tournamentSlug: string,
+  ): Promise<HostedTournamentEntity | null> {
+    return this.hostedTournamentModel
+      .findOne({ league: leagueId, slug: { $eq: tournamentSlug } })
+      .lean<HostedTournamentEntity>()
+      .exec();
+  }
+
   async findAllByLeague(league: LeagueDocument): Promise<HostedTournament[]> {
     const docs = await this.hostedTournamentModel
       .find({ league: league._id })
+      .sort({ _id: 1 })
       .exec();
     const [metas, stagesByDoc] = await Promise.all([
       this.resolveTierListMetas(docs.map((doc) => doc.tierList)),

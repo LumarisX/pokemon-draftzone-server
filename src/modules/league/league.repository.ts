@@ -25,6 +25,25 @@ export class LeagueRepository {
     return this.leagueModel.find({ _id: { $in: leagueIds } }).exec();
   }
 
+  async create(league: {
+    name: string;
+    description?: string;
+    owner: string;
+  }): Promise<LeagueDocument> {
+    return this.leagueModel.create(league);
+  }
+
+  async countByOwner(owner: string): Promise<number> {
+    return this.leagueModel.countDocuments({ owner: { $eq: owner } }).exec();
+  }
+
+  async findByOwner(owner: string): Promise<LeagueDocument[]> {
+    return this.leagueModel
+      .find({ owner: { $eq: owner } })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
   async findById(leagueId: Types.ObjectId | string): Promise<LeagueDocument> {
     const league = await this.leagueModel.findById(leagueId).exec();
     if (!league)

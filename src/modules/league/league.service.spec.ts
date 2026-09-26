@@ -4,6 +4,8 @@ import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-mat
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { UserService } from "@modules/user/user.service";
+import { ConfigService } from "@nestjs/config";
 import { Types } from "mongoose";
 import { LeagueRepository } from "./league.repository";
 import { LeagueService } from "./league.service";
@@ -86,6 +88,8 @@ describe("LeagueService.getLeagueSummary", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
+      { getMe: jest.fn() } as unknown as UserService,
+      { get: jest.fn() } as unknown as ConfigService,
     );
   });
 
@@ -113,7 +117,72 @@ describe("LeagueService.getLeagueSummary", () => {
       description: "A friendly league",
       logo: "league-logo",
       tournaments: [],
+      isOwner: false,
+      newTournamentDefaults: null,
     });
+  });
+
+  it("keeps a tournament that has no tier list yet", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([
+      buildTournament({ format: undefined, ruleset: undefined }),
+    ]);
+
+    const result = await service.getLeagueSummary("springleague");
+
+    expect(result.tournaments).toHaveLength(1);
+    expect(result.tournaments[0].format).toBeNull();
+    expect(result.tournaments[0].ruleset).toBeNull();
+  });
+
+  it("gives the owner defaults from the latest tournament", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([
+      buildTournament({ slug: "old", name: "Old Cup" }),
+      buildTournament({
+        slug: "new",
+        name: "New Cup",
+        ownerName: { sub: "auth0|owner", name: "Host" },
+      }),
+    ]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|owner",
+    );
+
+    expect(result.isOwner).toBe(true);
+    expect(result.newTournamentDefaults).toEqual({
+      ownerName: "Host",
+      copyFrom: { tournamentSlug: "new", name: "New Cup" },
+    });
+  });
+
+  it("ignores a stored owner name that belongs to a previous owner", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([
+      buildTournament({ ownerName: { sub: "auth0|former", name: "Former" } }),
+    ]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|owner",
+    );
+
+    expect(result.newTournamentDefaults?.ownerName).toBeNull();
+  });
+
+  it("gives other viewers no creation defaults", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([buildTournament()]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|someone",
+    );
+
+    expect(result.isOwner).toBe(false);
+    expect(result.newTournamentDefaults).toBeNull();
   });
 
   it("reads format/ruleset off the tournament without fetching its tier list", async () => {
@@ -293,6 +362,8 @@ describe("LeagueService.getLeagues", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
+      { getMe: jest.fn() } as unknown as UserService,
+      { get: jest.fn() } as unknown as ConfigService,
     );
   });
 
@@ -434,5 +505,74 @@ describe("LeagueService.getLeagues", () => {
       [stageA, stageB],
       [team._id],
     );
+  });
+});
+
+describe("LeagueService.createLeague", () => {
+  let leagueRepo: jest.Mocked<LeagueRepository>;
+  let userService: jest.Mocked<UserService>;
+  let env: Record<string, string | undefined>;
+  let service: LeagueService;
+
+  beforeEach(() => {
+    env = {};
+    leagueRepo = {
+      countByOwner: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue(buildLeague({ slug: "fresh" })),
+    } as unknown as jest.Mocked<LeagueRepository>;
+    userService = {
+      getMe: jest.fn().mockResolvedValue({ roles: [] }),
+    } as unknown as jest.Mocked<UserService>;
+    service = new LeagueService(
+      leagueRepo,
+      {} as HostedTournamentRepository,
+      {} as TierListRepository,
+      {} as CoachRepository,
+      {} as TeamRepository,
+      {} as DraftRepository,
+      {} as LeagueMatchupRepository,
+      userService,
+      { get: (key: string) => env[key] } as unknown as ConfigService,
+    );
+  });
+
+  it("refuses users without the beta role while creation is gated", async () => {
+    await expect(
+      service.createLeague("auth0|user", { name: "Spring" }),
+    ).rejects.toMatchObject({ code: "LR-002" });
+    expect(leagueRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("creates the league for a league creator and returns its slug", async () => {
+    userService.getMe.mockResolvedValue({ roles: ["league-creator"] } as any);
+
+    const result = await service.createLeague("auth0|user", {
+      name: "Spring",
+      description: "",
+    });
+
+    expect(leagueRepo.create).toHaveBeenCalledWith({
+      name: "Spring",
+      description: undefined,
+      owner: "auth0|user",
+    });
+    expect(result).toEqual({ leagueSlug: "fresh" });
+  });
+
+  it("enforces the owned-league cap once creation is open", async () => {
+    env.LEAGUE_CREATION = "open";
+    env.MAX_OWNED_LEAGUES = "1";
+    leagueRepo.countByOwner.mockResolvedValue(1);
+
+    await expect(
+      service.createLeague("auth0|user", { name: "Spring" }),
+    ).rejects.toMatchObject({ code: "LR-003" });
+  });
+
+  it("reports capabilities without creating anything", async () => {
+    await expect(service.getCapabilities("auth0|user")).resolves.toEqual({
+      canCreateLeague: false,
+      reason: "restricted",
+    });
   });
 });
