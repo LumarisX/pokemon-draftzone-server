@@ -6,7 +6,10 @@ import { SetCurrentRoundDto } from "./stage.dto";
 import { UpdateTournamentBracketDto } from "./tournament-bracket.dto";
 import { TournamentBracketService } from "./tournament-bracket.service";
 
-@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/bracket")
+@Controller([
+  "tournaments/:tournamentSlug/bracket",
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/bracket",
+])
 export class TournamentBracketController {
   constructor(private readonly bracketService: TournamentBracketService) {}
 
@@ -14,23 +17,20 @@ export class TournamentBracketController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getBracket(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub?: string,
   ) {
-    return this.bracketService.getBracket(leagueSlug, tournamentSlug, sub);
+    return this.bracketService.getBracket(tournamentSlug, sub);
   }
 
   @Patch()
   @UseGuards(JwtAuthGuard)
   async updateBracket(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: UpdateTournamentBracketDto,
   ) {
     return this.bracketService.updateBracket(
-      leagueSlug,
       tournamentSlug,
       sub,
       body,
@@ -40,13 +40,11 @@ export class TournamentBracketController {
   @Patch("current-round")
   @UseGuards(JwtAuthGuard)
   async setCurrentRound(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: SetCurrentRoundDto,
   ) {
     return this.bracketService.setCurrentRound(
-      leagueSlug,
       tournamentSlug,
       sub,
       body.currentRoundIndex,

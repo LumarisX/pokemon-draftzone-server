@@ -59,12 +59,10 @@ export class DraftService {
   ) {}
 
   private async loadContext(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
   ) {
     const tournament = await this.draftRepo.findTournament(
-      leagueSlug,
       tournamentSlug,
     );
     const draft = await this.draftRepo.findDraft(tournament, poolSlug);
@@ -92,13 +90,11 @@ export class DraftService {
   }
 
   async getDetails(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -106,13 +102,11 @@ export class DraftService {
   }
 
   async getPicks(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -166,13 +160,11 @@ export class DraftService {
   }
 
   async getOrder(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -226,13 +218,11 @@ export class DraftService {
   }
 
   async getPowerRankings(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ): Promise<unknown[]> {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -262,7 +252,6 @@ export class DraftService {
   }
 
   async draftPick(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     teamId: string,
@@ -275,7 +264,6 @@ export class DraftService {
       });
 
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -308,7 +296,7 @@ export class DraftService {
     }
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
@@ -329,7 +317,6 @@ export class DraftService {
   }
 
   async setRoundPick(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     teamId: string,
@@ -338,7 +325,6 @@ export class DraftService {
     dto: SetRoundPickDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -352,12 +338,11 @@ export class DraftService {
     });
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async setPicks(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     teamId: string,
@@ -365,7 +350,6 @@ export class DraftService {
     dto: SetPicksDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -382,14 +366,12 @@ export class DraftService {
   }
 
   async setState(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     dto: SetDraftStateDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -400,14 +382,12 @@ export class DraftService {
   }
 
   async setTimerMode(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     dto: SetDraftTimerDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -418,14 +398,12 @@ export class DraftService {
   }
 
   async updateSettings(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     dto: UpdateDraftSettingsDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -445,13 +423,12 @@ export class DraftService {
     await this.draftEngine.updateSettings(tournament, draft, dto);
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
-  async listPools(leagueSlug: string, tournamentSlug: string, sub: string) {
+  async listPools(tournamentSlug: string, sub: string) {
     const tournament = await this.draftRepo.findTournament(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageDrafts");
@@ -467,13 +444,11 @@ export class DraftService {
   }
 
   async createPool(
-    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: CreatePoolDto,
   ) {
     const tournament = await this.draftRepo.findTournament(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageDrafts");
@@ -504,13 +479,11 @@ export class DraftService {
   }
 
   async deletePool(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -540,13 +513,11 @@ export class DraftService {
   }
 
   async sendTestMessage(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -562,14 +533,12 @@ export class DraftService {
   }
 
   async setOrder(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     dto: SetDraftOrderDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -578,19 +547,17 @@ export class DraftService {
     await this.draftEngine.setDraftOrder(tournament, draft, dto);
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async setCurrentPick(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     dto: SetCurrentPickDto,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -604,12 +571,11 @@ export class DraftService {
     );
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async removeDraftPick(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     teamId: string,
@@ -617,7 +583,6 @@ export class DraftService {
     pokemonId: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -638,18 +603,16 @@ export class DraftService {
     );
 
     const { tournament: freshTournament, draft: freshDraft } =
-      await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
+      await this.loadContext(tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
   }
 
   async skipPick(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );
@@ -660,14 +623,12 @@ export class DraftService {
   }
 
   async getTeams(
-    leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
     sub: string,
     stageSlug?: string,
   ) {
     const { tournament, draft } = await this.loadContext(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
     );

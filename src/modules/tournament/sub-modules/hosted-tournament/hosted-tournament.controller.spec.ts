@@ -17,15 +17,11 @@ describe("HostedTournamentController signup routes", () => {
     const signup = { teamName: "Team Rocket" };
     service.getSignup.mockResolvedValue(signup as any);
 
-    const result = await controller.getTournamentSignup(
-      "spring-league",
-      "spring-cup",
+    const result = await controller.getTournamentSignup(      "spring-cup",
       "auth0|coach-1",
     );
 
-    expect(service.getSignup).toHaveBeenCalledWith(
-      "spring-league",
-      "spring-cup",
+    expect(service.getSignup).toHaveBeenCalledWith(      "spring-cup",
       "auth0|coach-1",
     );
     expect(result).toBe(signup);
@@ -46,17 +42,13 @@ describe("HostedTournamentController signup routes", () => {
     const response = { message: "Sign up successful." };
     service.createSignup.mockResolvedValue(response as any);
 
-    const result = await controller.createTournamentSignup(
-      "spring-league",
-      "spring-cup",
+    const result = await controller.createTournamentSignup(      "spring-cup",
       "auth0|coach-1",
       body as any,
       "tok-123",
     );
 
-    expect(service.createSignup).toHaveBeenCalledWith(
-      "spring-league",
-      "spring-cup",
+    expect(service.createSignup).toHaveBeenCalledWith(      "spring-cup",
       "auth0|coach-1",
       body,
       "tok-123",

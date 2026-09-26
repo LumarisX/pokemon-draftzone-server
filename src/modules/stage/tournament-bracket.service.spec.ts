@@ -153,7 +153,7 @@ describe("TournamentBracketService", () => {
   }
 
   const update = (dto: UpdateTournamentBracketDto, sub = "auth0|owner") =>
-    service.updateBracket("league-1", "tournament-1", sub, dto);
+    service.updateBracket("tournament-1", sub, dto);
 
   describe("authorization", () => {
     it("rejects a non-organizer", async () => {
@@ -762,7 +762,7 @@ describe("TournamentBracketService", () => {
 
   describe("setCurrentRound", () => {
     const advance = (index: number, sub = "auth0|owner") =>
-      service.setCurrentRound("league-1", "tournament-1", sub, index);
+      service.setCurrentRound("tournament-1", sub, index);
 
     beforeEach(() => {
       tournamentRepo.findBySlug.mockResolvedValue(
@@ -829,7 +829,7 @@ describe("TournamentBracketService", () => {
         },
       ] as any);
 
-      const result = await service.getBracket("league-1", "tournament-1");
+      const result = await service.getBracket("tournament-1");
 
       expect(result.rounds).toEqual([
         expect.objectContaining({ name: "Week 1" }),
@@ -846,16 +846,12 @@ describe("TournamentBracketService", () => {
       const hidden = buildStage({ name: "Hidden", public: false });
       stageRepo.findAllByTournament.mockResolvedValue([visible, hidden]);
 
-      const asStranger = await service.getBracket(
-        "league-1",
-        "tournament-1",
+      const asStranger = await service.getBracket(        "tournament-1",
         "auth0|stranger",
       );
       expect(asStranger.stages.map((s) => s.name)).toEqual(["Public"]);
 
-      const asOwner = await service.getBracket(
-        "league-1",
-        "tournament-1",
+      const asOwner = await service.getBracket(        "tournament-1",
         "auth0|owner",
       );
       expect(asOwner.stages.map((s) => s.name)).toEqual(["Public", "Hidden"]);

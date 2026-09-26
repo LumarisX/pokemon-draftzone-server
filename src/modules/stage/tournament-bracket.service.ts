@@ -41,9 +41,8 @@ export class TournamentBracketService {
     private readonly transactions: TransactionRunner,
   ) {}
 
-  async getBracket(leagueSlug: string, tournamentSlug: string, sub?: string) {
+  async getBracket(tournamentSlug: string, sub?: string) {
     const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     const canSeeHidden = can(tournament, sub, "viewHidden");
@@ -151,13 +150,11 @@ export class TournamentBracketService {
   }
 
   async updateBracket(
-    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: UpdateTournamentBracketDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSchedule");
@@ -530,13 +527,11 @@ export class TournamentBracketService {
   }
 
   async setCurrentRound(
-    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     currentRoundIndex: number,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSchedule");

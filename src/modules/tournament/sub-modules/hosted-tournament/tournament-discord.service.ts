@@ -48,9 +48,8 @@ export class TournamentDiscordService implements OnModuleInit {
     );
   }
 
-  async createLinkCode(leagueSlug: string, tournamentSlug: string, sub: string) {
+  async createLinkCode(tournamentSlug: string, sub: string) {
     const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");
@@ -66,9 +65,8 @@ export class TournamentDiscordService implements OnModuleInit {
     return { code, expiresAt, command: `/draftzone link code:${code}` };
   }
 
-  async unlink(leagueSlug: string, tournamentSlug: string, sub: string) {
+  async unlink(tournamentSlug: string, sub: string) {
     const tournament = await this.tournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");

@@ -30,7 +30,7 @@ function contextFor(
   } as unknown as ExecutionContext;
 }
 
-const params = { leagueSlug: "league", tournamentSlug: "cup" };
+const params = { tournamentSlug: "cup" };
 
 describe("TournamentOpenGuard", () => {
   let isArchived: jest.Mock;
@@ -47,7 +47,19 @@ describe("TournamentOpenGuard", () => {
     await expect(
       guard.canActivate(contextFor("write", { method: "POST", params })),
     ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.ARCHIVED.code });
-    expect(isArchived).toHaveBeenCalledWith("league", "cup");
+    expect(isArchived).toHaveBeenCalledWith("cup");
+  });
+
+  it("checks the tournament on a league-scoped legacy route too", async () => {
+    await expect(
+      guard.canActivate(
+        contextFor("write", {
+          method: "POST",
+          params: { leagueSlug: "league", tournamentSlug: "cup" },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.ARCHIVED.code });
+    expect(isArchived).toHaveBeenCalledWith("cup");
   });
 
   it("lets a write through when the tournament is open", async () => {

@@ -16,15 +16,11 @@ describe("StageController", () => {
     const stages = [{ _id: "stage-1" }];
     service.listStages.mockResolvedValue(stages as any);
 
-    const result = await controller.listStages(
-      "league-1",
-      "tournament-1",
+    const result = await controller.listStages(      "tournament-1",
       "auth0|owner",
     );
 
-    expect(service.listStages).toHaveBeenCalledWith(
-      "league-1",
-      "tournament-1",
+    expect(service.listStages).toHaveBeenCalledWith(      "tournament-1",
       "auth0|owner",
     );
     expect(result).toBe(stages);

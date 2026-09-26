@@ -67,9 +67,8 @@ export class StageService {
     throw new PDZError(ErrorCodes.STAGE.NOT_FOUND, { stageSlug: stage.slug });
   }
 
-  async listStages(leagueSlug: string, tournamentSlug: string, sub?: string) {
+  async listStages(tournamentSlug: string, sub?: string) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     const stages = await this.stageRepo.findAllByTournament(tournament.id);
@@ -88,13 +87,11 @@ export class StageService {
   }
 
   async getMatchupAnalysis(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub?: string,
   ) {
     const { stageDoc, tournament, matchupDoc } = await this.resolveMatchup(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -160,13 +157,11 @@ export class StageService {
   }
 
   private async resolveMatchup(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub?: string,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     const matchupDoc = (await this.matchupRepo.findBySlugPopulated(
@@ -188,13 +183,11 @@ export class StageService {
   }
 
   private async loadMatchupContext(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub?: string,
   ) {
     const { stageDoc, tournament, matchupDoc } = await this.resolveMatchup(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -228,14 +221,12 @@ export class StageService {
   }
 
   async getMatchupDetail(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub?: string,
   ) {
     const { stageDoc, tournament, matchupDoc, viewer } =
       await this.loadMatchupContext(
-        leagueSlug,
         tournamentSlug,
         matchupSlug,
         sub,
@@ -263,14 +254,12 @@ export class StageService {
   }
 
   async setMatchupSchedule(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub: string,
     dto: SetMatchupScheduleDto,
   ) {
     const { matchupDoc, viewer } = await this.loadMatchupContext(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -290,14 +279,12 @@ export class StageService {
   }
 
   async setMatchupNotes(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub: string,
     dto: SetMatchupNotesDto,
   ) {
     const { matchupDoc, viewer } = await this.loadMatchupContext(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -313,14 +300,12 @@ export class StageService {
   }
 
   async submitMatchupReport(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub: string,
     dto: SubmitMatchupReportDto,
   ) {
     const { tournament, matchupDoc, viewer } = await this.loadMatchupContext(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -390,20 +375,17 @@ export class StageService {
   }
 
   async reviewMatchupReport(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub: string,
     approve: boolean,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageResults");
 
     const { matchupDoc } = await this.loadMatchupContext(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -541,14 +523,12 @@ export class StageService {
   }
 
   async setMatchupAdvancement(
-    leagueSlug: string,
     tournamentSlug: string,
     matchupSlug: string,
     sub: string,
     advances: MatchupAdvancement | null,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSchedule");

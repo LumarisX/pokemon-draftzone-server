@@ -61,7 +61,7 @@ export class HostedTournamentAdMapper {
         .filter((entry) => entry[1])
         .map((entry) => entry[0]),
       status: "Approved" as const,
-      signupLink: `/leagues/${league.slug}/tournaments/${doc.slug}/sign-up`,
+      signupLink: `/tournaments/${doc.slug}/sign-up`,
       closesAt: doc.signUpDeadline,
       seasonStart: doc.seasonStart,
       seasonEnd: doc.seasonEnd,

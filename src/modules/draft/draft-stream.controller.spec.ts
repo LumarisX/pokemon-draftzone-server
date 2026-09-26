@@ -79,14 +79,14 @@ describe("DraftStreamController over HTTP", () => {
   it("streams draft events as named server-sent events", async () => {
     const controller = new AbortController();
     const response = await fetch(
-      `${baseUrl}/leagues/pdz/tournaments/spring-cup/draft-events`,
+      `${baseUrl}/tournaments/spring-cup/draft-events`,
       { signal: controller.signal },
     );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/event-stream");
     expect(response.headers.get("x-accel-buffering")).toBe("no");
-    expect(findBySlug).toHaveBeenCalledWith("pdz", "spring-cup");
+    expect(findBySlug).toHaveBeenCalledWith("spring-cup");
 
     setTimeout(
       () =>
@@ -112,14 +112,24 @@ describe("DraftStreamController over HTTP", () => {
     });
   });
 
+  it("still serves the league-scoped URL, ignoring the league slug", async () => {
+    const controller = new AbortController();
+    const response = await fetch(
+      `${baseUrl}/leagues/pdz/tournaments/spring-cup/draft-events`,
+      { signal: controller.signal },
+    );
+    controller.abort();
+
+    expect(response.status).toBe(200);
+    expect(findBySlug).toHaveBeenCalledWith("spring-cup");
+  });
+
   it("answers an unknown tournament with its error status before streaming", async () => {
     findBySlug.mockRejectedValue(
-      new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug: "nope" }),
+      new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentSlug: "nope" }),
     );
 
-    const response = await fetch(
-      `${baseUrl}/leagues/pdz/tournaments/nope/draft-events`,
-    );
+    const response = await fetch(`${baseUrl}/tournaments/nope/draft-events`);
 
     expect(response.status).toBe(404);
     expect(response.headers.get("content-type")).not.toContain(

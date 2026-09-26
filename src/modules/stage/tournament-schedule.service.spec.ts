@@ -114,7 +114,7 @@ describe("TournamentScheduleService", () => {
   });
 
   const get = (options = {}) =>
-    service.getSchedule("league-1", "tournament-1", options);
+    service.getSchedule("tournament-1", options);
 
   it("returns every round, even ones with no matches, for an organizer view", async () => {
     const result = await get();

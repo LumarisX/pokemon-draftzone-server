@@ -15,7 +15,10 @@ import {
 import { MakeTradeDto, UpdateTradeDto } from "./stage.dto";
 import { TournamentTradeService } from "./tournament-trade.service";
 
-@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/trades")
+@Controller([
+  "tournaments/:tournamentSlug/trades",
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/trades",
+])
 export class TournamentTradeController {
   constructor(private readonly tradeService: TournamentTradeService) {}
 
@@ -23,23 +26,20 @@ export class TournamentTradeController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getTrades(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Query("teamSlug") teamSlug?: string | string[],
   ) {
-    return this.tradeService.getTrades(leagueSlug, tournamentSlug, teamSlug);
+    return this.tradeService.getTrades(tournamentSlug, teamSlug);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard)
   async createTrade(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: MakeTradeDto,
   ) {
     return this.tradeService.createTrade(
-      leagueSlug,
       tournamentSlug,
       sub,
       body,
@@ -49,14 +49,12 @@ export class TournamentTradeController {
   @Patch(":tradeId")
   @UseGuards(JwtAuthGuard)
   async updateTrade(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("tradeId") tradeId: string,
     @User() sub: string,
     @Body() body: UpdateTradeDto,
   ) {
     return this.tradeService.updateTrade(
-      leagueSlug,
       tournamentSlug,
       tradeId,
       sub,
@@ -67,13 +65,11 @@ export class TournamentTradeController {
   @Delete(":tradeId")
   @UseGuards(JwtAuthGuard)
   async withdrawTrade(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("tradeId") tradeId: string,
     @User() sub: string,
   ) {
     return this.tradeService.withdrawTrade(
-      leagueSlug,
       tournamentSlug,
       tradeId,
       sub,

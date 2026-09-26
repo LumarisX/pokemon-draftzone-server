@@ -116,9 +116,7 @@ describe("TournamentOrganizerService", () => {
 
   describe("getOrganizers", () => {
     it("names organizers by their tournament name, never their account", async () => {
-      const result = await service.getOrganizers(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.getOrganizers(        TOURNAMENT_KEY,
         ORGANIZER,
       );
 
@@ -135,9 +133,7 @@ describe("TournamentOrganizerService", () => {
       });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      const result = await service.getOrganizers(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.getOrganizers(        TOURNAMENT_KEY,
         OWNER,
       );
 
@@ -150,9 +146,7 @@ describe("TournamentOrganizerService", () => {
       });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      const result = await service.getOrganizers(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.getOrganizers(        TOURNAMENT_KEY,
         OWNER,
       );
 
@@ -160,9 +154,7 @@ describe("TournamentOrganizerService", () => {
     });
 
     it("hides invites and candidates from organizers who are not the owner", async () => {
-      const result = await service.getOrganizers(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.getOrganizers(        TOURNAMENT_KEY,
         ORGANIZER,
       );
 
@@ -184,9 +176,7 @@ describe("TournamentOrganizerService", () => {
         },
       ] as any);
 
-      const result = await service.getOrganizers(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.getOrganizers(        TOURNAMENT_KEY,
         OWNER,
       );
 
@@ -197,7 +187,7 @@ describe("TournamentOrganizerService", () => {
 
     it("rejects anyone who is not an organizer", async () => {
       await expect(
-        service.getOrganizers(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER),
+        service.getOrganizers(TOURNAMENT_KEY, OUTSIDER),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
     });
   });
@@ -210,7 +200,7 @@ describe("TournamentOrganizerService", () => {
         tournamentId: new Types.ObjectId(tournament.id),
       } as any);
 
-      await service.addOrganizer(LEAGUE_KEY, TOURNAMENT_KEY, OWNER, {
+      await service.addOrganizer(TOURNAMENT_KEY, OWNER, {
         coachId: misty._id.toString(),
       });
 
@@ -224,9 +214,7 @@ describe("TournamentOrganizerService", () => {
 
   describe("removeOrganizer", () => {
     it("pulls the organizer from the staff list", async () => {
-      await service.removeOrganizer(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      await service.removeOrganizer(        TOURNAMENT_KEY,
         OWNER,
         ORGANIZER,
       );
@@ -240,9 +228,7 @@ describe("TournamentOrganizerService", () => {
 
   describe("renameOrganizer", () => {
     it("lets an organizer rename themselves", async () => {
-      await service.renameOrganizer(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      await service.renameOrganizer(        TOURNAMENT_KEY,
         ORGANIZER,
         ORGANIZER,
         "Joy",
@@ -256,9 +242,7 @@ describe("TournamentOrganizerService", () => {
     });
 
     it("lets the owner rename any organizer", async () => {
-      await service.renameOrganizer(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      await service.renameOrganizer(        TOURNAMENT_KEY,
         OWNER,
         OTHER_ORGANIZER,
         "Officer Jenny",
@@ -272,9 +256,7 @@ describe("TournamentOrganizerService", () => {
     });
 
     it("stores the owner's own name on the owner, not the staff list", async () => {
-      await service.renameOrganizer(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      await service.renameOrganizer(        TOURNAMENT_KEY,
         OWNER,
         OWNER,
         "Gym Leader Brock",
@@ -290,9 +272,7 @@ describe("TournamentOrganizerService", () => {
 
     it("stops an organizer renaming someone else", async () => {
       await expect(
-        service.renameOrganizer(
-          LEAGUE_KEY,
-          TOURNAMENT_KEY,
+        service.renameOrganizer(          TOURNAMENT_KEY,
           ORGANIZER,
           OTHER_ORGANIZER,
           "Nope",
@@ -303,9 +283,7 @@ describe("TournamentOrganizerService", () => {
 
     it("will not name someone who is not an organizer", async () => {
       await expect(
-        service.renameOrganizer(
-          LEAGUE_KEY,
-          TOURNAMENT_KEY,
+        service.renameOrganizer(          TOURNAMENT_KEY,
           OWNER,
           OUTSIDER,
           "Nope",
@@ -318,9 +296,7 @@ describe("TournamentOrganizerService", () => {
 
   describe("createInvite", () => {
     it("stores the name and only the hash of the token it returns", async () => {
-      const result = await service.createInvite(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.createInvite(        TOURNAMENT_KEY,
         OWNER,
         { name: "Misty" },
       );
@@ -334,7 +310,7 @@ describe("TournamentOrganizerService", () => {
 
     it("is owner-only", async () => {
       await expect(
-        service.createInvite(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, {
+        service.createInvite(TOURNAMENT_KEY, ORGANIZER, {
           name: "Misty",
         }),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
@@ -347,7 +323,7 @@ describe("TournamentOrganizerService", () => {
       );
 
       await expect(
-        service.createInvite(LEAGUE_KEY, TOURNAMENT_KEY, OWNER, {
+        service.createInvite(TOURNAMENT_KEY, OWNER, {
           name: "Misty",
         }),
       ).rejects.toMatchObject({
@@ -362,7 +338,7 @@ describe("TournamentOrganizerService", () => {
       inviteRepo.findByTokenHash.mockResolvedValue(invite);
       inviteRepo.claim.mockResolvedValue(invite);
 
-      await service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok");
+      await service.acceptInvite(TOURNAMENT_KEY, OUTSIDER, "tok");
 
       expect(inviteRepo.claim).toHaveBeenCalledWith(
         hashInviteToken("tok"),
@@ -380,9 +356,7 @@ describe("TournamentOrganizerService", () => {
       inviteRepo.findByTokenHash.mockResolvedValue(invite);
       inviteRepo.claim.mockResolvedValue(invite);
 
-      await service.acceptInvite(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      await service.acceptInvite(        TOURNAMENT_KEY,
         OUTSIDER,
         "tok",
         "Gym Leader Misty",
@@ -400,7 +374,7 @@ describe("TournamentOrganizerService", () => {
       );
 
       await expect(
-        service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
+        service.acceptInvite(TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
@@ -413,7 +387,7 @@ describe("TournamentOrganizerService", () => {
       );
 
       await expect(
-        service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
+        service.acceptInvite(TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
@@ -424,7 +398,7 @@ describe("TournamentOrganizerService", () => {
       inviteRepo.claim.mockResolvedValue(null);
 
       await expect(
-        service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
+        service.acceptInvite(TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
@@ -435,7 +409,7 @@ describe("TournamentOrganizerService", () => {
       inviteRepo.findByTokenHash.mockResolvedValue(buildInvite(tournament));
 
       await expect(
-        service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, "tok"),
+        service.acceptInvite(TOURNAMENT_KEY, ORGANIZER, "tok"),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ALREADY_ORGANIZER.code,
       });
@@ -449,7 +423,7 @@ describe("TournamentOrganizerService", () => {
       tournamentRepo.addStaff.mockRejectedValue(new Error("db down"));
 
       await expect(
-        service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
+        service.acceptInvite(TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toThrow("db down");
       expect(inviteRepo.release).toHaveBeenCalledWith(invite._id);
     });
@@ -459,9 +433,7 @@ describe("TournamentOrganizerService", () => {
     it("names the inviter by their organizer name and suggests the invitee's", async () => {
       inviteRepo.findByTokenHash.mockResolvedValue(buildInvite(tournament));
 
-      const result = await service.previewInvite(
-        LEAGUE_KEY,
-        TOURNAMENT_KEY,
+      const result = await service.previewInvite(        TOURNAMENT_KEY,
         OUTSIDER,
         "tok",
       );

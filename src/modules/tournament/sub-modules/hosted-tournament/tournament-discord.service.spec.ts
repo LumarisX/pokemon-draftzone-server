@@ -84,16 +84,14 @@ describe("TournamentDiscordService", () => {
   describe("createLinkCode", () => {
     it("refuses a non-organizer", async () => {
       await expect(
-        service.createLinkCode("league", "tournament", "auth0|stranger"),
+        service.createLinkCode("tournament", "auth0|stranger"),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
       expect(tournamentRepo.setDiscordLinkCode).not.toHaveBeenCalled();
     });
 
     it("stores only the code's hash, with a short expiry", async () => {
       const before = Date.now();
-      const result = await service.createLinkCode(
-        "league",
-        "tournament",
+      const result = await service.createLinkCode(        "tournament",
         "auth0|owner",
       );
 
@@ -109,7 +107,7 @@ describe("TournamentDiscordService", () => {
 
   describe("unlink", () => {
     it("clears the server link and every pool's channel", async () => {
-      await service.unlink("league", "tournament", "auth0|owner");
+      await service.unlink("tournament", "auth0|owner");
 
       expect(tournamentRepo.unlinkDiscord).toHaveBeenCalledWith("tournament-1");
       expect(draftRepo.clearChannelsByTournament).toHaveBeenCalledWith(
@@ -119,7 +117,7 @@ describe("TournamentDiscordService", () => {
 
     it("refuses a non-organizer", async () => {
       await expect(
-        service.unlink("league", "tournament", "auth0|stranger"),
+        service.unlink("tournament", "auth0|stranger"),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
       expect(tournamentRepo.unlinkDiscord).not.toHaveBeenCalled();
     });

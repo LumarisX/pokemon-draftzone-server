@@ -531,7 +531,7 @@ describe("DraftEngineService", () => {
       );
     });
 
-    it("links the pick embed to this draft's own league, tournament, and draft", async () => {
+    it("links the pick embed to this draft's own tournament and pool", async () => {
       const team = buildTeam();
       const tournament = buildTournament({
         leagueSlug: "spring-league",
@@ -545,7 +545,7 @@ describe("DraftEngineService", () => {
 
       const [, payload] = discordService.sendMessage.mock.calls[0];
       expect(payload.embeds?.[0].data.url).toBe(
-        "https://pokemondraftzone.com/leagues/spring-league/tournaments/spring-cup/pools/spring-draft/draft",
+        "https://pokemondraftzone.com/tournaments/spring-cup/pools/spring-draft/draft",
       );
     });
 
@@ -563,7 +563,7 @@ describe("DraftEngineService", () => {
 
       const [, payload] = discordService.sendMessage.mock.calls[0];
       expect(payload.embeds?.[0].data.url).toBe(
-        "http://localhost:4200/leagues/spring-league/tournaments/spring-cup/pools/spring-draft/draft",
+        "http://localhost:4200/tournaments/spring-cup/pools/spring-draft/draft",
       );
     });
 

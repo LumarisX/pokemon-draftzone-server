@@ -124,6 +124,7 @@ describe("TournamentCreationService", () => {
       expect.objectContaining({
         name: "Season 2",
         league: leagueId,
+        owner: "auth0|owner",
         ownerName: { sub: "auth0|owner", name: "Host" },
         signUpAccess: "closed",
         forfeit: { gameDiff: 0, pokemonDiff: 0 },

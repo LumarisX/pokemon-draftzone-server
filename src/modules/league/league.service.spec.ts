@@ -26,6 +26,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     name: "Spring Cup",
     slug: "springcup",
+    owner: "auth0|owner",
     description: "The spring cup",
     tierListId: "tierlist-1",
     format: { name: "Singles" },

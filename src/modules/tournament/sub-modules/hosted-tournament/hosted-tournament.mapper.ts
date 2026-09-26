@@ -33,7 +33,7 @@ export class HostedTournamentMapper {
       draftEnd: doc.draftEnd,
       seasonStart: doc.seasonStart,
       seasonEnd: doc.seasonEnd,
-      owner: league.owner,
+      owner: doc.owner ?? league.owner,
       leagueId: doc.league.toString(),
       leagueSlug: league.slug,
       leagueName: league.name,

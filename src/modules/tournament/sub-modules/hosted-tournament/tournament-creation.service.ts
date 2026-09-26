@@ -113,6 +113,7 @@ export class TournamentCreationService {
         ...(source ? carriedSettings(source) : {}),
         name: dto.name,
         league: league._id,
+        owner: sub,
         ownerName: { sub, name: dto.ownerName },
         staff: [],
         signUpDeadline: dto.signUpDeadline,

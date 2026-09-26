@@ -13,6 +13,7 @@ import { CreatePoolDto } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
 @Controller([
+  "tournaments/:tournamentSlug/pools",
   "leagues/:leagueSlug/tournaments/:tournamentSlug/pools",
   "leagues/:leagueSlug/tournaments/:tournamentSlug/drafts",
 ])
@@ -22,22 +23,19 @@ export class DraftPoolsController {
 
   @Get()
   async list(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return this.draftService.listPools(leagueSlug, tournamentSlug, sub);
+    return this.draftService.listPools(tournamentSlug, sub);
   }
 
   @Post()
   async create(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
     @Body() body: CreatePoolDto,
   ) {
     return this.draftService.createPool(
-      leagueSlug,
       tournamentSlug,
       sub,
       body,
@@ -46,13 +44,11 @@ export class DraftPoolsController {
 
   @Delete(":poolSlug")
   async remove(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.deletePool(
-      leagueSlug,
       tournamentSlug,
       poolSlug,
       sub,

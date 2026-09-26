@@ -37,14 +37,12 @@ export class ChatService {
   ) {}
 
   async getMessages(
-    leagueSlug: string,
     tournamentSlug: string,
     channel: ChatChannel,
     target: string | undefined,
     sub?: string,
   ) {
     const { tournament, room, viewer } = await this.resolveRoom(
-      leagueSlug,
       tournamentSlug,
       channel,
       target,
@@ -69,14 +67,12 @@ export class ChatService {
   }
 
   async postMessage(
-    leagueSlug: string,
     tournamentSlug: string,
     channel: ChatChannel,
     sub: string,
     dto: PostChatMessageDto,
   ) {
     const { tournament, room, viewer } = await this.resolveRoom(
-      leagueSlug,
       tournamentSlug,
       channel,
       dto.target,
@@ -107,7 +103,6 @@ export class ChatService {
   }
 
   async deleteMessage(
-    leagueSlug: string,
     tournamentSlug: string,
     messageId: string,
     sub: string,
@@ -118,7 +113,6 @@ export class ChatService {
       });
 
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     const message = await this.chatRepo.findById(messageId);
@@ -140,14 +134,12 @@ export class ChatService {
   }
 
   private async resolveRoom(
-    leagueSlug: string,
     tournamentSlug: string,
     channel: ChatChannel,
     target: string | undefined,
     sub?: string,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
 

@@ -20,7 +20,10 @@ import {
 } from "./stage.dto";
 import { StageService } from "./stage.service";
 
-@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/matchups")
+@Controller([
+  "tournaments/:tournamentSlug/matchups",
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/matchups",
+])
 export class TournamentMatchupController {
   constructor(private readonly stageService: StageService) {}
 
@@ -28,13 +31,11 @@ export class TournamentMatchupController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getMatchupDetail(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub?: string,
   ) {
     return this.stageService.getMatchupDetail(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -45,13 +46,11 @@ export class TournamentMatchupController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getMatchupAnalysis(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub?: string,
   ) {
     return this.stageService.getMatchupAnalysis(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -61,14 +60,12 @@ export class TournamentMatchupController {
   @Post(":matchupSlug/schedule")
   @UseGuards(JwtAuthGuard)
   async setMatchupSchedule(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
     @Body() body: SetMatchupScheduleDto,
   ) {
     return this.stageService.setMatchupSchedule(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -79,14 +76,12 @@ export class TournamentMatchupController {
   @Post(":matchupSlug/notes")
   @UseGuards(JwtAuthGuard)
   async setMatchupNotes(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
     @Body() body: SetMatchupNotesDto,
   ) {
     return this.stageService.setMatchupNotes(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -99,14 +94,12 @@ export class TournamentMatchupController {
   @SkipGlobalThrottle()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async submitMatchupReport(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
     @Body() body: SubmitMatchupReportDto,
   ) {
     return this.stageService.submitMatchupReport(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -117,13 +110,11 @@ export class TournamentMatchupController {
   @Post(":matchupSlug/report/approve")
   @UseGuards(JwtAuthGuard)
   async approveMatchupReport(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
   ) {
     return this.stageService.reviewMatchupReport(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -134,13 +125,11 @@ export class TournamentMatchupController {
   @Post(":matchupSlug/report/reject")
   @UseGuards(JwtAuthGuard)
   async rejectMatchupReport(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
   ) {
     return this.stageService.reviewMatchupReport(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,
@@ -151,14 +140,12 @@ export class TournamentMatchupController {
   @Post(":matchupSlug/advancement")
   @UseGuards(JwtAuthGuard)
   async setMatchupAdvancement(
-    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
     @Body() body: SetMatchupAdvancementDto,
   ) {
     return this.stageService.setMatchupAdvancement(
-      leagueSlug,
       tournamentSlug,
       matchupSlug,
       sub,

@@ -188,9 +188,9 @@ describe("DraftService", () => {
       const details = { poolName: "Spring Draft" };
       mockedGetDraftDetails.mockResolvedValue(details);
 
-      const result = await service.getDetails("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getDetails("tournament-1", "draft-1", "auth0|sub");
 
-      expect(draftRepo.findTournament).toHaveBeenCalledWith("league-1", "tournament-1");
+      expect(draftRepo.findTournament).toHaveBeenCalledWith("tournament-1");
       expect(draftRepo.findDraft).toHaveBeenCalledWith(tournament, "draft-1");
       expect(mockedGetDraftDetails).toHaveBeenCalledWith(tournament, draft, "auth0|sub");
       expect(result).toBe(details);
@@ -214,7 +214,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getPicks("tournament-1", "draft-1", "auth0|sub");
 
       expect(team.populate).toHaveBeenCalledWith("pickLog.picker");
       expect(result).toEqual([
@@ -254,7 +254,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getPicks("tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0].picks[0].picker).toBeUndefined();
     });
@@ -274,7 +274,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamB, teamA]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getOrder("tournament-1", "draft-1", "auth0|sub");
 
       expect(mockedGetDraftOrder).toHaveBeenCalledWith(draft);
       expect(result[0].map((p: any) => p.teamName)).toEqual(["B", "A"]);
@@ -289,7 +289,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamA, teamB]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getOrder("tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0].map((p: any) => p.teamName)).toEqual(["A", "B"]);
       expect(result[1].map((p: any) => p.teamName)).toEqual(["B", "A"]);
@@ -306,7 +306,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
       mockedGetDraftOrder.mockReturnValue([teamA]);
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getOrder("tournament-1", "draft-1", "auth0|sub");
 
       expect(result[0][0].pokemon).toEqual({ id: "pikachu", name: "Pikachu" });
       expect(result[1][0].pokemon).toBeUndefined();
@@ -339,7 +339,7 @@ describe("DraftService", () => {
     it("getPicks hides other teams' picks but reports their count", async () => {
       blindSetup();
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+      const result = await service.getPicks("tournament-1", "draft-1", "auth0|coach-1");
 
       expect(result[0].picksHidden).toBe(false);
       expect(result[0].picks).toHaveLength(1);
@@ -349,7 +349,7 @@ describe("DraftService", () => {
     it("getPicks shows every team to staff", async () => {
       blindSetup();
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|owner");
+      const result = await service.getPicks("tournament-1", "draft-1", "auth0|owner");
 
       expect(result.map((team) => team.picksHidden)).toEqual([false, false]);
     });
@@ -357,7 +357,7 @@ describe("DraftService", () => {
     it("getPicks reveals everything once the draft is completed", async () => {
       blindSetup("COMPLETED");
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+      const result = await service.getPicks("tournament-1", "draft-1", "auth0|coach-1");
 
       expect(result.map((team) => team.picksHidden)).toEqual([false, false]);
     });
@@ -365,7 +365,7 @@ describe("DraftService", () => {
     it("getOrder marks other teams' slots hidden instead of naming the Pokemon", async () => {
       blindSetup();
 
-      const result = await service.getOrder("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+      const result = await service.getOrder("tournament-1", "draft-1", "auth0|coach-1");
 
       expect(result[0][0]).toMatchObject({ teamName: "Own", pokemon: { id: "pikachu" } });
       expect(result[0][1]).toMatchObject({ teamName: "Rival", hidden: true });
@@ -376,9 +376,7 @@ describe("DraftService", () => {
       blindSetup();
       mockedGetLatestRoster.mockReturnValue([]);
 
-      const result = (await service.getPowerRankings(
-        "league-1",
-        "tournament-1",
+      const result = (await service.getPowerRankings(        "tournament-1",
         "draft-1",
         "auth0|coach-1",
       )) as { info: { name: string; index: number } }[];
@@ -393,7 +391,7 @@ describe("DraftService", () => {
       stageRepo.findAllByTournament.mockResolvedValue([]);
       mockedGetLatestRoster.mockReturnValue([{ id: "pikachu", addons: undefined }]);
 
-      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+      const result = await service.getTeams("tournament-1", "draft-1", "auth0|coach-1");
 
       expect(result.teams.map((team: any) => [team.picksHidden, team.draft.length])).toEqual([
         [false, 1],
@@ -414,7 +412,7 @@ describe("DraftService", () => {
       const dto = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
 
       await expect(
-        service.draftPick("league-1", "tournament-1", "draft-1", "team-1", "auth0|stranger", dto),
+        service.draftPick("tournament-1", "draft-1", "team-1", "auth0|stranger", dto),
       ).rejects.toMatchObject({ code: "AUTH-002" });
       expect(draftEngine.batchDraftPokemon).not.toHaveBeenCalled();
     });
@@ -432,7 +430,7 @@ describe("DraftService", () => {
       mockedGetDraftDetails.mockResolvedValue(details);
 
       const result = await service.draftPick(
-        "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
+"tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
       expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
@@ -453,7 +451,7 @@ describe("DraftService", () => {
       mockedGetDraftDetails.mockResolvedValue({});
 
       await service.draftPick(
-        "league-1", "tournament-1", "draft-1", "team-1", "auth0|owner-2", dto,
+"tournament-1", "draft-1", "team-1", "auth0|owner-2", dto,
       );
 
       expect(draftEngine.batchDraftPokemon).toHaveBeenCalledWith(
@@ -474,7 +472,7 @@ describe("DraftService", () => {
 
       await expect(
         service.setPicks(
-          "league-1", "tournament-1", "draft-1", "team-1", "auth0|stranger",
+"tournament-1", "draft-1", "team-1", "auth0|stranger",
           { picks: [] } as SetPicksDto,
         ),
       ).rejects.toMatchObject({ code: "AUTH-002" });
@@ -492,7 +490,7 @@ describe("DraftService", () => {
       const dto = { picks: [[{ pokemonId: "pikachu" }]] } as SetPicksDto;
 
       const result = await service.setPicks(
-        "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
+"tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
       expect(teamRepo.updatePicks).toHaveBeenCalledWith(team._id, dto.picks);
@@ -510,7 +508,7 @@ describe("DraftService", () => {
       const dto = { picks: [[{ pokemonId: "pikachu" }]] } as SetPicksDto;
 
       await service.setPicks(
-        "league-1", "tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
+"tournament-1", "draft-1", "team-1", "auth0|coach-1", dto,
       );
 
       expect(team.picks).toEqual(dto.picks);
@@ -528,7 +526,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
 
       await expect(
-        service.setState("league-1", "tournament-1", "draft-1", "auth0|stranger", {
+        service.setState("tournament-1", "draft-1", "auth0|stranger", {
           state: "play",
         }),
       ).rejects.toMatchObject({ code: "AUTH-002" });
@@ -542,7 +540,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
 
       const result = await service.setState(
-        "league-1", "tournament-1", "draft-1", "auth0|owner", { state: "play" },
+"tournament-1", "draft-1", "auth0|owner", { state: "play" },
       );
 
       expect(draftEngine.setDraftState).toHaveBeenCalledWith(tournament, draft, "play");
@@ -564,7 +562,7 @@ describe("DraftService", () => {
       ]);
 
       await expect(
-        service.updateSettings("league-1", "tournament-1", "draft-1", "auth0|owner", {
+        service.updateSettings("tournament-1", "draft-1", "auth0|owner", {
           channelId: "222222222222222222",
         }),
       ).rejects.toMatchObject({ code: "TRN-003" });
@@ -585,7 +583,7 @@ describe("DraftService", () => {
       draftRepo.findDraft.mockResolvedValue(draft);
 
       await expect(
-        service.skipPick("league-1", "tournament-1", "draft-1", "auth0|stranger"),
+        service.skipPick("tournament-1", "draft-1", "auth0|stranger"),
       ).rejects.toMatchObject({ code: "AUTH-002" });
       expect(draftEngine.skipCurrentPick).not.toHaveBeenCalled();
     });
@@ -596,7 +594,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.skipPick("league-1", "tournament-1", "draft-1", "auth0|owner");
+      const result = await service.skipPick("tournament-1", "draft-1", "auth0|owner");
 
       expect(draftEngine.skipCurrentPick).toHaveBeenCalledWith(tournament, draft);
       expect(result).toEqual({ message: "Skip successful." });
@@ -608,7 +606,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(buildTournament());
 
       await expect(
-        service.createPool("league-1", "tournament-1", "auth0|nobody", {
+        service.createPool("tournament-1", "auth0|nobody", {
           name: "Alpha",
         }),
       ).rejects.toThrow();
@@ -622,7 +620,7 @@ describe("DraftService", () => {
       ]);
 
       await expect(
-        service.createPool("league-1", "tournament-1", "auth0|owner", {
+        service.createPool("tournament-1", "auth0|owner", {
           name: "  Alpha  ",
         }),
       ).rejects.toThrow();
@@ -633,7 +631,7 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(buildTournament());
 
       await expect(
-        service.createPool("league-1", "tournament-1", "auth0|owner", {
+        service.createPool("tournament-1", "auth0|owner", {
           name: "Alpha",
           draftStart: "2026-10-10T18:00:00.000Z",
           draftEnd: "2026-10-09T18:00:00.000Z",
@@ -648,9 +646,7 @@ describe("DraftService", () => {
         buildDraft({ slug: "alpha", name: "Alpha" }),
       );
 
-      const result = await service.createPool(
-        "league-1",
-        "tournament-1",
+      const result = await service.createPool(        "tournament-1",
         "auth0|owner",
         { name: "  Alpha  " },
       );
@@ -670,7 +666,7 @@ describe("DraftService", () => {
       );
 
       await expect(
-        service.deletePool("league-1", "tournament-1", "draft-1", "auth0|owner"),
+        service.deletePool("tournament-1", "draft-1", "auth0|owner"),
       ).rejects.toThrow();
       expect(draftRepo.delete).not.toHaveBeenCalled();
     });
@@ -685,7 +681,7 @@ describe("DraftService", () => {
       );
 
       await expect(
-        service.deletePool("league-1", "tournament-1", "draft-1", "auth0|owner"),
+        service.deletePool("tournament-1", "draft-1", "auth0|owner"),
       ).rejects.toThrow();
       expect(draftRepo.delete).not.toHaveBeenCalled();
     });
@@ -697,9 +693,7 @@ describe("DraftService", () => {
         buildDraft({ status: "PRE_DRAFT", teams: [team], _id: "draft-oid" }),
       );
 
-      const result = await service.deletePool(
-        "league-1",
-        "tournament-1",
+      const result = await service.deletePool(        "tournament-1",
         "draft-1",
         "auth0|owner",
       );
@@ -717,9 +711,7 @@ describe("DraftService", () => {
       );
       transactions.run.mockResolvedValueOnce(undefined);
 
-      await service.deletePool(
-        "league-1",
-        "tournament-1",
+      await service.deletePool(        "tournament-1",
         "draft-1",
         "auth0|owner",
       );
@@ -744,7 +736,7 @@ describe("DraftService", () => {
       mockedGetDraftOrder.mockReturnValue([team]);
       mockedGetLatestRoster.mockReturnValue([{ id: "pikachu", addons: undefined }]);
 
-      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|coach-1");
+      const result = await service.getTeams("tournament-1", "draft-1", "auth0|coach-1");
 
       expect(result.teams).toEqual([
         {
@@ -779,7 +771,7 @@ describe("DraftService", () => {
       mockedGetDraftOrder.mockReturnValue([approved, dropped]);
       mockedGetLatestRoster.mockReturnValue([]);
 
-      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getTeams("tournament-1", "draft-1", "auth0|sub");
 
       expect(result.teams.map((t: any) => t.name)).toEqual(["Approved"]);
     });
@@ -806,7 +798,7 @@ describe("DraftService", () => {
       mockedGetLatestRoster.mockReturnValue([]);
 
       await expect(
-        service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub"),
+        service.getTeams("tournament-1", "draft-1", "auth0|sub"),
       ).resolves.toBeDefined();
 
       expect(matchupRepo.findByStages).toHaveBeenCalledWith(
@@ -835,7 +827,7 @@ describe("DraftService", () => {
       mockedGetDraftOrder.mockReturnValue([team]);
       mockedGetLatestRoster.mockReturnValue([]);
 
-      const result = await service.getTeams("league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1");
+      const result = await service.getTeams("tournament-1", "draft-1", "auth0|sub", "stage-1");
 
       expect(stageRepo.findBySlug).toHaveBeenCalledWith(
         draft.tournamentId,

@@ -31,11 +31,9 @@ export class DraftRepository {
   ) {}
 
   async findTournament(
-    leagueSlug: string,
     tournamentSlug: string,
   ): Promise<PopulatedTournament> {
     const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
       tournamentSlug,
     );
     tournament.requireTierList("draft");

@@ -371,6 +371,9 @@ export class HostedTournamentEntity {
   })
   league!: Types.ObjectId;
 
+  @Prop({ index: true })
+  owner?: string;
+
   @Prop({ type: [TournamentStaffSchema], default: [] })
   staff!: TournamentStaffEntity[];
 

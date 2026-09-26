@@ -189,7 +189,7 @@ export class LeagueService {
       newTournamentDefaults: isOwner
         ? {
             ownerName:
-              latest?.ownerName?.sub === league.owner
+              latest?.owner === sub && latest.ownerName?.sub === sub
                 ? latest.ownerName.name
                 : null,
             copyFrom: latest

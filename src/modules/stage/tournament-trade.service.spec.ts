@@ -122,9 +122,7 @@ describe("TournamentTradeService", () => {
       const tournament = buildTournament();
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      const result = await service.createTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.createTrade(        "tournament-1",
         "auth0|owner",
         tradeDto({
           roundIndex: 1,
@@ -150,9 +148,7 @@ describe("TournamentTradeService", () => {
         coach: { _id: new Types.ObjectId(), name: "Ash", auth0Id: "auth0|ash" },
       });
 
-      const result = await service.createTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.createTrade(        "tournament-1",
         "auth0|ash",
         tradeDto({
           side1: {
@@ -172,9 +168,7 @@ describe("TournamentTradeService", () => {
     it("records the organizer as both submitter and resolver", async () => {
       const team = withRoster("pikachu");
 
-      await service.createTrade(
-        "league-1",
-        "tournament-1",
+      await service.createTrade(        "tournament-1",
         "auth0|owner",
         tradeDto({
           side1: {
@@ -195,9 +189,7 @@ describe("TournamentTradeService", () => {
       const team = withRoster("pikachu");
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|stranger",
           tradeDto({
             side1: {
@@ -212,9 +204,7 @@ describe("TournamentTradeService", () => {
 
     it("rejects a round outside the tournament's axis", async () => {
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({ roundIndex: 5 }),
         ),
@@ -226,9 +216,7 @@ describe("TournamentTradeService", () => {
       teamRepo.countInTournament.mockResolvedValue(1);
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({
             side1: {
@@ -251,9 +239,7 @@ describe("TournamentTradeService", () => {
       const team = withRoster("pikachu");
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({
             side1: {
@@ -280,9 +266,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({
             side1: {
@@ -301,9 +285,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [buildTrade()], tradesVersion: 4 }),
       );
 
-      await service.createTrade(
-        "league-1",
-        "tournament-1",
+      await service.createTrade(        "tournament-1",
         "auth0|owner",
         tradeDto({
           side1: {
@@ -330,9 +312,7 @@ describe("TournamentTradeService", () => {
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true);
 
-      const result = await service.createTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.createTrade(        "tournament-1",
         "auth0|owner",
         tradeDto({
           side1: {
@@ -367,9 +347,7 @@ describe("TournamentTradeService", () => {
       tournamentRepo.pushTrade.mockResolvedValueOnce(false);
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({
             side1: {
@@ -388,9 +366,7 @@ describe("TournamentTradeService", () => {
       tournamentRepo.pushTrade.mockResolvedValue(false);
 
       await expect(
-        service.createTrade(
-          "league-1",
-          "tournament-1",
+        service.createTrade(          "tournament-1",
           "auth0|owner",
           tradeDto({
             side1: {
@@ -407,9 +383,7 @@ describe("TournamentTradeService", () => {
     it("records a tera pick as the Tera Captain add-on", async () => {
       const team = withRoster("pikachu");
 
-      await service.createTrade(
-        "league-1",
-        "tournament-1",
+      await service.createTrade(        "tournament-1",
         "auth0|owner",
         tradeDto({
           side1: {
@@ -428,9 +402,7 @@ describe("TournamentTradeService", () => {
   describe("updateTrade", () => {
     it("rejects a non-organizer", async () => {
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           new Types.ObjectId().toString(),
           "auth0|stranger",
           { status: "APPROVED" },
@@ -445,9 +417,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           { status: "APPROVED" },
@@ -460,9 +430,7 @@ describe("TournamentTradeService", () => {
       const tournament = buildTournament({ trades: [trade] });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      const result = await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { status: "REJECTED" },
@@ -485,9 +453,7 @@ describe("TournamentTradeService", () => {
       const tournament = buildTournament({ trades: [trade] });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { activeRound: 1 },
@@ -512,9 +478,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ rounds: [inserted, week1, week2], trades: [trade] }),
       );
 
-      const result = await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { status: "REJECTED" },
@@ -539,9 +503,7 @@ describe("TournamentTradeService", () => {
       tournamentRepo.resolvePendingTrade.mockResolvedValueOnce(false);
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           { status: "REJECTED" },
@@ -555,9 +517,7 @@ describe("TournamentTradeService", () => {
       const tournament = buildTournament({ trades: [trade] });
       tournamentRepo.findBySlug.mockResolvedValue(tournament);
 
-      const result = await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { activeRound: 1 },
@@ -576,9 +536,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           { activeRound: 7 },
@@ -593,9 +551,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           {},
@@ -615,9 +571,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade] }),
       );
 
-      const result = await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      const result = await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { status: "APPROVED", activeRound: 1 },
@@ -641,9 +595,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade] }),
       );
 
-      await service.updateTrade(
-        "league-1",
-        "tournament-1",
+      await service.updateTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
         { status: "APPROVED" },
@@ -670,9 +622,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           { status: "APPROVED" },
@@ -696,9 +646,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.updateTrade(
-          "league-1",
-          "tournament-1",
+        service.updateTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
           { status: "APPROVED" },
@@ -720,9 +668,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade] }),
       );
 
-      await service.withdrawTrade(
-        "league-1",
-        "tournament-1",
+      await service.withdrawTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|giovanni",
       );
@@ -740,9 +686,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade] }),
       );
 
-      await service.withdrawTrade(
-        "league-1",
-        "tournament-1",
+      await service.withdrawTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
       );
@@ -757,9 +701,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [trade, other] }),
       );
 
-      await service.withdrawTrade(
-        "league-1",
-        "tournament-1",
+      await service.withdrawTrade(        "tournament-1",
         trade._id.toString(),
         "auth0|owner",
       );
@@ -780,9 +722,7 @@ describe("TournamentTradeService", () => {
       tournamentRepo.pullPendingTrade.mockResolvedValueOnce(false);
 
       await expect(
-        service.withdrawTrade(
-          "league-1",
-          "tournament-1",
+        service.withdrawTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
         ),
@@ -800,9 +740,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.withdrawTrade(
-          "league-1",
-          "tournament-1",
+        service.withdrawTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|stranger",
         ),
@@ -816,9 +754,7 @@ describe("TournamentTradeService", () => {
       );
 
       await expect(
-        service.withdrawTrade(
-          "league-1",
-          "tournament-1",
+        service.withdrawTrade(          "tournament-1",
           trade._id.toString(),
           "auth0|owner",
         ),
@@ -847,7 +783,7 @@ describe("TournamentTradeService", () => {
       );
       teamRepo.findManyByIds.mockResolvedValue([teamA, teamB]);
 
-      const result = await service.getTrades("league-1", "tournament-1");
+      const result = await service.getTrades("tournament-1");
 
       expect(result.rounds[0].trades).toEqual([]);
       expect(result.rounds[1].trades).toHaveLength(1);
@@ -881,7 +817,7 @@ describe("TournamentTradeService", () => {
         getPokemonCost: jest.fn().mockReturnValue(12),
       } as any);
 
-      const result = await service.getTrades("league-1", "tournament-1");
+      const result = await service.getTrades("tournament-1");
 
       expect((result.rounds[0].trades[0] as any).side1.pokemon[0]).toMatchObject(
         { id: "pikachu", tier: "B", cost: 12 },
@@ -893,7 +829,7 @@ describe("TournamentTradeService", () => {
         buildTournament({ trades: [buildTrade({ activeRound: 9 })] }),
       );
 
-      const result = await service.getTrades("league-1", "tournament-1");
+      const result = await service.getTrades("tournament-1");
 
       expect(result.rounds.every((r) => r.trades.length === 0)).toBe(true);
     });
@@ -908,7 +844,7 @@ describe("TournamentTradeService", () => {
         }),
       );
 
-      const result = await service.getTrades("league-1", "tournament-1");
+      const result = await service.getTrades("tournament-1");
 
       expect(result.rounds[0].trades).toHaveLength(0);
       expect(result.rounds[1].trades).toEqual([
@@ -923,7 +859,7 @@ describe("TournamentTradeService", () => {
         }),
       );
 
-      const result = await service.getTrades("league-1", "tournament-1");
+      const result = await service.getTrades("tournament-1");
 
       expect(result.rounds.every((r) => r.trades.length === 0)).toBe(true);
     });
@@ -949,9 +885,7 @@ describe("TournamentTradeService", () => {
       teamRepo.findManyByIds.mockResolvedValue([teamA, teamB, teamC]);
       teamRepo.findIdsBySlugs.mockResolvedValue([teamA._id]);
 
-      const result = await service.getTrades(
-        "league-1",
-        "tournament-1",
+      const result = await service.getTrades(        "tournament-1",
         "team-a-slug",
       );
 
