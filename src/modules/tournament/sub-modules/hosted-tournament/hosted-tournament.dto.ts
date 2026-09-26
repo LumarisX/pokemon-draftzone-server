@@ -242,7 +242,7 @@ export class TeamAssignmentDto {
   @IsString()
   @MinLength(1)
   @IsOptional()
-  divisionKey?: string | null;
+  poolSlug?: string | null;
 
   @IsIn(TEAM_STATUSES)
   @IsOptional()

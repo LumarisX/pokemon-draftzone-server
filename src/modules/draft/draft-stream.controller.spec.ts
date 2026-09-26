@@ -92,9 +92,9 @@ describe("DraftStreamController over HTTP", () => {
       () =>
         stream.onDraftCompleted({
           tournamentSlug: "spring-cup",
-          draftSlug: "pool-a",
+          poolSlug: "pool-a",
           audience: { draftPublic: true },
-          draftName: "Pool A",
+          poolName: "Pool A",
         }),
       20,
     );
@@ -107,8 +107,8 @@ describe("DraftStreamController over HTTP", () => {
       .find((line) => line.startsWith("data: "))!;
     expect(JSON.parse(dataLine.slice(6))).toEqual({
       tournamentSlug: "spring-cup",
-      draftSlug: "pool-a",
-      draftName: "Pool A",
+      poolSlug: "pool-a",
+      poolName: "Pool A",
     });
   });
 

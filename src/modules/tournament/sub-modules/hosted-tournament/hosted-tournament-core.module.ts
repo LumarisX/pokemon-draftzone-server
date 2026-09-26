@@ -1,12 +1,12 @@
 import { CoachModule } from "@modules/coach/coach.module";
 import { LeagueCoreModule } from "@modules/league/league-core.module";
-import { StageModule } from "@modules/stage/stage.module";
+import { StageCoreModule } from "@modules/stage/stage-core.module";
 import { TeamModule } from "@modules/team/team.module";
 import {
   TierListEntity,
   TierListSchema,
 } from "@modules/tier-list/tier-list.schema";
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import {
@@ -21,7 +21,7 @@ import {
       { name: TierListEntity.name, schema: TierListSchema },
     ]),
     LeagueCoreModule,
-    forwardRef(() => StageModule),
+    StageCoreModule,
     CoachModule,
     TeamModule,
   ],

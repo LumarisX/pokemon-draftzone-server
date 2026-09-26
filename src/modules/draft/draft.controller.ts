@@ -23,7 +23,10 @@ import {
 } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
-@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/drafts/:draftSlug")
+@Controller([
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/pools/:poolSlug",
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/drafts/:poolSlug",
+])
 @UseGuards(JwtAuthGuard)
 export class DraftController {
   constructor(private readonly draftService: DraftService) {}
@@ -32,13 +35,13 @@ export class DraftController {
   async getDetails(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.getDetails(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }
@@ -47,14 +50,14 @@ export class DraftController {
   async getTeams(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Query("stageSlug") stageSlug?: string,
   ) {
     return this.draftService.getTeams(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       stageSlug,
     );
@@ -64,13 +67,13 @@ export class DraftController {
   async getPicks(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.getPicks(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }
@@ -79,13 +82,13 @@ export class DraftController {
   async getOrder(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.getOrder(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }
@@ -94,28 +97,13 @@ export class DraftController {
   async getPowerRankings(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.getPowerRankings(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
-      sub,
-    );
-  }
-
-  @Get("pokemon-list")
-  async getPokemonList(
-    @Param("leagueSlug") leagueSlug: string,
-    @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
-    @User() sub: string,
-  ) {
-    return this.draftService.getPokemonList(
-      leagueSlug,
-      tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }
@@ -124,7 +112,7 @@ export class DraftController {
   async draftPick(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @Param("teamId") teamId: string,
     @User() sub: string,
     @Body() body: DraftDto,
@@ -132,7 +120,7 @@ export class DraftController {
     return this.draftService.draftPick(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       teamId,
       sub,
       body,
@@ -143,7 +131,7 @@ export class DraftController {
   async setRoundPick(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @Param("teamId") teamId: string,
     @Param("round", ParseIntPipe) round: number,
     @User() sub: string,
@@ -152,7 +140,7 @@ export class DraftController {
     return this.draftService.setRoundPick(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       teamId,
       round,
       sub,
@@ -164,7 +152,7 @@ export class DraftController {
   async setPicks(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @Param("teamId") teamId: string,
     @User() sub: string,
     @Body() body: SetPicksDto,
@@ -172,7 +160,7 @@ export class DraftController {
     return this.draftService.setPicks(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       teamId,
       sub,
       body,
@@ -183,14 +171,14 @@ export class DraftController {
   async setState(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Body() body: SetDraftStateDto,
   ) {
     return this.draftService.setState(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       body,
     );
@@ -200,14 +188,14 @@ export class DraftController {
   async setTimer(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Body() body: SetDraftTimerDto,
   ) {
     return this.draftService.setTimerMode(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       body,
     );
@@ -217,14 +205,14 @@ export class DraftController {
   async updateSettings(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Body() body: UpdateDraftSettingsDto,
   ) {
     return this.draftService.updateSettings(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       body,
     );
@@ -234,13 +222,13 @@ export class DraftController {
   async sendTestMessage(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.sendTestMessage(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }
@@ -249,14 +237,14 @@ export class DraftController {
   async setOrder(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Body() body: SetDraftOrderDto,
   ) {
     return this.draftService.setOrder(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       body,
     );
@@ -266,14 +254,14 @@ export class DraftController {
   async setCurrentPick(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
     @Body() body: SetCurrentPickDto,
   ) {
     return this.draftService.setCurrentPick(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
       body,
     );
@@ -283,7 +271,7 @@ export class DraftController {
   async removeDraftPick(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @Param("teamId") teamId: string,
     @Param("pokemonId") pokemonId: string,
     @User() sub: string,
@@ -291,7 +279,7 @@ export class DraftController {
     return this.draftService.removeDraftPick(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       teamId,
       sub,
       pokemonId,
@@ -302,13 +290,13 @@ export class DraftController {
   async skipPick(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.skipPick(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }

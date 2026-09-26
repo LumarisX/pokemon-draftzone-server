@@ -126,7 +126,7 @@ function pickerFor(team: PopulatedTeam, actor?: string): Types.ObjectId {
     team.primaryCoach?._id ??
     activeCoaches(team)[0]?._id;
   if (!picker)
-    throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+    throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, {
       teamId: team._id.toString(),
     });
   return picker;
@@ -150,7 +150,7 @@ export class DraftEngineService {
     const baseUrl = (
       this.configService.get<string>("CLIENT_URL") ?? DEFAULT_CLIENT_URL
     ).replace(/\/+$/, "");
-    return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/drafts/${draft.slug}/draft`;
+    return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/pools/${draft.slug}/draft`;
   }
 
   private pickSummary(
@@ -188,7 +188,7 @@ export class DraftEngineService {
 
     this.draftEvents.emitDraftPickUpdated({
       tournamentSlug: tournament.slug,
-      draftSlug: draft.slug,
+      poolSlug: draft.slug,
       audience: draftAudience(draft, team._id.toString()),
       ...detail,
       team: {
@@ -446,7 +446,7 @@ export class DraftEngineService {
       queueSideEffect(session, () => {
         this.draftEvents.emitDraftAdded({
           tournamentSlug: tournament.slug,
-          draftSlug: currentDraft.slug,
+          poolSlug: currentDraft.slug,
           audience: draftAudience(currentDraft, currentTeamId),
           pick: {
             pokemon: {
@@ -456,7 +456,7 @@ export class DraftEngineService {
               cost: tier?.cost,
             },
             team: { id: currentTeamId, name: currentTeam.teamName },
-            draft: currentDraft.name,
+            pool: currentDraft.name,
           },
           canDraftTeams,
           canDraftCounts,
@@ -787,7 +787,7 @@ export class DraftEngineService {
       queueSideEffect(session, async () => {
         this.draftEvents.emitDraftCounter({
           tournamentSlug: tournament.slug,
-          draftSlug: draft.slug,
+          poolSlug: draft.slug,
           audience: draftAudience(draft),
           currentPick: calculateCurrentPick(draft),
           nextTeam: nextTeam._id.toString(),
@@ -833,9 +833,9 @@ export class DraftEngineService {
     queueSideEffect(session, () => {
       this.draftEvents.emitDraftCompleted({
         tournamentSlug: tournament.slug,
-        draftSlug: draft.slug,
+        poolSlug: draft.slug,
         audience: draftAudience(draft),
-        draftName: draft.name,
+        poolName: draft.name,
       });
 
       if (draft.channelId) {
@@ -901,7 +901,7 @@ export class DraftEngineService {
 
     this.draftEvents.emitDraftSkip({
       tournamentSlug: tournament.slug,
-      draftSlug: draft.slug,
+      poolSlug: draft.slug,
       audience: draftAudience(draft),
       teamName,
       skipCount: fullTeam?.skipCount || 1,
@@ -1102,7 +1102,7 @@ export class DraftEngineService {
     );
     this.draftEvents.emitDraftCounter({
       tournamentSlug: tournament.slug,
-      draftSlug: draft.slug,
+      poolSlug: draft.slug,
       audience: draftAudience(draft),
       currentPick: calculateCurrentPick(draft),
       nextTeam: currentTeam?._id.toString() ?? "",
@@ -1270,7 +1270,7 @@ export class DraftEngineService {
     await draft.save();
     this.draftEvents.emitDraftStatus({
       tournamentSlug: tournament.slug,
-      draftSlug: draft.slug,
+      poolSlug: draft.slug,
       audience: draftAudience(draft),
       status: draft.status,
       noTimer: draft.noTimer,
@@ -1451,7 +1451,7 @@ export class DraftEngineService {
 
     this.draftEvents.emitDraftStatus({
       tournamentSlug: tournament.slug,
-      draftSlug: draft.slug,
+      poolSlug: draft.slug,
       audience: draftAudience(draft),
       status: draft.status,
       noTimer: draft.noTimer,

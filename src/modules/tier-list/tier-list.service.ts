@@ -76,7 +76,6 @@ export class TierListService {
 
     return {
       tierList: tiers,
-      divisions: {},
       format: tierList.format.name,
       ruleset: tierList.ruleset.name,
       name: tierList.name,
@@ -104,7 +103,7 @@ export class TierListService {
     if (dto.description !== undefined) update["description"] = dto.description;
 
     await this.tierListRepo.updateSettings(tierListId, update);
-    return { success: true };
+    return { message: "Tier list settings saved." };
   }
 
   async browse(dto: BrowseTierListsDto, sub: string | undefined) {
@@ -129,9 +128,6 @@ export class TierListService {
   }
 
   async create(dto: CreateTierListDto, sub: string) {
-    // Both throw on an unknown id, which is the validation — a list created
-    // with a bad format would only break later, when something tried to
-    // resolve its species.
     getFormat(dto.format);
     getRuleset(dto.ruleset);
 
@@ -146,10 +142,6 @@ export class TierListService {
     return { id: created.id, slug: created.slug, name: created.name };
   }
 
-  /**
-   * Copies a list rather than referencing it, so a later edit by the source's
-   * owner can never reprice a draft that has already happened.
-   */
   async fork(tierListId: string, dto: ForkTierListDto, sub: string) {
     const source = await this.tierListRepo.findDocument(tierListId);
     const canSee =
@@ -180,11 +172,6 @@ export class TierListService {
     };
   }
 
-  /**
-   * Only the owner can delete, and only while nothing depends on it — a
-   * tournament whose tier list vanished would 500 on every page that prices a
-   * roster.
-   */
   async remove(tierListSlug: string, sub: string) {
     const doc = await this.tierListRepo.findDocument(tierListSlug);
     if (doc.createdBy !== sub) {
@@ -206,7 +193,7 @@ export class TierListService {
     }
 
     await this.tierListRepo.deleteById(doc._id.toString());
-    return { success: true };
+    return { message: "Tier list deleted." };
   }
 
   async updateTierList(
@@ -230,17 +217,11 @@ export class TierListService {
     );
 
     return {
-      success: true,
       message: "Tier list updated successfully",
       orphanedRequirements: orphaned,
     };
   }
 
-  /**
-   * Tournaments left holding a requirement for a tier this save deleted. The
-   * draft engine ignores them so they cannot deadlock a draft, but nothing
-   * else would tell the organizer they now exist.
-   */
   private async findOrphanedRequirements(
     tierListId: string,
     before: Set<string>,
@@ -252,8 +233,6 @@ export class TierListService {
     if (removed.size === 0) return [];
     if (!Types.ObjectId.isValid(tierListId)) return [];
 
-    // The save has already committed. This lookup is advisory, so a failure
-    // here must never turn a successful write into an error for the caller.
     try {
       const dependents = await this.tournamentModel
         .find({ tierList: new Types.ObjectId(tierListId) })
@@ -293,9 +272,6 @@ export class TierListService {
     const ruleset = tierList.ruleset;
     const assignedPokemon = new Set<string>();
 
-    // In view-only mode banned pokemon are pulled out of their stored tier
-    // and shown in a leading "Banned" bucket instead (edit mode keeps them
-    // in place, flagged draftBanned, so the client can build its own panel).
     const tiers: TierView[] = await Promise.all(
       tierList.tiers.map(async (tier) => {
         const pokemonEntries = Array.from(tierList.pokemon.entries()).filter(

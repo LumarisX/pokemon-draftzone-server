@@ -247,15 +247,15 @@ export class HostedTournamentController {
     return this.tournamentService.listTeams(leagueSlug, tournamentSlug, sub);
   }
 
-  @Get(":tournamentSlug/teams/by-draft")
+  @Get(":tournamentSlug/teams/by-pool")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
-  async listTeamsByDraft(
+  async listTeamsByPool(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string | undefined,
   ) {
-    return this.tournamentService.listTeamsByDraft(
+    return this.tournamentService.listTeamsByPool(
       leagueSlug,
       tournamentSlug,
       sub,

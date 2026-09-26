@@ -50,7 +50,7 @@ describe("TournamentApplicationRepository.findInTournament", () => {
 
     await expect(
       repo.findInTournament(new Types.ObjectId(), new Types.ObjectId()),
-    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
   });
 });
 
@@ -59,7 +59,7 @@ describe("TournamentApplicationRepository.create", () => {
     const repo = repositoryWhoseSaveFails({ code: 11000 });
 
     await expect(repo.create(input)).rejects.toMatchObject({
-      code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+      code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
     });
   });
 

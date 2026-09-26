@@ -193,7 +193,7 @@ export async function getDraftDetails(
 
   return {
     leagueName: tournament.name,
-    draftName: draft.name,
+    poolName: draft.name,
     orderProgression: draft.orderProgression,
     sequentialTurns: draft.sequentialTurns,
     picksVisibleTo: draft.picksVisibleTo,

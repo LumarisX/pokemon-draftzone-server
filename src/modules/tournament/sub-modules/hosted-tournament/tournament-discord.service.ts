@@ -75,7 +75,7 @@ export class TournamentDiscordService implements OnModuleInit {
 
     await this.tournamentRepo.unlinkDiscord(tournament.id);
     await this.draftRepo.clearChannelsByTournament(tournament.id);
-    return { success: true };
+    return { message: "Discord server unlinked." };
   }
 
   async handleCommand(interaction: ChatInputCommandInteraction) {

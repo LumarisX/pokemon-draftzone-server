@@ -53,7 +53,7 @@ export class CoachRepository {
     const safeCoachId = this.toObjectId(coachId);
     const coach = await this.coachModel.findById(safeCoachId).exec();
     if (!coach)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
     return coach;
   }
 
@@ -95,7 +95,7 @@ export class CoachRepository {
       { returnDocument: "after" },
     );
     if (!coach)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
     return coach;
   }
 
@@ -103,7 +103,7 @@ export class CoachRepository {
     const safeCoachId = this.toObjectId(coachId);
     const result = await this.coachModel.findByIdAndDelete(safeCoachId);
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
   }
 
   async deleteAllByTeam(teamId: Types.ObjectId | string): Promise<number> {

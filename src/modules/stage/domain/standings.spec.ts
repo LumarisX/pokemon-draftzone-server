@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
 import {
-  calculateDivisionTeamStandings,
+  calculateTeamStandings,
   calculateTeamScore,
 } from "./standings";
 
-describe("calculateDivisionTeamStandings", () => {
+describe("calculateTeamStandings", () => {
   it("marks both teams as losses for double forfeits", async () => {
     const roundId = new Types.ObjectId();
     const team1Id = new Types.ObjectId();
@@ -64,7 +64,7 @@ describe("calculateDivisionTeamStandings", () => {
       },
     ];
 
-    const { teamStandings } = await calculateDivisionTeamStandings(
+    const { teamStandings } = await calculateTeamStandings(
       matchups as any,
       stage as any,
       tournament as any,
@@ -128,7 +128,7 @@ describe("calculateDivisionTeamStandings", () => {
       },
     ];
 
-    const { teamStandings } = await calculateDivisionTeamStandings(
+    const { teamStandings } = await calculateTeamStandings(
       matchups as any,
       stage as any,
       tournament as any,
@@ -145,7 +145,7 @@ describe("calculateDivisionTeamStandings", () => {
   });
 });
 
-describe("calculateDivisionTeamStandings ranking", () => {
+describe("calculateTeamStandings ranking", () => {
   const roundId = new Types.ObjectId();
 
   function team(name: string) {
@@ -184,7 +184,7 @@ describe("calculateDivisionTeamStandings ranking", () => {
     const b = team("B");
     const c = team("C");
 
-    const { teamStandings, rules } = await calculateDivisionTeamStandings(
+    const { teamStandings, rules } = await calculateTeamStandings(
       [played(a, b, "draw", [1, 1]), played(c, b, "side2", [0, 2])] as any,
       { teams: [a, b, c] } as any,
       { diffMode: "pokemon", rounds: [{ _id: roundId }] } as any,
@@ -214,12 +214,12 @@ describe("calculateDivisionTeamStandings ranking", () => {
     };
     const rounds = [{ _id: roundId }];
 
-    const byPokemon = await calculateDivisionTeamStandings(
+    const byPokemon = await calculateTeamStandings(
       matchups as any,
       stage as any,
       { diffMode: "pokemon", rounds } as any,
     );
-    const byGame = await calculateDivisionTeamStandings(
+    const byGame = await calculateTeamStandings(
       matchups as any,
       stage as any,
       { diffMode: "game", rounds } as any,
@@ -235,7 +235,7 @@ describe("calculateDivisionTeamStandings ranking", () => {
     const loser1 = team("Loser1");
     const loser2 = team("Loser2");
 
-    const { teamStandings } = await calculateDivisionTeamStandings(
+    const { teamStandings } = await calculateTeamStandings(
       [
         played(bigGames, loser1, "side1", [3, 0], [1, 0]),
         played(bigPokemon, loser2, "side1", [2, 1], [6, 0]),

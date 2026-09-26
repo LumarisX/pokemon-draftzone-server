@@ -27,12 +27,11 @@ import {
 } from "@modules/stage/domain/roster-row";
 import { rosterContext } from "@modules/stage/domain/stage-axis";
 import {
-  calculateDivisionPokemonStandings,
-  calculateDivisionTeamStandings,
+  calculatePokemonStandings,
+  calculateTeamStandings,
   calculateTeamScore,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
-import { StandingsRules } from "@modules/stage/domain/scoring";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { isCoachedBy } from "@modules/team/team.domain";
@@ -63,6 +62,12 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
+import {
+  StandingsResponse,
+  TeamListResponse,
+  TeamPageResponse,
+  TeamsByPoolResponse,
+} from "./hosted-tournament.responses";
 import {
   activeQuestions,
   answerBool,
@@ -112,11 +117,11 @@ export class HostedTournamentService {
 
     const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach || coach.leftAt)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     const stages = await this.stageRepo.findAllByTournament(tournament.id);
     const played = await this.matchupRepo.findByStages(
@@ -124,7 +129,7 @@ export class HostedTournamentService {
       { teamIds: [team._id] },
     );
     if (played.length > 0)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_HAS_MATCHES, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_HAS_MATCHES, {
         coachId,
         matchups: played.length,
       });
@@ -143,7 +148,7 @@ export class HostedTournamentService {
     tournamentSlug: string,
     teamSlug: string,
     sub?: string,
-  ) {
+  ): Promise<TeamPageResponse> {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
       tournamentSlug,
@@ -176,12 +181,7 @@ export class HostedTournamentService {
         : {}),
     };
 
-    const draftRoster: ({
-      id: string;
-      name: string;
-      cost: number | undefined;
-      draftFormes?: { id: string; name: string }[];
-    } & { record?: unknown })[] = (
+    const draftRoster: TeamPageResponse["draft"] = (
       picksHidden ? [] : getLatestRoster(team, roster)
     ).map((pokemon) => rosterRow(pokemon, tournament.tierList));
 
@@ -193,7 +193,6 @@ export class HostedTournamentService {
         coach: coach.name,
         logo: team.logo,
         draft: draftRoster,
-        matchups: [],
       };
 
     const teamMatchups = (await this.matchupRepo.findByStages(
@@ -201,7 +200,7 @@ export class HostedTournamentService {
       { teamIds: [team._id] },
     )) as unknown as PopulatedStageMatchup[];
 
-    const pokemonStandings = await calculateDivisionPokemonStandings(
+    const pokemonStandings = await calculatePokemonStandings(
       teamMatchups,
       team._id.toString(),
     );
@@ -225,7 +224,6 @@ export class HostedTournamentService {
       coach: coach.name,
       logo: team.logo,
       draft: draftRoster,
-      matchups: teamMatchups,
       record: {
         wins: teamRecord.wins,
         draws: teamRecord.draws,
@@ -237,7 +235,11 @@ export class HostedTournamentService {
     };
   }
 
-  async getStandings(leagueSlug: string, tournamentSlug: string, sub?: string) {
+  async getStandings(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub?: string,
+  ): Promise<StandingsResponse> {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
       tournamentSlug,
@@ -260,17 +262,7 @@ export class HostedTournamentService {
       })),
     ];
 
-    const views: Record<
-      string,
-      {
-        teamStandings: {
-          diffMode: "game" | "pokemon";
-          rules: StandingsRules;
-          teams: unknown[];
-        };
-        pokemonStandings: unknown[];
-      }
-    > = {};
+    const views: StandingsResponse["views"] = {};
 
     for (const stage of composedStages) {
       const matchups = (await this.matchupRepo.findByRoundsInStage(
@@ -279,10 +271,10 @@ export class HostedTournamentService {
       )) as unknown as PopulatedStageMatchup[];
 
       const { teamStandings, diffMode, rules } =
-        await calculateDivisionTeamStandings(matchups, stage, tournament);
+        await calculateTeamStandings(matchups, stage, tournament);
       views[stage.slug] = {
         teamStandings: { diffMode, rules, teams: teamStandings },
-        pokemonStandings: await calculateDivisionPokemonStandings(matchups),
+        pokemonStandings: await calculatePokemonStandings(matchups),
       };
     }
 
@@ -297,7 +289,7 @@ export class HostedTournamentService {
     const allMatchups = (await this.matchupRepo.findByStages(
       visibleStages.map((s) => s._id),
     )) as unknown as PopulatedStageMatchup[];
-    const combined = await calculateDivisionTeamStandings(
+    const combined = await calculateTeamStandings(
       allMatchups,
       combinedStage,
       tournament,
@@ -308,7 +300,7 @@ export class HostedTournamentService {
         rules: combined.rules,
         teams: combined.teamStandings,
       },
-      pokemonStandings: await calculateDivisionPokemonStandings(allMatchups),
+      pokemonStandings: await calculatePokemonStandings(allMatchups),
     };
 
     return { filters, views };
@@ -358,8 +350,8 @@ export class HostedTournamentService {
       seasonStart: tournament.seasonStart,
       seasonEnd: tournament.seasonEnd,
       logo: tournament.logo,
-      drafts: drafts.map((draft) => ({
-        draftSlug: draft.slug,
+      pools: drafts.map((draft) => ({
+        poolSlug: draft.slug,
         name: draft.name,
       })),
       discord: tournament.discord,
@@ -399,7 +391,11 @@ export class HostedTournamentService {
     return !!draft && !canSeeTeamPicks(tournament, draft, team, sub);
   }
 
-  async listTeams(leagueSlug: string, tournamentSlug: string, sub?: string) {
+  async listTeams(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub?: string,
+  ): Promise<TeamListResponse> {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
       tournamentSlug,
@@ -411,10 +407,10 @@ export class HostedTournamentService {
         ? nullIfNotFound(this.tierListRepo.findById(tournament.tierListId))
         : null,
     ]);
-    const draftById = new Map(
+    const poolById = new Map(
       drafts.map((draft) => [
         draft._id.toString(),
-        { draftSlug: draft.slug, name: draft.name },
+        { poolSlug: draft.slug, name: draft.name },
       ]),
     );
 
@@ -432,8 +428,8 @@ export class HostedTournamentService {
           pickCount: team.pickLog?.length ?? 0,
           status: team.status,
           picksHidden,
-          draft: team.draftId
-            ? (draftById.get(team.draftId.toString()) ?? null)
+          pool: team.draftId
+            ? (poolById.get(team.draftId.toString()) ?? null)
             : null,
           roster: (picksHidden ? [] : getLatestRoster(team, context)).map(
             (pokemon) => ({
@@ -451,11 +447,11 @@ export class HostedTournamentService {
     };
   }
 
-  async listTeamsByDraft(
+  async listTeamsByPool(
     leagueSlug: string,
     tournamentSlug: string,
     sub?: string,
-  ) {
+  ): Promise<TeamsByPoolResponse> {
     const tournament = await this.draftRepo.findTournament(
       leagueSlug,
       tournamentSlug,
@@ -478,7 +474,7 @@ export class HostedTournamentService {
           stages.map((s) => s._id),
         )) as unknown as PopulatedStageMatchup[])
       : [];
-    const pokemonStandings = await calculateDivisionPokemonStandings(matchups);
+    const pokemonStandings = await calculatePokemonStandings(matchups);
     const rounds = roster.rounds;
 
     const composed = await Promise.all(
@@ -497,7 +493,7 @@ export class HostedTournamentService {
           );
 
           return {
-            draftId: team.draftId?.toString() ?? null,
+            poolId: team.draftId?.toString() ?? null,
             team: {
               id: teamId,
               slug: team.slug,
@@ -534,33 +530,28 @@ export class HostedTournamentService {
         }),
     );
 
-    const draftIds = new Set(drafts.map((draft) => draft._id.toString()));
-    const groups: {
-      draftSlug: string | null;
-      name: string;
-      allowDuplicates: boolean;
-      teams: (typeof composed)[number]["team"][];
-    }[] = drafts.map((draft) => ({
-      draftSlug: draft.slug,
+    const poolIds = new Set(drafts.map((draft) => draft._id.toString()));
+    const groups: TeamsByPoolResponse["pools"] = drafts.map((draft) => ({
+      poolSlug: draft.slug,
       name: draft.name,
       allowDuplicates: duplicatesAllowed(draft),
       teams: composed
-        .filter((entry) => entry.draftId === draft._id.toString())
+        .filter((entry) => entry.poolId === draft._id.toString())
         .map((entry) => entry.team),
     }));
 
     const unassigned = composed
-      .filter((entry) => !entry.draftId || !draftIds.has(entry.draftId))
+      .filter((entry) => !entry.poolId || !poolIds.has(entry.poolId))
       .map((entry) => entry.team);
     if (unassigned.length)
       groups.push({
-        draftSlug: null,
+        poolSlug: null,
         name: "Unassigned",
         allowDuplicates: false,
         teams: unassigned,
       });
 
-    return { drafts: groups };
+    return { pools: groups };
   }
 
   async getRoles(
@@ -618,7 +609,7 @@ export class HostedTournamentService {
       signedUpAt: application.submittedAt,
       teamId: undefined,
       teamSlug: undefined,
-      draft: null,
+      pool: null,
       inDiscordServer: Boolean(member),
     };
   }
@@ -637,16 +628,16 @@ export class HostedTournamentService {
       );
       if (undecided) return this.undecidedSignup(tournament, undecided);
 
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, {
         tournamentId: tournament.id,
       });
     }
     const { coach, team } = signup;
 
-    let draft: { draftSlug: string; name: string } | null = null;
+    let pool: { poolSlug: string; name: string } | null = null;
     if (team.draftId) {
       const d = await this.draftRepo.findById(team.draftId);
-      if (d) draft = { draftSlug: d.slug, name: d.name };
+      if (d) pool = { poolSlug: d.slug, name: d.name };
     }
 
     const guildId = tournament.discordSettings?.guildId;
@@ -666,7 +657,7 @@ export class HostedTournamentService {
       signedUpAt: coach.signedUpAt,
       teamId: team._id.toString(),
       teamSlug: team.slug,
-      draft,
+      pool,
       inDiscordServer,
     };
   }
@@ -696,13 +687,13 @@ export class HostedTournamentService {
       sub,
     );
     if (blocking)
-      throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP, {
         tournamentId: tournament.id,
       });
 
     const existing = await this.findSignupForTournament(sub, tournament.id);
     if (existing)
-      throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP, {
         tournamentId: tournament.id,
       });
 
@@ -769,7 +760,7 @@ export class HostedTournamentService {
     );
 
     if (dto.status !== "approved" && application.resultingTeamId)
-      throw new PDZError(ErrorCodes.LEAGUE.APPLICATION_HAS_TEAM, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.APPLICATION_HAS_TEAM, {
         applicationId,
       });
 
@@ -858,7 +849,7 @@ export class HostedTournamentService {
       dto.applicationId,
     );
     if (application.resultingCoachId)
-      throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP, {
         tournamentId: tournament.id,
       });
 
@@ -941,18 +932,18 @@ export class HostedTournamentService {
       !!tournament.signUpToken && invite === tournament.signUpToken;
 
     if (tournament.signUpAccess === "closed")
-      throw new PDZError(ErrorCodes.LEAGUE.SIGNUP_CLOSED, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.SIGNUP_CLOSED, {
         tournamentId: tournament.id,
       });
 
     if (tournament.signUpAccess === "invite" && !invited)
-      throw new PDZError(ErrorCodes.LEAGUE.INVITE_REQUIRED, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.INVITE_REQUIRED, {
         tournamentId: tournament.id,
       });
 
     const deadline = tournament.signUpDeadline?.getTime();
     if (deadline !== undefined && Date.now() > deadline && !invited)
-      throw new PDZError(ErrorCodes.LEAGUE.SIGNUP_CLOSED, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.SIGNUP_CLOSED, {
         tournamentId: tournament.id,
         signUpDeadline: tournament.signUpDeadline,
       });
@@ -988,7 +979,7 @@ export class HostedTournamentService {
       tournament.id,
     );
     if (approved + incoming > tournament.maxTeams)
-      throw new PDZError(ErrorCodes.LEAGUE.TOURNAMENT_FULL, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.FULL, {
         tournamentId: tournament.id,
         maxTeams: tournament.maxTeams,
       });
@@ -1020,7 +1011,7 @@ export class HostedTournamentService {
     }
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
-    const draftIdToKey = new Map(drafts.map((d) => [d._id.toString(), d.slug]));
+    const poolSlugsById = new Map(drafts.map((d) => [d._id.toString(), d.slug]));
 
     const tierList = await this.tierListRepo.findById(tournament.tierListId);
     const populatedTournament = Object.assign(tournament, {
@@ -1051,8 +1042,8 @@ export class HostedTournamentService {
             )
           : undefined;
         const discordName = coach?.discordName ?? application.discordName;
-        const draft = team?.draftId
-          ? draftIdToKey.get(team.draftId.toString())
+        const poolSlug = team?.draftId
+          ? poolSlugsById.get(team.draftId.toString())
           : undefined;
         const member = guildId
           ? await this.discordService.findMember(guildId, discordName)
@@ -1092,7 +1083,7 @@ export class HostedTournamentService {
             logoKey && this.s3Service.isEnabled()
               ? this.s3Service.getPublicUrl(logoKey)
               : undefined,
-          draft,
+          poolSlug,
           inDiscordServer,
           hasDiscordRole,
           hasValidTeam,
@@ -1102,8 +1093,8 @@ export class HostedTournamentService {
 
     return {
       signups,
-      drafts: drafts.map((d) => ({
-        draftSlug: d.slug,
+      pools: drafts.map((d) => ({
+        poolSlug: d.slug,
         name: d.name,
       })),
     };
@@ -1122,7 +1113,7 @@ export class HostedTournamentService {
     assertCan(tournament, sub, "manageParticipants");
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
-    const draftsByKey = new Map(drafts.map((d) => [d.slug, d]));
+    const poolsBySlug = new Map(drafts.map((d) => [d.slug, d]));
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
     const teamsBySlug = new Map(teams.map((team) => [team.slug, team]));
 
@@ -1140,24 +1131,24 @@ export class HostedTournamentService {
         continue;
       }
 
-      const targetDraft = assignment.divisionKey
-        ? draftsByKey.get(assignment.divisionKey)
+      const targetPool = assignment.poolSlug
+        ? poolsBySlug.get(assignment.poolSlug)
         : null;
-      if (assignment.divisionKey && !targetDraft)
-        throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
-          draftSlug: assignment.divisionKey,
+      if (assignment.poolSlug && !targetPool)
+        throw new PDZError(ErrorCodes.TOURNAMENT.POOL_NOT_FOUND, {
+          poolSlug: assignment.poolSlug,
           tournamentSlug: tournament.slug,
         });
 
       planned.push({
         team,
-        draftId: targetDraft?._id ?? null,
+        draftId: targetPool?._id ?? null,
         status: assignment.status,
       });
     }
 
     if (unresolvedTeamSlugs.length)
-      throw new PDZError(ErrorCodes.LEAGUE.ASSIGNMENT_TEAMS_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ASSIGNMENT_TEAMS_NOT_FOUND, {
         teamSlugs: unresolvedTeamSlugs,
       });
 
@@ -1185,11 +1176,11 @@ export class HostedTournamentService {
 
     const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     return {
       id: coach._id.toString(),
@@ -1239,11 +1230,11 @@ export class HostedTournamentService {
 
     const coach = await this.coachRepo.findByIdOrNull(coachId);
     if (!coach)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     const team = await this.teamRepo.findByIdOrNull(coach.teamId);
     if (!team || team.tournamentId.toString() !== tournament.id)
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, { coachId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
     const isActiveSelf = isOwnedBy(coach, sub) && isActiveCoach(coach);
     if (!can(tournament, sub, "manageParticipants") && !isActiveSelf)
@@ -1462,7 +1453,7 @@ export class HostedTournamentService {
       };
 
     await this.tournamentRepo.updateSettings(tournament.id, update);
-    return { success: true };
+    return { message: "Settings saved." };
   }
 
   private announceCoachSeated(

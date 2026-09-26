@@ -2,12 +2,10 @@ import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup
 import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
-import { forwardRef, Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
+import { Module } from "@nestjs/common";
 import { BracketAdvancementService } from "./bracket-advancement.service";
+import { StageCoreModule } from "./stage-core.module";
 import { StageController } from "./stage.controller";
-import { StageRepository } from "./stage.repository";
-import { StageEntity, StageSchema } from "./stage.schema";
 import { StageService } from "./stage.service";
 import { TournamentBracketController } from "./tournament-bracket.controller";
 import { TournamentBracketService } from "./tournament-bracket.service";
@@ -19,13 +17,11 @@ import { TournamentTradeService } from "./tournament-trade.service";
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: StageEntity.name, schema: StageSchema },
-    ]),
+    StageCoreModule,
     TeamModule,
     LeagueMatchupModule,
     TierListModule,
-    forwardRef(() => HostedTournamentCoreModule),
+    HostedTournamentCoreModule,
   ],
   controllers: [
     StageController,
@@ -37,11 +33,9 @@ import { TournamentTradeService } from "./tournament-trade.service";
   providers: [
     StageService,
     BracketAdvancementService,
-    StageRepository,
     TournamentBracketService,
     TournamentTradeService,
     TournamentScheduleService,
   ],
-  exports: [StageRepository],
 })
 export class StageModule {}

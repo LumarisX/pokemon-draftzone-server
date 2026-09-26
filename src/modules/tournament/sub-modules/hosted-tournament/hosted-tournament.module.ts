@@ -2,7 +2,7 @@ import { CoachModule } from "@modules/coach/coach.module";
 import { DiscordModule } from "@modules/discord/discord.module";
 import { DraftCoreModule } from "@modules/draft/draft-core.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
-import { StageModule } from "@modules/stage/stage.module";
+import { StageCoreModule } from "@modules/stage/stage-core.module";
 import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentApplicationModule } from "@modules/tournament-application/tournament-application.module";
@@ -37,7 +37,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     CoachModule,
     DiscordModule,
     DraftCoreModule,
-    StageModule,
+    StageCoreModule,
     LeagueMatchupModule,
     UploadsModule,
   ],

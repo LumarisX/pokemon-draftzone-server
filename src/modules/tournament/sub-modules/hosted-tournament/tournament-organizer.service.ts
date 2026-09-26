@@ -58,11 +58,11 @@ export class TournamentOrganizerService {
 
     const coach = await this.coachInTournament(tournament.id, dto.coachId);
     if (!coach)
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_NOT_FOUND, {
         coachId: dto.coachId,
       });
     if (coach.auth0Id === tournament.owner)
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_IS_OWNER);
 
     await this.tournamentRepo.addStaff(tournament.id, {
       sub: coach.auth0Id,
@@ -87,7 +87,7 @@ export class TournamentOrganizerService {
     if (!can(tournament, sub, "manageStaff") && !isSelf)
       throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
     if (!isStaff(tournament, organizerSub))
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_NOT_FOUND, {
         organizerSub,
       });
 
@@ -106,7 +106,7 @@ export class TournamentOrganizerService {
   ) {
     const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
     if (organizerSub === tournament.owner)
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_IS_OWNER);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_IS_OWNER);
 
     await this.tournamentRepo.removeStaff(tournament.id, organizerSub);
     return this.getOrganizers(leagueSlug, tournamentSlug, sub);
@@ -124,7 +124,7 @@ export class TournamentOrganizerService {
       tournament.id,
     );
     if (pending >= MAX_PENDING_ORGANIZER_INVITES)
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_LIMIT, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_LIMIT, {
         limit: MAX_PENDING_ORGANIZER_INVITES,
       });
 
@@ -168,7 +168,7 @@ export class TournamentOrganizerService {
       hashInviteToken(token),
     );
     if (!invite || !this.isUsable(invite, tournament))
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID);
 
     return {
       tournamentName: tournament.name,
@@ -194,13 +194,13 @@ export class TournamentOrganizerService {
     const tokenHash = hashInviteToken(token);
     const invite = await this.inviteRepo.findByTokenHash(tokenHash);
     if (!invite || !this.isUsable(invite, tournament))
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID);
     if (isStaff(tournament, sub))
-      throw new PDZError(ErrorCodes.LEAGUE.ALREADY_ORGANIZER);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ALREADY_ORGANIZER);
 
     const claimed = await this.inviteRepo.claim(tokenHash, sub);
     if (!claimed)
-      throw new PDZError(ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID);
+      throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID);
 
     try {
       await this.tournamentRepo.addStaff(tournament.id, {

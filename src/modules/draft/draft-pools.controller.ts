@@ -9,10 +9,13 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { CreateDraftDto } from "./draft.dto";
+import { CreatePoolDto } from "./draft.dto";
 import { DraftService } from "./draft.service";
 
-@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/drafts")
+@Controller([
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/pools",
+  "leagues/:leagueSlug/tournaments/:tournamentSlug/drafts",
+])
 @UseGuards(JwtAuthGuard)
 export class DraftPoolsController {
   constructor(private readonly draftService: DraftService) {}
@@ -31,7 +34,7 @@ export class DraftPoolsController {
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
-    @Body() body: CreateDraftDto,
+    @Body() body: CreatePoolDto,
   ) {
     return this.draftService.createPool(
       leagueSlug,
@@ -41,17 +44,17 @@ export class DraftPoolsController {
     );
   }
 
-  @Delete(":draftSlug")
+  @Delete(":poolSlug")
   async remove(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
-    @Param("draftSlug") draftSlug: string,
+    @Param("poolSlug") poolSlug: string,
     @User() sub: string,
   ) {
     return this.draftService.deletePool(
       leagueSlug,
       tournamentSlug,
-      draftSlug,
+      poolSlug,
       sub,
     );
   }

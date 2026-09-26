@@ -127,7 +127,7 @@ export class UpdateDraftSettingsDto {
   public?: boolean;
 }
 
-export class CreateDraftDto {
+export class CreatePoolDto {
   @IsString()
   @MinLength(1)
   name!: string;

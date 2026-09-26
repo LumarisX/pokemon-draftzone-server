@@ -11,115 +11,6 @@ export const ErrorCodes = {
       status: 404,
       message: "League not found",
     },
-    UNAUTHORIZED: {
-      code: "LR-002",
-      status: 403,
-      message: "You do not have permission to access this league",
-    },
-    INVALID_KEY: {
-      code: "LR-003",
-      status: 400,
-      message: "Invalid league key format",
-    },
-    SIGNUP_CLOSED: {
-      code: "LR-004",
-      status: 400,
-      message: "League signups are closed",
-    },
-    ALREADY_SIGNED_UP: {
-      code: "LR-005",
-      status: 400,
-      message: "You are already signed up for this league",
-    },
-    COACH_NOT_FOUND: {
-      code: "LR-006",
-      status: 404,
-      message: "Coach not found",
-    },
-    COACH_HAS_TEAM: {
-      code: "LR-007",
-      status: 400,
-      message:
-        "This coach still has a team. Remove the participant from the tournament, or set their status to dropped.",
-    },
-    COACH_HAS_MATCHES: {
-      code: "LR-008",
-      status: 400,
-      message:
-        "This team has already played matches. Set their status to dropped instead of removing them.",
-    },
-    ORGANIZER_NOT_FOUND: {
-      code: "LR-009",
-      status: 404,
-      message: "No participant found to add as an organizer",
-    },
-    ORGANIZER_IS_OWNER: {
-      code: "LR-010",
-      status: 400,
-      message: "The tournament owner is always an organizer",
-    },
-    ORGANIZER_INVITE_INVALID: {
-      code: "LR-013",
-      status: 404,
-      message:
-        "This organizer invite is invalid, has expired, or has already been used.",
-    },
-    ORGANIZER_INVITE_LIMIT: {
-      code: "LR-014",
-      status: 400,
-      message:
-        "This tournament has too many pending organizer invites. Revoke one before creating another.",
-    },
-    ALREADY_ORGANIZER: {
-      code: "LR-015",
-      status: 400,
-      message: "You are already an organizer of this tournament.",
-    },
-    INVITE_REQUIRED: {
-      code: "LR-012",
-      status: 403,
-      message: "This tournament is invite-only. You need an invite link to sign up.",
-    },
-    TOURNAMENT_FULL: {
-      code: "LR-011",
-      status: 400,
-      message:
-        "This tournament is already at its team limit. Raise the limit or waitlist this applicant.",
-    },
-    ASSIGNMENT_TEAMS_NOT_FOUND: {
-      code: "LR-016",
-      status: 400,
-      message:
-        "Some sign-ups no longer belong to this tournament, so nothing was saved. Reload the page and try again.",
-    },
-    APPLICATION_HAS_TEAM: {
-      code: "LR-017",
-      status: 400,
-      message:
-        "This applicant is already on a team. Set the team to dropped instead.",
-    },
-  },
-  DIVISION: {
-    NOT_FOUND: {
-      code: "LR-DIV-001",
-      status: 404,
-      message: "Division not found",
-    },
-    NOT_IN_LEAGUE: {
-      code: "LR-DIV-002",
-      status: 404,
-      message: "Division not found in this league",
-    },
-    INVALID_STATE: {
-      code: "LR-DIV-003",
-      status: 400,
-      message: "Invalid division state",
-    },
-    INVALID_TRADE: {
-      code: "LR-DIV-004",
-      status: 400,
-      message: "Invalid trade data",
-    },
   },
   TEAM: {
     NOT_FOUND: {
@@ -127,20 +18,10 @@ export const ErrorCodes = {
       status: 404,
       message: "Team not found",
     },
-    NOT_IN_DIVISION: {
-      code: "LR-TEAM-002",
-      status: 404,
-      message: "Team not found in this division",
-    },
-    INVALID_ROSTER: {
-      code: "LR-TEAM-003",
-      status: 400,
-      message: "Invalid team roster",
-    },
-    NOT_IN_DRAFT: {
+    NOT_IN_POOL: {
       code: "LR-TEAM-004",
       status: 404,
-      message: "Team not found in this draft",
+      message: "Team not found in this pool",
     },
   },
   DRAFT: {
@@ -173,11 +54,6 @@ export const ErrorCodes = {
       code: "DR-006",
       status: 404,
       message: "Team not found in draft.",
-    },
-    NOT_IN_LEAGUE: {
-      code: "DR-007",
-      status: 404,
-      message: "Draft not found in this league",
     },
     INVALID_STATE: {
       code: "DR-008",
@@ -217,20 +93,10 @@ export const ErrorCodes = {
       status: 400,
       message: "Invalid trade data",
     },
-    NO_TEAMS_TO_SEED: {
-      code: "STG-003",
-      status: 400,
-      message: "This stage has no teams to seed",
-    },
     INVALID_BRACKET: {
       code: "STG-004",
       status: 400,
       message: "Invalid bracket structure",
-    },
-    MATCHUPS_EXIST: {
-      code: "STG-005",
-      status: 409,
-      message: "This stage already has matchups generated",
     },
     SEEDING_LOCKED: {
       code: "STG-006",
@@ -352,18 +218,6 @@ export const ErrorCodes = {
       code: "LR-TIER-004",
       status: 403,
       message: "You do not have permission to edit this tier list",
-    },
-  },
-  SCHEDULE: {
-    NOT_FOUND: {
-      code: "LR-SCHED-001",
-      status: 404,
-      message: "Schedule not found",
-    },
-    INVALID_STAGE: {
-      code: "LR-SCHED-002",
-      status: 400,
-      message: "Invalid stage configuration",
     },
   },
 
@@ -513,6 +367,87 @@ export const ErrorCodes = {
     },
   },
   TOURNAMENT: {
+    NOT_FOUND: {
+      code: "TRN-006",
+      status: 404,
+      message: "Tournament not found",
+    },
+    SIGNUP_CLOSED: {
+      code: "TRN-007",
+      status: 400,
+      message: "Sign-ups for this tournament are closed",
+    },
+    ALREADY_SIGNED_UP: {
+      code: "TRN-008",
+      status: 400,
+      message: "You are already signed up for this tournament",
+    },
+    COACH_NOT_FOUND: {
+      code: "TRN-009",
+      status: 404,
+      message: "Coach not found",
+    },
+    COACH_HAS_MATCHES: {
+      code: "TRN-010",
+      status: 400,
+      message:
+        "This team has already played matches. Set their status to dropped instead of removing them.",
+    },
+    ORGANIZER_NOT_FOUND: {
+      code: "TRN-011",
+      status: 404,
+      message: "No participant found to add as an organizer",
+    },
+    ORGANIZER_IS_OWNER: {
+      code: "TRN-012",
+      status: 400,
+      message: "The tournament owner is always an organizer",
+    },
+    ORGANIZER_INVITE_INVALID: {
+      code: "TRN-013",
+      status: 404,
+      message:
+        "This organizer invite is invalid, has expired, or has already been used.",
+    },
+    ORGANIZER_INVITE_LIMIT: {
+      code: "TRN-014",
+      status: 400,
+      message:
+        "This tournament has too many pending organizer invites. Revoke one before creating another.",
+    },
+    ALREADY_ORGANIZER: {
+      code: "TRN-015",
+      status: 400,
+      message: "You are already an organizer of this tournament.",
+    },
+    INVITE_REQUIRED: {
+      code: "TRN-016",
+      status: 403,
+      message: "This tournament is invite-only. You need an invite link to sign up.",
+    },
+    FULL: {
+      code: "TRN-017",
+      status: 400,
+      message:
+        "This tournament is already at its team limit. Raise the limit or waitlist this applicant.",
+    },
+    ASSIGNMENT_TEAMS_NOT_FOUND: {
+      code: "TRN-018",
+      status: 400,
+      message:
+        "Some sign-ups no longer belong to this tournament, so nothing was saved. Reload the page and try again.",
+    },
+    APPLICATION_HAS_TEAM: {
+      code: "TRN-019",
+      status: 400,
+      message:
+        "This applicant is already on a team. Set the team to dropped instead.",
+    },
+    POOL_NOT_FOUND: {
+      code: "TRN-020",
+      status: 404,
+      message: "Pool not found in this tournament",
+    },
     INVALID_SETTINGS: {
       code: "TRN-003",
       status: 400,
@@ -545,7 +480,6 @@ export const ErrorCodes = {
 
 export type ErrorCodePath =
   | keyof typeof ErrorCodes.LEAGUE
-  | keyof typeof ErrorCodes.DIVISION
   | keyof typeof ErrorCodes.TEAM
   | keyof typeof ErrorCodes.DRAFT
   | keyof typeof ErrorCodes.STAGE
@@ -554,7 +488,6 @@ export type ErrorCodePath =
   | keyof typeof ErrorCodes.AUTH
   | keyof typeof ErrorCodes.LEAGUE_AD
   | keyof typeof ErrorCodes.TIER_LIST
-  | keyof typeof ErrorCodes.SCHEDULE
   | keyof typeof ErrorCodes.ARCHIVE
   | keyof typeof ErrorCodes.SPECIES
   | keyof typeof ErrorCodes.MATCHUP

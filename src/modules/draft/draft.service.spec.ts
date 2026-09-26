@@ -11,8 +11,8 @@ import { tierId } from "../tier-list/tier-list.test-ids";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
 import {
-  calculateDivisionPokemonStandings,
-  calculateDivisionTeamStandings,
+  calculatePokemonStandings,
+  calculateTeamStandings,
 } from "../stage/domain/standings";
 import { DiscordService } from "../discord/discord.service";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
@@ -39,16 +39,16 @@ jest.mock("../stage/domain/roster", () => ({
   getRosterByRound: jest.fn(),
 }));
 jest.mock("../stage/domain/standings", () => ({
-  calculateDivisionTeamStandings: jest.fn(),
-  calculateDivisionPokemonStandings: jest.fn(),
+  calculateTeamStandings: jest.fn(),
+  calculatePokemonStandings: jest.fn(),
 }));
 
 const mockedGetDraftDetails = getDraftDetails as jest.Mock;
 const mockedIsCoach = isCoach as jest.Mock;
 const mockedGetDraftOrder = getDraftOrder as jest.Mock;
 const mockedGetLatestRoster = getLatestRoster as jest.Mock;
-const mockedCalculateDivisionTeamStandings = calculateDivisionTeamStandings as jest.Mock;
-const mockedCalculateDivisionPokemonStandings = calculateDivisionPokemonStandings as jest.Mock;
+const mockedCalculateDivisionTeamStandings = calculateTeamStandings as jest.Mock;
+const mockedCalculateDivisionPokemonStandings = calculatePokemonStandings as jest.Mock;
 
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
   return new TierList({
@@ -185,7 +185,7 @@ describe("DraftService", () => {
       const draft = buildDraft();
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
-      const details = { draftName: "Spring Draft" };
+      const details = { poolName: "Spring Draft" };
       mockedGetDraftDetails.mockResolvedValue(details);
 
       const result = await service.getDetails("league-1", "tournament-1", "draft-1", "auth0|sub");
@@ -658,7 +658,7 @@ describe("DraftService", () => {
       expect(draftRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Alpha", tournamentId: "tournament-1" }),
       );
-      expect(result).toEqual({ draftSlug: "alpha", name: "Alpha" });
+      expect(result).toEqual({ poolSlug: "alpha", name: "Alpha" });
     });
   });
 
@@ -707,7 +707,7 @@ describe("DraftService", () => {
       expect(draftEngine.cancelScheduledJobs).toHaveBeenCalled();
       expect(teamRepo.update).toHaveBeenCalledWith(team._id, { draftId: null });
       expect(draftRepo.delete).toHaveBeenCalledWith("draft-oid");
-      expect(result).toEqual({ success: true, unassigned: 1 });
+      expect(result).toEqual({ message: "Draft pool deleted.", unassigned: 1 });
     });
 
     it("unassigns and deletes only inside the transaction", async () => {

@@ -31,10 +31,26 @@ export function hasResolvedSides(
   return Boolean(matchup.side1.team && matchup.side2.team);
 }
 
-export async function calculateDivisionPokemonStandings(
+export type PokemonRecord = {
+  brought: number;
+  kills: number;
+  deaths: number;
+  diff: number;
+};
+
+export type PokemonStanding = {
+  id: string;
+  name: string;
+  coach: string;
+  teamName: string;
+  teamId: string;
+  record: PokemonRecord;
+};
+
+export async function calculatePokemonStandings(
   matchups: PopulatedStageMatchup[],
   filterTeamId?: string,
-) {
+): Promise<PokemonStanding[]> {
   const pokemonStandingsMap = new Map<
     string,
     {
@@ -158,6 +174,23 @@ export type ScoringTournament = {
   standingsRules?: StoredStandingsRules;
 };
 
+export type StandingsRow = {
+  id: string;
+  teamSlug: string;
+  name: string;
+  coach: string;
+  logo?: string;
+  results: StandingResult[];
+  streak: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  gameDiff: number;
+  pokemonDiff: number;
+  diffMode: DiffMode;
+};
+
 type TeamStanding = {
   name: string;
   results: StandingResult[];
@@ -261,11 +294,15 @@ function calculateStreak(results: StandingResult[]): number {
   return streak;
 }
 
-export async function calculateDivisionTeamStandings(
+export async function calculateTeamStandings(
   matchups: PopulatedStageMatchup[],
   stage: StageDocument & { teams: PopulatedTeam[] },
   tournament: AxisTournament & ScoringTournament,
-) {
+): Promise<{
+  teamStandings: StandingsRow[];
+  diffMode: DiffMode;
+  rules: StandingsRules;
+}> {
   const rules = resolveStandingsRules(tournament);
   const diffMode = tournament.diffMode;
   const rounds = tournament.rounds ?? [];

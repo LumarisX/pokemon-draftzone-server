@@ -67,7 +67,7 @@ export class LeagueService {
         teams.map((team) => team._id),
       ),
     ]);
-    const draftSlugsById = new Map(
+    const poolSlugsById = new Map(
       drafts.map((draft) => [draft._id.toString(), draft.slug]),
     );
 
@@ -116,8 +116,8 @@ export class LeagueService {
           tournamentSlug: tournament.slug,
           leagueName: tournament.leagueName,
           leagueSlug: tournament.leagueSlug,
-          draftSlug: team.draftId
-            ? draftSlugsById.get(team.draftId.toString())
+          poolSlug: team.draftId
+            ? poolSlugsById.get(team.draftId.toString())
             : undefined,
           teamId: team._id.toString(),
           teamSlug: team.slug,

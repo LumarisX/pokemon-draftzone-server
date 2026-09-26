@@ -59,9 +59,9 @@ describe("DraftStreamService", () => {
   function completed(draftPublic: boolean, blindTeamId?: string) {
     return {
       tournamentSlug: TOURNAMENT_SLUG,
-      draftSlug: "pool-a",
+      poolSlug: "pool-a",
       audience: { draftPublic, ...(blindTeamId ? { blindTeamId } : {}) },
-      draftName: "Pool A",
+      poolName: "Pool A",
     };
   }
 
@@ -74,7 +74,7 @@ describe("DraftStreamService", () => {
     service.onDraftCompleted(completed(true));
 
     const [message] = ofType(anonymous, "league.draft.completed");
-    expect(message.data).toMatchObject({ draftName: "Pool A" });
+    expect(message.data).toMatchObject({ poolName: "Pool A" });
     expect(message.data).not.toHaveProperty("audience");
   });
 
@@ -128,9 +128,9 @@ describe("DraftStreamService", () => {
     function pickEvent() {
       return {
         tournamentSlug: TOURNAMENT_SLUG,
-        draftSlug: "pool-a",
+        poolSlug: "pool-a",
         audience: { draftPublic: true, blindTeamId: blindTeamId.toString() },
-        pick: { team: "Team A", draft: "pool-a", pokemon: { id: "pikachu" } },
+        pick: { team: "Team A", pool: "pool-a", pokemon: { id: "pikachu" } },
         team: {
           id: blindTeamId.toString(),
           name: "Team A",
@@ -156,7 +156,7 @@ describe("DraftStreamService", () => {
           unknown
         >;
         expect(data).not.toHaveProperty("pokemon");
-        expect(data["pick"]).toEqual({ team: "Team A", draft: "pool-a" });
+        expect(data["pick"]).toEqual({ team: "Team A", pool: "pool-a" });
         expect(data["team"]).toEqual({
           id: blindTeamId.toString(),
           name: "Team A",
@@ -190,7 +190,7 @@ describe("DraftStreamService", () => {
       service.onDraftCompleted(completed(true, blindTeamId.toString()));
 
       expect(ofType(anonymous, "league.draft.completed")[0].data).toMatchObject(
-        { draftName: "Pool A" },
+        { poolName: "Pool A" },
       );
     });
   });

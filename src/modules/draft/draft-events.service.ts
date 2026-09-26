@@ -29,7 +29,7 @@ export function draftAudience(
 
 type AudiencedEvent = {
   tournamentSlug: string;
-  draftSlug: string;
+  poolSlug: string;
   audience: DraftEventAudience;
 };
 
@@ -37,7 +37,7 @@ export type DraftAddedEvent = AudiencedEvent & {
   pick: {
     pokemon: DraftPickSummary;
     team: { id: string; name: string };
-    draft: string;
+    pool: string;
   };
   canDraftTeams: string[];
   canDraftCounts: Record<string, number>;
@@ -71,7 +71,7 @@ export type DraftPickUpdatedEvent = AudiencedEvent & {
 };
 
 export type DraftCompletedEvent = AudiencedEvent & {
-  draftName: string;
+  poolName: string;
 };
 
 export type DraftSkipEvent = AudiencedEvent & {

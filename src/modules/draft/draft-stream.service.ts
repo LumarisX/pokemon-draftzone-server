@@ -45,7 +45,7 @@ function hidePick(data: EventData): EventData {
   const { pokemon: _pokemon, previous: _previous, ...rest } = data;
   return {
     ...rest,
-    ...(pick ? { pick: { team: pick["team"], draft: pick["draft"] } } : {}),
+    ...(pick ? { pick: { team: pick["team"], pool: pick["pool"] } } : {}),
     ...(team ? { team: { id: team["id"], name: team["name"], draft: [] } } : {}),
   };
 }

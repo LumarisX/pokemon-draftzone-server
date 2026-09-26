@@ -2,7 +2,7 @@ import { CoachModule } from "@modules/coach/coach.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { TeamModule } from "@modules/team/team.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
-import { forwardRef, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ChatController } from "./chat.controller";
 import { ChatRepository } from "./chat.repository";
@@ -20,7 +20,7 @@ import { ChatService } from "./chat.service";
     TeamModule,
     CoachModule,
     LeagueMatchupModule,
-    forwardRef(() => HostedTournamentCoreModule),
+    HostedTournamentCoreModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatRepository],

@@ -5,7 +5,6 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { tierId } from "../../tier-list/tier-list.test-ids";
-// DraftCount lives on the tournament, not TierList — imported for tournament fixture use.
 import { Types } from "mongoose";
 import { getDraftDetails, getTeamsWithCoachStatus, isCoach } from "./team-summary";
 
@@ -136,8 +135,6 @@ describe("getTeamsWithCoachStatus", () => {
 
     const ownResult = result.find((t) => t.id === ownTeam._id.toString())!;
     const otherResult = result.find((t) => t.id === otherTeam._id.toString())!;
-    // Padded to maxPicks (3 rounds - 0 already picked = 3), with the queued
-    // round's content in the first slot.
     expect(ownResult.picks).toHaveLength(3);
     expect(ownResult.picks[0][0]).toMatchObject({ id: "charizard", name: "Charizard" });
     expect(ownResult.picks[1]).toEqual([]);
@@ -196,7 +193,6 @@ describe("getTeamsWithCoachStatus", () => {
 
     const result = await getTeamsWithCoachStatus(draft, tournament, "auth0|coach-1", 3);
 
-    // Charizard's tier (A) costs 5, plus the Tera Captain addon's cost of 2.
     expect(result[0].draft[0].cost).toBe(7);
   });
 
@@ -272,7 +268,7 @@ describe("getDraftDetails", () => {
     const result = await getDraftDetails(tournament, draft, "auth0|me");
 
     expect(result.leagueName).toBe("Spring League");
-    expect(result.draftName).toBe("Spring Draft");
+    expect(result.poolName).toBe("Spring Draft");
     expect(result.orderProgression).toBe("snake");
     expect(result.rounds).toBe(3);
     expect(result.teams).toHaveLength(2);

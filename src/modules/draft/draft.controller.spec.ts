@@ -15,7 +15,6 @@ describe("DraftController", () => {
       getPicks: jest.fn(),
       getOrder: jest.fn(),
       getPowerRankings: jest.fn(),
-      getPokemonList: jest.fn(),
       draftPick: jest.fn(),
       setPicks: jest.fn(),
       setState: jest.fn(),
@@ -24,8 +23,8 @@ describe("DraftController", () => {
     controller = new DraftController(service);
   });
 
-  it("getDetails forwards leagueSlug/tournamentSlug/draftSlug/sub", async () => {
-    const details = { draftName: "Spring Draft" } as any;
+  it("getDetails forwards leagueSlug/tournamentSlug/poolSlug/sub", async () => {
+    const details = { poolName: "Spring Draft" } as any;
     service.getDetails.mockResolvedValue(details);
 
     const result = await controller.getDetails("league-1", "tournament-1", "draft-1", "auth0|sub");
@@ -36,7 +35,7 @@ describe("DraftController", () => {
     expect(result).toBe(details);
   });
 
-  it("getTeams forwards leagueSlug/tournamentSlug/draftSlug/sub/stageId", async () => {
+  it("getTeams forwards leagueSlug/tournamentSlug/poolSlug/sub/stageId", async () => {
     const teams = { teams: [] } as any;
     service.getTeams.mockResolvedValue(teams);
 
@@ -50,7 +49,7 @@ describe("DraftController", () => {
     expect(result).toBe(teams);
   });
 
-  it("getPicks forwards leagueSlug/tournamentSlug/draftSlug", async () => {
+  it("getPicks forwards leagueSlug/tournamentSlug/poolSlug", async () => {
     const picks = [] as any;
     service.getPicks.mockResolvedValue(picks);
 
@@ -70,7 +69,7 @@ describe("DraftController", () => {
     expect(result).toBe(picks);
   });
 
-  it("getOrder forwards leagueSlug/tournamentSlug/draftSlug", async () => {
+  it("getOrder forwards leagueSlug/tournamentSlug/poolSlug", async () => {
     const order = [] as any;
     service.getOrder.mockResolvedValue(order);
 
@@ -90,7 +89,7 @@ describe("DraftController", () => {
     expect(result).toBe(order);
   });
 
-  it("getPowerRankings forwards leagueSlug/tournamentSlug/draftSlug", async () => {
+  it("getPowerRankings forwards leagueSlug/tournamentSlug/poolSlug", async () => {
     const rankings = [] as any;
     service.getPowerRankings.mockResolvedValue(rankings);
 
@@ -110,21 +109,7 @@ describe("DraftController", () => {
     expect(result).toBe(rankings);
   });
 
-  it("getPokemonList forwards leagueSlug/tournamentSlug/draftSlug/sub", async () => {
-    const list = { groups: [] } as any;
-    service.getPokemonList.mockResolvedValue(list);
-
-    const result = await controller.getPokemonList(
-      "league-1", "tournament-1", "draft-1", "auth0|sub",
-    );
-
-    expect(service.getPokemonList).toHaveBeenCalledWith(
-      "league-1", "tournament-1", "draft-1", "auth0|sub",
-    );
-    expect(result).toBe(list);
-  });
-
-  it("draftPick forwards leagueSlug/tournamentSlug/draftSlug/teamId/sub/body", async () => {
+  it("draftPick forwards leagueSlug/tournamentSlug/poolSlug/teamId/sub/body", async () => {
     const response = { leagueName: "Test League" } as any;
     service.draftPick.mockResolvedValue(response);
     const body = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
@@ -139,7 +124,7 @@ describe("DraftController", () => {
     expect(result).toBe(response);
   });
 
-  it("setPicks forwards leagueSlug/tournamentSlug/draftSlug/teamId/sub/body", async () => {
+  it("setPicks forwards leagueSlug/tournamentSlug/poolSlug/teamId/sub/body", async () => {
     const response = { message: "Draft pick set successfully." };
     service.setPicks.mockResolvedValue(response);
     const body = { picks: [] } as SetPicksDto;
@@ -154,7 +139,7 @@ describe("DraftController", () => {
     expect(result).toBe(response);
   });
 
-  it("setState forwards leagueSlug/tournamentSlug/draftSlug/sub/body", async () => {
+  it("setState forwards leagueSlug/tournamentSlug/poolSlug/sub/body", async () => {
     const response = { message: "Timer set successfully." };
     service.setState.mockResolvedValue(response);
     const body = { state: "play" } as SetDraftStateDto;
@@ -169,7 +154,7 @@ describe("DraftController", () => {
     expect(result).toBe(response);
   });
 
-  it("skipPick forwards leagueSlug/tournamentSlug/draftSlug/sub", async () => {
+  it("skipPick forwards leagueSlug/tournamentSlug/poolSlug/sub", async () => {
     const response = { message: "Skip successful." };
     service.skipPick.mockResolvedValue(response);
 

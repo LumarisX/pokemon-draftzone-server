@@ -80,7 +80,6 @@ describe("TierListService", () => {
       expect(result.ruleset).toBe("Gen9 NatDex");
       expect(result.name).toBe("Spring Tier List");
       expect(result.description).toBe("desc");
-      expect(result.divisions).toEqual({});
       expect(result.tierList).toEqual([
         {
           id: tierId("S"),
@@ -311,7 +310,7 @@ describe("TierListService", () => {
       expect(tierListRepo.updateSettings).toHaveBeenCalledWith("tierlist-1", {
         name: "New Name",
       });
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ message: "Tier list settings saved." });
     });
 
     it("includes multiple provided fields together", async () => {
@@ -352,7 +351,6 @@ describe("TierListService", () => {
       expect(applySpy).toHaveBeenCalledWith(dto.tiers);
       expect(tierListRepo.save).toHaveBeenCalledWith(tierList);
       expect(result).toEqual({
-        success: true,
         message: "Tier list updated successfully",
         orphanedRequirements: [],
       });
@@ -375,7 +373,6 @@ describe("TierListService", () => {
         ]),
       });
 
-      // The submitted layout drops tier "S" entirely.
       const dto = { tiers: [] } as unknown as UpdateTierListDto;
       const result = await service.updateTierList(
         new Types.ObjectId().toString(),

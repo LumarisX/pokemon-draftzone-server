@@ -194,7 +194,7 @@ describe("HostedTournamentService signup", () => {
 
       await expect(
         service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB),
-      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+      ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
     });
 
     it("ignores signups for other tournaments when matching the coach's team", async () => {
@@ -212,7 +212,7 @@ describe("HostedTournamentService signup", () => {
 
       await expect(
         service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB),
-      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+      ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
     });
 
     it("returns the signed-up coach's details when no draft is assigned and the coach isn't in Discord", async () => {
@@ -250,7 +250,7 @@ describe("HostedTournamentService signup", () => {
         logo: undefined,
         signedUpAt,
         teamId: teamId.toString(),
-        draft: null,
+        pool: null,
         inDiscordServer: false,
       });
     });
@@ -290,7 +290,7 @@ describe("HostedTournamentService signup", () => {
 
       const result = await service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB);
 
-      expect(result.draft).toEqual({ draftSlug: "draft-1", name: "Draft One" });
+      expect(result.pool).toEqual({ poolSlug: "draft-1", name: "Draft One" });
       expect(result.inDiscordServer).toBe(true);
       expect(discordService.findMember).toHaveBeenCalledWith(
         "guild-1",
@@ -361,7 +361,7 @@ describe("HostedTournamentService signup", () => {
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.SIGNUP_CLOSED.code,
+        code: ErrorCodes.TOURNAMENT.SIGNUP_CLOSED.code,
       });
     });
 
@@ -401,7 +401,7 @@ describe("HostedTournamentService signup", () => {
           buildSignUpDto(),
           "tok-123",
         ),
-      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.SIGNUP_CLOSED.code });
+      ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.SIGNUP_CLOSED.code });
     });
 
     it("refuses an invite-only tournament without the token", async () => {
@@ -411,7 +411,7 @@ describe("HostedTournamentService signup", () => {
 
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
-      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.INVITE_REQUIRED.code });
+      ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.INVITE_REQUIRED.code });
     });
 
     it("refuses an invite-only tournament with a wrong token", async () => {
@@ -427,7 +427,7 @@ describe("HostedTournamentService signup", () => {
           buildSignUpDto(),
           "tok-wrong",
         ),
-      ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.INVITE_REQUIRED.code });
+      ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.INVITE_REQUIRED.code });
     });
 
     it("accepts an invite-only tournament with the right token", async () => {
@@ -476,7 +476,7 @@ describe("HostedTournamentService signup", () => {
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+        code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
       });
       expect(teamRepo.create).not.toHaveBeenCalled();
       expect(coachRepo.create).not.toHaveBeenCalled();
@@ -599,7 +599,7 @@ describe("HostedTournamentService signup", () => {
       await expect(
         service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+        code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
       });
 
       expect(applicationRepo.create).not.toHaveBeenCalled();
@@ -798,7 +798,7 @@ describe("HostedTournamentService signup", () => {
           { status: "denied" },
         ),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.APPLICATION_HAS_TEAM.code,
+        code: ErrorCodes.TOURNAMENT.APPLICATION_HAS_TEAM.code,
       });
 
       expect(applicationRepo.decide).not.toHaveBeenCalled();
@@ -819,7 +819,7 @@ describe("HostedTournamentService signup", () => {
           { status: "approved" },
         ),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.TOURNAMENT_FULL.code,
+        code: ErrorCodes.TOURNAMENT.FULL.code,
       });
 
       expect(teamRepo.create).not.toHaveBeenCalled();
@@ -1083,7 +1083,7 @@ describe("HostedTournamentService signup", () => {
           applicationId: APPLICATION_ID.toString(),
         }),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ALREADY_SIGNED_UP.code,
+        code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
       });
     });
 
@@ -1221,7 +1221,7 @@ describe("HostedTournamentService removeParticipant", () => {
         ORGANIZER,
         COACH_ID.toString(),
       ),
-    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
 
     expect(transactions.log).toEqual([]);
   });
@@ -1236,7 +1236,7 @@ describe("HostedTournamentService removeParticipant", () => {
         ORGANIZER,
         COACH_ID.toString(),
       ),
-    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_HAS_MATCHES.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_HAS_MATCHES.code });
 
     expect(transactions.log).toEqual([]);
   });
@@ -1584,7 +1584,7 @@ describe("HostedTournamentService settings", () => {
           tierRequirements: [{ tierId: tierId("S"), required: 1 }],
         },
       );
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ message: "Settings saved." });
     });
   });
 });
@@ -1727,7 +1727,7 @@ describe("HostedTournamentService coach details", () => {
         "auth0|owner",
         { name: "Ash" },
       ),
-    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.COACH_NOT_FOUND.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
   });
 });
 
@@ -1938,7 +1938,7 @@ describe("HostedTournamentService assignTeams", () => {
     const team = addTeam("approved");
 
     await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
+      { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
     expect(teamRepo.update).toHaveBeenCalledWith(team._id, {
@@ -1952,8 +1952,8 @@ describe("HostedTournamentService assignTeams", () => {
     const second = addTeam("approved");
 
     await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { teamSlug: first.slug, divisionKey: "pool-a", status: "approved" },
-      { teamSlug: second.slug, divisionKey: "pool-a", status: "approved" },
+      { teamSlug: first.slug, poolSlug: "pool-a", status: "approved" },
+      { teamSlug: second.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
     expect(teamRepo.findAllByTournament).toHaveBeenCalledTimes(1);
@@ -1965,11 +1965,11 @@ describe("HostedTournamentService assignTeams", () => {
 
     await expect(
       service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-        { teamSlug: known.slug, divisionKey: "pool-a", status: "approved" },
+        { teamSlug: known.slug, poolSlug: "pool-a", status: "approved" },
         { teamSlug: "other-tournaments-team", status: "approved" },
       ]),
     ).rejects.toMatchObject({
-      code: ErrorCodes.LEAGUE.ASSIGNMENT_TEAMS_NOT_FOUND.code,
+      code: ErrorCodes.TOURNAMENT.ASSIGNMENT_TEAMS_NOT_FOUND.code,
       details: { teamSlugs: ["other-tournaments-team"] },
     });
 
@@ -1982,10 +1982,10 @@ describe("HostedTournamentService assignTeams", () => {
 
     await expect(
       service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-        { teamSlug: first.slug, divisionKey: "pool-a", status: "approved" },
-        { teamSlug: second.slug, divisionKey: "missing-pool", status: "approved" },
+        { teamSlug: first.slug, poolSlug: "pool-a", status: "approved" },
+        { teamSlug: second.slug, poolSlug: "missing-pool", status: "approved" },
       ]),
-    ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.NOT_IN_LEAGUE.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.POOL_NOT_FOUND.code });
 
     expect(teamRepo.update).not.toHaveBeenCalled();
   });
@@ -1999,7 +1999,7 @@ describe("HostedTournamentService assignTeams", () => {
         { teamSlug: first.slug, status: "approved" },
         { teamSlug: second.slug, status: "approved" },
       ]),
-    ).rejects.toMatchObject({ code: ErrorCodes.LEAGUE.TOURNAMENT_FULL.code });
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.FULL.code });
 
     expect(teamRepo.update).not.toHaveBeenCalled();
   });
@@ -2039,7 +2039,7 @@ describe("HostedTournamentService assignTeams", () => {
     const team = addTeam("approved");
 
     await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
+      { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
     expect(tournamentRepo.bumpRosterVersion).not.toHaveBeenCalled();
@@ -2050,7 +2050,7 @@ describe("HostedTournamentService assignTeams", () => {
     const team = addTeam("approved");
 
     await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
-      { teamSlug: team.slug, divisionKey: "pool-a", status: "approved" },
+      { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
     expect(teamRepo.countApprovedByTournament).not.toHaveBeenCalled();
@@ -2262,14 +2262,14 @@ describe("HostedTournamentService teams", () => {
       expect(finished.teams.some((team) => team.picksHidden)).toBe(false);
     });
 
-    it("listTeamsByDraft hides rival rosters and reports allowDuplicates", async () => {
-      const result = await blindService().listTeamsByDraft(
+    it("listTeamsByPool hides rival rosters and reports allowDuplicates", async () => {
+      const result = await blindService().listTeamsByPool(
         LEAGUE_KEY,
         TOURNAMENT_KEY,
         SUB,
       );
 
-      const group = result.drafts.find((entry) => entry.draftSlug === "pool-a")!;
+      const group = result.pools.find((entry) => entry.poolSlug === "pool-a")!;
       expect(group.allowDuplicates).toBe(true);
       expect(
         group.teams.map((team) => [team.picksHidden, team.draft.length]),
@@ -2335,6 +2335,36 @@ describe("HostedTournamentService teams", () => {
         [visibleStage._id, hiddenStage._id],
         { teamIds: [TEAM_ID] },
       );
+    });
+
+    it("never returns the raw matchup documents", async () => {
+      const { service, matchupRepo } = buildService({
+        tournament: tournamentWithAxis(),
+        team: buildTeam(TEAM_ID, "Team One", ["pikachu"]),
+        stages: [visibleStage],
+      });
+      matchupRepo.findByStages.mockResolvedValue([
+        {
+          side1: {
+            team: {
+              _id: new Types.ObjectId(),
+              primaryCoach: { auth0Id: "auth0|rival" },
+            },
+          },
+          side2: {},
+          report: { submittedBy: "auth0|rival" },
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ] as any);
+
+      const result = await service.getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "team-one-slug",
+      );
+
+      expect(result).not.toHaveProperty("matchups");
+      expect(JSON.stringify(result)).not.toContain("auth0|rival");
     });
   });
 

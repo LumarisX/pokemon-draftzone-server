@@ -311,7 +311,7 @@ describe("TournamentOrganizerService", () => {
           "Nope",
         ),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ORGANIZER_NOT_FOUND.code,
+        code: ErrorCodes.TOURNAMENT.ORGANIZER_NOT_FOUND.code,
       });
     });
   });
@@ -351,7 +351,7 @@ describe("TournamentOrganizerService", () => {
           name: "Misty",
         }),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_LIMIT.code,
+        code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_LIMIT.code,
       });
     });
   });
@@ -402,7 +402,7 @@ describe("TournamentOrganizerService", () => {
       await expect(
         service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID.code,
+        code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
       expect(tournamentRepo.addStaff).not.toHaveBeenCalled();
     });
@@ -415,7 +415,7 @@ describe("TournamentOrganizerService", () => {
       await expect(
         service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID.code,
+        code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
     });
 
@@ -426,7 +426,7 @@ describe("TournamentOrganizerService", () => {
       await expect(
         service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, OUTSIDER, "tok"),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ORGANIZER_INVITE_INVALID.code,
+        code: ErrorCodes.TOURNAMENT.ORGANIZER_INVITE_INVALID.code,
       });
       expect(tournamentRepo.addStaff).not.toHaveBeenCalled();
     });
@@ -437,7 +437,7 @@ describe("TournamentOrganizerService", () => {
       await expect(
         service.acceptInvite(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, "tok"),
       ).rejects.toMatchObject({
-        code: ErrorCodes.LEAGUE.ALREADY_ORGANIZER.code,
+        code: ErrorCodes.TOURNAMENT.ALREADY_ORGANIZER.code,
       });
       expect(inviteRepo.claim).not.toHaveBeenCalled();
     });

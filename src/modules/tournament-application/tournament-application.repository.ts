@@ -63,7 +63,7 @@ export class TournamentApplicationRepository {
       .findById(this.toObjectId(id))
       .exec();
     if (!application) {
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, {
         applicationId: String(id),
       });
     }
@@ -78,7 +78,7 @@ export class TournamentApplicationRepository {
       .findOne({ _id: this.toObjectId(id), tournamentId })
       .exec();
     if (!application) {
-      throw new PDZError(ErrorCodes.LEAGUE.COACH_NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, {
         applicationId: String(id),
       });
     }
@@ -146,7 +146,7 @@ export class TournamentApplicationRepository {
       await application.save();
     } catch (error) {
       if ((error as { code?: number }).code === 11000)
-        throw new PDZError(ErrorCodes.LEAGUE.ALREADY_SIGNED_UP, {
+        throw new PDZError(ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP, {
           tournamentId: String(data.tournamentId),
         });
       throw error;

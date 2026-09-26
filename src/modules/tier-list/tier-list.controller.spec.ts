@@ -42,7 +42,6 @@ describe("TierListController", () => {
     it("forwards the tier list id, sub, and body", async () => {
       const body = { tiers: [] } as UpdateTierListDto;
       const response = {
-        success: true,
         message: "Tier list updated successfully",
         orphanedRequirements: [],
       };
@@ -74,7 +73,7 @@ describe("TierListController", () => {
   describe("updateTierListSettings", () => {
     it("forwards the tier list id, sub, and body", async () => {
       const body = { name: "New Name" } as UpdateTierListSettingsDto;
-      const response = { success: true };
+      const response = { message: "Tier list settings saved." };
       service.updateSettings.mockResolvedValue(response);
 
       const result = await controller.updateTierListSettings(

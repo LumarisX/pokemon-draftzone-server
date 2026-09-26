@@ -180,7 +180,7 @@ describe("HostedTournamentRepository", () => {
 
       await expect(
         repo.findRulesBySlug("spring", "missing"),
-      ).rejects.toMatchObject({ code: "LR-001" });
+      ).rejects.toMatchObject({ code: "TRN-006" });
     });
   });
 });

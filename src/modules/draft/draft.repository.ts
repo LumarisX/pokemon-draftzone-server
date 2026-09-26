@@ -45,15 +45,15 @@ export class DraftRepository {
 
   async findDraft(
     tournament: PopulatedTournament,
-    draftSlug: string,
+    poolSlug: string,
   ): Promise<PopulatedDraft> {
     const draft = await this.draftModel
-      .findOne({ tournamentId: tournament.id, slug: draftSlug })
+      .findOne({ tournamentId: tournament.id, slug: poolSlug })
       .exec();
 
     if (!draft)
-      throw new PDZError(ErrorCodes.DRAFT.NOT_IN_LEAGUE, {
-        draftSlug,
+      throw new PDZError(ErrorCodes.TOURNAMENT.POOL_NOT_FOUND, {
+        poolSlug,
         tournamentSlug: tournament.slug,
       });
 
@@ -140,9 +140,9 @@ export class DraftRepository {
       (candidate: PopulatedTeam) => candidate._id.toString() === teamId,
     );
     if (!team)
-      throw new PDZError(ErrorCodes.TEAM.NOT_IN_DRAFT, {
+      throw new PDZError(ErrorCodes.TEAM.NOT_IN_POOL, {
         teamId,
-        draftSlug: draft.slug,
+        poolSlug: draft.slug,
       });
     return team;
   }

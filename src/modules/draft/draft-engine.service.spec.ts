@@ -477,7 +477,7 @@ describe("DraftEngineService", () => {
       expect(draftEvents.emitDraftAdded).toHaveBeenCalledWith(
         expect.objectContaining({
           tournamentSlug: "spring-cup",
-          draftSlug: "spring-draft",
+          poolSlug: "spring-draft",
           pick: expect.objectContaining({
             pokemon: expect.objectContaining({
               id: "pikachu",
@@ -545,7 +545,7 @@ describe("DraftEngineService", () => {
 
       const [, payload] = discordService.sendMessage.mock.calls[0];
       expect(payload.embeds?.[0].data.url).toBe(
-        "https://pokemondraftzone.com/leagues/spring-league/tournaments/spring-cup/drafts/spring-draft/draft",
+        "https://pokemondraftzone.com/leagues/spring-league/tournaments/spring-cup/pools/spring-draft/draft",
       );
     });
 
@@ -563,7 +563,7 @@ describe("DraftEngineService", () => {
 
       const [, payload] = discordService.sendMessage.mock.calls[0];
       expect(payload.embeds?.[0].data.url).toBe(
-        "http://localhost:4200/leagues/spring-league/tournaments/spring-cup/drafts/spring-draft/draft",
+        "http://localhost:4200/leagues/spring-league/tournaments/spring-cup/pools/spring-draft/draft",
       );
     });
 
@@ -581,7 +581,7 @@ describe("DraftEngineService", () => {
       expect(draftEvents.emitDraftCompleted).toHaveBeenCalledWith(
         expect.objectContaining({
           tournamentSlug: "spring-cup",
-          draftSlug: "spring-draft",
+          poolSlug: "spring-draft",
         }),
       );
       expect(agendaService.cancelSkipPick).toHaveBeenCalled();

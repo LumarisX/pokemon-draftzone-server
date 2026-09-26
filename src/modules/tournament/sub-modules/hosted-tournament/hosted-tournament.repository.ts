@@ -47,7 +47,7 @@ export class HostedTournamentRepository {
       .findOne({ slug: { $eq: tournamentSlug }, league: league._id })
       .exec();
     if (!doc)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
+      throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentSlug });
     const [stages, tierListMeta] = await Promise.all([
       this.resolveStages(doc.stages),
       this.resolveTierListMeta(doc.tierList),
@@ -73,7 +73,7 @@ export class HostedTournamentRepository {
       .lean()
       .exec();
     if (!doc)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentSlug });
+      throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentSlug });
     return (doc.rules ?? []).map(
       (rule) => new TournamentRule({ title: rule.title, body: rule.body }),
     );
@@ -100,7 +100,7 @@ export class HostedTournamentRepository {
   ): Promise<HostedTournament> {
     const doc = await this.hostedTournamentModel.findById(tournamentId).exec();
     if (!doc)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, {
         tournamentId: tournamentId.toString(),
       });
     const league = await this.leagueRepo.findById(doc.league);
@@ -247,7 +247,7 @@ export class HostedTournamentRepository {
       )
       .exec();
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, { tournamentId });
+      throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentId });
   }
 
   async addStaff(
@@ -318,7 +318,7 @@ export class HostedTournamentRepository {
       .findByIdAndUpdate(tournamentId, mongoUpdate)
       .exec();
     if (!result)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+      throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, {
         tournamentId: tournamentId.toString(),
       });
   }
@@ -356,7 +356,7 @@ export class HostedTournamentRepository {
     if (!result)
       throw guarded
         ? new PDZError(ErrorCodes.STAGE.TRADES_CHANGED)
-        : new PDZError(ErrorCodes.LEAGUE.NOT_FOUND, {
+        : new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, {
             tournamentId: tournamentId.toString(),
           });
   }

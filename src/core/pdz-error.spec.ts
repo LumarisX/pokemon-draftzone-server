@@ -79,7 +79,7 @@ describe("nullIfNotFound", () => {
   });
 
   it("rethrows a PDZError that is not a 404", async () => {
-    const forbidden = new PDZError(ErrorCodes.LEAGUE.UNAUTHORIZED);
+    const forbidden = new PDZError(ErrorCodes.TOURNAMENT.INVITE_REQUIRED);
 
     await expect(nullIfNotFound(Promise.reject(forbidden))).rejects.toBe(
       forbidden,
