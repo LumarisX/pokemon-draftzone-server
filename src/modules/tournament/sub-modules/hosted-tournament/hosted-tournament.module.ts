@@ -12,6 +12,7 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
 import { HostedTournamentCoreModule } from "./hosted-tournament-core.module";
+import { HostingAccessModule } from "./hosting-access.module";
 import { HostedTournamentController } from "./hosted-tournament.controller";
 import { HostedTournamentService } from "./hosted-tournament.service";
 import { OrganizerInviteRepository } from "./organizer-invite.repository";
@@ -34,6 +35,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
       { name: OrganizerInviteEntity.name, schema: OrganizerInviteSchema },
     ]),
     HostedTournamentCoreModule,
+    HostingAccessModule,
     LeagueCoreModule,
     TournamentApplicationModule,
     TierListModule,

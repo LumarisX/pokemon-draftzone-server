@@ -7,6 +7,7 @@ import { Types } from "mongoose";
 import { CreateTournamentDto } from "./hosted-tournament.dto";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import { SignUpQuestionEntity } from "./hosted-tournament.schema";
+import { HostingAccessService } from "./hosting-access.service";
 import {
   carriedQuestions,
   TournamentCreationService,
@@ -71,9 +72,13 @@ describe("TournamentCreationService", () => {
   let leagueRepo: jest.Mocked<LeagueRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let hosting: jest.Mocked<HostingAccessService>;
   let service: TournamentCreationService;
 
   beforeEach(() => {
+    hosting = {
+      assertCanCreateTournament: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<HostingAccessService>;
     leagueRepo = {
       findBySlug: jest
         .fn()
@@ -101,6 +106,7 @@ describe("TournamentCreationService", () => {
       leagueRepo,
       tournamentRepo,
       tierListRepo,
+      hosting,
       { run: (work: () => Promise<unknown>) => work() } as TransactionRunner,
     );
   });
@@ -109,6 +115,20 @@ describe("TournamentCreationService", () => {
     await expect(
       service.createTournament("league", "auth0|other", dto()),
     ).rejects.toMatchObject({ code: "LR-004" });
+    expect(tournamentRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("stops a league owner who can't host", async () => {
+    hosting.assertCanCreateTournament.mockRejectedValue(
+      new PDZError(ErrorCodes.TOURNAMENT.CREATION_RESTRICTED),
+    );
+
+    await expect(
+      service.createTournament("league", "auth0|owner", dto()),
+    ).rejects.toMatchObject({ code: "TRN-022" });
+    expect(hosting.assertCanCreateTournament).toHaveBeenCalledWith(
+      "auth0|owner",
+    );
     expect(tournamentRepo.create).not.toHaveBeenCalled();
   });
 
@@ -124,7 +144,6 @@ describe("TournamentCreationService", () => {
       expect.objectContaining({
         name: "Season 2",
         league: leagueId,
-        owner: "auth0|owner",
         ownerName: { sub: "auth0|owner", name: "Host" },
         signUpAccess: "closed",
         forfeit: { gameDiff: 0, pokemonDiff: 0 },

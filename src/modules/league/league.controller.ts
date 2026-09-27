@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from "@nestjs/common";
@@ -15,7 +16,7 @@ import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import { User } from "@core/decorators/user.decorator";
 import { SkipGlobalThrottle } from "@core/guards/skip-global-throttle.decorator";
 import { UserThrottlerGuard } from "@core/guards/user-throttler.guard";
-import { CreateLeagueDto } from "./league.dto";
+import { CreateLeagueDto, UpdateLeagueDto } from "./league.dto";
 
 @Controller("leagues")
 export class LeagueController {
@@ -46,6 +47,16 @@ export class LeagueController {
   @UseGuards(JwtAuthGuard)
   async getOwnedLeagues(@User() sub: string) {
     return this.leagueService.getOwnedLeagues(sub);
+  }
+
+  @Patch(":leagueSlug")
+  @UseGuards(JwtAuthGuard)
+  async updateLeague(
+    @Param("leagueSlug") leagueSlug: string,
+    @User() sub: string,
+    @Body() body: UpdateLeagueDto,
+  ) {
+    return this.leagueService.updateLeague(leagueSlug, sub, body);
   }
 
   @Get(":leagueSlug")

@@ -33,8 +33,26 @@ export class LeagueRepository {
     return this.leagueModel.create(league);
   }
 
-  async countByOwner(owner: string): Promise<number> {
-    return this.leagueModel.countDocuments({ owner: { $eq: owner } }).exec();
+  async update(
+    leagueId: Types.ObjectId,
+    changes: { name?: string; description?: string | null; logo?: string | null },
+  ): Promise<void> {
+    const set: Record<string, string> = {};
+    const unset: Record<string, ""> = {};
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === undefined) continue;
+      if (value === null) unset[key] = "";
+      else set[key] = value;
+    }
+    await this.leagueModel
+      .updateOne(
+        { _id: leagueId },
+        {
+          ...(Object.keys(set).length ? { $set: set } : {}),
+          ...(Object.keys(unset).length ? { $unset: unset } : {}),
+        },
+      )
+      .exec();
   }
 
   async findByOwner(owner: string): Promise<LeagueDocument[]> {

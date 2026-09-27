@@ -1,4 +1,4 @@
-import { PDZError } from "@core/pdz-error";
+import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
@@ -37,14 +37,18 @@ export class HostedTournamentRepository {
     private readonly teamRepo: TeamRepository,
   ) {}
 
-  async findBySlug(tournamentSlug: string): Promise<HostedTournament> {
+  async findBySlug(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<HostedTournament> {
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
+
     const doc = await this.hostedTournamentModel
-      .findOne({ slug: { $eq: tournamentSlug } })
+      .findOne({ slug: { $eq: tournamentSlug }, league: league._id })
       .exec();
     if (!doc)
       throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentSlug });
-    const [league, stages, tierListMeta] = await Promise.all([
-      this.leagueRepo.findById(doc.league),
+    const [stages, tierListMeta] = await Promise.all([
       this.resolveStages(doc.stages),
       this.resolveTierListMeta(doc.tierList),
     ]);
@@ -56,9 +60,16 @@ export class HostedTournamentRepository {
     );
   }
 
-  async findRulesBySlug(tournamentSlug: string): Promise<TournamentRule[]> {
+  async findRulesBySlug(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<TournamentRule[]> {
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
     const doc = await this.hostedTournamentModel
-      .findOne({ slug: { $eq: tournamentSlug } }, { rules: 1 })
+      .findOne(
+        { slug: { $eq: tournamentSlug }, league: league._id },
+        { rules: 1 },
+      )
       .lean()
       .exec();
     if (!doc)
@@ -68,9 +79,17 @@ export class HostedTournamentRepository {
     );
   }
 
-  async isArchived(tournamentSlug: string): Promise<boolean> {
+  async isArchived(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<boolean> {
+    const league = await nullIfNotFound(this.leagueRepo.findBySlug(leagueSlug));
+    if (!league) return false;
     const doc = await this.hostedTournamentModel
-      .findOne({ slug: { $eq: tournamentSlug } }, { archived: 1 })
+      .findOne(
+        { slug: { $eq: tournamentSlug }, league: league._id },
+        { archived: 1 },
+      )
       .lean()
       .exec();
     return doc?.archived === true;
@@ -111,6 +130,13 @@ export class HostedTournamentRepository {
     return this.hostedTournamentModel
       .findOne({ league: leagueId, slug: { $eq: tournamentSlug } })
       .lean<HostedTournamentEntity>()
+      .exec();
+  }
+
+  async countActiveInLeagues(leagueIds: Types.ObjectId[]): Promise<number> {
+    if (leagueIds.length === 0) return 0;
+    return this.hostedTournamentModel
+      .countDocuments({ league: { $in: leagueIds }, archived: { $ne: true } })
       .exec();
   }
 

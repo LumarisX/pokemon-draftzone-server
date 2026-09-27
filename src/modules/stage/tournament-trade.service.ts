@@ -29,10 +29,12 @@ export class TournamentTradeService {
   ) {}
 
   async getTrades(
+    leagueSlug: string,
     tournamentSlug: string,
     teamSlug?: string | string[],
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
 
@@ -138,6 +140,7 @@ export class TournamentTradeService {
   }
 
   async createTrade(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: MakeTradeDto,
@@ -165,6 +168,7 @@ export class TournamentTradeService {
 
     return this.retryOnTradeConflict(async () => {
       const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
         tournamentSlug,
       );
       const isOrganizer = can(tournament, sub, "manageTrades");
@@ -246,6 +250,7 @@ export class TournamentTradeService {
   }
 
   async updateTrade(
+    leagueSlug: string,
     tournamentSlug: string,
     tradeId: string,
     sub: string,
@@ -253,6 +258,7 @@ export class TournamentTradeService {
   ) {
     return this.retryOnTradeConflict(async () => {
       const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
         tournamentSlug,
       );
       assertCan(tournament, sub, "manageTrades");
@@ -300,12 +306,14 @@ export class TournamentTradeService {
   }
 
   async withdrawTrade(
+    leagueSlug: string,
     tournamentSlug: string,
     tradeId: string,
     sub: string,
   ) {
     return this.retryOnTradeConflict(async () => {
       const tournament = await this.tournamentRepo.findBySlug(
+        leagueSlug,
         tournamentSlug,
       );
 

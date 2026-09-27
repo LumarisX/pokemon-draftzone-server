@@ -104,7 +104,7 @@ describe("StageService", () => {
       });
       stageRepo.findAllByTournament.mockResolvedValue([stage]);
 
-      const result = await service.listStages("tournament-1");
+      const result = await service.listStages("league-1", "tournament-1");
 
       expect(result).toEqual([
         {
@@ -125,15 +125,19 @@ describe("StageService", () => {
       (hidden as any).public = false;
       stageRepo.findAllByTournament.mockResolvedValue([visible, hidden]);
 
-      const anonymous = await service.listStages("tournament-1");
+      const anonymous = await service.listStages("league-1", "tournament-1");
       expect(anonymous.map((stage) => stage.name)).toEqual(["Regular Season"]);
 
-      const stranger = await service.listStages(        "tournament-1",
+      const stranger = await service.listStages(
+        "league-1",
+        "tournament-1",
         "auth0|stranger",
       );
       expect(stranger.map((stage) => stage.name)).toEqual(["Regular Season"]);
 
-      const organizer = await service.listStages(        "tournament-1",
+      const organizer = await service.listStages(
+        "league-1",
+        "tournament-1",
         "auth0|owner",
       );
       expect(organizer.map((stage) => stage.name)).toEqual([
@@ -219,7 +223,9 @@ describe("StageService", () => {
     it("holds a coach's report for review", async () => {
       const matchup = setup();
 
-      const result = await service.submitMatchupReport(        "tournament-1",
+      const result = await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|coach-1",
         twoNil,
@@ -251,7 +257,9 @@ describe("StageService", () => {
         coaches: [primary, coCoach],
       });
 
-      await service.submitMatchupReport(        "tournament-1",
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|co-coach",
         twoNil,
@@ -266,7 +274,9 @@ describe("StageService", () => {
     it("stores only the known stat fields for each Pokémon", async () => {
       const matchup = setup();
 
-      await service.submitMatchupReport(        "tournament-1",
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|coach-1",
         {
@@ -304,7 +314,9 @@ describe("StageService", () => {
         const matchup = setup();
 
         await expect(
-          service.submitMatchupReport(            "tournament-1",
+          service.submitMatchupReport(
+            "league-1",
+            "tournament-1",
             matchup.slug,
             sub,
             {
@@ -339,7 +351,9 @@ describe("StageService", () => {
         }),
       );
 
-      await service.submitMatchupReport(        "tournament-1",
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|coach-1",
         twoNil,
@@ -356,7 +370,9 @@ describe("StageService", () => {
       const matchup = setup({ status: "approved", winner: "side2" });
 
       await expect(
-        service.submitMatchupReport(          "tournament-1",
+        service.submitMatchupReport(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|coach-1",
           twoNil,
@@ -369,7 +385,9 @@ describe("StageService", () => {
     it("clears a stale forfeit when an organizer records a played result", async () => {
       const matchup = setup({ forfeit: true, winner: "side2" });
 
-      await service.submitMatchupReport(        "tournament-1",
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         twoNil,
@@ -386,7 +404,9 @@ describe("StageService", () => {
     it("rejecting a report on an unplayed match leaves it unplayed", async () => {
       const matchup = setup({ status: "pending", report: storedReport() });
 
-      await service.reviewMatchupReport(        "tournament-1",
+      await service.reviewMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         false,
@@ -403,7 +423,9 @@ describe("StageService", () => {
         report: storedReport(),
       });
 
-      await service.reviewMatchupReport(        "tournament-1",
+      await service.reviewMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         false,
@@ -420,7 +442,9 @@ describe("StageService", () => {
         report: storedReport({ winner: undefined }),
       });
 
-      await service.reviewMatchupReport(        "tournament-1",
+      await service.reviewMatchupReport(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         true,
@@ -472,7 +496,9 @@ describe("StageService", () => {
     ])("lets %s set the time", async (_label, sub) => {
       const matchup = setup();
 
-      const result = await service.setMatchupSchedule(        "tournament-1",
+      const result = await service.setMatchupSchedule(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         sub,
         { scheduledDate: WHEN },
@@ -487,7 +513,9 @@ describe("StageService", () => {
       const matchup = setup();
 
       await expect(
-        service.setMatchupSchedule(          "tournament-1",
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|stranger",
           { scheduledDate: WHEN },
@@ -500,7 +528,9 @@ describe("StageService", () => {
       const matchup = setup();
 
       await expect(
-        service.setMatchupSchedule(          "tournament-1",
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|coach-3",
           { scheduledDate: WHEN },
@@ -513,7 +543,9 @@ describe("StageService", () => {
       matchup.side1.team.coaches[0].leftAt = new Date();
 
       await expect(
-        service.setMatchupSchedule(          "tournament-1",
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|coach-1",
           { scheduledDate: WHEN },
@@ -526,7 +558,9 @@ describe("StageService", () => {
       const matchup = setup();
       matchup.scheduledDate = new Date(WHEN);
 
-      const result = await service.setMatchupSchedule(        "tournament-1",
+      const result = await service.setMatchupSchedule(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|coach-1",
         { scheduledDate: null },
@@ -543,7 +577,9 @@ describe("StageService", () => {
       );
 
       await expect(
-        service.setMatchupSchedule(          "tournament-1",
+        service.setMatchupSchedule(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|owner",
           { scheduledDate: WHEN },
@@ -590,7 +626,7 @@ describe("StageService", () => {
       async (side, sub, otherSide) => {
         const matchup = setup();
 
-        await service.setMatchupNotes("tournament-1", matchup.slug, sub, {
+        await service.setMatchupNotes("league-1", "tournament-1", matchup.slug, sub, {
           notes: "  lead flutter mane  ",
         });
 
@@ -604,7 +640,9 @@ describe("StageService", () => {
       const matchup = setup();
       matchup.side1.notes = "old";
 
-      await service.setMatchupNotes(        "tournament-1",
+      await service.setMatchupNotes(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|coach-1",
         { notes: "   " },
@@ -617,7 +655,9 @@ describe("StageService", () => {
       const matchup = setup();
 
       await expect(
-        service.setMatchupNotes(          "tournament-1",
+        service.setMatchupNotes(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|owner",
           { notes: "peeking" },
@@ -630,7 +670,9 @@ describe("StageService", () => {
       const matchup = setup();
 
       await expect(
-        service.setMatchupNotes(          "tournament-1",
+        service.setMatchupNotes(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|coach-3",
           { notes: "peeking" },
@@ -669,7 +711,9 @@ describe("StageService", () => {
     it("records the side an organizer advances out of a double forfeit", async () => {
       const matchup = setup();
 
-      const result = await service.setMatchupAdvancement(        "tournament-1",
+      const result = await service.setMatchupAdvancement(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         "side1",
@@ -684,7 +728,9 @@ describe("StageService", () => {
     it('stores "none" as a decision rather than as an unset field', async () => {
       const matchup = setup();
 
-      await service.setMatchupAdvancement(        "tournament-1",
+      await service.setMatchupAdvancement(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         "none",
@@ -697,7 +743,9 @@ describe("StageService", () => {
       const matchup = setup();
       matchup.advances = "side2";
 
-      const result = await service.setMatchupAdvancement(        "tournament-1",
+      const result = await service.setMatchupAdvancement(
+        "league-1",
+        "tournament-1",
         matchup.slug,
         "auth0|owner",
         null,
@@ -711,7 +759,9 @@ describe("StageService", () => {
       const matchup = setup();
 
       await expect(
-        service.setMatchupAdvancement(          "tournament-1",
+        service.setMatchupAdvancement(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|stranger",
           "side1",
@@ -726,7 +776,9 @@ describe("StageService", () => {
       );
 
       await expect(
-        service.setMatchupAdvancement(          "tournament-1",
+        service.setMatchupAdvancement(
+          "league-1",
+          "tournament-1",
           matchup.slug,
           "auth0|owner",
           "side1",

@@ -81,7 +81,7 @@ describe("ChatService", () => {
     seat();
 
     await expect(
-      service.getMessages("tournament", "tournament", undefined, "auth0|coach"),
+      service.getMessages("league", "tournament", "tournament", undefined, "auth0|coach"),
     ).resolves.toMatchObject({ canPost: true });
   });
 
@@ -89,7 +89,7 @@ describe("ChatService", () => {
     seat({ leftAt: new Date() });
 
     await expect(
-      service.getMessages("tournament", "tournament", undefined, "auth0|coach"),
+      service.getMessages("league", "tournament", "tournament", undefined, "auth0|coach"),
     ).rejects.toMatchObject({ code: ErrorCodes.CHAT.FORBIDDEN.code });
   });
 
@@ -99,7 +99,7 @@ describe("ChatService", () => {
       seat({}, { status });
 
       await expect(
-        service.getMessages("tournament", "tournament", undefined, "auth0|coach"),
+        service.getMessages("league", "tournament", "tournament", undefined, "auth0|coach"),
       ).rejects.toMatchObject({ code: ErrorCodes.CHAT.FORBIDDEN.code });
     },
   );
@@ -107,7 +107,7 @@ describe("ChatService", () => {
   it("signs a message with the poster's own name, not the primary coach's", async () => {
     seat();
 
-    await service.postMessage("tournament", "tournament", "auth0|coach", {
+    await service.postMessage("league", "tournament", "tournament", "auth0|coach", {
       text: "gl hf",
     });
 

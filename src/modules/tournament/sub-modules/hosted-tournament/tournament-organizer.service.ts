@@ -39,8 +39,9 @@ export class TournamentOrganizerService {
     private readonly coachRepo: CoachRepository,
   ) {}
 
-  async getOrganizers(tournamentSlug: string, sub: string) {
+  async getOrganizers(leagueSlug: string, tournamentSlug: string, sub: string) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "viewStaff");
@@ -48,11 +49,12 @@ export class TournamentOrganizerService {
   }
 
   async addOrganizer(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: AddOrganizerDto,
   ) {
-    const tournament = await this.requireOwner(tournamentSlug, sub);
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
 
     const coach = await this.coachInTournament(tournament.id, dto.coachId);
     if (!coach)
@@ -67,16 +69,18 @@ export class TournamentOrganizerService {
       name: coach.name,
       role: "organizer",
     });
-    return this.getOrganizers(tournamentSlug, sub);
+    return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
   async renameOrganizer(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     organizerSub: string,
     name: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const isSelf = organizerSub === sub && isStaff(tournament, sub);
@@ -91,28 +95,30 @@ export class TournamentOrganizerService {
       await this.tournamentRepo.setOwnerName(tournament.id, organizerSub, name);
     else
       await this.tournamentRepo.setStaffName(tournament.id, organizerSub, name);
-    return this.getOrganizers(tournamentSlug, sub);
+    return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
   async removeOrganizer(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     organizerSub: string,
   ) {
-    const tournament = await this.requireOwner(tournamentSlug, sub);
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
     if (organizerSub === tournament.owner)
       throw new PDZError(ErrorCodes.TOURNAMENT.ORGANIZER_IS_OWNER);
 
     await this.tournamentRepo.removeStaff(tournament.id, organizerSub);
-    return this.getOrganizers(tournamentSlug, sub);
+    return this.getOrganizers(leagueSlug, tournamentSlug, sub);
   }
 
   async createInvite(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: CreateOrganizerInviteDto,
   ) {
-    const tournament = await this.requireOwner(tournamentSlug, sub);
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
 
     const pending = await this.inviteRepo.countPendingByTournament(
       tournament.id,
@@ -138,21 +144,24 @@ export class TournamentOrganizerService {
   }
 
   async revokeInvite(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     inviteId: string,
   ) {
-    const tournament = await this.requireOwner(tournamentSlug, sub);
+    const tournament = await this.requireOwner(leagueSlug, tournamentSlug, sub);
     await this.inviteRepo.deletePending(tournament.id, inviteId);
     return this.organizersPayload(tournament, sub);
   }
 
   async previewInvite(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     token: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const invite = await this.inviteRepo.findByTokenHash(
@@ -172,12 +181,14 @@ export class TournamentOrganizerService {
   }
 
   async acceptInvite(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     token: string,
     name?: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const tokenHash = hashInviteToken(token);
@@ -273,10 +284,12 @@ export class TournamentOrganizerService {
   }
 
   private async requireOwner(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageStaff");

@@ -17,11 +17,6 @@ export const ErrorCodes = {
       message:
         "Creating leagues is in beta. Ask in the DraftZone Discord for access.",
     },
-    OWNED_LIMIT: {
-      code: "LR-003",
-      status: 400,
-      message: "You already own the maximum number of leagues.",
-    },
     NOT_OWNER: {
       code: "LR-004",
       status: 403,
@@ -468,6 +463,18 @@ export const ErrorCodes = {
       code: "TRN-021",
       status: 400,
       message: "Settings can only be copied from a tournament in this league.",
+    },
+    CREATION_RESTRICTED: {
+      code: "TRN-022",
+      status: 403,
+      message:
+        "Creating tournaments is in beta. Ask in the DraftZone Discord for access.",
+    },
+    ACTIVE_LIMIT: {
+      code: "TRN-023",
+      status: 400,
+      message:
+        "You already run the maximum number of active tournaments. Archive one to create another.",
     },
     INVALID_SETTINGS: {
       code: "TRN-003",

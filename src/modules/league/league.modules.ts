@@ -3,8 +3,9 @@ import { DraftCoreModule } from "@modules/draft/draft-core.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { TeamModule } from "@modules/team/team.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
+import { HostingAccessModule } from "@modules/tournament/sub-modules/hosted-tournament/hosting-access.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
-import { UserModule } from "@modules/user/user.module";
+import { UploadsModule } from "@modules/upload/upload.module";
 import { Module } from "@nestjs/common";
 import { LeagueService } from "./league.service";
 import { LeagueController } from "./league.controller";
@@ -19,7 +20,8 @@ import { LeagueCoreModule } from "./league-core.module";
     TeamModule,
     DraftCoreModule,
     LeagueMatchupModule,
-    UserModule,
+    HostingAccessModule,
+    UploadsModule,
   ],
   controllers: [LeagueController],
   providers: [LeagueService],

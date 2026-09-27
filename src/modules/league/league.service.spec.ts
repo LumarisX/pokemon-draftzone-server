@@ -3,12 +3,27 @@ import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { HostingAccessService } from "@modules/tournament/sub-modules/hosted-tournament/hosting-access.service";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { UserService } from "@modules/user/user.service";
-import { ConfigService } from "@nestjs/config";
+import { UploadsService } from "@modules/upload/upload.service";
 import { Types } from "mongoose";
 import { LeagueRepository } from "./league.repository";
 import { LeagueService } from "./league.service";
+
+function hostingMock(canHost = true) {
+  return {
+    canHost: jest.fn().mockResolvedValue(canHost),
+    access: jest.fn().mockResolvedValue({
+      canHost,
+      tournament: canHost
+        ? { allowed: true }
+        : { allowed: false, reason: "restricted" },
+    }),
+    assertCanCreateLeague: jest.fn(async () => {
+      if (!canHost) throw Object.assign(new Error(), { code: "LR-002" });
+    }),
+  } as unknown as jest.Mocked<HostingAccessService>;
+}
 
 function buildLeague(overrides: Record<string, unknown> = {}) {
   return {
@@ -26,7 +41,6 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
   return {
     name: "Spring Cup",
     slug: "springcup",
-    owner: "auth0|owner",
     description: "The spring cup",
     tierListId: "tierlist-1",
     format: { name: "Singles" },
@@ -89,8 +103,8 @@ describe("LeagueService.getLeagueSummary", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
-      { getMe: jest.fn() } as unknown as UserService,
-      { get: jest.fn() } as unknown as ConfigService,
+      hostingMock(),
+      {} as UploadsService,
     );
   });
 
@@ -120,6 +134,7 @@ describe("LeagueService.getLeagueSummary", () => {
       tournaments: [],
       isOwner: false,
       newTournamentDefaults: null,
+      hosting: null,
     });
   });
 
@@ -184,6 +199,23 @@ describe("LeagueService.getLeagueSummary", () => {
 
     expect(result.isOwner).toBe(false);
     expect(result.newTournamentDefaults).toBeNull();
+    expect(result.hosting).toBeNull();
+  });
+
+  it("tells the owner whether they can add a tournament", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|owner",
+    );
+
+    expect(result.hosting).toEqual({
+      canHost: true,
+      canCreateTournament: true,
+      reason: null,
+    });
   });
 
   it("reads format/ruleset off the tournament without fetching its tier list", async () => {
@@ -363,8 +395,8 @@ describe("LeagueService.getLeagues", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
-      { getMe: jest.fn() } as unknown as UserService,
-      { get: jest.fn() } as unknown as ConfigService,
+      hostingMock(),
+      {} as UploadsService,
     );
   });
 
@@ -511,20 +543,9 @@ describe("LeagueService.getLeagues", () => {
 
 describe("LeagueService.createLeague", () => {
   let leagueRepo: jest.Mocked<LeagueRepository>;
-  let userService: jest.Mocked<UserService>;
-  let env: Record<string, string | undefined>;
-  let service: LeagueService;
 
-  beforeEach(() => {
-    env = {};
-    leagueRepo = {
-      countByOwner: jest.fn().mockResolvedValue(0),
-      create: jest.fn().mockResolvedValue(buildLeague({ slug: "fresh" })),
-    } as unknown as jest.Mocked<LeagueRepository>;
-    userService = {
-      getMe: jest.fn().mockResolvedValue({ roles: [] }),
-    } as unknown as jest.Mocked<UserService>;
-    service = new LeagueService(
+  function serviceWith(canHost: boolean) {
+    return new LeagueService(
       leagueRepo,
       {} as HostedTournamentRepository,
       {} as TierListRepository,
@@ -532,22 +553,26 @@ describe("LeagueService.createLeague", () => {
       {} as TeamRepository,
       {} as DraftRepository,
       {} as LeagueMatchupRepository,
-      userService,
-      { get: (key: string) => env[key] } as unknown as ConfigService,
+      hostingMock(canHost),
+      {} as UploadsService,
     );
+  }
+
+  beforeEach(() => {
+    leagueRepo = {
+      create: jest.fn().mockResolvedValue(buildLeague({ slug: "fresh" })),
+    } as unknown as jest.Mocked<LeagueRepository>;
   });
 
-  it("refuses users without the beta role while creation is gated", async () => {
+  it("refuses users who can't host", async () => {
     await expect(
-      service.createLeague("auth0|user", { name: "Spring" }),
+      serviceWith(false).createLeague("auth0|user", { name: "Spring" }),
     ).rejects.toMatchObject({ code: "LR-002" });
     expect(leagueRepo.create).not.toHaveBeenCalled();
   });
 
-  it("creates the league for a league creator and returns its slug", async () => {
-    userService.getMe.mockResolvedValue({ roles: ["league-creator"] } as any);
-
-    const result = await service.createLeague("auth0|user", {
+  it("creates the league for a host and returns its slug", async () => {
+    const result = await serviceWith(true).createLeague("auth0|user", {
       name: "Spring",
       description: "",
     });
@@ -560,20 +585,88 @@ describe("LeagueService.createLeague", () => {
     expect(result).toEqual({ leagueSlug: "fresh" });
   });
 
-  it("enforces the owned-league cap once creation is open", async () => {
-    env.LEAGUE_CREATION = "open";
-    env.MAX_OWNED_LEAGUES = "1";
-    leagueRepo.countByOwner.mockResolvedValue(1);
-
+  it("reports capabilities without creating anything", async () => {
     await expect(
-      service.createLeague("auth0|user", { name: "Spring" }),
-    ).rejects.toMatchObject({ code: "LR-003" });
+      serviceWith(false).getCapabilities("auth0|user"),
+    ).resolves.toEqual({ canCreateLeague: false, reason: "restricted" });
+    expect(leagueRepo.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("LeagueService.updateLeague", () => {
+  let leagueRepo: jest.Mocked<LeagueRepository>;
+  let uploads: jest.Mocked<UploadsService>;
+  let service: LeagueService;
+  const league = buildLeague({ logo: "league-logos/old.png" });
+
+  beforeEach(() => {
+    leagueRepo = {
+      findBySlug: jest.fn().mockResolvedValue(league),
+      update: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<LeagueRepository>;
+    uploads = {
+      claimUpload: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<UploadsService>;
+    service = new LeagueService(
+      leagueRepo,
+      {} as HostedTournamentRepository,
+      {} as TierListRepository,
+      {} as CoachRepository,
+      {} as TeamRepository,
+      {} as DraftRepository,
+      {} as LeagueMatchupRepository,
+      hostingMock(),
+      uploads,
+    );
   });
 
-  it("reports capabilities without creating anything", async () => {
-    await expect(service.getCapabilities("auth0|user")).resolves.toEqual({
-      canCreateLeague: false,
-      reason: "restricted",
+  it("only lets the owner edit the league", async () => {
+    await expect(
+      service.updateLeague("springleague", "auth0|other", { name: "New" }),
+    ).rejects.toMatchObject({ code: "LR-004" });
+    expect(leagueRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("claims a new logo as a league logo before saving it", async () => {
+    await service.updateLeague("springleague", "auth0|owner", {
+      logo: "league-logos/new.png",
     });
+
+    expect(uploads.claimUpload).toHaveBeenCalledWith("league-logos/new.png", {
+      uploadedBy: "auth0|owner",
+      folder: "league-logos",
+      relatedEntityId: league._id.toString(),
+    });
+    expect(leagueRepo.update).toHaveBeenCalledWith(
+      league._id,
+      expect.objectContaining({ logo: "league-logos/new.png" }),
+    );
+  });
+
+  it("doesn't re-claim the logo it already has", async () => {
+    await service.updateLeague("springleague", "auth0|owner", {
+      logo: "league-logos/old.png",
+    });
+
+    expect(uploads.claimUpload).not.toHaveBeenCalled();
+  });
+
+  it("clears the logo and an emptied description", async () => {
+    await service.updateLeague("springleague", "auth0|owner", {
+      logo: null,
+      description: "",
+    });
+
+    expect(leagueRepo.update).toHaveBeenCalledWith(league._id, {
+      name: undefined,
+      description: null,
+      logo: null,
+    });
+  });
+
+  it("writes nothing for an empty update", async () => {
+    await service.updateLeague("springleague", "auth0|owner", {});
+
+    expect(leagueRepo.update).not.toHaveBeenCalled();
   });
 });

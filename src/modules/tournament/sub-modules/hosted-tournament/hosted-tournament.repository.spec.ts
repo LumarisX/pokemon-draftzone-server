@@ -64,30 +64,20 @@ describe("HostedTournamentRepository", () => {
   afterEach(() => fromDatabase.mockRestore());
 
   describe("findBySlug", () => {
-    it("finds the tournament by its slug alone and loads its own league", async () => {
+    it("matches the slug with $eq and loads every stage in one query, in the tournament's order", async () => {
       const league = { _id: new Types.ObjectId() };
-      leagueRepo.findById.mockResolvedValue(league as any);
-      tournamentModel.findOne.mockReturnValue(query(tournamentDoc([], league._id)));
+      leagueRepo.findBySlug.mockResolvedValue(league as any);
+      const [first, second, third] = [0, 1, 2].map(() => new Types.ObjectId());
+      tournamentModel.findOne.mockReturnValue(
+        query(tournamentDoc([first, second, third], league._id)),
+      );
 
-      await repo.findBySlug("spring-cup");
+      await repo.findBySlug("spring", "spring-cup");
 
       expect(tournamentModel.findOne).toHaveBeenCalledWith({
         slug: { $eq: "spring-cup" },
+        league: league._id,
       });
-      expect(leagueRepo.findById).toHaveBeenCalledWith(league._id);
-      expect(leagueRepo.findBySlug).not.toHaveBeenCalled();
-      expect(fromDatabase.mock.calls[0][1]).toBe(league);
-    });
-
-    it("loads every stage in one query, in the tournament's order", async () => {
-      leagueRepo.findById.mockResolvedValue({ _id: new Types.ObjectId() } as any);
-      const [first, second, third] = [0, 1, 2].map(() => new Types.ObjectId());
-      tournamentModel.findOne.mockReturnValue(
-        query(tournamentDoc([first, second, third])),
-      );
-
-      await repo.findBySlug("spring-cup");
-
       expect(stageRepo.findManyByIds).toHaveBeenCalledTimes(1);
       expect(stageRepo.findByIdOrNull).not.toHaveBeenCalled();
       const stages = fromDatabase.mock.calls[0][2];
@@ -95,22 +85,22 @@ describe("HostedTournamentRepository", () => {
     });
 
     it("skips stage ids that no longer exist", async () => {
-      leagueRepo.findById.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      leagueRepo.findBySlug.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       const kept = new Types.ObjectId();
       const deleted = new Types.ObjectId();
       tournamentModel.findOne.mockReturnValue(query(tournamentDoc([kept, deleted])));
       stageRepo.findManyByIds.mockResolvedValue([stage(kept)] as any);
 
-      await repo.findBySlug("spring-cup");
+      await repo.findBySlug("spring", "spring-cup");
 
       expect(fromDatabase.mock.calls[0][2].map((s: any) => s._id)).toEqual([kept]);
     });
 
     it("makes no stage query for a tournament without stages", async () => {
-      leagueRepo.findById.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      leagueRepo.findBySlug.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       tournamentModel.findOne.mockReturnValue(query(tournamentDoc([])));
 
-      await repo.findBySlug("spring-cup");
+      await repo.findBySlug("spring", "spring-cup");
 
       expect(stageRepo.findManyByIds).not.toHaveBeenCalled();
       expect(fromDatabase.mock.calls[0][2]).toEqual([]);
@@ -168,15 +158,15 @@ describe("HostedTournamentRepository", () => {
   });
 
   describe("findRulesBySlug", () => {
-    it("reads only the rules, with no league, stage or tier-list lookups", async () => {
+    it("reads only the rules, with no stage or tier-list lookups", async () => {
+      leagueRepo.findBySlug.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       tournamentModel.findOne.mockReturnValue(
         query({ rules: [{ title: "Bans", body: "No Ubers" }] }),
       );
 
-      const rules = await repo.findRulesBySlug("spring-cup");
+      const rules = await repo.findRulesBySlug("spring", "spring-cup");
 
       expect(tournamentModel.findOne.mock.calls[0][1]).toEqual({ rules: 1 });
-      expect(leagueRepo.findById).not.toHaveBeenCalled();
       expect(rules).toEqual([
         expect.objectContaining({ title: "Bans", body: "No Ubers" }),
       ]);
@@ -185,11 +175,12 @@ describe("HostedTournamentRepository", () => {
     });
 
     it("throws NOT_FOUND for an unknown tournament", async () => {
+      leagueRepo.findBySlug.mockResolvedValue({ _id: new Types.ObjectId() } as any);
       tournamentModel.findOne.mockReturnValue(query(null));
 
-      await expect(repo.findRulesBySlug("missing")).rejects.toMatchObject({
-        code: "TRN-006",
-      });
+      await expect(
+        repo.findRulesBySlug("spring", "missing"),
+      ).rejects.toMatchObject({ code: "TRN-006" });
     });
   });
 });

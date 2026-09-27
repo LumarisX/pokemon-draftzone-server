@@ -102,11 +102,13 @@ export class HostedTournamentService {
   ) {}
 
   async removeParticipant(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     coachId: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageParticipants");
@@ -142,11 +144,13 @@ export class HostedTournamentService {
   }
 
   async getTeam(
+    leagueSlug: string,
     tournamentSlug: string,
     teamSlug: string,
     sub?: string,
   ): Promise<TeamPageResponse> {
     const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
       tournamentSlug,
     );
     const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
@@ -232,10 +236,12 @@ export class HostedTournamentService {
   }
 
   async getStandings(
+    leagueSlug: string,
     tournamentSlug: string,
     sub?: string,
   ): Promise<StandingsResponse> {
     const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
       tournamentSlug,
     );
 
@@ -308,15 +314,17 @@ export class HostedTournamentService {
     return Object.assign(stage, { teams });
   }
 
-  async getTournament(tournamentSlug: string) {
+  async getTournament(leagueSlug: string, tournamentSlug: string) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     return HostedTournamentMapper.toClientPayload(tournament);
   }
 
-  async getInfo(tournamentSlug: string, sub?: string) {
+  async getInfo(leagueSlug: string, tournamentSlug: string, sub?: string) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
 
@@ -333,10 +341,6 @@ export class HostedTournamentService {
     return {
       name: tournament.name,
       tournamentSlug: tournament.slug,
-      league: {
-        name: tournament.leagueName,
-        leagueSlug: tournament.leagueSlug,
-      },
       description: tournament.description,
       format: tournament.format?.name ?? null,
       ruleset: tournament.ruleset?.name ?? null,
@@ -388,10 +392,12 @@ export class HostedTournamentService {
   }
 
   async listTeams(
+    leagueSlug: string,
     tournamentSlug: string,
     sub?: string,
   ): Promise<TeamListResponse> {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const [teams, drafts, tierList] = await Promise.all([
@@ -442,10 +448,12 @@ export class HostedTournamentService {
   }
 
   async listTeamsByPool(
+    leagueSlug: string,
     tournamentSlug: string,
     sub?: string,
   ): Promise<TeamsByPoolResponse> {
     const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
       tournamentSlug,
     );
     const [teams, drafts] = await Promise.all([
@@ -547,10 +555,12 @@ export class HostedTournamentService {
   }
 
   async getRoles(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string | undefined,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     return tournament.getRoles(sub);
@@ -604,8 +614,9 @@ export class HostedTournamentService {
     };
   }
 
-  async getSignup(tournamentSlug: string, sub: string) {
+  async getSignup(leagueSlug: string, tournamentSlug: string, sub: string) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
 
@@ -652,12 +663,14 @@ export class HostedTournamentService {
   }
 
   async createSignup(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: SignUpDto,
     invite?: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
 
@@ -729,12 +742,14 @@ export class HostedTournamentService {
   }
 
   async decideApplication(
+    leagueSlug: string,
     tournamentSlug: string,
     applicationId: string,
     sub: string,
     dto: DecideApplicationDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageParticipants");
@@ -815,12 +830,14 @@ export class HostedTournamentService {
   }
 
   async replaceCoach(
+    leagueSlug: string,
     tournamentSlug: string,
     teamSlug: string,
     sub: string,
     dto: ReplaceCoachDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageParticipants");
@@ -933,10 +950,12 @@ export class HostedTournamentService {
   }
 
   async rotateSignUpToken(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");
@@ -967,10 +986,12 @@ export class HostedTournamentService {
   }
 
   async getCoaches(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string | undefined,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
@@ -1080,11 +1101,13 @@ export class HostedTournamentService {
   }
 
   async assignTeams(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     assignments: TeamAssignmentDto[],
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageParticipants");
@@ -1143,8 +1166,9 @@ export class HostedTournamentService {
     return { message: "Update successful." };
   }
 
-  async getCoach(tournamentSlug: string, coachId: string) {
+  async getCoach(leagueSlug: string, tournamentSlug: string, coachId: string) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     if (!Types.ObjectId.isValid(coachId))
@@ -1168,12 +1192,14 @@ export class HostedTournamentService {
   }
 
   async updateCoachDetails(
+    leagueSlug: string,
     tournamentSlug: string,
     coachId: string,
     sub: string,
     dto: UpdateCoachDetailsDto,
   ) {
     const { coach } = await this.loadCoachForEdit(
+      leagueSlug,
       tournamentSlug,
       coachId,
       sub,
@@ -1190,11 +1216,13 @@ export class HostedTournamentService {
   }
 
   private async loadCoachForEdit(
+    leagueSlug: string,
     tournamentSlug: string,
     coachId: string,
     sub: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     if (!Types.ObjectId.isValid(coachId))
@@ -1216,12 +1244,14 @@ export class HostedTournamentService {
   }
 
   async updateTeam(
+    leagueSlug: string,
     tournamentSlug: string,
     teamSlug: string,
     sub: string,
     dto: UpdateTeamDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
@@ -1262,16 +1292,18 @@ export class HostedTournamentService {
     return { teamName: updated.teamName, logo: updated.logo ?? null };
   }
 
-  async getRules(tournamentSlug: string) {
-    return this.tournamentRepo.findRulesBySlug(tournamentSlug);
+  async getRules(leagueSlug: string, tournamentSlug: string) {
+    return this.tournamentRepo.findRulesBySlug(leagueSlug, tournamentSlug);
   }
 
   async updateRules(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     ruleSections: RuleSectionDto[],
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");
@@ -1284,10 +1316,12 @@ export class HostedTournamentService {
   }
 
   async getSettings(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string | undefined,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");
@@ -1295,11 +1329,13 @@ export class HostedTournamentService {
   }
 
   async updateSettings(
+    leagueSlug: string,
     tournamentSlug: string,
     sub: string,
     dto: UpdateHostedTournamentSettingsDto,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     assertCan(tournament, sub, "manageSettings");

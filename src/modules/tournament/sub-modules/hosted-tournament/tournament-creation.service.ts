@@ -9,6 +9,7 @@ import { Types } from "mongoose";
 import { assertRosterRules } from "./hosted-tournament.domain";
 import { CreateTournamentDto } from "./hosted-tournament.dto";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
+import { HostingAccessService } from "./hosting-access.service";
 import {
   HostedTournamentEntity,
   SignUpQuestionEntity,
@@ -56,6 +57,7 @@ export class TournamentCreationService {
     private readonly leagueRepo: LeagueRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
+    private readonly hosting: HostingAccessService,
     private readonly transactions: TransactionRunner,
   ) {}
 
@@ -67,6 +69,7 @@ export class TournamentCreationService {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     if (league.owner !== sub)
       throw new PDZError(ErrorCodes.LEAGUE.NOT_OWNER, { leagueSlug });
+    await this.hosting.assertCanCreateTournament(sub);
 
     const source = dto.copyFrom
       ? await this.tournamentRepo.findPlainInLeague(league._id, dto.copyFrom)
@@ -113,7 +116,6 @@ export class TournamentCreationService {
         ...(source ? carriedSettings(source) : {}),
         name: dto.name,
         league: league._id,
-        owner: sub,
         ownerName: { sub, name: dto.ownerName },
         staff: [],
         signUpDeadline: dto.signUpDeadline,

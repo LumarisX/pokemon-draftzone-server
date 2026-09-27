@@ -27,10 +27,10 @@ describe("DraftController", () => {
     const details = { poolName: "Spring Draft" } as any;
     service.getDetails.mockResolvedValue(details);
 
-    const result = await controller.getDetails("tournament-1", "draft-1", "auth0|sub");
+    const result = await controller.getDetails("league-1", "tournament-1", "draft-1", "auth0|sub");
 
     expect(service.getDetails).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "auth0|sub",
+      "league-1", "tournament-1", "draft-1", "auth0|sub",
     );
     expect(result).toBe(details);
   });
@@ -40,11 +40,11 @@ describe("DraftController", () => {
     service.getTeams.mockResolvedValue(teams);
 
     const result = await controller.getTeams(
-"tournament-1", "draft-1", "auth0|sub", "stage-1",
+      "league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1",
     );
 
     expect(service.getTeams).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "auth0|sub", "stage-1",
+      "league-1", "tournament-1", "draft-1", "auth0|sub", "stage-1",
     );
     expect(result).toBe(teams);
   });
@@ -53,12 +53,16 @@ describe("DraftController", () => {
     const picks = [] as any;
     service.getPicks.mockResolvedValue(picks);
 
-    const result = await controller.getPicks(      "tournament-1",
+    const result = await controller.getPicks(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
 
-    expect(service.getPicks).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.getPicks).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
@@ -69,12 +73,16 @@ describe("DraftController", () => {
     const order = [] as any;
     service.getOrder.mockResolvedValue(order);
 
-    const result = await controller.getOrder(      "tournament-1",
+    const result = await controller.getOrder(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
 
-    expect(service.getOrder).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.getOrder).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
@@ -85,12 +93,16 @@ describe("DraftController", () => {
     const rankings = [] as any;
     service.getPowerRankings.mockResolvedValue(rankings);
 
-    const result = await controller.getPowerRankings(      "tournament-1",
+    const result = await controller.getPowerRankings(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
 
-    expect(service.getPowerRankings).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.getPowerRankings).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "draft-1",
       "auth0|sub",
     );
@@ -103,11 +115,11 @@ describe("DraftController", () => {
     const body = { add: [{ pokemonId: "pikachu" }] } as DraftDto;
 
     const result = await controller.draftPick(
-"tournament-1", "draft-1", "team-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "team-1", "auth0|sub", body,
     );
 
     expect(service.draftPick).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "team-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "team-1", "auth0|sub", body,
     );
     expect(result).toBe(response);
   });
@@ -118,11 +130,11 @@ describe("DraftController", () => {
     const body = { picks: [] } as SetPicksDto;
 
     const result = await controller.setPicks(
-"tournament-1", "draft-1", "team-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "team-1", "auth0|sub", body,
     );
 
     expect(service.setPicks).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "team-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "team-1", "auth0|sub", body,
     );
     expect(result).toBe(response);
   });
@@ -133,11 +145,11 @@ describe("DraftController", () => {
     const body = { state: "play" } as SetDraftStateDto;
 
     const result = await controller.setState(
-"tournament-1", "draft-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "auth0|sub", body,
     );
 
     expect(service.setState).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "auth0|sub", body,
+      "league-1", "tournament-1", "draft-1", "auth0|sub", body,
     );
     expect(result).toBe(response);
   });
@@ -146,10 +158,10 @@ describe("DraftController", () => {
     const response = { message: "Skip successful." };
     service.skipPick.mockResolvedValue(response);
 
-    const result = await controller.skipPick("tournament-1", "draft-1", "auth0|sub");
+    const result = await controller.skipPick("league-1", "tournament-1", "draft-1", "auth0|sub");
 
     expect(service.skipPick).toHaveBeenCalledWith(
-"tournament-1", "draft-1", "auth0|sub",
+      "league-1", "tournament-1", "draft-1", "auth0|sub",
     );
     expect(result).toBe(response);
   });

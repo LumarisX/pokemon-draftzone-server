@@ -40,15 +40,16 @@ export class TournamentOpenGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<ArchivedRequest>();
     if (READ_METHODS.has(request.method.toUpperCase())) return true;
 
+    const leagueSlug = request.params?.["leagueSlug"];
     const tournamentSlug = request.params?.["tournamentSlug"];
-    if (!tournamentSlug) return true;
+    if (!leagueSlug || !tournamentSlug) return true;
 
     const exemption = this.reflector.getAllAndOverride<
       ArchivedExemption | undefined
     >(ALLOW_WHILE_ARCHIVED, [context.getHandler(), context.getClass()]);
     if (exemption?.(request)) return true;
 
-    if (!(await this.tournamentRepo.isArchived(tournamentSlug)))
+    if (!(await this.tournamentRepo.isArchived(leagueSlug, tournamentSlug)))
       return true;
 
     throw new PDZError(ErrorCodes.TOURNAMENT.ARCHIVED, { tournamentSlug });

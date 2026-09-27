@@ -19,12 +19,16 @@ describe("TournamentMatchupController", () => {
     const detail = { id: "matchup-1" };
     service.getMatchupDetail.mockResolvedValue(detail as any);
 
-    const result = await controller.getMatchupDetail(      "tournament-1",
+    const result = await controller.getMatchupDetail(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
     );
 
-    expect(service.getMatchupDetail).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.getMatchupDetail).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
     );
@@ -35,12 +39,16 @@ describe("TournamentMatchupController", () => {
     const analysis = { summary: {} };
     service.getMatchupAnalysis.mockResolvedValue(analysis as any);
 
-    const result = await controller.getMatchupAnalysis(      "tournament-1",
+    const result = await controller.getMatchupAnalysis(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
     );
 
-    expect(service.getMatchupAnalysis).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.getMatchupAnalysis).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
     );
@@ -52,13 +60,17 @@ describe("TournamentMatchupController", () => {
     const response = { message: "Result submitted for review." };
     service.submitMatchupReport.mockResolvedValue(response as any);
 
-    const result = await controller.submitMatchupReport(      "tournament-1",
+    const result = await controller.submitMatchupReport(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
       body,
     );
 
-    expect(service.submitMatchupReport).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.submitMatchupReport).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|coach",
       body,
@@ -77,12 +89,16 @@ describe("TournamentMatchupController", () => {
       decision === "approve"
         ? controller.approveMatchupReport.bind(controller)
         : controller.rejectMatchupReport.bind(controller);
-    const result = await call(      "tournament-1",
+    const result = await call(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|owner",
     );
 
-    expect(service.reviewMatchupReport).toHaveBeenCalledWith(      "tournament-1",
+    expect(service.reviewMatchupReport).toHaveBeenCalledWith(
+      "league-1",
+      "tournament-1",
       "matchup-1",
       "auth0|owner",
       approve,

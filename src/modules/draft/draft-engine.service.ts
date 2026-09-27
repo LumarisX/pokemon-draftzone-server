@@ -150,7 +150,7 @@ export class DraftEngineService {
     const baseUrl = (
       this.configService.get<string>("CLIENT_URL") ?? DEFAULT_CLIENT_URL
     ).replace(/\/+$/, "");
-    return `${baseUrl}/tournaments/${tournament.slug}/pools/${draft.slug}/draft`;
+    return `${baseUrl}/leagues/${tournament.leagueSlug}/tournaments/${tournament.slug}/pools/${draft.slug}/draft`;
   }
 
   private pickSummary(

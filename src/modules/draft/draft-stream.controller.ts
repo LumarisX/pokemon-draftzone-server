@@ -12,10 +12,7 @@ import {
 import { Observable } from "rxjs";
 import { DraftStreamService } from "./draft-stream.service";
 
-@Controller([
-  "tournaments/:tournamentSlug/draft-events",
-  "leagues/:leagueSlug/tournaments/:tournamentSlug/draft-events",
-])
+@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/draft-events")
 export class DraftStreamController {
   constructor(
     private readonly tournamentRepo: HostedTournamentRepository,
@@ -26,10 +23,12 @@ export class DraftStreamController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async events(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string | undefined,
   ): Promise<Observable<MessageEvent>> {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     return this.draftStream.streamFor(tournament, sub ?? null);

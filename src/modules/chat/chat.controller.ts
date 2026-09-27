@@ -18,10 +18,7 @@ import { PostChatMessageDto } from "./chat.dto";
 import { ChatService } from "./chat.service";
 import { ChatChannel } from "./chat.schema";
 
-@Controller([
-  "tournaments/:tournamentSlug/chat",
-  "leagues/:leagueSlug/tournaments/:tournamentSlug/chat",
-])
+@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/chat")
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
@@ -29,12 +26,14 @@ export class ChatController {
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)
   async getMessages(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("channel") channel: ChatChannel,
     @Query("target") target?: string,
     @User() sub?: string,
   ) {
     return this.chatService.getMessages(
+      leagueSlug,
       tournamentSlug,
       channel,
       target,
@@ -47,12 +46,14 @@ export class ChatController {
   @SkipGlobalThrottle()
   @Throttle({ default: { ttl: 60_000, limit: 20 } })
   async postMessage(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("channel") channel: ChatChannel,
     @User() sub: string,
     @Body() body: PostChatMessageDto,
   ) {
     return this.chatService.postMessage(
+      leagueSlug,
       tournamentSlug,
       channel,
       sub,
@@ -63,11 +64,13 @@ export class ChatController {
   @Delete("messages/:messageId")
   @UseGuards(JwtAuthGuard)
   async deleteMessage(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("messageId") messageId: string,
     @User() sub: string,
   ) {
     return this.chatService.deleteMessage(
+      leagueSlug,
       tournamentSlug,
       messageId,
       sub,

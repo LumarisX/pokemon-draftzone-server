@@ -11,10 +11,7 @@ import {
 } from "@nestjs/common";
 import { TournamentDiscordService } from "./tournament-discord.service";
 
-@Controller([
-  "tournaments/:tournamentSlug/discord",
-  "leagues/:leagueSlug/tournaments/:tournamentSlug/discord",
-])
+@Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/discord")
 @UseGuards(JwtAuthGuard)
 export class TournamentDiscordController {
   constructor(private readonly discordLink: TournamentDiscordService) {}
@@ -22,17 +19,19 @@ export class TournamentDiscordController {
   @Post("link-code")
   @HttpCode(HttpStatus.CREATED)
   async createLinkCode(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return this.discordLink.createLinkCode(tournamentSlug, sub);
+    return this.discordLink.createLinkCode(leagueSlug, tournamentSlug, sub);
   }
 
   @Delete("link")
   async unlink(
+    @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    return this.discordLink.unlink(tournamentSlug, sub);
+    return this.discordLink.unlink(leagueSlug, tournamentSlug, sub);
   }
 }

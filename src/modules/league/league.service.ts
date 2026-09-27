@@ -10,18 +10,14 @@ import {
 import { rosterContext } from "@modules/stage/domain/stage-axis";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { HostingAccessService } from "@modules/tournament/sub-modules/hosted-tournament/hosting-access.service";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { UserService } from "@modules/user/user.service";
+import { UploadFolder } from "@modules/upload/upload-folder.enum";
+import { UploadsService } from "@modules/upload/upload.service";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import {
-  decideLeagueCreation,
-  leagueCreationMode,
-  maxOwnedLeagues,
-} from "./league-creation";
-import { CreateLeagueDto } from "./league.dto";
+import { CreateLeagueDto, UpdateLeagueDto } from "./league.dto";
 import { LeagueRepository } from "./league.repository";
 
 function nextScheduledMatch(
@@ -50,8 +46,8 @@ export class LeagueService {
     private readonly teamRepo: TeamRepository,
     private readonly draftRepo: DraftRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
-    private readonly userService: UserService,
-    private readonly config: ConfigService,
+    private readonly hosting: HostingAccessService,
+    private readonly uploads: UploadsService,
   ) {}
 
   async getLeagues(sub: string) {
@@ -178,6 +174,7 @@ export class LeagueService {
 
     const isOwner = sub !== undefined && sub === league.owner;
     const latest = tournaments.at(-1);
+    const hosting = isOwner ? await this.hosting.access(sub) : null;
 
     return {
       name: league.name,
@@ -189,7 +186,7 @@ export class LeagueService {
       newTournamentDefaults: isOwner
         ? {
             ownerName:
-              latest?.owner === sub && latest.ownerName?.sub === sub
+              latest?.ownerName?.sub === league.owner
                 ? latest.ownerName.name
                 : null,
             copyFrom: latest
@@ -197,25 +194,28 @@ export class LeagueService {
               : null,
           }
         : null,
+      hosting: hosting
+        ? {
+            canHost: hosting.canHost,
+            canCreateTournament: hosting.tournament.allowed,
+            reason: hosting.tournament.allowed
+              ? null
+              : hosting.tournament.reason,
+          }
+        : null,
     };
   }
 
   async getCapabilities(sub: string) {
-    const decision = await this.decideLeagueCreation(sub);
+    const canHost = await this.hosting.canHost(sub);
     return {
-      canCreateLeague: decision.allowed,
-      reason: decision.allowed ? null : decision.reason,
+      canCreateLeague: canHost,
+      reason: canHost ? null : ("restricted" as const),
     };
   }
 
   async createLeague(sub: string, dto: CreateLeagueDto) {
-    const decision = await this.decideLeagueCreation(sub);
-    if (!decision.allowed)
-      throw new PDZError(
-        decision.reason === "limit"
-          ? ErrorCodes.LEAGUE.OWNED_LIMIT
-          : ErrorCodes.LEAGUE.CREATION_RESTRICTED,
-      );
+    await this.hosting.assertCanCreateLeague(sub);
 
     const league = await this.leagueRepo.create({
       name: dto.name,
@@ -236,16 +236,27 @@ export class LeagueService {
     };
   }
 
-  private async decideLeagueCreation(sub: string) {
-    const [user, ownedCount] = await Promise.all([
-      this.userService.getMe(sub),
-      this.leagueRepo.countByOwner(sub),
-    ]);
-    return decideLeagueCreation({
-      mode: leagueCreationMode(this.config.get<string>("LEAGUE_CREATION")),
-      roles: user.roles ?? [],
-      ownedCount,
-      maxOwned: maxOwnedLeagues(this.config.get<string>("MAX_OWNED_LEAGUES")),
-    });
+  async updateLeague(leagueSlug: string, sub: string, dto: UpdateLeagueDto) {
+    const league = await this.leagueRepo.findBySlug(leagueSlug);
+    if (league.owner !== sub)
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_OWNER, { leagueSlug });
+
+    if (dto.logo && dto.logo !== league.logo)
+      await this.uploads.claimUpload(dto.logo, {
+        uploadedBy: sub,
+        folder: UploadFolder.LEAGUE_LOGOS,
+        relatedEntityId: league._id.toString(),
+      });
+
+    const changes = {
+      name: dto.name,
+      description:
+        dto.description === undefined ? undefined : dto.description || null,
+      logo: dto.logo,
+    };
+    if (Object.values(changes).some((value) => value !== undefined))
+      await this.leagueRepo.update(league._id, changes);
+
+    return { message: "League updated" };
   }
 }

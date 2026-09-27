@@ -34,6 +34,7 @@ export class TournamentScheduleService {
   ) {}
 
   async getSchedule(
+    leagueSlug: string,
     tournamentSlug: string,
     options: {
       teamSlug?: string | string[];
@@ -42,6 +43,7 @@ export class TournamentScheduleService {
     } = {},
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
       tournamentSlug,
     );
     const canSeeHidden = can(tournament, options.sub, "viewHidden");

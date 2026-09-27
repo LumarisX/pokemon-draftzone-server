@@ -26,6 +26,7 @@ import { DEFAULT_SIGNUP_QUESTIONS } from "./signup-questions";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import { HostedTournamentService } from "./hosted-tournament.service";
 
+const LEAGUE_KEY = "spring-league";
 const TOURNAMENT_KEY = "spring-cup";
 const SUB = "auth0|coach-1";
 
@@ -192,7 +193,7 @@ describe("HostedTournamentService signup", () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
 
       await expect(
-        service.getSignup(TOURNAMENT_KEY, SUB),
+        service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB),
       ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
     });
 
@@ -210,7 +211,7 @@ describe("HostedTournamentService signup", () => {
       teamRepo.findManyByIds.mockResolvedValue([otherTournamentTeam] as any);
 
       await expect(
-        service.getSignup(TOURNAMENT_KEY, SUB),
+        service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB),
       ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COACH_NOT_FOUND.code });
     });
 
@@ -237,7 +238,7 @@ describe("HostedTournamentService signup", () => {
       coachRepo.findByAuth0Id.mockResolvedValue([coachDoc as any]);
       teamRepo.findManyByIds.mockResolvedValue([teamDoc] as any);
 
-      const result = await service.getSignup(TOURNAMENT_KEY, SUB);
+      const result = await service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB);
 
       expect(result).toEqual({
         name: "Ash Ketchum",
@@ -287,7 +288,7 @@ describe("HostedTournamentService signup", () => {
         roleIds: [],
       });
 
-      const result = await service.getSignup(TOURNAMENT_KEY, SUB);
+      const result = await service.getSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB);
 
       expect(result.pool).toEqual({ poolSlug: "draft-1", name: "Draft One" });
       expect(result.inDiscordServer).toBe(true);
@@ -309,7 +310,7 @@ describe("HostedTournamentService signup", () => {
       });
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, dto),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, dto),
       ).rejects.toMatchObject({
         code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
       });
@@ -322,7 +323,9 @@ describe("HostedTournamentService signup", () => {
         status: "pending",
       } as any);
 
-      await service.createSignup(        TOURNAMENT_KEY,
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
         buildSignUpDto(),
       );
@@ -344,7 +347,7 @@ describe("HostedTournamentService signup", () => {
       });
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, dto),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, dto),
       ).rejects.toMatchObject({
         code: ErrorCodes.VALIDATION.INVALID_PARAMS.code,
       });
@@ -356,7 +359,7 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, buildSignUpDto()),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.SIGNUP_CLOSED.code,
       });
@@ -375,7 +378,9 @@ describe("HostedTournamentService signup", () => {
       } as any);
 
       await expect(
-        service.createSignup(          TOURNAMENT_KEY,
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           SUB,
           buildSignUpDto(),
           "tok-123",
@@ -389,7 +394,9 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.createSignup(          TOURNAMENT_KEY,
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           SUB,
           buildSignUpDto(),
           "tok-123",
@@ -403,7 +410,7 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, buildSignUpDto()),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.INVITE_REQUIRED.code });
     });
 
@@ -413,7 +420,9 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.createSignup(          TOURNAMENT_KEY,
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           SUB,
           buildSignUpDto(),
           "tok-wrong",
@@ -431,7 +440,9 @@ describe("HostedTournamentService signup", () => {
       } as any);
 
       await expect(
-        service.createSignup(          TOURNAMENT_KEY,
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           SUB,
           buildSignUpDto(),
           "tok-123",
@@ -443,7 +454,7 @@ describe("HostedTournamentService signup", () => {
       const dto = buildSignUpDto({ confirm: false });
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, dto),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, dto),
       ).rejects.toMatchObject({
         code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
       });
@@ -463,7 +474,7 @@ describe("HostedTournamentService signup", () => {
       ] as any);
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, buildSignUpDto()),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
       });
@@ -480,7 +491,9 @@ describe("HostedTournamentService signup", () => {
       } as any);
 
       const dto = buildSignUpDto();
-      const result = await service.createSignup(        TOURNAMENT_KEY,
+      const result = await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
         dto,
       );
@@ -526,7 +539,9 @@ describe("HostedTournamentService signup", () => {
         status: "pending",
       } as any);
 
-      await service.createSignup(        TOURNAMENT_KEY,
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
         buildSignUpDto({ logo: "team-logos/mine.png" }),
       );
@@ -545,7 +560,9 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.createSignup(          TOURNAMENT_KEY,
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           SUB,
           buildSignUpDto({ logo: "team-logos/someone-elses.png" }),
         ),
@@ -560,7 +577,9 @@ describe("HostedTournamentService signup", () => {
         status: "pending",
       } as any);
 
-      await service.createSignup(        TOURNAMENT_KEY,
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
         buildSignUpDto(),
       );
@@ -578,7 +597,7 @@ describe("HostedTournamentService signup", () => {
       } as any);
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, buildSignUpDto()),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
         code: ErrorCodes.TOURNAMENT.ALREADY_SIGNED_UP.code,
       });
@@ -591,7 +610,7 @@ describe("HostedTournamentService signup", () => {
       applicationRepo.create.mockRejectedValue(new Error("write failed"));
 
       await expect(
-        service.createSignup(TOURNAMENT_KEY, SUB, buildSignUpDto()),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toThrow("write failed");
 
       expect(events.emit).not.toHaveBeenCalled();
@@ -634,7 +653,9 @@ describe("HostedTournamentService signup", () => {
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
       await expect(
-        service.decideApplication(          TOURNAMENT_KEY,
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           APPLICATION_ID.toString(),
           "auth0|stranger",
           { status: "approved" },
@@ -649,7 +670,9 @@ describe("HostedTournamentService signup", () => {
       );
       coachRepo.create.mockImplementation(async (input) => input as any);
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -678,7 +701,9 @@ describe("HostedTournamentService signup", () => {
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -695,7 +720,9 @@ describe("HostedTournamentService signup", () => {
     it("seats nobody when denying", async () => {
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "denied" },
@@ -707,7 +734,9 @@ describe("HostedTournamentService signup", () => {
     it("creates no team when denying", async () => {
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "denied" },
@@ -722,7 +751,9 @@ describe("HostedTournamentService signup", () => {
         buildApplication({ intent: "sub" }),
       );
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -739,7 +770,9 @@ describe("HostedTournamentService signup", () => {
         }),
       );
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -757,7 +790,9 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.decideApplication(          TOURNAMENT_KEY,
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           APPLICATION_ID.toString(),
           SUB,
           { status: "denied" },
@@ -776,7 +811,9 @@ describe("HostedTournamentService signup", () => {
       teamRepo.countApprovedByTournament.mockResolvedValue(8);
 
       await expect(
-        service.decideApplication(          TOURNAMENT_KEY,
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           APPLICATION_ID.toString(),
           SUB,
           { status: "approved" },
@@ -804,7 +841,9 @@ describe("HostedTournamentService signup", () => {
       );
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -835,7 +874,9 @@ describe("HostedTournamentService signup", () => {
         return true;
       });
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved" },
@@ -860,7 +901,9 @@ describe("HostedTournamentService signup", () => {
       coachRepo.create.mockRejectedValue(new Error("write failed"));
 
       await expect(
-        service.decideApplication(          TOURNAMENT_KEY,
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
           APPLICATION_ID.toString(),
           SUB,
           { status: "approved" },
@@ -905,7 +948,9 @@ describe("HostedTournamentService signup", () => {
       );
       applicationRepo.findInTournament.mockResolvedValue(buildApplication());
 
-      await service.replaceCoach(        TOURNAMENT_KEY,
+      await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "team-rocket-a1b2",
         SUB,
         { applicationId: APPLICATION_ID.toString() },
@@ -951,7 +996,9 @@ describe("HostedTournamentService signup", () => {
         teamName: "Storm Crows",
       });
 
-      const result = await service.replaceCoach(        TOURNAMENT_KEY,
+      const result = await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "team-rocket-a1b2",
         SUB,
         { applicationId: APPLICATION_ID.toString() },
@@ -1006,7 +1053,9 @@ describe("HostedTournamentService signup", () => {
         .fn()
         .mockResolvedValue({ _id: teamId, slug: "same", teamName: "Same Name" });
 
-      const result = await service.replaceCoach(        TOURNAMENT_KEY,
+      const result = await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "same",
         SUB,
         { applicationId: APPLICATION_ID.toString() },
@@ -1030,7 +1079,7 @@ describe("HostedTournamentService signup", () => {
       );
 
       await expect(
-        service.replaceCoach(TOURNAMENT_KEY, "team", SUB, {
+        service.replaceCoach(LEAGUE_KEY, TOURNAMENT_KEY, "team", SUB, {
           applicationId: APPLICATION_ID.toString(),
         }),
       ).rejects.toMatchObject({
@@ -1043,7 +1092,9 @@ describe("HostedTournamentService signup", () => {
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
-      await service.decideApplication(        TOURNAMENT_KEY,
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         APPLICATION_ID.toString(),
         SUB,
         { status: "approved", teamName: "Renamed Squad" },
@@ -1135,7 +1186,9 @@ describe("HostedTournamentService removeParticipant", () => {
   });
 
   it("deletes the team and its coaches and denies its applications, in one transaction", async () => {
-    await service.removeParticipant(      TOURNAMENT_KEY,
+    await service.removeParticipant(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       ORGANIZER,
       COACH_ID.toString(),
     );
@@ -1162,7 +1215,9 @@ describe("HostedTournamentService removeParticipant", () => {
     } as any);
 
     await expect(
-      service.removeParticipant(        TOURNAMENT_KEY,
+      service.removeParticipant(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         ORGANIZER,
         COACH_ID.toString(),
       ),
@@ -1175,7 +1230,9 @@ describe("HostedTournamentService removeParticipant", () => {
     matchupRepo.findByStages.mockResolvedValue([{ _id: "m1" }] as any);
 
     await expect(
-      service.removeParticipant(        TOURNAMENT_KEY,
+      service.removeParticipant(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         ORGANIZER,
         COACH_ID.toString(),
       ),
@@ -1229,7 +1286,7 @@ describe("HostedTournamentService settings", () => {
 
   describe("standings rules", () => {
     it("stores points and the tiebreaker order", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         standingsRules: {
           points: { win: 2, draw: 1, loss: 0 },
           tiebreakers: ["headToHead", "gameDiff"],
@@ -1250,7 +1307,7 @@ describe("HostedTournamentService settings", () => {
       ["a loss worth more than a draw", { win: 3, draw: 0, loss: 1 }],
     ])("refuses %s and saves nothing", async (_, points) => {
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           standingsRules: { points },
         }),
       ).rejects.toMatchObject({
@@ -1260,7 +1317,9 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("reports the effective rules, derived from the diff mode until customized", async () => {
-      const settings = await service.getSettings(        TOURNAMENT_KEY,
+      const settings = await service.getSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "auth0|owner",
       );
 
@@ -1276,7 +1335,7 @@ describe("HostedTournamentService settings", () => {
 
   describe("logo", () => {
     it("claims a new logo as the organizer's own tournament-logo upload", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         logo: "tournament-logos/new.png",
       });
 
@@ -1295,7 +1354,7 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("does not re-claim the logo the tournament already has", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         logo: "tournament-logos/current.png",
       });
 
@@ -1303,7 +1362,7 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("clears the logo without claiming anything", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         logo: null,
       });
 
@@ -1320,7 +1379,7 @@ describe("HostedTournamentService settings", () => {
       );
 
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           logo: "team-logos/not-mine.png",
         }),
       ).rejects.toMatchObject({ code: "FILE-003" });
@@ -1331,12 +1390,14 @@ describe("HostedTournamentService settings", () => {
   describe("getSettings", () => {
     it("throws FORBIDDEN for a non-organizer", async () => {
       await expect(
-        service.getSettings(TOURNAMENT_KEY, "auth0|stranger"),
+        service.getSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|stranger"),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
     });
 
     it("returns the current settings for the organizer", async () => {
-      const result = await service.getSettings(        TOURNAMENT_KEY,
+      const result = await service.getSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "auth0|owner",
       );
 
@@ -1352,7 +1413,7 @@ describe("HostedTournamentService settings", () => {
   describe("updateSettings", () => {
     it("throws FORBIDDEN for a non-organizer", async () => {
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|stranger", {}),
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|stranger", {}),
       ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
     });
@@ -1367,7 +1428,7 @@ describe("HostedTournamentService settings", () => {
       };
 
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           discordSettings,
         }),
       ).rejects.toMatchObject({
@@ -1382,7 +1443,7 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("writes only the editable Discord fields, never the linked server", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         discordSettings: {
           guildId: "999999999999999999",
           coachRoleId: "222222222222222222",
@@ -1404,7 +1465,7 @@ describe("HostedTournamentService settings", () => {
       );
 
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           tierRequirements: [{ tierId: tierId("Tier A"), required: 1 }],
         }),
       ).rejects.toMatchObject({
@@ -1418,7 +1479,7 @@ describe("HostedTournamentService settings", () => {
         buildTournament({ tierListId: "", format: null, ruleset: null }),
       );
 
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         name: "Summer Cup",
       });
 
@@ -1430,7 +1491,7 @@ describe("HostedTournamentService settings", () => {
 
     it("rejects tierRequirements naming a tier that doesn't exist on the tier list", async () => {
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           tierRequirements: [{ tierId: tierId("Nonexistent"), required: 1 }],
         }),
       ).rejects.toMatchObject({
@@ -1441,7 +1502,7 @@ describe("HostedTournamentService settings", () => {
 
     it("rejects tierRequirements whose total exceeds the effective roster max", async () => {
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           draftCount: { min: 1, max: 2 },
           tierRequirements: [{ tierId: tierId("S"), required: 3 }],
         }),
@@ -1461,7 +1522,7 @@ describe("HostedTournamentService settings", () => {
       );
 
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           tierListId: new Types.ObjectId().toString(),
         }),
       ).rejects.toMatchObject({
@@ -1480,7 +1541,7 @@ describe("HostedTournamentService settings", () => {
       );
 
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           draftCount: { min: 1, max: 2 },
         }),
       ).rejects.toMatchObject({
@@ -1491,7 +1552,7 @@ describe("HostedTournamentService settings", () => {
 
     it("rejects a roster minimum above the maximum", async () => {
       await expect(
-        service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+        service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           draftCount: { min: 8, max: 6 },
         }),
       ).rejects.toMatchObject({
@@ -1500,7 +1561,7 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("does not load the tier list for a save that touches no roster rule", async () => {
-      await service.updateSettings(TOURNAMENT_KEY, "auth0|owner", {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
         name: "Summer Cup",
       });
 
@@ -1509,7 +1570,9 @@ describe("HostedTournamentService settings", () => {
     });
 
     it("persists only the provided keys on a valid update", async () => {
-      const result = await service.updateSettings(        TOURNAMENT_KEY,
+      const result = await service.updateSettings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "auth0|owner",
         { pointTotal: 100, tierRequirements: [{ tierId: tierId("S"), required: 1 }] },
       );
@@ -1578,7 +1641,9 @@ describe("HostedTournamentService coach details", () => {
 
   it("throws FORBIDDEN for someone who is neither organizer nor the coach", async () => {
     await expect(
-      service.updateCoachDetails(        TOURNAMENT_KEY,
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         COACH_ID.toString(),
         "auth0|stranger",
         { name: "New Name" },
@@ -1597,7 +1662,9 @@ describe("HostedTournamentService coach details", () => {
     } as never);
 
     await expect(
-      service.updateCoachDetails(        TOURNAMENT_KEY,
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         COACH_ID.toString(),
         "auth0|coach",
         { timezone: "UTC+1" },
@@ -1607,7 +1674,9 @@ describe("HostedTournamentService coach details", () => {
   });
 
   it("lets the coach edit their own details", async () => {
-    await service.updateCoachDetails(      TOURNAMENT_KEY,
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       COACH_ID.toString(),
       "auth0|coach",
       { timezone: "UTC+1" },
@@ -1619,7 +1688,9 @@ describe("HostedTournamentService coach details", () => {
   });
 
   it("lets an organizer edit a coach's details", async () => {
-    await service.updateCoachDetails(      TOURNAMENT_KEY,
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       COACH_ID.toString(),
       "auth0|owner",
       { name: "Ash" },
@@ -1630,7 +1701,9 @@ describe("HostedTournamentService coach details", () => {
   });
 
   it("writes nothing when the payload is empty", async () => {
-    await service.updateCoachDetails(      TOURNAMENT_KEY,
+    await service.updateCoachDetails(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       COACH_ID.toString(),
       "auth0|owner",
       {},
@@ -1647,7 +1720,9 @@ describe("HostedTournamentService coach details", () => {
     } as never);
 
     await expect(
-      service.updateCoachDetails(        TOURNAMENT_KEY,
+      service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         COACH_ID.toString(),
         "auth0|owner",
         { name: "Ash" },
@@ -1720,7 +1795,9 @@ describe("HostedTournamentService updateTeam", () => {
     ["a co-coach", "auth0|co-coach"],
     ["an organizer", "auth0|owner"],
   ])("lets %s rename the team, recording the change", async (_, sub) => {
-    const result = await service.updateTeam(      TOURNAMENT_KEY,
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       "team-rocket",
       sub,
       { teamName: "Team Aqua" },
@@ -1744,7 +1821,7 @@ describe("HostedTournamentService updateTeam", () => {
     ["a coach who has left", "auth0|former"],
   ])("refuses %s", async (_, sub) => {
     await expect(
-      service.updateTeam(TOURNAMENT_KEY, "team-rocket", sub, {
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", sub, {
         teamName: "Takeover",
       }),
     ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
@@ -1752,7 +1829,9 @@ describe("HostedTournamentService updateTeam", () => {
   });
 
   it("claims a new logo as the caller's own team-logo upload", async () => {
-    await service.updateTeam(      TOURNAMENT_KEY,
+    await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       "team-rocket",
       "auth0|co-coach",
       { logo: "team-logos/new.png" },
@@ -1774,7 +1853,7 @@ describe("HostedTournamentService updateTeam", () => {
     );
 
     await expect(
-      service.updateTeam(TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
         teamName: "Team Aqua",
         logo: "team-logos/someone-elses.png",
       }),
@@ -1783,7 +1862,9 @@ describe("HostedTournamentService updateTeam", () => {
   });
 
   it("writes nothing when neither the name nor the logo changed", async () => {
-    const result = await service.updateTeam(      TOURNAMENT_KEY,
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
       "team-rocket",
       "auth0|primary",
       { teamName: "Team Rocket", logo: "team-logos/current.png" },
@@ -1856,7 +1937,7 @@ describe("HostedTournamentService assignTeams", () => {
   it("moves a team into a pool", async () => {
     const team = addTeam("approved");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
@@ -1870,7 +1951,7 @@ describe("HostedTournamentService assignTeams", () => {
     const first = addTeam("approved");
     const second = addTeam("approved");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: first.slug, poolSlug: "pool-a", status: "approved" },
       { teamSlug: second.slug, poolSlug: "pool-a", status: "approved" },
     ]);
@@ -1883,7 +1964,7 @@ describe("HostedTournamentService assignTeams", () => {
     const known = addTeam("approved");
 
     await expect(
-      service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
         { teamSlug: known.slug, poolSlug: "pool-a", status: "approved" },
         { teamSlug: "other-tournaments-team", status: "approved" },
       ]),
@@ -1900,7 +1981,7 @@ describe("HostedTournamentService assignTeams", () => {
     const second = addTeam("approved");
 
     await expect(
-      service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
         { teamSlug: first.slug, poolSlug: "pool-a", status: "approved" },
         { teamSlug: second.slug, poolSlug: "missing-pool", status: "approved" },
       ]),
@@ -1914,7 +1995,7 @@ describe("HostedTournamentService assignTeams", () => {
     const second = addTeam("dropped");
 
     await expect(
-      service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
         { teamSlug: first.slug, status: "approved" },
         { teamSlug: second.slug, status: "approved" },
       ]),
@@ -1926,7 +2007,7 @@ describe("HostedTournamentService assignTeams", () => {
   it("reinstates a dropped team while there is room", async () => {
     const team = addTeam("dropped");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: team.slug, status: "approved" },
     ]);
 
@@ -1947,7 +2028,7 @@ describe("HostedTournamentService assignTeams", () => {
     });
     const team = addTeam("dropped");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: team.slug, status: "approved" },
     ]);
 
@@ -1957,7 +2038,7 @@ describe("HostedTournamentService assignTeams", () => {
   it("leaves the roster version alone when nothing is reinstated", async () => {
     const team = addTeam("approved");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
@@ -1968,7 +2049,7 @@ describe("HostedTournamentService assignTeams", () => {
     teamRepo.countApprovedByTournament.mockResolvedValue(2);
     const team = addTeam("approved");
 
-    await service.assignTeams(TOURNAMENT_KEY, ORGANIZER, [
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
       { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
     ]);
 
@@ -2072,7 +2153,7 @@ describe("HostedTournamentService teams", () => {
         teams: [buildTeam(TEAM_ID, "Team One", ["pikachu", "eevee"])],
       });
 
-      const result = await service.listTeams(TOURNAMENT_KEY);
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
 
       expect(result.teams[0].roster).toEqual([
         { id: "pikachu", name: "Pikachu", cost: 10, tier: "S" },
@@ -2100,7 +2181,7 @@ describe("HostedTournamentService teams", () => {
         teams: [buildTeam(TEAM_ID, "Team One", ["pikachu", "eevee"])],
       });
 
-      const result = await service.listTeams(TOURNAMENT_KEY);
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
 
       expect(result.teams[0].roster.map((p) => p.id)).toEqual([
         "pikachu",
@@ -2144,7 +2225,9 @@ describe("HostedTournamentService teams", () => {
     }
 
     it("listTeams empties other teams' rosters for a coach", async () => {
-      const result = await blindService().listTeams(        TOURNAMENT_KEY,
+      const result = await blindService().listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
       );
 
@@ -2158,16 +2241,20 @@ describe("HostedTournamentService teams", () => {
     });
 
     it("listTeams hides every roster from a signed-out visitor", async () => {
-      const result = await blindService().listTeams(TOURNAMENT_KEY);
+      const result = await blindService().listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
 
       expect(result.teams.every((team) => team.picksHidden)).toBe(true);
     });
 
     it("listTeams shows everything to an organizer and after the draft", async () => {
-      const organizer = await blindService().listTeams(        TOURNAMENT_KEY,
+      const organizer = await blindService().listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "auth0|owner",
       );
-      const finished = await blindService("COMPLETED").listTeams(        TOURNAMENT_KEY,
+      const finished = await blindService("COMPLETED").listTeams(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
       );
 
@@ -2176,7 +2263,9 @@ describe("HostedTournamentService teams", () => {
     });
 
     it("listTeamsByPool hides rival rosters and reports allowDuplicates", async () => {
-      const result = await blindService().listTeamsByPool(        TOURNAMENT_KEY,
+      const result = await blindService().listTeamsByPool(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
       );
 
@@ -2191,7 +2280,9 @@ describe("HostedTournamentService teams", () => {
     });
 
     it("getTeam hides a rival team's roster", async () => {
-      const result = await blindService().getTeam(        TOURNAMENT_KEY,
+      const result = await blindService().getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "team-two-slug",
         SUB,
       );
@@ -2218,7 +2309,7 @@ describe("HostedTournamentService teams", () => {
         stages: [visibleStage, hiddenStage],
       });
 
-      await service.getTeam(TOURNAMENT_KEY, "team-one-slug", SUB);
+      await service.getTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-one-slug", SUB);
 
       expect(matchupRepo.findByStages).toHaveBeenCalledWith(
         [visibleStage._id],
@@ -2233,7 +2324,9 @@ describe("HostedTournamentService teams", () => {
         stages: [visibleStage, hiddenStage],
       });
 
-      await service.getTeam(        TOURNAMENT_KEY,
+      await service.getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "team-one-slug",
         "auth0|owner",
       );
@@ -2264,7 +2357,9 @@ describe("HostedTournamentService teams", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any);
 
-      const result = await service.getTeam(        TOURNAMENT_KEY,
+      const result = await service.getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "team-one-slug",
       );
 
@@ -2343,7 +2438,7 @@ describe("HostedTournamentService teams", () => {
         playoffMatchup,
       ] as any);
 
-      const result = await service.getStandings(TOURNAMENT_KEY);
+      const result = await service.getStandings(LEAGUE_KEY, TOURNAMENT_KEY);
 
       expect(result.filters).toEqual([
         { value: "all", label: "All Stages" },
@@ -2386,7 +2481,9 @@ describe("HostedTournamentService teams", () => {
         });
       coachStageRepo.teamIdsInSeedOrder.mockReturnValue([]);
 
-      const coachResult = await coachService.getStandings(        TOURNAMENT_KEY,
+      const coachResult = await coachService.getStandings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         SUB,
       );
       expect(coachResult.filters.map((f) => f.value)).toEqual([
@@ -2402,7 +2499,9 @@ describe("HostedTournamentService teams", () => {
         });
       organizerStageRepo.teamIdsInSeedOrder.mockReturnValue([]);
 
-      const organizerResult = await organizerService.getStandings(        TOURNAMENT_KEY,
+      const organizerResult = await organizerService.getStandings(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
         "auth0|owner",
       );
       expect(organizerResult.filters.map((f) => f.value)).toEqual([
@@ -2467,7 +2566,7 @@ describe("HostedTournamentService getInfo", () => {
 
   it("shows every pool to a coach on an approved team", async () => {
     currentStatus = "approved";
-    await service.getInfo(TOURNAMENT_KEY, "auth0|coach");
+    await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
     expect(draftRepo.findAllByTournament).toHaveBeenCalled();
     expect(draftRepo.findPublicByTournament).not.toHaveBeenCalled();
   });
@@ -2476,17 +2575,9 @@ describe("HostedTournamentService getInfo", () => {
     "shows only public pools to a coach whose team is %s",
     async (status) => {
       currentStatus = status;
-      await service.getInfo(TOURNAMENT_KEY, "auth0|coach");
+      await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
       expect(draftRepo.findPublicByTournament).toHaveBeenCalled();
       expect(draftRepo.findAllByTournament).not.toHaveBeenCalled();
     },
   );
-
-  it("names the league so tournament pages can link back without it in the URL", async () => {
-    const info = await service.getInfo(TOURNAMENT_KEY);
-    expect(info.league).toEqual({
-      name: "Spring League",
-      leagueSlug: "springleague",
-    });
-  });
 });
