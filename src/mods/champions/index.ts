@@ -35,6 +35,42 @@ const ma = {
   Moves: layer(mb.Moves as Table, MA.Moves as Table),
 };
 
+type Entry = Record<string, unknown>;
+
+const isChampionsLegal = (entry: Entry): boolean =>
+  !entry.isNonstandard &&
+  entry.tier !== "Illegal" &&
+  entry.tier !== "Unreleased";
+
+const onlyChampionsLegal = (table: Table): Table =>
+  Object.fromEntries(
+    Object.entries(table ?? {})
+      .filter(([, entry]) => isChampionsLegal(entry as Entry))
+      .map(([id, entry]) => [
+        id,
+        { ...(entry as Entry), natDexTier: (entry as Entry).tier },
+      ]),
+  );
+
+const withParentAvailability = (table: Table): Table =>
+  Object.fromEntries(
+    Object.entries(table ?? {}).map(([id, entry]) => {
+      const { isNonstandard, ...rest } = entry as Entry;
+      return rest.inherit && typeof isNonstandard === "string"
+        ? [id, rest]
+        : [id, entry];
+    }),
+  );
+
+const natdex = {
+  ...mc,
+  FormatsData: onlyChampionsLegal(mc.FormatsData as Table),
+  Items: withParentAvailability(mc.Items as Table),
+  Moves: withParentAvailability(mc.Moves as Table),
+};
+
+export const CHAMPIONS_NATDEX_DATA = natdex as ModData;
+
 export const CHAMPIONS_REGULATION_DATA: Record<ChampionsRegulation, ModData> = {
   "M-A": ma as unknown as ModData,
   "M-B": mb as unknown as ModData,

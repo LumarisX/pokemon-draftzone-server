@@ -1,6 +1,7 @@
-import { Data, Generation, ID } from "@pkmn/data";
+import { Data, Generation, ID, Learnsets, Move } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
 import {
+  CHAMPIONS_NATDEX_DATA,
   CHAMPIONS_REGULATION_DATA,
   ChampionsRegulation,
 } from "../../../mods/champions";
@@ -27,6 +28,9 @@ const championsDex = (regulation: ChampionsRegulation): ModdedDex =>
     CHAMPIONS_MOD_IDS[regulation] as ID,
     CHAMPIONS_REGULATION_DATA[regulation] as ModData,
   );
+
+const championsNatDexDex = (): ModdedDex =>
+  Dex.mod("championsnatdex" as ID, CHAMPIONS_NATDEX_DATA);
 
 const legendsZADex = (): ModdedDex =>
   Dex.mod("gen9legends" as ID, LEGENDS_ZA_DATA);
@@ -162,6 +166,10 @@ function NATDEX_EXISTS(d: Data) {
   });
 }
 
+function GEN9_NATDEX_EXISTS(d: Data) {
+  return NATDEX_EXISTS(d) && !(d.kind === "Species" && d.forme === "Gmax");
+}
+
 function ZA_EXISTS(d: Data) {
   return _exists(d, {
     nonstandard: ["CAP", "Custom"],
@@ -195,6 +203,7 @@ const RULESET_IDS = {
   CHAMP_MA: "Champions MA",
   CHAMP_MB: "Champions MB",
   CHAMP_MC: "Champions MC",
+  CHAMP_NATDEX: "Champions NatDex",
   ZA_NATDEX: "ZA NatDex",
   GEN9_NATDEX: "Gen9 NatDex",
   PALDEA_DEX: "Paldea Dex",
@@ -221,9 +230,54 @@ const RULESET_ALIASES: Partial<Record<RulesetId, RulesetId>> = {
 
 export const DEFAULT_RULESET_ID: RulesetId = RULESET_IDS.CHAMP_MC;
 
+type Restriction = "Pentagon" | "Plus" | "Galar" | "Paldea";
+
+class FallbackLearnsets extends Learnsets {
+  constructor(
+    gen: Generation,
+    private readonly fallback: Generation,
+  ) {
+    super(gen, gen.dex, gen.exists);
+  }
+
+  async learnable(name: string, restriction?: Restriction) {
+    const own = await super.learnable(name, restriction);
+    if (!own) return own;
+    const inherited =
+      (await this.fallback.learnsets.learnable(
+        this.fallbackName(name),
+        restriction,
+      )) ?? {};
+    const moves: { [moveid: string]: string[] } = { ...inherited };
+    for (const [moveid, sources] of Object.entries(own)) {
+      moves[moveid] = [...new Set([...sources, ...(moves[moveid] ?? [])])];
+    }
+    return moves;
+  }
+
+  async canLearn(name: string, move: Move | string, restriction?: Restriction) {
+    if (await super.canLearn(name, move, restriction)) return true;
+    const moveId = typeof move === "string" ? move : move.id;
+    return this.fallback.learnsets.canLearn(
+      this.fallbackName(name),
+      moveId,
+      restriction,
+    );
+  }
+
+  private fallbackName(name: string): string {
+    if (this.fallback.species.get(name)) return name;
+    const species = this.gen.species.get(name);
+    if (!species) return name;
+    return typeof species.battleOnly === "string"
+      ? species.battleOnly
+      : species.baseSpecies;
+  }
+}
+
 export class Ruleset extends Generation {
   name: RulesetId;
-  restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+  restriction?: Restriction;
   isNatDex: boolean;
   statSystem: StatSystemId;
   constructor(
@@ -232,8 +286,9 @@ export class Ruleset extends Generation {
     name: RulesetId,
     options?: {
       statSystem?: StatSystemId;
-      restriction?: "Pentagon" | "Plus" | "Galar" | "Paldea";
+      restriction?: Restriction;
       isNatDex?: boolean;
+      learnsetFallback?: Generation;
     },
   ) {
     super(dex, exists);
@@ -241,12 +296,24 @@ export class Ruleset extends Generation {
     this.restriction = options?.restriction;
     this.isNatDex = options?.isNatDex ?? false;
     this.statSystem = options?.statSystem ?? DEFAULT_STAT_SYSTEM_ID;
+    if (options?.learnsetFallback) {
+      Object.assign(this, {
+        learnsets: new FallbackLearnsets(this, options.learnsetFallback),
+      });
+    }
   }
 
   get statRules(): StatSystem {
     return getStatSystem(this.statSystem);
   }
 }
+
+const gen9NatDex = new Ruleset(
+  Dex.forGen(9),
+  GEN9_NATDEX_EXISTS,
+  RULESET_IDS.GEN9_NATDEX,
+  { isNatDex: true },
+);
 
 export const Rulesets: {
   [key: string]: {
@@ -288,18 +355,26 @@ export const Rulesets: {
         { statSystem: "statPoints" },
       ),
     },
+    "National Dex": {
+      id: RULESET_IDS.CHAMP_NATDEX,
+      desc: "Champions data from the newest regulation, with every Pokémon, move and item outside it falling back to the National Dex",
+      ruleset: new Ruleset(
+        championsNatDexDex(),
+        GEN9_NATDEX_EXISTS,
+        RULESET_IDS.CHAMP_NATDEX,
+        {
+          statSystem: "statPoints",
+          isNatDex: true,
+          learnsetFallback: gen9NatDex,
+        },
+      ),
+    },
   },
   "Gen 9": {
     "National Dex": {
       id: RULESET_IDS.GEN9_NATDEX,
       desc: "Only Pokémon available in Generation 9 and before",
-      ruleset: new Ruleset(
-        Dex.forGen(9),
-        (d: Data) =>
-          !(!NATDEX_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
-        RULESET_IDS.GEN9_NATDEX,
-        { isNatDex: true },
-      ),
+      ruleset: gen9NatDex,
     },
     "Paldea Dex": {
       id: RULESET_IDS.PALDEA_DEX,
@@ -324,7 +399,6 @@ export const Rulesets: {
       ),
     },
   },
-  //Lazy-loaded since not frequently accessed
   "Gen 8": {
     "National Dex": {
       id: RULESET_IDS.GEN8_NATDEX,
@@ -403,7 +477,6 @@ export const Rulesets: {
       },
     },
   },
-  // TODO: Fix these IDs to be properly capitalized (update db instances)
   "Rom Hacks": {
     "Radical Red": {
       id: RULESET_IDS.RADICAL_RED,

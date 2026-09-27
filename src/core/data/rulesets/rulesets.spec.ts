@@ -5,7 +5,6 @@ import {
   getRulesetsGrouped,
 } from './rulesets';
 
-// Mock @pkmn/data and @pkmn/dex
 jest.mock('@pkmn/data', () => ({
   Data: jest.fn(() => ({
     exists: true,
@@ -17,6 +16,7 @@ jest.mock('@pkmn/data', () => ({
     forme: null,
   })),
   Generation: jest.fn(() => ({})),
+  Learnsets: jest.fn(() => ({})),
 }));
 
 jest.mock('@pkmn/dex', () => ({
@@ -86,6 +86,7 @@ describe('getRulesets', () => {
     expect(rulesets).toContain('Champions MA');
     expect(rulesets).toContain('Champions MB');
     expect(rulesets).toContain('Champions MC');
+    expect(rulesets).toContain('Champions NatDex');
   });
 
   it('does not advertise the rolling Champions id', () => {
