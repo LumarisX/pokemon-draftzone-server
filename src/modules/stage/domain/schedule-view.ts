@@ -1,4 +1,4 @@
-import { MatchupAdvancement } from "./advancement";
+import { MatchupAdvancement, Walkover } from "./advancement";
 import { MatchLabel } from "./match-labels";
 import { getRosterByRound } from "./roster";
 import { RosterContext } from "./stage-axis";
@@ -10,7 +10,8 @@ export interface ScheduleViewOptions {
   forfeitGameDiff: number;
   keepUnresolvedOpponent?: boolean;
   matchLabels?: Map<string, MatchLabel>;
-  blockedMatchIds?: ReadonlySet<string>;
+  walkovers?: ReadonlyMap<string, Walkover>;
+  feeding?: ReadonlySet<string>;
 }
 
 function rosterFor(
@@ -41,6 +42,7 @@ export interface ScheduleSide {
 function unresolvedSide(
   slot: PopulatedStageMatchup["side1"]["slot"],
   options: ScheduleViewOptions,
+  bye: boolean,
 ): ScheduleSide {
   const source = slot?.matchId
     ? (options.matchLabels?.get(slot.matchId) ?? null)
@@ -52,8 +54,9 @@ function unresolvedSide(
         ? "Loser"
         : null;
 
-  const name =
-    slot?.type === "seed" && slot.seed
+  const name = bye
+    ? "Bye"
+    : slot?.type === "seed" && slot.seed
       ? `Seed ${slot.seed}`
       : outcome && source
         ? `${outcome} of ${source.label}`
@@ -74,18 +77,37 @@ function unresolvedSide(
   };
 }
 
+function walkoverOf(
+  matchup: PopulatedStageMatchup,
+  options: ScheduleViewOptions,
+): Walkover | null {
+  return options.walkovers?.get(matchup._id.toString()) ?? null;
+}
+
 export function toScheduleMatchup(
   matchup: PopulatedStageMatchup,
   options: ScheduleViewOptions,
 ) {
+  const walkover = walkoverOf(matchup, options);
+  const forfeitWinner = matchup.forfeit
+    ? matchup.winner
+    : walkover && walkover !== "void"
+      ? walkover
+      : null;
+
   const side = (which: "side1" | "side2"): ScheduleSide => {
     const team = matchup[which].team;
-    if (!team) return unresolvedSide(matchup[which].slot, options);
+    if (!team)
+      return unresolvedSide(
+        matchup[which].slot,
+        options,
+        walkover !== null && walkover !== which,
+      );
     return {
       name: team.teamName,
       coach: team.primaryCoach.name,
-      score: matchup.forfeit
-        ? matchup.winner === which
+      score: forfeitWinner
+        ? forfeitWinner === which
           ? options.forfeitGameDiff
           : 0
         : matchup[which].score,
@@ -119,15 +141,20 @@ export function toScheduleMatchup(
     })),
     score: { team1: matchup.side1.score, team2: matchup.side2.score },
     advances: (matchup.advances ?? null) as MatchupAdvancement | null,
-    advancementBlocked:
-      options.blockedMatchIds?.has(matchup._id.toString()) ?? false,
+    walkover,
+    feedsBracket: options.feeding?.has(matchup._id.toString()) ?? false,
     winner: matchup.forfeit
       ? matchup.winner === "side1"
         ? "side1ffw"
         : matchup.winner === "side2"
           ? "side2ffw"
           : "dffl"
-      : matchup.winner,
+      : (matchup.winner ??
+        (walkover === "side1"
+          ? "side1ffw"
+          : walkover === "side2"
+            ? "side2ffw"
+            : undefined)),
   };
 }
 
@@ -135,17 +162,15 @@ export function scheduleMatchups(
   matchups: PopulatedStageMatchup[],
   options: ScheduleViewOptions,
 ) {
-  const isBlocked = (matchup: PopulatedStageMatchup) =>
-    options.blockedMatchIds?.has(matchup._id.toString()) ?? false;
-  const isWalkover = (matchup: PopulatedStageMatchup) =>
-    Boolean(matchup.winner) &&
+  const hasTeam = (matchup: PopulatedStageMatchup) =>
     Boolean(matchup.side1.team ?? matchup.side2.team);
+  const isDecided = (matchup: PopulatedStageMatchup) =>
+    Boolean(matchup.winner) || walkoverOf(matchup, options) !== null;
 
   const keep = options.keepUnresolvedOpponent
-    ? (matchup: PopulatedStageMatchup) =>
-        Boolean(matchup.side1.team ?? matchup.side2.team) || isBlocked(matchup)
+    ? hasTeam
     : (matchup: PopulatedStageMatchup) =>
-        hasResolvedSides(matchup) || isBlocked(matchup) || isWalkover(matchup);
+        hasResolvedSides(matchup) || (isDecided(matchup) && hasTeam(matchup));
 
   return matchups
     .filter(keep)

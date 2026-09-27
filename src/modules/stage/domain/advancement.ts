@@ -1,15 +1,6 @@
-/**
- * Who moves out of a bracket match, and into what.
- *
- * A `winner`/`loser` slot reads its team off the match it names, so a match
- * that ends without a winning side feeds nothing: a double forfeit (`winner:
- * "draw"`, `forfeit: true`) leaves every downstream slot permanently empty,
- * and the rest of the bracket can never be played. `advances` is the
- * organizer's override for exactly that — it names the side that moves on
- * despite the result, or declares outright that nobody does.
- */
-
 export type MatchupAdvancement = "side1" | "side2" | "none";
+
+type Side = "side1" | "side2";
 
 export interface AdvancementOutcome {
   winner?: string | null;
@@ -17,10 +8,8 @@ export interface AdvancementOutcome {
 }
 
 export interface AdvancementSides {
-  /** The side a `winner` slot takes its team from, if any. */
-  winner: "side1" | "side2" | null;
-  /** The side a `loser` slot takes its team from, if any. */
-  loser: "side1" | "side2" | null;
+  winner: Side | null;
+  loser: Side | null;
 }
 
 const NEITHER: AdvancementSides = { winner: null, loser: null };
@@ -34,12 +23,6 @@ export function advancingSides(matchup: AdvancementOutcome): AdvancementSides {
   return NEITHER;
 }
 
-/** Nobody leaves this match, whatever the reason. */
-export function yieldsNobody(matchup: AdvancementOutcome): boolean {
-  const sides = advancingSides(matchup);
-  return sides.winner === null && sides.loser === null;
-}
-
 export interface AdvancementSlot {
   type: string;
   matchId?: string | null;
@@ -51,106 +34,90 @@ export interface AdvancementMatchup extends AdvancementOutcome {
   side2: { slot?: AdvancementSlot | null; team?: string | null };
 }
 
+export type Walkover = Side | "void";
+
+export interface MatchupExit extends AdvancementSides {
+  settled: boolean;
+  walkover: Walkover | null;
+}
+
+const OPEN: MatchupExit = { ...NEITHER, settled: false, walkover: null };
+
+export function bracketExits(
+  matchups: AdvancementMatchup[],
+): Map<string, MatchupExit> {
+  const byId = new Map(matchups.map((matchup) => [matchup.id, matchup]));
+  const memo = new Map<string, MatchupExit>();
+  const visiting = new Set<string>();
+
+  const isDeadSide = (matchup: AdvancementMatchup, side: Side): boolean => {
+    const slot = matchup[side].slot;
+    if (!slot?.matchId || (slot.type !== "winner" && slot.type !== "loser"))
+      return false;
+    const source = byId.get(slot.matchId);
+    if (!source) return false;
+    const exit = exitOf(source);
+    return exit.settled && exit[slot.type] === null;
+  };
+
+  const exitOf = (matchup: AdvancementMatchup): MatchupExit => {
+    const cached = memo.get(matchup.id);
+    if (cached) return cached;
+    if (visiting.has(matchup.id)) return OPEN;
+
+    visiting.add(matchup.id);
+    let exit: MatchupExit;
+    if (matchup.advances || matchup.winner) {
+      exit = { ...advancingSides(matchup), settled: true, walkover: null };
+    } else {
+      const dead1 = isDeadSide(matchup, "side1");
+      const dead2 = isDeadSide(matchup, "side2");
+      exit =
+        dead1 && dead2
+          ? { ...NEITHER, settled: true, walkover: "void" }
+          : dead1
+            ? { winner: "side2", loser: null, settled: true, walkover: "side2" }
+            : dead2
+              ? { winner: "side1", loser: null, settled: true, walkover: "side1" }
+              : OPEN;
+    }
+    visiting.delete(matchup.id);
+
+    memo.set(matchup.id, exit);
+    return exit;
+  };
+
+  return new Map(matchups.map((matchup) => [matchup.id, exitOf(matchup)]));
+}
+
+export function feedingMatchups(matchups: AdvancementMatchup[]): Set<string> {
+  const feeding = new Set<string>();
+  for (const matchup of matchups) {
+    for (const side of [matchup.side1, matchup.side2]) {
+      const slot = side.slot;
+      if (slot?.matchId && (slot.type === "winner" || slot.type === "loser"))
+        feeding.add(slot.matchId);
+    }
+  }
+  return feeding;
+}
+
 export type AdvancementResolution = Map<
   string,
   { side1?: string | null; side2?: string | null }
 >;
 
-/**
- * The matches that have stopped the bracket: nobody leaves them, something
- * downstream is waiting on one, and no organizer has said what to do about it.
- *
- * Two shapes, and the second is why this needs the whole bracket rather than
- * one match at a time. The first is a double forfeit — settled, with no winning
- * side. The second is what a `"none"` ruling creates one round later: that
- * match is not settled and never can be, because a side of it is fed by a slot
- * nothing will ever arrive in. Both leave the bracket unplayable, and both are
- * fixed the same way, so both have to be findable.
- */
-export function blockedMatchups(matchups: AdvancementMatchup[]): Set<string> {
-  const byId = new Map(matchups.map((matchup) => [matchup.id, matchup]));
-
-  const referenced = new Set<string>();
-  for (const matchup of matchups) {
-    for (const side of [matchup.side1, matchup.side2]) {
-      const slot = side.slot;
-      if (!slot?.matchId) continue;
-      if (slot.type === "winner" || slot.type === "loser")
-        referenced.add(slot.matchId);
-    }
-  }
-
-  // A side is dead when the slot feeding it can never produce a team — as
-  // opposed to merely not having one yet, which is every unplayed match.
-  const deadSide = new Map<string, boolean>();
-  const visiting = new Set<string>();
-
-  const isDeadSide = (matchupId: string, side: "side1" | "side2"): boolean => {
-    const key = `${matchupId}:${side}`;
-    if (deadSide.has(key)) return deadSide.get(key)!;
-    if (visiting.has(key)) return false;
-
-    const matchup = byId.get(matchupId);
-    const slot = matchup?.[side].slot;
-    if (!matchup || !slot || (slot.type !== "winner" && slot.type !== "loser"))
-      return false;
-
-    visiting.add(key);
-    const source = slot.matchId ? byId.get(slot.matchId) : undefined;
-    const dead = source
-      ? yieldsNobody(source) && isSettledOrDead(source)
-      : false;
-    visiting.delete(key);
-
-    deadSide.set(key, dead);
-    return dead;
-  };
-
-  // Settled by a result or a ruling, or unplayable because a side of it is
-  // dead — either way the match will not produce anyone by being played.
-  const isSettledOrDead = (matchup: AdvancementMatchup): boolean =>
-    Boolean(matchup.advances) ||
-    Boolean(matchup.winner) ||
-    isDeadSide(matchup.id, "side1") ||
-    isDeadSide(matchup.id, "side2");
-
-  return new Set(
-    matchups
-      .filter(
-        (matchup) =>
-          referenced.has(matchup.id) &&
-          !matchup.advances &&
-          yieldsNobody(matchup) &&
-          isSettledOrDead(matchup),
-      )
-      .map((matchup) => matchup.id),
-  );
-}
-
-/**
- * The team that belongs in every winner/loser-fed side of a bracket.
- *
- * Resolved through the slot graph rather than one hop at a time, so correcting
- * a match near the top of the bracket carries all the way down — including
- * through matches that were themselves already decided. A side maps to `null`
- * when nothing advances into it, which is what un-sticks a slot that an
- * earlier, wrong advancement had already filled.
- */
 export function resolveBracketAdvancement(
   matchups: AdvancementMatchup[],
 ): AdvancementResolution {
   const byId = new Map(matchups.map((matchup) => [matchup.id, matchup]));
+  const exits = bracketExits(matchups);
   const memo = new Map<string, string | null>();
   const visiting = new Set<string>();
 
-  const teamIn = (
-    matchupId: string,
-    side: "side1" | "side2",
-  ): string | null => {
+  const teamIn = (matchupId: string, side: Side): string | null => {
     const key = `${matchupId}:${side}`;
     if (memo.has(key)) return memo.get(key)!;
-    // The bracket validator rejects cycles, but a resolver that walks stored
-    // documents must not hang on one that slipped in some other way.
     if (visiting.has(key)) return null;
 
     const matchup = byId.get(matchupId);
@@ -163,11 +130,8 @@ export function resolveBracketAdvancement(
     visiting.add(key);
     let team: string | null = null;
     if (slot.matchId) {
-      const source = byId.get(slot.matchId);
-      if (source) {
-        const from = advancingSides(source)[slot.type];
-        if (from) team = teamIn(source.id, from);
-      }
+      const from = exits.get(slot.matchId)?.[slot.type];
+      if (from) team = teamIn(slot.matchId, from);
     }
     visiting.delete(key);
 

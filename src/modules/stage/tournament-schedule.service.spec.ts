@@ -59,7 +59,7 @@ describe("TournamentScheduleService", () => {
   let matchupRepo: jest.Mocked<LeagueMatchupRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
-  let advancement: { findBlocked: jest.Mock };
+  let advancement: { findStatus: jest.Mock };
   let service: TournamentScheduleService;
 
   const week1 = round("Week 1");
@@ -96,7 +96,9 @@ describe("TournamentScheduleService", () => {
     advancement = {
       applyToTournament: jest.fn().mockResolvedValue(0),
       applyToStages: jest.fn().mockResolvedValue(0),
-      findBlocked: jest.fn().mockResolvedValue(new Set<string>()),
+      findStatus: jest
+        .fn()
+        .mockResolvedValue({ walkovers: new Map(), feeding: new Set() }),
     } as any;
 
     const moduleRef = await Test.createTestingModule({
@@ -315,46 +317,77 @@ describe("TournamentScheduleService", () => {
   });
 
   describe("bracket advancement", () => {
-    it("reports the override and the blocked flag to an organizer", async () => {
+    it("reports the override and the matches that feed the bracket to an organizer", async () => {
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
       const semi = buildMatchup(playoffs._id, week1._id, team("A"), team("B"), {
         winner: "draw",
         forfeit: true,
+        advances: "side1",
       });
       matchupRepo.findByRoundsAcrossStages.mockResolvedValue([semi]);
-      advancement.findBlocked.mockResolvedValue(new Set([semi._id.toString()]));
+      advancement.findStatus.mockResolvedValue({
+        walkovers: new Map(),
+        feeding: new Set([semi._id.toString()]),
+      });
 
       const result = await get({ sub: "auth0|owner" });
 
       const card = result.rounds[0].stages[0].matchups[0];
-      expect(card.advancementBlocked).toBe(true);
-      expect(card.advances).toBeNull();
+      expect(card.feedsBracket).toBe(true);
+      expect(card.advances).toBe("side1");
+      expect(card.winner).toBe("dffl");
     });
 
-    it("keeps a blocked match whose opponent slot can never be filled", async () => {
+    it("shows a walkover as a forfeit win for the side still standing", async () => {
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
       const final = buildMatchup(
         playoffs._id,
         week1._id,
-        team("C"),
         undefined,
+        team("C"),
         {
-          side2: { slot: { type: "winner", matchId: "some-match" } },
+          side1: { slot: { type: "winner", matchId: "semi" } },
         },
       );
       matchupRepo.findByRoundsAcrossStages.mockResolvedValue([final]);
-      advancement.findBlocked.mockResolvedValue(
-        new Set([final._id.toString()]),
+      advancement.findStatus.mockResolvedValue({
+        walkovers: new Map([[final._id.toString(), "side2"]]),
+        feeding: new Set(),
+      });
+
+      const result = await get();
+
+      const card = result.rounds[0].stages[0].matchups[0];
+      expect(card.walkover).toBe("side2");
+      expect(card.winner).toBe("side2ffw");
+      expect(card.team1.name).toBe("Bye");
+      expect(card.team2.score).toBe(3);
+    });
+
+    it("drops a match nobody can ever reach", async () => {
+      const playoffs = buildStage({ type: "single-elimination" });
+      stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
+      const stranded = buildMatchup(
+        playoffs._id,
+        week1._id,
+        undefined,
+        undefined,
+        {
+          side1: { slot: { type: "winner", matchId: "m2" } },
+          side2: { slot: { type: "winner", matchId: "m3" } },
+        },
       );
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([stranded]);
+      advancement.findStatus.mockResolvedValue({
+        walkovers: new Map([[stranded._id.toString(), "void"]]),
+        feeding: new Set(),
+      });
 
       const result = await get({ sub: "auth0|owner" });
 
-      expect(result.rounds[0].stages[0].matchups).toHaveLength(1);
-      expect(result.rounds[0].stages[0].matchups[0].advancementBlocked).toBe(
-        true,
-      );
+      expect(result.rounds[0].stages).toHaveLength(0);
     });
 
     it("keeps a match that has a recorded result but an empty side", async () => {
@@ -388,19 +421,22 @@ describe("TournamentScheduleService", () => {
       expect(result.rounds[0].stages).toHaveLength(0);
     });
 
-    it("does not compute blocked matches for a public read", async () => {
+    it("does not tell a public reader which matches feed the bracket", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ owner: "auth0|someone-else" }),
+      );
       const playoffs = buildStage({ type: "single-elimination" });
       stageRepo.findAllByTournament.mockResolvedValue([playoffs]);
-      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
-        buildMatchup(playoffs._id, week1._id, team("A"), team("B")),
-      ]);
+      const semi = buildMatchup(playoffs._id, week1._id, team("A"), team("B"));
+      matchupRepo.findByRoundsAcrossStages.mockResolvedValue([semi]);
+      advancement.findStatus.mockResolvedValue({
+        walkovers: new Map(),
+        feeding: new Set([semi._id.toString()]),
+      });
 
       const result = await get();
 
-      expect(advancement.findBlocked).not.toHaveBeenCalled();
-      expect(result.rounds[0].stages[0].matchups[0].advancementBlocked).toBe(
-        false,
-      );
+      expect(result.rounds[0].stages[0].matchups[0].feedsBracket).toBe(false);
     });
   });
 });

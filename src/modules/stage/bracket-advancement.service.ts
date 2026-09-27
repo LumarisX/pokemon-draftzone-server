@@ -3,23 +3,18 @@ import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import {
   AdvancementMatchup,
-  blockedMatchups,
+  bracketExits,
+  feedingMatchups,
   resolveBracketAdvancement,
+  Walkover,
 } from "./domain/advancement";
 import { StageRepository } from "./stage.repository";
 
-/**
- * Keeps every winner/loser-fed side of a tournament's bracket in step with the
- * results above it.
- *
- * Shared by the results editor and the bracket editor because both can change
- * who leaves a match, and a per-caller version of this drifted: recording a
- * result used to push one hop downstream while a bracket save replayed every
- * settled match, so a correction near the top of the bracket reached different
- * distances depending on which screen made it. Resolving the whole graph is
- * also what makes a *changed* answer work — an override the organizer takes
- * back has to empty the slot it had already filled.
- */
+export interface BracketStatus {
+  walkovers: Map<string, Walkover>;
+  feeding: Set<string>;
+}
+
 @Injectable()
 export class BracketAdvancementService {
   constructor(
@@ -34,7 +29,6 @@ export class BracketAdvancementService {
     return this.applyToStages(stages.map((stage) => stage._id));
   }
 
-  /** @returns how many sides the pass actually changed. */
   async applyToStages(stageIds: Types.ObjectId[]): Promise<number> {
     if (stageIds.length === 0) return 0;
 
@@ -67,14 +61,17 @@ export class BracketAdvancementService {
     return changes.length;
   }
 
-  /**
-   * The matches that have stopped the bracket, for an organizer to unstick.
-   * See `blockedMatchups` — it needs the whole bracket, not one match.
-   */
-  async findBlocked(stageIds: Types.ObjectId[]): Promise<Set<string>> {
-    if (stageIds.length === 0) return new Set();
+  async findStatus(stageIds: Types.ObjectId[]): Promise<BracketStatus> {
+    if (stageIds.length === 0)
+      return { walkovers: new Map(), feeding: new Set() };
     const docs = await this.matchupRepo.findAdvancementFieldsByStages(stageIds);
-    return blockedMatchups(docs.map(toAdvancementMatchup));
+    const matchups = docs.map(toAdvancementMatchup);
+
+    const walkovers = new Map<string, Walkover>();
+    for (const [id, exit] of bracketExits(matchups))
+      if (exit.walkover) walkovers.set(id, exit.walkover);
+
+    return { walkovers, feeding: feedingMatchups(matchups) };
   }
 }
 

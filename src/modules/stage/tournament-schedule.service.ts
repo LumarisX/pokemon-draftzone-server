@@ -88,9 +88,9 @@ export class TournamentScheduleService {
       new Map(axis.map((round, index) => [round._id.toString(), index])),
     );
 
-    const blockedMatchIds = canManageSchedule
-      ? await this.advancement.findBlocked(stages.map((stage) => stage._id))
-      : undefined;
+    const { walkovers, feeding } = await this.advancement.findStatus(
+      stages.map((stage) => stage._id),
+    );
 
     const byRound = new Map<string, Map<string, PopulatedStageMatchup[]>>();
     for (const matchup of matchups) {
@@ -130,7 +130,8 @@ export class TournamentScheduleService {
                 forfeitGameDiff: tournament.forfeit.gameDiff,
                 keepUnresolvedOpponent: hasTeamFilter,
                 matchLabels,
-                blockedMatchIds,
+                walkovers,
+                feeding: canManageSchedule ? feeding : undefined,
               });
               if (!canReviewResults) {
                 return {

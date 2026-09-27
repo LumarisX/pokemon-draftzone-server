@@ -115,7 +115,9 @@ describe("TournamentBracketService", () => {
           useValue: {
             applyToTournament: jest.fn().mockResolvedValue(0),
             applyToStages: jest.fn().mockResolvedValue(0),
-            findBlocked: jest.fn().mockResolvedValue(new Set<string>()),
+            findStatus: jest
+              .fn()
+              .mockResolvedValue({ walkovers: new Map(), feeding: new Set() }),
           },
         },
       ],
