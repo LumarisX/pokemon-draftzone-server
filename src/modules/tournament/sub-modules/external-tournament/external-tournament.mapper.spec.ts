@@ -59,7 +59,12 @@ function buildMatchup(
 ) {
   return {
     scheduledDate,
+    stage: "Week 1",
+    bTeam: { teamName: "Cinnabar Blaze", coach: "blaine" },
     calculateScore: () => score,
+    isDoubleForfeit: () => false,
+    calculateWinner: () =>
+      score ? (score[0] > score[1] ? "a" : score[0] < score[1] ? "b" : undefined) : undefined,
   } as unknown as ConstructorParameters<typeof ExternalTournament>[1][number];
 }
 
@@ -136,10 +141,47 @@ describe("ExternalTournamentMapper", () => {
         format: "Singles",
         ruleset: "Gen9 NatDex",
         doc: "doc-slug",
+        coach: undefined,
+        completedAt: null,
         score: { wins: 0, losses: 0, diff: "+0" },
+        form: [],
+        next: null,
         nextMatch: null,
         team: [{ id: "charizard", toClientPayload: true }],
       });
+    });
+
+    it("reports recent form and the soonest open match as next", () => {
+      const hour = 60 * 60 * 1000;
+      const soon = new Date(Date.now() + hour);
+      const tournament = buildTournament({}, [
+        buildMatchup(undefined, [3, 1]),
+        buildMatchup(undefined, [0, 2]),
+        buildMatchup(new Date(Date.now() + 9 * hour)),
+        buildMatchup(soon),
+      ]);
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.form).toEqual(["win", "loss"]);
+      expect(result.next).toMatchObject({
+        round: "Week 1",
+        when: soon.toISOString(),
+        exactTime: true,
+        opponent: { name: "Cinnabar Blaze", coach: "blaine" },
+      });
+    });
+
+    it("drops next once the season is completed", () => {
+      const tournament = buildTournament(
+        { completedAt: new Date("2026-09-01") },
+        [buildMatchup(new Date(Date.now() + 60 * 60 * 1000))],
+      );
+
+      const result = ExternalTournamentMapper.toClientPayload(tournament);
+
+      expect(result.next).toBeNull();
+      expect(result.completedAt).toEqual(new Date("2026-09-01"));
     });
 
     it("reports the soonest unplayed scheduled match as nextMatch", () => {

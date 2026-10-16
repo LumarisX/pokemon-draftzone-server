@@ -78,23 +78,23 @@ export class ExternalTournamentController {
     return { message: "Tournament deleted" };
   }
 
-  @Post(":tournamentSlug/archive")
+  @Post([":tournamentSlug/completed", ":tournamentSlug/archive"])
   @HttpCode(200)
-  async archiveTournament(
+  async completeTournament(
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    await this.tournamentService.archiveTournament(tournamentSlug, sub);
-    return { message: "Tournament archived" };
+    await this.tournamentService.completeTournament(tournamentSlug, sub);
+    return { message: "Season marked completed" };
   }
 
-  @Delete(":tournamentSlug/archive")
-  async unarchiveTournament(
+  @Delete([":tournamentSlug/completed", ":tournamentSlug/archive"])
+  async reopenTournament(
     @Param("tournamentSlug") tournamentSlug: string,
     @User() sub: string,
   ) {
-    await this.tournamentService.unarchiveTournament(tournamentSlug, sub);
-    return { message: "Tournament restored" };
+    await this.tournamentService.reopenTournament(tournamentSlug, sub);
+    return { message: "Season reopened" };
   }
 
   @Get(":tournamentSlug/stats")

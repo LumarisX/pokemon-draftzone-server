@@ -37,6 +37,9 @@ export type TeamPageResponse = {
   pointTotal: number | undefined;
   picksHidden: boolean;
   pickCount: number;
+  tournamentCompleted: boolean;
+  completedForMe: boolean;
+  pool?: { poolSlug: string; name: string };
   gameName?: string;
   discordName?: string;
   name: string;

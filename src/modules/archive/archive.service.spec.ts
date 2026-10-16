@@ -40,7 +40,7 @@ describe("ArchiveService", () => {
       createV2: jest.fn(),
     } as unknown as jest.Mocked<ArchiveRepository>;
     tournamentService = {
-      getArchivedTournaments: jest.fn().mockResolvedValue([]),
+      getCompletedTournaments: jest.fn().mockResolvedValue([]),
       getTournamentStatsById: jest.fn(),
     } as unknown as jest.Mocked<ExternalTournamentService>;
     service = new ArchiveService(repository, tournamentService);
@@ -74,13 +74,13 @@ describe("ArchiveService", () => {
       ).resolves.toEqual([]);
     });
 
-    it("merges flagged drafts with legacy archives, newest first", async () => {
+    it("merges completed drafts with legacy archives, newest first", async () => {
       repository.findAllByOwner.mockResolvedValue([
         { createdAt: new Date("2025-01-01") } as any,
         { createdAt: new Date("2026-03-01") } as any,
       ]);
-      tournamentService.getArchivedTournaments.mockResolvedValue([
-        { archivedAt: new Date("2026-08-01") } as any,
+      tournamentService.getCompletedTournaments.mockResolvedValue([
+        { completedAt: new Date("2026-08-01") } as any,
       ]);
       mockedMapper.toListItem
         .mockReturnValueOnce({ leagueName: "old-legacy" } as any)

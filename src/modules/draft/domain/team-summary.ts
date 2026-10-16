@@ -62,7 +62,7 @@ export type TeamWithCoachStatus = {
 export async function getTeamsWithCoachStatus(
   draft: PopulatedDraft,
   tournament: PopulatedTournament,
-  userId: string,
+  userId: string | undefined,
   numberOfRounds: number,
 ): Promise<TeamWithCoachStatus[]> {
   const pokemonTierMap = createPokemonTierMap(tournament);
@@ -170,7 +170,7 @@ export async function isCoach(
 export async function getDraftDetails(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
-  userId: string,
+  userId: string | undefined,
 ) {
   const numberOfRounds = tournament.draftCount.max;
   const initialTeamOrder = getDraftOrder(draft);

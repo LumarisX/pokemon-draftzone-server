@@ -99,6 +99,20 @@ export class CoachRepository {
     return coach;
   }
 
+  async setCompleted(
+    auth0Id: string,
+    teamId: Types.ObjectId | string,
+    completedAt: Date | null,
+  ): Promise<number> {
+    const update = completedAt
+      ? { $set: { completedAt } }
+      : { $unset: { completedAt: "" } };
+    const result = await this.coachModel
+      .updateMany({ auth0Id: { $eq: auth0Id }, teamId: this.toObjectId(teamId) }, update)
+      .exec();
+    return result.matchedCount;
+  }
+
   async delete(coachId: Types.ObjectId | string): Promise<void> {
     const safeCoachId = this.toObjectId(coachId);
     const result = await this.coachModel.findByIdAndDelete(safeCoachId);

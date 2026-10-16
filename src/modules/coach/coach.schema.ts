@@ -35,8 +35,6 @@ export class CoachEntity {
   @Prop({ required: true, default: false })
   confirmed!: boolean;
 
-  // Ref name is a literal string (not TeamEntity.name) to avoid a circular
-  // import with team.schema.ts, which refs back to CoachEntity.
   @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity", required: true })
   teamId!: Types.ObjectId;
 
@@ -48,6 +46,9 @@ export class CoachEntity {
 
   @Prop()
   role?: string;
+
+  @Prop()
+  completedAt?: Date;
 }
 
 export const CoachSchema = SchemaFactory.createForClass(CoachEntity);

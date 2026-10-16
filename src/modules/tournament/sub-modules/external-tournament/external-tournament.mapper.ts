@@ -13,12 +13,6 @@ import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/e
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 
 export class ExternalTournamentMapper {
-  /**
-   * Deliberately omits `archivedAt`. This payload is the update body for the
-   * whole document, so carrying the flag here would let an ordinary edit of a
-   * restored league silently re-archive it (or vice versa). Archiving has its
-   * own targeted update.
-   */
   static toDatabasePayload(
     tournament: ExternalTournament,
   ): ExternalTournamentEntity {
@@ -35,12 +29,6 @@ export class ExternalTournamentMapper {
     };
   }
 
-  /**
-   * When the coach next plays. The draft cards show a countdown, and the list
-   * already carries every matchup, so this costs no extra query. Scored
-   * matchups are skipped: a result recorded late would otherwise keep pointing
-   * at a match that has already happened.
-   */
   private static nextScheduled(tournament: ExternalTournament): string | null {
     const now = Date.now();
     const upcoming = (tournament.matchups ?? [])
@@ -68,8 +56,10 @@ export class ExternalTournamentMapper {
       ruleset: tournament.ruleset.name,
       doc: tournament.doc,
       coach: tournament.coach,
-      archivedAt: tournament.archivedAt,
+      completedAt: tournament.completedAt ?? null,
       score: tournament.getScore(),
+      form: tournament.getForm(),
+      next: tournament.completedAt ? null : tournament.getNextMatch(),
       nextMatch: ExternalTournamentMapper.nextScheduled(tournament),
       team: [
         ...tournament.team.map(PokemonMapper.toClientPayload),
@@ -81,11 +71,6 @@ export class ExternalTournamentMapper {
     };
   }
 
-  /**
-   * Matches `ArchiveMapper.toListItem` field for field so the archived-drafts
-   * list can render legacy archives and flagged drafts from one template.
-   * `_id` is the draft's ObjectId, which is what the stats route resolves.
-   */
   static toArchiveListItem(tournament: ExternalTournament) {
     return {
       _id: tournament._id?.toString(),
@@ -97,15 +82,10 @@ export class ExternalTournamentMapper {
       slug: tournament.slug,
       team: tournament.team.map(PokemonMapper.toClientPayload),
       score: tournament.getScore(),
+      completedAt: tournament.completedAt ?? null,
     };
   }
 
-  /**
-   * `slug` is supplied on update so an edit keeps the tournament at the same
-   * URL — omitting it (the create path) mints a fresh one. Without that
-   * distinction every edit would re-roll the slug, since this same method
-   * builds the domain object for both operations.
-   */
   static fromForm(
     dto: ExternalTournamentDto,
     sub: string,
@@ -144,10 +124,6 @@ export class ExternalTournamentMapper {
     const ruleset = getRuleset(tournamentDoc.ruleset);
     const format = getFormat(tournamentDoc.format);
 
-    // A pokemon that can't be resolved against the stored ruleset (e.g. the
-    // wrong ruleset was selected) must not crash mapping for the whole
-    // tournament — that would lock the user out of every draft. Collect the
-    // failures separately so they can be surfaced as a warning and fixed.
     const { resolved: team, unresolved: unresolvedTeam } =
       PokemonMapper.fromDatabaseTeam(tournamentDoc.team, ruleset);
 
@@ -164,7 +140,7 @@ export class ExternalTournamentMapper {
         unresolvedTeam,
         doc: tournamentDoc.doc,
         coach: tournamentDoc.coach,
-        archivedAt: tournamentDoc.archivedAt,
+        completedAt: tournamentDoc.completedAt ?? tournamentDoc.archivedAt,
       },
       matchups,
     );

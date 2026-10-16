@@ -69,6 +69,9 @@ export class DraftEntity {
   @Prop({ default: 0 })
   pickVersion!: number;
 
+  @Prop()
+  snipeCount?: number;
+
   @Prop({ type: [DraftEventLogSchema], default: [] })
   eventLog!: DraftEventLogEntity[];
 

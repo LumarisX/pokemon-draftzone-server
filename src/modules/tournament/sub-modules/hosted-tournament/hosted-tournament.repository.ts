@@ -79,7 +79,7 @@ export class HostedTournamentRepository {
     );
   }
 
-  async isArchived(
+  async isCompleted(
     leagueSlug: string,
     tournamentSlug: string,
   ): Promise<boolean> {
@@ -88,11 +88,11 @@ export class HostedTournamentRepository {
     const doc = await this.hostedTournamentModel
       .findOne(
         { slug: { $eq: tournamentSlug }, league: league._id },
-        { archived: 1 },
+        { archived: 1, completedAt: 1 },
       )
       .lean()
       .exec();
-    return doc?.archived === true;
+    return !!doc?.completedAt || doc?.archived === true;
   }
 
   async findById(
@@ -136,7 +136,11 @@ export class HostedTournamentRepository {
   async countActiveInLeagues(leagueIds: Types.ObjectId[]): Promise<number> {
     if (leagueIds.length === 0) return 0;
     return this.hostedTournamentModel
-      .countDocuments({ league: { $in: leagueIds }, archived: { $ne: true } })
+      .countDocuments({
+        league: { $in: leagueIds },
+        archived: { $ne: true },
+        completedAt: null,
+      })
       .exec();
   }
 
@@ -172,10 +176,32 @@ export class HostedTournamentRepository {
     if (tournamentIds.length === 0) return [];
 
     const docs = await this.hostedTournamentModel
-      .find({ _id: { $in: tournamentIds }, archived: { $ne: true } })
+      .find({ _id: { $in: tournamentIds } })
       .sort({ createdAt: -1 })
       .exec();
 
+    return this.hydrate(docs);
+  }
+
+  async findByStaff(sub: string): Promise<HostedTournament[]> {
+    const ownedLeagues = await this.leagueRepo.findByOwner(sub);
+    const docs = await this.hostedTournamentModel
+      .find({
+        $or: [
+          { league: { $in: ownedLeagues.map((league) => league._id) } },
+          { "staff.sub": { $eq: sub } },
+        ],
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return this.hydrate(docs);
+  }
+
+  private async hydrate(
+    docs: HostedTournamentDocument[],
+  ): Promise<HostedTournament[]> {
+    if (docs.length === 0) return [];
     const leagueIds = [...new Set(docs.map((doc) => doc.league.toString()))];
     const [leagues, metas, stagesByDoc] = await Promise.all([
       this.leagueRepo.findManyByIds(leagueIds),

@@ -4,11 +4,26 @@ import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { getLatestRoster } from "@modules/stage/domain/roster";
 import {
+  calculateCurrentPick,
+  getCurrentPickingTeam,
+  isPreDraftStatus,
+} from "@modules/draft/domain/pick-order";
+import { DraftDocument } from "@modules/draft/draft.schema";
+import {
   calculateTeamScore,
+  calculateTeamStandings,
   PopulatedStageMatchup,
 } from "@modules/stage/domain/standings";
 import { rosterContext } from "@modules/stage/domain/stage-axis";
-import { TeamRepository } from "@modules/team/team.repository";
+import { StageDocument } from "@modules/stage/stage.schema";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
+import {
+  EntryMatchup,
+  formFrom,
+  NextMatch,
+  nextMatchFor,
+} from "./my-league-entry";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { HostingAccessService } from "@modules/tournament/sub-modules/hosted-tournament/hosting-access.service";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
@@ -51,11 +66,17 @@ export class LeagueService {
   ) {}
 
   async getLeagues(sub: string) {
-    const [tournaments, coaches] = await Promise.all([
+    const [tournaments, coaches, staffed] = await Promise.all([
       this.hostedTournamentRepo.findByParticipant(sub),
       this.coachRepo.findByAuth0Id(sub),
+      this.hostedTournamentRepo.findByStaff(sub),
     ]);
-    if (tournaments.length === 0) return { tournaments: [] };
+    const participating = new Set(tournaments.map((tournament) => tournament.id));
+    const organizing = await this.organizingView(
+      staffed.filter((tournament) => !participating.has(tournament.id)),
+      sub,
+    );
+    if (tournaments.length === 0) return { tournaments: [], organizing };
 
     const teams = await this.teamRepo.findManyByIds(
       coaches.map((coach) => coach.teamId),
@@ -77,6 +98,9 @@ export class LeagueService {
     ]);
     const poolSlugsById = new Map(
       drafts.map((draft) => [draft._id.toString(), draft.slug]),
+    );
+    const draftsById = new Map(
+      drafts.map((draft) => [draft._id.toString(), draft]),
     );
 
     const ownTeamIds = new Set(teams.map((team) => team._id.toString()));
@@ -115,7 +139,38 @@ export class LeagueService {
               tournament,
             )
           : undefined;
+        const seatCompletedAt =
+          coaches.find((coach) => coach.teamId.equals(team._id))
+            ?.completedAt ?? null;
+        const pool = team.draftId
+          ? draftsById.get(team.draftId.toString())
+          : undefined;
+        const season = await this.seasonView(tournament, team, pool);
+        const completedAt = tournament.completedAt ?? seatCompletedAt;
         return {
+          phase: completedAt
+            ? "completed"
+            : season.draft && !isPreDraftStatus(season.draft.status) &&
+                season.draft.status !== "COMPLETED"
+              ? "drafting"
+              : !pool || isPreDraftStatus(pool.status)
+                ? "upcoming"
+                : "season",
+          completedAt,
+          completedByOrganizer: !!tournament.completedAt,
+          startsAt: tournament.draftStart ?? null,
+          form: formFrom(record?.results ?? []),
+          next: completedAt ? null : season.next,
+          standing: season.standing,
+          draftState: season.draft,
+          outcome: team.outcome
+            ? {
+                placement: team.outcome.placement,
+                of: team.outcome.of,
+                label: team.outcome.label ?? null,
+                champion: team.outcome.champion,
+              }
+            : null,
           name: tournament.name,
           teamName: team.teamName,
           tournamentName: tournament.name,
@@ -150,6 +205,122 @@ export class LeagueService {
       tournaments: details.filter(
         (detail): detail is NonNullable<typeof detail> => detail !== null,
       ),
+      organizing,
+    };
+  }
+
+  private async organizingView(tournaments: HostedTournament[], sub: string) {
+    const pools = await this.draftRepo.findAllByTournaments(
+      tournaments.map((tournament) => tournament.id),
+    );
+    const statusesByTournament = new Map<string, string[]>();
+    for (const pool of pools) {
+      const key = pool.tournamentId.toString();
+      statusesByTournament.set(key, [
+        ...(statusesByTournament.get(key) ?? []),
+        pool.status,
+      ]);
+    }
+    return tournaments.map((tournament) => {
+      const statuses = statusesByTournament.get(tournament.id) ?? [];
+      return {
+        tournamentName: tournament.name,
+        tournamentSlug: tournament.slug,
+        leagueName: tournament.leagueName,
+        leagueSlug: tournament.leagueSlug,
+        logo: tournament.logo,
+        owner: tournament.owner === sub,
+        phase: tournament.completedAt
+          ? "completed"
+          : statuses.some(
+                (status) => status === "IN_PROGRESS" || status === "PAUSED",
+              )
+            ? "drafting"
+            : statuses.every((status) => isPreDraftStatus(status))
+              ? "upcoming"
+              : "season",
+        startsAt: tournament.draftStart ?? null,
+        completedAt: tournament.completedAt ?? null,
+      };
+    });
+  }
+
+  private async seasonView(
+    tournament: HostedTournament,
+    team: PopulatedTeam,
+    pool: DraftDocument | undefined,
+  ): Promise<{
+    next: NextMatch | null;
+    standing: { rank: number; of: number } | null;
+    draft: {
+      status: string;
+      picksMade: number;
+      rosterSize: number | null;
+      onClock: boolean;
+      round: number | null;
+      pick: number | null;
+      deadline: string | null;
+    } | null;
+  }> {
+    const teamId = team._id.toString();
+    const draft = pool ? await this.draftState(pool, team, tournament) : null;
+
+    const stageIds = tournament.stages
+      .filter((stage) => stage.public !== false)
+      .map((stage) => stage._id);
+    const matchups = (await this.matchupRepo.findByStages(
+      stageIds,
+    )) as unknown as PopulatedStageMatchup[];
+    if (matchups.length === 0) return { next: null, standing: null, draft };
+
+    const next = nextMatchFor(
+      matchups as unknown as EntryMatchup[],
+      teamId,
+      tournament.rounds,
+    );
+
+    let standing: { rank: number; of: number } | null = null;
+    if (matchups.some((matchup) => matchup.winner)) {
+      const teams = new Map<string, PopulatedTeam>();
+      for (const matchup of matchups)
+        for (const side of ["side1", "side2"] as const) {
+          const sideTeam = matchup[side].team as PopulatedTeam | undefined;
+          if (sideTeam?._id) teams.set(sideTeam._id.toString(), sideTeam);
+        }
+      const { teamStandings } = await calculateTeamStandings(
+        matchups,
+        {
+          teams: [...teams.values()],
+        } as unknown as StageDocument & { teams: PopulatedTeam[] },
+        tournament,
+      );
+      const rank = teamStandings.findIndex((row) => row.id === teamId);
+      if (rank >= 0) standing = { rank: rank + 1, of: teamStandings.length };
+    }
+    return { next, standing, draft };
+  }
+
+  private async draftState(
+    pool: DraftDocument,
+    team: PopulatedTeam,
+    tournament: HostedTournament,
+  ) {
+    const live = pool.status === "IN_PROGRESS";
+    const populated =
+      live && pool.sequentialTurns
+        ? await this.draftRepo.findPopulatedById(pool._id)
+        : null;
+    const picking = populated ? getCurrentPickingTeam(populated) : null;
+    const current = populated ? calculateCurrentPick(populated) : null;
+    return {
+      status: pool.status,
+      picksMade: team.pickLog?.length ?? 0,
+      rosterSize: tournament.draftCount?.max ?? null,
+      onClock: !!picking && picking._id.toString() === team._id.toString(),
+      round: current ? current.round + 1 : null,
+      pick: current ? current.position + 1 : null,
+      deadline:
+        live && pool.skipTime ? new Date(pool.skipTime).toISOString() : null,
     };
   }
 

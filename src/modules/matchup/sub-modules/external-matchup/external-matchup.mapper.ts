@@ -135,6 +135,7 @@ export class ExternalMatchupMapper {
     );
 
     return new ExternalMatchup({
+      id: matchupDoc._id?.toString(),
       ruleset,
       format,
       tournamentName: tournamentDoc.leagueName,

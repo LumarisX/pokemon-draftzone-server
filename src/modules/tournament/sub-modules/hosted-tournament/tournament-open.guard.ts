@@ -9,23 +9,23 @@ import {
 import { Reflector } from "@nestjs/core";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 
-type ArchivedRequest = {
+type CompletedRequest = {
   method: string;
   params?: Record<string, string | undefined>;
   body?: unknown;
 };
 
-type ArchivedExemption = (request: ArchivedRequest) => boolean;
+type CompletedExemption = (request: CompletedRequest) => boolean;
 
-const ALLOW_WHILE_ARCHIVED = "tournament:allowWhileArchived";
+const ALLOW_WHILE_COMPLETED = "tournament:allowWhileCompleted";
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-export const AllowWhileArchived = (when: ArchivedExemption = () => true) =>
-  SetMetadata(ALLOW_WHILE_ARCHIVED, when);
+export const AllowWhileCompleted = (when: CompletedExemption = () => true) =>
+  SetMetadata(ALLOW_WHILE_COMPLETED, when);
 
-export const unarchivesTournament: ArchivedExemption = (request) =>
-  (request.body as { archived?: unknown } | undefined)?.archived === false;
+export const reopensTournament: CompletedExemption = (request) =>
+  (request.body as { completed?: unknown } | undefined)?.completed === false;
 
 @Injectable()
 export class TournamentOpenGuard implements CanActivate {
@@ -37,7 +37,7 @@ export class TournamentOpenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== "http") return true;
 
-    const request = context.switchToHttp().getRequest<ArchivedRequest>();
+    const request = context.switchToHttp().getRequest<CompletedRequest>();
     if (READ_METHODS.has(request.method.toUpperCase())) return true;
 
     const leagueSlug = request.params?.["leagueSlug"];
@@ -45,13 +45,13 @@ export class TournamentOpenGuard implements CanActivate {
     if (!leagueSlug || !tournamentSlug) return true;
 
     const exemption = this.reflector.getAllAndOverride<
-      ArchivedExemption | undefined
-    >(ALLOW_WHILE_ARCHIVED, [context.getHandler(), context.getClass()]);
+      CompletedExemption | undefined
+    >(ALLOW_WHILE_COMPLETED, [context.getHandler(), context.getClass()]);
     if (exemption?.(request)) return true;
 
-    if (!(await this.tournamentRepo.isArchived(leagueSlug, tournamentSlug)))
+    if (!(await this.tournamentRepo.isCompleted(leagueSlug, tournamentSlug)))
       return true;
 
-    throw new PDZError(ErrorCodes.TOURNAMENT.ARCHIVED, { tournamentSlug });
+    throw new PDZError(ErrorCodes.TOURNAMENT.COMPLETED, { tournamentSlug });
   }
 }

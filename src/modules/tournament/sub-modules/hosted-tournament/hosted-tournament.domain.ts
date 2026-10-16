@@ -197,7 +197,7 @@ export class HostedTournament {
   leagueId: string;
   leagueSlug: string;
   leagueName: string;
-  archived: boolean;
+  completedAt?: Date;
   staff: StaffMember[];
   ownerName?: { sub: string; name: string };
   tierListId: string;
@@ -241,7 +241,7 @@ export class HostedTournament {
     leagueId: string;
     leagueSlug: string;
     leagueName: string;
-    archived?: boolean;
+    completedAt?: Date;
     staff?: StaffMember[];
     ownerName?: { sub: string; name: string };
     tierListId: string;
@@ -284,7 +284,7 @@ export class HostedTournament {
     this.leagueId = props.leagueId;
     this.leagueSlug = props.leagueSlug;
     this.leagueName = props.leagueName;
-    this.archived = props.archived ?? false;
+    this.completedAt = props.completedAt;
     this.staff = props.staff ?? [];
     this.ownerName = props.ownerName;
     this.tierListId = props.tierListId;
@@ -317,6 +317,10 @@ export class HostedTournament {
 
   get hasTierList(): boolean {
     return this.tierListId !== "";
+  }
+
+  get completed(): boolean {
+    return !!this.completedAt;
   }
 
   effectiveStandingsRules() {

@@ -20,9 +20,6 @@ import {
   ArchiveV2Document,
 } from "./archive.schema";
 
-// Legacy/raw-inserted archive docs (see migration history) can have missing or
-// malformed stat collections, so these helpers tolerate nullish input rather
-// than letting a single bad document throw and 500 the whole archives list.
 function statTuplesToMap(
   tuples: ArchiveStatTuple[] | null | undefined,
 ): Map<string, Stat> {
@@ -127,7 +124,6 @@ export class ArchiveMapper {
     });
   }
 
-  /** Shape consumed by the draft-archives list page (pokemon-draftzone-client Archive model). */
   static toListItem(archive: Archive) {
     return {
       _id: archive.id,
@@ -141,10 +137,10 @@ export class ArchiveMapper {
         name: getName(id),
       })),
       score: archive.archiveType === "ArchiveV2" ? archive.score : undefined,
+      completedAt: archive.createdAt ?? null,
     };
   }
 
-  /** Plain props for constructing a new ArchiveV2 discriminator document. */
   static toV2EntityProps(archive: ArchiveV2) {
     return {
       leagueName: archive.leagueName,

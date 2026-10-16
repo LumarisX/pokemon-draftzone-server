@@ -4,7 +4,12 @@ import { CoachDocument } from "@modules/coach/coach.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { ClientSession, Model, Types } from "mongoose";
-import { TeamDocument, TeamEntity, TeamStatus } from "./team.schema";
+import {
+  TeamDocument,
+  TeamEntity,
+  TeamOutcomeEntity,
+  TeamStatus,
+} from "./team.schema";
 
 export type PopulatedTeam = TeamDocument & {
   primaryCoach: CoachDocument;
@@ -163,6 +168,39 @@ export class TeamRepository {
     });
     await team.save();
     return this.findById(team._id);
+  }
+
+  async setOutcomes(
+    tournamentId: Types.ObjectId | string,
+    outcomes: Map<
+      string,
+      Omit<TeamOutcomeEntity, "label"> & { label?: string | null }
+    >,
+  ): Promise<void> {
+    await this.clearOutcomes(tournamentId);
+    if (outcomes.size === 0) return;
+    await this.teamModel.bulkWrite(
+      [...outcomes].map(([teamId, outcome]) => {
+        const stored: TeamOutcomeEntity = {
+          placement: outcome.placement,
+          of: outcome.of,
+          champion: outcome.champion,
+        };
+        if (outcome.label) stored.label = outcome.label;
+        return {
+          updateOne: {
+            filter: { _id: new Types.ObjectId(teamId), tournamentId },
+            update: { $set: { outcome: stored } },
+          },
+        };
+      }),
+    );
+  }
+
+  async clearOutcomes(tournamentId: Types.ObjectId | string): Promise<void> {
+    await this.teamModel
+      .updateMany({ tournamentId }, { $unset: { outcome: "" } })
+      .exec();
   }
 
   async countApprovedByTournament(

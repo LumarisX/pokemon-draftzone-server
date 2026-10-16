@@ -354,7 +354,8 @@ describe("LeagueService.getLeagues", () => {
       findById: jest.fn().mockResolvedValue(buildLeague()),
     } as unknown as jest.Mocked<LeagueRepository>;
     hostedTournamentRepo = {
-      findByParticipant: jest.fn(),
+      findByParticipant: jest.fn().mockResolvedValue([]),
+      findByStaff: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {
       findById: jest
@@ -383,9 +384,11 @@ describe("LeagueService.getLeagues", () => {
     } as unknown as jest.Mocked<TeamRepository>;
     draftRepo = {
       findManyByIds: jest.fn().mockResolvedValue([]),
+      findAllByTournaments: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DraftRepository>;
     matchupRepo = {
       findScoringByStages: jest.fn().mockResolvedValue([]),
+      findByStages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
     service = new LeagueService(
       leagueRepo,
@@ -398,6 +401,46 @@ describe("LeagueService.getLeagues", () => {
       hostingMock(),
       {} as UploadsService,
     );
+  });
+
+  it("files an organizer-completed tournament under completed with its stored outcome", async () => {
+    const completedAt = new Date("2026-09-30T00:00:00Z");
+    const tournament = buildParticipantTournament({ completedAt });
+    const team = buildParticipantTeam(tournament.id, {
+      outcome: { placement: 1, of: 8, label: "Champion", champion: true },
+    });
+    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    teamRepo.findManyByIds.mockResolvedValue([team]);
+
+    const { tournaments } = await service.getLeagues("user-1");
+
+    expect(tournaments[0]).toMatchObject({
+      phase: "completed",
+      completedAt,
+      completedByOrganizer: true,
+      next: null,
+      outcome: { placement: 1, of: 8, label: "Champion", champion: true },
+    });
+  });
+
+  it("files a tournament under completed when only the coach marked it", async () => {
+    const tournament = buildParticipantTournament();
+    const team = buildParticipantTeam(tournament.id);
+    const completedAt = new Date("2026-10-01T00:00:00Z");
+    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    teamRepo.findManyByIds.mockResolvedValue([team]);
+    coachRepo.findByAuth0Id.mockResolvedValue([
+      { teamId: team._id, completedAt },
+    ] as never);
+
+    const { tournaments } = await service.getLeagues("user-1");
+
+    expect(tournaments[0]).toMatchObject({
+      phase: "completed",
+      completedAt,
+      completedByOrganizer: false,
+      outcome: null,
+    });
   });
 
   it("scores a team from the matchups it appears in", async () => {
@@ -519,6 +562,43 @@ describe("LeagueService.getLeagues", () => {
     );
     expect(bySlug.get("a")).toEqual({ wins: 1, draws: 0, losses: 0, diff: 2 });
     expect(bySlug.get("b")).toEqual({ wins: 0, draws: 0, losses: 1, diff: -3 });
+  });
+
+  it("lists a tournament the user only organizes under organizing", async () => {
+    const tournament = buildParticipantTournament({
+      owner: "auth0|owner",
+      leagueName: "PDBL",
+      leagueSlug: "pdbl",
+    });
+    hostedTournamentRepo.findByStaff.mockResolvedValue([tournament]);
+    draftRepo.findAllByTournaments.mockResolvedValue([
+      { tournamentId: new Types.ObjectId(tournament.id), status: "IN_PROGRESS" },
+    ] as never);
+
+    const result = await service.getLeagues("auth0|owner");
+
+    expect(result.tournaments).toEqual([]);
+    expect(result.organizing).toEqual([
+      expect.objectContaining({
+        tournamentSlug: "springcup",
+        leagueSlug: "pdbl",
+        owner: true,
+        phase: "drafting",
+      }),
+    ]);
+  });
+
+  it("leaves a tournament the user coaches in out of organizing", async () => {
+    const tournament = buildParticipantTournament({ owner: "auth0|coach" });
+    const team = buildParticipantTeam(tournament.id);
+    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findByStaff.mockResolvedValue([tournament]);
+    teamRepo.findManyByIds.mockResolvedValue([team]);
+
+    const result = await service.getLeagues("auth0|coach");
+
+    expect(result.tournaments).toHaveLength(1);
+    expect(result.organizing).toEqual([]);
   });
 
   it("asks for every stage's matchups in one query", async () => {

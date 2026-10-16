@@ -98,6 +98,16 @@ export class DraftRepository {
     return this.draftModel.find({ tournamentId }).exec();
   }
 
+  async findAllByTournaments(
+    tournamentIds: (Types.ObjectId | string)[],
+  ): Promise<DraftDocument[]> {
+    if (tournamentIds.length === 0) return [];
+    return this.draftModel
+      .find({ tournamentId: { $in: tournamentIds } })
+      .select("tournamentId status")
+      .exec();
+  }
+
   async clearChannelsByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<void> {

@@ -26,6 +26,7 @@ export class HostedTournamentAdService {
       .find({
         "adSettings.advertise": true,
         archived: { $ne: true },
+        completedAt: null,
         signUpDeadline: { $gt: new Date() },
         tierList: { $ne: null },
       })

@@ -13,33 +13,27 @@ export class ArchiveService {
     private readonly tournamentService: ExternalTournamentService,
   ) {}
 
-  /**
-   * Two sources, and there will be two for a long time. Leagues archived from
-   * now on stay in `drafts` behind the `archivedAt` flag; the 1665 documents in
-   * `archives` were written by the legacy server and are frozen there, because
-   * the pre-2025-11 half of them records only the owner's own stats and has no
-   * opponent roster to rebuild a matchup from.
-   */
   async listArchivesForOwner(owner: string) {
-    const [legacy, archivedTournaments] = await Promise.all([
+    const [legacy, completedTournaments] = await Promise.all([
       this.archiveRepository.findAllByOwner(owner),
-      this.tournamentService.getArchivedTournaments(owner),
+      this.tournamentService.getCompletedTournaments(owner),
     ]);
 
     const items = [
       ...legacy.map((archive) => ({
-        createdAt: archive.createdAt,
+        completedAt: archive.createdAt,
         item: ArchiveMapper.toListItem(archive),
       })),
-      ...archivedTournaments.map((tournament) => ({
-        createdAt: tournament.archivedAt,
+      ...completedTournaments.map((tournament) => ({
+        completedAt: tournament.completedAt,
         item: ExternalTournamentMapper.toArchiveListItem(tournament),
       })),
     ];
 
     return items
       .sort(
-        (a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0),
+        (a, b) =>
+          (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0),
       )
       .map(({ item }) => item);
   }
@@ -48,11 +42,6 @@ export class ArchiveService {
     await this.archiveRepository.delete(teamId);
   }
 
-  /**
-   * The list mixes both sources, so a stats request can arrive with either a
-   * legacy archive id or the ObjectId of a flagged draft. Legacy wins the
-   * lookup; a miss falls through to the live collection rather than 404ing.
-   */
   async getArchiveStats(teamId: string) {
     try {
       const archive = await this.archiveRepository.findById(teamId);

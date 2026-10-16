@@ -13,7 +13,11 @@ import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { canOnTeam } from "@modules/tournament/membership";
-import { assertCan, can } from "@modules/tournament/tournament-policy";
+import {
+  assertCan,
+  can,
+  isStaff,
+} from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
@@ -26,6 +30,7 @@ import {
 } from "../stage/domain/standings";
 import { getDraftOrder, isPreDraftStatus } from "./domain/pick-order";
 import { canSeeTeamPicks } from "./domain/pick-visibility";
+import { isTournamentMember, summarizePool } from "./domain/pool-overview";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import { DraftEngineService } from "./draft-engine.service";
 import {
@@ -71,6 +76,38 @@ export class DraftService {
     return { tournament, draft };
   }
 
+  private async isMember(
+    tournament: PopulatedTournament,
+    sub: string | undefined,
+  ): Promise<boolean> {
+    if (!sub) return false;
+    if (isStaff(tournament, sub)) return true;
+    const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    return isTournamentMember(tournament, teams, sub);
+  }
+
+  private async loadVisibleContext(
+    leagueSlug: string,
+    tournamentSlug: string,
+    poolSlug: string,
+    sub: string | undefined,
+  ) {
+    const context = await this.loadContext(
+      leagueSlug,
+      tournamentSlug,
+      poolSlug,
+    );
+    if (
+      context.draft.public === false &&
+      !(await this.isMember(context.tournament, sub))
+    )
+      throw new PDZError(ErrorCodes.TOURNAMENT.POOL_NOT_FOUND, {
+        poolSlug,
+        tournamentSlug,
+      });
+    return context;
+  }
+
   private async resolveStage(
     tournamentId: Types.ObjectId,
     stageSlug?: string,
@@ -95,12 +132,13 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
-    sub: string,
+    sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadContext(
+    const { tournament, draft } = await this.loadVisibleContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
+      sub,
     );
     return getDraftDetails(tournament, draft, sub);
   }
@@ -109,15 +147,13 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
-    sub: string,
+    sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadContext(
+    const { tournament, draft } = await this.loadVisibleContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-    );
-    await Promise.all(
-      draft.teams.map((team) => team.populate("pickLog.picker")),
+      sub,
     );
 
     const allPicks = await Promise.all(
@@ -144,10 +180,6 @@ export class DraftService {
                 capt: { tera: pickItem.addons?.includes("Tera Captain") },
               },
               timestamp: pickItem.timestamp,
-              picker:
-                pickItem.picker && "auth0Id" in pickItem.picker
-                  ? (pickItem.picker as unknown as { auth0Id: string }).auth0Id
-                  : undefined,
             };
           }),
         );
@@ -169,12 +201,13 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
-    sub: string,
+    sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadContext(
+    const { tournament, draft } = await this.loadVisibleContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
+      sub,
     );
 
     const orderProgression = draft.orderProgression;
@@ -229,12 +262,13 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
-    sub: string,
+    sub: string | undefined,
   ): Promise<unknown[]> {
-    const { tournament, draft } = await this.loadContext(
+    const { tournament, draft } = await this.loadVisibleContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
+      sub,
     );
 
     const ruleset = tournament.tierList.ruleset;
@@ -447,6 +481,31 @@ export class DraftService {
     const { tournament: freshTournament, draft: freshDraft } =
       await this.loadContext(leagueSlug, tournamentSlug, poolSlug);
     return getDraftDetails(freshTournament, freshDraft, sub);
+  }
+
+  async getOverview(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string | undefined,
+  ) {
+    const tournament = await this.draftRepo.findTournament(
+      leagueSlug,
+      tournamentSlug,
+    );
+    const member = await this.isMember(tournament, sub);
+    const drafts = (
+      await this.draftRepo.findAllByTournament(tournament.id)
+    ).filter((draft) => draft.public !== false || member);
+    const populated = await Promise.all(
+      drafts.map(async (draft) =>
+        Object.assign(draft, {
+          teams: await this.teamRepo.findAllByDraft(draft._id),
+        }) as PopulatedDraft,
+      ),
+    );
+    return {
+      pools: populated.map((draft) => summarizePool(tournament, draft, sub)),
+    };
   }
 
   async listPools(leagueSlug: string, tournamentSlug: string, sub: string) {
@@ -663,13 +722,14 @@ export class DraftService {
     leagueSlug: string,
     tournamentSlug: string,
     poolSlug: string,
-    sub: string,
+    sub: string | undefined,
     stageSlug?: string,
   ) {
-    const { tournament, draft } = await this.loadContext(
+    const { tournament, draft } = await this.loadVisibleContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
+      sub,
     );
 
     const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);

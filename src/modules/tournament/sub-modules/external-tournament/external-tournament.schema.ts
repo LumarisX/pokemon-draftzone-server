@@ -40,14 +40,11 @@ export class ExternalTournamentEntity {
   @Prop({ type: [PokemonSchema], required: true })
   team!: PokemonEntity[];
 
-  /**
-   * Set when the owner archives the league; unset (not nulled) when they
-   * restore it. Queries filter on `archivedAt: null`, which matches both the
-   * unset and the absent case, so documents predating this field read as
-   * active without a backfill.
-   */
   @Prop({ type: Date, default: undefined })
   archivedAt?: Date;
+
+  @Prop({ type: Date, default: undefined })
+  completedAt?: Date;
 }
 
 export const ExternalTournamentSchema = SchemaFactory.createForClass(
@@ -56,6 +53,7 @@ export const ExternalTournamentSchema = SchemaFactory.createForClass(
 
 ExternalTournamentSchema.index({ owner: 1, slug: 1 }, { unique: true });
 ExternalTournamentSchema.index({ owner: 1, archivedAt: 1 });
+ExternalTournamentSchema.index({ owner: 1, completedAt: 1 });
 
 ExternalTournamentSchema.virtual("matchups", {
   ref: "ExternalMatchupEntity",

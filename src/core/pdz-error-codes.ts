@@ -486,10 +486,10 @@ export const ErrorCodes = {
       status: 409,
       message: "Attach a tier list before doing this",
     },
-    ARCHIVED: {
+    COMPLETED: {
       code: "TRN-005",
       status: 409,
-      message: "This tournament is archived and can no longer be changed",
+      message: "This tournament is completed and can no longer be changed",
     },
   },
   TEAMBUILDER: {

@@ -518,7 +518,7 @@ export class UpdateHostedTournamentSettingsDto {
 
   @IsBoolean()
   @IsOptional()
-  archived?: boolean;
+  completed?: boolean;
 }
 
 export class AddOrganizerDto {

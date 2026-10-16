@@ -11,6 +11,19 @@ export interface TournamentScore {
   diff: string;
 }
 
+export type ExternalFormResult = "win" | "loss" | "draw";
+
+export type ExternalNextMatch = {
+  round: string;
+  matchupId: string | null;
+  when: string | null;
+  exactTime: boolean;
+  opponent: { name: string; coach: string | null };
+};
+
+const FORM_LENGTH = 5;
+const SCORING_GRACE_MS = 24 * 60 * 60 * 1000;
+
 export class ExternalTournament {
   _id?: Types.ObjectId;
   ruleset: Ruleset;
@@ -23,7 +36,7 @@ export class ExternalTournament {
   unresolvedTeam: PokemonEntity[];
   doc?: string;
   coach?: string;
-  archivedAt?: Date;
+  completedAt?: Date;
   matchups: ExternalMatchup[];
   constructor(
     props: {
@@ -38,7 +51,7 @@ export class ExternalTournament {
       unresolvedTeam?: PokemonEntity[];
       doc?: string;
       coach?: string;
-      archivedAt?: Date;
+      completedAt?: Date;
     },
     matchups: ExternalMatchup[],
   ) {
@@ -53,8 +66,49 @@ export class ExternalTournament {
     this.unresolvedTeam = props.unresolvedTeam ?? [];
     this.doc = props.doc;
     this.coach = props.coach;
-    this.archivedAt = props.archivedAt;
+    this.completedAt = props.completedAt;
     this.matchups = matchups;
+  }
+
+  getForm(): ExternalFormResult[] {
+    return this.matchups
+      .flatMap((matchup): ExternalFormResult[] => {
+        if (matchup.isDoubleForfeit()) return ["loss"];
+        if (!matchup.forfeitedBy && !matchup.calculateScore()) return [];
+        const winner = matchup.calculateWinner();
+        if (winner === "a") return ["win"];
+        if (winner === "b") return ["loss"];
+        return ["draw"];
+      })
+      .slice(-FORM_LENGTH);
+  }
+
+  getNextMatch(now = Date.now()): ExternalNextMatch | null {
+    const open = this.matchups.filter(
+      (matchup) => !matchup.forfeitedBy && !matchup.calculateScore(),
+    );
+    const scheduled = open
+      .filter(
+        (matchup) =>
+          matchup.scheduledDate &&
+          matchup.scheduledDate.getTime() > now - SCORING_GRACE_MS,
+      )
+      .sort(
+        (a, b) => a.scheduledDate!.getTime() - b.scheduledDate!.getTime(),
+      );
+    const next =
+      scheduled[0] ?? open.find((matchup) => !matchup.scheduledDate) ?? null;
+    if (!next) return null;
+    return {
+      round: next.stage || "Next Match",
+      matchupId: next.id ?? null,
+      when: next.scheduledDate ? next.scheduledDate.toISOString() : null,
+      exactTime: !!next.scheduledDate,
+      opponent: {
+        name: next.bTeam.teamName,
+        coach: next.bTeam.coach ?? null,
+      },
+    };
   }
 
   getScore(): TournamentScore {

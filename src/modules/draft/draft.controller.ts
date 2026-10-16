@@ -1,5 +1,6 @@
 import { User } from "@core/decorators/user.decorator";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
+import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import {
   Body,
   Controller,
@@ -32,11 +33,12 @@ export class DraftController {
   constructor(private readonly draftService: DraftService) {}
 
   @Get()
+  @OptionalAuth()
   async getDetails(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
-    @User() sub: string,
+    @User() sub: string | undefined,
   ) {
     return this.draftService.getDetails(
       leagueSlug,
@@ -47,11 +49,12 @@ export class DraftController {
   }
 
   @Get("teams")
+  @OptionalAuth()
   async getTeams(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
-    @User() sub: string,
+    @User() sub: string | undefined,
     @Query("stageSlug") stageSlug?: string,
   ) {
     return this.draftService.getTeams(
@@ -64,11 +67,12 @@ export class DraftController {
   }
 
   @Get("picks")
+  @OptionalAuth()
   async getPicks(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
-    @User() sub: string,
+    @User() sub: string | undefined,
   ) {
     return this.draftService.getPicks(
       leagueSlug,
@@ -79,11 +83,12 @@ export class DraftController {
   }
 
   @Get("order")
+  @OptionalAuth()
   async getOrder(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
-    @User() sub: string,
+    @User() sub: string | undefined,
   ) {
     return this.draftService.getOrder(
       leagueSlug,
@@ -94,11 +99,12 @@ export class DraftController {
   }
 
   @Get("power-rankings")
+  @OptionalAuth()
   async getPowerRankings(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("poolSlug") poolSlug: string,
-    @User() sub: string,
+    @User() sub: string | undefined,
   ) {
     return this.draftService.getPowerRankings(
       leagueSlug,

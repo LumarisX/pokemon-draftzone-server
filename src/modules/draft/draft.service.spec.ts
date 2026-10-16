@@ -151,6 +151,7 @@ describe("DraftService", () => {
     } as unknown as jest.Mocked<StageRepository>;
     teamRepo = {
       findManyByIds: jest.fn(),
+      findAllByTournament: jest.fn().mockResolvedValue([]),
       updatePicks: jest.fn(),
       update: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TeamRepository>;
@@ -198,7 +199,7 @@ describe("DraftService", () => {
   });
 
   describe("getPicks", () => {
-    it("resolves each pick's name/tier and the picker's auth0Id when populated", async () => {
+    it("resolves each pick's name and tier without exposing who made it", async () => {
       const tournament = buildTournament();
       const team = buildTeam({
         pickLog: [
@@ -216,7 +217,7 @@ describe("DraftService", () => {
 
       const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
 
-      expect(team.populate).toHaveBeenCalledWith("pickLog.picker");
+      expect(team.populate).not.toHaveBeenCalled();
       expect(result).toEqual([
         {
           name: "Team Rocket",
@@ -230,7 +231,6 @@ describe("DraftService", () => {
                 capt: { tera: true },
               },
               timestamp: team.pickLog[0].timestamp,
-              picker: "auth0|coach-1",
             },
           ],
           picksHidden: false,
@@ -239,24 +239,33 @@ describe("DraftService", () => {
       ]);
     });
 
-    it("leaves picker undefined when it isn't populated with an auth0Id", async () => {
+    it("serves picks to signed-out viewers", async () => {
       const tournament = buildTournament();
       const team = buildTeam({
-        pickLog: [
-          {
-            pokemon: { id: "pikachu" },
-            timestamp: new Date("2026-01-01"),
-            picker: new Types.ObjectId(),
-          },
-        ],
+        pickLog: [{ pokemon: { id: "pikachu" }, timestamp: new Date("2026-01-01") }],
       });
       const draft = buildDraft({ teams: [team] });
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
-      const result = await service.getPicks("league-1", "tournament-1", "draft-1", "auth0|sub");
+      const result = await service.getPicks("league-1", "tournament-1", "draft-1", undefined);
 
-      expect(result[0].picks[0].picker).toBeUndefined();
+      expect(result[0].picks.map((pick) => pick.pokemon.id)).toEqual(["pikachu"]);
+    });
+
+    it("treats a private pool as missing for people outside the tournament", async () => {
+      const tournament = buildTournament({ owner: "auth0|owner", staff: [] });
+      const draft = buildDraft({ teams: [buildTeam()], public: false });
+      draftRepo.findTournament.mockResolvedValue(tournament);
+      draftRepo.findDraft.mockResolvedValue(draft);
+      teamRepo.findAllByTournament.mockResolvedValue([]);
+
+      await expect(
+        service.getPicks("league-1", "tournament-1", "draft-1", "auth0|stranger"),
+      ).rejects.toMatchObject({ code: "TRN-020" });
+      await expect(
+        service.getPicks("league-1", "tournament-1", "draft-1", "auth0|owner"),
+      ).resolves.toBeDefined();
     });
   });
 

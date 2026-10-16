@@ -420,6 +420,7 @@ export class DraftEngineService {
         session,
         currentTeamId,
       );
+      await this.recordSnipes(currentDraft, snipeCount, session);
 
       const initialTeamOrder = getDraftOrder(currentDraft);
       const pickOrder = generatePickOrder(
@@ -541,6 +542,22 @@ export class DraftEngineService {
       ))
     )
       throw new PDZError(ErrorCodes.DRAFT.ALREADY_DRAFTED, { pokemonId });
+  }
+
+  private async recordSnipes(
+    draft: PopulatedDraft,
+    snipeCount: number,
+    session: ClientSession,
+  ) {
+    if (duplicatesAllowed(draft)) return;
+    await this.connection
+      .model<DraftDocument>(DraftEntity.name)
+      .updateOne(
+        { _id: draft._id },
+        { $inc: { snipeCount } },
+        { session },
+      )
+      .exec();
   }
 
   private async removePokemonFromPicks(

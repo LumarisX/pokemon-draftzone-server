@@ -62,6 +62,7 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
+import { computeTournamentOutcomes } from "./tournament-outcomes";
 import {
   StandingsResponse,
   TeamListResponse,
@@ -176,6 +177,16 @@ export class HostedTournamentService {
       pointTotal: tournament.pointTotal,
       picksHidden,
       pickCount: team.pickLog?.length ?? 0,
+      tournamentCompleted: tournament.completed,
+      completedForMe:
+        viewerIsCoach &&
+        (team.coaches ?? []).some(
+          (seat) => seat.auth0Id === sub && !!seat.completedAt,
+        ),
+      ...(teamDraft &&
+      (teamDraft.public !== false || canSeeHidden || viewerIsCoach)
+        ? { pool: { poolSlug: teamDraft.slug, name: teamDraft.name } }
+        : {}),
       ...(viewerIsCoach
         ? { gameName: coach.gameName, discordName: coach.discordName }
         : {}),
@@ -306,6 +317,44 @@ export class HostedTournamentService {
     return { filters, views };
   }
 
+  async setMySeasonCompleted(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    completed: boolean,
+  ): Promise<void> {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    const seats = await this.coachRepo.findByAuth0Id(sub);
+    const teams = await this.teamRepo.findManyByIds(
+      seats.map((seat) => seat.teamId),
+    );
+    const team = teams.find(
+      (candidate) => candidate.tournamentId.toString() === tournament.id,
+    );
+    if (!team)
+      throw new PDZError(ErrorCodes.TEAM.NOT_FOUND, { tournamentSlug });
+    await this.coachRepo.setCompleted(
+      sub,
+      team._id,
+      completed ? new Date() : null,
+    );
+  }
+
+  private async recordOutcomes(tournament: HostedTournament): Promise<void> {
+    const { outcomes } = await computeTournamentOutcomes(
+      {
+        stageRepo: this.stageRepo,
+        teamRepo: this.teamRepo,
+        matchupRepo: this.matchupRepo,
+      },
+      tournament,
+    );
+    await this.teamRepo.setOutcomes(tournament.id, outcomes);
+  }
+
   private async composeStageTeams(
     stage: StageDocument,
   ): Promise<StageDocument & { teams: PopulatedTeam[] }> {
@@ -349,6 +398,7 @@ export class HostedTournamentService {
       draftEnd: tournament.draftEnd,
       seasonStart: tournament.seasonStart,
       seasonEnd: tournament.seasonEnd,
+      completedAt: tournament.completedAt ?? null,
       logo: tournament.logo,
       pools: drafts.map((draft) => ({
         poolSlug: draft.slug,
@@ -1442,7 +1492,14 @@ export class HostedTournamentService {
       }));
     if (dto.prizeSplit !== undefined) update["prizeSplit"] = dto.prizeSplit;
     if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
-    if (dto.archived !== undefined) update["archived"] = dto.archived;
+    if (dto.completed === true && !tournament.completed) {
+      await this.recordOutcomes(tournament);
+      update["completedAt"] = new Date();
+    } else if (dto.completed === false && tournament.completed) {
+      await this.teamRepo.clearOutcomes(tournament.id);
+      update["completedAt"] = null;
+      update["archived"] = null;
+    }
     if (dto.matchSettings !== undefined)
       update["matchSettings"] = {
         chat:

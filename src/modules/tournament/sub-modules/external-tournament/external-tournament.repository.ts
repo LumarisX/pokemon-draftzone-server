@@ -13,7 +13,6 @@ import {
   ExternalTournamentEntity,
 } from "./external-tournament.schema";
 
-/** Five re-rolls against a 2.18e14 keyspace; exhausting them means a defect. */
 const SLUG_COLLISION_RETRIES = 5;
 
 @Injectable()
@@ -23,27 +22,25 @@ export class ExternalTournamentRepository {
     private readonly tournamentModel: Model<ExternalTournamentDocument>,
   ) {}
 
-  /**
-   * `archivedAt: null` rather than `$exists: false` — it matches the unset and
-   * the absent case alike, so every league created before the field existed
-   * reads as active with no backfill.
-   */
   async findByOwner(owner: string): Promise<ExternalTournament[]> {
-    return this.findByOwnerAndArchiveState(owner, { archivedAt: null });
-  }
-
-  async findArchivedByOwner(owner: string): Promise<ExternalTournament[]> {
-    return this.findByOwnerAndArchiveState(owner, {
-      archivedAt: { $ne: null },
+    return this.findByOwnerAndState(owner, {
+      completedAt: null,
+      archivedAt: null,
     });
   }
 
-  private async findByOwnerAndArchiveState(
+  async findCompletedByOwner(owner: string): Promise<ExternalTournament[]> {
+    return this.findByOwnerAndState(owner, {
+      $or: [{ completedAt: { $ne: null } }, { archivedAt: { $ne: null } }],
+    });
+  }
+
+  private async findByOwnerAndState(
     owner: string,
-    archiveFilter: Record<string, unknown>,
+    stateFilter: Record<string, unknown>,
   ): Promise<ExternalTournament[]> {
     const tournamentDocs = await this.tournamentModel
-      .find({ owner: owner, ...archiveFilter })
+      .find({ owner: owner, ...stateFilter })
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .sort({ createdAt: -1 })
       .exec();
@@ -85,10 +82,6 @@ export class ExternalTournamentRepository {
   }
 
   async create(tournament: ExternalTournament): Promise<void> {
-    // Slugs are random base62(8), so a collision here is chance (~1 in 2.18e14
-    // per insert), not user error — re-roll and retry rather than failing the
-    // request. The unique index is what makes this safe under concurrency:
-    // two simultaneous inserts can't both win.
     for (let attempt = 0; attempt < SLUG_COLLISION_RETRIES; attempt++) {
       try {
         await new this.tournamentModel(
@@ -100,8 +93,6 @@ export class ExternalTournamentRepository {
         tournament.slug = generateSlug();
       }
     }
-    // Exhausting the retries means something is wrong with the generator or
-    // the index, not that the user picked a taken name.
     throw new PDZError(ErrorCodes.DRAFT.SLUG_GENERATION_FAILED, {
       attempts: SLUG_COLLISION_RETRIES,
     });
@@ -112,39 +103,27 @@ export class ExternalTournamentRepository {
     owner: string,
     tournament: ExternalTournament,
   ): Promise<void> {
-    let tournamentDoc;
-    try {
-      tournamentDoc = await this.tournamentModel
-        .findOneAndUpdate(
-          { owner: owner, slug },
-          ExternalTournamentMapper.toDatabasePayload(tournament),
-          {
-            returnDocument: "after",
-            upsert: true,
-          },
-        )
-        .exec();
-    } catch (error) {
-      // No duplicate-slug branch here: the filter and the upserted document
-      // carry the same owner+slug, so anything the unique index would reject
-      // is something the filter would already have matched and updated.
-      throw error;
-    }
+    const tournamentDoc = await this.tournamentModel
+      .findOneAndUpdate(
+        { owner: owner, slug },
+        ExternalTournamentMapper.toDatabasePayload(tournament),
+        {
+          returnDocument: "after",
+          upsert: true,
+        },
+      )
+      .exec();
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
   }
 
-  /**
-   * Unarchiving `$unset`s the field rather than writing null, so an active
-   * league looks identical to one that predates the field.
-   */
-  async setArchived(
+  async setCompleted(
     slug: string,
     owner: string,
-    archivedAt: Date | null,
+    completedAt: Date | null,
   ): Promise<void> {
-    const update = archivedAt
-      ? { $set: { archivedAt } }
-      : { $unset: { archivedAt: "" } };
+    const update = completedAt
+      ? { $set: { completedAt }, $unset: { archivedAt: "" } }
+      : { $unset: { completedAt: "", archivedAt: "" } };
 
     const result = await this.tournamentModel
       .findOneAndUpdate({ owner, slug }, update, { returnDocument: "after" })

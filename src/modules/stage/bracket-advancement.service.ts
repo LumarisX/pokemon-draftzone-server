@@ -75,7 +75,7 @@ export class BracketAdvancementService {
   }
 }
 
-function toAdvancementMatchup(doc: {
+export function toAdvancementMatchup(doc: {
   _id: unknown;
   winner?: string | null;
   advances?: string | null;

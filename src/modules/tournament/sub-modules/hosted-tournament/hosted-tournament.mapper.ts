@@ -17,6 +17,17 @@ export type TournamentLeague = { owner: string; slug: string; name: string };
 export type TournamentTierListMeta = { format: string; ruleset: string } | null;
 
 export class HostedTournamentMapper {
+  static completedAt(doc: {
+    completedAt?: Date | null;
+    archived?: boolean | null;
+    updatedAt?: Date;
+    createdAt?: Date;
+  }): Date | undefined {
+    if (doc.completedAt) return doc.completedAt;
+    if (doc.archived) return doc.updatedAt ?? doc.createdAt ?? new Date(0);
+    return undefined;
+  }
+
   static fromDatabase(
     doc: HostedTournamentDocument,
     league: TournamentLeague,
@@ -37,7 +48,7 @@ export class HostedTournamentMapper {
       leagueId: doc.league.toString(),
       leagueSlug: league.slug,
       leagueName: league.name,
-      archived: doc.archived,
+      completedAt: HostedTournamentMapper.completedAt(doc),
       staff: (doc.staff ?? []).map(({ sub, name, role }) => ({
         sub,
         name,
@@ -146,6 +157,7 @@ export class HostedTournamentMapper {
       tierListId: tournament.tierListId,
       format: tournament.format?.name ?? null,
       ruleset: tournament.ruleset?.name ?? null,
+      completedAt: tournament.completedAt ?? null,
     };
   }
 
@@ -179,7 +191,7 @@ export class HostedTournamentMapper {
       prizeSplit: tournament.prizeSplit,
       adSettings: tournament.adSettings,
       matchSettings: tournament.matchSettings,
-      archived: tournament.archived,
+      completed: tournament.completed,
     };
   }
 }

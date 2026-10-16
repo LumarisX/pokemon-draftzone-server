@@ -206,6 +206,7 @@ describe("ArchiveMapper.toListItem", () => {
       ruleset: "Gen9 NatDex",
       team: [{ id: "pikachu", name: "Pikachu" }],
       score: { wins: 1, losses: 0, diff: "+1" },
+      completedAt: null,
     });
   });
 

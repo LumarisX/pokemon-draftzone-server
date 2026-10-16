@@ -60,6 +60,23 @@ export class TeamNameChangeEntity {
 export const TeamNameChangeSchema =
   SchemaFactory.createForClass(TeamNameChangeEntity);
 
+@Schema({ _id: false })
+export class TeamOutcomeEntity {
+  @Prop({ required: true })
+  placement!: number;
+
+  @Prop({ required: true })
+  of!: number;
+
+  @Prop()
+  label?: string;
+
+  @Prop({ required: true, default: false })
+  champion!: boolean;
+}
+export const TeamOutcomeSchema =
+  SchemaFactory.createForClass(TeamOutcomeEntity);
+
 export type TeamDocument = HydratedDocument<TeamEntity>;
 
 @Schema({
@@ -108,6 +125,9 @@ export class TeamEntity {
 
   @Prop({ type: [TeamNameChangeSchema], default: [] })
   nameHistory!: TeamNameChangeEntity[];
+
+  @Prop({ type: TeamOutcomeSchema })
+  outcome?: TeamOutcomeEntity;
 }
 
 export const TeamSchema = SchemaFactory.createForClass(TeamEntity);

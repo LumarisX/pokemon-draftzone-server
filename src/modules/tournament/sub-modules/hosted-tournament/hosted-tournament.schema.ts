@@ -463,6 +463,9 @@ export class HostedTournamentEntity {
   @Prop()
   archived?: boolean;
 
+  @Prop()
+  completedAt?: Date;
+
   @Prop({ type: TournamentAdSettingsSchema })
   adSettings?: TournamentAdSettingsEntity;
 

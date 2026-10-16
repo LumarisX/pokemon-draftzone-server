@@ -30,8 +30,8 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentService } from "./hosted-tournament.service";
 import {
-  AllowWhileArchived,
-  unarchivesTournament,
+  AllowWhileCompleted,
+  reopensTournament,
 } from "./tournament-open.guard";
 
 @Controller("leagues/:leagueSlug/tournaments")
@@ -290,6 +290,40 @@ export class HostedTournamentController {
     return this.tournamentService.getStandings(leagueSlug, tournamentSlug, sub);
   }
 
+  @Post(":tournamentSlug/my-team/completed")
+  @UseGuards(JwtAuthGuard)
+  @AllowWhileCompleted()
+  async completeMySeason(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+  ) {
+    await this.tournamentService.setMySeasonCompleted(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      true,
+    );
+    return { message: "Season marked completed" };
+  }
+
+  @Delete(":tournamentSlug/my-team/completed")
+  @UseGuards(JwtAuthGuard)
+  @AllowWhileCompleted()
+  async reopenMySeason(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+  ) {
+    await this.tournamentService.setMySeasonCompleted(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      false,
+    );
+    return { message: "Season reopened" };
+  }
+
   @Get(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
   async getTournamentSettings(
@@ -302,7 +336,7 @@ export class HostedTournamentController {
 
   @Patch(":tournamentSlug/settings")
   @UseGuards(JwtAuthGuard)
-  @AllowWhileArchived(unarchivesTournament)
+  @AllowWhileCompleted(reopensTournament)
   async updateTournamentSettings(
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,

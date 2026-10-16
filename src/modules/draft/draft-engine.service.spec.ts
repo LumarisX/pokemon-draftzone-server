@@ -26,6 +26,7 @@ function buildFakeDraftModel() {
         : null;
       return { lean: () => ({ exec: async () => state }) };
     }),
+    updateOne: jest.fn(() => ({ exec: async () => undefined })),
   };
 }
 
@@ -406,6 +407,11 @@ describe("DraftEngineService", () => {
 
       expect(teamC.picks[0]).toEqual([{ pokemonId: "charizard" }]);
       expect(teamC.save).toHaveBeenCalled();
+      expect(fakeDraftModel.updateOne).toHaveBeenCalledWith(
+        { _id: draft._id },
+        { $inc: { snipeCount: 1 } },
+        expect.anything(),
+      );
     });
 
     it("leaves other teams' queued picks alone when duplicates are allowed", async () => {

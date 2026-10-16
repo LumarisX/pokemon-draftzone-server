@@ -38,7 +38,9 @@ export class ExternalMatchup {
   scoreOverride?: [number, number];
   winnerOverride?: MatchWinner;
   forfeitedBy?: ForfeitSide;
+  id?: string;
   constructor(props: {
+    id?: string;
     aTeam: MatchupSide;
     bTeam: MatchupSide;
     ruleset: Ruleset;
@@ -52,6 +54,7 @@ export class ExternalMatchup {
     winnerOverride?: MatchWinner;
     forfeitedBy?: ForfeitSide;
   }) {
+    this.id = props.id;
     this.ruleset = props.ruleset;
     this.format = props.format;
     this.matches = props.matches ?? [];
