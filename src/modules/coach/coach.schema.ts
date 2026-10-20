@@ -23,7 +23,7 @@ export class CoachEntity {
   @Prop({ required: true })
   timezone!: string;
 
-  @Prop({ required: true })
+  @Prop({ default: "" })
   experience!: string;
 
   @Prop({ required: true, default: false })
