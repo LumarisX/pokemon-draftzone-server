@@ -155,6 +155,7 @@ describe("HostedTournamentService signup", () => {
     } as unknown as jest.Mocked<TournamentApplicationRepository>;
     draftRepo = {
       findById: jest.fn(),
+      findAllByTournament: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DraftRepository>;
     discordService = {
       findMember: jest.fn().mockResolvedValue(null),
@@ -778,6 +779,166 @@ describe("HostedTournamentService signup", () => {
         { status: "approved" },
       );
 
+      expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("seats the new team straight into the chosen pool", async () => {
+      const poolId = new Types.ObjectId();
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+      draftRepo.findAllByTournament.mockResolvedValue([
+        { _id: poolId, slug: "pool1", name: "Draft Pool", status: "PRE_DRAFT", sequentialTurns: true },
+      ] as never);
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved", seat: "team", poolSlug: "pool1" },
+      );
+
+      expect(teamRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ draftId: poolId }),
+      );
+    });
+
+    it("refuses a pool that is already drafting in turns", async () => {
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+      draftRepo.findAllByTournament.mockResolvedValue([
+        { _id: new Types.ObjectId(), slug: "pool1", name: "Draft Pool", status: "IN_PROGRESS", sequentialTurns: true },
+      ] as never);
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          SUB,
+          { status: "approved", seat: "team", poolSlug: "pool1" },
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+      expect(teamRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("lets a late team into a pool that drafts without turns", async () => {
+      const poolId = new Types.ObjectId();
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+      draftRepo.findAllByTournament.mockResolvedValue([
+        { _id: poolId, slug: "pool1", name: "Draft Pool", status: "IN_PROGRESS", sequentialTurns: false },
+      ] as never);
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved", seat: "team", poolSlug: "pool1" },
+      );
+
+      expect(teamRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ draftId: poolId }),
+      );
+    });
+
+    it("refuses a pool from outside the tournament", async () => {
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+
+      await expect(
+        service.decideApplication(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          APPLICATION_ID.toString(),
+          SUB,
+          { status: "approved", seat: "team", poolSlug: "elsewhere" },
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.POOL_NOT_FOUND.code,
+      });
+    });
+
+    it("adds a team applicant as a sub without creating a team", async () => {
+      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved", seat: "sub" },
+      );
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+      expect(applicationRepo.decide).toHaveBeenCalledWith(
+        APPLICATION_ID.toString(),
+        expect.objectContaining({ status: "approved" }),
+      );
+    });
+
+    it("puts a sub on a roster when seated as a team", async () => {
+      applicationRepo.findInTournament.mockResolvedValue(
+        buildApplication({ intent: "sub", status: "approved", preferredTeamName: "" }),
+      );
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved", seat: "team" },
+      );
+
+      expect(teamRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ teamName: "Ash Ketchum's Team" }),
+      );
+    });
+
+    it("spreads a group across open pools evenly, in one transaction", async () => {
+      const ids = ["a", "b", "c", "d"].map(() => new Types.ObjectId());
+      applicationRepo.findInTournament.mockImplementation(
+        async (_tournamentId, id) =>
+          buildApplication({ _id: new Types.ObjectId(id.toString()) }),
+      );
+      const poolOne = { _id: new Types.ObjectId(), slug: "one", name: "One", status: "PRE_DRAFT", sequentialTurns: true };
+      const poolTwo = { _id: new Types.ObjectId(), slug: "two", name: "Two", status: "PRE_DRAFT", sequentialTurns: true };
+      draftRepo.findAllByTournament.mockResolvedValue([poolOne, poolTwo] as never);
+      teamRepo.findAllByTournament = jest.fn().mockResolvedValue([]);
+      teamRepo.create.mockResolvedValue(buildCreatedTeam());
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      const result = await service.seatAtRandom(LEAGUE_KEY, TOURNAMENT_KEY, SUB, {
+        applicationIds: ids.map((id) => id.toString()),
+        poolSlugs: ["one", "two"],
+      });
+
+      expect(
+        transactions.log.filter((entry) => entry === "begin"),
+      ).toHaveLength(1);
+      expect(teamRepo.create).toHaveBeenCalledTimes(4);
+      const bySlug = (slug: string) =>
+        result.seated.filter((entry) => entry.poolSlug === slug).length;
+      expect(bySlug("one")).toBe(2);
+      expect(bySlug("two")).toBe(2);
+    });
+
+    it("refuses to randomize someone who already has a team", async () => {
+      applicationRepo.findInTournament.mockResolvedValue(
+        buildApplication({ resultingTeamId: new Types.ObjectId() }),
+      );
+
+      await expect(
+        service.seatAtRandom(LEAGUE_KEY, TOURNAMENT_KEY, SUB, {
+          applicationIds: [APPLICATION_ID.toString()],
+          poolSlugs: ["one"],
+        }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.TOURNAMENT.APPLICATION_HAS_TEAM.code,
+      });
       expect(teamRepo.create).not.toHaveBeenCalled();
     });
 

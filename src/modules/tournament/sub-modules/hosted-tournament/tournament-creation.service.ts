@@ -19,6 +19,16 @@ import {
 
 export const DEFAULT_POOL_NAME = "Draft Pool";
 
+export const DEFAULT_DRAFT_COUNT = { min: 10, max: 12 } as const;
+
+const DEFAULT_SIGN_UP_DAYS = 14;
+
+export function defaultSignUpDeadline(now = new Date()): Date {
+  const deadline = new Date(now);
+  deadline.setUTCDate(deadline.getUTCDate() + DEFAULT_SIGN_UP_DAYS);
+  return deadline;
+}
+
 export function carriedQuestions(
   questions: readonly SignUpQuestionEntity[],
 ): SignUpQuestionEntity[] {
@@ -102,12 +112,9 @@ export class TournamentCreationService {
         tierListFrom: dto.tierListFrom,
       });
 
-    const draftCount = dto.draftCount ?? source?.draftCount;
-    const diffMode = dto.diffMode ?? source?.diffMode;
-    if (!draftCount || !diffMode)
-      throw new PDZError(ErrorCodes.TOURNAMENT.INVALID_SETTINGS, {
-        reason: "A draft count and a differential mode are required",
-      });
+    const draftCount =
+      dto.draftCount ?? source?.draftCount ?? DEFAULT_DRAFT_COUNT;
+    const diffMode = dto.diffMode ?? source?.diffMode ?? "pokemon";
 
     const tierRequirements =
       sourceTierList && source && tierListTournament === source
@@ -143,7 +150,7 @@ export class TournamentCreationService {
                   : undefined,
               staff: [{ sub, name: dto.ownerName, role: "organizer" as const }],
             }),
-        signUpDeadline: dto.signUpDeadline,
+        signUpDeadline: dto.signUpDeadline ?? defaultSignUpDeadline(),
         signUpAccess: "closed",
         forfeit: source?.forfeit ?? { gameDiff: 0, pokemonDiff: 0 },
         diffMode,

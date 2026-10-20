@@ -11,6 +11,7 @@ import { SignUpQuestionEntity } from "./hosted-tournament.schema";
 import { HostingAccessService } from "./hosting-access.service";
 import {
   carriedQuestions,
+  DEFAULT_DRAFT_COUNT,
   TournamentCreationService,
 } from "./tournament-creation.service";
 
@@ -197,6 +198,28 @@ describe("TournamentCreationService", () => {
       }),
     );
     expect(tierListRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("fills in a deadline, differential and roster size when none are given", async () => {
+    const before = Date.now();
+    await service.createTournament(
+      "league",
+      "auth0|owner",
+      dto({
+        signUpDeadline: undefined,
+        diffMode: undefined,
+        draftCount: undefined,
+      }),
+    );
+
+    const created = tournamentRepo.create.mock.calls[0][0] as {
+      signUpDeadline: Date;
+      diffMode: string;
+      draftCount: { min: number; max: number };
+    };
+    expect(created.diffMode).toBe("pokemon");
+    expect(created.draftCount).toEqual(DEFAULT_DRAFT_COUNT);
+    expect(created.signUpDeadline.getTime()).toBeGreaterThan(before);
   });
 
   it("rejects an inverted draft count", async () => {

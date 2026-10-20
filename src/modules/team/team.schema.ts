@@ -61,6 +61,20 @@ export const TeamNameChangeSchema =
   SchemaFactory.createForClass(TeamNameChangeEntity);
 
 @Schema({ _id: false })
+export class TeamOutcomeMvpEntity {
+  @Prop({ required: true })
+  id!: string;
+
+  @Prop({ required: true })
+  name!: string;
+
+  @Prop({ required: true, min: 0 })
+  kills!: number;
+}
+export const TeamOutcomeMvpSchema =
+  SchemaFactory.createForClass(TeamOutcomeMvpEntity);
+
+@Schema({ _id: false })
 export class TeamOutcomeEntity {
   @Prop({ required: true })
   placement!: number;
@@ -73,6 +87,18 @@ export class TeamOutcomeEntity {
 
   @Prop({ required: true, default: false })
   champion!: boolean;
+
+  @Prop({ min: 0 })
+  wins?: number;
+
+  @Prop({ min: 0 })
+  losses?: number;
+
+  @Prop({ min: 0 })
+  draws?: number;
+
+  @Prop({ type: TeamOutcomeMvpSchema })
+  mvp?: TeamOutcomeMvpEntity;
 }
 export const TeamOutcomeSchema =
   SchemaFactory.createForClass(TeamOutcomeEntity);

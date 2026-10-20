@@ -174,7 +174,10 @@ export class TeamRepository {
     tournamentId: Types.ObjectId | string,
     outcomes: Map<
       string,
-      Omit<TeamOutcomeEntity, "label"> & { label?: string | null }
+      Omit<TeamOutcomeEntity, "label" | "mvp"> & {
+        label?: string | null;
+        mvp?: TeamOutcomeEntity["mvp"] | null;
+      }
     >,
   ): Promise<void> {
     await this.clearOutcomes(tournamentId);
@@ -187,6 +190,15 @@ export class TeamRepository {
           champion: outcome.champion,
         };
         if (outcome.label) stored.label = outcome.label;
+        if (outcome.wins !== undefined) stored.wins = outcome.wins;
+        if (outcome.losses !== undefined) stored.losses = outcome.losses;
+        if (outcome.draws !== undefined) stored.draws = outcome.draws;
+        if (outcome.mvp)
+          stored.mvp = {
+            id: outcome.mvp.id,
+            name: outcome.mvp.name,
+            kills: outcome.mvp.kills,
+          };
         return {
           updateOne: {
             filter: { _id: new Types.ObjectId(teamId), tournamentId },

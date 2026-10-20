@@ -22,6 +22,7 @@ import {
   AssignTeamsDto,
   DecideApplicationDto,
   ReplaceCoachDto,
+  SeatAtRandomDto,
   SignUpDto,
   UpdateCoachDetailsDto,
   UpdateHostedTournamentSettingsDto,
@@ -125,6 +126,23 @@ export class HostedTournamentController {
       leagueSlug,
       tournamentSlug,
       sub,
+    );
+  }
+
+  @Post(":tournamentSlug/applications/seat-at-random")
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async seatAtRandom(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+    @Body() body: SeatAtRandomDto,
+  ) {
+    return this.tournamentService.seatAtRandom(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      body,
     );
   }
 
@@ -332,6 +350,20 @@ export class HostedTournamentController {
     @User() sub: string | undefined,
   ) {
     return this.tournamentService.getSettings(leagueSlug, tournamentSlug, sub);
+  }
+
+  @Get(":tournamentSlug/final-results")
+  @UseGuards(JwtAuthGuard)
+  async getFinalResults(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string | undefined,
+  ) {
+    return this.tournamentService.getFinalResults(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+    );
   }
 
   @Patch(":tournamentSlug/settings")

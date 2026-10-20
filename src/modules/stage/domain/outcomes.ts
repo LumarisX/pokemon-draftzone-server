@@ -10,8 +10,6 @@ export type TeamOutcome = {
 type Side = "side1" | "side2";
 const SIDES: readonly Side[] = ["side1", "side2"];
 
-const DEPTH_LABELS = ["Runner-Up", "Semifinalist", "Quarterfinalist"];
-
 function teamOn(matchup: AdvancementMatchup, side: Side): string | null {
   return matchup[side].team ?? null;
 }
@@ -27,6 +25,21 @@ function sourceIds(matchup: AdvancementMatchup): string[] {
 
 function isLoserFed(matchup: AdvancementMatchup): boolean {
   return SIDES.every((side) => matchup[side].slot?.type === "loser");
+}
+
+function isDecided(matchup: AdvancementMatchup): boolean {
+  return advancingSides(matchup).winner !== null;
+}
+
+function resetSource(
+  matchup: AdvancementMatchup,
+  byId: Map<string, AdvancementMatchup>,
+): AdvancementMatchup | null {
+  const [first, second] = SIDES.map((side) => matchup[side].slot);
+  if (!first?.matchId || first.matchId !== second?.matchId) return null;
+  const types = new Set([first.type, second.type]);
+  if (!types.has("winner") || !types.has("loser")) return null;
+  return byId.get(first.matchId) ?? null;
 }
 
 function findFinal(
@@ -52,9 +65,15 @@ function findFinal(
     depthOf.set(matchup.id, longest);
     return longest;
   };
-  return terminal.sort(
+  const final = terminal.sort(
     (a, b) => chain(b, new Set()) - chain(a, new Set()),
   )[0];
+  if (!final || isDecided(final)) return final;
+
+  const reset = resetSource(final, byId);
+  return reset && isDecided(reset) && advancingSides(reset).winner === "side1"
+    ? reset
+    : final;
 }
 
 function depthsFrom(
@@ -77,7 +96,9 @@ function depthsFrom(
   return depths;
 }
 
-type Tiered = { teamId: string; tier: number; label: string | null };
+type Tiered = { teamId: string; tier: number };
+
+const UNFINISHED_TIER = 1000;
 
 function bracketTiers(matchups: AdvancementMatchup[]): {
   tiers: Tiered[];
@@ -86,17 +107,24 @@ function bracketTiers(matchups: AdvancementMatchup[]): {
   const final = findFinal(matchups);
   if (!final) return { tiers: [], championId: null };
 
-  const depths = depthsFrom(final, matchups);
+  const active = matchups.filter(
+    (matchup) => matchup.id === final.id || !resetOf(matchup, final),
+  );
+  const depths = depthsFrom(final, active);
+  const feeding = new Set(active.flatMap(sourceIds));
   const consumedLosers = new Set(
-    matchups.flatMap((matchup) =>
+    active.flatMap((matchup) =>
       SIDES.flatMap((side) => {
         const slot = matchup[side].slot;
         return slot?.type === "loser" && slot.matchId ? [slot.matchId] : [];
       }),
     ),
   );
-  const thirdPlace = matchups.find(
-    (matchup) => matchup.id !== final.id && isLoserFed(matchup),
+  const thirdPlace = active.find(
+    (matchup) =>
+      matchup.id !== final.id &&
+      isLoserFed(matchup) &&
+      !feeding.has(matchup.id),
   );
 
   const finalExit = advancingSides(final);
@@ -110,7 +138,7 @@ function bracketTiers(matchups: AdvancementMatchup[]): {
     thirdPlace && thirdExit?.loser ? teamOn(thirdPlace, thirdExit.loser) : null;
 
   const teams = new Set(
-    matchups.flatMap((matchup) =>
+    active.flatMap((matchup) =>
       SIDES.flatMap((side) => {
         const team = teamOn(matchup, side);
         return team ? [team] : [];
@@ -125,31 +153,23 @@ function bracketTiers(matchups: AdvancementMatchup[]): {
     }),
   );
 
+  const fixedTier = new Map<string, number>();
+  if (championId) fixedTier.set(championId, 0);
+  else for (const teamId of finalists) fixedTier.set(teamId, 1);
+  if (runnerUpId) fixedTier.set(runnerUpId, 1);
+  if (thirdId) fixedTier.set(thirdId, 2);
+  if (fourthId) fixedTier.set(fourthId, 3);
+
   const tiers: Tiered[] = [];
   for (const teamId of teams) {
-    if (!championId && finalists.has(teamId)) {
-      tiers.push({ teamId, tier: 1, label: "Finalist" });
-      continue;
-    }
-    if (teamId === championId) {
-      tiers.push({ teamId, tier: 0, label: "Champion" });
-      continue;
-    }
-    if (teamId === runnerUpId) {
-      tiers.push({ teamId, tier: 1, label: "Runner-Up" });
-      continue;
-    }
-    if (teamId === thirdId) {
-      tiers.push({ teamId, tier: 2, label: "Third Place" });
-      continue;
-    }
-    if (teamId === fourthId) {
-      tiers.push({ teamId, tier: 3, label: "Semifinalist" });
+    const fixed = fixedTier.get(teamId);
+    if (fixed !== undefined) {
+      tiers.push({ teamId, tier: fixed });
       continue;
     }
 
     let eliminatedAt: number | null = null;
-    for (const matchup of matchups) {
+    for (const matchup of active) {
       if (consumedLosers.has(matchup.id)) continue;
       const exit = advancingSides(matchup);
       if (!exit.loser || teamOn(matchup, exit.loser) !== teamId) continue;
@@ -159,17 +179,19 @@ function bracketTiers(matchups: AdvancementMatchup[]): {
         eliminatedAt === null ? depth : Math.min(eliminatedAt, depth);
     }
 
-    if (eliminatedAt === null) {
-      tiers.push({ teamId, tier: 50, label: "Made Playoffs" });
-      continue;
-    }
     tiers.push({
       teamId,
-      tier: 10 + eliminatedAt,
-      label: DEPTH_LABELS[eliminatedAt] ?? "Made Playoffs",
+      tier: eliminatedAt === null ? UNFINISHED_TIER : 10 + eliminatedAt,
     });
   }
   return { tiers, championId };
+}
+
+function resetOf(
+  matchup: AdvancementMatchup,
+  final: AdvancementMatchup,
+): boolean {
+  return SIDES.some((side) => matchup[side].slot?.matchId === final.id);
 }
 
 export function computeOutcomes(input: {
@@ -186,26 +208,20 @@ export function computeOutcomes(input: {
   const { tiers, championId } = bracketTiers(input.bracketMatchups);
   const inBracket = new Set(tiers.map((entry) => entry.teamId));
 
-  const ordered: { teamId: string; label: string | null }[] = [
-    ...tiers
+  const ordered = [
+    ...[...tiers]
       .sort((a, b) => a.tier - b.tier || byRank(a.teamId, b.teamId))
-      .map(({ teamId, label }) => ({ teamId, label })),
-    ...input.standingsOrder
-      .filter((teamId) => !inBracket.has(teamId))
-      .map((teamId) => ({
-        teamId,
-        label: tiers.length ? "Missed Playoffs" : null,
-      })),
+      .map((entry) => entry.teamId),
+    ...input.standingsOrder.filter((teamId) => !inBracket.has(teamId)),
   ];
 
-  const of = ordered.length;
   const outcomes = new Map<string, TeamOutcome>();
-  ordered.forEach(({ teamId, label }, index) => {
+  ordered.forEach((teamId, index) => {
     const champion = tiers.length ? teamId === championId : index === 0;
     outcomes.set(teamId, {
       placement: index + 1,
-      of,
-      label: champion ? "Champion" : label,
+      of: ordered.length,
+      label: champion ? "Champion" : null,
       champion,
     });
   });

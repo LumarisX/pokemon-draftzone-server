@@ -59,6 +59,11 @@ export class LeagueController {
     return this.leagueService.updateLeague(leagueSlug, sub, body);
   }
 
+  @Get(":leagueSlug/hall-of-fame")
+  async getHallOfFame(@Param("leagueSlug") leagueSlug: string) {
+    return this.leagueService.getHallOfFame(leagueSlug);
+  }
+
   @Get(":leagueSlug")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)

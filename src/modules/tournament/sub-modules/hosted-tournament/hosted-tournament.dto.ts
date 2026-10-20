@@ -16,11 +16,11 @@ import { Transform, Type } from "class-transformer";
 import { TIEBREAKERS, Tiebreaker } from "@modules/stage/domain/scoring";
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
   IsDate,
-  IsDefined,
   IsIn,
   IsInt,
   IsOptional,
@@ -31,7 +31,6 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { applyDecorators } from "@nestjs/common";
@@ -191,6 +190,30 @@ export class DecideApplicationDto {
   @MaxLength(SIGN_UP_LIMITS.teamName)
   @IsOptional()
   teamName?: string;
+
+  @IsIn(["team", "sub"])
+  @IsOptional()
+  seat?: "team" | "sub";
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  @IsOptional()
+  poolSlug?: string;
+}
+
+export class SeatAtRandomDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  applicationIds!: string[];
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  poolSlugs!: string[];
 }
 
 export class UpdateTeamDto {
@@ -558,16 +581,16 @@ export class CreateTournamentDto {
 
   @IsDate()
   @Type(() => Date)
-  signUpDeadline!: Date;
+  @IsOptional()
+  signUpDeadline?: Date;
 
-  @ValidateIf((dto: CreateTournamentDto) => dto.copyFrom === undefined)
   @IsIn(["pokemon", "game"])
+  @IsOptional()
   diffMode?: "pokemon" | "game";
 
-  @ValidateIf((dto: CreateTournamentDto) => dto.copyFrom === undefined)
   @ValidateNested()
   @Type(() => DraftCountDto)
-  @IsDefined()
+  @IsOptional()
   draftCount?: DraftCountDto;
 
   @IsString()

@@ -13,6 +13,7 @@ import {
   canSeeTeamPicks,
   duplicatesAllowed,
 } from "@modules/draft/domain/pick-visibility";
+import { isPreDraftStatus } from "@modules/draft/domain/pick-order";
 import { isTeamRosterValid } from "@modules/draft/domain/tier-cost";
 import { DraftDocument } from "@modules/draft/draft.schema";
 import {
@@ -50,10 +51,12 @@ import {
   HostedTournament,
   TournamentRule,
 } from "./hosted-tournament.domain";
+import { shuffled, spreadAcrossPools } from "./pool-seating";
 import {
   DecideApplicationDto,
   ReplaceCoachDto,
   RuleSectionDto,
+  SeatAtRandomDto,
   SignUpDto,
   TeamAssignmentDto,
   UpdateCoachDetailsDto,
@@ -343,8 +346,8 @@ export class HostedTournamentService {
     );
   }
 
-  private async recordOutcomes(tournament: HostedTournament): Promise<void> {
-    const { outcomes } = await computeTournamentOutcomes(
+  private computeOutcomes(tournament: HostedTournament) {
+    return computeTournamentOutcomes(
       {
         stageRepo: this.stageRepo,
         teamRepo: this.teamRepo,
@@ -352,7 +355,37 @@ export class HostedTournamentService {
       },
       tournament,
     );
-    await this.teamRepo.setOutcomes(tournament.id, outcomes);
+  }
+
+  private async recordOutcomes(tournament: HostedTournament): Promise<void> {
+    const { results } = await this.computeOutcomes(tournament);
+    await this.teamRepo.setOutcomes(
+      tournament.id,
+      new Map(results.map((result) => [result.teamId, result])),
+    );
+  }
+
+  async getFinalResults(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string | undefined,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    assertCan(tournament, sub, "manageSettings");
+    const { results, bracketMatchups, unplayed, pendingReports } =
+      await this.computeOutcomes(tournament);
+    return {
+      name: tournament.name,
+      logo: tournament.logo ?? null,
+      completedAt: tournament.completedAt ?? null,
+      hasBracket: bracketMatchups > 0,
+      unplayed,
+      pendingReports,
+      results: results.map(({ teamId: _teamId, ...result }) => result),
+    };
   }
 
   private async composeStageTeams(
@@ -828,7 +861,8 @@ export class HostedTournamentService {
       });
     }
 
-    if (application.intent === "sub") {
+    const seat = dto.seat ?? application.intent;
+    if (seat === "sub") {
       const decided = await this.applicationRepo.decide(applicationId, {
         status: "approved",
         decidedBy: sub,
@@ -837,46 +871,123 @@ export class HostedTournamentService {
       return decided;
     }
 
-    const coachId = new Types.ObjectId();
-    const teamId = new Types.ObjectId();
+    const pool = await this.seatingPool(tournament, dto.poolSlug);
 
     const decided = await this.transactions.run(async () => {
       await this.reserveRosterRoom(tournament);
-
-      const team = await this.teamRepo.create({
-        _id: teamId,
-        tournamentId: tournament.id,
-        coach: coachId,
-        teamName: dto.teamName?.trim() || application.preferredTeamName,
-        logo: application.preferredLogo,
-        status: "approved",
-      });
-
-      const coach = await this.coachRepo.create({
-        _id: coachId,
-        auth0Id: application.auth0Id,
-        name: application.name,
-        gameName: application.gameName,
-        discordName: application.discordName,
-        timezone: application.timezone,
-        teamId,
-        experience: application.experience,
-        droppedBefore: application.droppedBefore,
-        droppedWhy: application.droppedWhy,
-        confirmed: application.confirmed,
-      });
-
-      return this.applicationRepo.decide(applicationId, {
-        status: "approved",
-        decidedBy: sub,
-        resultingTeamId: team._id,
-        resultingCoachId: coach._id,
-      });
+      return this.seatTeam(tournament, application, sub, pool, dto.teamName);
     });
 
     this.announceCoachSeated(tournament, application.discordName);
 
     return decided;
+  }
+
+  async seatAtRandom(
+    leagueSlug: string,
+    tournamentSlug: string,
+    sub: string,
+    dto: SeatAtRandomDto,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    assertCan(tournament, sub, "manageParticipants");
+
+    const applicationIds = [...new Set(dto.applicationIds)];
+    const applications = await Promise.all(
+      applicationIds.map((id) =>
+        this.applicationRepo.findInTournament(tournament.id, id),
+      ),
+    );
+    const seated = applications.filter(
+      (application) => application.resultingTeamId,
+    );
+    if (seated.length)
+      throw new PDZError(ErrorCodes.TOURNAMENT.APPLICATION_HAS_TEAM, {
+        applicationIds: seated.map((application) => application._id.toString()),
+      });
+
+    const pools = await Promise.all(
+      [...new Set(dto.poolSlugs)].map(
+        async (poolSlug) =>
+          (await this.seatingPool(tournament, poolSlug)) as DraftDocument,
+      ),
+    );
+    const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    const placements = spreadAcrossPools(
+      shuffled(applications),
+      shuffled(pools).map((pool) => ({
+        pool,
+        size: teams.filter(
+          (team) =>
+            team.status === "approved" &&
+            team.draftId?.toString() === pool._id.toString(),
+        ).length,
+      })),
+    );
+
+    await this.transactions.run(async () => {
+      await this.reserveRosterRoom(tournament, placements.length);
+      for (const { item, pool } of placements)
+        await this.seatTeam(tournament, item, sub, pool);
+    });
+
+    for (const { item } of placements)
+      this.announceCoachSeated(tournament, item.discordName);
+
+    return {
+      seated: placements.map(({ item, pool }) => ({
+        applicationId: item._id.toString(),
+        poolSlug: pool.slug,
+      })),
+    };
+  }
+
+  private async seatTeam(
+    tournament: HostedTournament,
+    application: TournamentApplicationDocument,
+    sub: string,
+    pool: DraftDocument | null,
+    teamName?: string,
+  ) {
+    const coachId = new Types.ObjectId();
+    const teamId = new Types.ObjectId();
+
+    const team = await this.teamRepo.create({
+      _id: teamId,
+      tournamentId: tournament.id,
+      draftId: pool?._id,
+      coach: coachId,
+      teamName:
+        teamName?.trim() ||
+        application.preferredTeamName?.trim() ||
+        `${application.name}'s Team`,
+      logo: application.preferredLogo,
+      status: "approved",
+    });
+
+    const coach = await this.coachRepo.create({
+      _id: coachId,
+      auth0Id: application.auth0Id,
+      name: application.name,
+      gameName: application.gameName,
+      discordName: application.discordName,
+      timezone: application.timezone,
+      teamId,
+      experience: application.experience,
+      droppedBefore: application.droppedBefore,
+      droppedWhy: application.droppedWhy,
+      confirmed: application.confirmed,
+    });
+
+    return this.applicationRepo.decide(application._id.toString(), {
+      status: "approved",
+      decidedBy: sub,
+      resultingTeamId: team._id,
+      resultingCoachId: coach._id,
+    });
   }
 
   async replaceCoach(
@@ -1017,6 +1128,25 @@ export class HostedTournamentService {
     });
 
     return { signUpToken, signUpTokenRotatedAt: new Date() };
+  }
+
+  private async seatingPool(
+    tournament: HostedTournament,
+    poolSlug: string | undefined,
+  ): Promise<DraftDocument | null> {
+    if (!poolSlug) return null;
+    const pools = await this.draftRepo.findAllByTournament(tournament.id);
+    const pool = pools.find((entry) => entry.slug === poolSlug);
+    if (!pool)
+      throw new PDZError(ErrorCodes.TOURNAMENT.POOL_NOT_FOUND, {
+        poolSlug,
+        tournamentSlug: tournament.slug,
+      });
+    if (pool.sequentialTurns && !isPreDraftStatus(pool.status))
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: `${pool.name} is already drafting in turns. Add the team as a sub, or to another pool.`,
+      });
+    return pool;
   }
 
   private async reserveRosterRoom(

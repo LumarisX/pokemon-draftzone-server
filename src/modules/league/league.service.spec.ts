@@ -298,6 +298,7 @@ describe("LeagueService.getLeagueSummary", () => {
         seasonEnd: tournament.seasonEnd,
         logo: "tournament-logo",
         discord: "discord-invite",
+        completedAt: null,
       },
     ]);
   });
