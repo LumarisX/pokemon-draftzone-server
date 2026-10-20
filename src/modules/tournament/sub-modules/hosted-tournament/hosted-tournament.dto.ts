@@ -575,6 +575,12 @@ export class CreateTournamentDto {
   @MaxLength(64)
   @IsOptional()
   copyFrom?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  @IsOptional()
+  tierListFrom?: string | null;
 }
 
 export class CreateOrganizerInviteDto extends OrganizerNameDto {}

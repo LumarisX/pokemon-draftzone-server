@@ -1,6 +1,7 @@
 import { TransactionRunner } from "@core/database/transaction-runner";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueRepository } from "@modules/league/league.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Types } from "mongoose";
@@ -17,6 +18,7 @@ const leagueId = new Types.ObjectId();
 const tierId = new Types.ObjectId();
 const sourceTierListId = new Types.ObjectId();
 const copiedTierListId = new Types.ObjectId();
+const createdTournamentId = new Types.ObjectId();
 
 function question(
   id: string,
@@ -73,6 +75,7 @@ describe("TournamentCreationService", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
   let hosting: jest.Mocked<HostingAccessService>;
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: TournamentCreationService;
 
   beforeEach(() => {
@@ -86,8 +89,13 @@ describe("TournamentCreationService", () => {
     } as unknown as jest.Mocked<LeagueRepository>;
     tournamentRepo = {
       findPlainInLeague: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ slug: "created" }),
+      create: jest
+        .fn()
+        .mockResolvedValue({ _id: createdTournamentId, slug: "created" }),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
+    draftRepo = {
+      create: jest.fn().mockResolvedValue({ slug: "pool" }),
+    } as unknown as jest.Mocked<DraftRepository>;
     tierListRepo = {
       findDocument: jest.fn().mockResolvedValue({
         _id: sourceTierListId,
@@ -108,14 +116,49 @@ describe("TournamentCreationService", () => {
       tierListRepo,
       hosting,
       { run: (work: () => Promise<unknown>) => work() } as TransactionRunner,
+      draftRepo,
     );
   });
 
-  it("only lets the league owner create a tournament", async () => {
+  it("gives a new tournament one draft pool so its pool settings are reachable", async () => {
+    await service.createTournament("league", "auth0|owner", dto());
+
+    expect(draftRepo.create).toHaveBeenCalledWith({
+      tournamentId: createdTournamentId,
+      name: "Draft Pool",
+    });
+  });
+
+  it("only lets the league owner or an admin create a tournament", async () => {
     await expect(
       service.createTournament("league", "auth0|other", dto()),
-    ).rejects.toMatchObject({ code: "LR-004" });
+    ).rejects.toMatchObject({ code: "LR-005" });
     expect(tournamentRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("lets a league admin create a tournament without the hosting role and seats them as an organizer", async () => {
+    leagueRepo.findBySlug.mockResolvedValue({
+      _id: leagueId,
+      owner: "auth0|owner",
+      admins: [{ sub: "auth0|admin", name: "Brock" }],
+    } as never);
+    tournamentRepo.findPlainInLeague.mockResolvedValue(
+      buildSource({ ownerName: { sub: "auth0|owner", name: "Host" } }),
+    );
+
+    await service.createTournament(
+      "league",
+      "auth0|admin",
+      dto({ ownerName: "Brock", copyFrom: "season1" }),
+    );
+
+    expect(hosting.assertCanCreateTournament).not.toHaveBeenCalled();
+    expect(tournamentRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerName: { sub: "auth0|owner", name: "Host" },
+        staff: [{ sub: "auth0|admin", name: "Brock", role: "organizer" }],
+      }),
+    );
   });
 
   it("stops a league owner who can't host", async () => {
@@ -248,6 +291,68 @@ describe("TournamentCreationService", () => {
     expect(tournamentRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ tierList: undefined, tierRequirements: [] }),
     );
+  });
+
+  it("branches a tier list without copying the other settings", async () => {
+    tournamentRepo.findPlainInLeague.mockResolvedValue(buildSource());
+
+    await service.createTournament(
+      "league",
+      "auth0|owner",
+      dto({ tierListFrom: "season1" }),
+    );
+
+    expect(tournamentRepo.findPlainInLeague).toHaveBeenCalledWith(
+      leagueId,
+      "season1",
+    );
+    expect(tierListRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ copiedFrom: sourceTierListId }),
+    );
+    const created = tournamentRepo.create.mock.calls[0][0];
+    expect(created).toEqual(
+      expect.objectContaining({
+        diffMode: "pokemon",
+        draftCount: { min: 8, max: 10 },
+        tierList: copiedTierListId,
+        tierRequirements: [],
+      }),
+    );
+    expect(created).not.toHaveProperty("rules");
+  });
+
+  it("copies settings but skips the tier list when asked", async () => {
+    tournamentRepo.findPlainInLeague.mockResolvedValue(buildSource());
+
+    await service.createTournament(
+      "league",
+      "auth0|owner",
+      dto({ copyFrom: "season1", tierListFrom: null }),
+    );
+
+    expect(tierListRepo.findDocument).not.toHaveBeenCalled();
+    expect(tournamentRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rules: [{ title: "Be nice", body: "" }],
+        tierList: undefined,
+        tierRequirements: [],
+      }),
+    );
+  });
+
+  it("refuses to branch from a tournament with no tier list", async () => {
+    tournamentRepo.findPlainInLeague.mockResolvedValue(
+      buildSource({ tierList: undefined }),
+    );
+
+    await expect(
+      service.createTournament(
+        "league",
+        "auth0|owner",
+        dto({ tierListFrom: "season1" }),
+      ),
+    ).rejects.toMatchObject({ code: "TRN-021" });
+    expect(tournamentRepo.create).not.toHaveBeenCalled();
   });
 });
 

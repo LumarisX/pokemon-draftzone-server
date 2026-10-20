@@ -33,6 +33,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
 import { CreateLeagueDto, UpdateLeagueDto } from "./league.dto";
+import { adminName, leagueRole } from "./league-access";
 import { LeagueRepository } from "./league.repository";
 
 function nextScheduledMatch(
@@ -343,9 +344,10 @@ export class LeagueService {
       discord: tournament.discord,
     }));
 
-    const isOwner = sub !== undefined && sub === league.owner;
+    const role = leagueRole(league, sub);
+    const isOwner = role === "owner";
     const latest = tournaments.at(-1);
-    const hosting = isOwner ? await this.hosting.access(sub) : null;
+    const hosting = isOwner && sub ? await this.hosting.access(sub) : null;
 
     return {
       name: league.name,
@@ -354,15 +356,26 @@ export class LeagueService {
       logo: league.logo,
       tournaments: tournamentSummaries,
       isOwner,
-      newTournamentDefaults: isOwner
+      role,
+      newTournamentDefaults: role
         ? {
-            ownerName:
-              latest?.ownerName?.sub === league.owner
+            ownerName: isOwner
+              ? latest?.ownerName?.sub === league.owner
                 ? latest.ownerName.name
-                : null,
+                : null
+              : adminName(league, sub!),
             copyFrom: latest
               ? { tournamentSlug: latest.slug, name: latest.name }
               : null,
+            tierLists: tournaments
+              .filter((tournament) => tournament.hasTierList)
+              .reverse()
+              .map((tournament) => ({
+                tournamentSlug: tournament.slug,
+                name: tournament.name,
+                format: tournament.format?.name ?? null,
+                ruleset: tournament.ruleset?.name ?? null,
+              })),
           }
         : null,
       hosting: hosting
@@ -373,7 +386,9 @@ export class LeagueService {
               ? null
               : hosting.tournament.reason,
           }
-        : null,
+        : role === "admin"
+          ? { canHost: true, canCreateTournament: true, reason: null }
+          : null,
     };
   }
 
@@ -397,20 +412,28 @@ export class LeagueService {
   }
 
   async getOwnedLeagues(sub: string) {
-    const leagues = await this.leagueRepo.findByOwner(sub);
+    const leagues = await this.leagueRepo.findManagedBy(sub);
+    const ownsAny = leagues.some((league) => league.owner === sub);
+    const access = ownsAny ? await this.hosting.access(sub) : null;
     return {
-      leagues: leagues.map((league) => ({
-        name: league.name,
-        leagueSlug: league.slug,
-        logo: league.logo,
-      })),
+      leagues: leagues.map((league) => {
+        const role = leagueRole(league, sub);
+        return {
+          name: league.name,
+          leagueSlug: league.slug,
+          logo: league.logo,
+          role,
+          canCreateTournament:
+            role === "admin" || (access?.tournament.allowed ?? false),
+        };
+      }),
     };
   }
 
   async updateLeague(leagueSlug: string, sub: string, dto: UpdateLeagueDto) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
-    if (league.owner !== sub)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_OWNER, { leagueSlug });
+    if (!leagueRole(league, sub))
+      throw new PDZError(ErrorCodes.LEAGUE.NOT_ADMIN, { leagueSlug });
 
     if (dto.logo && dto.logo !== league.logo)
       await this.uploads.claimUpload(dto.logo, {

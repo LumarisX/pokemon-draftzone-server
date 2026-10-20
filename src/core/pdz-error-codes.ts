@@ -22,6 +22,33 @@ export const ErrorCodes = {
       status: 403,
       message: "Only the league owner can do this.",
     },
+    NOT_ADMIN: {
+      code: "LR-005",
+      status: 403,
+      message: "Only the league owner or a league admin can do this.",
+    },
+    ADMIN_INVITE_INVALID: {
+      code: "LR-006",
+      status: 404,
+      message:
+        "This admin invite is invalid, has expired, or has already been used.",
+    },
+    ADMIN_INVITE_LIMIT: {
+      code: "LR-007",
+      status: 400,
+      message:
+        "This league has too many pending admin invites. Revoke one before creating another.",
+    },
+    ALREADY_ADMIN: {
+      code: "LR-008",
+      status: 400,
+      message: "You already run this league.",
+    },
+    ADMIN_NOT_FOUND: {
+      code: "LR-009",
+      status: 404,
+      message: "That person is not an admin of this league.",
+    },
   },
   TEAM: {
     NOT_FOUND: {

@@ -43,6 +43,7 @@ function buildTournament(overrides: Record<string, unknown> = {}) {
     slug: "springcup",
     description: "The spring cup",
     tierListId: "tierlist-1",
+    hasTierList: true,
     format: { name: "Singles" },
     ruleset: { name: "Gen9 NatDex" },
     signUpDeadline: new Date("2026-01-01"),
@@ -133,6 +134,7 @@ describe("LeagueService.getLeagueSummary", () => {
       logo: "league-logo",
       tournaments: [],
       isOwner: false,
+      role: null,
       newTournamentDefaults: null,
       hosting: null,
     });
@@ -171,7 +173,38 @@ describe("LeagueService.getLeagueSummary", () => {
     expect(result.newTournamentDefaults).toEqual({
       ownerName: "Host",
       copyFrom: { tournamentSlug: "new", name: "New Cup" },
+      tierLists: [
+        {
+          tournamentSlug: "new",
+          name: "New Cup",
+          format: "Singles",
+          ruleset: "Gen9 NatDex",
+        },
+        {
+          tournamentSlug: "old",
+          name: "Old Cup",
+          format: "Singles",
+          ruleset: "Gen9 NatDex",
+        },
+      ],
     });
+  });
+
+  it("offers only tournaments with a tier list to branch from", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([
+      buildTournament({ slug: "old", name: "Old Cup" }),
+      buildTournament({ slug: "new", name: "New Cup", hasTierList: false }),
+    ]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|owner",
+    );
+
+    expect(
+      result.newTournamentDefaults?.tierLists.map((t) => t.tournamentSlug),
+    ).toEqual(["old"]);
   });
 
   it("ignores a stored owner name that belongs to a previous owner", async () => {
@@ -186,6 +219,27 @@ describe("LeagueService.getLeagueSummary", () => {
     );
 
     expect(result.newTournamentDefaults?.ownerName).toBeNull();
+  });
+
+  it("lets a league admin create tournaments without the hosting role", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(
+      buildLeague({ admins: [{ sub: "auth0|admin", name: "Brock" }] }),
+    );
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([buildTournament()]);
+
+    const result = await service.getLeagueSummary(
+      "springleague",
+      "auth0|admin",
+    );
+
+    expect(result.isOwner).toBe(false);
+    expect(result.role).toBe("admin");
+    expect(result.newTournamentDefaults?.ownerName).toBe("Brock");
+    expect(result.hosting).toEqual({
+      canHost: true,
+      canCreateTournament: true,
+      reason: null,
+    });
   });
 
   it("gives other viewers no creation defaults", async () => {
@@ -352,6 +406,7 @@ describe("LeagueService.getLeagues", () => {
   beforeEach(() => {
     leagueRepo = {
       findById: jest.fn().mockResolvedValue(buildLeague()),
+      findManagedBy: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueRepository>;
     hostedTournamentRepo = {
       findByParticipant: jest.fn().mockResolvedValue([]),
@@ -588,6 +643,67 @@ describe("LeagueService.getLeagues", () => {
     ]);
   });
 
+  it("lists the leagues the user runs and whether they can start a tournament", async () => {
+    leagueRepo.findManagedBy.mockResolvedValue([
+      buildLeague(),
+      buildLeague({
+        slug: "fallcup",
+        name: "Fall Cup",
+        owner: "auth0|someone",
+        admins: [{ sub: "auth0|owner", name: "Host" }],
+      }),
+    ]);
+
+    const result = await service.getOwnedLeagues("auth0|owner");
+
+    expect(result.leagues).toEqual([
+      {
+        leagueSlug: "springleague",
+        name: "Spring League",
+        logo: "league-logo",
+        role: "owner",
+        canCreateTournament: true,
+      },
+      {
+        leagueSlug: "fallcup",
+        name: "Fall Cup",
+        logo: "league-logo",
+        role: "admin",
+        canCreateTournament: true,
+      },
+    ]);
+  });
+
+  it("lets an admin create tournaments even when they can't host their own", async () => {
+    service = new LeagueService(
+      leagueRepo,
+      hostedTournamentRepo,
+      tierListRepo,
+      coachRepo,
+      teamRepo,
+      draftRepo,
+      matchupRepo,
+      hostingMock(false),
+      {} as UploadsService,
+    );
+    leagueRepo.findManagedBy.mockResolvedValue([
+      buildLeague({ owner: "auth0|someone", admins: [{ sub: "auth0|me", name: "Me" }] }),
+    ]);
+
+    const result = await service.getOwnedLeagues("auth0|me");
+
+    expect(result.leagues[0]).toMatchObject({
+      role: "admin",
+      canCreateTournament: true,
+    });
+  });
+
+  it("returns nothing for someone who runs no leagues", async () => {
+    const result = await service.getOwnedLeagues("auth0|coach");
+
+    expect(result).toEqual({ leagues: [] });
+  });
+
   it("leaves a tournament the user coaches in out of organizing", async () => {
     const tournament = buildParticipantTournament({ owner: "auth0|coach" });
     const team = buildParticipantTeam(tournament.id);
@@ -700,11 +816,17 @@ describe("LeagueService.updateLeague", () => {
     );
   });
 
-  it("only lets the owner edit the league", async () => {
+  it("only lets the owner or an admin edit the league", async () => {
     await expect(
       service.updateLeague("springleague", "auth0|other", { name: "New" }),
-    ).rejects.toMatchObject({ code: "LR-004" });
+    ).rejects.toMatchObject({ code: "LR-005" });
     expect(leagueRepo.update).not.toHaveBeenCalled();
+
+    leagueRepo.findBySlug.mockResolvedValue(
+      buildLeague({ admins: [{ sub: "auth0|admin", name: "Brock" }] }),
+    );
+    await service.updateLeague("springleague", "auth0|admin", { name: "New" });
+    expect(leagueRepo.update).toHaveBeenCalled();
   });
 
   it("claims a new logo as a league logo before saving it", async () => {

@@ -62,6 +62,49 @@ export class LeagueRepository {
       .exec();
   }
 
+  async findManagedBy(sub: string): Promise<LeagueDocument[]> {
+    return this.leagueModel
+      .find({ $or: [{ owner: { $eq: sub } }, { "admins.sub": { $eq: sub } }] })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async addAdmin(
+    leagueId: Types.ObjectId,
+    admin: { sub: string; name: string },
+  ): Promise<boolean> {
+    const result = await this.leagueModel
+      .updateOne(
+        {
+          _id: leagueId,
+          owner: { $ne: admin.sub },
+          "admins.sub": { $ne: admin.sub },
+        },
+        { $push: { admins: admin } },
+      )
+      .exec();
+    return result.modifiedCount > 0;
+  }
+
+  async removeAdmin(leagueId: Types.ObjectId, sub: string): Promise<void> {
+    await this.leagueModel
+      .updateOne({ _id: leagueId }, { $pull: { admins: { sub } } })
+      .exec();
+  }
+
+  async setAdminName(
+    leagueId: Types.ObjectId,
+    sub: string,
+    name: string,
+  ): Promise<void> {
+    await this.leagueModel
+      .updateOne(
+        { _id: leagueId, "admins.sub": { $eq: sub } },
+        { $set: { "admins.$.name": name } },
+      )
+      .exec();
+  }
+
   async findById(leagueId: Types.ObjectId | string): Promise<LeagueDocument> {
     const league = await this.leagueModel.findById(leagueId).exec();
     if (!league)

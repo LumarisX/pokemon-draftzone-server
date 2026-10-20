@@ -1,6 +1,8 @@
 import { TransactionRunner } from "@core/database/transaction-runner";
 import { nullIfNotFound, PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftRepository } from "@modules/draft/draft.repository";
+import { leagueRole } from "@modules/league/league-access";
 import { LeagueRepository } from "@modules/league/league.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { TierListDocument } from "@modules/tier-list/tier-list.schema";
@@ -14,6 +16,8 @@ import {
   HostedTournamentEntity,
   SignUpQuestionEntity,
 } from "./hosted-tournament.schema";
+
+export const DEFAULT_POOL_NAME = "Draft Pool";
 
 export function carriedQuestions(
   questions: readonly SignUpQuestionEntity[],
@@ -59,6 +63,7 @@ export class TournamentCreationService {
     private readonly tierListRepo: TierListRepository,
     private readonly hosting: HostingAccessService,
     private readonly transactions: TransactionRunner,
+    private readonly draftRepo: DraftRepository,
   ) {}
 
   async createTournament(
@@ -67,9 +72,9 @@ export class TournamentCreationService {
     dto: CreateTournamentDto,
   ) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
-    if (league.owner !== sub)
-      throw new PDZError(ErrorCodes.LEAGUE.NOT_OWNER, { leagueSlug });
-    await this.hosting.assertCanCreateTournament(sub);
+    const role = leagueRole(league, sub);
+    if (!role) throw new PDZError(ErrorCodes.LEAGUE.NOT_ADMIN, { leagueSlug });
+    if (role === "owner") await this.hosting.assertCanCreateTournament(sub);
 
     const source = dto.copyFrom
       ? await this.tournamentRepo.findPlainInLeague(league._id, dto.copyFrom)
@@ -79,11 +84,23 @@ export class TournamentCreationService {
         copyFrom: dto.copyFrom,
       });
 
-    const sourceTierList = source?.tierList
+    const tierListSlug =
+      dto.tierListFrom === undefined ? dto.copyFrom : dto.tierListFrom;
+    const tierListTournament = !tierListSlug
+      ? null
+      : tierListSlug === dto.copyFrom
+        ? source
+        : await this.tournamentRepo.findPlainInLeague(league._id, tierListSlug);
+
+    const sourceTierList = tierListTournament?.tierList
       ? await nullIfNotFound(
-          this.tierListRepo.findDocument(source.tierList.toString()),
+          this.tierListRepo.findDocument(tierListTournament.tierList.toString()),
         )
       : null;
+    if (dto.tierListFrom && !sourceTierList)
+      throw new PDZError(ErrorCodes.TOURNAMENT.COPY_SOURCE_INVALID, {
+        tierListFrom: dto.tierListFrom,
+      });
 
     const draftCount = dto.draftCount ?? source?.draftCount;
     const diffMode = dto.diffMode ?? source?.diffMode;
@@ -92,9 +109,10 @@ export class TournamentCreationService {
         reason: "A draft count and a differential mode are required",
       });
 
-    const tierRequirements = sourceTierList
-      ? (source?.tierRequirements ?? [])
-      : [];
+    const tierRequirements =
+      sourceTierList && source && tierListTournament === source
+        ? (source.tierRequirements ?? [])
+        : [];
     assertRosterRules({
       tierIds: sourceTierList
         ? new Set(sourceTierList.tiers.map((tier) => tier._id.toString()))
@@ -112,12 +130,19 @@ export class TournamentCreationService {
         ? await this.copyTierList(sourceTierList, sub)
         : undefined;
 
-      return this.tournamentRepo.create({
+      const tournament = await this.tournamentRepo.create({
         ...(source ? carriedSettings(source) : {}),
         name: dto.name,
         league: league._id,
-        ownerName: { sub, name: dto.ownerName },
-        staff: [],
+        ...(role === "owner"
+          ? { ownerName: { sub, name: dto.ownerName }, staff: [] }
+          : {
+              ownerName:
+                source?.ownerName?.sub === league.owner
+                  ? source.ownerName
+                  : undefined,
+              staff: [{ sub, name: dto.ownerName, role: "organizer" as const }],
+            }),
         signUpDeadline: dto.signUpDeadline,
         signUpAccess: "closed",
         forfeit: source?.forfeit ?? { gameDiff: 0, pokemonDiff: 0 },
@@ -126,6 +151,11 @@ export class TournamentCreationService {
         tierList: tierListId,
         tierRequirements,
       });
+      await this.draftRepo.create({
+        tournamentId: tournament._id,
+        name: DEFAULT_POOL_NAME,
+      });
+      return tournament;
     });
 
     return { tournamentSlug: created.slug };

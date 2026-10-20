@@ -7,12 +7,23 @@ import { HostingAccessModule } from "@modules/tournament/sub-modules/hosted-tour
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { UploadsModule } from "@modules/upload/upload.module";
 import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
 import { LeagueService } from "./league.service";
 import { LeagueController } from "./league.controller";
 import { LeagueCoreModule } from "./league-core.module";
+import { LeagueAdminController } from "./league-admin.controller";
+import { LeagueAdminService } from "./league-admin.service";
+import { LeagueAdminInviteRepository } from "./league-admin-invite.repository";
+import {
+  LeagueAdminInviteEntity,
+  LeagueAdminInviteSchema,
+} from "./league-admin-invite.schema";
 
 @Module({
   imports: [
+    MongooseModule.forFeature([
+      { name: LeagueAdminInviteEntity.name, schema: LeagueAdminInviteSchema },
+    ]),
     LeagueCoreModule,
     HostedTournamentCoreModule,
     TierListModule,
@@ -23,8 +34,8 @@ import { LeagueCoreModule } from "./league-core.module";
     HostingAccessModule,
     UploadsModule,
   ],
-  controllers: [LeagueController],
-  providers: [LeagueService],
+  controllers: [LeagueController, LeagueAdminController],
+  providers: [LeagueService, LeagueAdminService, LeagueAdminInviteRepository],
   exports: [LeagueService, LeagueCoreModule],
 })
 export class LeagueModule {}
