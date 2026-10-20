@@ -7,10 +7,32 @@ const STAGE_TYPES = [
   "round-robin",
   "single-elimination",
   "double-elimination",
+  "triple-elimination",
   "swiss",
   "custom",
 ] as const;
 export type StageType = (typeof STAGE_TYPES)[number];
+export const STAGE_TYPE_VALUES: readonly string[] = STAGE_TYPES;
+
+const ENTRANT_KINDS = ["team", "place", "open"] as const;
+export type StageEntrantKind = (typeof ENTRANT_KINDS)[number];
+
+@Schema({ _id: false })
+export class StageEntrantEntity {
+  @Prop({ type: String, enum: ENTRANT_KINDS, required: true })
+  kind!: StageEntrantKind;
+
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity" })
+  team?: Types.ObjectId;
+
+  @Prop({ type: SchemaTypes.ObjectId })
+  sourceStage?: Types.ObjectId;
+
+  @Prop()
+  place?: number;
+}
+export const StageEntrantSchema =
+  SchemaFactory.createForClass(StageEntrantEntity);
 
 const SEEDING_METHODS = ["certified-random", "manual"] as const;
 export type SeedingMethod = (typeof SEEDING_METHODS)[number];
@@ -76,6 +98,9 @@ export class StageEntity {
 
   @Prop({ type: [SchemaTypes.ObjectId], ref: "TeamEntity", default: [] })
   teamIds!: Types.ObjectId[];
+
+  @Prop({ type: [StageEntrantSchema], default: [] })
+  entrants!: StageEntrantEntity[];
 
   @Prop({ type: [StageSeedingSchema], default: [] })
   seedingLog!: StageSeedingEntity[];

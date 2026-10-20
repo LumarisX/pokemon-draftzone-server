@@ -1,0 +1,103 @@
+name: Database Backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: "What this backup is for, e.g. before-outcomes-backfill (kept for a year)"
+        required: true
+        type: string
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+env:
+  TOOLS_VERSION: "100.12.2"
+  TOOLS_SHA256: "9a756be92b1de0a2578eceb4483fb1ba3e2ebecb45820cd46977edbdb084506b"
+  AWS_REGION: "us-east-2"
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Name the backup
+        id: name
+        env:
+          EVENT: ${{ github.event_name }}
+          LABEL: ${{ inputs.label }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y-%m-%dT%H%MZ)
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            slug=$(printf '%s' "$LABEL" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-*//;s/-*$//' | cut -c1-60)
+            if [ -z "$slug" ]; then
+              echo "::error::The label needs at least one letter or digit."
+              exit 1
+            fi
+            key="db-backups/labelled/${stamp}-${slug}.archive.gz"
+          else
+            key="db-backups/nightly/${stamp}.archive.gz"
+          fi
+          echo "key=${key}" >> "$GITHUB_OUTPUT"
+
+      - name: Install MongoDB database tools
+        run: |
+          set -euo pipefail
+          name="mongodb-database-tools-ubuntu2404-x86_64-${TOOLS_VERSION}"
+          curl -fsSL -o tools.tgz "https://fastdl.mongodb.org/tools/db/${name}.tgz"
+          echo "${TOOLS_SHA256}  tools.tgz" | sha256sum -c -
+          tar -xzf tools.tgz
+          echo "${PWD}/${name}/bin" >> "$GITHUB_PATH"
+
+      - name: Dump the database
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_BACKUP_URI }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MONGODB_URI" ]; then
+            echo "::error::Set the MONGODB_BACKUP_URI repository secret."
+            exit 1
+          fi
+          mongodump --uri="$MONGODB_URI" --db=draftzone --archive=backup.archive.gz --gzip --quiet
+          size=$(stat -c %s backup.archive.gz)
+          echo "Archive is ${size} bytes"
+          if [ "$size" -lt 1000000 ]; then
+            echo "::error::The archive is under 1 MB; the dump is probably incomplete."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions-pdz-backup
+
+      - name: Upload to S3
+        env:
+          BUCKET: ${{ vars.DB_BACKUP_BUCKET }}
+          KEY: ${{ steps.name.outputs.key }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BUCKET" ]; then
+            echo "::error::Set the DB_BACKUP_BUCKET repository variable."
+            exit 1
+          fi
+          aws s3 cp backup.archive.gz "s3://${BUCKET}/${KEY}" --sse AES256 --only-show-errors
+          stored=$(aws s3api head-object --bucket "$BUCKET" --key "$KEY" --query ContentLength --output text)
+          local_size=$(stat -c %s backup.archive.gz)
+          if [ "$stored" != "$local_size" ]; then
+            echo "::error::S3 holds ${stored} bytes but the archive is ${local_size}."
+            exit 1
+          fi
+          {
+            echo "### Backup saved"
+            echo ""
+            echo "\`s3://${BUCKET}/${KEY}\` (${stored} bytes)"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -3,7 +3,10 @@ import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { OptionalAuth } from "@modules/auth/optional-auth.decorator";
 import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
 import { SetCurrentRoundDto } from "./stage.dto";
-import { UpdateTournamentBracketDto } from "./tournament-bracket.dto";
+import {
+  ConfirmStageSeedsDto,
+  UpdateTournamentBracketDto,
+} from "./tournament-bracket.dto";
 import { TournamentBracketService } from "./tournament-bracket.service";
 
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/bracket")
@@ -33,6 +36,24 @@ export class TournamentBracketController {
       leagueSlug,
       tournamentSlug,
       sub,
+      body,
+    );
+  }
+
+  @Patch("stages/:stageId/seeds")
+  @UseGuards(JwtAuthGuard)
+  async confirmSeeds(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("stageId") stageId: string,
+    @User() sub: string,
+    @Body() body: ConfirmStageSeedsDto,
+  ) {
+    return this.bracketService.confirmSeeds(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+      stageId,
       body,
     );
   }

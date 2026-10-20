@@ -94,6 +94,7 @@ export class StageRepository {
       type: StageType;
       public: boolean;
       teamIds: Types.ObjectId[];
+      entrants?: unknown[];
       seedingLog: unknown[];
     }[];
     updates: { _id: Types.ObjectId; set: Record<string, unknown> }[];

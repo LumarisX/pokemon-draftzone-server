@@ -369,10 +369,8 @@ export class HostedTournament {
   }
 
   getPlayoffsStage(): StageDocument | undefined {
-    const bracketStages = this.stages.filter(
-      (stage) =>
-        stage.type === "single-elimination" ||
-        stage.type === "double-elimination",
+    const bracketStages = this.stages.filter((stage) =>
+      stage.type.endsWith("-elimination"),
     );
     if (bracketStages.length === 0) return undefined;
     return bracketStages.reduce((highest, stage) =>

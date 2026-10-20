@@ -863,4 +863,227 @@ describe("TournamentBracketService", () => {
       expect(asOwner.stages.map((s) => s.name)).toEqual(["Public", "Hidden"]);
     });
   });
+
+  describe("entrants", () => {
+    const groupTeams = [
+      new Types.ObjectId().toString(),
+      new Types.ObjectId().toString(),
+    ];
+
+    function playoffDto(
+      entrants: unknown[],
+      overrides: Record<string, unknown> = {},
+    ) {
+      return buildDto({
+        stages: [
+          {
+            key: "groups",
+            name: "Group A",
+            type: "round-robin",
+            seedGroups: [{ teamIds: groupTeams, method: "manual" }],
+          },
+          {
+            key: "playoffs",
+            name: "Playoffs",
+            type: "single-elimination",
+            entrants,
+            ...overrides,
+          },
+        ],
+        matches: [
+          {
+            key: "m1",
+            stageKey: "groups",
+            roundIndex: 0,
+            a: seedSlot(1),
+            b: seedSlot(2),
+          },
+          {
+            key: "p1",
+            stageKey: "playoffs",
+            roundIndex: 0,
+            a: seedSlot(1),
+            b: seedSlot(2),
+          },
+        ],
+      } as Partial<UpdateTournamentBracketDto>);
+    }
+
+    beforeEach(() => {
+      (teamRepo as any).countInTournament = jest
+        .fn()
+        .mockImplementation(async (_: string, ids: string[]) => ids.length);
+    });
+
+    it("creates a stage whose seeds are places in another stage", async () => {
+      const result = await update(
+        playoffDto([
+          { kind: "place", sourceStageKey: "groups", place: 1 },
+          { kind: "place", sourceStageKey: "groups", place: 2 },
+        ]),
+      );
+
+      const playoffs = stageRepo.applyStageDiff.mock.calls[0][0].creates[1];
+      expect(playoffs.teamIds).toEqual([]);
+      expect(
+        (playoffs.entrants as any[]).map((e) => [
+          e.kind,
+          e.sourceStage.toString(),
+          e.place,
+        ]),
+      ).toEqual([
+        ["place", result.stageIds["groups"], 1],
+        ["place", result.stageIds["groups"], 2],
+      ]);
+
+      const created = matchupRepo.applyStructureDiff.mock.calls[0][0].creates;
+      const playoffMatch = created.find(
+        (m: any) => m.stage.toString() === result.stageIds["playoffs"],
+      )!;
+      expect(playoffMatch.side1!.team).toBeUndefined();
+      expect(playoffMatch.side2!.team).toBeUndefined();
+    });
+
+    it("puts a team entrant straight into its seed", async () => {
+      const team = new Types.ObjectId().toString();
+      await update(
+        playoffDto([
+          { kind: "team", teamId: team },
+          { kind: "open" },
+        ]),
+      );
+
+      const playoffs = stageRepo.applyStageDiff.mock.calls[0][0].creates[1];
+      expect(playoffs.teamIds.map(String)).toEqual([team]);
+    });
+
+    it("refuses a stage that takes places from itself", async () => {
+      await expect(
+        update(
+          playoffDto([
+            { kind: "place", sourceStageKey: "playoffs", place: 1 },
+            { kind: "place", sourceStageKey: "groups", place: 1 },
+          ]),
+        ),
+      ).rejects.toMatchObject({ code: "STG-004" });
+    });
+
+    it("keeps a confirmed place's team when the stage is saved again", async () => {
+      const groups = buildStage({
+        teamIds: groupTeams.map((id) => new Types.ObjectId(id)),
+      });
+      const confirmed = new Types.ObjectId();
+      const playoffs = buildStage({
+        name: "Playoffs",
+        type: "single-elimination",
+        teamIds: [confirmed],
+        entrants: [
+          { kind: "place", sourceStage: groups._id, place: 1, team: confirmed },
+          { kind: "place", sourceStage: groups._id, place: 2 },
+        ],
+      });
+      stageRepo.findAllByTournament.mockResolvedValue([groups, playoffs]);
+
+      const dto = playoffDto(
+        [
+          { kind: "place", sourceStageKey: "groups", place: 2 },
+          { kind: "place", sourceStageKey: "groups", place: 1 },
+        ],
+        { _id: playoffs._id.toString() },
+      );
+      (dto.stages[0] as any)._id = groups._id.toString();
+      delete (dto.stages[0] as any).seedGroups;
+      await update(dto);
+
+      const set = stageRepo.applyStageDiff.mock.calls[0][0].updates[1].set;
+      expect((set.entrants as any[]).map((e) => e.team?.toString())).toEqual([
+        undefined,
+        confirmed.toString(),
+      ]);
+    });
+
+    describe("confirming seeds", () => {
+      const confirm = (stageId: string, seeds: unknown[]) =>
+        service.confirmSeeds("league-1", "tournament-1", "auth0|owner", stageId, {
+          seeds,
+        } as any);
+
+      it("writes the team into the entrant and every match that seed plays", async () => {
+        const source = new Types.ObjectId();
+        const stage = buildStage({
+          name: "Playoffs",
+          type: "single-elimination",
+          entrants: [
+            { kind: "place", sourceStage: source, place: 1 },
+            { kind: "place", sourceStage: source, place: 2 },
+          ],
+        });
+        (stageRepo as any).findById = jest.fn().mockResolvedValue(stage);
+        const matchId = new Types.ObjectId();
+        matchupRepo.findStructureByStages.mockResolvedValue([
+          {
+            _id: matchId,
+            stage: stage._id,
+            side1: { slot: { type: "seed", seed: 1 } },
+            side2: { slot: { type: "seed", seed: 2 } },
+            results: [],
+          },
+        ] as any);
+        const first = new Types.ObjectId().toString();
+        const second = new Types.ObjectId().toString();
+
+        await confirm(stage._id.toString(), [
+          { seed: 1, teamId: first },
+          { seed: 2, teamId: second },
+        ]);
+
+        const set = stageRepo.applyStageDiff.mock.calls[0][0].updates[0].set;
+        expect((set.teamIds as any[]).map(String)).toEqual([first, second]);
+        const [matchUpdate] =
+          matchupRepo.applyStructureDiff.mock.calls[0][0].updates;
+        expect(matchUpdate.set["side1.team"]!.toString()).toBe(first);
+        expect(matchUpdate.set["side2.team"]!.toString()).toBe(second);
+      });
+
+      it("refuses to overwrite a seed that is a team", async () => {
+        const stage = buildStage({
+          entrants: [{ kind: "team", team: new Types.ObjectId() }],
+        });
+        (stageRepo as any).findById = jest.fn().mockResolvedValue(stage);
+
+        await expect(
+          confirm(stage._id.toString(), [
+            { seed: 1, teamId: new Types.ObjectId().toString() },
+          ]),
+        ).rejects.toMatchObject({ code: "STG-004" });
+      });
+
+      it("refuses to change a seed that already has results", async () => {
+        const source = new Types.ObjectId();
+        const played = new Types.ObjectId();
+        const stage = buildStage({
+          entrants: [
+            { kind: "place", sourceStage: source, place: 1, team: played },
+            { kind: "place", sourceStage: source, place: 2 },
+          ],
+        });
+        (stageRepo as any).findById = jest.fn().mockResolvedValue(stage);
+        matchupRepo.findStructureByStages.mockResolvedValue([
+          {
+            _id: new Types.ObjectId(),
+            stage: stage._id,
+            side1: { slot: { type: "seed", seed: 1 } },
+            side2: { slot: { type: "seed", seed: 2 } },
+            results: [{}],
+          },
+        ] as any);
+
+        await expect(
+          confirm(stage._id.toString(), [
+            { seed: 1, teamId: new Types.ObjectId().toString() },
+          ]),
+        ).rejects.toMatchObject({ code: "STG-004" });
+      });
+    });
+  });
 });
