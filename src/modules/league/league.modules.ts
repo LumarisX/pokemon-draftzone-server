@@ -8,6 +8,9 @@ import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { UploadsModule } from "@modules/upload/upload.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { StageCoreModule } from "@modules/stage/stage-core.module";
+import { HallOfFameController } from "./hall-of-fame.controller";
+import { HallOfFameService } from "./hall-of-fame.service";
 import { LeagueService } from "./league.service";
 import { LeagueController } from "./league.controller";
 import { LeagueCoreModule } from "./league-core.module";
@@ -33,9 +36,15 @@ import {
     LeagueMatchupModule,
     HostingAccessModule,
     UploadsModule,
+    StageCoreModule,
   ],
-  controllers: [LeagueController, LeagueAdminController],
-  providers: [LeagueService, LeagueAdminService, LeagueAdminInviteRepository],
+  controllers: [LeagueController, LeagueAdminController, HallOfFameController],
+  providers: [
+    LeagueService,
+    LeagueAdminService,
+    LeagueAdminInviteRepository,
+    HallOfFameService,
+  ],
   exports: [LeagueService, LeagueCoreModule],
 })
 export class LeagueModule {}

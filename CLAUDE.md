@@ -219,3 +219,29 @@ or Mimikyu-Busted. Do not add them to `IRRELEVANT_BATTLE_ONLY_SPECIES`.
   policy table. It is REST-polled by design, not pushed.
 - `displayName` overrides the Auth0 `username` default; there was no migration, so
   treat it as optional.
+
+## Achievements and final placements
+
+Achievements are earned by a team within one tournament. Every definition lives in
+`modules/achievement/domain/catalog.ts`: `id`, `name`, `icon` (a Material Symbols name),
+`hint(count)` and `tiers` (`{ rarity, count }`, ascending; one entry for a single-rarity
+achievement). Its `events(season)` returns one dated event per qualifying thing in a
+`TeamSeason` (the team's matches in date order, each game's Pokémon with KOs and
+faints, approved trades, the champion). The event count picks the tier, and the event
+that crossed a tier's count dates it. `runningBest` handles "best streak" or "most by
+one Pokémon" shapes. Adding an achievement is one catalog entry plus a test in
+`achievement.spec.ts`; there is no schema change.
+
+They are computed live from results (`computeTournamentOutcomes`), so an overturned
+result removes one. Completing a tournament snapshots placements, record, season MVP,
+the top three scorers (`top`, from `seasonLeaders`) and achievements into
+`team.outcome`; reopening clears them. The public
+`GET leagues/:leagueSlug/hall-of-fame` reads snapshots for completed tournaments (every
+placed team, not just the podium; seasons without `top` fall back to the MVP) and
+computes the rest live. `GET .../teams/:teamSlug/achievements` returns every
+achievement with the team's progress toward its next tier (`achievementProgress`), or
+the snapshot with `final: true` once the tournament is completed.
+
+Final placements (`stage/domain/outcomes.ts`) come from the elimination bracket (the
+round a team went out in, ties broken by standings), then standings for teams outside
+it. Only the champion gets a label.

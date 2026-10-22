@@ -280,6 +280,19 @@ export class HostedTournamentController {
     );
   }
 
+  @Get(":tournamentSlug/teams/:teamSlug/achievements")
+  async getTeamAchievements(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("teamSlug") teamSlug: string,
+  ) {
+    return this.tournamentService.getTeamAchievements(
+      leagueSlug,
+      tournamentSlug,
+      teamSlug,
+    );
+  }
+
   @Get(":tournamentSlug/teams/:teamSlug")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)

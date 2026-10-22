@@ -325,59 +325,6 @@ export class LeagueService {
     };
   }
 
-  async getHallOfFame(leagueSlug: string) {
-    const league = await this.leagueRepo.findBySlug(leagueSlug);
-    const completed = (
-      await this.hostedTournamentRepo.findAllByLeague(league)
-    ).filter((tournament) => !!tournament.completedAt);
-
-    const seasons = await Promise.all(
-      completed.map(async (tournament) => {
-        const teams = await this.teamRepo.findAllByTournament(tournament.id);
-        const placed = teams
-          .filter((team) => team.outcome && team.outcome.placement <= 3)
-          .sort((a, b) => a.outcome!.placement - b.outcome!.placement);
-        return {
-          tournamentSlug: tournament.slug,
-          name: tournament.name,
-          logo: tournament.logo ?? null,
-          format: tournament.format?.name ?? null,
-          ruleset: tournament.ruleset?.name ?? null,
-          completedAt: tournament.completedAt!,
-          teamCount: teams.find((team) => team.outcome)?.outcome?.of ?? 0,
-          places: placed.map((team) => ({
-            teamSlug: team.slug,
-            name: team.teamName,
-            logo: team.logo ?? null,
-            coach: team.primaryCoach?.name ?? null,
-            placement: team.outcome!.placement,
-            label: team.outcome!.label ?? null,
-            champion: team.outcome!.champion,
-            wins: team.outcome!.wins ?? null,
-            losses: team.outcome!.losses ?? null,
-            draws: team.outcome!.draws ?? null,
-            mvp: team.outcome!.mvp
-              ? {
-                  id: team.outcome!.mvp.id,
-                  name: team.outcome!.mvp.name,
-                  kills: team.outcome!.mvp.kills,
-                }
-              : null,
-          })),
-        };
-      }),
-    );
-
-    return {
-      name: league.name,
-      leagueSlug: league.slug,
-      logo: league.logo ?? null,
-      seasons: seasons
-        .filter((season) => season.places.length > 0)
-        .sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime()),
-    };
-  }
-
   async getLeagueSummary(leagueSlug: string, sub?: string) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     const tournaments = await this.hostedTournamentRepo.findAllByLeague(league);

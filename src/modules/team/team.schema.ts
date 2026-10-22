@@ -75,6 +75,27 @@ export const TeamOutcomeMvpSchema =
   SchemaFactory.createForClass(TeamOutcomeMvpEntity);
 
 @Schema({ _id: false })
+export class TeamAchievementEntity {
+  @Prop({ required: true })
+  id!: string;
+
+  @Prop({ required: true })
+  rarity!: string;
+
+  @Prop({ required: true, min: 0 })
+  tier!: number;
+
+  @Prop({ required: true, min: 0 })
+  count!: number;
+
+  @Prop()
+  earnedAt?: Date;
+}
+export const TeamAchievementSchema = SchemaFactory.createForClass(
+  TeamAchievementEntity,
+);
+
+@Schema({ _id: false })
 export class TeamOutcomeEntity {
   @Prop({ required: true })
   placement!: number;
@@ -99,6 +120,12 @@ export class TeamOutcomeEntity {
 
   @Prop({ type: TeamOutcomeMvpSchema })
   mvp?: TeamOutcomeMvpEntity;
+
+  @Prop({ type: [TeamOutcomeMvpSchema], default: undefined })
+  top?: TeamOutcomeMvpEntity[];
+
+  @Prop({ type: [TeamAchievementSchema], default: undefined })
+  achievements?: TeamAchievementEntity[];
 }
 export const TeamOutcomeSchema =
   SchemaFactory.createForClass(TeamOutcomeEntity);

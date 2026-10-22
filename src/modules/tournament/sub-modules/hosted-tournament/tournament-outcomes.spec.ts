@@ -1,6 +1,6 @@
 import { PokemonStanding, StandingsRow } from "@modules/stage/domain/standings";
 import { TeamOutcome } from "@modules/stage/domain/outcomes";
-import { finalResults, seasonMvps } from "./tournament-outcomes";
+import { finalResults, seasonLeaders } from "./tournament-outcomes";
 
 function mon(
   teamId: string,
@@ -37,9 +37,9 @@ function row(id: string, wins: number, losses: number): StandingsRow {
   };
 }
 
-describe("seasonMvps", () => {
-  it("picks the most KOs, then fewer faints, then fewer games", () => {
-    const mvps = seasonMvps([
+describe("seasonLeaders", () => {
+  it("ranks by most KOs, then fewer faints, then fewer games", () => {
+    const leaders = seasonLeaders([
       mon("a", "pikachu", 5, 3),
       mon("a", "raichu", 5, 1),
       mon("b", "onix", 2, 1, 4),
@@ -47,9 +47,30 @@ describe("seasonMvps", () => {
       mon("c", "magikarp", 0),
     ]);
 
-    expect(mvps.get("a")).toEqual({ id: "raichu", name: "raichu", kills: 5 });
-    expect(mvps.get("b")?.id).toBe("geodude");
-    expect(mvps.has("c")).toBe(false);
+    expect(leaders.get("a")).toEqual([
+      { id: "raichu", name: "raichu", kills: 5 },
+      { id: "pikachu", name: "pikachu", kills: 5 },
+    ]);
+    expect(leaders.get("b")?.map((entry) => entry.id)).toEqual([
+      "geodude",
+      "onix",
+    ]);
+    expect(leaders.has("c")).toBe(false);
+  });
+
+  it("keeps the top three of each team", () => {
+    const leaders = seasonLeaders([
+      mon("a", "pikachu", 1),
+      mon("a", "raichu", 4),
+      mon("a", "pichu", 2),
+      mon("a", "onix", 3),
+    ]);
+
+    expect(leaders.get("a")?.map((entry) => entry.id)).toEqual([
+      "raichu",
+      "onix",
+      "pichu",
+    ]);
   });
 });
 
@@ -63,7 +84,15 @@ describe("finalResults", () => {
     const results = finalResults(
       outcomes,
       [row("a", 6, 1), row("b", 5, 2)],
-      new Map([["b", { id: "onix", name: "Onix", kills: 9 }]]),
+      new Map([
+        [
+          "b",
+          [
+            { id: "onix", name: "Onix", kills: 9 },
+            { id: "geodude", name: "Geodude", kills: 4 },
+          ],
+        ],
+      ]),
     );
 
     expect(results.map((result) => result.teamId)).toEqual(["b", "a"]);
@@ -75,6 +104,8 @@ describe("finalResults", () => {
       losses: 2,
       mvp: { id: "onix", name: "Onix", kills: 9 },
     });
+    expect(results[0].top.map((entry) => entry.id)).toEqual(["onix", "geodude"]);
     expect(results[1].mvp).toBeNull();
+    expect(results[1].top).toEqual([]);
   });
 });

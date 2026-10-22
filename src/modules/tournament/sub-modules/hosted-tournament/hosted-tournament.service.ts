@@ -66,6 +66,11 @@ import {
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import { computeTournamentOutcomes } from "./tournament-outcomes";
+import { achievementProgress } from "@modules/achievement/domain/achievement";
+import {
+  ACHIEVEMENTS,
+  achievementCatalog,
+} from "@modules/achievement/domain/catalog";
 import {
   StandingsResponse,
   TeamListResponse,
@@ -346,7 +351,10 @@ export class HostedTournamentService {
     );
   }
 
-  private computeOutcomes(tournament: HostedTournament) {
+  private computeOutcomes(
+    tournament: HostedTournament,
+    options: { final?: boolean } = {},
+  ) {
     return computeTournamentOutcomes(
       {
         stageRepo: this.stageRepo,
@@ -354,15 +362,70 @@ export class HostedTournamentService {
         matchupRepo: this.matchupRepo,
       },
       tournament,
+      options,
     );
   }
 
   private async recordOutcomes(tournament: HostedTournament): Promise<void> {
-    const { results } = await this.computeOutcomes(tournament);
+    const { results } = await this.computeOutcomes(tournament, { final: true });
     await this.teamRepo.setOutcomes(
       tournament.id,
       new Map(results.map((result) => [result.teamId, result])),
     );
+  }
+
+  async getTeamAchievements(
+    leagueSlug: string,
+    tournamentSlug: string,
+    teamSlug: string,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
+    const catalog = achievementCatalog();
+    const stored = tournament.completedAt ? team.outcome?.achievements : undefined;
+
+    if (stored) {
+      const byId = new Map(stored.map((entry) => [entry.id, entry]));
+      return {
+        final: true,
+        achievements: catalog.map((definition) => {
+          const entry = byId.get(definition.id);
+          return {
+            ...definition,
+            rarity: entry?.rarity ?? null,
+            tier: entry?.tier ?? -1,
+            count: entry?.count ?? 0,
+            next: null,
+            earnedAt: entry?.earnedAt ?? null,
+          };
+        }),
+      };
+    }
+
+    const { seasons } = await this.computeOutcomes(tournament);
+    const season = seasons.get(team._id.toString()) ?? {
+      teamId: team._id.toString(),
+      matches: [],
+      trades: [],
+      champion: null,
+    };
+    return {
+      final: false,
+      achievements: ACHIEVEMENTS.map((definition, index) => {
+        const progress = achievementProgress(definition, season);
+        return {
+          ...catalog[index],
+          rarity: progress.rarity,
+          tier: progress.tier,
+          count: progress.count,
+          next: progress.next,
+          earnedAt: progress.earnedAt,
+        };
+      }),
+    };
   }
 
   async getFinalResults(

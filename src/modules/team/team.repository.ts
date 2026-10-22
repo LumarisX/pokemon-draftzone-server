@@ -7,6 +7,7 @@ import { ClientSession, Model, Types } from "mongoose";
 import {
   TeamDocument,
   TeamEntity,
+  TeamAchievementEntity,
   TeamOutcomeEntity,
   TeamStatus,
 } from "./team.schema";
@@ -174,9 +175,17 @@ export class TeamRepository {
     tournamentId: Types.ObjectId | string,
     outcomes: Map<
       string,
-      Omit<TeamOutcomeEntity, "label" | "mvp"> & {
+      Omit<TeamOutcomeEntity, "label" | "mvp" | "top" | "achievements"> & {
         label?: string | null;
         mvp?: TeamOutcomeEntity["mvp"] | null;
+        top?: TeamOutcomeEntity["top"];
+        achievements?: {
+          id: string;
+          rarity: string;
+          tier: number;
+          count: number;
+          earnedAt: Date | null;
+        }[];
       }
     >,
   ): Promise<void> {
@@ -199,6 +208,23 @@ export class TeamRepository {
             name: outcome.mvp.name,
             kills: outcome.mvp.kills,
           };
+        if (outcome.top?.length)
+          stored.top = outcome.top.map((entry) => ({
+            id: entry.id,
+            name: entry.name,
+            kills: entry.kills,
+          }));
+        if (outcome.achievements?.length)
+          stored.achievements = outcome.achievements.map((earned) => {
+            const entry: TeamAchievementEntity = {
+              id: earned.id,
+              rarity: earned.rarity,
+              tier: earned.tier,
+              count: earned.count,
+            };
+            if (earned.earnedAt) entry.earnedAt = earned.earnedAt;
+            return entry;
+          });
         return {
           updateOne: {
             filter: { _id: new Types.ObjectId(teamId), tournamentId },
