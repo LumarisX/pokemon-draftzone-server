@@ -58,8 +58,7 @@ function buildTierList(
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
-    settings: { isPublic: true },
-    collaborators: [],
+    visibility: "public",
     ...overrides,
   });
 }

@@ -348,7 +348,7 @@ export class HostedTournamentRepository {
       tierList: Types.ObjectId;
       draftCount: { min: number; max: number };
       pointTotal: number | null;
-      tierRequirements: { tierId: string; required: number }[];
+      tierRequirements: { tierId: string; required: number; max?: number }[];
       logo: string | null;
       signUpToken: string;
       signUpTokenRotatedAt: Date;

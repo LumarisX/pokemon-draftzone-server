@@ -7,6 +7,7 @@ import { StageCoreModule } from "@modules/stage/stage-core.module";
 import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentApplicationModule } from "@modules/tournament-application/tournament-application.module";
+import { TournamentLogCoreModule } from "@modules/tournament-log/tournament-log-core.module";
 import { UploadsModule } from "@modules/upload/upload.module";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
@@ -46,6 +47,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     StageCoreModule,
     LeagueMatchupModule,
     UploadsModule,
+    TournamentLogCoreModule,
   ],
   controllers: [
     HostedTournamentController,

@@ -16,6 +16,7 @@ import {
   TierListPokemon,
 } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
+import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writer";
 import { UploadFolder } from "@modules/upload/upload-folder.enum";
 import { UploadsService } from "@modules/upload/upload.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
@@ -29,6 +30,8 @@ import { HostedTournamentService } from "./hosted-tournament.service";
 const LEAGUE_KEY = "spring-league";
 const TOURNAMENT_KEY = "spring-cup";
 const SUB = "auth0|coach-1";
+
+const logWriter = { record: jest.fn() } as unknown as TournamentLogWriter;
 
 function buildTournament(
   overrides: Partial<ConstructorParameters<typeof HostedTournament>[0]> = {},
@@ -186,6 +189,7 @@ describe("HostedTournamentService signup", () => {
       uploads,
       transactions.runner,
       events,
+      logWriter,
     );
   });
 
@@ -1281,8 +1285,7 @@ function buildSettingsTierList(
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
-    settings: { isPublic: true },
-    collaborators: [],
+    visibility: "public",
     ...overrides,
   });
 }
@@ -1343,6 +1346,7 @@ describe("HostedTournamentService removeParticipant", () => {
       {} as UploadsService,
       transactions.runner,
       silentEvents,
+      logWriter,
     );
   });
 
@@ -1431,7 +1435,9 @@ describe("HostedTournamentService settings", () => {
     service = new HostedTournamentService(
       tournamentRepo,
       tierListRepo,
-      {} as TeamRepository,
+      {
+        countApprovedByTournament: jest.fn().mockResolvedValue(0),
+      } as unknown as TeamRepository,
       {} as CoachRepository,
       {} as TournamentApplicationRepository,
       {} as DraftRepository,
@@ -1442,7 +1448,62 @@ describe("HostedTournamentService settings", () => {
       uploads,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
+    (logWriter.record as jest.Mock).mockClear();
+  });
+
+  describe("the action log", () => {
+    it("records what changed once sign-ups are open", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        pointTotal: 120,
+        reason: "League vote",
+      });
+
+      expect(logWriter.record).toHaveBeenCalledWith(
+        tournament,
+        "auth0|owner",
+        expect.objectContaining({
+          type: "settings.changed",
+          summary: "Changed point total",
+          reason: "League vote",
+          details: {
+            changes: [
+              {
+                field: "pointTotal",
+                label: "Point total",
+                before: tournament.pointTotal ?? null,
+                after: 120,
+              },
+            ],
+          },
+        }),
+      );
+    });
+
+    it("records an unlock as its own entry", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        pointTotal: 120,
+        unlocked: ["draft"],
+      });
+
+      expect(logWriter.record).toHaveBeenCalledWith(
+        tournament,
+        "auth0|owner",
+        expect.objectContaining({
+          type: "settings.unlocked",
+          summary: "Unlocked Draft Rules to change it",
+        }),
+      );
+    });
+
+    it("stays quiet for a setting nobody plays by", async () => {
+      await service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+        description: "New blurb",
+      });
+
+      expect(logWriter.record).not.toHaveBeenCalled();
+    });
   });
 
   describe("standings rules", () => {
@@ -1673,21 +1734,13 @@ describe("HostedTournamentService settings", () => {
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
     });
 
-    it("rejects switching tier lists when the saved requirements name tiers the new list lacks", async () => {
-      tournamentRepo.findBySlug.mockResolvedValue(
-        buildTournament({
-          tierRequirements: [
-            new TierRequirement({ tierId: tierId("Nonexistent"), required: 1 }),
-          ],
-        }),
-      );
-
+    it("refuses to point the tournament at another tier list from settings", async () => {
       await expect(
         service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
           tierListId: new Types.ObjectId().toString(),
         }),
       ).rejects.toMatchObject({
-        code: ErrorCodes.TOURNAMENT.INVALID_SETTINGS.code,
+        code: ErrorCodes.VALIDATION.INVALID_PARAMS.code,
       });
       expect(tournamentRepo.updateSettings).not.toHaveBeenCalled();
     });
@@ -1797,6 +1850,7 @@ describe("HostedTournamentService coach details", () => {
       {} as UploadsService,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
   });
 
@@ -1948,6 +2002,7 @@ describe("HostedTournamentService updateTeam", () => {
       uploads,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
   });
 
@@ -2092,6 +2147,7 @@ describe("HostedTournamentService assignTeams", () => {
       {} as UploadsService,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
   });
 
@@ -2303,6 +2359,7 @@ describe("HostedTournamentService teams", () => {
       {} as UploadsService,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
@@ -2712,6 +2769,7 @@ describe("HostedTournamentService getInfo", () => {
       {} as UploadsService,
       inlineTransactions,
       silentEvents,
+      logWriter,
     );
 
     teamRepo.findManyByIds.mockImplementation(async () => [

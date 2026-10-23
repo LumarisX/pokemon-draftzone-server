@@ -38,6 +38,9 @@ import { applyDecorators } from "@nestjs/common";
 const trimString = ({ value }: { value: unknown }) =>
   typeof value === "string" ? value.trim() : value;
 
+export const LOCKABLE_SECTIONS = ["draft", "standings"] as const;
+export type LockableSection = (typeof LOCKABLE_SECTIONS)[number];
+
 export const SIGN_UP_LIMITS = {
   name: 64,
   gameName: 32,
@@ -542,6 +545,20 @@ export class UpdateHostedTournamentSettingsDto {
   @IsBoolean()
   @IsOptional()
   completed?: boolean;
+
+  @IsIn(["participants", "public"])
+  @IsOptional()
+  logVisibility?: "participants" | "public";
+
+  @IsArray()
+  @IsIn(LOCKABLE_SECTIONS, { each: true })
+  @IsOptional()
+  unlocked?: LockableSection[];
+
+  @IsString()
+  @MaxLength(300)
+  @IsOptional()
+  reason?: string;
 }
 
 export class AddOrganizerDto {
@@ -604,6 +621,12 @@ export class CreateTournamentDto {
   @MaxLength(64)
   @IsOptional()
   tierListFrom?: string | null;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  @IsOptional()
+  tierListSlug?: string;
 }
 
 export class CreateOrganizerInviteDto extends OrganizerNameDto {}

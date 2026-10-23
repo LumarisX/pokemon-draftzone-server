@@ -4,8 +4,11 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { DraftRepository } from "@modules/draft/draft.repository";
 import { leagueRole } from "@modules/league/league-access";
 import { LeagueRepository } from "@modules/league/league.repository";
+import { TierListAccessService } from "@modules/tier-list/tier-list-access.service";
+import { TierListHistoryService } from "@modules/tier-list/tier-list-history.service";
+import { TierList, upstreamOf } from "@modules/tier-list/tier-list.domain";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
-import { TierListDocument } from "@modules/tier-list/tier-list.schema";
+import { toState } from "@modules/tier-list/tier-list.state";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { assertRosterRules } from "./hosted-tournament.domain";
@@ -74,6 +77,8 @@ export class TournamentCreationService {
     private readonly hosting: HostingAccessService,
     private readonly transactions: TransactionRunner,
     private readonly draftRepo: DraftRepository,
+    private readonly tierListAccess: TierListAccessService,
+    private readonly tierListHistory: TierListHistoryService,
   ) {}
 
   async createTournament(
@@ -102,11 +107,13 @@ export class TournamentCreationService {
         ? source
         : await this.tournamentRepo.findPlainInLeague(league._id, tierListSlug);
 
-    const sourceTierList = tierListTournament?.tierList
-      ? await nullIfNotFound(
-          this.tierListRepo.findDocument(tierListTournament.tierList.toString()),
-        )
-      : null;
+    const sourceTierList = dto.tierListSlug
+      ? (await this.tierListAccess.resolve(dto.tierListSlug, sub, "view")).tierList
+      : tierListTournament?.tierList
+        ? await nullIfNotFound(
+            this.tierListRepo.findById(tierListTournament.tierList.toString()),
+          )
+        : null;
     if (dto.tierListFrom && !sourceTierList)
       throw new PDZError(ErrorCodes.TOURNAMENT.COPY_SOURCE_INVALID, {
         tierListFrom: dto.tierListFrom,
@@ -117,12 +124,12 @@ export class TournamentCreationService {
     const diffMode = dto.diffMode ?? source?.diffMode ?? "pokemon";
 
     const tierRequirements =
-      sourceTierList && source && tierListTournament === source
+      sourceTierList && source && tierListTournament === source && !dto.tierListSlug
         ? (source.tierRequirements ?? [])
         : [];
     assertRosterRules({
       tierIds: sourceTierList
-        ? new Set(sourceTierList.tiers.map((tier) => tier._id.toString()))
+        ? new Set(sourceTierList.tiers.map((tier) => tier.id))
         : null,
       draftCount,
       tierRequirements: tierRequirements.map((requirement) => ({
@@ -133,10 +140,6 @@ export class TournamentCreationService {
     });
 
     const created = await this.transactions.run(async () => {
-      const tierListId = sourceTierList
-        ? await this.copyTierList(sourceTierList, sub)
-        : undefined;
-
       const tournament = await this.tournamentRepo.create({
         ...(source ? carriedSettings(source) : {}),
         name: dto.name,
@@ -155,9 +158,19 @@ export class TournamentCreationService {
         forfeit: source?.forfeit ?? { gameDiff: 0, pokemonDiff: 0 },
         diffMode,
         draftCount: { min: draftCount.min, max: draftCount.max },
-        tierList: tierListId,
         tierRequirements,
       });
+      if (sourceTierList) {
+        const copyId = await this.copyTierList(
+          sourceTierList,
+          tournament._id,
+          sub,
+          dto.ownerName,
+        );
+        await this.tournamentRepo.updateSettings(tournament._id, {
+          tierList: copyId,
+        });
+      }
       await this.draftRepo.create({
         tournamentId: tournament._id,
         name: DEFAULT_POOL_NAME,
@@ -169,20 +182,32 @@ export class TournamentCreationService {
   }
 
   private async copyTierList(
-    source: TierListDocument,
+    source: TierList,
+    tournamentId: Types.ObjectId,
     sub: string,
+    actorName: string,
   ): Promise<Types.ObjectId> {
+    const upstream = upstreamOf(source);
     const copy = await this.tierListRepo.create({
       name: source.name,
       description: source.description,
       createdBy: sub,
-      format: source.format,
-      ruleset: source.ruleset,
-      copiedFrom: source._id,
-      tiers: source.tiers,
-      pokemon: source.pokemon,
-      banned: source.banned,
+      format: source.format.name,
+      ruleset: source.ruleset.name,
+      tournament: tournamentId,
+      copiedFrom: new Types.ObjectId(upstream.id),
+      copiedFromVersion: upstream.version,
+      state: toState(source),
     });
+    await this.tierListHistory.recordCreated({
+      tierList: copy,
+      actor: sub,
+      actorName,
+      kind: "copy",
+      summary: `Copied from ${source.name}`,
+    });
+    if (!source.isTournamentCopy)
+      await this.tierListRepo.incrementUseCount(source.id);
     return new Types.ObjectId(copy.id);
   }
 }

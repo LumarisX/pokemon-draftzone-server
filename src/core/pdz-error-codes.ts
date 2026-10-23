@@ -257,6 +257,39 @@ export const ErrorCodes = {
       status: 403,
       message: "You do not have permission to edit this tier list",
     },
+    STALE: {
+      code: "LR-TIER-005",
+      status: 409,
+      message:
+        "Someone else saved this tier list after you opened it. Review their changes before saving.",
+    },
+    INVITE_INVALID: {
+      code: "LR-TIER-006",
+      status: 404,
+      message: "This invite is invalid, has expired, or has been used up.",
+    },
+    INVITE_LIMIT: {
+      code: "LR-TIER-007",
+      status: 400,
+      message:
+        "This tier list has too many open invites. Revoke one before creating another.",
+    },
+    TOURNAMENT_COPY: {
+      code: "LR-TIER-008",
+      status: 400,
+      message:
+        "A tournament's tier list is managed from the tournament. Save it as a preset to share it.",
+    },
+    MERGE_CONFLICT: {
+      code: "LR-TIER-009",
+      status: 409,
+      message: "Some Pokémon changed in both lists. Choose which version to keep.",
+    },
+    IMPORT_FAILED: {
+      code: "LR-TIER-010",
+      status: 400,
+      message: "Could not read that sheet",
+    },
   },
 
   ARCHIVE: {
@@ -517,6 +550,11 @@ export const ErrorCodes = {
       code: "TRN-005",
       status: 409,
       message: "This tournament is completed and can no longer be changed",
+    },
+    LOG_HIDDEN: {
+      code: "TRN-024",
+      status: 403,
+      message: "This tournament's log is only open to its coaches and organizers",
     },
   },
   TEAMBUILDER: {

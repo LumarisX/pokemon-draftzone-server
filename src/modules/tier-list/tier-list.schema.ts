@@ -77,10 +77,19 @@ export class TierListBannedEntity {
 export const TierListBannedSchema =
   SchemaFactory.createForClass(TierListBannedEntity);
 
+export const TIER_LIST_VISIBILITIES = ["private", "unlisted", "public"] as const;
+export type TierListVisibility = (typeof TIER_LIST_VISIBILITIES)[number];
+
+export const TIER_LIST_ROLES = ["editor", "viewer"] as const;
+export type TierListRole = (typeof TIER_LIST_ROLES)[number];
+
 @Schema({ _id: false })
 export class TierListSettingsEntity {
   @Prop({ required: true, default: false })
   isPublic!: boolean;
+
+  @Prop({ type: String, enum: TIER_LIST_VISIBILITIES })
+  visibility?: TierListVisibility;
 
   @Prop()
   shareToken?: string;
@@ -88,6 +97,20 @@ export class TierListSettingsEntity {
 export const TierListSettingsSchema = SchemaFactory.createForClass(
   TierListSettingsEntity,
 );
+
+@Schema({ _id: false })
+export class TierListMemberEntity {
+  @Prop({ required: true })
+  sub!: string;
+
+  @Prop()
+  name?: string;
+
+  @Prop({ type: String, enum: TIER_LIST_ROLES, required: true })
+  role!: TierListRole;
+}
+export const TierListMemberSchema =
+  SchemaFactory.createForClass(TierListMemberEntity);
 
 export type TierListDocument = HydratedDocument<TierListEntity>;
 
@@ -108,11 +131,35 @@ export class TierListEntity {
   @Prop({ required: true })
   createdBy!: string;
 
+  @Prop()
+  authorName?: string;
+
   @Prop({ type: SchemaTypes.ObjectId, ref: "TierListEntity" })
   copiedFrom?: Types.ObjectId;
 
+  @Prop()
+  copiedFromVersion?: number;
+
+  @Prop({ type: SchemaTypes.ObjectId, ref: "HostedTournamentEntity" })
+  tournament?: Types.ObjectId;
+
+  @Prop()
+  retiredAt?: Date;
+
   @Prop({ default: 0 })
   forkCount!: number;
+
+  @Prop({ default: 0 })
+  useCount!: number;
+
+  @Prop({ default: 0 })
+  version!: number;
+
+  @Prop({ type: [String], default: [] })
+  tags!: string[];
+
+  @Prop({ default: false })
+  featured!: boolean;
 
   @Prop({ type: Map, of: TierListPokemonSchema, default: {} })
   pokemon!: Map<string, TierListPokemonEntity>;
@@ -135,12 +182,18 @@ export class TierListEntity {
   @Prop({ type: [String], default: [] })
   collaborators!: string[];
 
+  @Prop({ type: [TierListMemberSchema], default: [] })
+  members!: TierListMemberEntity[];
+
   @Prop({
     type: TierListSettingsSchema,
     required: true,
     default: () => ({ isPublic: false }),
   })
   settings!: TierListSettingsEntity;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const TierListSchema = SchemaFactory.createForClass(TierListEntity);
@@ -148,3 +201,8 @@ export const TierListSchema = SchemaFactory.createForClass(TierListEntity);
 TierListSchema.index({ "settings.isPublic": 1, format: 1, ruleset: 1 });
 TierListSchema.index({ createdBy: 1 });
 TierListSchema.index({ collaborators: 1 });
+TierListSchema.index({ "members.sub": 1 });
+TierListSchema.index({ tournament: 1 });
+TierListSchema.index({ featured: 1, "settings.isPublic": 1 });
+TierListSchema.index({ tags: 1 });
+TierListSchema.index({ copiedFrom: 1 });

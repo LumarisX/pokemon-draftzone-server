@@ -17,6 +17,7 @@ import { StageModule } from "@modules/stage/stage.module";
 import { TeambuilderModule } from "@modules/teambuilder/teambuilder.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
+import { TournamentLogModule } from "@modules/tournament-log/tournament-log.module";
 import { TournamentModule } from "@modules/tournament/tournament.module";
 import { UploadsModule } from "@modules/upload/upload.module";
 import { UserModule } from "@modules/user/user.module";
@@ -103,6 +104,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     TeambuilderModule,
     TierListModule,
     TournamentAdModule,
+    TournamentLogModule,
     TournamentModule,
     UploadsModule,
     UserModule,

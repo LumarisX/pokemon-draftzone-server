@@ -138,6 +138,7 @@ export class HostedTournamentMapper {
         chat: doc.matchSettings?.chat,
         coachReporting: doc.matchSettings?.coachReporting,
       }),
+      logVisibility: doc.logVisibility,
     });
   }
 
@@ -191,6 +192,7 @@ export class HostedTournamentMapper {
       prizeSplit: tournament.prizeSplit,
       adSettings: tournament.adSettings,
       matchSettings: tournament.matchSettings,
+      logVisibility: tournament.logVisibility ?? "participants",
       completed: tournament.completed,
     };
   }

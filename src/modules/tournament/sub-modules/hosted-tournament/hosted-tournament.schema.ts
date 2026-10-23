@@ -472,6 +472,12 @@ export class HostedTournamentEntity {
   @Prop({ type: TournamentMatchSettingsSchema })
   matchSettings?: TournamentMatchSettingsEntity;
 
+  @Prop({ type: String, enum: ["participants", "public"] })
+  logVisibility?: "participants" | "public";
+
+  @Prop({ default: 0 })
+  logSeq!: number;
+
   createdAt?: Date;
 }
 

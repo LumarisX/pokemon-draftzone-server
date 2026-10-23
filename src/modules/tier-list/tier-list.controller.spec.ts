@@ -1,9 +1,12 @@
+import { TierListImportService } from "./import/tier-list-import.service";
+import { TierListSharingService } from "./tier-list-sharing.service";
 import { TierListController } from "./tier-list.controller";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import { TierListService } from "./tier-list.service";
 
 describe("TierListController", () => {
   let service: jest.Mocked<TierListService>;
+  let sharing: jest.Mocked<TierListSharingService>;
   let controller: TierListController;
 
   beforeEach(() => {
@@ -12,8 +15,16 @@ describe("TierListController", () => {
       updateTierList: jest.fn(),
       getSettings: jest.fn(),
       updateSettings: jest.fn(),
+      revert: jest.fn(),
     } as unknown as jest.Mocked<TierListService>;
-    controller = new TierListController(service);
+    sharing = {
+      acceptInvite: jest.fn(),
+    } as unknown as jest.Mocked<TierListSharingService>;
+    controller = new TierListController(
+      service,
+      sharing,
+      {} as TierListImportService,
+    );
   });
 
   describe("getTierList", () => {
@@ -40,9 +51,11 @@ describe("TierListController", () => {
 
   describe("updateTierList", () => {
     it("forwards the tier list id, sub, and body", async () => {
-      const body = { tiers: [] } as UpdateTierListDto;
+      const body = { tiers: [], version: 3 } as UpdateTierListDto;
       const response = {
         message: "Tier list updated successfully",
+        version: 4,
+        summary: "Moved 1 Pokémon",
         orphanedRequirements: [],
       };
       service.updateTierList.mockResolvedValue(response);
@@ -59,13 +72,13 @@ describe("TierListController", () => {
   });
 
   describe("getTierListSettings", () => {
-    it("forwards the tier list id", async () => {
+    it("forwards the tier list id and the viewer", async () => {
       const settings = { name: "Spring Tier List" } as any;
       service.getSettings.mockResolvedValue(settings);
 
-      const result = await controller.getTierListSettings("tierlist-1");
+      const result = await controller.getTierListSettings("tierlist-1", "auth0|owner");
 
-      expect(service.getSettings).toHaveBeenCalledWith("tierlist-1");
+      expect(service.getSettings).toHaveBeenCalledWith("tierlist-1", "auth0|owner");
       expect(result).toBe(settings);
     });
   });
@@ -73,7 +86,7 @@ describe("TierListController", () => {
   describe("updateTierListSettings", () => {
     it("forwards the tier list id, sub, and body", async () => {
       const body = { name: "New Name" } as UpdateTierListSettingsDto;
-      const response = { message: "Tier list settings saved." };
+      const response = { message: "Tier list settings saved." } as any;
       service.updateSettings.mockResolvedValue(response);
 
       const result = await controller.updateTierListSettings(
@@ -88,6 +101,26 @@ describe("TierListController", () => {
         body,
       );
       expect(result).toBe(response);
+    });
+  });
+
+  describe("revert", () => {
+    it("passes the version to restore and the version the editor started from", async () => {
+      service.revert.mockResolvedValue({} as any);
+
+      await controller.revert("tierlist-1", 2, "auth0|owner", { version: 5 });
+
+      expect(service.revert).toHaveBeenCalledWith("tierlist-1", "auth0|owner", 2, 5);
+    });
+  });
+
+  describe("acceptInvite", () => {
+    it("passes the name the invitee chose", async () => {
+      sharing.acceptInvite.mockResolvedValue({ slug: "list" });
+
+      await controller.acceptInvite("token", "auth0|friend", { name: "Misty" });
+
+      expect(sharing.acceptInvite).toHaveBeenCalledWith("token", "auth0|friend", "Misty");
     });
   });
 });

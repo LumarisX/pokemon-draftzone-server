@@ -5,7 +5,6 @@ import {
   TierList,
   TierListPokemon,
   TierListPokemonAddon,
-  TierListSettings,
 } from "./tier-list.domain";
 import { TierListMapper } from "./tier-list.mapper";
 import { TierListDocument } from "./tier-list.schema";
@@ -100,30 +99,59 @@ describe("TierListMapper.fromDatabase", () => {
     expect(result.banned.abilities).not.toBe(doc.banned.abilities);
   });
 
-  it("maps settings", () => {
-    const result = TierListMapper.fromDatabase(buildDoc());
-
-    expect(result.settings).toEqual(
-      new TierListSettings({ isPublic: true, shareToken: "token-123" }),
-    );
+  it("reads visibility, falling back to isPublic for older lists", () => {
+    expect(TierListMapper.fromDatabase(buildDoc()).visibility).toBe("public");
+    expect(
+      TierListMapper.fromDatabase(buildDoc({ settings: { isPublic: false } }))
+        .visibility,
+    ).toBe("private");
+    expect(
+      TierListMapper.fromDatabase(
+        buildDoc({ settings: { isPublic: false, visibility: "unlisted" } }),
+      ).visibility,
+    ).toBe("unlisted");
   });
 
-  it("copies the collaborators array (not by reference)", () => {
-    const doc = buildDoc();
-    const result = TierListMapper.fromDatabase(doc);
+  it("reads legacy collaborators as editors alongside members", () => {
+    const result = TierListMapper.fromDatabase(
+      buildDoc({
+        members: [{ sub: "auth0|viewer", name: "Misty", role: "viewer" }],
+      }),
+    );
 
-    expect(result.collaborators).toEqual(["auth0|collab-1"]);
-    expect(result.collaborators).not.toBe(doc.collaborators);
+    expect(result.members).toEqual([
+      { sub: "auth0|viewer", name: "Misty", role: "viewer" },
+      { sub: "auth0|collab-1", role: "editor" },
+    ]);
+  });
+
+  it("maps the tournament a copy belongs to and treats a missing version as 0", () => {
+    const tournamentId = new Types.ObjectId();
+    const result = TierListMapper.fromDatabase(
+      buildDoc({ tournament: tournamentId }),
+    );
+
+    expect(result.tournamentId).toBe(tournamentId.toString());
+    expect(result.isTournamentCopy).toBe(true);
+    expect(result.version).toBe(0);
   });
 });
 
 describe("TierListMapper.toSettingsPayload", () => {
-  it("exposes only name/description", () => {
-    const tierList = TierListMapper.fromDatabase(buildDoc());
+  it("exposes the editable settings", () => {
+    const tierList = TierListMapper.fromDatabase(
+      buildDoc({ authorName: "Brock", tags: ["singles"] }),
+    );
 
     expect(TierListMapper.toSettingsPayload(tierList)).toEqual({
       name: "Spring Tier List",
       description: "A spring tier list",
+      authorName: "Brock",
+      visibility: "public",
+      tags: ["singles"],
+      format: "Singles",
+      ruleset: "Gen9 NatDex",
+      isTournamentCopy: false,
     });
   });
 });

@@ -226,6 +226,7 @@ export class HostedTournament {
   prizeSplit: PrizeShare[];
   adSettings?: TournamentAdSettings;
   matchSettings?: TournamentMatchSettings;
+  logVisibility?: "participants" | "public";
 
   constructor(props: {
     id: string;
@@ -270,6 +271,7 @@ export class HostedTournament {
     prizeSplit?: PrizeShare[];
     adSettings?: TournamentAdSettings;
     matchSettings?: TournamentMatchSettings;
+    logVisibility?: "participants" | "public";
   }) {
     this.id = props.id;
     this.name = props.name;
@@ -313,6 +315,7 @@ export class HostedTournament {
     this.prizeSplit = props.prizeSplit ?? [];
     this.adSettings = props.adSettings;
     this.matchSettings = props.matchSettings;
+    this.logVisibility = props.logVisibility;
   }
 
   get hasTierList(): boolean {

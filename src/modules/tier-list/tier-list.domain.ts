@@ -1,6 +1,7 @@
 import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
 import { Types } from "mongoose";
+import { TierListRole, TierListVisibility } from "./tier-list.schema";
 
 export const UNTIERED_TIER_NAME = "Untiered";
 export const BANNED_TIER_NAME = "Banned";
@@ -19,12 +20,10 @@ export class TierListPokemonAddon {
 
 export class TierListPokemon {
   name: string;
-  /** Unset means untiered. */
   tierId?: string;
   notes?: string;
   addons?: TierListPokemonAddon[];
   banned?: boolean;
-  /** Ids of the alternate formes this entry is allowed to run. */
   formes?: string[];
 
   constructor(props: {
@@ -73,14 +72,24 @@ export class DraftCount {
   }
 }
 
-export class TierListSettings {
-  isPublic: boolean;
-  shareToken?: string;
+export type TierListMember = {
+  sub: string;
+  name?: string;
+  role: TierListRole;
+};
 
-  constructor(props: { isPublic: boolean; shareToken?: string }) {
-    this.isPublic = props.isPublic;
-    this.shareToken = props.shareToken;
-  }
+export type TierListAccess = "manage" | "edit" | "view" | "none";
+
+export function upstreamOf(source: {
+  id: string;
+  version: number;
+  tournamentId?: string;
+  copiedFrom?: string;
+  copiedFromVersion?: number;
+}): { id: string; version?: number } {
+  if (source.tournamentId && source.copiedFrom)
+    return { id: source.copiedFrom, version: source.copiedFromVersion };
+  return { id: source.id, version: source.version };
 }
 
 export type ClientTierPokemonInput = {
@@ -93,7 +102,6 @@ export type ClientTierPokemonInput = {
 };
 
 export type ClientTierInput = {
-  /** Absent for a tier the client just created; the server mints its id. */
   id?: string;
   name: string;
   cost: number;
@@ -106,14 +114,24 @@ export class TierList {
   name: string;
   description?: string;
   createdBy: string;
+  authorName?: string;
   copiedFrom?: string;
+  copiedFromVersion?: number;
+  tournamentId?: string;
+  retiredAt?: Date;
   pokemon: Map<string, TierListPokemon>;
   tiers: Tier[];
   banned: { moves: string[]; abilities: string[] };
   format: Format;
   ruleset: Ruleset;
-  settings: TierListSettings;
-  collaborators: string[];
+  visibility: TierListVisibility;
+  members: TierListMember[];
+  tags: string[];
+  featured: boolean;
+  version: number;
+  forkCount: number;
+  useCount: number;
+  updatedAt?: Date;
 
   constructor(props: {
     id: string;
@@ -121,33 +139,65 @@ export class TierList {
     name: string;
     description?: string;
     createdBy: string;
+    authorName?: string;
     copiedFrom?: string;
+    copiedFromVersion?: number;
+    tournamentId?: string;
+    retiredAt?: Date;
     pokemon: Map<string, TierListPokemon>;
     tiers: Tier[];
     banned: { moves: string[]; abilities: string[] };
     format: string;
     ruleset: string;
-    settings: TierListSettings;
-    collaborators: string[];
+    visibility?: TierListVisibility;
+    members?: TierListMember[];
+    tags?: string[];
+    featured?: boolean;
+    version?: number;
+    forkCount?: number;
+    useCount?: number;
+    updatedAt?: Date;
   }) {
     this.id = props.id;
     this.slug = props.slug;
     this.name = props.name;
     this.description = props.description;
     this.createdBy = props.createdBy;
+    this.authorName = props.authorName;
     this.copiedFrom = props.copiedFrom;
+    this.copiedFromVersion = props.copiedFromVersion;
+    this.tournamentId = props.tournamentId;
+    this.retiredAt = props.retiredAt;
     this.pokemon = props.pokemon;
     this.tiers = props.tiers;
     this.banned = props.banned;
     this.format = getFormat(props.format);
     this.ruleset = getRuleset(props.ruleset);
-    this.settings = props.settings;
-    this.collaborators = props.collaborators;
+    this.visibility = props.visibility ?? "private";
+    this.members = props.members ?? [];
+    this.tags = props.tags ?? [];
+    this.featured = props.featured ?? false;
+    this.version = props.version ?? 0;
+    this.forkCount = props.forkCount ?? 0;
+    this.useCount = props.useCount ?? 0;
+    this.updatedAt = props.updatedAt;
   }
 
-  canEdit(sub?: string): boolean {
-    if (!sub) return false;
-    return this.createdBy === sub || this.collaborators.includes(sub);
+  get isTournamentCopy(): boolean {
+    return !!this.tournamentId;
+  }
+
+  memberRole(sub: string | undefined): TierListRole | null {
+    if (!sub) return null;
+    return this.members.find((member) => member.sub === sub)?.role ?? null;
+  }
+
+  presetAccess(sub: string | undefined): TierListAccess {
+    if (sub && this.createdBy === sub) return "manage";
+    const role = this.memberRole(sub);
+    if (role === "editor") return "edit";
+    if (role === "viewer") return "view";
+    return this.visibility === "private" ? "none" : "view";
   }
 
   getTierById(tierId: string | undefined): Tier | undefined {
@@ -159,11 +209,6 @@ export class TierList {
     return this.getTierById(this.pokemon.get(pokemonId)?.tierId);
   }
 
-  /**
-   * False for a Pokemon that is on a roster but no longer on this list —
-   * removing an entry drops its cost to 0, which reads as "free" rather than
-   * "illegal", so rosters flag it instead of quietly crediting the team.
-   */
   hasPokemon(pokemonId: string): boolean {
     return this.pokemon.has(pokemonId);
   }
@@ -184,17 +229,11 @@ export class TierList {
     return Array.from(this.pokemon.keys());
   }
 
-  /** Ids of the alternate formes this tier-list entry is allowed to run. */
   getPokemonFormeIds(pokemonId: string): string[] | undefined {
     const formes = this.pokemon.get(pokemonId)?.formes;
     return formes?.length ? [...formes] : undefined;
   }
 
-  /**
-   * The alternate formes this tier-list entry is allowed to run, resolved to
-   * `{ id, name }` for display. Returns undefined when the entry has none, so
-   * callers can spread it without emitting an empty array.
-   */
   getPokemonFormes(
     pokemonId: string,
   ): { id: string; name: string }[] | undefined {
@@ -204,12 +243,6 @@ export class TierList {
     }));
   }
 
-  /**
-   * Merges a client-submitted tier/pokemon layout into the current state,
-   * preserving tier metadata (e.g. color) and pokemon addons that the client
-   * payload doesn't carry. Banned pokemon submitted inside the "Untiered"
-   * bucket keep their last known tier instead of losing it.
-   */
   applyTierUpdate(clientTiers: ClientTierInput[]): void {
     const validTiers = clientTiers.filter(
       (tier) => tier.name.toLowerCase() !== UNTIERED_TIER_NAME.toLowerCase(),
@@ -247,7 +280,6 @@ export class TierList {
             banned: pokemon.banned,
             notes: pokemon.notes,
             addons: existingData?.addons,
-            // Client-authoritative, so an empty selection clears the formes.
             formes: pokemon.formes?.length ? pokemon.formes : undefined,
           }),
         );

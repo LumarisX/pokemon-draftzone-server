@@ -1,12 +1,26 @@
-import { BANNED_TIER_NAME, UNTIERED_TIER_NAME } from "./tier-list.domain";
-import { Model, Types } from "mongoose";
+import { TransactionRunner } from "@core/database/transaction-runner";
+import { TeamRepository } from "@modules/team/team.repository";
+import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writer";
+import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
+import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { HostedTournamentDocument } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
-import { tierId } from "./tier-list.test-ids";
-import { Tier, TierList, TierListPokemon } from "./tier-list.domain";
+import { Model } from "mongoose";
+import { TierListAccessService } from "./tier-list-access.service";
+import { TierListHistoryService } from "./tier-list-history.service";
+import { TierListInviteRepository } from "./tier-list-invite.repository";
+import { TierListRevisionRepository } from "./tier-list-revision.repository";
+import {
+  BANNED_TIER_NAME,
+  Tier,
+  TierList,
+  TierListPokemon,
+  UNTIERED_TIER_NAME,
+} from "./tier-list.domain";
 import { UpdateTierListDto, UpdateTierListSettingsDto } from "./tier-list.dto";
 import { TierListMapper } from "./tier-list.mapper";
 import { TierListRepository } from "./tier-list.repository";
 import { TierListService } from "./tier-list.service";
+import { tierId } from "./tier-list.test-ids";
 
 function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}) {
   return new TierList({
@@ -20,14 +34,34 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
-    settings: { isPublic: true },
-    collaborators: [],
+    visibility: "public",
     ...overrides,
   });
 }
 
+function organizedBy(sub: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id: "tournament-1",
+    slug: "spring-cup",
+    leagueSlug: "league",
+    name: "Spring Cup",
+    owner: "auth0|league-owner",
+    staff: [{ sub, role: "organizer", name: "Erika" }],
+    tierListId: "tierlist-1",
+    tierRequirements: [],
+    signUpAccess: "open",
+    completed: false,
+    staffName: (who: string) => (who === sub ? "Erika" : null),
+    ...overrides,
+  } as unknown as HostedTournament;
+}
+
 describe("TierListService", () => {
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let revisionRepo: jest.Mocked<TierListRevisionRepository>;
+  let logWriter: jest.Mocked<TournamentLogWriter>;
+  let teamRepo: jest.Mocked<TeamRepository>;
   let service: TierListService;
   let tournamentModel: Model<HostedTournamentDocument>;
 
@@ -35,8 +69,22 @@ describe("TierListService", () => {
     tierListRepo = {
       findById: jest.fn(),
       updateSettings: jest.fn(),
-      save: jest.fn(),
+      saveContent: jest.fn().mockImplementation(async (_list, expected: number) => expected + 1),
     } as unknown as jest.Mocked<TierListRepository>;
+    tierListRepo.updateSettings.mockImplementation(async () => buildTierList());
+    tournamentRepo = {
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<HostedTournamentRepository>;
+    revisionRepo = {
+      create: jest.fn().mockResolvedValue(undefined),
+      find: jest.fn(),
+    } as unknown as jest.Mocked<TierListRevisionRepository>;
+    logWriter = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TournamentLogWriter>;
+    teamRepo = {
+      countApprovedByTournament: jest.fn().mockResolvedValue(0),
+    } as unknown as jest.Mocked<TeamRepository>;
     tournamentModel = {
       find: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnThis(),
@@ -44,7 +92,18 @@ describe("TierListService", () => {
         exec: jest.fn().mockResolvedValue([]),
       }),
     } as unknown as Model<HostedTournamentDocument>;
-    service = new TierListService(tierListRepo, tournamentModel);
+    const access = new TierListAccessService(tierListRepo, tournamentRepo);
+    service = new TierListService(
+      tierListRepo,
+      access,
+      new TierListHistoryService(tierListRepo, revisionRepo),
+      revisionRepo,
+      {} as TierListInviteRepository,
+      teamRepo,
+      logWriter,
+      { run: (work: () => Promise<unknown>) => work() } as TransactionRunner,
+      tournamentModel,
+    );
   });
 
   describe("getTierList", () => {
@@ -276,22 +335,72 @@ describe("TierListService", () => {
     });
   });
 
+  describe("visibility", () => {
+    it("hides a private list from strangers as if it didn't exist", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ visibility: "private" }));
+
+      await expect(
+        service.getTierList("tierlist-1", "auth0|stranger", false),
+      ).rejects.toMatchObject({ code: "LR-TIER-001" });
+    });
+
+    it("shows a private list to a viewer it was shared with", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({
+          visibility: "private",
+          members: [{ sub: "auth0|friend", role: "viewer" }],
+        }),
+      );
+
+      const result = await service.getTierList("tierlist-1", "auth0|friend", false);
+
+      expect(result.meta.access).toBe("view");
+      expect(result.meta.role).toBe("viewer");
+    });
+
+    it("lets organizers edit their tournament's copy, and nobody else", async () => {
+      const copy = buildTierList({ tournamentId: "tournament-1", createdBy: "auth0|creator" });
+      tierListRepo.findById.mockResolvedValue(copy);
+      tournamentRepo.findById.mockResolvedValue(organizedBy("auth0|organizer"));
+
+      await expect(
+        service.getTierList("tierlist-1", "auth0|organizer", true),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getTierList("tierlist-1", "auth0|creator", true),
+      ).rejects.toMatchObject({ code: "LR-TIER-004" });
+    });
+
+    it("freezes a tournament's copy once it is replaced", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({ tournamentId: "tournament-1", retiredAt: new Date() }),
+      );
+      tournamentRepo.findById.mockResolvedValue(organizedBy("auth0|organizer"));
+
+      await expect(
+        service.getTierList("tierlist-1", "auth0|organizer", true),
+      ).rejects.toMatchObject({ code: "LR-TIER-004" });
+    });
+  });
+
   describe("getSettings", () => {
-    it("delegates to the repository and mapper", async () => {
+    it("returns the settings with the viewer's access", async () => {
       const tierList = buildTierList();
       tierListRepo.findById.mockResolvedValue(tierList);
 
-      const result = await service.getSettings("tierlist-1");
+      const result = await service.getSettings("tierlist-1", "auth0|owner");
 
       expect(tierListRepo.findById).toHaveBeenCalledWith("tierlist-1");
-      expect(result).toEqual(TierListMapper.toSettingsPayload(tierList));
+      expect(result).toEqual({
+        ...TierListMapper.toSettingsPayload(tierList),
+        access: "manage",
+      });
     });
   });
 
   describe("updateSettings", () => {
     it("throws FORBIDDEN when the caller can't edit", async () => {
-      const tierList = buildTierList({ createdBy: "auth0|owner" });
-      tierListRepo.findById.mockResolvedValue(tierList);
+      tierListRepo.findById.mockResolvedValue(buildTierList({ createdBy: "auth0|owner" }));
 
       await expect(
         service.updateSettings("tierlist-1", "auth0|stranger", {} as UpdateTierListSettingsDto),
@@ -300,8 +409,7 @@ describe("TierListService", () => {
     });
 
     it("only includes explicitly provided fields in the update", async () => {
-      const tierList = buildTierList({ createdBy: "auth0|owner" });
-      tierListRepo.findById.mockResolvedValue(tierList);
+      tierListRepo.findById.mockResolvedValue(buildTierList({ createdBy: "auth0|owner" }));
 
       const result = await service.updateSettings("tierlist-1", "auth0|owner", {
         name: "New Name",
@@ -310,79 +418,232 @@ describe("TierListService", () => {
       expect(tierListRepo.updateSettings).toHaveBeenCalledWith("tierlist-1", {
         name: "New Name",
       });
-      expect(result).toEqual({ message: "Tier list settings saved." });
+      expect(result.message).toBe("Tier list settings saved.");
     });
 
-    it("includes multiple provided fields together", async () => {
-      const tierList = buildTierList({ createdBy: "auth0|owner" });
-      tierListRepo.findById.mockResolvedValue(tierList);
+    it("lets an editor rename but not reshare the list", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({ members: [{ sub: "auth0|editor", role: "editor" }] }),
+      );
+
+      await service.updateSettings("tierlist-1", "auth0|editor", {
+        name: "Renamed",
+      } as UpdateTierListSettingsDto);
+      await expect(
+        service.updateSettings("tierlist-1", "auth0|editor", {
+          visibility: "private",
+        } as UpdateTierListSettingsDto),
+      ).rejects.toMatchObject({ code: "LR-TIER-004" });
+    });
+
+    it("asks for an author name before a list is shared", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ visibility: "private" }));
+
+      await expect(
+        service.updateSettings("tierlist-1", "auth0|owner", {
+          visibility: "public",
+        } as UpdateTierListSettingsDto),
+      ).rejects.toMatchObject({ code: "LR-TIER-002" });
 
       await service.updateSettings("tierlist-1", "auth0|owner", {
-        name: "New Name",
-        description: "New Description",
+        visibility: "public",
+        authorName: "Brock",
       } as UpdateTierListSettingsDto);
-
       expect(tierListRepo.updateSettings).toHaveBeenCalledWith("tierlist-1", {
-        name: "New Name",
-        description: "New Description",
+        authorName: "Brock",
+        visibility: "public",
       });
+    });
+
+    it("keeps sharing settings off a tournament's copy", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ tournamentId: "tournament-1" }));
+      tournamentRepo.findById.mockResolvedValue(organizedBy("auth0|organizer"));
+
+      await expect(
+        service.updateSettings("tierlist-1", "auth0|organizer", {
+          visibility: "public",
+        } as UpdateTierListSettingsDto),
+      ).rejects.toMatchObject({ code: "LR-TIER-008" });
     });
   });
 
   describe("updateTierList", () => {
     it("throws FORBIDDEN when the caller can't edit", async () => {
-      const tierList = buildTierList({ createdBy: "auth0|owner" });
-      tierListRepo.findById.mockResolvedValue(tierList);
+      tierListRepo.findById.mockResolvedValue(buildTierList({ createdBy: "auth0|owner" }));
 
       await expect(
         service.updateTierList("tierlist-1", "auth0|stranger", { tiers: [] } as UpdateTierListDto),
       ).rejects.toMatchObject({ code: "LR-TIER-004" });
-      expect(tierListRepo.save).not.toHaveBeenCalled();
+      expect(tierListRepo.saveContent).not.toHaveBeenCalled();
     });
 
-    it("applies the update to the domain object and persists it", async () => {
-      const tierList = buildTierList({ createdBy: "auth0|owner" });
-      const applySpy = jest.spyOn(tierList, "applyTierUpdate");
-      tierListRepo.findById.mockResolvedValue(tierList);
-      const dto = { tiers: [{ name: "S", cost: 30, pokemon: [] }] } as UpdateTierListDto;
+    it("saves the change and records a revision with a summary", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ version: 4 }));
+      const dto = {
+        tiers: [
+          { name: "S", cost: 30, pokemon: [{ id: "garchomp", name: "Garchomp" }] },
+        ],
+        version: 4,
+      } as UpdateTierListDto;
 
       const result = await service.updateTierList("tierlist-1", "auth0|owner", dto);
 
-      expect(applySpy).toHaveBeenCalledWith(dto.tiers);
-      expect(tierListRepo.save).toHaveBeenCalledWith(tierList);
-      expect(result).toEqual({
-        message: "Tier list updated successfully",
-        orphanedRequirements: [],
-      });
+      expect(tierListRepo.saveContent).toHaveBeenCalledWith(expect.any(TierList), 4);
+      expect(result.version).toBe(5);
+      expect(result.summary).toBe("Added 1 Pokémon, added tier S");
+      expect(revisionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          version: 5,
+          actor: "auth0|owner",
+          kind: "edit",
+          summary: "Added 1 Pokémon, added tier S",
+        }),
+      );
     });
 
-    it("reports tournaments left holding a requirement for a deleted tier", async () => {
-      const tierList = buildTierList({
-        createdBy: "auth0|owner",
-        tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
-      });
-      tierListRepo.findById.mockResolvedValue(tierList);
-      (tournamentModel.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        lean: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockResolvedValue([
-          {
-            name: "Season 12",
-            tierRequirements: [{ tierId: tierId("S"), required: 2 }],
-          },
-        ]),
-      });
+    it("refuses a save that started from an older version", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ version: 6 }));
 
-      const dto = { tiers: [] } as unknown as UpdateTierListDto;
-      const result = await service.updateTierList(
-        new Types.ObjectId().toString(),
-        "auth0|owner",
-        dto,
+      await expect(
+        service.updateTierList("tierlist-1", "auth0|owner", {
+          tiers: [{ name: "S", cost: 30, pokemon: [] }],
+          version: 5,
+        } as UpdateTierListDto),
+      ).rejects.toMatchObject({ code: "LR-TIER-005" });
+      expect(tierListRepo.saveContent).not.toHaveBeenCalled();
+    });
+
+    it("keeps the state before history started as version 0", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ version: 0 }));
+
+      await service.updateTierList("tierlist-1", "auth0|owner", {
+        tiers: [{ name: "S", cost: 30, pokemon: [] }],
+      } as UpdateTierListDto);
+
+      expect(revisionRepo.create).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ version: 0, summary: "Before history started" }),
+      );
+      expect(revisionRepo.create).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ version: 1 }),
+      );
+    });
+
+    it("writes nothing when the save changes nothing", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ version: 2 }));
+
+      const result = await service.updateTierList("tierlist-1", "auth0|owner", {
+        tiers: [],
+      } as unknown as UpdateTierListDto);
+
+      expect(result.version).toBe(2);
+      expect(tierListRepo.saveContent).not.toHaveBeenCalled();
+      expect(revisionRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("logs an organizer's edit to a live tournament's list", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({
+          tournamentId: "tournament-1",
+          tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
+          version: 3,
+        }),
+      );
+      tournamentRepo.findById.mockResolvedValue(organizedBy("auth0|organizer"));
+
+      await service.updateTierList("tierlist-1", "auth0|organizer", {
+        tiers: [{ id: tierId("S"), name: "S", cost: 25, pokemon: [] }],
+        version: 3,
+        reason: "Fixing a typo",
+      } as UpdateTierListDto);
+
+      expect(logWriter.record).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "tournament-1" }),
+        "auth0|organizer",
+        expect.objectContaining({
+          type: "tier-list.edited",
+          summary: "Repriced S 30 → 25",
+          reason: "Fixing a typo",
+        }),
+      );
+      expect(revisionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ actorName: "Erika" }),
+      );
+    });
+
+    it("doesn't log edits before sign-ups open", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({
+          tournamentId: "tournament-1",
+          tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
+        }),
+      );
+      tournamentRepo.findById.mockResolvedValue(
+        organizedBy("auth0|organizer", { signUpAccess: "closed" }),
       );
 
+      await service.updateTierList("tierlist-1", "auth0|organizer", {
+        tiers: [{ id: tierId("S"), name: "S", cost: 25, pokemon: [] }],
+      } as UpdateTierListDto);
+
+      expect(logWriter.record).not.toHaveBeenCalled();
+    });
+
+    it("reports requirements left pointing at a deleted tier", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({
+          tournamentId: "tournament-1",
+          tiers: [new Tier({ id: tierId("S"), name: "S", cost: 30 })],
+        }),
+      );
+      tournamentRepo.findById.mockResolvedValue(
+        organizedBy("auth0|organizer", {
+          tierRequirements: [{ tierId: tierId("S"), required: 2 }],
+        }),
+      );
+
+      const result = await service.updateTierList("tierlist-1", "auth0|organizer", {
+        tiers: [],
+      } as unknown as UpdateTierListDto);
+
       expect(result.orphanedRequirements).toEqual([
-        { tournament: "Season 12", requirements: 1 },
+        { tournament: "Spring Cup", requirements: 1 },
       ]);
+    });
+  });
+
+  describe("revert", () => {
+    it("restores an old version as a new revision", async () => {
+      tierListRepo.findById.mockResolvedValue(
+        buildTierList({ version: 5, tiers: [new Tier({ id: tierId("A"), name: "A", cost: 10 })] }),
+      );
+      revisionRepo.find.mockResolvedValue({
+        version: 2,
+        state: {
+          tiers: [{ id: tierId("S"), name: "S", cost: 30 }],
+          pokemon: {},
+          banned: { moves: [], abilities: [] },
+        },
+      } as never);
+
+      const result = await service.revert("tierlist-1", "auth0|owner", 2, 5);
+
+      expect(result.version).toBe(6);
+      expect(revisionRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "revert", restoredFrom: 2, version: 6 }),
+      );
+    });
+  });
+
+  describe("remove", () => {
+    it("refuses to delete a tournament's copy", async () => {
+      tierListRepo.findById.mockResolvedValue(buildTierList({ tournamentId: "tournament-1" }));
+      tournamentRepo.findById.mockResolvedValue(organizedBy("auth0|owner"));
+
+      await expect(service.remove("tierlist-1", "auth0|owner")).rejects.toMatchObject({
+        code: "LR-TIER-008",
+      });
     });
   });
 });

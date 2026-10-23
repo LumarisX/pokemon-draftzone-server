@@ -40,8 +40,7 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
-    settings: { isPublic: true },
-    collaborators: [],
+    visibility: "public",
     ...overrides,
   });
 }

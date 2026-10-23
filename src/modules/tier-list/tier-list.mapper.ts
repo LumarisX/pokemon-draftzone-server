@@ -1,9 +1,9 @@
 import {
   Tier,
   TierList,
+  TierListMember,
   TierListPokemon,
   TierListPokemonAddon,
-  TierListSettings,
 } from "./tier-list.domain";
 import { Types } from "mongoose";
 import {
@@ -11,6 +11,7 @@ import {
   TierListDocument,
   TierListPokemonAddonEntity,
   TierListPokemonEntity,
+  TierListVisibility,
 } from "./tier-list.schema";
 
 export class TierListMapper {
@@ -43,7 +44,11 @@ export class TierListMapper {
       name: doc.name,
       description: doc.description,
       createdBy: doc.createdBy,
+      authorName: doc.authorName,
       copiedFrom: doc.copiedFrom?.toString(),
+      copiedFromVersion: doc.copiedFromVersion,
+      tournamentId: doc.tournament?.toString(),
+      retiredAt: doc.retiredAt,
       pokemon,
       tiers: doc.tiers.map(
         (tier) =>
@@ -60,18 +65,46 @@ export class TierListMapper {
       },
       format: doc.format,
       ruleset: doc.ruleset,
-      settings: new TierListSettings({
-        isPublic: doc.settings.isPublic,
-        shareToken: doc.settings.shareToken,
-      }),
-      collaborators: [...doc.collaborators],
+      visibility: TierListMapper.visibilityOf(doc),
+      members: TierListMapper.membersOf(doc),
+      tags: [...(doc.tags ?? [])],
+      featured: doc.featured ?? false,
+      version: doc.version ?? 0,
+      forkCount: doc.forkCount ?? 0,
+      useCount: doc.useCount ?? 0,
+      updatedAt: doc.updatedAt,
     });
+  }
+
+  static visibilityOf(doc: Pick<TierListDocument, "settings">): TierListVisibility {
+    return (
+      doc.settings?.visibility ?? (doc.settings?.isPublic ? "public" : "private")
+    );
+  }
+
+  static membersOf(
+    doc: Pick<TierListDocument, "members" | "collaborators">,
+  ): TierListMember[] {
+    const members: TierListMember[] = (doc.members ?? []).map(
+      ({ sub, name, role }) => ({ sub, name, role }),
+    );
+    for (const sub of doc.collaborators ?? []) {
+      if (!members.some((member) => member.sub === sub))
+        members.push({ sub, role: "editor" });
+    }
+    return members;
   }
 
   static toSettingsPayload(tierList: TierList) {
     return {
       name: tierList.name,
       description: tierList.description,
+      authorName: tierList.authorName,
+      visibility: tierList.visibility,
+      tags: tierList.tags,
+      format: tierList.format.name,
+      ruleset: tierList.ruleset.name,
+      isTournamentCopy: tierList.isTournamentCopy,
     };
   }
 

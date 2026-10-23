@@ -220,6 +220,24 @@ or Mimikyu-Busted. Do not add them to `IRRELEVANT_BATTLE_ONLY_SPECIES`.
 - `displayName` overrides the Auth0 `username` default; there was no migration, so
   treat it as optional.
 
+## Tier lists and the tournament log
+
+A tier list is either a **preset** (no `tournament` field; owner `createdBy`, `members` with
+editor/viewer roles, `visibility` private/unlisted/public) or a **tournament's copy**
+(`tournament` set). A copy is edited by that tournament's organizers only and is never shared;
+`TierListAccessService` resolves access for both, and a private list is a 404 to strangers.
+Tournaments always get their own copy (`copiedFrom`/`copiedFromVersion` record the upstream
+preset), never a live reference: attach or swap through `tier-list/attach`, never by writing
+`tierList` on the tournament. Every content save goes through `TierListHistoryService.saveState`,
+which refuses a stale `version` and writes a full-snapshot revision. Diffing and the three-way
+pull live in `tier-list.state.ts`. The importer (`tier-list/import/`) parses pasted sheets,
+detects the layout and matches names; nothing is written until the client saves the reviewed
+result.
+
+`TournamentLogWriter.record` appends to `tournamentlogs` (per-tournament `seq` from the
+tournament's `logSeq`). Call it inside the same transaction as the change. Entries are never
+edited or deleted, and reads go through `TournamentLogService`, which honors `logVisibility`.
+
 ## Achievements and final placements
 
 Achievements are earned by a team within one tournament. Every definition lives in

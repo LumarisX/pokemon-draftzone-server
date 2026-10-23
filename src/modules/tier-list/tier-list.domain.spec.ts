@@ -5,6 +5,7 @@ import {
   TierListPokemon,
   TierListPokemonAddon,
   UNTIERED_TIER_NAME,
+  upstreamOf,
 } from "./tier-list.domain";
 import { tierId } from "./tier-list.test-ids";
 
@@ -19,31 +20,69 @@ function buildTierList(overrides: Partial<ConstructorParameters<typeof TierList>
     banned: { moves: [], abilities: [] },
     format: "Singles",
     ruleset: "Gen9 NatDex",
-    settings: { isPublic: true },
-    collaborators: [],
+    visibility: "public",
     ...overrides,
   });
 }
 
-describe("TierList.canEdit", () => {
-  it("returns false when sub is undefined", () => {
+describe("TierList.presetAccess", () => {
+  it("lets anyone view a public list but not edit it", () => {
     const tierList = buildTierList();
-    expect(tierList.canEdit(undefined)).toBe(false);
+    expect(tierList.presetAccess(undefined)).toBe("view");
+    expect(tierList.presetAccess("auth0|stranger")).toBe("view");
   });
 
-  it("returns true for the creator", () => {
+  it("gives the creator manage access", () => {
     const tierList = buildTierList({ createdBy: "auth0|owner" });
-    expect(tierList.canEdit("auth0|owner")).toBe(true);
+    expect(tierList.presetAccess("auth0|owner")).toBe("manage");
   });
 
-  it("returns true for a collaborator", () => {
-    const tierList = buildTierList({ collaborators: ["auth0|collab-1"] });
-    expect(tierList.canEdit("auth0|collab-1")).toBe(true);
+  it("gives editors edit access and viewers view access", () => {
+    const tierList = buildTierList({
+      visibility: "private",
+      members: [
+        { sub: "auth0|editor", role: "editor" },
+        { sub: "auth0|viewer", role: "viewer" },
+      ],
+    });
+    expect(tierList.presetAccess("auth0|editor")).toBe("edit");
+    expect(tierList.presetAccess("auth0|viewer")).toBe("view");
   });
 
-  it("returns false for an unrelated user", () => {
-    const tierList = buildTierList({ collaborators: ["auth0|collab-1"] });
-    expect(tierList.canEdit("auth0|stranger")).toBe(false);
+  it("hides a private list from strangers", () => {
+    const tierList = buildTierList({ visibility: "private" });
+    expect(tierList.presetAccess(undefined)).toBe("none");
+    expect(tierList.presetAccess("auth0|stranger")).toBe("none");
+  });
+
+  it("lets anyone with the link view an unlisted list", () => {
+    const tierList = buildTierList({ visibility: "unlisted" });
+    expect(tierList.presetAccess("auth0|stranger")).toBe("view");
+  });
+});
+
+describe("upstreamOf", () => {
+  it("points a preset's copies at the preset itself", () => {
+    expect(upstreamOf({ id: "a", version: 4 })).toEqual({ id: "a", version: 4 });
+  });
+
+  it("points a copy of a tournament copy at that copy's own source", () => {
+    expect(
+      upstreamOf({
+        id: "copy",
+        version: 9,
+        tournamentId: "t",
+        copiedFrom: "preset",
+        copiedFromVersion: 2,
+      }),
+    ).toEqual({ id: "preset", version: 2 });
+  });
+
+  it("falls back to the tournament copy when it has no source", () => {
+    expect(upstreamOf({ id: "copy", version: 9, tournamentId: "t" })).toEqual({
+      id: "copy",
+      version: 9,
+    });
   });
 });
 
@@ -130,7 +169,6 @@ describe("TierList.getPokemonCost", () => {
       addons: [new TierListPokemonAddon({ name: "Light Ball", cost: 5 })],
     });
 
-    // "Light Ball" matches a real addon but isn't first, so it's never checked.
     expect(tierList.getPokemonCost("pikachu", ["Some Other Addon", "Light Ball"])).toBe(30);
   });
 

@@ -65,7 +65,9 @@ import {
 } from "./hosted-tournament.dto";
 import { HostedTournamentMapper } from "./hosted-tournament.mapper";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
+import { describeChanges, SECTION_LABELS, settingsChanges } from "./settings-log";
 import { computeTournamentOutcomes } from "./tournament-outcomes";
+import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writer";
 import { achievementProgress } from "@modules/achievement/domain/achievement";
 import {
   ACHIEVEMENTS,
@@ -108,6 +110,7 @@ export class HostedTournamentService {
     private readonly uploads: UploadsService,
     private readonly transactions: TransactionRunner,
     private readonly events: EventEmitter2,
+    private readonly logWriter: TournamentLogWriter,
   ) {}
 
   async removeParticipant(
@@ -1585,21 +1588,19 @@ export class HostedTournamentService {
 
     if (
       dto.tierListId !== undefined &&
-      !Types.ObjectId.isValid(dto.tierListId)
+      dto.tierListId !== tournament.tierListId
     )
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
-        tierListId: dto.tierListId,
+        reason: "Replace the tier list from the Tier List section.",
       });
 
-    if (
-      dto.tierListId !== undefined ||
-      dto.tierRequirements !== undefined ||
-      dto.draftCount !== undefined
-    ) {
-      const targetTierListId = dto.tierListId ?? tournament.tierListId;
-      const tierList = targetTierListId
-        ? await this.tierListRepo.findById(targetTierListId)
+    const touchesRoster =
+      dto.tierRequirements !== undefined || dto.draftCount !== undefined;
+    const tierList =
+      touchesRoster && tournament.tierListId
+        ? await this.tierListRepo.findById(tournament.tierListId)
         : null;
+    if (touchesRoster) {
       assertRosterRules({
         tierIds: tierList ? new Set(tierList.tiers.map((tier) => tier.id)) : null,
         draftCount: dto.draftCount ?? tournament.draftCount,
@@ -1657,8 +1658,6 @@ export class HostedTournamentService {
     }
     if (dto.standingsRules?.tiebreakers !== undefined)
       update["standingsRules.tiebreakers"] = dto.standingsRules.tiebreakers;
-    if (dto.tierListId !== undefined)
-      update["tierList"] = new Types.ObjectId(dto.tierListId);
     if (dto.draftCount !== undefined) update["draftCount"] = dto.draftCount;
     if (dto.pointTotal !== undefined) update["pointTotal"] = dto.pointTotal;
     if (dto.maxTeams !== undefined) update["maxTeams"] = dto.maxTeams;
@@ -1701,8 +1700,36 @@ export class HostedTournamentService {
           dto.matchSettings.coachReporting ??
           tournament.matchSettings?.coachReporting !== false,
       };
+    if (dto.logVisibility !== undefined)
+      update["logVisibility"] = dto.logVisibility;
 
-    await this.tournamentRepo.updateSettings(tournament.id, update);
+    const changes = settingsChanges(
+      tournament,
+      dto,
+      (tierId) => tierList?.getTierById(tierId)?.name ?? "Removed tier",
+    );
+    const live =
+      tournament.signUpAccess !== "closed" ||
+      (await this.teamRepo.countApprovedByTournament(tournament.id)) > 0;
+
+    await this.transactions.run(async () => {
+      await this.tournamentRepo.updateSettings(tournament.id, update);
+      for (const section of new Set(dto.unlocked ?? []))
+        await this.logWriter.record(tournament, sub, {
+          type: "settings.unlocked",
+          summary: `Unlocked ${SECTION_LABELS[section]} to change it`,
+          target: { kind: "settings", id: section, name: SECTION_LABELS[section] },
+          reason: dto.reason,
+        });
+      if (changes.length && (live || dto.unlocked?.length))
+        await this.logWriter.record(tournament, sub, {
+          type: "settings.changed",
+          summary: describeChanges(changes),
+          target: { kind: "settings" },
+          details: { changes },
+          reason: dto.reason,
+        });
+    });
     return { message: "Settings saved." };
   }
 
