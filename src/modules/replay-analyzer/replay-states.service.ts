@@ -259,6 +259,7 @@ const STATUS_DAMAGE_IDS = new Set(["psn", "tox", "brn"]);
 const DELAYED_DAMAGE_EFFECTS = new Set([
   "move: Future Sight",
   "move: Doom Desire",
+  "Doom Desire",
 ]);
 
 function defaultBoosts(): Boosts {
@@ -398,6 +399,11 @@ function isShieldingMove(moveId: string, genNum?: number): boolean {
   return SIDE_SHIELD_MOVES.has(moveId) || isStallingMove(moveId, genNum);
 }
 
+function isPartialTrapMove(moveId: string, genNum?: number): boolean {
+  const move = gens.get(genNum ?? 9).moves.get(moveId);
+  return Boolean(move?.exists && move.volatileStatus === "partiallytrapped");
+}
+
 const SPREAD_MOVE_TARGETS = new Set(["allAdjacent", "allAdjacentFoes"]);
 
 function findChild(line: ReplayLine, action: string): ReplayLine | undefined {
@@ -507,7 +513,7 @@ function parseHpState(hpRaw: string | undefined): HPState | undefined {
   if (current === 0) return { raw: hp, current: 0, percent: 0 };
   if (!maxRaw) return { raw: hp };
 
-  const max = Number(maxRaw);
+  const max = Number(maxRaw.replace(/[a-z]+$/i, ""));
   if (!Number.isFinite(current) || !Number.isFinite(max) || max <= 0) {
     return { raw: hp };
   }
@@ -702,7 +708,11 @@ export class ReplayStatesService {
       );
       if (!speciesId) return;
 
-      const key = `${sideId}: ${baseSpeciesId ?? speciesId}`;
+      const baseKey = `${sideId}: ${baseSpeciesId ?? speciesId}`;
+      const sharesBase =
+        field.sides[sideId].pokemon[baseKey] &&
+        field.sides[sideId].pokemon[baseKey].species !== speciesId;
+      const key = sharesBase ? `${baseKey}~${speciesId}` : baseKey;
       const pokemon = upsertPokemon(field.sides[sideId], key, speciesId);
       pokemon.details = line.args.details;
       pushUnique(pokemon.detailsHistory, line.args.details);
@@ -1030,6 +1040,23 @@ export class ReplayStatesService {
           );
         }
       }
+      if (
+        effectName &&
+        isPartialTrapMove(toID(effectName), field.genNum)
+      ) {
+        const position = this.getPositionFromArgs(line.args.pokemon, field);
+        if (position) {
+          ensureConditionInList(
+            position.conditions,
+            this.createConditionState(
+              line.args.effect as string,
+              line,
+              ctx,
+              parentLine,
+            ),
+          );
+        }
+      }
       if (effectName === "Destiny Bond") {
         const lastDamage =
           pokemon.damageHistory[pokemon.damageHistory.length - 1];
@@ -1084,8 +1111,13 @@ export class ReplayStatesService {
             field,
           )
         : undefined;
+      const paidForOwnMove =
+        ctx.lastMove?.attackerKey === damaged.key &&
+        ctx.lastMove.turnNumber === line.turnNumber &&
+        ctx.lastMove.moveId === toID(line.args.from);
       const selfInflictedCost =
-        hasEffectSource && parentMoveAttacker?.key === damaged.key
+        hasEffectSource &&
+        (parentMoveAttacker?.key === damaged.key || paidForOwnMove)
           ? damaged
           : undefined;
       const attacker =
@@ -1411,6 +1443,15 @@ export class ReplayStatesService {
         this.createConditionState(line.args.condition, line, ctx, parentLine),
       );
     },
+    "-swapsideconditions": (line, ctx) => {
+      const { p1, p2 } = ctx.field.sides;
+      const isPending = (condition: ConditionState) =>
+        isDelayedDamageEffect(condition.raw);
+      const fromP1 = p1.conditions.filter((c) => !isPending(c));
+      const fromP2 = p2.conditions.filter((c) => !isPending(c));
+      p1.conditions = [...p1.conditions.filter(isPending), ...fromP2];
+      p2.conditions = [...p2.conditions.filter(isPending), ...fromP1];
+    },
     "-singlemove": (line, ctx, parentLine) =>
       this.applySingleTurnCondition(line, ctx, parentLine),
     "-singleturn": (line, ctx, parentLine) =>
@@ -1504,7 +1545,12 @@ export class ReplayStatesService {
       };
     }
 
+    const lastDamage = pokemon.damageHistory[pokemon.damageHistory.length - 1];
+    const lethalHitThisTurn =
+      lastDamage?.hpAfter === 0 && lastDamage.turnNumber === line.turnNumber;
+
     if (
+      !lethalHitThisTurn &&
       ctx.lastMove &&
       ctx.lastMove.attackerKey === pokemon.key &&
       ctx.lastMove.turnNumber === line.turnNumber
@@ -1541,7 +1587,6 @@ export class ReplayStatesService {
       };
     }
 
-    const lastDamage = pokemon.damageHistory[pokemon.damageHistory.length - 1];
     return {
       turnNumber: line.turnNumber,
       sourceAction: line.action,
@@ -1682,10 +1727,12 @@ export class ReplayStatesService {
     if (ofPokemon) return ofPokemon;
 
     if (parentLine?.action === "move") {
-      return this.getPokemonFromArgs(
+      const moveUser = this.getPokemonFromArgs(
         parentLine.args.attacker ?? parentLine.args.pokemon,
         field,
       );
+      if (moveUser?.key !== victim.key) return moveUser;
+      return this.resolveRetaliator(line, parentLine, field) ?? moveUser;
     }
 
     const isSwitchLike =
@@ -1702,6 +1749,24 @@ export class ReplayStatesService {
     }
 
     return undefined;
+  }
+
+  private resolveRetaliator(
+    line: ReplayLine,
+    moveLine: ReplayLine,
+    field: Field,
+  ): Pokemon | undefined {
+    const siblings = moveLine.children ?? [];
+    const previous = siblings[siblings.indexOf(line) - 1];
+    const blocker =
+      previous?.action === "-activate" &&
+      previous.args.effect === "move: Protect"
+        ? previous.args.pokemon
+        : undefined;
+    return this.getPokemonFromArgs(
+      blocker ?? resolveMoveTarget(moveLine),
+      field,
+    );
   }
 
   private findDamageSource(
@@ -1993,24 +2058,12 @@ export class ReplayStatesService {
       line.args.details,
       field.genNum,
     );
-    const speciesKey = speciesId
-      ? `${pokemonRef.sideId}: ${speciesId}`
-      : undefined;
-    const baseSpeciesKey = baseSpeciesId
-      ? `${pokemonRef.sideId}: ${baseSpeciesId}`
-      : undefined;
-    const nicknameMatch = Object.values(side.pokemon).find(
-      (pokemon) => pokemon.nickname === pokemonRef.nickname,
+    const pokemonKey = this.resolveSwitchKey(
+      side,
+      pokemonRef,
+      speciesId,
+      baseSpeciesId,
     );
-    const pokemonKey = side.pokemon[pokemonRef.canonicalKey]
-      ? pokemonRef.canonicalKey
-      : nicknameMatch
-        ? nicknameMatch.key
-        : baseSpeciesKey && side.pokemon[baseSpeciesKey]
-          ? baseSpeciesKey
-          : speciesKey && side.pokemon[speciesKey]
-            ? speciesKey
-            : (baseSpeciesKey ?? speciesKey ?? pokemonRef.canonicalKey);
 
     const pokemon = upsertPokemon(side, pokemonKey, pokemonRef.nickname);
     pokemon.nickname = pokemonRef.nickname;
@@ -2048,6 +2101,25 @@ export class ReplayStatesService {
     position.pokemon = pokemon;
   }
 
+  private resolveSwitchKey(
+    side: Side,
+    pokemonRef: PokemonRef,
+    speciesId: ID | undefined,
+    baseSpeciesId: ID | undefined,
+  ): PokemonKey {
+    if (!speciesId) {
+      const named = Object.values(side.pokemon).find(
+        (pokemon) => pokemon.nickname === pokemonRef.nickname,
+      );
+      return named?.key ?? pokemonRef.canonicalKey;
+    }
+
+    const seenAsSpecies = Object.values(side.pokemon).find((pokemon) =>
+      pokemon.speciesHistory.includes(speciesId),
+    );
+    return seenAsSpecies?.key ?? `${side.id}: ${baseSpeciesId ?? speciesId}`;
+  }
+
   private resolvePokemonByRef(
     pokemonRef: PokemonRef,
     field: Field,
@@ -2062,8 +2134,12 @@ export class ReplayStatesService {
     const direct = side.pokemon[pokemonRef.canonicalKey];
     if (direct) return direct;
 
-    return Object.values(side.pokemon).find(
-      (pokemon) => pokemon.nickname === pokemonRef.nickname,
+    const hasNickname = (pokemon: Pokemon | undefined) =>
+      pokemon?.nickname === pokemonRef.nickname;
+    return (
+      Object.values(side.positions)
+        .map((position) => position.pokemon)
+        .find(hasNickname) ?? Object.values(side.pokemon).find(hasNickname)
     );
   }
 

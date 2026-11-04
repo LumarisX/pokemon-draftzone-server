@@ -105,10 +105,9 @@ function extractMajorActions(args: string[]) {
       continue;
     }
 
-    const [rawKey, value] = arg.split("] ");
-    const key = rawKey.replace(/\]$/, "").slice(1);
-    if (isMajorArgKey(key)) {
-      MAJOR_ARG_HANDLERS[key](majorActions, value);
+    const tag = arg.match(/^\[(\w+)\]\s*(.*)$/);
+    if (tag && isMajorArgKey(tag[1])) {
+      MAJOR_ARG_HANDLERS[tag[1]](majorActions, tag[2] || undefined);
     } else {
       remainingArgs.push(arg);
     }
@@ -157,6 +156,7 @@ export const ACTION_PARSE_ARGS: Record<
   "-mustrecharge": ["pokemon"],
   "-notarget": ["pokemon"],
   "-nothing": [],
+  "-ohko": [],
   "-prepare": ["attacker", "move", "defender"],
   "-primal": ["pokemon"],
   "-resisted": ["pokemon", "multiplier"],
@@ -178,7 +178,9 @@ export const ACTION_PARSE_ARGS: Record<
   "-weather": ["weather", "reason"],
   "-zbroken": ["pokemon"],
   "-zpower": ["pokemon"],
+  badge: [],
   c: ["username", "message"],
+  chat: ["username", "message"],
   "c:": ["timestamp", "username", "message"],
   cant: ["pokemon", "reason", "move"],
   clearpoke: [],
@@ -244,7 +246,14 @@ const mapArgs =
     return parsedArgs;
   };
 
-const FREE_FORM_ACTIONS = new Set(["showteam"]);
+const FREE_FORM_ACTIONS = new Set([
+  "showteam",
+  "badge",
+  "c",
+  "chat",
+  "n",
+  "raw",
+]);
 
 function validateArgCount(
   lineId: string,
@@ -296,7 +305,7 @@ export class ReplayParseService {
     const sourceLines = log
       .split("\n")
       .map((line) => line.trimEnd())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.startsWith("|"));
 
     const lines: ReplayLine[] = sourceLines.map((rawLine, index) => {
       const normalized = rawLine.startsWith("|") ? rawLine.slice(1) : rawLine;
@@ -322,8 +331,14 @@ export class ReplayParseService {
     });
 
     const parentLines: ReplayLine[] = lines.reduce((parents, line) => {
-      if (line.action.startsWith("-") || line.action === "debug") {
-        const parent = parents[parents.length - 1];
+      const parent = parents[parents.length - 1];
+      const isFormeChangeMidMove =
+        line.action === "detailschange" && parent?.action === "move";
+      if (
+        line.action.startsWith("-") ||
+        line.action === "debug" ||
+        isFormeChangeMidMove
+      ) {
         if (!parent) return parents;
         if (!parent.children) parent.children = [];
         parent.children.push(line);
