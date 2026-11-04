@@ -2,6 +2,7 @@ import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournamentDocument } from "@modules/tournament/sub-modules/external-tournament/external-tournament.schema";
+import { keepUnchangedKos } from "./external-matchup-match/external-matchup-match.domain";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupDto } from "./external-matchup.dto";
@@ -104,7 +105,12 @@ export class ExternalMatchupMapper {
       winnerOverride: existing.winnerOverride,
       forfeitedBy: existing.forfeitedBy,
       matches: data.matches
-        ? data.matches.map((m) => MatchMapper.fromForm(m))
+        ? data.matches.map((m, index) =>
+            keepUnchangedKos(
+              MatchMapper.fromForm(m),
+              existing.matches?.[index],
+            ),
+          )
         : existing.matches,
       aTeam: existing.aTeam,
       bTeam: {

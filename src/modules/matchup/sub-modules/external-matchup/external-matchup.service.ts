@@ -4,6 +4,7 @@ import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { TournamentScore } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
 import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
 import { Injectable } from "@nestjs/common";
+import { keepUnchangedKos } from "./external-matchup-match/external-matchup-match.domain";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import {
@@ -90,11 +91,6 @@ export class ExternalMatchupService {
     return this.getOwnedMatchup(tournamentId, externalmatchupId, owner);
   }
 
-  /**
-   * Fetches a matchup only if it belongs to a tournament the caller owns.
-   * Throws MATCHUP.NOT_FOUND otherwise, so callers can't read or mutate
-   * matchups by guessing ids (IDOR guard for the by-matchupId endpoints).
-   */
   private async getOwnedMatchup(
     tournamentSlug: string,
     externalmatchupId: string,
@@ -151,10 +147,19 @@ export class ExternalMatchupService {
     owner: string,
     dto: ScorePatchDto,
   ): Promise<void> {
-    await this.getOwnedMatchup(tournamentSlug, externalmatchupId, owner);
+    const existing = await this.getOwnedMatchup(
+      tournamentSlug,
+      externalmatchupId,
+      owner,
+    );
     await this.matchupRepo.updateScore(
       externalmatchupId,
-      dto.matches.map((match) => MatchMapper.fromForm(match)),
+      dto.matches.map((match, index) =>
+        keepUnchangedKos(
+          MatchMapper.fromForm(match),
+          existing.matches?.[index],
+        ),
+      ),
       {
         aTeamPaste: dto.aTeamPaste,
         bTeamPaste: dto.bTeamPaste,

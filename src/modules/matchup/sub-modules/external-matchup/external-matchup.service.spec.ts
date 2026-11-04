@@ -2,6 +2,7 @@ import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournament } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
 import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
 import { Types } from "mongoose";
+import { ExternalMatch } from "./external-matchup-match/external-matchup-match.domain";
 import { MatchMapper } from "./external-matchup-match/external-matchup-match.mapper";
 import { ExternalMatchup } from "./external-matchup.domain";
 import { ExternalMatchupDto, ScorePatchDto } from "./external-matchup.dto";
@@ -494,6 +495,38 @@ describe("ExternalMatchupService", () => {
       ).rejects.toMatchObject({ code: "MU-001" });
       expect(matchupRepo.updateScore).not.toHaveBeenCalled();
     });
-  });
 
+    it("keeps a game's KO map when the classic page saves it with the same counts", async () => {
+      const tournament = buildTournament();
+      tournamentRepo.findBySlugAndOwner.mockResolvedValue(tournament);
+      const team = {
+        score: 1,
+        stats: [["pikachu", { kills: 1, status: "survived" }]] as [string, any][],
+      };
+      const kos = [
+        {
+          victim: { team: "b" as const, pokemon: "charizard" },
+          attacker: { team: "a" as const, pokemon: "pikachu" },
+          indirect: false,
+        },
+      ];
+      matchupRepo.findById.mockResolvedValue({
+        aTeam: { id: tournament._id },
+        matches: [new ExternalMatch({ aTeam: team, kos })],
+      } as unknown as ExternalMatchup);
+      mockedMatchMapper.fromForm.mockReturnValue(
+        new ExternalMatch({ aTeam: team }),
+      );
+
+      await service.updateExternalMatchupScore(
+        "springleague",
+        "matchup-1",
+        "auth0|owner",
+        { matches: [{} as any] },
+      );
+
+      const [, matches] = matchupRepo.updateScore.mock.calls[0];
+      expect(matches[0].kos).toEqual(kos);
+    });
+  });
 });

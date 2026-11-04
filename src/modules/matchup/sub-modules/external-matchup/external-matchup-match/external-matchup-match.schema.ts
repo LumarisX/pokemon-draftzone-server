@@ -31,13 +31,38 @@ export class PokemonStatsEntity {
   status?: PokemonResultStatus;
 }
 
+export const KO_NOTE_MAX_LENGTH = 200;
+
+@Schema({ _id: false })
+export class MatchPokemonRefEntity {
+  @Prop({ type: String, enum: MATCH_WINNERS, required: true })
+  team!: MatchWinner;
+
+  @Prop({ type: String, required: true })
+  pokemon!: string;
+}
+const MatchPokemonRefSchema = SchemaFactory.createForClass(
+  MatchPokemonRefEntity,
+);
+
+@Schema({ _id: false })
+export class ExternalMatchKoEntity {
+  @Prop({ type: MatchPokemonRefSchema, required: true })
+  victim!: MatchPokemonRefEntity;
+
+  @Prop({ type: MatchPokemonRefSchema })
+  attacker?: MatchPokemonRefEntity;
+
+  @Prop({ type: Boolean, default: false })
+  indirect!: boolean;
+
+  @Prop({ type: String, maxlength: KO_NOTE_MAX_LENGTH })
+  note?: string;
+}
+const MatchKoSchema = SchemaFactory.createForClass(ExternalMatchKoEntity);
+
 @Schema({ _id: false })
 export class ExternalMatchTeamEntity {
-  // TODO(migrate-to-map): stored as `[pokemonId, stats]` tuples. Mongoose has
-  // no tuple element schema (`[[String, Schema]]` silently drops the data on
-  // read/save and throws a CastError on `$set` updates), so this is typed as
-  // Mixed and the tuple shape is enforced by the mapper. Migrate to
-  // `Map<string, PokemonStatsEntity>` once existing documents are converted.
   @Prop({ type: [MongooseSchema.Types.Mixed], required: true })
   stats!: [string, PokemonStatsEntity][];
 
@@ -59,6 +84,9 @@ export class ExternalMatchEntity {
 
   @Prop({ type: String, enum: MATCH_WINNERS })
   winner?: MatchWinner;
+
+  @Prop({ type: [MatchKoSchema], default: undefined })
+  kos?: ExternalMatchKoEntity[];
 }
 export const MatchDataSchema =
   SchemaFactory.createForClass(ExternalMatchEntity);

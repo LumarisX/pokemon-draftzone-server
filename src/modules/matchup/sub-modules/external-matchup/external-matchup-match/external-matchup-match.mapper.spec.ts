@@ -1,4 +1,4 @@
-import { ExternalMatch } from "./external-matchup-match.domain";
+import { ExternalMatch, keepUnchangedKos } from "./external-matchup-match.domain";
 import { ExternalMatchDto } from "./external-matchup-match.dto";
 import { MatchMapper } from "./external-matchup-match.mapper";
 import { ExternalMatchEntity } from "./external-matchup-match.schema";
@@ -158,9 +158,6 @@ describe("MatchMapper", () => {
     });
   });
 
-  // Regression: these statics used to call `this.mapTeam*`, which threw
-  // ("Cannot read properties of undefined") when the method was passed as an
-  // unbound callback to Array.map — exactly how the service/repository use them.
   describe("unbound usage as an Array.map callback", () => {
     it("fromForm survives being passed by reference to map", () => {
       const dtos: ExternalMatchDto[] = [
@@ -261,6 +258,175 @@ describe("MatchMapper", () => {
           ],
         ],
       });
+    });
+
+    it("leaves kos undefined for a match saved before the KO map", () => {
+      const result = MatchMapper.fromDatabase(buildEntity());
+
+      expect(result.kos).toBeUndefined();
+    });
+  });
+
+  describe("KO map", () => {
+    const kos: ExternalMatchDto["kos"] = [
+      {
+        victim: { team: "b", pokemon: "charizard" },
+        attacker: { team: "a", pokemon: "pikachu" },
+        indirect: false,
+        note: " Thunderbolt ",
+      },
+      {
+        victim: { team: "b", pokemon: "gengar" },
+        attacker: { team: "a", pokemon: "pikachu" },
+        indirect: true,
+        note: "Toxic",
+      },
+      {
+        victim: { team: "a", pokemon: "garchomp" },
+        attacker: { team: "a", pokemon: "pikachu" },
+        indirect: false,
+      },
+      {
+        victim: { team: "a", pokemon: "pikachu" },
+        indirect: false,
+        note: "Life Orb",
+      },
+    ];
+
+    function buildKoDto(overrides: Partial<ExternalMatchDto> = {}): ExternalMatchDto {
+      return {
+        winner: "a",
+        aTeam: {
+          score: 0,
+          stats: [
+            ["pikachu", { kills: 9, status: "fainted" }],
+            ["garchomp", { status: "fainted" }],
+          ],
+        },
+        bTeam: {
+          score: 0,
+          stats: [
+            ["charizard", { status: "fainted" }],
+            ["gengar", { kills: 4, status: "fainted" }],
+          ],
+        },
+        kos,
+        ...overrides,
+      };
+    }
+
+    function countsOf(team?: { stats: [string, { kills?: number; indirect?: number; teammate?: number }][] }) {
+      return (team?.stats ?? []).map(([id, stat]) => [
+        id,
+        stat.kills,
+        stat.indirect,
+        stat.teammate,
+      ]);
+    }
+
+    it("derives every count from the arrows and ignores the counts sent", () => {
+      const result = MatchMapper.fromForm(buildKoDto());
+
+      expect(countsOf(result.aTeam)).toEqual([
+        ["pikachu", 1, 1, 1],
+        ["garchomp", 0, 0, 0],
+      ]);
+      expect(countsOf(result.bTeam)).toEqual([
+        ["charizard", 0, 0, 0],
+        ["gengar", 0, 0, 0],
+      ]);
+    });
+
+    it("keeps the arrows, trimming notes and leaving a self-KO without an attacker", () => {
+      const result = MatchMapper.fromForm(buildKoDto());
+
+      expect(result.kos).toEqual([
+        {
+          victim: { team: "b", pokemon: "charizard" },
+          attacker: { team: "a", pokemon: "pikachu" },
+          indirect: false,
+          note: "Thunderbolt",
+        },
+        {
+          victim: { team: "b", pokemon: "gengar" },
+          attacker: { team: "a", pokemon: "pikachu" },
+          indirect: true,
+          note: "Toxic",
+        },
+        {
+          victim: { team: "a", pokemon: "garchomp" },
+          attacker: { team: "a", pokemon: "pikachu" },
+          indirect: false,
+        },
+        {
+          victim: { team: "a", pokemon: "pikachu" },
+          indirect: false,
+          note: "Life Orb",
+        },
+      ]);
+    });
+
+    it("round-trips the arrows through the database and back to the client", () => {
+      const saved = MatchMapper.toDatabasePayload(MatchMapper.fromForm(buildKoDto()));
+      const loaded = MatchMapper.fromDatabase(saved);
+
+      expect(MatchMapper.toClientPayload(loaded).kos).toEqual(saved.kos);
+      expect(countsOf(loaded.aTeam)).toEqual([
+        ["pikachu", 1, 1, 1],
+        ["garchomp", 0, 0, 0],
+      ]);
+    });
+
+    it("treats an empty KO list as a KO map with no KOs", () => {
+      const result = MatchMapper.fromForm(buildKoDto({ kos: [] }));
+
+      expect(result.kos).toEqual([]);
+      expect(countsOf(result.aTeam)[0]).toEqual(["pikachu", 0, 0, 0]);
+    });
+
+    it("keeps the arrows when a classic save sends the same counts", () => {
+      const previous = MatchMapper.fromForm(buildKoDto());
+      const classic = MatchMapper.toClientPayload(previous);
+
+      const result = keepUnchangedKos(
+        MatchMapper.fromForm({ ...classic, kos: undefined }),
+        previous,
+      );
+
+      expect(result.kos).toEqual(previous.kos);
+    });
+
+    it("drops the arrows when a classic save changes a count", () => {
+      const previous = MatchMapper.fromForm(buildKoDto());
+      const classic = MatchMapper.toClientPayload(previous);
+
+      const result = keepUnchangedKos(
+        MatchMapper.fromForm({
+          ...classic,
+          kos: undefined,
+          bTeam: {
+            score: 0,
+            stats: [
+              ["charizard", { kills: 1, status: "fainted" }],
+              ["gengar", { status: "fainted" }],
+            ],
+          },
+        }),
+        previous,
+      );
+
+      expect(result.kos).toBeUndefined();
+      expect(countsOf(result.bTeam)).toEqual([
+        ["charizard", 1, 0, 0],
+        ["gengar", 0, 0, 0],
+      ]);
+    });
+
+    it("trusts the classic counts when there were never any arrows", () => {
+      const result = MatchMapper.fromForm(buildKoDto({ kos: undefined }));
+
+      expect(result.kos).toBeUndefined();
+      expect(countsOf(result.aTeam)[0]).toEqual(["pikachu", 9, 0, 0]);
     });
   });
 });

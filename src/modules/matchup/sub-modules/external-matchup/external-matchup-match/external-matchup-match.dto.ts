@@ -1,14 +1,23 @@
 import { Type } from "class-transformer";
 import {
+  IsArray,
+  IsBoolean,
   IsNumber,
   ValidateNested,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   IsIn,
+  registerDecorator,
+  ValidationOptions,
 } from "class-validator";
 import { IsMatchStatTuple, MatchStatData } from "../external-matchup.dto";
-import { MATCH_WINNERS, MatchWinner } from "./external-matchup-match.schema";
+import {
+  KO_NOTE_MAX_LENGTH,
+  MATCH_WINNERS,
+  MatchWinner,
+} from "./external-matchup-match.schema";
 
 export class TeamStatDataDto {
   @IsMatchStatTuple()
@@ -16,6 +25,57 @@ export class TeamStatDataDto {
 
   @IsNumber()
   score!: number;
+}
+
+export class MatchPokemonRefDto {
+  @IsIn(MATCH_WINNERS)
+  team!: MatchWinner;
+
+  @IsString()
+  @MinLength(1)
+  pokemon!: string;
+}
+
+export class MatchKoDto {
+  @ValidateNested()
+  @Type(() => MatchPokemonRefDto)
+  victim!: MatchPokemonRefDto;
+
+  @ValidateNested()
+  @IsOptional()
+  @Type(() => MatchPokemonRefDto)
+  attacker?: MatchPokemonRefDto;
+
+  @IsBoolean()
+  indirect!: boolean;
+
+  @IsString()
+  @MaxLength(KO_NOTE_MAX_LENGTH)
+  @IsOptional()
+  note?: string;
+}
+
+function HasUniqueVictims(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: "hasUniqueVictims",
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown) {
+          if (!Array.isArray(value)) return true;
+          const victims = value.map(
+            (ko) => `${ko?.victim?.team}:${ko?.victim?.pokemon}`,
+          );
+          return new Set(victims).size === victims.length;
+        },
+        defaultMessage() {
+          return "Each Pokémon can only be knocked out once per game.";
+        },
+      },
+    });
+  };
 }
 
 export class ExternalMatchDto {
@@ -36,4 +96,11 @@ export class ExternalMatchDto {
   @IsIn(MATCH_WINNERS)
   @IsOptional()
   winner?: MatchWinner;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @HasUniqueVictims()
+  @Type(() => MatchKoDto)
+  kos?: MatchKoDto[];
 }

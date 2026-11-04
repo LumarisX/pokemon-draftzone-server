@@ -1,14 +1,18 @@
 import {
   ExternalMatch,
+  MatchKo,
+  MatchPokemonRef,
   TeamMatchStat,
   normalizePokemonMatchStat,
 } from "./external-matchup-match.domain";
 import {
   ExternalMatchDto,
+  MatchKoDto,
   TeamStatDataDto,
 } from "./external-matchup-match.dto";
 import {
   ExternalMatchEntity,
+  ExternalMatchKoEntity,
   ExternalMatchTeamEntity,
 } from "./external-matchup-match.schema";
 
@@ -19,6 +23,7 @@ export class MatchMapper {
       replay: match.replay,
       aTeam: match.aTeam as TeamStatDataDto,
       bTeam: match.bTeam as TeamStatDataDto | undefined,
+      kos: match.kos ? MatchMapper.mapKos(match.kos) : undefined,
     };
   }
 
@@ -30,6 +35,7 @@ export class MatchMapper {
       bTeam: match.bTeam
         ? MatchMapper.mapTeam(match.bTeam)
         : { stats: [], score: 0 },
+      kos: match.kos ? MatchMapper.mapKos(match.kos) : undefined,
     };
   }
 
@@ -39,7 +45,8 @@ export class MatchMapper {
       replay: dto.replay,
       aTeam: MatchMapper.mapTeam(dto.aTeam),
       bTeam: dto.bTeam ? MatchMapper.mapTeam(dto.bTeam) : undefined,
-    });
+      kos: dto.kos ? MatchMapper.mapKos(dto.kos) : undefined,
+    }).withKoCounts();
   }
 
   static fromDatabase(entity: ExternalMatchEntity): ExternalMatch {
@@ -51,6 +58,7 @@ export class MatchMapper {
         (entity.bTeam?.stats?.length ?? 0) > 0
           ? MatchMapper.mapTeam(entity.bTeam!)
           : undefined,
+      kos: entity.kos ? MatchMapper.mapKos(entity.kos) : undefined,
     });
   }
 
@@ -64,5 +72,24 @@ export class MatchMapper {
         normalizePokemonMatchStat(stats ?? {}),
       ]),
     };
+  }
+
+  private static mapKos(
+    kos: readonly (MatchKo | MatchKoDto | ExternalMatchKoEntity)[],
+  ): MatchKo[] {
+    return kos.map((ko) => {
+      const mapped: MatchKo = {
+        victim: MatchMapper.mapRef(ko.victim),
+        indirect: !!ko.indirect,
+      };
+      if (ko.attacker) mapped.attacker = MatchMapper.mapRef(ko.attacker);
+      const note = ko.note?.trim();
+      if (note) mapped.note = note;
+      return mapped;
+    });
+  }
+
+  private static mapRef(ref: MatchPokemonRef): MatchPokemonRef {
+    return { team: ref.team, pokemon: ref.pokemon };
   }
 }
