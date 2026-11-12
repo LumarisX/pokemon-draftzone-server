@@ -32,8 +32,12 @@ export type TeamRecord = {
 export type TeamPageResponse = {
   id: string;
   slug: string;
+  baseName: string;
   coachId: string;
   isCoach: boolean;
+  canEditTeam: boolean;
+  canManageTeam: boolean;
+  nameLocked: boolean;
   pointTotal: number | undefined;
   picksHidden: boolean;
   pickCount: number;

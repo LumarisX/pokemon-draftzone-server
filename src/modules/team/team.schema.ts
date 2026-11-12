@@ -158,7 +158,19 @@ export class TeamEntity {
   teamName!: string;
 
   @Prop()
+  baseName?: string;
+
+  @Prop({ min: 0 })
+  nameVariant?: number;
+
+  @Prop()
   logo?: string;
+
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamIdentityEntity" })
+  identityId?: Types.ObjectId;
+
+  @Prop()
+  nameLockedBy?: string;
 
   @Prop({
     type: String,

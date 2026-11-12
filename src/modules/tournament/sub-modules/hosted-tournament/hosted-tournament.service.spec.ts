@@ -8,7 +8,9 @@ import { DiscordService } from "@modules/discord/discord.service";
 import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { StageRepository } from "@modules/stage/stage.repository";
+import { NamedTeam, TeamNameAssignment } from "@modules/team/domain/team-names";
 import { TeamRepository } from "@modules/team/team.repository";
+import { TeamIdentityRepository } from "@modules/team-identity/team-identity.repository";
 import {
   DraftCount,
   Tier,
@@ -26,12 +28,25 @@ import { SignUpDto } from "./hosted-tournament.dto";
 import { DEFAULT_SIGNUP_QUESTIONS } from "./signup-questions";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
 import { HostedTournamentService } from "./hosted-tournament.service";
+import { TOURNAMENT_EVENTS } from "./tournament-events";
 
 const LEAGUE_KEY = "spring-league";
 const TOURNAMENT_KEY = "spring-cup";
 const SUB = "auth0|coach-1";
 
 const logWriter = { record: jest.fn() } as unknown as TournamentLogWriter;
+const IDENTITY_ID = new Types.ObjectId();
+let identityRepo: jest.Mocked<TeamIdentityRepository>;
+
+beforeEach(() => {
+  identityRepo = {
+    record: jest.fn().mockResolvedValue(IDENTITY_ID),
+    findOwned: jest.fn().mockResolvedValue(null),
+    ownerOf: jest.fn().mockResolvedValue(null),
+    rename: jest.fn(),
+    remove: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<TeamIdentityRepository>;
+});
 
 function buildTournament(
   overrides: Partial<ConstructorParameters<typeof HostedTournament>[0]> = {},
@@ -143,6 +158,8 @@ describe("HostedTournamentService signup", () => {
       findManyByIds: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       countApprovedByTournament: jest.fn().mockResolvedValue(0),
+      findNamesByTournament: jest.fn().mockResolvedValue([]),
+      setNameVariants: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TeamRepository>;
     coachRepo = {
       findByAuth0Id: jest.fn().mockResolvedValue([]),
@@ -190,6 +207,7 @@ describe("HostedTournamentService signup", () => {
       transactions.runner,
       events,
       logWriter,
+      identityRepo,
     );
   });
 
@@ -558,6 +576,74 @@ describe("HostedTournamentService signup", () => {
       });
     });
 
+    it("takes the name and logo from a chosen identity without claiming an upload", async () => {
+      coachRepo.findByAuth0Id.mockResolvedValue([]);
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto({
+          teamName: undefined,
+          logo: "team-logos/ignored.png",
+          identity: { pack: "starter", id: "miami-palafins" },
+        }),
+      );
+
+      expect(uploads.claimUpload).not.toHaveBeenCalled();
+      expect(identityRepo.record).toHaveBeenCalledWith(
+        SUB,
+        "Miami Palafins",
+        "logo-packs/starter/miami-palafins.webp",
+      );
+      expect(applicationRepo.create.mock.calls[0][0]).toMatchObject({
+        preferredTeamName: "Miami Palafins",
+        preferredLogo: "logo-packs/starter/miami-palafins.webp",
+        preferredIdentityId: IDENTITY_ID,
+      });
+      expect(events.emit).toHaveBeenCalledWith(
+        TOURNAMENT_EVENTS.applicationSubmitted,
+        expect.objectContaining({
+          signUp: expect.objectContaining({
+            teamName: "Miami Palafins",
+            logo: "logo-packs/starter/miami-palafins.webp",
+          }),
+        }),
+      );
+    });
+
+    it("refuses an identity that is not in the catalog", async () => {
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto({ identity: { pack: "starter", id: "made-up" } }),
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.VALIDATION.INVALID_PARAMS.code,
+      });
+      expect(applicationRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a signup with neither a team name nor an identity", async () => {
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto({ teamName: "   " }),
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
+      });
+      expect(applicationRepo.create).not.toHaveBeenCalled();
+    });
+
     it("refuses a logo the applicant can't claim and records nothing", async () => {
       coachRepo.findByAuth0Id.mockResolvedValue([]);
       uploads.claimUpload.mockRejectedValue(
@@ -699,6 +785,30 @@ describe("HostedTournamentService signup", () => {
         APPLICATION_ID.toString(),
         expect.objectContaining({ status: "approved", decidedBy: SUB }),
       );
+    });
+
+    it("links the seated team to the identity the coach signed up with", async () => {
+      applicationRepo.findInTournament.mockResolvedValue({
+        ...buildApplication(),
+        preferredIdentityId: IDENTITY_ID,
+      } as any);
+      teamRepo.create.mockImplementation(async (input) =>
+        buildCreatedTeam(input._id),
+      );
+      coachRepo.create.mockImplementation(async (input) => input as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(teamRepo.create.mock.calls[0][0]).toMatchObject({
+        teamName: "Team Rocket",
+        identityId: IDENTITY_ID,
+      });
     });
 
     it("announces the seated coach on approval, without waiting on Discord", async () => {
@@ -1269,6 +1379,78 @@ describe("HostedTournamentService signup", () => {
         teamName: "Renamed Squad",
       });
     });
+
+    it("letters the new team and the one already holding its name", async () => {
+      const existingId = new Types.ObjectId();
+      applicationRepo.findInTournament.mockResolvedValue(
+        buildApplication({ preferredTeamName: "Miami Palafins" }),
+      );
+      teamRepo.create.mockImplementation(async (input) =>
+        buildCreatedTeam(input._id),
+      );
+      teamRepo.findNamesByTournament.mockImplementation(async () => [
+        { id: existingId.toString(), baseName: "Miami Palafins" },
+        {
+          id: teamRepo.create.mock.calls[0][0]._id!.toString(),
+          baseName: "Miami Palafins",
+        },
+      ]);
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(teamRepo.findNamesByTournament).toHaveBeenCalledWith(tournament.id);
+      expect(
+        teamRepo.setNameVariants.mock.calls[0][0].map(
+          (assignment) => assignment.teamName,
+        ),
+      ).toEqual(["Miami Palafins X", "Miami Palafins Y"]);
+    });
+
+    it("keeps a lettered team's letter when a replacement coach keeps its name", async () => {
+      const teamId = new Types.ObjectId();
+      teamRepo.findBySlug = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "jays",
+        tournamentId: tournament.id,
+        teamName: "Seafoam Blue Jays Y",
+        baseName: "Seafoam Blue Jays",
+        nameVariant: 1,
+        primaryCoach: { _id: new Types.ObjectId() },
+      });
+      coachRepo.findAllByTeam = jest.fn().mockResolvedValue([]);
+      coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
+      applicationRepo.findInTournament.mockResolvedValue(
+        buildApplication({ preferredTeamName: "Seafoam Blue Jays" }),
+      );
+      teamRepo.replaceCoach = jest.fn().mockResolvedValue({
+        _id: teamId,
+        slug: "jays",
+        teamName: "Seafoam Blue Jays Y",
+      });
+
+      const result = await service.replaceCoach(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "jays",
+        SUB,
+        { applicationId: APPLICATION_ID.toString() },
+      );
+
+      const replaceArgs = (teamRepo.replaceCoach as jest.Mock).mock.calls[0][1];
+      expect(replaceArgs.teamName).toBeUndefined();
+      expect(teamRepo.setNameVariants).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        teamName: "Seafoam Blue Jays Y",
+        renamedFrom: null,
+      });
+    });
   });
 });
 
@@ -1347,6 +1529,7 @@ describe("HostedTournamentService removeParticipant", () => {
       transactions.runner,
       silentEvents,
       logWriter,
+      identityRepo,
     );
   });
 
@@ -1449,6 +1632,7 @@ describe("HostedTournamentService settings", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
     (logWriter.record as jest.Mock).mockClear();
   });
@@ -1851,6 +2035,7 @@ describe("HostedTournamentService coach details", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
   });
 
@@ -1951,40 +2136,65 @@ describe("HostedTournamentService updateTeam", () => {
   const ROUND_ID = new Types.ObjectId();
 
   let teamRepo: jest.Mocked<TeamRepository>;
+  let coachRepo: jest.Mocked<CoachRepository>;
   let uploads: jest.Mocked<UploadsService>;
   let service: HostedTournamentService;
+  let current: Record<string, any>;
+  let names: NamedTeam[];
+  let tournament: HostedTournament;
 
   function coach(auth0Id: string, leftAt?: Date) {
     return { _id: new Types.ObjectId(), auth0Id, name: auth0Id, leftAt };
   }
 
   beforeEach(() => {
-    const tournament = buildTournament({
+    tournament = buildTournament({
       rounds: [{ _id: ROUND_ID, name: "Week 1" }] as any,
       currentRoundIndex: 0,
     });
     const primary = coach("auth0|primary");
+    names = [];
     uploads = {
       claimUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<UploadsService>;
+    current = {
+      _id: TEAM_ID,
+      slug: "team-rocket",
+      teamName: "Team Rocket",
+      logo: "team-logos/current.png",
+      primaryCoach: primary,
+      coaches: [
+        primary,
+        coach("auth0|co-coach"),
+        coach("auth0|former", new Date()),
+      ],
+    };
     teamRepo = {
-      findBySlug: jest.fn().mockResolvedValue({
-        _id: TEAM_ID,
-        slug: "team-rocket",
-        teamName: "Team Rocket",
-        logo: "team-logos/current.png",
-        primaryCoach: primary,
-        coaches: [
-          primary,
-          coach("auth0|co-coach"),
-          coach("auth0|former", new Date()),
-        ],
+      findBySlug: jest.fn(async () => ({ ...current })),
+      findById: jest.fn(async () => ({ ...current })),
+      update: jest.fn(async (_id, data: { teamName?: string; logo?: string; nameLockedBy?: string | null }) => {
+        if (data.nameLockedBy === null) delete current.nameLockedBy;
+        else if (data.nameLockedBy !== undefined) current.nameLockedBy = data.nameLockedBy;
+        if (data.teamName !== undefined) {
+          current.teamName = data.teamName;
+          current.baseName = data.teamName;
+          delete current.nameVariant;
+        }
+        if (data.logo !== undefined) current.logo = data.logo;
+        return { ...current };
       }),
-      update: jest.fn(async (_id, data: { teamName?: string; logo?: string }) => ({
-        teamName: data.teamName ?? "Team Rocket",
-        logo: data.logo ?? "team-logos/current.png",
-      })),
+      findNamesByTournament: jest.fn(async () => names),
+      setNameVariants: jest.fn(async (assignments: TeamNameAssignment[]) => {
+        const own = assignments.find(
+          (assignment) => assignment.id === TEAM_ID.toString(),
+        );
+        if (own) {
+          current.teamName = own.teamName;
+          current.nameVariant = own.variant;
+        }
+      }),
     } as unknown as jest.Mocked<TeamRepository>;
+    coachRepo = {} as unknown as jest.Mocked<CoachRepository>;
 
     service = new HostedTournamentService(
       {
@@ -1992,7 +2202,7 @@ describe("HostedTournamentService updateTeam", () => {
       } as unknown as HostedTournamentRepository,
       {} as TierListRepository,
       teamRepo,
-      {} as CoachRepository,
+      coachRepo,
       {} as TournamentApplicationRepository,
       {} as DraftRepository,
       {} as StageRepository,
@@ -2003,7 +2213,184 @@ describe("HostedTournamentService updateTeam", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
+  });
+
+  it("reuses a saved team's name and logo without claiming the upload again", async () => {
+    const savedId = new Types.ObjectId().toString();
+    identityRepo.findOwned.mockResolvedValue({
+      id: savedId,
+      name: "Old Owls",
+      logo: "team-logos/owls.png",
+    });
+
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|primary",
+      { identity: { saved: savedId } },
+    );
+
+    expect(identityRepo.findOwned).toHaveBeenCalledWith(savedId, "auth0|primary");
+    expect(uploads.claimUpload).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      nameLocked: false,
+      teamName: "Old Owls",
+      baseName: "Old Owls",
+      logo: "team-logos/owls.png",
+    });
+  });
+
+  it("refuses a saved team that is not the caller's", async () => {
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+        identity: { saved: new Types.ObjectId().toString() },
+        logo: "team-logos/smuggled.png",
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.VALIDATION.INVALID_PARAMS.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to a sent logo when the saved team has none", async () => {
+    identityRepo.findOwned.mockResolvedValue({
+      id: "x",
+      name: "Plain Pidgeys",
+      logo: undefined,
+    });
+
+    await service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+      identity: { saved: new Types.ObjectId().toString() },
+      logo: "team-logos/smuggled.png",
+    });
+
+    expect(uploads.claimUpload).not.toHaveBeenCalled();
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      TEAM_ID,
+      expect.not.objectContaining({ logo: expect.anything() }),
+    );
+  });
+
+  it("saves a coach's new name to their own list and links the team to it", async () => {
+    await service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|co-coach", {
+      teamName: "Team Aqua",
+    });
+
+    expect(identityRepo.record).toHaveBeenCalledWith(
+      "auth0|co-coach",
+      "Team Aqua",
+      "team-logos/current.png",
+    );
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      TEAM_ID,
+      expect.objectContaining({ identityId: IDENTITY_ID }),
+    );
+  });
+
+  it("keeps an organizer's rename out of their list and unlinks the team", async () => {
+    await service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|owner", {
+      teamName: "Team Aqua",
+    });
+
+    expect(identityRepo.record).not.toHaveBeenCalled();
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      TEAM_ID,
+      expect.objectContaining({ identityId: null }),
+    );
+  });
+
+  it("keeps a co-coach off a team linked to another coach's identity", async () => {
+    current.identityId = IDENTITY_ID;
+    identityRepo.ownerOf.mockResolvedValue("auth0|primary");
+
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|co-coach", {
+        teamName: "Team Aqua",
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("lets the identity's owner change a linked team", async () => {
+    current.identityId = IDENTITY_ID;
+    identityRepo.ownerOf.mockResolvedValue("auth0|primary");
+
+    await service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+      teamName: "Team Aqua",
+    });
+
+    expect(identityRepo.record).toHaveBeenCalledWith(
+      "auth0|primary",
+      "Team Aqua",
+      "team-logos/current.png",
+    );
+  });
+
+  it("lets an organizer override a linked team, unlinking it", async () => {
+    current.identityId = IDENTITY_ID;
+    identityRepo.ownerOf.mockResolvedValue("auth0|primary");
+
+    await service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|owner", {
+      logo: "team-logos/new.png",
+    });
+
+    expect(identityRepo.record).not.toHaveBeenCalled();
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      TEAM_ID,
+      expect.objectContaining({
+        identityId: null,
+        nameLockedBy: "auth0|owner",
+        logo: "team-logos/new.png",
+      }),
+    );
+  });
+
+  it("keeps every coach, even the owner, off a team an organizer named", async () => {
+    current.identityId = IDENTITY_ID;
+    current.nameLockedBy = "auth0|owner";
+    identityRepo.ownerOf.mockResolvedValue("auth0|primary");
+
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+        teamName: "Rude Name",
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("lets an organizer lift the lock", async () => {
+    current.nameLockedBy = "auth0|owner";
+
+    const result = await service.unlockTeamName(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|owner",
+    );
+
+    expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, { nameLockedBy: null });
+    expect(result.nameLocked).toBe(false);
+  });
+
+  it("keeps coaches from lifting the lock", async () => {
+    current.nameLockedBy = "auth0|owner";
+
+    await expect(
+      service.unlockTeamName(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary"),
+    ).rejects.toMatchObject({ code: ErrorCodes.AUTH.FORBIDDEN.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("locks the name and logo once the tournament is completed", async () => {
+    tournament.completedAt = new Date();
+
+    await expect(
+      service.updateTeam(LEAGUE_KEY, TOURNAMENT_KEY, "team-rocket", "auth0|primary", {
+        teamName: "Team Aqua",
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.TOURNAMENT.COMPLETED.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -2020,6 +2407,8 @@ describe("HostedTournamentService updateTeam", () => {
     );
 
     expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+      identityId: sub === "auth0|owner" ? null : IDENTITY_ID,
+      ...(sub === "auth0|owner" ? { nameLockedBy: sub } : {}),
       teamName: "Team Aqua",
       nameChange: {
         from: "Team Rocket",
@@ -2059,6 +2448,7 @@ describe("HostedTournamentService updateTeam", () => {
       relatedEntityId: TEAM_ID.toString(),
     });
     expect(teamRepo.update).toHaveBeenCalledWith(TEAM_ID, {
+      identityId: IDENTITY_ID,
       logo: "team-logos/new.png",
     });
   });
@@ -2089,9 +2479,189 @@ describe("HostedTournamentService updateTeam", () => {
     expect(uploads.claimUpload).not.toHaveBeenCalled();
     expect(teamRepo.update).not.toHaveBeenCalled();
     expect(result).toEqual({
+      nameLocked: false,
       teamName: "Team Rocket",
+      baseName: "Team Rocket",
       logo: "team-logos/current.png",
     });
+  });
+
+  it("switches to an identity's name and logo without claiming an upload", async () => {
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|primary",
+      { identity: { pack: "starter", id: "sinnoh-jazz" } },
+    );
+
+    expect(uploads.claimUpload).not.toHaveBeenCalled();
+    expect(teamRepo.update).toHaveBeenCalledWith(
+      TEAM_ID,
+      expect.objectContaining({
+        teamName: "Sinnoh Jazz",
+        logo: "logo-packs/starter/sinnoh-jazz.webp",
+      }),
+    );
+    expect(result).toEqual({
+      nameLocked: false,
+      teamName: "Sinnoh Jazz",
+      baseName: "Sinnoh Jazz",
+      logo: "logo-packs/starter/sinnoh-jazz.webp",
+    });
+  });
+
+  it("letters a rename that lands on a name another team holds", async () => {
+    names = [
+      { id: new Types.ObjectId().toString(), baseName: "Sturdy Shedinjas" },
+      { id: TEAM_ID.toString(), baseName: "Sturdy Shedinjas" },
+    ];
+
+    const result = await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|primary",
+      { teamName: "Sturdy Shedinjas" },
+    );
+
+    expect(teamRepo.setNameVariants).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      nameLocked: false,
+      teamName: "Sturdy Shedinjas Y",
+      baseName: "Sturdy Shedinjas",
+      logo: "team-logos/current.png",
+    });
+  });
+
+  it("treats sending back the lettered name as no change", async () => {
+    Object.assign(current, {
+      teamName: "Sturdy Shedinjas X",
+      baseName: "Sturdy Shedinjas",
+      nameVariant: 0,
+    });
+
+    await service.updateTeam(
+      LEAGUE_KEY,
+      TOURNAMENT_KEY,
+      "team-rocket",
+      "auth0|primary",
+      { teamName: "Sturdy Shedinjas X" },
+    );
+
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("HostedTournamentService team identity library", () => {
+  const ACTIVE_TEAM = new Types.ObjectId();
+  const DONE_TEAM = new Types.ObjectId();
+  const ACTIVE_ID = new Types.ObjectId().toString();
+  const DONE_ID = new Types.ObjectId().toString();
+  const ROUND_ID = new Types.ObjectId();
+
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let service: HostedTournamentService;
+
+  beforeEach(() => {
+    const active = buildTournament({
+      id: ACTIVE_ID,
+      rounds: [{ _id: ROUND_ID, name: "Week 1" }] as any,
+      currentRoundIndex: 0,
+    });
+    const done = buildTournament({ id: DONE_ID, completedAt: new Date() });
+    teamRepo = {
+      findLinkedToIdentity: jest.fn().mockResolvedValue([
+        {
+          id: ACTIVE_TEAM,
+          tournamentId: new Types.ObjectId(ACTIVE_ID),
+          teamName: "Owls",
+          baseName: "Owls",
+        },
+        {
+          id: DONE_TEAM,
+          tournamentId: new Types.ObjectId(DONE_ID),
+          teamName: "Owls",
+          baseName: "Owls",
+        },
+      ]),
+      update: jest.fn().mockResolvedValue({}),
+      findNamesByTournament: jest.fn().mockResolvedValue([]),
+      setNameVariants: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TeamRepository>;
+    identityRepo.rename.mockResolvedValue({
+      id: IDENTITY_ID.toString(),
+      name: "Night Owls",
+      logo: "team-logos/o.png",
+    });
+
+    service = new HostedTournamentService(
+      {
+        findById: jest.fn(async (id: string) =>
+          id === ACTIVE_ID ? active : done,
+        ),
+      } as unknown as HostedTournamentRepository,
+      {} as TierListRepository,
+      teamRepo,
+      {} as CoachRepository,
+      {} as TournamentApplicationRepository,
+      {} as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+      {} as UploadsService,
+      inlineTransactions,
+      silentEvents,
+      logWriter,
+      identityRepo,
+    );
+  });
+
+  it("renames every linked team in a tournament still running, and leaves completed ones alone", async () => {
+    const result = await service.renameIdentity(
+      SUB,
+      IDENTITY_ID.toString(),
+      "Night Owls",
+    );
+
+    expect(identityRepo.rename).toHaveBeenCalledWith(
+      IDENTITY_ID.toString(),
+      SUB,
+      "Night Owls",
+    );
+    expect(teamRepo.update).toHaveBeenCalledTimes(1);
+    expect(teamRepo.update).toHaveBeenCalledWith(ACTIVE_TEAM, {
+      teamName: "Night Owls",
+      nameChange: {
+        from: "Owls",
+        to: "Night Owls",
+        roundId: ROUND_ID,
+        reason: "Renamed",
+        changedBy: SUB,
+      },
+    });
+    expect(teamRepo.setNameVariants).toHaveBeenCalledTimes(1);
+    expect(result.name).toBe("Night Owls");
+  });
+
+  it("touches no team when the owner check fails", async () => {
+    identityRepo.rename.mockRejectedValue(
+      Object.assign(new Error("not yours"), { code: "TID-001" }),
+    );
+
+    await expect(
+      service.renameIdentity(SUB, IDENTITY_ID.toString(), "Night Owls"),
+    ).rejects.toMatchObject({ code: "TID-001" });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("unlinks running teams when the identity is deleted, keeping their name and logo", async () => {
+    await service.removeIdentity(SUB, IDENTITY_ID.toString());
+
+    expect(identityRepo.remove).toHaveBeenCalledWith(IDENTITY_ID.toString(), SUB);
+    expect(teamRepo.update).toHaveBeenCalledTimes(1);
+    expect(teamRepo.update).toHaveBeenCalledWith(ACTIVE_TEAM, { identityId: null });
   });
 });
 
@@ -2148,6 +2718,7 @@ describe("HostedTournamentService assignTeams", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
   });
 
@@ -2360,6 +2931,7 @@ describe("HostedTournamentService teams", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
@@ -2770,6 +3342,7 @@ describe("HostedTournamentService getInfo", () => {
       inlineTransactions,
       silentEvents,
       logWriter,
+      identityRepo,
     );
 
     teamRepo.findManyByIds.mockImplementation(async () => [

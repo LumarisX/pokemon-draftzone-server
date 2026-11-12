@@ -9,7 +9,7 @@ export const TOURNAMENT_EVENTS = {
 
 export type ApplicationSubmittedEvent = {
   tournament: HostedTournament;
-  signUp: SignUpDto;
+  signUp: SignUpDto & { teamName: string };
   answers: SubmittedAnswer[];
 };
 

@@ -15,7 +15,9 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { HostedTournamentCoreModule } from "./hosted-tournament-core.module";
 import { HostingAccessModule } from "./hosting-access.module";
 import { HostedTournamentController } from "./hosted-tournament.controller";
+import { TeamIdentityModule } from "@modules/team-identity/team-identity.module";
 import { HostedTournamentService } from "./hosted-tournament.service";
+import { TeamIdentityLibraryController } from "./team-identity-library.controller";
 import { OrganizerInviteRepository } from "./organizer-invite.repository";
 import {
   OrganizerInviteEntity,
@@ -48,12 +50,14 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     LeagueMatchupModule,
     UploadsModule,
     TournamentLogCoreModule,
+    TeamIdentityModule,
   ],
   controllers: [
     HostedTournamentController,
     TournamentOrganizerController,
     TournamentDiscordController,
     TournamentCreationController,
+    TeamIdentityLibraryController,
   ],
   providers: [
     HostedTournamentService,

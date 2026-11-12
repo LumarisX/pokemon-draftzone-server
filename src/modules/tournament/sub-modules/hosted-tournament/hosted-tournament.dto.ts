@@ -23,6 +23,7 @@ import {
   IsDate,
   IsIn,
   IsInt,
+  IsMongoId,
   IsOptional,
   IsString,
   Length,
@@ -31,6 +32,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { applyDecorators } from "@nestjs/common";
@@ -54,6 +56,22 @@ export const SIGN_UP_LIMITS = {
   answerCount: 50,
 } as const;
 
+export class TeamIdentityRefDto {
+  @ValidateIf((ref: TeamIdentityRefDto) => ref.saved === undefined)
+  @IsString()
+  @Length(1, 64)
+  pack?: string;
+
+  @ValidateIf((ref: TeamIdentityRefDto) => ref.saved === undefined)
+  @IsString()
+  @Length(1, 64)
+  id?: string;
+
+  @ValidateIf((ref: TeamIdentityRefDto) => ref.pack === undefined)
+  @IsMongoId()
+  saved?: string;
+}
+
 export class SignUpDto {
   @IsString()
   @MinLength(1)
@@ -70,10 +88,11 @@ export class SignUpDto {
   @MaxLength(SIGN_UP_LIMITS.discordName)
   discordName!: string;
 
+  @ValidateIf((dto: SignUpDto) => !dto.identity)
   @IsString()
   @MinLength(1)
   @MaxLength(SIGN_UP_LIMITS.teamName)
-  teamName!: string;
+  teamName?: string;
 
   @IsString()
   @MinLength(1)
@@ -85,6 +104,11 @@ export class SignUpDto {
   @MaxLength(SIGN_UP_LIMITS.logo)
   @IsOptional()
   logo?: string;
+
+  @ValidateNested()
+  @Type(() => TeamIdentityRefDto)
+  @IsOptional()
+  identity?: TeamIdentityRefDto;
 
   @IsBoolean()
   confirm!: boolean;
@@ -232,6 +256,11 @@ export class UpdateTeamDto {
   @MaxLength(SIGN_UP_LIMITS.logo)
   @IsOptional()
   logo?: string;
+
+  @ValidateNested()
+  @Type(() => TeamIdentityRefDto)
+  @IsOptional()
+  identity?: TeamIdentityRefDto;
 }
 
 export class UpdateCoachDetailsDto {

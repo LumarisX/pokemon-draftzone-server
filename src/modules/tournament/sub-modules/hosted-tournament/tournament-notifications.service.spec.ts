@@ -23,7 +23,7 @@ const SIGN_UP = {
   discordName: "ash#1234",
   timezone: "America/Los_Angeles",
   confirm: true,
-} as SignUpDto;
+} as SignUpDto & { teamName: string };
 
 const LINKED = {
   guildId: "guild-1",

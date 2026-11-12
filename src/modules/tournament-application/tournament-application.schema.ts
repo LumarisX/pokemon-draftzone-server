@@ -78,6 +78,9 @@ export class TournamentApplicationEntity {
   @Prop()
   preferredLogo?: string;
 
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamIdentityEntity" })
+  preferredIdentityId?: Types.ObjectId;
+
   @Prop({
     type: String,
     enum: TOURNAMENT_APPLICATION_INTENTS,

@@ -35,8 +35,11 @@ import {
 } from "@modules/stage/domain/standings";
 import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
+import { letterCollisions } from "@modules/team/domain/team-names";
 import { isCoachedBy } from "@modules/team/team.domain";
 import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
+import { resolveIdentity } from "@modules/team-identity/domain/catalog";
+import { TeamIdentityRepository } from "@modules/team-identity/team-identity.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
 import { TournamentApplicationDocument } from "@modules/tournament-application/tournament-application.schema";
@@ -59,6 +62,7 @@ import {
   SeatAtRandomDto,
   SignUpDto,
   TeamAssignmentDto,
+  TeamIdentityRefDto,
   UpdateCoachDetailsDto,
   UpdateHostedTournamentSettingsDto,
   UpdateTeamDto,
@@ -111,6 +115,7 @@ export class HostedTournamentService {
     private readonly transactions: TransactionRunner,
     private readonly events: EventEmitter2,
     private readonly logWriter: TournamentLogWriter,
+    private readonly identities: TeamIdentityRepository,
   ) {}
 
   async removeParticipant(
@@ -180,11 +185,24 @@ export class HostedTournamentService {
     const picksHidden =
       !!teamDraft && !canSeeTeamPicks(tournament, teamDraft, team, sub);
     const roster = rosterContext(tournament);
+    const canManageTeam =
+      !!sub && !tournament.completed && can(tournament, sub, "manageParticipants");
+    const canEditTeam =
+      !!sub &&
+      viewerIsCoach &&
+      !tournament.completed &&
+      !team.nameLockedBy &&
+      !!actingCoach(team, sub, "manageRoster") &&
+      (await this.mayChangeIdentity(team.identityId, sub));
     const identity = {
       id: team._id.toString(),
       slug: team.slug,
+      baseName: team.baseName ?? team.teamName,
       coachId: coach._id.toString(),
       isCoach: viewerIsCoach,
+      canEditTeam,
+      canManageTeam,
+      nameLocked: !!team.nameLockedBy,
       pointTotal: tournament.pointTotal,
       picksHidden,
       pickCount: team.pickLog?.length ?? 0,
@@ -846,7 +864,17 @@ export class HostedTournamentService {
         tournamentId: tournament.id,
       });
 
-    if (dto.logo)
+    const identity = dto.identity
+      ? await this.identityFor(dto.identity, sub)
+      : null;
+    const teamName = identity?.name ?? dto.teamName?.trim();
+    if (!teamName)
+      throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+        field: "teamName",
+      });
+    const logo = identity ? identity.logo : dto.logo;
+
+    if (dto.logo && !identity)
       await this.uploads.claimUpload(dto.logo, {
         uploadedBy: sub,
         folder: UploadFolder.TEAM_LOGOS,
@@ -856,6 +884,12 @@ export class HostedTournamentService {
     const answers = validateAnswers(
       tournament.signUpQuestions,
       dto.answers ?? [],
+    );
+
+    const preferredIdentityId = await this.identities.record(
+      sub,
+      teamName,
+      logo,
     );
 
     const application = await this.applicationRepo.create({
@@ -869,8 +903,9 @@ export class HostedTournamentService {
       droppedBefore: answerBool(answers, DROPPED_BEFORE_QUESTION_ID),
       droppedWhy: answerText(answers, DROPPED_WHY_QUESTION_ID),
       confirmed: dto.confirm,
-      preferredTeamName: dto.teamName,
-      preferredLogo: dto.logo,
+      preferredTeamName: teamName,
+      preferredLogo: logo,
+      preferredIdentityId,
       intent: dto.intent ?? "team",
       status: "pending",
       answers,
@@ -878,7 +913,7 @@ export class HostedTournamentService {
 
     this.events.emit(TOURNAMENT_EVENTS.applicationSubmitted, {
       tournament,
-      signUp: dto,
+      signUp: { ...dto, teamName, logo },
       answers,
     } satisfies ApplicationSubmittedEvent);
 
@@ -1020,19 +1055,23 @@ export class HostedTournamentService {
   ) {
     const coachId = new Types.ObjectId();
     const teamId = new Types.ObjectId();
+    const preferredName = application.preferredTeamName?.trim();
+    const seatedName =
+      teamName?.trim() || preferredName || `${application.name}'s Team`;
 
     const team = await this.teamRepo.create({
       _id: teamId,
       tournamentId: tournament.id,
       draftId: pool?._id,
       coach: coachId,
-      teamName:
-        teamName?.trim() ||
-        application.preferredTeamName?.trim() ||
-        `${application.name}'s Team`,
+      teamName: seatedName,
       logo: application.preferredLogo,
+      ...(seatedName === preferredName && application.preferredIdentityId
+        ? { identityId: application.preferredIdentityId }
+        : {}),
       status: "approved",
     });
+    await this.letterTeamNames(tournament.id, team._id);
 
     const coach = await this.coachRepo.create({
       _id: coachId,
@@ -1093,8 +1132,9 @@ export class HostedTournamentService {
 
     const previousName = team.teamName;
     const nextName = dto.teamName?.trim() || application.preferredTeamName;
+    const renamed = this.isRename(team, nextName);
 
-    const { incoming, updated } = await this.transactions.run(async () => {
+    const { incoming, updated, teamName } = await this.transactions.run(async () => {
       if (outgoing) {
         await this.coachRepo.update(outgoing._id, { leftAt: new Date() });
       }
@@ -1114,11 +1154,14 @@ export class HostedTournamentService {
 
       const updated = await this.teamRepo.replaceCoach(team._id, {
         primaryCoach: incoming._id,
-        teamName: nextName,
         logo: application.preferredLogo ?? team.logo,
-        ...(previousName === nextName
-          ? {}
-          : {
+        ...(renamed
+          ? {
+              teamName: nextName,
+              identityId:
+                nextName === application.preferredTeamName
+                  ? (application.preferredIdentityId ?? null)
+                  : null,
               nameChange: {
                 from: previousName,
                 to: nextName,
@@ -1126,8 +1169,13 @@ export class HostedTournamentService {
                 reason: dto.reason?.trim() || "Coach replacement",
                 changedBy: sub,
               },
-            }),
+            }
+          : {}),
       });
+      const teamName = renamed
+        ? ((await this.letterTeamNames(tournament.id, team._id)) ??
+          updated.teamName)
+        : updated.teamName;
 
       await this.applicationRepo.decide(application._id, {
         status: "approved",
@@ -1136,7 +1184,7 @@ export class HostedTournamentService {
         resultingCoachId: incoming._id,
       });
 
-      return { incoming, updated };
+      return { incoming, updated, teamName };
     });
 
     this.announceCoachSeated(tournament, application.discordName);
@@ -1144,10 +1192,10 @@ export class HostedTournamentService {
     return {
       teamId: updated._id.toString(),
       teamSlug: updated.slug,
-      teamName: updated.teamName,
+      teamName,
       outgoingCoachId: outgoing?._id.toString() ?? null,
       incomingCoachId: incoming._id.toString(),
-      renamedFrom: previousName === nextName ? null : previousName,
+      renamedFrom: renamed ? previousName : null,
     };
   }
 
@@ -1501,41 +1549,193 @@ export class HostedTournamentService {
       tournamentSlug,
     );
     const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
-    if (
-      !can(tournament, sub, "manageParticipants") &&
-      !actingCoach(team, sub, "manageRoster")
-    )
-      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    const organizer = can(tournament, sub, "manageParticipants");
+    const coaching = !!actingCoach(team, sub, "manageRoster");
+    if (!organizer && !coaching) throw new PDZError(ErrorCodes.AUTH.FORBIDDEN);
+    if (tournament.completed)
+      throw new PDZError(ErrorCodes.TOURNAMENT.COMPLETED, {
+        tournamentSlug,
+      });
+    const ownsIdentity =
+      coaching &&
+      !team.nameLockedBy &&
+      (await this.mayChangeIdentity(team.identityId, sub));
+    if (!organizer && !ownsIdentity)
+      throw new PDZError(ErrorCodes.AUTH.FORBIDDEN, {
+        reason: team.nameLockedBy
+          ? "An organizer set this team's name and logo."
+          : "Only the coach whose team name and logo this is can change them.",
+      });
 
-    const renamed = dto.teamName !== undefined && dto.teamName !== team.teamName;
-    const relogo = dto.logo !== undefined && dto.logo !== team.logo;
-    if (!renamed && !relogo)
-      return { teamName: team.teamName, logo: team.logo ?? null };
+    const identity = dto.identity
+      ? await this.identityFor(dto.identity, sub)
+      : null;
+    const nextName = identity?.name ?? dto.teamName;
+    const nextLogo = identity ? identity.logo : dto.logo;
+    const renamed = nextName !== undefined && this.isRename(team, nextName);
+    const relogo = nextLogo !== undefined && nextLogo !== team.logo;
+    if (!renamed && !relogo) return this.teamNaming(team);
 
-    if (relogo)
-      await this.uploads.claimUpload(dto.logo!, {
+    if (relogo && !identity)
+      await this.uploads.claimUpload(nextLogo!, {
         uploadedBy: sub,
         folder: UploadFolder.TEAM_LOGOS,
         relatedEntityId: team._id.toString(),
       });
 
-    const updated = await this.teamRepo.update(team._id, {
-      ...(renamed
-        ? {
-            teamName: dto.teamName,
-            nameChange: {
-              from: team.teamName,
-              to: dto.teamName!,
-              roundId: tournament.rounds[tournament.currentRoundIndex]?._id,
-              reason: "Renamed",
-              changedBy: sub,
-            },
-          }
-        : {}),
-      ...(relogo ? { logo: dto.logo } : {}),
+    const identityId = ownsIdentity
+      ? await this.identities.record(
+          sub,
+          renamed ? nextName! : (team.baseName ?? team.teamName),
+          relogo ? nextLogo : team.logo || undefined,
+        )
+      : null;
+
+    const updated = await this.transactions.run(async () => {
+      await this.teamRepo.update(team._id, {
+        identityId,
+        ...(ownsIdentity ? {} : { nameLockedBy: sub }),
+        ...(renamed
+          ? {
+              teamName: nextName,
+              nameChange: {
+                from: team.teamName,
+                to: nextName!,
+                roundId: tournament.rounds[tournament.currentRoundIndex]?._id,
+                reason: "Renamed",
+                changedBy: sub,
+              },
+            }
+          : {}),
+        ...(relogo ? { logo: nextLogo } : {}),
+      });
+      if (renamed) await this.letterTeamNames(tournament.id, team._id);
+      return this.teamRepo.findById(team._id);
     });
 
-    return { teamName: updated.teamName, logo: updated.logo ?? null };
+    return this.teamNaming(updated);
+  }
+
+  async unlockTeamName(
+    leagueSlug: string,
+    tournamentSlug: string,
+    teamSlug: string,
+    sub: string,
+  ) {
+    const tournament = await this.tournamentRepo.findBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    assertCan(tournament, sub, "manageParticipants");
+    if (tournament.completed)
+      throw new PDZError(ErrorCodes.TOURNAMENT.COMPLETED, { tournamentSlug });
+    const team = await this.teamRepo.findBySlug(tournament.id, teamSlug);
+    if (!team.nameLockedBy) return this.teamNaming(team);
+    return this.teamNaming(
+      await this.teamRepo.update(team._id, { nameLockedBy: null }),
+    );
+  }
+
+  private teamNaming(team: PopulatedTeam) {
+    return {
+      nameLocked: !!team.nameLockedBy,
+      teamName: team.teamName,
+      baseName: team.baseName ?? team.teamName,
+      logo: team.logo ?? null,
+    };
+  }
+
+  private async identityFor(
+    ref: TeamIdentityRefDto,
+    sub: string,
+  ): Promise<{ name: string; logo: string | undefined }> {
+    if (ref.saved) {
+      const saved = await this.identities.findOwned(ref.saved, sub);
+      if (!saved)
+        throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+          reason: "You can only reuse a team from your own list.",
+          identity: ref,
+        });
+      return { name: saved.name, logo: saved.logo };
+    }
+    const identity = resolveIdentity(ref.pack ?? "", ref.id ?? "");
+    if (!identity)
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "That team identity does not exist.",
+        identity: ref,
+      });
+    return identity;
+  }
+
+  private isRename(team: PopulatedTeam, nextName: string) {
+    return nextName !== (team.baseName ?? team.teamName) && nextName !== team.teamName;
+  }
+
+  private async letterTeamNames(
+    tournamentId: string,
+    teamId: Types.ObjectId,
+  ): Promise<string | undefined> {
+    const assignments = letterCollisions(
+      await this.teamRepo.findNamesByTournament(tournamentId),
+      teamId.toString(),
+    );
+    await this.teamRepo.setNameVariants(assignments);
+    return assignments.find((assignment) => assignment.id === teamId.toString())
+      ?.teamName;
+  }
+
+  private async mayChangeIdentity(
+    identityId: Types.ObjectId | undefined,
+    sub: string,
+  ): Promise<boolean> {
+    if (!identityId) return true;
+    const owner = await this.identities.ownerOf(identityId);
+    return owner === null || owner === sub;
+  }
+
+  private async activeLinkedTeams(identityId: string) {
+    const teams = await this.teamRepo.findLinkedToIdentity(identityId);
+    const tournaments = new Map<string, HostedTournament>();
+    for (const team of teams) {
+      const key = team.tournamentId.toString();
+      if (!tournaments.has(key))
+        tournaments.set(key, await this.tournamentRepo.findById(key));
+    }
+    return teams.flatMap((team) => {
+      const tournament = tournaments.get(team.tournamentId.toString())!;
+      return tournament.completed ? [] : [{ ...team, tournament }];
+    });
+  }
+
+  async renameIdentity(sub: string, identityId: string, name: string) {
+    const renamed = await this.identities.rename(identityId, sub, name);
+    const teams = (await this.activeLinkedTeams(identityId)).filter(
+      (team) => team.baseName !== renamed.name,
+    );
+    await this.transactions.run(async () => {
+      for (const team of teams) {
+        await this.teamRepo.update(team.id, {
+          teamName: renamed.name,
+          nameChange: {
+            from: team.teamName,
+            to: renamed.name,
+            roundId:
+              team.tournament.rounds[team.tournament.currentRoundIndex]?._id,
+            reason: "Renamed",
+            changedBy: sub,
+          },
+        });
+        await this.letterTeamNames(team.tournament.id, team.id);
+      }
+    });
+    return renamed;
+  }
+
+  async removeIdentity(sub: string, identityId: string): Promise<void> {
+    await this.identities.remove(identityId, sub);
+    const teams = await this.activeLinkedTeams(identityId);
+    for (const team of teams)
+      await this.teamRepo.update(team.id, { identityId: null });
   }
 
   async getRules(leagueSlug: string, tournamentSlug: string) {

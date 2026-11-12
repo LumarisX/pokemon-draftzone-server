@@ -23,6 +23,7 @@ export type CreateTournamentApplicationInput = {
   confirmed: boolean;
   preferredTeamName: string;
   preferredLogo?: string;
+  preferredIdentityId?: Types.ObjectId;
   intent?: TournamentApplicationIntent;
   status?: TournamentApplicationStatus;
   answers?: { questionId: string; values: string[] }[];
@@ -136,6 +137,7 @@ export class TournamentApplicationRepository {
       confirmed: data.confirmed,
       preferredTeamName: data.preferredTeamName,
       preferredLogo: data.preferredLogo,
+      preferredIdentityId: data.preferredIdentityId,
       intent: data.intent ?? "team",
       status: data.status ?? "pending",
       answers: data.answers ?? [],

@@ -4,6 +4,7 @@ import { CoachDocument } from "@modules/coach/coach.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { ClientSession, Model, Types } from "mongoose";
+import { NamedTeam, TeamNameAssignment } from "./domain/team-names";
 import {
   TeamDocument,
   TeamEntity,
@@ -32,6 +33,7 @@ export type CreateTeamInput = {
   coach: Types.ObjectId | string;
   teamName: string;
   logo?: string;
+  identityId?: Types.ObjectId;
   status?: TeamStatus;
 };
 
@@ -144,6 +146,59 @@ export class TeamRepository {
     return teams as unknown as PopulatedTeam[];
   }
 
+  async findLinkedToIdentity(
+    identityId: Types.ObjectId | string,
+  ): Promise<{ id: Types.ObjectId; tournamentId: Types.ObjectId; teamName: string; baseName: string }[]> {
+    const teams = await this.teamModel
+      .find(
+        { identityId: new Types.ObjectId(identityId.toString()) },
+        { tournamentId: 1, teamName: 1, baseName: 1 },
+      )
+      .lean()
+      .exec();
+    return teams.map((team) => ({
+      id: team._id,
+      tournamentId: team.tournamentId,
+      teamName: team.teamName,
+      baseName: team.baseName ?? team.teamName,
+    }));
+  }
+
+  async findNamesByTournament(
+    tournamentId: Types.ObjectId | string,
+  ): Promise<NamedTeam[]> {
+    const teams = await this.teamModel
+      .find({ tournamentId }, { teamName: 1, baseName: 1, nameVariant: 1 })
+      .sort({ _id: 1 })
+      .lean()
+      .exec();
+    return teams.map((team) => ({
+      id: team._id.toString(),
+      baseName: team.baseName ?? team.teamName,
+      ...(team.nameVariant === undefined || team.nameVariant === null
+        ? {}
+        : { variant: team.nameVariant }),
+    }));
+  }
+
+  async setNameVariants(assignments: TeamNameAssignment[]): Promise<void> {
+    if (assignments.length === 0) return;
+    await this.teamModel.bulkWrite(
+      assignments.map((assignment) => ({
+        updateOne: {
+          filter: { _id: new Types.ObjectId(assignment.id) },
+          update: {
+            $set: {
+              teamName: assignment.teamName,
+              baseName: assignment.baseName,
+              nameVariant: assignment.variant,
+            },
+          },
+        },
+      })),
+    );
+  }
+
   async findAllByTournament(
     tournamentId: Types.ObjectId | string,
   ): Promise<PopulatedTeam[]> {
@@ -162,7 +217,9 @@ export class TeamRepository {
       draftId: data.draftId,
       primaryCoach: data.coach,
       teamName: data.teamName,
+      baseName: data.teamName,
       logo: data.logo,
+      identityId: data.identityId,
       status: data.status ?? "approved",
       picks: [],
       pickLog: [],
@@ -265,6 +322,8 @@ export class TeamRepository {
     data: {
       teamName?: string;
       logo?: string;
+      identityId?: Types.ObjectId | null;
+      nameLockedBy?: string | null;
       status?: TeamStatus;
       draftId?: Types.ObjectId | string | null;
       nameChange?: TeamNameChange;
@@ -272,8 +331,17 @@ export class TeamRepository {
   ): Promise<PopulatedTeam> {
     const update: Record<string, unknown> = {};
     const unset: Record<string, unknown> = {};
-    if (data.teamName !== undefined) update["teamName"] = data.teamName;
+    if (data.nameLockedBy === null) unset["nameLockedBy"] = "";
+    else if (data.nameLockedBy !== undefined)
+      update["nameLockedBy"] = data.nameLockedBy;
+    if (data.teamName !== undefined) {
+      update["teamName"] = data.teamName;
+      update["baseName"] = data.teamName;
+      unset["nameVariant"] = "";
+    }
     if (data.logo !== undefined) update["logo"] = data.logo;
+    if (data.identityId === null) unset["identityId"] = "";
+    else if (data.identityId !== undefined) update["identityId"] = data.identityId;
     if (data.status !== undefined) update["status"] = data.status;
     if (data.draftId !== undefined) {
       if (data.draftId === null) unset["draftId"] = "";
@@ -295,19 +363,28 @@ export class TeamRepository {
     teamId: Types.ObjectId | string,
     data: {
       primaryCoach: Types.ObjectId;
-      teamName: string;
+      teamName?: string;
       logo?: string;
+      identityId?: Types.ObjectId | null;
       nameChange?: TeamNameChange;
     },
   ): Promise<PopulatedTeam> {
     const set: Record<string, unknown> = {
       primaryCoach: data.primaryCoach,
-      teamName: data.teamName,
     };
+    const unset: Record<string, unknown> = {};
+    if (data.identityId === null) unset["identityId"] = "";
+    else if (data.identityId !== undefined) set["identityId"] = data.identityId;
+    if (data.teamName !== undefined) {
+      set["teamName"] = data.teamName;
+      set["baseName"] = data.teamName;
+      unset["nameVariant"] = "";
+    }
     if (data.logo !== undefined) set["logo"] = data.logo;
 
     const team = await this.teamModel.findByIdAndUpdate(teamId, {
       $set: set,
+      ...(Object.keys(unset).length ? { $unset: unset } : {}),
       ...(data.nameChange
         ? { $push: { nameHistory: { ...data.nameChange, changedAt: new Date() } } }
         : {}),

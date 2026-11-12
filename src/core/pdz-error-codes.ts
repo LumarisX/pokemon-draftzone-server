@@ -437,6 +437,18 @@ export const ErrorCodes = {
       message: "That file is too large",
     },
   },
+  TEAM_IDENTITY: {
+    NOT_FOUND: {
+      code: "TID-001",
+      status: 404,
+      message: "That team is not in your list",
+    },
+    NAME_TAKEN: {
+      code: "TID-002",
+      status: 409,
+      message: "You already have a team with that name and logo",
+    },
+  },
   TOURNAMENT: {
     NOT_FOUND: {
       code: "TRN-006",

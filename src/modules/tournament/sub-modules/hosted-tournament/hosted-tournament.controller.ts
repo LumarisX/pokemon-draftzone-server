@@ -254,6 +254,22 @@ export class HostedTournamentController {
     );
   }
 
+  @Delete(":tournamentSlug/teams/:teamSlug/name-lock")
+  @UseGuards(JwtAuthGuard)
+  async unlockTeamName(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("teamSlug") teamSlug: string,
+    @User() sub: string,
+  ) {
+    return this.tournamentService.unlockTeamName(
+      leagueSlug,
+      tournamentSlug,
+      teamSlug,
+      sub,
+    );
+  }
+
   @Get(":tournamentSlug/teams")
   @OptionalAuth()
   @UseGuards(JwtAuthGuard)

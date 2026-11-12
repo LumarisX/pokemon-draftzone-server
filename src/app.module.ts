@@ -14,6 +14,7 @@ import { PlannerModule } from "@modules/planner/planner.module";
 import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
 import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
 import { StageModule } from "@modules/stage/stage.module";
+import { TeamIdentityModule } from "@modules/team-identity/team-identity.module";
 import { TeambuilderModule } from "@modules/teambuilder/teambuilder.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentAdModule } from "@modules/tournament-ad/tournament-ad.module";
@@ -101,6 +102,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     ReplayAnalysisModule,
     ReplayLegacyModule,
     StorageModule,
+    TeamIdentityModule,
     TeambuilderModule,
     TierListModule,
     TournamentAdModule,
