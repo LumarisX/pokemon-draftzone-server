@@ -28,6 +28,10 @@ export class ArchiveRepository {
     return docs.map((doc) => ArchiveMapper.fromDatabase(doc));
   }
 
+  async countByOwner(owner: string): Promise<number> {
+    return this.archiveModel.countDocuments({ owner: { $eq: owner } }).exec();
+  }
+
   async findByIdAndOwner(teamId: string, owner: string): Promise<Archive> {
     if (!Types.ObjectId.isValid(teamId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { teamId });

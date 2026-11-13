@@ -1,3 +1,4 @@
+import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
@@ -90,6 +91,51 @@ export class TierListRepository {
     const docs = await this.tierListModel.find({ _id: { $in: ids } }).exec();
     return new Map(
       docs.map((doc) => [doc._id.toString(), TierListMapper.fromDatabase(doc)]),
+    );
+  }
+
+  async findRosterFormes(
+    rosters: { tierListId: string; pokemonIds: string[] }[],
+  ): Promise<Map<string, Map<string, { id: string; name: string }[]>>> {
+    const wanted = new Map<string, Set<string>>();
+    for (const roster of rosters) {
+      if (!Types.ObjectId.isValid(roster.tierListId)) continue;
+      const ids = wanted.get(roster.tierListId) ?? new Set<string>();
+      for (const pokemonId of roster.pokemonIds)
+        if (/^[a-z0-9]+$/.test(pokemonId)) ids.add(pokemonId);
+      wanted.set(roster.tierListId, ids);
+    }
+    const pokemonIds = [...new Set([...wanted.values()].flatMap((ids) => [...ids]))];
+    if (wanted.size === 0 || pokemonIds.length === 0) return new Map();
+
+    const docs = await this.tierListModel
+      .find({ _id: { $in: [...wanted.keys()] } })
+      .select(["ruleset", ...pokemonIds.map((id) => `pokemon.${id}.formes`)])
+      .lean<
+        {
+          _id: Types.ObjectId;
+          ruleset: string;
+          pokemon?: Record<string, { formes?: string[] }>;
+        }[]
+      >()
+      .exec();
+
+    return new Map(
+      docs.map((doc) => {
+        const species = getRuleset(doc.ruleset).species;
+        const formes = new Map<string, { id: string; name: string }[]>();
+        for (const [pokemonId, entry] of Object.entries(doc.pokemon ?? {})) {
+          if (!entry.formes?.length) continue;
+          formes.set(
+            pokemonId,
+            entry.formes.map((formeId) => ({
+              id: formeId,
+              name: species.get(formeId)?.name ?? formeId,
+            })),
+          );
+        }
+        return [doc._id.toString(), formes];
+      }),
     );
   }
 

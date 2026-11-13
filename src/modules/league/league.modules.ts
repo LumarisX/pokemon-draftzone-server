@@ -12,6 +12,8 @@ import { StageCoreModule } from "@modules/stage/stage-core.module";
 import { HallOfFameController } from "./hall-of-fame.controller";
 import { HallOfFameService } from "./hall-of-fame.service";
 import { LeagueService } from "./league.service";
+import { MySeasonsService } from "./my-seasons.service";
+import { SeasonRanksService } from "./season-ranks.service";
 import { LeagueController } from "./league.controller";
 import { LeagueCoreModule } from "./league-core.module";
 import { LeagueAdminController } from "./league-admin.controller";
@@ -41,10 +43,12 @@ import {
   controllers: [LeagueController, LeagueAdminController, HallOfFameController],
   providers: [
     LeagueService,
+    MySeasonsService,
+    SeasonRanksService,
     LeagueAdminService,
     LeagueAdminInviteRepository,
     HallOfFameService,
   ],
-  exports: [LeagueService, LeagueCoreModule],
+  exports: [LeagueService, MySeasonsService, LeagueCoreModule],
 })
 export class LeagueModule {}

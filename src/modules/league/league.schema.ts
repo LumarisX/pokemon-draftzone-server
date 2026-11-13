@@ -37,6 +37,9 @@ export class LeagueEntity {
 
   @Prop()
   logo?: string;
+
+  @Prop({ default: false })
+  listed?: boolean;
 }
 
 export const LeagueSchema = SchemaFactory.createForClass(LeagueEntity);

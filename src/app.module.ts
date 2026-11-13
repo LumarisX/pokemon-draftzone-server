@@ -5,12 +5,14 @@ import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
 import { ArchiveModule } from "@modules/archive/archive.module";
 import { ChatModule } from "@modules/chat/chat.module";
+import { DashboardModule } from "@modules/dashboard/dashboard.module";
 import { DataModule } from "@modules/data/data.module";
 import { DraftModule } from "@modules/draft/draft.module";
 import { ErrorReportModule } from "@modules/error-report/error-report.module";
 import { LeagueModule } from "@modules/league/league.modules";
 import { MatchupModule } from "@modules/matchup/matchup.module";
 import { PlannerModule } from "@modules/planner/planner.module";
+import { ProfileModule } from "@modules/profile/profile.module";
 import { ReplayLegacyModule } from "@modules/replay-analysis-legacy/replay-legacy.module";
 import { ReplayAnalysisModule } from "@modules/replay-analyzer/replay-analysis.module";
 import { StageModule } from "@modules/stage/stage.module";
@@ -92,6 +94,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     ArchiveModule,
     AuthModule,
     ChatModule,
+    DashboardModule,
     DataModule,
     DraftModule,
     ErrorReportModule,
@@ -99,6 +102,7 @@ import { AuthModule } from "./modules/auth/auth.module";
     LeagueModule,
     MatchupModule,
     PlannerModule,
+    ProfileModule,
     ReplayAnalysisModule,
     ReplayLegacyModule,
     StorageModule,

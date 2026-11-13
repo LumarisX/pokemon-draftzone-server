@@ -29,5 +29,6 @@ import { ArchiveService } from "./archive.service";
   ],
   controllers: [ArchiveController],
   providers: [ArchiveService, ArchiveRepository],
+  exports: [ArchiveRepository],
 })
 export class ArchiveModule {}

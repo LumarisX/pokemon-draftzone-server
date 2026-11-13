@@ -304,11 +304,21 @@ export class HostedTournamentService {
 
     const views: StandingsResponse["views"] = {};
 
+    const allMatchups = (await this.matchupRepo.findByStages(
+      visibleStages.map((s) => s._id),
+    )) as unknown as PopulatedStageMatchup[];
+    const roundIds = new Set(
+      tournament.rounds.map((round) => round._id.toString()),
+    );
+
     for (const stage of composedStages) {
-      const matchups = (await this.matchupRepo.findByRoundsInStage(
-        stage._id,
-        tournament.rounds.map((r) => r._id),
-      )) as unknown as PopulatedStageMatchup[];
+      const stageId = stage._id.toString();
+      const matchups = allMatchups.filter(
+        (matchup) =>
+          matchup.stage?.toString() === stageId &&
+          !!matchup.round &&
+          roundIds.has(matchup.round.toString()),
+      );
 
       const { teamStandings, diffMode, rules } =
         await calculateTeamStandings(matchups, stage, tournament);
@@ -326,9 +336,6 @@ export class HostedTournamentService {
     const combinedStage = {
       teams: Array.from(allTeamsById.values()),
     } as unknown as StageDocument & { teams: PopulatedTeam[] };
-    const allMatchups = (await this.matchupRepo.findByStages(
-      visibleStages.map((s) => s._id),
-    )) as unknown as PopulatedStageMatchup[];
     const combined = await calculateTeamStandings(
       allMatchups,
       combinedStage,

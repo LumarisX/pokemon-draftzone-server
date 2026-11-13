@@ -3201,6 +3201,7 @@ describe("HostedTournamentService teams", () => {
       (teamRepo as any).findManyByIds.mockResolvedValue([teamA, teamB]);
 
       const groupMatchup = {
+        stage: groupStage._id,
         side1: { team: teamA, score: 3 },
         side2: { team: teamB, score: 1 },
         round: roundId,
@@ -3208,27 +3209,22 @@ describe("HostedTournamentService teams", () => {
         results: [],
       };
       const playoffMatchup = {
+        stage: playoffStage._id,
         side1: { team: teamB, score: 2 },
         side2: { team: teamA, score: 0 },
         round: roundId,
         winner: "side1",
         results: [],
       };
-      (matchupRepo.findByRoundsInStage as jest.Mock).mockImplementation(
-        (stageId: any) => {
-          if (stageId === groupStage._id)
-            return Promise.resolve([groupMatchup]);
-          if (stageId === playoffStage._id)
-            return Promise.resolve([playoffMatchup]);
-          return Promise.resolve([]);
-        },
-      );
       matchupRepo.findByStages.mockResolvedValue([
         groupMatchup,
         playoffMatchup,
       ] as any);
 
       const result = await service.getStandings(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(matchupRepo.findByStages).toHaveBeenCalledTimes(1);
+      expect(matchupRepo.findByRoundsInStage).not.toHaveBeenCalled();
 
       expect(result.filters).toEqual([
         { value: "all", label: "All Stages" },

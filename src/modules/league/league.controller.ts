@@ -37,6 +37,11 @@ export class LeagueController {
     return this.leagueService.createLeague(sub, body);
   }
 
+  @Get("directory")
+  async getDirectory() {
+    return this.leagueService.getDirectory();
+  }
+
   @Get("capabilities")
   @UseGuards(JwtAuthGuard)
   async getCapabilities(@User() sub: string) {

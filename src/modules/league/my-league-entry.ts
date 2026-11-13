@@ -38,6 +38,23 @@ export type EntryRound = {
   matchDeadline?: Date | null;
 };
 
+export type SeasonPhase = "upcoming" | "drafting" | "season" | "completed";
+
+const DRAFTING_STATUSES = ["IN_PROGRESS", "PAUSED"];
+const STARTED_STATUSES = [...DRAFTING_STATUSES, "COMPLETED"];
+
+export function seasonPhase(
+  completedAt: Date | null | undefined,
+  poolStatuses: string[],
+): SeasonPhase {
+  if (completedAt) return "completed";
+  if (poolStatuses.some((status) => DRAFTING_STATUSES.includes(status)))
+    return "drafting";
+  if (poolStatuses.every((status) => !STARTED_STATUSES.includes(status)))
+    return "upcoming";
+  return "season";
+}
+
 const FORM_LENGTH = 5;
 const SCORING_GRACE_MS = 24 * 60 * 60 * 1000;
 

@@ -35,6 +35,15 @@ export class ExternalTournamentRepository {
     });
   }
 
+  async countCompletedByOwner(owner: string): Promise<number> {
+    return this.tournamentModel
+      .countDocuments({
+        owner: { $eq: owner },
+        $or: [{ completedAt: { $ne: null } }, { archivedAt: { $ne: null } }],
+      })
+      .exec();
+  }
+
   private async findByOwnerAndState(
     owner: string,
     stateFilter: Record<string, unknown>,

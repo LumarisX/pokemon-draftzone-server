@@ -153,6 +153,18 @@ export const ErrorCodes = {
       message: "Trades changed while this was being saved. Please try again.",
     },
   },
+  PLANNER: {
+    STALE: {
+      code: "PLN-001",
+      status: 409,
+      message: "These plans changed on another device.",
+    },
+    TOO_MANY: {
+      code: "PLN-002",
+      status: 400,
+      message: "You have saved plans for too many tournaments.",
+    },
+  },
   SYSTEM: {
     NO_CONTEXT: {
       code: "SYS-001",

@@ -9,6 +9,98 @@ import { UploadsService } from "@modules/upload/upload.service";
 import { Types } from "mongoose";
 import { LeagueRepository } from "./league.repository";
 import { LeagueService } from "./league.service";
+import { MySeasonsService } from "./my-seasons.service";
+import { SeasonRanksService } from "./season-ranks.service";
+
+function buildService(deps: {
+  leagueRepo: LeagueRepository;
+  hostedTournamentRepo?: HostedTournamentRepository;
+  tierListRepo?: TierListRepository;
+  coachRepo?: CoachRepository;
+  teamRepo?: TeamRepository;
+  draftRepo?: DraftRepository;
+  matchupRepo?: LeagueMatchupRepository;
+  hosting?: HostingAccessService;
+  uploads?: UploadsService;
+}) {
+  const hostedTournamentRepo =
+    deps.hostedTournamentRepo ?? ({} as HostedTournamentRepository);
+  const draftRepo = deps.draftRepo ?? ({} as DraftRepository);
+  const matchupRepo = deps.matchupRepo ?? ({} as LeagueMatchupRepository);
+  return new LeagueService(
+    deps.leagueRepo,
+    hostedTournamentRepo,
+    deps.hosting ?? hostingMock(),
+    deps.uploads ?? ({} as UploadsService),
+    new MySeasonsService(
+      hostedTournamentRepo,
+      deps.tierListRepo ?? ({} as TierListRepository),
+      deps.coachRepo ?? ({} as CoachRepository),
+      deps.teamRepo ?? ({} as TeamRepository),
+      draftRepo,
+      matchupRepo,
+      new SeasonRanksService(matchupRepo),
+    ),
+    draftRepo,
+  );
+}
+
+describe("LeagueService.getDirectory", () => {
+  it("lists each listed league with its running tournaments, open sign-ups first", async () => {
+    const quiet = buildLeague({ name: "Aardvark League", slug: "aardvark" });
+    const recruiting = buildLeague({ name: "Zebra League", slug: "zebra" });
+    const open = buildTournament({
+      id: "t-open",
+      leagueSlug: "zebra",
+      slug: "s2",
+      name: "Season 2",
+      signUpDeadline: new Date(Date.now() + 86_400_000),
+    });
+    const running = buildTournament({
+      id: "t-running",
+      leagueSlug: "zebra",
+      slug: "s1",
+      name: "Season 1",
+    });
+    const leagueRepo = {
+      findListed: jest.fn().mockResolvedValue([quiet, recruiting]),
+    } as unknown as LeagueRepository;
+    const hostedTournamentRepo = {
+      findActiveInLeagues: jest.fn().mockResolvedValue([open, running]),
+    } as unknown as HostedTournamentRepository;
+    const draftRepo = {
+      findAllByTournaments: jest
+        .fn()
+        .mockResolvedValue([{ tournamentId: "t-running", status: "COMPLETED" }]),
+    } as unknown as DraftRepository;
+
+    const result = await buildService({
+      leagueRepo,
+      hostedTournamentRepo,
+      draftRepo,
+    }).getDirectory();
+
+    expect(hostedTournamentRepo.findActiveInLeagues).toHaveBeenCalledWith([
+      quiet._id,
+      recruiting._id,
+    ]);
+    expect(result.leagues).toEqual([
+      expect.objectContaining({
+        leagueSlug: "zebra",
+        status: "signups",
+        tournaments: [
+          expect.objectContaining({ tournamentSlug: "s2", status: "signups" }),
+          expect.objectContaining({ tournamentSlug: "s1", status: "season" }),
+        ],
+      }),
+      expect.objectContaining({
+        leagueSlug: "aardvark",
+        status: "between",
+        tournaments: [],
+      }),
+    ]);
+  });
+});
 
 function hostingMock(canHost = true) {
   return {
@@ -92,11 +184,12 @@ describe("LeagueService.getLeagueSummary", () => {
     } as unknown as jest.Mocked<TeamRepository>;
     draftRepo = {
       findManyByIds: jest.fn(),
+      findAllByTournaments: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DraftRepository>;
     matchupRepo = {
       findScoringByStages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
-    service = new LeagueService(
+    service = buildService({
       leagueRepo,
       hostedTournamentRepo,
       tierListRepo,
@@ -104,9 +197,7 @@ describe("LeagueService.getLeagueSummary", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
-      hostingMock(),
-      {} as UploadsService,
-    );
+    });
   });
 
   it("looks up tournaments using the resolved league", async () => {
@@ -132,6 +223,7 @@ describe("LeagueService.getLeagueSummary", () => {
       leagueSlug: "springleague",
       description: "A friendly league",
       logo: "league-logo",
+      listed: false,
       tournaments: [],
       isOwner: false,
       role: null,
@@ -151,6 +243,40 @@ describe("LeagueService.getLeagueSummary", () => {
     expect(result.tournaments).toHaveLength(1);
     expect(result.tournaments[0].format).toBeNull();
     expect(result.tournaments[0].ruleset).toBeNull();
+  });
+
+  it("reports each tournament's phase from its pools, not from its dates", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(buildLeague());
+    hostedTournamentRepo.findAllByLeague.mockResolvedValue([
+      buildTournament({
+        id: "t-late",
+        slug: "late",
+        seasonEnd: new Date("2020-01-01"),
+      }),
+      buildTournament({
+        id: "t-open",
+        slug: "open",
+        signUpDeadline: new Date(Date.now() + 86_400_000),
+      }),
+      buildTournament({ id: "t-done", slug: "done", completedAt: new Date() }),
+    ]);
+    draftRepo.findAllByTournaments.mockResolvedValue([
+      { tournamentId: "t-late", status: "COMPLETED" },
+    ] as never);
+
+    const result = await service.getLeagueSummary("springleague");
+
+    expect(
+      result.tournaments.map((tournament) => [
+        tournament.tournamentSlug,
+        tournament.phase,
+        tournament.signUpOpen,
+      ]),
+    ).toEqual([
+      ["late", "season", false],
+      ["open", "upcoming", true],
+      ["done", "completed", false],
+    ]);
   });
 
   it("gives the owner defaults from the latest tournament", async () => {
@@ -286,6 +412,8 @@ describe("LeagueService.getLeagueSummary", () => {
     expect(tierListRepo.findById).not.toHaveBeenCalled();
     expect(result.tournaments).toEqual([
       {
+        phase: "upcoming",
+        signUpOpen: false,
         name: "Spring Cup",
         tournamentSlug: "springcup",
         description: "The spring cup",
@@ -410,30 +538,16 @@ describe("LeagueService.getLeagues", () => {
       findManagedBy: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueRepository>;
     hostedTournamentRepo = {
-      findByParticipant: jest.fn().mockResolvedValue([]),
+      findManyByIds: jest.fn().mockResolvedValue([]),
       findByStaff: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<HostedTournamentRepository>;
     tierListRepo = {
-      findById: jest
-        .fn()
-        .mockResolvedValue(
-          buildTierList({ getPokemonFormes: () => undefined }),
-        ),
-      findManyByIds: jest
-        .fn()
-        .mockImplementation((ids: string[]) =>
-          Promise.resolve(
-            new Map(
-              ids.map((id) => [
-                id,
-                buildTierList({ getPokemonFormes: () => undefined }),
-              ]),
-            ),
-          ),
-        ),
+      findRosterFormes: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<TierListRepository>;
     coachRepo = {
-      findByAuth0Id: jest.fn().mockResolvedValue([]),
+      findByAuth0Id: jest
+        .fn()
+        .mockResolvedValue([{ teamId: new Types.ObjectId() }]),
     } as unknown as jest.Mocked<CoachRepository>;
     teamRepo = {
       findManyByIds: jest.fn().mockResolvedValue([]),
@@ -444,9 +558,10 @@ describe("LeagueService.getLeagues", () => {
     } as unknown as jest.Mocked<DraftRepository>;
     matchupRepo = {
       findScoringByStages: jest.fn().mockResolvedValue([]),
-      findByStages: jest.fn().mockResolvedValue([]),
+      findSeasonByStages: jest.fn().mockResolvedValue([]),
+      fingerprintsByStages: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<LeagueMatchupRepository>;
-    service = new LeagueService(
+    service = buildService({
       leagueRepo,
       hostedTournamentRepo,
       tierListRepo,
@@ -454,9 +569,7 @@ describe("LeagueService.getLeagues", () => {
       teamRepo,
       draftRepo,
       matchupRepo,
-      hostingMock(),
-      {} as UploadsService,
-    );
+    });
   });
 
   it("files an organizer-completed tournament under completed with its stored outcome", async () => {
@@ -465,7 +578,7 @@ describe("LeagueService.getLeagues", () => {
     const team = buildParticipantTeam(tournament.id, {
       outcome: { placement: 1, of: 8, label: "Champion", champion: true },
     });
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
 
     const { tournaments } = await service.getLeagues("user-1");
@@ -483,7 +596,7 @@ describe("LeagueService.getLeagues", () => {
     const tournament = buildParticipantTournament();
     const team = buildParticipantTeam(tournament.id);
     const completedAt = new Date("2026-10-01T00:00:00Z");
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
     coachRepo.findByAuth0Id.mockResolvedValue([
       { teamId: team._id, completedAt },
@@ -503,7 +616,7 @@ describe("LeagueService.getLeagues", () => {
     const tournament = buildParticipantTournament();
     const team = buildParticipantTeam(tournament.id);
     const opponent = new Types.ObjectId();
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
     matchupRepo.findScoringByStages.mockResolvedValue([
       buildScoringMatchup({
@@ -541,7 +654,7 @@ describe("LeagueService.getLeagues", () => {
   it("reports the game diff instead when the tournament scores by game", async () => {
     const tournament = buildParticipantTournament({ diffMode: "game" });
     const team = buildParticipantTeam(tournament.id);
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
     matchupRepo.findScoringByStages.mockResolvedValue([
       buildScoringMatchup({
@@ -569,7 +682,7 @@ describe("LeagueService.getLeagues", () => {
   it("leaves the score off a tournament whose schedule does not exist yet", async () => {
     const tournament = buildParticipantTournament();
     const team = buildParticipantTeam(tournament.id);
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
     matchupRepo.findScoringByStages.mockResolvedValue([]);
 
@@ -583,7 +696,7 @@ describe("LeagueService.getLeagues", () => {
     const tournamentB = buildParticipantTournament({ slug: "b" });
     const teamA = buildParticipantTeam(tournamentA.id);
     const teamB = buildParticipantTeam(tournamentB.id);
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([
       tournamentA,
       tournamentB,
     ]);
@@ -676,17 +789,7 @@ describe("LeagueService.getLeagues", () => {
   });
 
   it("lets an admin create tournaments even when they can't host their own", async () => {
-    service = new LeagueService(
-      leagueRepo,
-      hostedTournamentRepo,
-      tierListRepo,
-      coachRepo,
-      teamRepo,
-      draftRepo,
-      matchupRepo,
-      hostingMock(false),
-      {} as UploadsService,
-    );
+    service = buildService({ leagueRepo, hosting: hostingMock(false) });
     leagueRepo.findManagedBy.mockResolvedValue([
       buildLeague({ owner: "auth0|someone", admins: [{ sub: "auth0|me", name: "Me" }] }),
     ]);
@@ -708,7 +811,7 @@ describe("LeagueService.getLeagues", () => {
   it("leaves a tournament the user coaches in out of organizing", async () => {
     const tournament = buildParticipantTournament({ owner: "auth0|coach" });
     const team = buildParticipantTeam(tournament.id);
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     hostedTournamentRepo.findByStaff.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
 
@@ -725,7 +828,7 @@ describe("LeagueService.getLeagues", () => {
       stages: [{ _id: stageA }, { _id: stageB }],
     });
     const team = buildParticipantTeam(tournament.id);
-    hostedTournamentRepo.findByParticipant.mockResolvedValue([tournament]);
+    hostedTournamentRepo.findManyByIds.mockResolvedValue([tournament]);
     teamRepo.findManyByIds.mockResolvedValue([team]);
 
     await service.getLeagues("auth0|coach");
@@ -742,17 +845,7 @@ describe("LeagueService.createLeague", () => {
   let leagueRepo: jest.Mocked<LeagueRepository>;
 
   function serviceWith(canHost: boolean) {
-    return new LeagueService(
-      leagueRepo,
-      {} as HostedTournamentRepository,
-      {} as TierListRepository,
-      {} as CoachRepository,
-      {} as TeamRepository,
-      {} as DraftRepository,
-      {} as LeagueMatchupRepository,
-      hostingMock(canHost),
-      {} as UploadsService,
-    );
+    return buildService({ leagueRepo, hosting: hostingMock(canHost) });
   }
 
   beforeEach(() => {
@@ -804,17 +897,7 @@ describe("LeagueService.updateLeague", () => {
     uploads = {
       claimUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<UploadsService>;
-    service = new LeagueService(
-      leagueRepo,
-      {} as HostedTournamentRepository,
-      {} as TierListRepository,
-      {} as CoachRepository,
-      {} as TeamRepository,
-      {} as DraftRepository,
-      {} as LeagueMatchupRepository,
-      hostingMock(),
-      uploads,
-    );
+    service = buildService({ leagueRepo, uploads });
   });
 
   it("only lets the owner or an admin edit the league", async () => {

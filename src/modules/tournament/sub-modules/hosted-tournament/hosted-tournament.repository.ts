@@ -183,6 +183,34 @@ export class HostedTournamentRepository {
     return this.hydrate(docs);
   }
 
+  async findActiveInLeagues(
+    leagueIds: Types.ObjectId[],
+  ): Promise<HostedTournament[]> {
+    if (leagueIds.length === 0) return [];
+    const docs = await this.hostedTournamentModel
+      .find({
+        league: { $in: leagueIds },
+        archived: { $ne: true },
+        completedAt: null,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    return this.hydrate(docs);
+  }
+
+  async findManyByIds(
+    tournamentIds: (Types.ObjectId | string)[],
+  ): Promise<HostedTournament[]> {
+    if (tournamentIds.length === 0) return [];
+    const docs = await this.hostedTournamentModel
+      .find({ _id: { $in: tournamentIds } })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    return this.hydrate(docs);
+  }
+
   async findByStaff(sub: string): Promise<HostedTournament[]> {
     const ownedLeagues = await this.leagueRepo.findByOwner(sub);
     const docs = await this.hostedTournamentModel

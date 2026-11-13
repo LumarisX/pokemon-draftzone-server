@@ -1,5 +1,6 @@
 import { Transform } from "class-transformer";
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
@@ -44,4 +45,8 @@ export class UpdateLeagueDto {
   @ValidateIf((dto: UpdateLeagueDto) => dto.logo !== null)
   @IsOptional()
   logo?: string | null;
+
+  @IsBoolean()
+  @IsOptional()
+  listed?: boolean;
 }

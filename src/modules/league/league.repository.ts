@@ -35,9 +35,14 @@ export class LeagueRepository {
 
   async update(
     leagueId: Types.ObjectId,
-    changes: { name?: string; description?: string | null; logo?: string | null },
+    changes: {
+      name?: string;
+      description?: string | null;
+      logo?: string | null;
+      listed?: boolean;
+    },
   ): Promise<void> {
-    const set: Record<string, string> = {};
+    const set: Record<string, string | boolean> = {};
     const unset: Record<string, ""> = {};
     for (const [key, value] of Object.entries(changes)) {
       if (value === undefined) continue;
@@ -60,6 +65,10 @@ export class LeagueRepository {
       .find({ owner: { $eq: owner } })
       .sort({ createdAt: -1 })
       .exec();
+  }
+
+  async findListed(): Promise<LeagueDocument[]> {
+    return this.leagueModel.find({ listed: true }).sort({ name: 1 }).exec();
   }
 
   async findManagedBy(sub: string): Promise<LeagueDocument[]> {

@@ -177,7 +177,41 @@ export class LeagueMatchupRepository {
         ],
       })
       .select(
-        "round winner forfeit scheduledDate side1.team side1.score side2.team side2.score results",
+        "slug stage round winner forfeit scheduledDate side1.team side1.score side2.team side2.score results",
+      )
+      .sort({ _id: 1 })
+      .exec();
+  }
+
+  async fingerprintsByStages(
+    stageIds: Types.ObjectId[],
+  ): Promise<{ stageId: string; count: number; latest: Date | null }[]> {
+    if (stageIds.length === 0) return [];
+    const rows = await this.matchupModel
+      .aggregate<{ _id: Types.ObjectId; count: number; latest: Date | null }>([
+        { $match: { stage: { $in: stageIds } } },
+        {
+          $group: {
+            _id: "$stage",
+            count: { $sum: 1 },
+            latest: { $max: "$updatedAt" },
+          },
+        },
+      ])
+      .exec();
+    return rows.map((row) => ({
+      stageId: row._id.toString(),
+      count: row.count,
+      latest: row.latest ?? null,
+    }));
+  }
+
+  async findSeasonByStages(stageIds: (Types.ObjectId | string)[]) {
+    if (stageIds.length === 0) return [];
+    return this.matchupModel
+      .find({ stage: { $in: stageIds } })
+      .select(
+        "slug stage round winner forfeit scheduledDate side1.team side1.score side2.team side2.score results.winner results.side1.score results.side2.score",
       )
       .sort({ _id: 1 })
       .exec();
