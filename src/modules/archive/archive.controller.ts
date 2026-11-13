@@ -20,13 +20,13 @@ export class ArchiveController {
   }
 
   @Delete(":teamId")
-  async deleteArchive(@Param("teamId") teamId: string) {
-    await this.archiveService.deleteArchive(teamId);
+  async deleteArchive(@Param("teamId") teamId: string, @User() sub: string) {
+    await this.archiveService.deleteArchive(teamId, sub);
     return { message: "Draft deleted" };
   }
 
   @Get(":teamId/stats")
-  async getArchiveStats(@Param("teamId") teamId: string) {
-    return this.archiveService.getArchiveStats(teamId);
+  async getArchiveStats(@Param("teamId") teamId: string, @User() sub: string) {
+    return this.archiveService.getArchiveStats(teamId, sub);
   }
 }

@@ -27,22 +27,28 @@ describe("ArchiveController", () => {
   });
 
   describe("deleteArchive", () => {
-    it("deletes by team id and returns a confirmation message", async () => {
-      const result = await controller.deleteArchive("team-1");
+    it("deletes by team id for the authenticated sub", async () => {
+      const result = await controller.deleteArchive("team-1", "auth0|owner");
 
-      expect(service.deleteArchive).toHaveBeenCalledWith("team-1");
+      expect(service.deleteArchive).toHaveBeenCalledWith(
+        "team-1",
+        "auth0|owner",
+      );
       expect(result).toEqual({ message: "Draft deleted" });
     });
   });
 
   describe("getArchiveStats", () => {
-    it("forwards the team id and returns the service's result directly", async () => {
+    it("forwards the team id and the authenticated sub", async () => {
       const stats = { pokemon: [] };
       service.getArchiveStats.mockResolvedValue(stats);
 
-      const result = await controller.getArchiveStats("team-1");
+      const result = await controller.getArchiveStats("team-1", "auth0|owner");
 
-      expect(service.getArchiveStats).toHaveBeenCalledWith("team-1");
+      expect(service.getArchiveStats).toHaveBeenCalledWith(
+        "team-1",
+        "auth0|owner",
+      );
       expect(result).toBe(stats);
     });
   });

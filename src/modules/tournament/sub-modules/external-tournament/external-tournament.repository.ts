@@ -69,9 +69,14 @@ export class ExternalTournamentRepository {
     return ExternalTournamentMapper.fromDatabase(tournamentDoc, matchups);
   }
 
-  async findById(id: string | Types.ObjectId): Promise<ExternalTournament> {
+  async findByIdAndOwner(
+    id: string | Types.ObjectId,
+    owner: string,
+  ): Promise<ExternalTournament> {
+    if (!Types.ObjectId.isValid(id))
+      throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
     const tournamentDoc = await this.tournamentModel
-      .findById(id)
+      .findOne({ _id: id, owner: { $eq: owner } })
       .populate<{ matchups: ExternalMatchupDocument[] }>("matchups")
       .exec();
     if (!tournamentDoc) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);

@@ -28,20 +28,26 @@ export class ArchiveRepository {
     return docs.map((doc) => ArchiveMapper.fromDatabase(doc));
   }
 
-  async findById(teamId: string): Promise<Archive> {
+  async findByIdAndOwner(teamId: string, owner: string): Promise<Archive> {
     if (!Types.ObjectId.isValid(teamId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { teamId });
 
-    const doc = await this.archiveModel.findById(teamId);
+    const doc = await this.archiveModel.findOne({
+      _id: teamId,
+      owner: { $eq: owner },
+    });
     if (!doc) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
     return ArchiveMapper.fromDatabase(doc);
   }
 
-  async delete(teamId: string): Promise<void> {
+  async deleteByIdAndOwner(teamId: string, owner: string): Promise<void> {
     if (!Types.ObjectId.isValid(teamId))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, { teamId });
 
-    const result = await this.archiveModel.findByIdAndDelete(teamId);
+    const result = await this.archiveModel.findOneAndDelete({
+      _id: teamId,
+      owner: { $eq: owner },
+    });
     if (!result) throw new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND);
   }
 

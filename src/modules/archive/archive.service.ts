@@ -38,17 +38,20 @@ export class ArchiveService {
       .map(({ item }) => item);
   }
 
-  async deleteArchive(teamId: string) {
-    await this.archiveRepository.delete(teamId);
+  async deleteArchive(teamId: string, owner: string) {
+    await this.archiveRepository.deleteByIdAndOwner(teamId, owner);
   }
 
-  async getArchiveStats(teamId: string) {
+  async getArchiveStats(teamId: string, owner: string) {
     try {
-      const archive = await this.archiveRepository.findById(teamId);
+      const archive = await this.archiveRepository.findByIdAndOwner(
+        teamId,
+        owner,
+      );
       return archive.computeStats();
     } catch (error) {
       if (!this.isArchiveMiss(error)) throw error;
-      return this.tournamentService.getTournamentStatsById(teamId);
+      return this.tournamentService.getTournamentStatsById(teamId, owner);
     }
   }
 

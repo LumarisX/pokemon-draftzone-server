@@ -71,8 +71,11 @@ export class ExternalTournamentService {
     return this.compileStats(tournament.matchups);
   }
 
-  async getTournamentStatsById(id: string) {
-    const tournament = await this.tournamentRepository.findById(id);
+  async getTournamentStatsById(id: string, sub: string) {
+    const tournament = await this.tournamentRepository.findByIdAndOwner(
+      id,
+      sub,
+    );
     return this.compileStats(tournament.matchups);
   }
 

@@ -35,8 +35,8 @@ describe("ArchiveService", () => {
     jest.clearAllMocks();
     repository = {
       findAllByOwner: jest.fn(),
-      findById: jest.fn(),
-      delete: jest.fn(),
+      findByIdAndOwner: jest.fn(),
+      deleteByIdAndOwner: jest.fn(),
       createV2: jest.fn(),
     } as unknown as jest.Mocked<ArchiveRepository>;
     tournamentService = {
@@ -100,46 +100,55 @@ describe("ArchiveService", () => {
   });
 
   describe("deleteArchive", () => {
-    it("delegates to the repository", async () => {
-      await service.deleteArchive("team-1");
+    it("deletes only the caller's own archive", async () => {
+      await service.deleteArchive("team-1", "auth0|owner");
 
-      expect(repository.delete).toHaveBeenCalledWith("team-1");
+      expect(repository.deleteByIdAndOwner).toHaveBeenCalledWith(
+        "team-1",
+        "auth0|owner",
+      );
     });
   });
 
   describe("getArchiveStats", () => {
-    it("fetches the archive by id and returns its computed stats", async () => {
+    it("fetches the caller's archive by id and returns its computed stats", async () => {
       const stats = { pokemon: [] };
       const archive = { computeStats: jest.fn().mockReturnValue(stats) } as any;
-      repository.findById.mockResolvedValue(archive);
+      repository.findByIdAndOwner.mockResolvedValue(archive);
 
-      const result = await service.getArchiveStats("team-1");
+      const result = await service.getArchiveStats("team-1", "auth0|owner");
 
-      expect(repository.findById).toHaveBeenCalledWith("team-1");
+      expect(repository.findByIdAndOwner).toHaveBeenCalledWith(
+        "team-1",
+        "auth0|owner",
+      );
       expect(archive.computeStats).toHaveBeenCalledWith();
       expect(result).toBe(stats);
     });
 
-    it("falls back to the live collection when no legacy archive matches", async () => {
+    it("falls back to the caller's live tournament when no legacy archive matches", async () => {
       const stats = { pokemon: [] };
-      repository.findById.mockRejectedValue(
+      repository.findByIdAndOwner.mockRejectedValue(
         new PDZError(ErrorCodes.ARCHIVE.NOT_FOUND),
       );
       tournamentService.getTournamentStatsById.mockResolvedValue(stats as any);
 
-      const result = await service.getArchiveStats("team-1");
+      const result = await service.getArchiveStats("team-1", "auth0|owner");
 
       expect(tournamentService.getTournamentStatsById).toHaveBeenCalledWith(
         "team-1",
+        "auth0|owner",
       );
       expect(result).toBe(stats);
     });
 
     it("rethrows errors that are not an archive miss", async () => {
       const failure = new Error("connection reset");
-      repository.findById.mockRejectedValue(failure);
+      repository.findByIdAndOwner.mockRejectedValue(failure);
 
-      await expect(service.getArchiveStats("team-1")).rejects.toBe(failure);
+      await expect(
+        service.getArchiveStats("team-1", "auth0|owner"),
+      ).rejects.toBe(failure);
       expect(tournamentService.getTournamentStatsById).not.toHaveBeenCalled();
     });
   });
