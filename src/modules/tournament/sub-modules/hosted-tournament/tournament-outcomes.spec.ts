@@ -1,111 +1,68 @@
-import { PokemonStanding, StandingsRow } from "@modules/stage/domain/standings";
-import { TeamOutcome } from "@modules/stage/domain/outcomes";
-import { finalResults, seasonLeaders } from "./tournament-outcomes";
+import { Types } from "mongoose";
+import { computeTournamentOutcomes } from "./tournament-outcomes";
 
-function mon(
-  teamId: string,
-  id: string,
-  kills: number,
-  deaths = 0,
-  brought = 1,
-): PokemonStanding {
-  return {
-    id,
-    name: id,
-    coach: "coach",
-    teamName: teamId,
-    teamId,
-    record: { brought, kills, deaths, diff: kills - deaths },
+describe("computeTournamentOutcomes", () => {
+  const visible = { _id: new Types.ObjectId(), type: "round-robin" };
+  const hidden = {
+    _id: new Types.ObjectId(),
+    type: "single-elimination",
+    public: false,
   };
-}
 
-function row(id: string, wins: number, losses: number): StandingsRow {
-  return {
-    id,
-    teamSlug: `${id}-slug`,
-    name: id,
-    coach: `${id} coach`,
-    results: [],
-    streak: 0,
-    wins,
-    draws: 0,
-    losses,
-    points: wins * 3,
-    gameDiff: 0,
-    pokemonDiff: 0,
-    diffMode: "pokemon",
-  };
-}
+  function repos() {
+    return {
+      stageRepo: {
+        findAllByTournament: jest.fn().mockResolvedValue([visible, hidden]),
+        teamIdsInSeedOrder: jest.fn().mockReturnValue([]),
+      },
+      teamRepo: { findManyByIds: jest.fn().mockResolvedValue([]) },
+      matchupRepo: {
+        findByStages: jest.fn().mockResolvedValue([]),
+        findAdvancementFieldsByStages: jest.fn().mockResolvedValue([]),
+      },
+    };
+  }
 
-describe("seasonLeaders", () => {
-  it("ranks by most KOs, then fewer faints, then fewer games", () => {
-    const leaders = seasonLeaders([
-      mon("a", "pikachu", 5, 3),
-      mon("a", "raichu", 5, 1),
-      mon("b", "onix", 2, 1, 4),
-      mon("b", "geodude", 2, 1, 2),
-      mon("c", "magikarp", 0),
-    ]);
+  const tournament = {
+    id: "t1",
+    trades: [],
+    rounds: [],
+    forfeit: { gameDiff: 0 },
+    effectiveStandingsRules: () => [],
+  } as any;
 
-    expect(leaders.get("a")).toEqual([
-      { id: "raichu", name: "raichu", kills: 5 },
-      { id: "pikachu", name: "pikachu", kills: 5 },
+  it("reads every stage for the organizers' final results", async () => {
+    const r = repos();
+
+    await computeTournamentOutcomes(r as any, tournament);
+
+    expect(r.matchupRepo.findByStages).toHaveBeenCalledWith([
+      visible._id,
+      hidden._id,
     ]);
-    expect(leaders.get("b")?.map((entry) => entry.id)).toEqual([
-      "geodude",
-      "onix",
-    ]);
-    expect(leaders.has("c")).toBe(false);
   });
 
-  it("keeps the top three of each team", () => {
-    const leaders = seasonLeaders([
-      mon("a", "pikachu", 1),
-      mon("a", "raichu", 4),
-      mon("a", "pichu", 2),
-      mon("a", "onix", 3),
-    ]);
+  it("loads the teams once across every stage, in seed order", async () => {
+    const r = repos();
+    const [a, b, c] = [1, 2, 3].map(() => new Types.ObjectId());
+    r.stageRepo.teamIdsInSeedOrder
+      .mockReturnValueOnce([b, a])
+      .mockReturnValueOnce([a, c]);
 
-    expect(leaders.get("a")?.map((entry) => entry.id)).toEqual([
-      "raichu",
-      "onix",
-      "pichu",
-    ]);
+    await computeTournamentOutcomes(r as any, tournament);
+
+    expect(r.teamRepo.findManyByIds).toHaveBeenCalledTimes(1);
+    expect(r.teamRepo.findManyByIds).toHaveBeenCalledWith([b, a, c]);
   });
-});
 
-describe("finalResults", () => {
-  it("orders by placement and carries each team's record and MVP", () => {
-    const outcomes = new Map<string, TeamOutcome>([
-      ["b", { placement: 1, of: 2, label: "Champion", champion: true }],
-      ["a", { placement: 2, of: 2, label: "Runner-Up", champion: false }],
-    ]);
+  it("leaves hidden stages out of what the public sees", async () => {
+    const r = repos();
 
-    const results = finalResults(
-      outcomes,
-      [row("a", 6, 1), row("b", 5, 2)],
-      new Map([
-        [
-          "b",
-          [
-            { id: "onix", name: "Onix", kills: 9 },
-            { id: "geodude", name: "Geodude", kills: 4 },
-          ],
-        ],
-      ]),
+    await computeTournamentOutcomes(r as any, tournament, { publicOnly: true });
+
+    expect(r.matchupRepo.findByStages).toHaveBeenCalledWith([visible._id]);
+    expect(r.matchupRepo.findAdvancementFieldsByStages).toHaveBeenCalledWith(
+      [],
     );
-
-    expect(results.map((result) => result.teamId)).toEqual(["b", "a"]);
-    expect(results[0]).toMatchObject({
-      champion: true,
-      teamSlug: "b-slug",
-      coach: "b coach",
-      wins: 5,
-      losses: 2,
-      mvp: { id: "onix", name: "Onix", kills: 9 },
-    });
-    expect(results[0].top.map((entry) => entry.id)).toEqual(["onix", "geodude"]);
-    expect(results[1].mvp).toBeNull();
-    expect(results[1].top).toEqual([]);
   });
 });

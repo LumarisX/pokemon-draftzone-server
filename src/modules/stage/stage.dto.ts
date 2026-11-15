@@ -149,6 +149,12 @@ export class SetMatchupNotesDto {
   notes?: string;
 }
 
+export class ReviewMatchupReportDto {
+  @IsDateString()
+  @IsOptional()
+  submittedAt?: string;
+}
+
 export class SubmitMatchupReportDto {
   @ValidateNested()
   @Type(() => MatchupScoreDto)
@@ -187,6 +193,7 @@ export class SubmitMatchupReportDto {
 
 export class TradePokemonDto {
   @IsString()
+  @MaxLength(64)
   id!: string;
 
   @IsBoolean()
@@ -196,10 +203,12 @@ export class TradePokemonDto {
 export class TradeSideDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   team?: string;
 
   @IsArray()
+  @ArrayMaxSize(30)
   @ValidateNested({ each: true })
   @Type(() => TradePokemonDto)
   pokemon!: TradePokemonDto[];
@@ -236,11 +245,13 @@ export class UpdateTradeDto {
 
 export class UpdateBracketRoundDto {
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   _id?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   name!: string;
 
   @IsDate()
@@ -263,24 +274,28 @@ export class BracketSlotDto {
   @IsIn(["seed", "winner", "loser"])
   type!: "seed" | "winner" | "loser";
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   seed?: number;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   from?: string;
 }
 
 export class SeedGroupDto {
   @IsArray()
+  @ArrayMaxSize(512)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   teamIds!: string[];
 
   @IsIn(["certified-random", "manual"])
   method!: "certified-random" | "manual";
 
   @IsString()
+  @MaxLength(100)
   @IsOptional()
   label?: string;
 }

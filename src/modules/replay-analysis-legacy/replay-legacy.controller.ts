@@ -1,23 +1,21 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Logger, Query } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
+import { fetchReplayLog } from "@modules/replay-analyzer/replay-fetch";
 import { ReplayAnalyzerService } from "./replay-legacy.service";
-import { PDZError } from "@core/pdz-error";
-import { ErrorCodes } from "@core/pdz-error-codes";
-import { validateUrl } from "./replay-legacy.types";
 
 @Controller("replay/analyze")
+@Throttle({ default: { ttl: 60_000, limit: 20 } })
 export class ReplayLegacyController {
-  // Note: v1 uses a static factory (ReplayAnalyzerService.fromReplayUrl),
-  // not an injected instance method, so DI is not used here. This mirrors
-  // the original express-era behavior 1:1 and is intentionally left as-is.
+  private readonly logger = new Logger(ReplayLegacyController.name);
+
   @Get()
   async analyzeReplay(@Query("url") url: string) {
-    const decodedUrl = decodeURI(url).replace(/^https?:\/\//, "");
-    const urlPattern = /^replay\.pokemonshowdown\.com\/.+$/;
-    if (!urlPattern.test(decodedUrl))
-      throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
-    if (!validateUrl(decodedUrl))
-      throw new PDZError(ErrorCodes.REPLAY.INVALID_URL);
-    const replay = await ReplayAnalyzerService.fromReplayUrl(decodedUrl);
-    return replay?.toClient();
+    const replay = new ReplayAnalyzerService(await fetchReplayLog(url));
+    const result = replay.toClient();
+    if (result.warnings.length)
+      this.logger.warn(
+        `Replay ${url} had ${result.warnings.length} unreadable line(s): ${result.warnings[0].message}`,
+      );
+    return result;
   }
 }

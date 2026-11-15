@@ -3,6 +3,7 @@ import { TeamRepository } from "@modules/team/team.repository";
 import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writer";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { DraftRepository } from "@modules/draft/draft.repository";
 import { Types } from "mongoose";
 import { TierListAccessService } from "./tier-list-access.service";
 import { TierListHistoryService } from "./tier-list-history.service";
@@ -33,6 +34,23 @@ function list(overrides: Partial<ConstructorParameters<typeof TierList>[0]> = {}
   });
 }
 
+const POOL_ID = new Types.ObjectId();
+
+function draftedTeam(
+  teamName: string,
+  drafted: string[],
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    _id: new Types.ObjectId(),
+    teamName,
+    coaches: [],
+    pickLog: drafted.map((id) => ({ pokemon: { id } })),
+    picks: [],
+    ...overrides,
+  };
+}
+
 function tournament(overrides: Record<string, unknown> = {}) {
   return {
     id: TOURNAMENT_ID,
@@ -61,6 +79,7 @@ describe("TournamentTierListService", () => {
   let history: jest.Mocked<TierListHistoryService>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let logWriter: jest.Mocked<TournamentLogWriter>;
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: TournamentTierListService;
 
   const current = list({
@@ -122,13 +141,13 @@ describe("TournamentTierListService", () => {
       stateAt: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<TierListHistoryService>;
     teamRepo = {
-      findAllByTournament: jest.fn().mockResolvedValue([
-        {
-          teamName: "Cinnabar Blaze",
-          picks: [[{ pokemonId: "garchomp" }]],
-        },
-      ]),
+      findAllByTournament: jest
+        .fn()
+        .mockResolvedValue([draftedTeam("Cinnabar Blaze", ["garchomp"])]),
     } as unknown as jest.Mocked<TeamRepository>;
+    draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DraftRepository>;
     logWriter = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<TournamentLogWriter>;
@@ -141,8 +160,29 @@ describe("TournamentTierListService", () => {
       teamRepo,
       logWriter,
       { run: (work: () => Promise<unknown>) => work() } as TransactionRunner,
+      {
+        find: () => ({
+          select: () => ({
+            lean: () => ({
+              exec: () => draftRepo.findAllByTournament("tournament"),
+            }),
+          }),
+        }),
+      } as never,
     );
   });
+
+  function blindPool(overrides: Record<string, unknown> = {}) {
+    return {
+      _id: POOL_ID,
+      picksVisibleTo: "ownTeam",
+      status: "IN_PROGRESS",
+      ...overrides,
+    } as any;
+  }
+
+  const recordedPicks = () =>
+    (logWriter.record.mock.calls[0][2].details as any).affectedPicks;
 
   it("only lets organizers swap the list", async () => {
     await expect(
@@ -161,6 +201,82 @@ describe("TournamentTierListService", () => {
     expect(preview.affectedPicks).toEqual([
       { team: "Cinnabar Blaze", pokemonId: "garchomp", name: "Garchomp", from: 20, to: 22 },
     ]);
+  });
+
+  it("never reports a queued Pokémon that is not drafted", async () => {
+    teamRepo.findAllByTournament.mockResolvedValue([
+      draftedTeam("Cinnabar Blaze", [], {
+        picks: [[{ pokemonId: "garchomp" }]],
+      }),
+    ] as any);
+
+    const preview = await service.preview("league", "spring-cup", ORGANIZER, "incoming");
+    expect(preview.draftStarted).toBe(false);
+    expect(preview.affectedPicks).toEqual([]);
+
+    await service.attach("league", "spring-cup", ORGANIZER, { tierListSlug: "incoming" });
+    expect(recordedPicks()).toEqual([]);
+  });
+
+  it("reports a drafted Pokémon whose cost changes with from and to", async () => {
+    const preview = await service.preview("league", "spring-cup", ORGANIZER, "incoming");
+
+    expect(preview.draftStarted).toBe(true);
+    expect(preview.affectedPicks).toEqual([
+      { team: "Cinnabar Blaze", pokemonId: "garchomp", name: "Garchomp", from: 20, to: 22 },
+    ]);
+  });
+
+  it("marks the draft started when a pool is past pre-draft", async () => {
+    teamRepo.findAllByTournament.mockResolvedValue([]);
+    draftRepo.findAllByTournament.mockResolvedValue([blindPool()]);
+
+    const preview = await service.preview("league", "spring-cup", ORGANIZER, "incoming");
+    expect(preview.draftStarted).toBe(true);
+
+    draftRepo.findAllByTournament.mockResolvedValue([blindPool({ status: "NOT_STARTED" })]);
+    const before = await service.preview("league", "spring-cup", ORGANIZER, "incoming");
+    expect(before.draftStarted).toBe(false);
+  });
+
+  it("leaves the team name off the log for a blind pool but keeps it in the organizer preview", async () => {
+    teamRepo.findAllByTournament.mockResolvedValue([
+      draftedTeam("Cinnabar Blaze", ["garchomp"], { draftId: POOL_ID }),
+    ] as any);
+    draftRepo.findAllByTournament.mockResolvedValue([blindPool()]);
+
+    const preview = await service.preview("league", "spring-cup", ORGANIZER, "incoming");
+    expect(preview.affectedPicks[0]).toMatchObject({ team: "Cinnabar Blaze" });
+
+    await service.attach("league", "spring-cup", ORGANIZER, { tierListSlug: "incoming" });
+    expect(recordedPicks()).toEqual([
+      { pokemonId: "garchomp", name: "Garchomp", from: 20, to: 22 },
+    ]);
+    expect(JSON.stringify(logWriter.record.mock.calls)).not.toContain("Cinnabar Blaze");
+  });
+
+  it("keeps the team name in the log once the pool's picks are public", async () => {
+    teamRepo.findAllByTournament.mockResolvedValue([
+      draftedTeam("Cinnabar Blaze", ["garchomp"], { draftId: POOL_ID }),
+    ] as any);
+    draftRepo.findAllByTournament.mockResolvedValue([
+      blindPool({ picksVisibleTo: "everyone" }),
+    ]);
+
+    await service.attach("league", "spring-cup", ORGANIZER, { tierListSlug: "incoming" });
+    expect(recordedPicks()).toEqual([
+      expect.objectContaining({ team: "Cinnabar Blaze", pokemonId: "garchomp" }),
+    ]);
+  });
+
+  it("hides the team from the log when the pool cannot be resolved", async () => {
+    teamRepo.findAllByTournament.mockResolvedValue([
+      draftedTeam("Cinnabar Blaze", ["garchomp"], { draftId: POOL_ID }),
+    ] as any);
+    draftRepo.findAllByTournament.mockRejectedValue(new Error("down"));
+
+    await service.attach("league", "spring-cup", ORGANIZER, { tierListSlug: "incoming" });
+    expect(recordedPicks()[0]).not.toHaveProperty("team");
   });
 
   it("swaps in a fresh copy, remaps requirements, retires the old copy and logs it", async () => {

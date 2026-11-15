@@ -31,6 +31,8 @@ export class DraftStreamController {
       leagueSlug,
       tournamentSlug,
     );
-    return this.draftStream.streamFor(tournament, sub ?? null);
+    return this.draftStream.streamFor(tournament, sub ?? null, () =>
+      this.tournamentRepo.findBySlugCached(leagueSlug, tournamentSlug),
+    );
   }
 }

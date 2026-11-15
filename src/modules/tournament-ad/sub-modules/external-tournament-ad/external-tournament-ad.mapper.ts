@@ -28,7 +28,6 @@ export class ExternalTournamentAdMapper {
     return {
       _id: tournamentAd._id,
       leagueName: tournamentAd.leagueName,
-      owner: tournamentAd.owner,
       description: tournamentAd.description,
       leagueDoc: tournamentAd.leagueDoc,
       serverLink: tournamentAd.serverLink,

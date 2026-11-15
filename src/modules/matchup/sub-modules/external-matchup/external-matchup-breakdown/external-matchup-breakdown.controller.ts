@@ -8,7 +8,7 @@ import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { ExternalMatchup } from "../external-matchup.domain";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
-import { PokemonDto } from "@modules/pokemon/pokemon.dto";
+import { QuickMatchupDto } from "./quick-matchup.dto";
 import { MatchupNotesDto } from "../external-matchup.dto";
 
 @Controller("external/matchups")
@@ -19,19 +19,7 @@ export class ExternalMatchupBreakdownController {
 
   @Post("quick")
   async analyzeQuickMatchup(
-    @Body()
-    data: {
-      format: string;
-      ruleset: string;
-      side1: {
-        team: PokemonDto[];
-        teamName: string;
-      };
-      side2: {
-        team: PokemonDto[];
-        teamName: string;
-      };
-    },
+    @Body() data: QuickMatchupDto,
   ) {
     const ruleset = getRuleset(data.ruleset);
     const format = getFormat(data.format);

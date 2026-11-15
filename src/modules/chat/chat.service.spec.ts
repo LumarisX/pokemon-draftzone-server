@@ -49,15 +49,17 @@ describe("ChatService", () => {
     teamRepo = {
       findManyByIds: jest.fn(),
     } as unknown as jest.Mocked<TeamRepository>;
+    const tournament = {
+      id: TOURNAMENT_ID.toString(),
+      owner: "auth0|owner",
+      staff: [],
+      matchSettings: {},
+    };
     service = new ChatService(
       chatRepo,
       {
-        findBySlug: jest.fn().mockResolvedValue({
-          id: TOURNAMENT_ID.toString(),
-          owner: "auth0|owner",
-          staff: [],
-          matchSettings: {},
-        }),
+        findBySlug: jest.fn().mockResolvedValue(tournament),
+        findBySlugCached: jest.fn().mockResolvedValue(tournament),
       } as unknown as HostedTournamentRepository,
       teamRepo,
       coachRepo,

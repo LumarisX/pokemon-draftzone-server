@@ -33,7 +33,6 @@ describe("ExternalTournamentAdMapper.toClientPayload", () => {
     expect(ExternalTournamentAdMapper.toClientPayload(ad)).toEqual({
       _id: "656e1f77a0f1b2c3d4e5f601",
       leagueName: "Spring League",
-      owner: "auth0|owner",
       description: "A friendly league",
       leagueDoc: "https://example.com/doc",
       serverLink: "https://discord.gg/abc",

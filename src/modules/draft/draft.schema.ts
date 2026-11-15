@@ -8,10 +8,16 @@ import { PICKS_VISIBLE_TO, PicksVisibleTo } from "./domain/pick-visibility";
 export class DraftEventLogEntity {
   @Prop({
     type: String,
-    enum: ["PICK", "SKIP", "TIMER_START", "TIMER_PAUSE"],
+    enum: ["PICK", "SKIP", "TIMER_START", "TIMER_PAUSE", "REOPEN", "FINISH"],
     required: true,
   })
-  eventType!: "PICK" | "SKIP" | "TIMER_START" | "TIMER_PAUSE";
+  eventType!:
+    | "PICK"
+    | "SKIP"
+    | "TIMER_START"
+    | "TIMER_PAUSE"
+    | "REOPEN"
+    | "FINISH";
 
   @Prop()
   details?: string;
@@ -43,9 +49,6 @@ export class DraftEntity {
     index: true,
   })
   tournamentId!: Types.ObjectId;
-
-  @Prop({ default: false })
-  public!: boolean;
 
   @Prop({
     type: String,

@@ -511,12 +511,19 @@ export const Rulesets: {
   },
 };
 
+const rulesetInstances = new Map<string, Ruleset>();
+
 export function getRuleset(rulesetId: string): Ruleset {
   const resolvedId = RULESET_ALIASES[rulesetId as RulesetId] ?? rulesetId;
+  const cached = rulesetInstances.get(resolvedId);
+  if (cached) return cached;
   for (const groupKey in Rulesets) {
     for (const rulesetKey in Rulesets[groupKey]) {
-      if (Rulesets[groupKey][rulesetKey].id === resolvedId)
-        return Rulesets[groupKey][rulesetKey].ruleset;
+      if (Rulesets[groupKey][rulesetKey].id === resolvedId) {
+        const ruleset = Rulesets[groupKey][rulesetKey].ruleset;
+        rulesetInstances.set(resolvedId, ruleset);
+        return ruleset;
+      }
     }
   }
   throw new PDZError(ErrorCodes.RULESET.NOT_FOUND, { ruleset: rulesetId });

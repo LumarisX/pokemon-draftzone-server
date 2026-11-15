@@ -1,8 +1,10 @@
 jest.mock("agenda", () => ({}));
 
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { AgendaService } from "@modules/agenda/agenda.service";
 import { tierId } from "../tier-list/tier-list.test-ids";
 import { DiscordService } from "@modules/discord/discord.service";
+import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   DraftCount,
@@ -351,6 +353,21 @@ describe("DraftEngineService", () => {
       );
 
       expect(team.save).toHaveBeenCalled();
+    });
+
+    it("still succeeds when scheduling the next timer fails after the pick committed", async () => {
+      const { team, tournament, draft } = readyToPick();
+      agendaService.resumeSkipPick.mockRejectedValue(new Error("agenda down"));
+      jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+
+      await expect(
+        engine.draftPokemon(tournament, draft, team, { pokemonId: "pikachu" }),
+      ).resolves.toBeUndefined();
+
+      expect(fakeSession.commitTransaction).toHaveBeenCalled();
+      expect(fakeSession.abortTransaction).not.toHaveBeenCalled();
+      expect(agendaService.resumeSkipPick).toHaveBeenCalled();
+      expect(draftEvents.emitDraftAdded).toHaveBeenCalled();
     });
 
     it("answers a write conflict with a retryable draft-changed error", async () => {
@@ -1076,6 +1093,44 @@ describe("DraftEngineService", () => {
       expect(draft.remainingTime).toBe(120);
     });
 
+    it("refuses when the draft moved since the organizer loaded it", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({ teams: [team], counter: 2 });
+      fakeDraftModel.findOneAndUpdate.mockReturnValueOnce({
+        lean: () => ({
+          exec: async () => ({ counter: 3, status: "IN_PROGRESS" }),
+        }),
+      });
+
+      await expect(
+        engine.setCurrentPick(tournament, draft, 0, 0),
+      ).rejects.toMatchObject({ code: "DR-013" });
+      expect(draft.save).not.toHaveBeenCalled();
+      expect(agendaService.resumeSkipPick).not.toHaveBeenCalled();
+    });
+
+    it("schedules the new timer only after the change is committed", async () => {
+      const team = buildTeam();
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({ teams: [team], counter: 2 });
+      let committed = false;
+      fakeSession.commitTransaction.mockImplementation(async () => {
+        committed = true;
+      });
+      agendaService.resumeSkipPick.mockImplementation(async () => {
+        expect(committed).toBe(true);
+      });
+
+      await engine.setCurrentPick(tournament, draft, 0, 0);
+
+      expect(agendaService.resumeSkipPick).toHaveBeenCalled();
+    });
+
     it("refuses a position past the last team", async () => {
       const team = buildTeam();
       const tournament = buildTournament({
@@ -1101,37 +1156,172 @@ describe("DraftEngineService", () => {
     });
   });
 
+  describe("restartClock", () => {
+    it("gives the team on the clock its full turn from now", async () => {
+      const team = buildTeam({ skipCount: 1 });
+      const tournament = buildTournament({
+        draftCount: new DraftCount({ min: 1, max: 4 }),
+      });
+      const draft = buildDraft({
+        teams: [team],
+        timerLength: 120,
+        skipTime: new Date(Date.now() - 60_000),
+        remainingTime: 30,
+      });
+      const before = Date.now();
+
+      await engine.restartClock(tournament, draft);
+
+      expect(draft.skipTime.getTime()).toBeGreaterThanOrEqual(before + 60_000);
+      expect(draft.skipTime.getTime()).toBeLessThanOrEqual(Date.now() + 60_000);
+      expect(draft.remainingTime).toBeUndefined();
+      expect(draft.save).toHaveBeenCalled();
+      expect(agendaService.resumeSkipPick).toHaveBeenCalledWith(tournament, draft);
+      expect(draftEvents.emitDraftCounter).toHaveBeenCalledWith(
+        expect.objectContaining({ nextTeam: team._id.toString() }),
+      );
+    });
+
+    it.each([
+      ["paused", { status: "PAUSED" }],
+      ["untimed", { noTimer: true }],
+    ])("leaves a %s draft alone", async (_label, overrides) => {
+      const tournament = buildTournament();
+      const skipTime = new Date(Date.now() - 60_000);
+      const draft = buildDraft({ teams: [buildTeam()], skipTime, ...overrides });
+
+      await engine.restartClock(tournament, draft);
+
+      expect(draft.skipTime).toBe(skipTime);
+      expect(draft.save).not.toHaveBeenCalled();
+      expect(agendaService.resumeSkipPick).not.toHaveBeenCalled();
+    });
+  });
+
   describe("skipCurrentPick", () => {
-    it("returns false when the draft isn't in progress", async () => {
-      const tournament = buildTournament();
-      const draft = buildDraft({ status: "PAUSED" });
-
-      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
-        false,
-      );
-    });
-
-    it("returns false when there is no current picking team", async () => {
-      const tournament = buildTournament();
-      const draft = buildDraft({ teams: [] });
-
-      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
-        false,
-      );
-    });
-
-    it("increments the picking team's skipCount and logs a SKIP event", async () => {
+    function onTheClock() {
       const team = buildTeam({ skipCount: 0 });
       teamRepo.findByIdOrNull.mockResolvedValue(team);
       const tournament = buildTournament({
         tierList: buildTierList(),
         draftCount: new DraftCount({ min: 1, max: 2 }),
       });
-      const draft = buildDraft({ teams: [team], counter: 0 });
+      const skipTime = new Date(Date.now() - 1000);
+      const draft = buildDraft({ teams: [team], counter: 0, skipTime });
+      return { team, tournament, draft, skipTime };
+    }
+
+    function lockedDraftIs(state: {
+      counter: number;
+      status: string;
+      skipTime?: Date;
+    }) {
+      fakeDraftModel.findOneAndUpdate.mockReturnValueOnce({
+        lean: () => ({ exec: async () => state }),
+      });
+    }
+
+    it("is stale when the draft isn't in progress", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ status: "PAUSED" });
+
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        "stale",
+      );
+    });
+
+    it("is stale when there is no current picking team", async () => {
+      const tournament = buildTournament();
+      const draft = buildDraft({ teams: [] });
+
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        "stale",
+      );
+    });
+
+    it("is stale when the job was scheduled for an earlier turn", async () => {
+      const { tournament, draft, team } = onTheClock();
+      draft.counter = 1;
+
+      await expect(
+        engine.skipCurrentPick(tournament, draft, { counter: 0 }),
+      ).resolves.toBe("stale");
+      expect(team.skipCount).toBe(0);
+      expect(fakeConnection.startSession).not.toHaveBeenCalled();
+    });
+
+    it("does not penalise a team whose pick committed after the skip loaded the draft", async () => {
+      const { tournament, draft, team, skipTime } = onTheClock();
+      lockedDraftIs({ counter: 1, status: "IN_PROGRESS", skipTime });
+
+      await expect(
+        engine.skipCurrentPick(tournament, draft, { counter: 0, skipTime }),
+      ).resolves.toBe("stale");
+      expect(team.skipCount).toBe(0);
+      expect(team.save).not.toHaveBeenCalled();
+      expect(draftEvents.emitDraftSkip).not.toHaveBeenCalled();
+      expect(fakeSession.abortTransaction).toHaveBeenCalled();
+    });
+
+    it("does not skip a turn whose clock an organizer restarted", async () => {
+      const { tournament, draft, team, skipTime } = onTheClock();
+      lockedDraftIs({
+        counter: 0,
+        status: "IN_PROGRESS",
+        skipTime: new Date(Date.now() + 60_000),
+      });
+
+      await expect(
+        engine.skipCurrentPick(tournament, draft, { counter: 0, skipTime }),
+      ).resolves.toBe("stale");
+      expect(team.skipCount).toBe(0);
+    });
+
+    it("is busy when a concurrent change holds the draft", async () => {
+      const { tournament, draft } = onTheClock();
+      fakeDraftModel.findOneAndUpdate.mockReturnValueOnce({
+        lean: () => ({
+          exec: async () => {
+            throw Object.assign(new Error("WriteConflict"), { code: 112 });
+          },
+        }),
+      });
+
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        "busy",
+      );
+      expect(draftEvents.emitDraftSkip).not.toHaveBeenCalled();
+      expect(fakeSession.abortTransaction).toHaveBeenCalled();
+    });
+
+    it("writes the skip inside the locked transaction and announces it after commit", async () => {
+      const { tournament, draft, team } = onTheClock();
+      let committed = false;
+      fakeSession.commitTransaction.mockImplementation(async () => {
+        committed = true;
+      });
+      draftEvents.emitDraftSkip.mockImplementation(() => {
+        expect(committed).toBe(true);
+      });
+
+      await engine.skipCurrentPick(tournament, draft);
+
+      expect(fakeDraftModel.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: draft._id },
+        { $inc: { pickVersion: 1 } },
+        expect.objectContaining({ session: fakeSession }),
+      );
+      expect(team.save).toHaveBeenCalledWith({ session: fakeSession });
+      expect(draft.save).toHaveBeenCalledWith({ session: fakeSession });
+      expect(draftEvents.emitDraftSkip).toHaveBeenCalled();
+    });
+
+    it("increments the picking team's skipCount and logs a SKIP event", async () => {
+      const { tournament, draft, team } = onTheClock();
 
       const result = await engine.skipCurrentPick(tournament, draft);
 
-      expect(result).toBe(true);
+      expect(result).toBe("skipped");
       expect(team.skipCount).toBe(1);
       expect(team.save).toHaveBeenCalled();
       expect(draft.eventLog).toEqual([
@@ -1165,6 +1355,242 @@ describe("DraftEngineService", () => {
         expect.objectContaining({
           content: expect.stringContaining("Team Rocket"),
         }),
+      );
+    });
+  });
+
+  describe("turn advancement", () => {
+    const pick = (id: string) => ({ pokemon: { id } });
+    const ROSTER = [
+      "pikachu",
+      "charizard",
+      "bulbasaur",
+      "squirtle",
+      "eevee",
+      "mew",
+      "onix",
+      "zubat",
+      "abra",
+      "gastly",
+    ];
+
+    function wideTournament(overrides: Record<string, unknown> = {}) {
+      return buildTournament({
+        tierList: buildTierList({
+          pokemon: new Map(
+            ROSTER.map((id) => [
+              id,
+              new TierListPokemon({ name: id, tierId: tierId("A") }),
+            ]),
+          ),
+        }),
+        ...overrides,
+      });
+    }
+
+    it("passes a long run of finished teams in a snake draft without ending it", async () => {
+      const a = buildTeam({ teamName: "A" });
+      const b = buildTeam({
+        teamName: "B",
+        pickLog: [pick("bulbasaur"), pick("squirtle"), pick("eevee")],
+      });
+      const c = buildTeam({
+        teamName: "C",
+        pickLog: [pick("mew"), pick("onix"), pick("zubat")],
+      });
+      const tournament = wideTournament({
+        draftCount: new DraftCount({ min: 1, max: 3 }),
+      });
+      const draft = buildDraft({ teams: [a, b, c], counter: 0 });
+
+      await engine.draftPokemon(tournament, draft, a, {
+        pokemonId: "pikachu",
+      } as any);
+
+      expect(draft.status).toBe("IN_PROGRESS");
+      expect(draft.counter).toBe(5);
+      expect(draft.skipTime).toBeInstanceOf(Date);
+      expect(b.skipCount).toBe(0);
+      expect(c.skipCount).toBe(0);
+    });
+
+    it("passes a team that can no longer afford anything before starting a clock on play", async () => {
+      const broke = buildTeam({
+        teamName: "A",
+        pickLog: [pick("bulbasaur"), pick("squirtle")],
+      });
+      const next = buildTeam({ teamName: "B" });
+      const tournament = wideTournament({
+        pointTotal: 10,
+        draftCount: new DraftCount({ min: 1, max: 6 }),
+      });
+      const draft = buildDraft({
+        teams: [broke, next],
+        status: "PAUSED",
+        counter: 0,
+        remainingTime: 5,
+      });
+
+      await engine.setDraftState(tournament, draft, "play");
+
+      expect(draft.counter).toBe(1);
+      const seconds = (draft.skipTime.getTime() - Date.now()) / 1000;
+      expect(seconds).toBeGreaterThan(100);
+      expect(agendaService.resumeSkipPick).toHaveBeenCalledWith(
+        tournament,
+        draft,
+      );
+    });
+
+    it("moves the turn on when an organizer fills the on-clock slot while paused", async () => {
+      const a = buildTeam({ teamName: "A" });
+      const b = buildTeam({ teamName: "B" });
+      const tournament = wideTournament({
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [a, b],
+        status: "PAUSED",
+        counter: 0,
+        remainingTime: 50,
+      });
+
+      await engine.setPickAtRound(tournament, draft, a, 0, {
+        pokemonId: "pikachu",
+      } as any);
+
+      expect(draft.counter).toBe(1);
+      expect(draft.status).toBe("PAUSED");
+      expect(draft.skipTime).toBeUndefined();
+      expect(draft.remainingTime).toBe(120);
+      expect(draftEvents.emitDraftCounter).toHaveBeenCalledWith(
+        expect.objectContaining({ nextTeam: b._id.toString() }),
+      );
+    });
+
+    it("gives each owed pick its own clock while the team stays on the clock", async () => {
+      const a = buildTeam({ teamName: "A" });
+      const b = buildTeam({
+        teamName: "B",
+        pickLog: [pick("bulbasaur"), pick("squirtle")],
+      });
+      const tournament = wideTournament({
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [a, b],
+        counter: 3,
+        skipTime: new Date(Date.now() + 5_000),
+      });
+
+      await engine.draftPokemon(tournament, draft, a, {
+        pokemonId: "pikachu",
+      } as any);
+
+      expect(draft.counter).toBe(3);
+      expect(draft.status).toBe("IN_PROGRESS");
+      expect(draft.skipTime.getTime() - Date.now()).toBeGreaterThan(100_000);
+      expect(agendaService.resumeSkipPick).toHaveBeenCalledWith(
+        tournament,
+        draft,
+      );
+      expect(draftEvents.emitDraftCounter).toHaveBeenCalledWith(
+        expect.objectContaining({ nextTeam: a._id.toString() }),
+      );
+    });
+
+    function lastTurnSkipped() {
+      const a = buildTeam({ teamName: "A" });
+      const b = buildTeam({ teamName: "B" });
+      teamRepo.findByIdOrNull.mockResolvedValue(b);
+      const tournament = wideTournament({
+        draftCount: new DraftCount({ min: 1, max: 1 }),
+      });
+      const draft = buildDraft({
+        teams: [a, b],
+        orderProgression: "linear",
+        counter: 1,
+        channelId: "channel-1",
+        skipTime: new Date(Date.now() - 1000),
+      });
+      return { a, b, tournament, draft };
+    }
+
+    it("waits on owed picks with no clock once every turn has run", async () => {
+      const { tournament, draft } = lastTurnSkipped();
+
+      await engine.skipCurrentPick(tournament, draft);
+
+      expect(draft.status).toBe("IN_PROGRESS");
+      expect(draft.counter).toBe(2);
+      expect(draft.skipTime).toBeUndefined();
+      expect(agendaService.cancelSkipPick).toHaveBeenCalledWith(draft);
+      expect(discordService.sendMessage).toHaveBeenCalledWith("channel-1", {
+        content: "Every turn has been taken. Waiting on owed picks from A (1), B (1).",
+      });
+      expect(draftEvents.emitDraftCounter).toHaveBeenLastCalledWith(
+        expect.objectContaining({ nextTeam: "" }),
+      );
+    });
+
+    it("completes the draft when the last owed pick comes in", async () => {
+      const { a, b, tournament, draft } = lastTurnSkipped();
+      await engine.skipCurrentPick(tournament, draft);
+
+      await engine.draftPokemon(tournament, draft, a, {
+        pokemonId: "pikachu",
+      } as any);
+      expect(draft.status).toBe("IN_PROGRESS");
+
+      await engine.draftPokemon(tournament, draft, b, {
+        pokemonId: "charizard",
+      } as any);
+      expect(draft.status).toBe("COMPLETED");
+      expect(draftEvents.emitDraftCompleted).toHaveBeenCalled();
+    });
+
+    it("finish: completes the draft and records who was left short", async () => {
+      const { tournament, draft } = lastTurnSkipped();
+      await engine.skipCurrentPick(tournament, draft);
+
+      await engine.setDraftState(tournament, draft, "finish");
+
+      expect(draft.status).toBe("COMPLETED");
+      expect(draft.eventLog).toContainEqual(
+        expect.objectContaining({
+          eventType: "FINISH",
+          details:
+            "An organizer finished the draft with picks still owed by A (1), B (1)",
+        }),
+      );
+    });
+
+    it("finish: refuses a draft that has not started", async () => {
+      const draft = buildDraft({ status: "PRE_DRAFT" });
+
+      await expect(
+        engine.setDraftState(buildTournament(), draft, "finish"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+    });
+
+    it("runs no clock for a pool without turn order", async () => {
+      const tournament = wideTournament({
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({
+        teams: [buildTeam(), buildTeam()],
+        status: "PRE_DRAFT",
+        sequentialTurns: false,
+      });
+
+      await engine.setDraftState(tournament, draft, "play");
+
+      expect(draft.status).toBe("IN_PROGRESS");
+      expect(draft.skipTime).toBeUndefined();
+      expect(agendaService.resumeSkipPick).not.toHaveBeenCalled();
+      expect(agendaService.cancelSkipPick).toHaveBeenCalledWith(draft);
+      await expect(engine.skipCurrentPick(tournament, draft)).resolves.toBe(
+        "stale",
       );
     });
   });
@@ -1269,6 +1695,78 @@ describe("DraftEngineService", () => {
       expect(draftEvents.emitDraftStatus).toHaveBeenCalledWith(
         expect.objectContaining({ status: "PAUSED" }),
       );
+    });
+
+    it("play while running changes nothing, so a double click keeps the clock", async () => {
+      const skipTime = new Date(Date.now() + 30_000);
+      const draft = buildDraft({ teams: [buildTeam()], skipTime });
+
+      await engine.setDraftState(buildTournament(), draft, "play");
+
+      expect(draft.skipTime).toBe(skipTime);
+      expect(draft.save).not.toHaveBeenCalled();
+      expect(agendaService.resumeSkipPick).not.toHaveBeenCalled();
+      expect(draftEvents.emitDraftStatus).not.toHaveBeenCalled();
+    });
+
+    it("pause while paused keeps the banked time", async () => {
+      const draft = buildDraft({ status: "PAUSED", remainingTime: 42 });
+
+      await engine.setDraftState(buildTournament(), draft, "pause");
+
+      expect(draft.remainingTime).toBe(42);
+      expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses to play a completed draft", async () => {
+      const draft = buildDraft({ status: "COMPLETED" });
+
+      await expect(
+        engine.setDraftState(buildTournament(), draft, "play"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+      expect(draft.status).toBe("COMPLETED");
+    });
+
+    it("refuses to pause a draft that has not started", async () => {
+      const draft = buildDraft({ status: "PRE_DRAFT" });
+
+      await expect(
+        engine.setDraftState(buildTournament(), draft, "pause"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+      expect(draft.status).toBe("PRE_DRAFT");
+    });
+
+    it("reopen: a completed draft comes back paused with no clock", async () => {
+      const draft = buildDraft({
+        status: "COMPLETED",
+        channelId: "channel-1",
+        remainingTime: 10,
+      });
+
+      await engine.setDraftState(buildTournament(), draft, "reopen");
+
+      expect(draft.status).toBe("PAUSED");
+      expect(draft.skipTime).toBeUndefined();
+      expect(draft.remainingTime).toBeUndefined();
+      expect(draft.eventLog).toEqual([
+        expect.objectContaining({ eventType: "REOPEN" }),
+      ]);
+      expect(agendaService.resumeSkipPick).not.toHaveBeenCalled();
+      expect(draftEvents.emitDraftStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "PAUSED" }),
+      );
+      expect(discordService.sendMessage).toHaveBeenCalledWith("channel-1", {
+        content:
+          "An organizer reopened the draft. It is paused until they resume it.",
+      });
+    });
+
+    it("refuses to reopen a draft that is not complete", async () => {
+      const draft = buildDraft({ status: "IN_PROGRESS" });
+
+      await expect(
+        engine.setDraftState(buildTournament(), draft, "reopen"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
     });
 
     it("does nothing for an unrecognized state", async () => {

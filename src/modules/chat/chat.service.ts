@@ -49,6 +49,7 @@ export class ChatService {
       channel,
       target,
       sub,
+      { cached: true },
     );
 
     if (!canReadChannel(channel, room.target, viewer))
@@ -145,11 +146,14 @@ export class ChatService {
     channel: ChatChannel,
     target: string | undefined,
     sub?: string,
+    options: { cached?: boolean } = {},
   ) {
-    const tournament = await this.hostedTournamentRepo.findBySlug(
-      leagueSlug,
-      tournamentSlug,
-    );
+    const tournament = options.cached
+      ? await this.hostedTournamentRepo.findBySlugCached(
+          leagueSlug,
+          tournamentSlug,
+        )
+      : await this.hostedTournamentRepo.findBySlug(leagueSlug, tournamentSlug);
 
     if (!CHAT_CHANNELS.includes(channel))
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {

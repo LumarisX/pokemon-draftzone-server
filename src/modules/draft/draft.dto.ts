@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -7,6 +8,8 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -17,51 +20,73 @@ import { PICKS_VISIBLE_TO, PicksVisibleTo } from "./domain/pick-visibility";
 export class DraftPickDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   pokemonId!: string;
 
   @IsArray()
+  @ArrayMaxSize(30)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   addons?: string[];
 }
 
 export class DraftDto {
   @IsArray()
+  @ArrayMaxSize(200)
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => DraftPickDto)
   add?: DraftPickDto[];
 
   @IsArray()
+  @ArrayMaxSize(200)
   @IsOptional()
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   remove?: string[];
 
   @IsArray()
+  @ArrayMaxSize(60)
   @IsOptional()
   picks?: DraftPickDto[][];
 }
 
 export class SetPicksDto {
   @IsArray()
+  @ArrayMaxSize(60)
   picks!: DraftPickDto[][];
 }
 
 export class SetRoundPickDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   pokemonId!: string;
 
   @IsArray()
+  @ArrayMaxSize(30)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   addons?: string[];
 }
 
+export const DRAFT_STATE_ACTIONS = [
+  "play",
+  "pause",
+  "reopen",
+  "finish",
+] as const;
+export type DraftStateAction = (typeof DRAFT_STATE_ACTIONS)[number];
+
+export function isDraftStateAction(value: string): value is DraftStateAction {
+  return (DRAFT_STATE_ACTIONS as readonly string[]).includes(value);
+}
+
 export class SetDraftStateDto {
-  @IsString()
-  @MinLength(1)
-  state!: string;
+  @IsIn(DRAFT_STATE_ACTIONS)
+  state!: DraftStateAction;
 }
 
 export class SetDraftTimerDto {
@@ -82,6 +107,7 @@ export class SetCurrentPickDto {
 export class UpdateDraftSettingsDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   name?: string;
 
@@ -111,6 +137,7 @@ export class UpdateDraftSettingsDto {
 
   @IsInt()
   @Min(1)
+  @Max(60 * 60 * 24 * 14)
   @IsOptional()
   timerLength?: number;
 
@@ -121,15 +148,12 @@ export class UpdateDraftSettingsDto {
   @IsDateString()
   @IsOptional()
   draftEnd?: string | null;
-
-  @IsBoolean()
-  @IsOptional()
-  public?: boolean;
 }
 
 export class CreatePoolDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   name!: string;
 
   @IsDateString()
@@ -139,10 +163,6 @@ export class CreatePoolDto {
   @IsDateString()
   @IsOptional()
   draftEnd?: string;
-
-  @IsBoolean()
-  @IsOptional()
-  public?: boolean;
 }
 
 export class SetDraftOrderDto {
@@ -150,7 +170,9 @@ export class SetDraftOrderDto {
   useRandomSeeding!: boolean;
 
   @IsArray()
+  @ArrayMaxSize(200)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   order?: string[];
 }

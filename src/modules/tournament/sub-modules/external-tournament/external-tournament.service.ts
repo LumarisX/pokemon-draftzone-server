@@ -1,7 +1,7 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { Injectable } from "@nestjs/common";
 import { ID, toID } from "@pkmn/data";
-import { ClientSession } from "mongoose";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
@@ -11,6 +11,7 @@ export class ExternalTournamentService {
   constructor(
     private readonly tournamentRepository: ExternalTournamentRepository,
     private readonly pokedexService: PokemonService,
+    private readonly transactions: TransactionRunner,
   ) {}
 
   async getTournaments(sub: string): Promise<ExternalTournament[]> {
@@ -58,8 +59,10 @@ export class ExternalTournamentService {
     );
   }
 
-  async deleteTournament(teamId: string, sub: string, session?: ClientSession) {
-    return this.tournamentRepository.deleteBySlugAndOwner(teamId, sub, session);
+  async deleteTournament(teamId: string, sub: string): Promise<void> {
+    await this.transactions.run(() =>
+      this.tournamentRepository.deleteBySlugAndOwner(teamId, sub),
+    );
   }
 
   async getTournamentStats(tournamentId: string, sub: string) {

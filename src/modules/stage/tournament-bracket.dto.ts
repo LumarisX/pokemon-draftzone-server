@@ -1,5 +1,6 @@
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -7,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -23,10 +25,12 @@ export class StageEntrantDto {
   kind!: "team" | "place" | "open";
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   teamId?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   sourceStageKey?: string;
 
@@ -38,15 +42,18 @@ export class StageEntrantDto {
 
 export class TournamentBracketStageDto {
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   _id?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   key!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   name!: string;
 
   @IsIn(STAGE_TYPE_VALUES)
@@ -57,12 +64,14 @@ export class TournamentBracketStageDto {
   public?: boolean;
 
   @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => SeedGroupDto)
   @IsOptional()
   seedGroups?: SeedGroupDto[];
 
   @IsArray()
+  @ArrayMaxSize(512)
   @ValidateNested({ each: true })
   @Type(() => StageEntrantDto)
   @IsOptional()
@@ -71,25 +80,29 @@ export class TournamentBracketStageDto {
 
 export class TournamentBracketMatchDto {
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   _id?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   key!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   stageKey!: string;
 
-  @IsNumber()
+  @IsInt()
   roundIndex!: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   position?: number;
 
   @IsString()
+  @MaxLength(100)
   @IsOptional()
   label?: string;
 
@@ -104,16 +117,19 @@ export class TournamentBracketMatchDto {
 
 export class UpdateTournamentBracketDto {
   @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => UpdateBracketRoundDto)
   rounds!: UpdateBracketRoundDto[];
 
   @IsArray()
+  @ArrayMaxSize(30)
   @ValidateNested({ each: true })
   @Type(() => TournamentBracketStageDto)
   stages!: TournamentBracketStageDto[];
 
   @IsArray()
+  @ArrayMaxSize(2000)
   @ValidateNested({ each: true })
   @Type(() => TournamentBracketMatchDto)
   matches!: TournamentBracketMatchDto[];
@@ -129,11 +145,13 @@ export class SeedAssignmentDto {
   seed!: number;
 
   @IsString()
+  @MaxLength(64)
   teamId!: string;
 }
 
 export class ConfirmStageSeedsDto {
   @IsArray()
+  @ArrayMaxSize(512)
   @ValidateNested({ each: true })
   @Type(() => SeedAssignmentDto)
   seeds!: SeedAssignmentDto[];

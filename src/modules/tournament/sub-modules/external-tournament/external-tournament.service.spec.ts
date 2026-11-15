@@ -1,3 +1,6 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { PokemonService } from "@modules/pokemon/pokemon.service";
 import { ExternalMatchup } from "../../../matchup/sub-modules/external-matchup/external-matchup.domain";
 import { ExternalTournament } from "./external-tournament.domain";
@@ -31,6 +34,7 @@ function buildMatch(
 describe("ExternalTournamentService", () => {
   let tournamentRepo: jest.Mocked<ExternalTournamentRepository>;
   let pokedexService: jest.Mocked<PokemonService>;
+  let transactions: jest.Mocked<TransactionRunner>;
   let service: ExternalTournamentService;
 
   beforeEach(() => {
@@ -46,7 +50,14 @@ describe("ExternalTournamentService", () => {
       getName: jest.fn().mockReturnValue("Pikachu"),
     } as unknown as jest.Mocked<PokemonService>;
 
-    service = new ExternalTournamentService(tournamentRepo, pokedexService);
+    transactions = {
+      run: jest.fn((work: () => Promise<unknown>) => work()),
+    } as unknown as jest.Mocked<TransactionRunner>;
+    service = new ExternalTournamentService(
+      tournamentRepo,
+      pokedexService,
+      transactions,
+    );
   });
 
   describe("getTournaments", () => {
@@ -101,26 +112,24 @@ describe("ExternalTournamentService", () => {
   });
 
   describe("deleteTournament", () => {
-    it("delegates to the repository without a session", async () => {
+    it("deletes the tournament and its matchups inside one transaction", async () => {
       await service.deleteTournament("springleague", "auth0|owner");
 
+      expect(transactions.run).toHaveBeenCalledTimes(1);
       expect(tournamentRepo.deleteBySlugAndOwner).toHaveBeenCalledWith(
         "springleague",
         "auth0|owner",
-        undefined,
       );
     });
 
-    it("forwards a session when provided", async () => {
-      const session = { id: "session-1" } as any;
-
-      await service.deleteTournament("springleague", "auth0|owner", session);
-
-      expect(tournamentRepo.deleteBySlugAndOwner).toHaveBeenCalledWith(
-        "springleague",
-        "auth0|owner",
-        session,
+    it("rejects when the slug does not exist for this owner", async () => {
+      tournamentRepo.deleteBySlugAndOwner.mockRejectedValue(
+        new PDZError(ErrorCodes.DRAFT.NOT_FOUND),
       );
+
+      await expect(
+        service.deleteTournament("missing", "auth0|owner"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.NOT_FOUND.code });
     });
   });
 

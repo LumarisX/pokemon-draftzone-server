@@ -95,12 +95,8 @@ export function areAddonsValid(
   return pick.addons.every((addonName) => validAddonNames.has(addonName));
 }
 
-export async function getTeamPoints(
-  tournament: PopulatedTournament,
-  team: PopulatedTeam,
-) {
-  const tierList = tournament.tierList;
-  const teamPoints = team.pickLog.reduce(
+function sumTeamPoints(tierList: TierList, team: PopulatedTeam): number {
+  return team.pickLog.reduce(
     (total, draftPick) =>
       total +
       getPickCost(tierList, {
@@ -109,7 +105,35 @@ export async function getTeamPoints(
       }),
     0,
   );
-  return teamPoints;
+}
+
+export async function getTeamPoints(
+  tournament: PopulatedTournament,
+  team: PopulatedTeam,
+) {
+  return sumTeamPoints(tournament.tierList, team);
+}
+
+function fitsBudget(
+  tournament: PopulatedTournament,
+  team: PopulatedTeam,
+  teamPoints: number,
+  pickCost: number,
+): boolean {
+  const maxPoints = tournament.pointTotal;
+  if (maxPoints == null) return true;
+
+  const tierList = tournament.tierList;
+  const picksAfterThis = team.pickLog.length + 1;
+  const minPicksRequired = Math.max(tournament.draftCount.min, picksAfterThis);
+  const remainingRequired = minPicksRequired - picksAfterThis;
+  const cheapestTierCost = tierList.tiers.length
+    ? Math.min(...tierList.tiers.map((tier) => tier.cost))
+    : 1;
+  const reservePerPick = Math.min(1, cheapestTierCost);
+  const pickCeiling = maxPoints - remainingRequired * reservePerPick;
+
+  return teamPoints + pickCost <= pickCeiling;
 }
 
 export async function teamHasEnoughPoints(
@@ -120,23 +144,12 @@ export async function teamHasEnoughPoints(
 ): Promise<boolean> {
   const tierList = tournament.tierList;
   if (!tierList.pokemon.has(pick.pokemonId)) return false;
-
-  const pickCost = getPickCost(tierList, pick);
-  const maxPoints = tournament.pointTotal;
-  if (maxPoints == null) return true;
-
-  const currentTeamPoints = await getTeamPoints(tournament, team);
-  const projectedPoints = currentTeamPoints + pickCost;
-  const picksAfterThis = team.pickLog.length + 1;
-  const minPicksRequired = Math.max(tournament.draftCount.min, picksAfterThis);
-  const remainingRequired = minPicksRequired - picksAfterThis;
-  const cheapestTierCost = tierList.tiers.length
-    ? Math.min(...tierList.tiers.map((tier) => tier.cost))
-    : 1;
-  const reservePerPick = Math.min(1, cheapestTierCost);
-  const pickCeiling = maxPoints - remainingRequired * reservePerPick;
-
-  return projectedPoints <= pickCeiling;
+  return fitsBudget(
+    tournament,
+    team,
+    sumTeamPoints(tierList, team),
+    getPickCost(tierList, pick),
+  );
 }
 
 function countPicksByTier(
@@ -261,27 +274,53 @@ export async function canBeDraftedWithReason(
   return { canDraft: true };
 }
 
-export async function isTeamDoneDrafting(
+export function isActiveTeam(team: PopulatedTeam): boolean {
+  return !team.status || team.status === "approved";
+}
+
+export function canStillPick(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
   team: PopulatedTeam,
-): Promise<boolean> {
-  if (team.pickLog.length >= tournament.draftCount.max) return true;
+): boolean {
+  if (!isActiveTeam(team)) return false;
+  if (team.pickLog.length >= tournament.draftCount.max) return false;
 
-  const picksRemaining = tournament.draftCount.max - team.pickLog.length;
-  if (picksRemaining <= 0) return true;
+  const tierList = tournament.tierList;
+  const owned = new Set(team.pickLog.map(getPokemonIdFromDraft));
+  const taken = duplicatesAllowed(draft)
+    ? owned
+    : new Set(
+        draft.teams.flatMap((other) =>
+          other.pickLog.map(getPokemonIdFromDraft),
+        ),
+      );
+  const teamPoints = sumTeamPoints(tierList, team);
 
-  if (tournament.pointTotal != null) {
-    const teamPoints = await getTeamPoints(tournament, team);
-    const pointsRemaining = tournament.pointTotal - teamPoints;
-    const tierList = tournament.tierList;
-    const cheapestTierCost = tierList.tiers.length
-      ? Math.min(...tierList.tiers.map((tier) => tier.cost))
-      : 0;
-    if (pointsRemaining < cheapestTierCost) return true;
+  for (const [pokemonId, entry] of tierList.pokemon) {
+    if (entry.banned || !entry.tierId) continue;
+    if (owned.has(pokemonId) || taken.has(pokemonId)) continue;
+    if (
+      !fitsBudget(
+        tournament,
+        team,
+        teamPoints,
+        getPickCost(tierList, { pokemonId }),
+      )
+    )
+      continue;
+    if (!tierRequirementsAreFeasible(tournament, team, { pokemonId })) continue;
+    return true;
   }
-
   return false;
+}
+
+export function isTeamDoneDrafting(
+  tournament: PopulatedTournament,
+  draft: PopulatedDraft,
+  team: PopulatedTeam,
+): boolean {
+  return !canStillPick(tournament, draft, team);
 }
 
 export async function isTeamRosterValid(
@@ -313,16 +352,18 @@ export function isDraftComplete(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
 ): boolean {
-  if (!tournament.draftCount.max) return false;
+  if (!tournament.draftCount.max || !draft.teams.length) return false;
+  return draft.teams.every((team) => isTeamDoneDrafting(tournament, draft, team));
+}
 
-  if (draft.sequentialTurns) {
-    const totalPicksNeeded = draft.teams.length * tournament.draftCount.max;
-    if (draft.counter >= totalPicksNeeded) return true;
-  }
-
-  const allTeamsDone = draft.teams.every(
-    (team: PopulatedTeam) => team.pickLog.length >= tournament.draftCount.max,
-  );
-
-  return allTeamsDone;
+export function owedPicks(
+  tournament: PopulatedTournament,
+  draft: PopulatedDraft,
+): { team: PopulatedTeam; count: number }[] {
+  return draft.teams
+    .filter((team) => canStillPick(tournament, draft, team))
+    .map((team) => ({
+      team,
+      count: tournament.draftCount.max - team.pickLog.length,
+    }));
 }

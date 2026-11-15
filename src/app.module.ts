@@ -1,5 +1,6 @@
 import { AppCacheModule } from "@core/cache/app-cache.module";
 import { DatabaseModule } from "@core/database/database.module";
+import { buildMongoUri } from "@core/database/mongo-uri";
 import { StorageModule } from "@core/storage/storage.module";
 import { AdminModule } from "@modules/admin/admin.module";
 import { AgendaModule } from "@modules/agenda/agenda.module";
@@ -32,7 +33,6 @@ import { APP_GUARD } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ThrottlerModule } from "@nestjs/throttler";
-import mongoose from "mongoose";
 import { AuthModule } from "./modules/auth/auth.module";
 
 @Module({
@@ -47,9 +47,7 @@ import { AuthModule } from "./modules/auth/auth.module";
       useFactory: (configService: ConfigService) => {
         const dbLogger = new Logger("Database");
 
-        const dbUser = configService.get<string>("MONGODB_USER");
-        const dbPass = configService.get<string>("MONGODB_PASS");
-        const uri = `mongodb+srv://${dbUser}:${dbPass}@draftzonedatabase.5nc6cbu.mongodb.net/draftzone?retryWrites=true&w=majority&appName=DraftzoneDatabase`;
+        const uri = buildMongoUri(configService);
 
         dbLogger.log("Attempting MongoDB connection...");
 
@@ -75,13 +73,6 @@ import { AuthModule } from "./modules/auth/auth.module";
                 error.stack,
               );
             });
-
-            if (mongoose.connection.readyState === 0) {
-              await mongoose.connect(uri);
-              dbLogger.log(
-                "Default mongoose connection established for legacy models.",
-              );
-            }
 
             return connection;
           },

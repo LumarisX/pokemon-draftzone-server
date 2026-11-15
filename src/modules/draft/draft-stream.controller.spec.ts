@@ -93,7 +93,7 @@ describe("DraftStreamController over HTTP", () => {
         stream.onDraftCompleted({
           tournamentSlug: "spring-cup",
           poolSlug: "pool-a",
-          audience: { draftPublic: true },
+          audience: {},
           poolName: "Pool A",
         }),
       20,

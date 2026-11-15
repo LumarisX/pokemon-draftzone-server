@@ -83,6 +83,9 @@ describe("TournamentBracketService", () => {
         .mockImplementation(async (ids: any[]) =>
           ids.map((id) => buildTeam({ _id: new Types.ObjectId(id) })),
         ),
+      countInTournament: jest
+        .fn()
+        .mockImplementation(async (_: string, ids: string[]) => ids.length),
     } as unknown as jest.Mocked<TeamRepository>;
 
     matchupRepo = {
@@ -759,6 +762,15 @@ describe("TournamentBracketService", () => {
       await expect(update(buildDto())).rejects.toMatchObject({
         code: "LR-TEAM-001",
       });
+    });
+
+    it("rejects a seed group containing a team from another tournament", async () => {
+      teamRepo.countInTournament.mockResolvedValue(1);
+
+      await expect(update(buildDto())).rejects.toMatchObject({
+        code: "LR-TEAM-001",
+      });
+      expect(stageRepo.applyStageDiff).not.toHaveBeenCalled();
     });
   });
 

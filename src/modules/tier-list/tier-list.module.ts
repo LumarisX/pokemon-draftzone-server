@@ -1,3 +1,4 @@
+import { DraftEntity, DraftSchema } from "@modules/draft/draft.schema";
 import { TeamModule } from "@modules/team/team.module";
 import { TournamentLogCoreModule } from "@modules/tournament-log/tournament-log-core.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
@@ -39,6 +40,7 @@ import { TournamentTierListService } from "./tournament-tier-list.service";
       { name: TierListInviteEntity.name, schema: TierListInviteSchema },
       { name: ImportAliasEntity.name, schema: ImportAliasSchema },
       { name: HostedTournamentEntity.name, schema: HostedTournamentSchema },
+      { name: DraftEntity.name, schema: DraftSchema },
     ]),
     HostedTournamentCoreModule,
     TeamModule,

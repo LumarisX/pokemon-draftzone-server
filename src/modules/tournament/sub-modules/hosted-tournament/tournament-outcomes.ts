@@ -123,15 +123,28 @@ export function finalResults(
 export async function computeTournamentOutcomes(
   { stageRepo, teamRepo, matchupRepo }: OutcomeRepositories,
   tournament: HostedTournament,
-  options: { final?: boolean } = {},
+  options: { final?: boolean; publicOnly?: boolean } = {},
 ): Promise<TournamentOutcomes> {
-  const stages = await stageRepo.findAllByTournament(tournament.id);
+  const stages = (await stageRepo.findAllByTournament(tournament.id)).filter(
+    (stage) => !options.publicOnly || stage.public !== false,
+  );
+  const teamIds = [
+    ...new Map(
+      stages
+        .flatMap((stage) => stageRepo.teamIdsInSeedOrder(stage))
+        .map((id) => [id.toString(), id]),
+    ).values(),
+  ];
+  const loaded = new Map(
+    (teamIds.length ? await teamRepo.findManyByIds(teamIds) : []).map(
+      (team) => [team._id.toString(), team],
+    ),
+  );
   const teams = new Map<string, PopulatedTeam>();
-  for (const stage of stages)
-    for (const team of await teamRepo.findManyByIds(
-      stageRepo.teamIdsInSeedOrder(stage),
-    ))
-      teams.set(team._id.toString(), team);
+  for (const id of teamIds) {
+    const team = loaded.get(id.toString());
+    if (team) teams.set(id.toString(), team);
+  }
 
   const matchups = (await matchupRepo.findByStages(
     stages.map((stage) => stage._id),

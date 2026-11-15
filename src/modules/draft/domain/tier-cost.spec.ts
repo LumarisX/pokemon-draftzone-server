@@ -498,7 +498,7 @@ describe("isTeamDoneDrafting", () => {
       pickLog: [{ pokemon: { id: "pikachu" } }, { pokemon: { id: "charizard" } }],
     });
 
-    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(true);
   });
 
   it("is done once the team's points reach the tournament's pointTotal", async () => {
@@ -510,7 +510,7 @@ describe("isTeamDoneDrafting", () => {
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
-    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(true);
   });
 
   it("is not done when under both the pick-count and point limits", async () => {
@@ -522,7 +522,7 @@ describe("isTeamDoneDrafting", () => {
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
-    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(false);
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(false);
   });
 
   it("is done when fewer than 1 point remains, even if not exactly exhausted", async () => {
@@ -534,7 +534,7 @@ describe("isTeamDoneDrafting", () => {
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
-    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(true);
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(true);
   });
 
   it("is not done after a 0-cost pick in an all-zero-cost tier list, even with pointTotal 0", async () => {
@@ -548,17 +548,73 @@ describe("isTeamDoneDrafting", () => {
     const draft = buildDraft();
     const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
 
-    await expect(isTeamDoneDrafting(tournament, draft, team)).resolves.toBe(false);
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(false);
+  });
+
+  it("is done when everything it could still afford has been taken", () => {
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
+      pointTotal: 15,
+      draftCount: new DraftCount({ min: 1, max: 6 }),
+    });
+    const team = buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] });
+    const rival = buildTeam({ pickLog: [{ pokemon: { id: "charizard" } }] });
+    const draft = buildDraft({ teams: [team, rival] });
+
+    expect(isTeamDoneDrafting(tournament, draft, team)).toBe(true);
+    expect(
+      isTeamDoneDrafting(tournament, { ...draft, allowDuplicates: true }, team),
+    ).toBe(false);
+  });
+
+  it("is done once the team is dropped", () => {
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList);
+    const team = buildTeam({ status: "dropped" });
+
+    expect(isTeamDoneDrafting(tournament, buildDraft(), team)).toBe(true);
+  });
+
+  it("skips banned and untiered Pokémon when looking for a pick", () => {
+    const tierList = buildTierList({
+      pokemon: new Map([
+        ["pikachu", new TierListPokemon({ name: "Pikachu", tierId: tierId("S"), banned: true })],
+        ["charizard", new TierListPokemon({ name: "Charizard" })],
+      ]),
+    });
+    const tournament = buildTournament(tierList);
+
+    expect(isTeamDoneDrafting(tournament, buildDraft(), buildTeam())).toBe(true);
   });
 });
 
 describe("isDraftComplete", () => {
-  it("is complete once the counter reaches the total picks needed", () => {
+  it("is not complete when every turn has run but a team still owes picks", () => {
     const tierList = buildTierList();
     const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
     const draft = buildDraft({ counter: 4, teams: [buildTeam(), buildTeam()], sequentialTurns: true });
 
-    expect(isDraftComplete(tournament, draft)).toBe(true);
+    expect(isDraftComplete(tournament, draft)).toBe(false);
+  });
+
+  it("is not complete with no teams", () => {
+    const tournament = buildTournament(buildTierList());
+
+    expect(isDraftComplete(tournament, buildDraft())).toBe(false);
+  });
+
+  it("is complete when the teams left short can no longer afford anything", () => {
+    const tierList = buildTierList();
+    const tournament = buildTournament(tierList, {
+      pointTotal: 10,
+      draftCount: new DraftCount({ min: 1, max: 2 }),
+    });
+    const teams = [
+      buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }),
+      buildTeam({ status: "dropped" }),
+    ];
+
+    expect(isDraftComplete(tournament, buildDraft({ teams }))).toBe(true);
   });
 
   it("is complete when every team has reached draftCount.max, even if the counter lags", () => {
@@ -576,7 +632,10 @@ describe("isDraftComplete", () => {
   it("is not complete while any team is still under draftCount.max and the counter hasn't caught up", () => {
     const tierList = buildTierList();
     const tournament = buildTournament(tierList, { draftCount: new DraftCount({ min: 1, max: 2 }) });
-    const teams = [buildTeam({ pickLog: [{}] }), buildTeam({ pickLog: [] })];
+    const teams = [
+      buildTeam({ pickLog: [{ pokemon: { id: "pikachu" } }] }),
+      buildTeam({ pickLog: [] }),
+    ];
     const draft = buildDraft({ counter: 1, teams });
 
     expect(isDraftComplete(tournament, draft)).toBe(false);

@@ -7,6 +7,7 @@ import { HostedTournamentRepository } from "@modules/tournament/sub-modules/host
 import { computeTournamentOutcomes } from "@modules/tournament/sub-modules/hosted-tournament/tournament-outcomes";
 import { Injectable } from "@nestjs/common";
 import { LeagueRepository } from "./league.repository";
+import { publicStageIds, seasonFingerprint } from "./season-ranks.service";
 
 type TeamCard = {
   teamSlug: string;
@@ -35,6 +36,33 @@ type EarnedEntry = {
   team: TeamCard;
 };
 
+type StageFingerprints = Map<string, { count: number; latest: Date | null }>;
+
+const MAX_CACHED_TOURNAMENTS = 200;
+
+export function achievementsFingerprint(
+  tournament: HostedTournament,
+  stages: StageFingerprints,
+): string {
+  return JSON.stringify({
+    season: seasonFingerprint(tournament, stages),
+    completedAt: tournament.completedAt
+      ? new Date(tournament.completedAt).getTime()
+      : null,
+    trades: (tournament.trades ?? []).map((trade) => [
+      trade._id?.toString() ?? null,
+      trade.status ?? null,
+    ]),
+    stages: tournament.stages
+      .filter((stage) => stage.public !== false)
+      .map((stage) => [
+        stage._id.toString(),
+        stage.type,
+        (stage.teamIds ?? []).map(String),
+      ]),
+  });
+}
+
 function teamCard(team: PopulatedTeam): TeamCard {
   return {
     teamSlug: team.slug,
@@ -46,6 +74,11 @@ function teamCard(team: PopulatedTeam): TeamCard {
 
 @Injectable()
 export class HallOfFameService {
+  private readonly liveAchievements = new Map<
+    string,
+    { fingerprint: string; achievements: Map<string, StoredAchievement[]> }
+  >();
+
   constructor(
     private readonly leagueRepo: LeagueRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
@@ -57,13 +90,20 @@ export class HallOfFameService {
   async getHallOfFame(leagueSlug: string) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
     const tournaments = await this.tournamentRepo.findAllByLeague(league);
+    const stages: StageFingerprints = new Map(
+      (
+        await this.matchupRepo.fingerprintsByStages(
+          tournaments.flatMap(publicStageIds),
+        )
+      ).map((row) => [row.stageId, { count: row.count, latest: row.latest }]),
+    );
 
     const perTournament = await Promise.all(
       tournaments.map(async (tournament) => {
         const teams = await this.teamRepo.findAllByTournament(tournament.id);
         return {
           season: tournament.completedAt ? this.season(tournament, teams) : null,
-          earned: await this.earned(tournament, teams),
+          earned: await this.earned(tournament, teams, stages),
         };
       }),
     );
@@ -122,9 +162,36 @@ export class HallOfFameService {
     };
   }
 
+  private async liveAchievementsFor(
+    tournament: HostedTournament,
+    stages: StageFingerprints,
+  ): Promise<Map<string, StoredAchievement[]>> {
+    const fingerprint = achievementsFingerprint(tournament, stages);
+    const cached = this.liveAchievements.get(tournament.id);
+    if (cached?.fingerprint === fingerprint) return cached.achievements;
+
+    const { achievements } = await computeTournamentOutcomes(
+      {
+        stageRepo: this.stageRepo,
+        teamRepo: this.teamRepo,
+        matchupRepo: this.matchupRepo,
+      },
+      tournament,
+      { publicOnly: true },
+    );
+    this.liveAchievements.delete(tournament.id);
+    this.liveAchievements.set(tournament.id, { fingerprint, achievements });
+    if (this.liveAchievements.size > MAX_CACHED_TOURNAMENTS) {
+      const oldest = this.liveAchievements.keys().next().value;
+      if (oldest !== undefined) this.liveAchievements.delete(oldest);
+    }
+    return achievements;
+  }
+
   private async earned(
     tournament: HostedTournament,
     teams: PopulatedTeam[],
+    stages: StageFingerprints,
   ): Promise<EarnedEntry[]> {
     const completed = !!tournament.completedAt;
     const snapshot = teams.some((team) => team.outcome?.achievements);
@@ -139,15 +206,7 @@ export class HallOfFameService {
         ]),
       );
     } else {
-      const { achievements } = await computeTournamentOutcomes(
-        {
-          stageRepo: this.stageRepo,
-          teamRepo: this.teamRepo,
-          matchupRepo: this.matchupRepo,
-        },
-        tournament,
-      );
-      earnedByTeam = achievements;
+      earnedByTeam = await this.liveAchievementsFor(tournament, stages);
     }
 
     return [...earnedByTeam].flatMap(([teamId, earned]) => {

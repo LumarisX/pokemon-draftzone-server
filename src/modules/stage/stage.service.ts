@@ -1,7 +1,8 @@
+import { TransactionRunner } from "@core/database/transaction-runner";
 import { nullIfNotFound, PDZError } from "@core/pdz-error";
-import { ErrorCodes } from "@core/pdz-error-codes";
+import { ErrorCodes, ErrorDefinition } from "@core/pdz-error-codes";
 import { ID } from "@pkmn/data";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import {
   ExternalMatchup,
   MatchupSide,
@@ -20,7 +21,10 @@ import { HostedTournamentRepository } from "@modules/tournament/sub-modules/host
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
+import { DraftRepository } from "@modules/draft/draft.repository";
+import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { MatchupAdvancement } from "./domain/advancement";
+import { rosterVisibilityFor } from "./domain/roster-visibility";
 import { MatchupViewer, toMatchupDetail } from "./domain/matchup-view";
 import { getRosterByRound } from "./domain/roster";
 import {
@@ -51,7 +55,33 @@ export class StageService {
     private readonly hostedTournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
     private readonly advancement: BracketAdvancementService,
+    private readonly draftRepo: DraftRepository,
+    private readonly transactions: TransactionRunner,
   ) {}
+
+  private async rosterVisibility(
+    tournament: HostedTournament,
+    sub: string | undefined,
+  ) {
+    return rosterVisibilityFor(
+      tournament,
+      await this.draftRepo.findAllByTournament(tournament.id),
+      sub,
+    );
+  }
+
+  private async assertBothRostersVisible(
+    tournament: HostedTournament,
+    matchupDoc: { side1: { team: PopulatedTeam }; side2: { team: PopulatedTeam } },
+    sub: string | undefined,
+  ) {
+    const canSeeRoster = await this.rosterVisibility(tournament, sub);
+    if (
+      !canSeeRoster(matchupDoc.side1.team) ||
+      !canSeeRoster(matchupDoc.side2.team)
+    )
+      throw new PDZError(ErrorCodes.MATCHUP.ROSTERS_HIDDEN);
+  }
 
   private async assertStageVisible(
     stage: StageDocument,
@@ -99,6 +129,8 @@ export class StageService {
       matchupSlug,
       sub,
     );
+
+    await this.assertBothRostersVisible(tournament, matchupDoc, sub);
 
     const ruleset = tournament.requireRuleset("matchupAnalysis");
     const format = tournament.requireFormat("matchupAnalysis");
@@ -245,6 +277,7 @@ export class StageService {
 
     return toMatchupDetail(matchupDoc, {
       roster: rosterContext(tournament),
+      canSeeRoster: await this.rosterVisibility(tournament, sub),
       roundIndex,
       forfeitGameDiff: tournament.forfeit.gameDiff,
       stage: {
@@ -329,6 +362,8 @@ export class StageService {
       throw new PDZError(ErrorCodes.MATCHUP.NOT_PARTICIPANT);
     if (!viewer.isOrganizer && !viewer.coachReportingEnabled)
       throw new PDZError(ErrorCodes.MATCHUP.REPORTING_DISABLED);
+    if (!viewer.isOrganizer)
+      await this.assertBothRostersVisible(tournament, matchupDoc, sub);
 
     const results = this.buildMatchResults(dto.matches);
     this.assertResultsOnRoster(
@@ -352,8 +387,7 @@ export class StageService {
       matchupDoc.forfeit = dto.forfeit ?? false;
       matchupDoc.status = "approved";
       matchupDoc.report = undefined;
-      await matchupDoc.save();
-      await this.advanceBracket(matchupDoc);
+      await this.saveAndAdvance(matchupDoc);
       return { message: "Result recorded.", status: "approved" as const };
     }
 
@@ -381,7 +415,11 @@ export class StageService {
       side2Paste,
     };
     matchupDoc.status = "pending";
-    await matchupDoc.save();
+    await this.saveIfStill(
+      matchupDoc,
+      { status: { $ne: "approved" } },
+      ErrorCodes.MATCHUP.ALREADY_APPROVED,
+    );
 
     return {
       message: "Result submitted for review.",
@@ -395,6 +433,7 @@ export class StageService {
     matchupSlug: string,
     sub: string,
     approve: boolean,
+    expectedSubmittedAt?: string,
   ) {
     const tournament = await this.hostedTournamentRepo.findBySlug(
       leagueSlug,
@@ -411,11 +450,22 @@ export class StageService {
     const report = matchupDoc.report;
     if (!report)
       throw new PDZError(ErrorCodes.MATCHUP.NO_REPORT, { matchupSlug });
+    if (
+      expectedSubmittedAt !== undefined &&
+      new Date(expectedSubmittedAt).getTime() !==
+        new Date(report.submittedAt).getTime()
+    )
+      throw new PDZError(ErrorCodes.MATCHUP.REPORT_CHANGED, { matchupSlug });
+    const sameReport = { "report.submittedAt": report.submittedAt };
 
     if (!approve) {
       matchupDoc.report = undefined;
       matchupDoc.status = matchupDoc.winner ? "approved" : undefined;
-      await matchupDoc.save();
+      await this.saveIfStill(
+        matchupDoc,
+        sameReport,
+        ErrorCodes.MATCHUP.REPORT_CHANGED,
+      );
       return { message: "Report rejected.", status: "rejected" as const };
     }
 
@@ -444,8 +494,7 @@ export class StageService {
     matchupDoc.forfeit = report.forfeit ?? false;
     matchupDoc.status = "approved";
     matchupDoc.report = undefined;
-    await matchupDoc.save();
-    await this.advanceBracket(matchupDoc);
+    await this.saveAndAdvance(matchupDoc, sameReport);
 
     return { message: "Report approved.", status: "approved" as const };
   }
@@ -533,11 +582,40 @@ export class StageService {
     return "draw" as const;
   }
 
-  private async advanceBracket(matchup: LeagueMatchupDocument) {
-    if (!matchup.stage) return;
-    const stageDoc = await this.stageRepo.findByIdOrNull(matchup.stage);
-    if (!stageDoc) return;
-    await this.advancement.applyToTournament(stageDoc.tournamentId);
+  private async saveIfStill(
+    matchup: LeagueMatchupDocument,
+    condition: Record<string, unknown>,
+    conflict: ErrorDefinition,
+  ) {
+    matchup.$where = condition;
+    try {
+      await matchup.save();
+    } catch (error) {
+      if (error instanceof mongoose.Error.DocumentNotFoundError)
+        throw new PDZError(conflict, { matchupSlug: matchup.slug });
+      throw error;
+    } finally {
+      matchup.$where = {};
+    }
+  }
+
+  private async saveAndAdvance(
+    matchup: LeagueMatchupDocument,
+    condition?: Record<string, unknown>,
+  ) {
+    await this.transactions.run(async () => {
+      if (condition)
+        await this.saveIfStill(
+          matchup,
+          condition,
+          ErrorCodes.MATCHUP.REPORT_CHANGED,
+        );
+      else await matchup.save();
+      if (!matchup.stage) return;
+      const stageDoc = await this.stageRepo.findByIdOrNull(matchup.stage);
+      if (stageDoc)
+        await this.advancement.applyToTournament(stageDoc.tournamentId);
+    });
   }
 
   async setMatchupAdvancement(
@@ -561,11 +639,10 @@ export class StageService {
       throw new PDZError(ErrorCodes.MATCHUP.NOT_FOUND, { matchupSlug });
 
     matchup.advances = advances ?? undefined;
-    await matchup.save();
-
-    const changed = await this.advancement.applyToTournament(
-      stageDoc.tournamentId,
-    );
+    const changed = await this.transactions.run(async () => {
+      await matchup.save();
+      return this.advancement.applyToTournament(stageDoc.tournamentId);
+    });
 
     return {
       message:

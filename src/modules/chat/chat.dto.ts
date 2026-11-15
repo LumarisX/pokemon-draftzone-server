@@ -8,6 +8,7 @@ export class PostChatMessageDto {
   text!: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   target?: string;
 }

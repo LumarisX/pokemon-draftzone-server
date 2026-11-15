@@ -1,4 +1,7 @@
-import { Types } from "mongoose";
+import { TransactionRunner } from "@core/database/transaction-runner";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import mongoose, { Types } from "mongoose";
+import { DraftRepository } from "../draft/draft.repository";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
 import { HostedTournamentRepository } from "../tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "../tier-list/tier-list.repository";
@@ -61,9 +64,12 @@ describe("StageService", () => {
   let hostedTournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
   let advancement: jest.Mocked<BracketAdvancementService>;
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: StageService;
+  let transactionLog: string[];
 
   beforeEach(() => {
+    transactionLog = [];
     stageRepo = {
       findAllByTournament: jest.fn(),
       findByIdOrNull: jest.fn(async () => buildStage()),
@@ -82,12 +88,24 @@ describe("StageService", () => {
     advancement = {
       applyToTournament: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<BracketAdvancementService>;
+    draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DraftRepository>;
     service = new StageService(
       stageRepo,
       matchupRepo,
       hostedTournamentRepo,
       tierListRepo,
       advancement,
+      draftRepo,
+      {
+        run: async (work: () => Promise<unknown>) => {
+          transactionLog.push("begin");
+          const result = await work();
+          transactionLog.push("commit");
+          return result;
+        },
+      } as unknown as TransactionRunner,
     );
 
     mockedGetRosterByRound.mockReturnValue([]);
@@ -219,6 +237,86 @@ describe("StageService", () => {
         ...overrides,
       };
     }
+
+    const lostRace = () =>
+      jest
+        .fn()
+        .mockRejectedValue(new mongoose.Error.DocumentNotFoundError("{}"));
+
+    it("refuses a coach's report that lands after an organizer recorded the result", async () => {
+      const matchup = setup({ save: lostRace() });
+
+      await expect(
+        service.submitMatchupReport(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|coach-1",
+          twoNil,
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.MATCHUP.ALREADY_APPROVED.code });
+      expect(matchup.$where).toEqual({});
+    });
+
+    it("saves an organizer's result and advances the bracket in one transaction", async () => {
+      const matchup = setup();
+      matchup.save.mockImplementation(async () => {
+        transactionLog.push("save");
+      });
+      advancement.applyToTournament.mockImplementation(async () => {
+        transactionLog.push("advance");
+        return 0;
+      });
+
+      await service.submitMatchupReport(
+        "league-1",
+        "tournament-1",
+        matchup.slug,
+        "auth0|owner",
+        twoNil,
+      );
+
+      expect(transactionLog).toEqual(["begin", "save", "advance", "commit"]);
+    });
+
+    it("refuses to approve when the organizer saw a different report", async () => {
+      const matchup = setup({ report: storedReport(), status: "pending" });
+
+      await expect(
+        service.reviewMatchupReport(
+          "league-1",
+          "tournament-1",
+          matchup.slug,
+          "auth0|owner",
+          true,
+          new Date(Date.now() - 60_000).toISOString(),
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.MATCHUP.REPORT_CHANGED.code });
+      expect(matchup.save).not.toHaveBeenCalled();
+    });
+
+    it("refuses a review when the coach resubmits before it saves", async () => {
+      for (const approve of [true, false]) {
+        const matchup = setup({
+          report: storedReport(),
+          status: "pending",
+          save: lostRace(),
+        });
+
+        await expect(
+          service.reviewMatchupReport(
+            "league-1",
+            "tournament-1",
+            matchup.slug,
+            "auth0|owner",
+            approve,
+          ),
+        ).rejects.toMatchObject({
+          code: ErrorCodes.MATCHUP.REPORT_CHANGED.code,
+        });
+      }
+      expect(advancement.applyToTournament).not.toHaveBeenCalled();
+    });
 
     it("holds a coach's report for review", async () => {
       const matchup = setup();
@@ -455,6 +553,111 @@ describe("StageService", () => {
         status: "approved",
         forfeit: false,
       });
+    });
+  });
+
+  describe("blind draft rosters", () => {
+    const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
+    const blind = {
+      _id: new Types.ObjectId(),
+      picksVisibleTo: "ownTeam",
+      status: "IN_PROGRESS",
+    };
+
+    function setup() {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: TOURNAMENT_ID.toString() }),
+      );
+      draftRepo.findAllByTournament.mockResolvedValue([blind] as any);
+      const matchup = {
+        _id: new Types.ObjectId(),
+        slug: "match-1",
+        stage: stageId,
+        results: [],
+        side1: {
+          score: 0,
+          team: buildTeam({
+            draftId: blind._id,
+            coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-1" },
+          }),
+        },
+        side2: {
+          score: 0,
+          team: buildTeam({
+            draftId: blind._id,
+            coach: { _id: new Types.ObjectId(), auth0Id: "auth0|coach-2" },
+          }),
+        },
+      } as any;
+      matchupRepo.findBySlugPopulated.mockResolvedValue(matchup);
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
+      );
+      mockedGetRosterByRound.mockReturnValue([{ id: "pikachu" }]);
+    }
+
+    it("empties the opponent's roster in the matchup detail", async () => {
+      setup();
+
+      const anonymous = await service.getMatchupDetail(
+        "league-1",
+        "tournament-1",
+        "match-1",
+      );
+      expect(anonymous.team1.draft).toEqual([]);
+      expect(anonymous.team2.draft).toEqual([]);
+
+      const coach = await service.getMatchupDetail(
+        "league-1",
+        "tournament-1",
+        "match-1",
+        "auth0|coach-1",
+      );
+      expect(coach.team1.draft).toHaveLength(1);
+      expect(coach.team2.draft).toEqual([]);
+
+      const organizer = await service.getMatchupDetail(
+        "league-1",
+        "tournament-1",
+        "match-1",
+        "auth0|owner",
+      );
+      expect(organizer.team1.draft).toHaveLength(1);
+      expect(organizer.team2.draft).toHaveLength(1);
+    });
+
+    it("refuses the analysis unless the viewer may see both rosters", async () => {
+      setup();
+
+      for (const sub of [undefined, "auth0|coach-1"])
+        await expect(
+          service.getMatchupAnalysis("league-1", "tournament-1", "match-1", sub),
+        ).rejects.toMatchObject({
+          code: ErrorCodes.MATCHUP.ROSTERS_HIDDEN.code,
+        });
+    });
+
+    it("refuses a coach's report while the opponent's roster is hidden, so it cannot probe it", async () => {
+      setup();
+
+      await expect(
+        service.submitMatchupReport(
+          "league-1",
+          "tournament-1",
+          "match-1",
+          "auth0|coach-1",
+          {
+            matches: [
+              {
+                winner: "side1",
+                team1: { pikachu: { kills: 1, brought: 1 } },
+                team2: { mewtwo: { kills: 0, brought: 1 } },
+              },
+            ],
+          } as any,
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.MATCHUP.ROSTERS_HIDDEN.code });
     });
   });
 

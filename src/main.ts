@@ -51,7 +51,9 @@ async function bootstrap() {
 
   const allowedOrigins = configService
     .get<string>("ALLOWED_ORIGINS")
-    ?.split(",") || ["http://localhost:4200"];
+    ?.split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0) || ["http://localhost:4200"];
 
   app.enableCors({
     origin: (
@@ -78,12 +80,13 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      validationError: { target: false, value: false },
       exceptionFactory: (errors) => {
+        const messages = collectValidationMessages(errors);
         const validationLogger = new Logger("ValidationPipe");
         validationLogger.error(
-          `Request validation failed: ${JSON.stringify(errors)}`,
+          `Request validation failed: ${messages.join("; ")}`,
         );
-        const messages = collectValidationMessages(errors);
         return new BadRequestException(
           messages.length ? messages.join("; ") : "Request validation failed",
         );

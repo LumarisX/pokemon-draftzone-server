@@ -787,6 +787,30 @@ describe("HostedTournamentService signup", () => {
       );
     });
 
+    it("does not seat again when the re-read inside the transaction shows a team", async () => {
+      applicationRepo.findInTournament
+        .mockResolvedValueOnce(buildApplication())
+        .mockResolvedValueOnce(
+          buildApplication({ resultingTeamId: new Types.ObjectId() }),
+        );
+
+      await service.decideApplication(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        APPLICATION_ID.toString(),
+        SUB,
+        { status: "approved" },
+      );
+
+      expect(teamRepo.create).not.toHaveBeenCalled();
+      expect(coachRepo.create).not.toHaveBeenCalled();
+      expect(applicationRepo.decide).toHaveBeenCalledWith(
+        APPLICATION_ID.toString(),
+        expect.objectContaining({ status: "approved", decidedBy: SUB }),
+      );
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
     it("links the seated team to the identity the coach signed up with", async () => {
       applicationRepo.findInTournament.mockResolvedValue({
         ...buildApplication(),
@@ -2673,13 +2697,23 @@ describe("HostedTournamentService assignTeams", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let service: HostedTournamentService;
-  let teams: { _id: Types.ObjectId; slug: string; status: string }[];
+  const LIVE_POOL_ID = new Types.ObjectId();
 
-  function addTeam(status: string) {
+  let teams: {
+    _id: Types.ObjectId;
+    slug: string;
+    status: string;
+    teamName: string;
+    draftId?: Types.ObjectId;
+  }[];
+
+  function addTeam(status: string, draftId?: Types.ObjectId) {
     const team = {
       _id: new Types.ObjectId(),
       slug: `team-${teams.length + 1}`,
+      teamName: `Team ${teams.length + 1}`,
       status,
+      draftId,
     };
     teams.push(team);
     return team;
@@ -2706,9 +2740,16 @@ describe("HostedTournamentService assignTeams", () => {
       {} as CoachRepository,
       {} as TournamentApplicationRepository,
       {
-        findAllByTournament: jest
-          .fn()
-          .mockResolvedValue([{ _id: POOL_ID, slug: "pool-a" }]),
+        findAllByTournament: jest.fn().mockResolvedValue([
+          { _id: POOL_ID, slug: "pool-a" },
+          {
+            _id: LIVE_POOL_ID,
+            slug: "pool-live",
+            name: "Live Pool",
+            sequentialTurns: true,
+            status: "IN_PROGRESS",
+          },
+        ]),
       } as unknown as DraftRepository,
       {} as StageRepository,
       {} as LeagueMatchupRepository,
@@ -2843,6 +2884,40 @@ describe("HostedTournamentService assignTeams", () => {
 
     expect(teamRepo.countApprovedByTournament).not.toHaveBeenCalled();
     expect(teamRepo.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to move a team out of a pool that is drafting in turns", async () => {
+    const team = addTeam("approved", LIVE_POOL_ID);
+
+    await expect(
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { teamSlug: team.slug, poolSlug: "pool-a", status: "approved" },
+      ]),
+    ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+    expect(teamRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses to move a team into a pool that is drafting in turns", async () => {
+    const team = addTeam("approved", POOL_ID);
+
+    await expect(
+      service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+        { teamSlug: team.slug, poolSlug: "pool-live", status: "approved" },
+      ]),
+    ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.INVALID_STATE.code });
+  });
+
+  it("still drops a team that stays in a pool drafting in turns", async () => {
+    const team = addTeam("approved", LIVE_POOL_ID);
+
+    await service.assignTeams(LEAGUE_KEY, TOURNAMENT_KEY, ORGANIZER, [
+      { teamSlug: team.slug, poolSlug: "pool-live", status: "dropped" },
+    ]);
+
+    expect(teamRepo.update).toHaveBeenCalledWith(team._id, {
+      draftId: LIVE_POOL_ID,
+      status: "dropped",
+    });
   });
 });
 
@@ -3082,8 +3157,59 @@ describe("HostedTournamentService teams", () => {
     });
   });
 
+  describe("pools", () => {
+    const OPEN_ID = new Types.ObjectId();
+    const OTHER_ID = new Types.ObjectId();
+    const open = {
+      _id: OPEN_ID,
+      slug: "open-pool",
+      name: "Open Pool",
+      status: "IN_PROGRESS",
+    };
+    const other = {
+      _id: OTHER_ID,
+      slug: "other-pool",
+      name: "Other Pool",
+      status: "IN_PROGRESS",
+      public: false,
+    };
+
+    function poolService() {
+      const openTeam = {
+        ...buildTeam(TEAM_ID, "Team One", ["pikachu"]),
+        draftId: OPEN_ID,
+      };
+      const otherTeam = {
+        ...buildTeam(OTHER_TEAM_ID, "Team Two", ["eevee"]),
+        draftId: OTHER_ID,
+      };
+      return buildService({
+        tournament: buildTournament(),
+        teams: [openTeam, otherTeam],
+        drafts: [open, other],
+      }).service;
+    }
+
+    it("lists every pool and its teams to a signed-out visitor, whatever an old public flag says", async () => {
+      const list = await poolService().listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+      const byPool = await poolService().listTeamsByPool(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+      );
+
+      expect(list.teams.map((team) => team.teamName)).toEqual([
+        "Team One",
+        "Team Two",
+      ]);
+      expect(byPool.pools.map((pool) => pool.poolSlug)).toEqual([
+        "open-pool",
+        "other-pool",
+      ]);
+    });
+  });
+
   describe("getTeam", () => {
-    const visibleStage = { _id: new Types.ObjectId(), order: 0, public: true };
+    const visibleStage ={ _id: new Types.ObjectId(), order: 0, public: true };
     const hiddenStage = { _id: new Types.ObjectId(), order: 1, public: false };
     const tournamentWithAxis = () =>
       buildTournament({
@@ -3311,7 +3437,6 @@ describe("HostedTournamentService getInfo", () => {
     const tournament = buildTournament();
     draftRepo = {
       findAllByTournament: jest.fn().mockResolvedValue([]),
-      findPublicByTournament: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<DraftRepository>;
     teamRepo = {
       findManyByIds: jest.fn(),
@@ -3352,20 +3477,120 @@ describe("HostedTournamentService getInfo", () => {
 
   let currentStatus = "approved";
 
-  it("shows every pool to a coach on an approved team", async () => {
-    currentStatus = "approved";
-    await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
-    expect(draftRepo.findAllByTournament).toHaveBeenCalled();
-    expect(draftRepo.findPublicByTournament).not.toHaveBeenCalled();
-  });
-
-  it.each(["dropped", "denied", "pending"])(
-    "shows only public pools to a coach whose team is %s",
+  it.each(["approved", "dropped", "pending"])(
+    "shows every pool to a coach whose team is %s",
     async (status) => {
       currentStatus = status;
       await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|coach");
-      expect(draftRepo.findPublicByTournament).toHaveBeenCalled();
-      expect(draftRepo.findAllByTournament).not.toHaveBeenCalled();
+      expect(draftRepo.findAllByTournament).toHaveBeenCalled();
     },
   );
+
+  it("shows every pool to a signed-out visitor", async () => {
+    await service.getInfo(LEAGUE_KEY, TOURNAMENT_KEY, undefined);
+    expect(draftRepo.findAllByTournament).toHaveBeenCalled();
+  });
+});
+
+describe("HostedTournamentService completing a tournament", () => {
+  const TEAM_ID = new Types.ObjectId().toString();
+  let transactions: ReturnType<typeof recordTransactions>;
+  let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
+  let service: HostedTournamentService;
+  let computeOutcomes: jest.Mock;
+
+  function build(completedAt?: Date) {
+    transactions = recordTransactions();
+    const { track } = transactions;
+    const tournament = buildTournament({ completedAt });
+    tournamentRepo = {
+      findBySlug: jest.fn().mockResolvedValue(tournament),
+      updateSettings: jest.fn(track("updateSettings", () => undefined)),
+    } as unknown as jest.Mocked<HostedTournamentRepository>;
+    teamRepo = {
+      countApprovedByTournament: jest.fn().mockResolvedValue(0),
+      setOutcomes: jest.fn(track("setOutcomes", () => undefined)),
+      clearOutcomes: jest.fn(track("clearOutcomes", () => undefined)),
+    } as unknown as jest.Mocked<TeamRepository>;
+    service = new HostedTournamentService(
+      tournamentRepo,
+      {
+        findById: jest.fn().mockResolvedValue(buildSettingsTierList()),
+      } as unknown as TierListRepository,
+      teamRepo,
+      {} as CoachRepository,
+      {} as TournamentApplicationRepository,
+      {} as DraftRepository,
+      {} as StageRepository,
+      {} as LeagueMatchupRepository,
+      {} as DiscordService,
+      {} as S3Service,
+      {} as UploadsService,
+      transactions.runner,
+      silentEvents,
+      logWriter,
+      identityRepo,
+    );
+    computeOutcomes = jest.fn(async () => {
+      transactions.log.push("compute");
+      return {
+        results: [{ teamId: TEAM_ID, placement: 1, of: 2, champion: true }],
+      };
+    });
+    (service as any).computeOutcomes = computeOutcomes;
+  }
+
+  const save = (completed: boolean) =>
+    service.updateSettings(LEAGUE_KEY, TOURNAMENT_KEY, "auth0|owner", {
+      completed,
+    });
+
+  it("computes outcomes first, then writes them with the settings in one transaction", async () => {
+    build();
+
+    await save(true);
+
+    expect(transactions.log).toEqual([
+      "compute",
+      "begin",
+      "setOutcomes",
+      "updateSettings",
+      "commit",
+    ]);
+    expect(teamRepo.setOutcomes).toHaveBeenCalledWith(
+      "tournament-1",
+      new Map([
+        [TEAM_ID, { teamId: TEAM_ID, placement: 1, of: 2, champion: true }],
+      ]),
+    );
+  });
+
+  it("clears outcomes inside the same transaction when reopening", async () => {
+    build(new Date("2026-01-01"));
+
+    await save(false);
+
+    expect(computeOutcomes).not.toHaveBeenCalled();
+    expect(transactions.log).toEqual([
+      "begin",
+      "clearOutcomes",
+      "updateSettings",
+      "commit",
+    ]);
+  });
+
+  it("rejects and aborts when the settings write fails", async () => {
+    build();
+    tournamentRepo.updateSettings.mockRejectedValue(new Error("write failed"));
+
+    await expect(save(true)).rejects.toThrow("write failed");
+
+    expect(transactions.log).toEqual([
+      "compute",
+      "begin",
+      "setOutcomes",
+      "abort",
+    ]);
+  });
 });

@@ -366,6 +366,17 @@ export const ErrorCodes = {
       message:
         "This result lists a Pokémon that isn't on that team's roster for this round",
     },
+    ROSTERS_HIDDEN: {
+      code: "MU-007",
+      status: 403,
+      message: "Rosters are hidden until this pool's draft is finished.",
+    },
+    REPORT_CHANGED: {
+      code: "MU-008",
+      status: 409,
+      message:
+        "This result changed while you were looking at it. Check the latest report before deciding.",
+    },
   },
   CHAT: {
     FORBIDDEN: {

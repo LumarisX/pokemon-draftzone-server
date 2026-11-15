@@ -3,6 +3,7 @@ import {
   getRuleset,
   getRulesets,
   getRulesetsGrouped,
+  Rulesets,
 } from './rulesets';
 
 jest.mock('@pkmn/data', () => ({
@@ -36,6 +37,18 @@ describe('getRuleset', () => {
     const paldeaDexRuleset = getRuleset('Paldea Dex');
     expect(paldeaDexRuleset).toBeDefined();
     expect(paldeaDexRuleset.name).toBe('Paldea Dex');
+  });
+
+  it('returns the same instance for the same id, getter-built rulesets included', () => {
+    for (const rulesetId of getRulesets()) {
+      expect(getRuleset(rulesetId)).toBe(getRuleset(rulesetId));
+    }
+    expect(getRuleset('Champions')).toBe(getRuleset('Champions MB'));
+  });
+
+  it('keeps singleton rulesets identical to the exported entries', () => {
+    expect(getRuleset('Gen9 NatDex')).toBe(Rulesets['Gen 9']['National Dex'].ruleset);
+    expect(getRuleset('Champions MC')).toBe(Rulesets['Champions']['M-C'].ruleset);
   });
 
   it('should throw an error for an invalid ruleset ID', () => {

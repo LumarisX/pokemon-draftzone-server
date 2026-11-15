@@ -8,14 +8,11 @@ import {
 } from "@modules/draft/draft.repository";
 import { TypeName } from "@pkmn/data";
 import {
-  calculateCanDraft,
-  calculateCanDraftCounts,
-  calculateCurrentPick,
-  generatePickOrder,
   getDocumentId,
   getDraftOrder,
   getPokemonIdFromDraft,
 } from "./pick-order";
+import { turnState } from "./turn-state";
 import {
   canSeeAllPicks,
   canSeeTeamPicks,
@@ -174,11 +171,6 @@ export async function getDraftDetails(
 ) {
   const numberOfRounds = tournament.draftCount.max;
   const initialTeamOrder = getDraftOrder(draft);
-  const pickOrder = generatePickOrder(
-    initialTeamOrder,
-    numberOfRounds,
-    draft.orderProgression,
-  );
 
   const teams = await getTeamsWithCoachStatus(
     draft,
@@ -187,9 +179,11 @@ export async function getDraftDetails(
     numberOfRounds,
   );
 
-  const canDraft = calculateCanDraft(draft, pickOrder);
-  const canDraftCounts = calculateCanDraftCounts(draft, pickOrder);
-  const currentPick = calculateCurrentPick(draft);
+  const {
+    canDraftTeams: canDraft,
+    canDraftCounts,
+    currentPick,
+  } = turnState(tournament, draft);
 
   return {
     leagueName: tournament.name,
@@ -220,7 +214,6 @@ export async function getDraftDetails(
     status: draft.status,
     noTimer: draft.noTimer,
     timerLength: draft.timerLength,
-    public: draft.public,
     draftStart: draft.draftStart,
     draftEnd: draft.draftEnd,
     canDraft,

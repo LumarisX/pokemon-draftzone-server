@@ -75,6 +75,46 @@ describe("DataService", () => {
       expect(result).toEqual([{ id: "pikachu" }, { id: "charizard" }]);
     });
 
+    it("builds the list once per ruleset and returns a fresh array each call", async () => {
+      repository.getSpeciesForRuleset.mockReturnValue([{ id: "pikachu" } as any]);
+      mockedMapper.toDto.mockResolvedValue({ id: "pikachu" } as any);
+
+      const first = await service.getPokemonList("Gen9 NatDex");
+      const second = await service.getPokemonList("Gen9 NatDex");
+      first.pop();
+      const third = await service.getPokemonList("Gen9 NatDex");
+
+      expect(repository.getSpeciesForRuleset).toHaveBeenCalledTimes(1);
+      expect(mockedMapper.toDto).toHaveBeenCalledTimes(1);
+      expect(second).toEqual([{ id: "pikachu" }]);
+      expect(third).toEqual(second);
+      expect(second).not.toBe(third);
+    });
+
+    it("caches each ruleset separately", async () => {
+      repository.getSpeciesForRuleset.mockReturnValue([{ id: "pikachu" } as any]);
+      mockedMapper.toDto.mockResolvedValue({ id: "pikachu" } as any);
+
+      await service.getPokemonList("Gen9 NatDex");
+      await service.getPokemonList("Paldea Dex");
+
+      expect(repository.getSpeciesForRuleset).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not keep a failed build cached", async () => {
+      repository.getSpeciesForRuleset
+        .mockImplementationOnce(() => {
+          throw new Error("boom");
+        })
+        .mockReturnValue([{ id: "pikachu" } as any]);
+      mockedMapper.toDto.mockResolvedValue({ id: "pikachu" } as any);
+
+      await expect(service.getPokemonList("Gen9 NatDex")).rejects.toThrow("boom");
+      await expect(service.getPokemonList("Gen9 NatDex")).resolves.toEqual([
+        { id: "pikachu" },
+      ]);
+    });
+
     it("returns an empty array when the ruleset has no species", async () => {
       repository.getSpeciesForRuleset.mockReturnValue([]);
 

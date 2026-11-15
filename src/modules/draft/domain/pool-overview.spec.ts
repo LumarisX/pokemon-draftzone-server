@@ -6,7 +6,7 @@ import {
 } from "@modules/tier-list/tier-list.domain";
 import { Types } from "mongoose";
 import { tierId } from "../../tier-list/tier-list.test-ids";
-import { isTournamentMember, summarizePool } from "./pool-overview";
+import { summarizePool } from "./pool-overview";
 
 function buildTierList() {
   return new TierList({
@@ -214,23 +214,5 @@ describe("summarizePool", () => {
     expect(summarizePool(buildTournament(), draft, undefined).status).toBe(
       "PRE_DRAFT",
     );
-  });
-});
-
-describe("isTournamentMember", () => {
-  it("counts staff and coaches of approved teams", () => {
-    const tournament = buildTournament({
-      staff: [{ sub: "auth0|organizer", role: "organizer" }],
-    });
-    const teams = [
-      buildTeam("Alpha", "auth0|alpha"),
-      { ...buildTeam("Pending", "auth0|pending"), status: "pending" },
-    ];
-
-    expect(isTournamentMember(tournament, teams, "auth0|organizer")).toBe(true);
-    expect(isTournamentMember(tournament, teams, "auth0|alpha")).toBe(true);
-    expect(isTournamentMember(tournament, teams, "auth0|pending")).toBe(false);
-    expect(isTournamentMember(tournament, teams, "auth0|stranger")).toBe(false);
-    expect(isTournamentMember(tournament, teams, undefined)).toBe(false);
   });
 });

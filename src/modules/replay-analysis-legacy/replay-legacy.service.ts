@@ -15,7 +15,6 @@ import {
   EFFECT,
   Field,
   FORMATNAME,
-  formatUrl,
   FROMEFFECT,
   GAMETYPE,
   GENNUM,
@@ -60,7 +59,6 @@ import {
   TYPE,
   USER,
   USERNAME,
-  validateUrl,
   WEATHER,
 } from "./replay-legacy.types";
 const replayExists: (d: Data) => boolean = (d) => d.exists === true;
@@ -104,6 +102,7 @@ export class ReplayAnalyzerService {
       }
     | undefined;
   tempMons: { [key: string]: TempMonSnapshot } = {};
+  lineWarnings: { message: string }[] = [];
   events: { player: number; turn: number; message: string }[] = [];
   killStrings: KillString[] = [];
   kos: KOEvent[] = [];
@@ -728,7 +727,6 @@ export class ReplayAnalyzerService {
         teammate:
           replaceMon.damageTaken.teammate - tempReplaceMon.damageTaken.teammate,
       };
-      // illusionMon.calcLog
       illusionMon.status = replaceMon.status;
       illusionMon.statuses = replaceMon.statuses.filter(
         (status) =>
@@ -1011,8 +1009,6 @@ export class ReplayAnalyzerService {
   ) {
     if (!this.lastMove) return;
 
-    // if (faintMon.baseSpecie.id === "toxapex")
-    //   console.log("Fainting mon:", faintMon.lastDamage);
     if (this.lastMove.line.raw === faintMon.lastDamage?.line.parent?.raw) {
       const faintAttacker = this.lastMove.attacker;
       killString.reason = this.lastMove.moveStr;
@@ -1076,7 +1072,11 @@ export class ReplayAnalyzerService {
         handler(line);
       }
     } catch (error) {
-      console.error(`Error processing line: ${line.raw.join("|")}`, error);
+      this.lineWarnings.push({
+        message: `Could not read line "${line.raw.join("|")}": ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      });
     }
     line.children.forEach((child) => {
       this.executeLine(child);
@@ -1141,7 +1141,6 @@ export class ReplayAnalyzerService {
       }
     }
 
-    //Indirect Damage
     if (from && from !== toID(lastDamage.line.parent?.raw[2])) {
       if (of) {
         let ofMon = this.getPokemon(of);
@@ -1431,20 +1430,6 @@ export class ReplayAnalyzerService {
       events: this.events,
       kos: this.kos,
     };
-    const warnings = [] as {}[];
-    return { analysis, warnings };
-  }
-
-  static async fromReplayUrl(url: string) {
-    if (!url || !validateUrl(url)) return null;
-    const replayData = await fetch(`${formatUrl(url)}.log`);
-    return new this(await replayData.text());
-  }
-
-  static async fromReplayFile(filePath: string) {
-    const fs = await import("fs/promises");
-    const file = await fs.readFile(filePath);
-    const replayData = file.toString();
-    return new this(replayData);
+    return { analysis, warnings: [...this.lineWarnings] };
   }
 }

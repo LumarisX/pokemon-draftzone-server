@@ -29,13 +29,26 @@ export class DataService {
     return this.dataRepository.getRulesetsLegacy();
   }
 
-  async getPokemonList(rulesetId: string): Promise<PokemonDataDto[]> {
-    const speciesInstances =
-      this.dataRepository.getSpeciesForRuleset(rulesetId);
+  private readonly pokemonLists = new Map<string, Promise<PokemonDataDto[]>>();
 
-    return Promise.all(
-      speciesInstances.map((specie) => PokemonDataMapper.toDto(specie)),
-    );
+  async getPokemonList(rulesetId: string): Promise<PokemonDataDto[]> {
+    let pending = this.pokemonLists.get(rulesetId);
+    if (!pending) {
+      const lists = this.pokemonLists;
+      const built = (async () => {
+        const speciesInstances =
+          this.dataRepository.getSpeciesForRuleset(rulesetId);
+        return Promise.all(
+          speciesInstances.map((specie) => PokemonDataMapper.toDto(specie)),
+        );
+      })();
+      built.catch(() => {
+        if (lists.get(rulesetId) === built) lists.delete(rulesetId);
+      });
+      lists.set(rulesetId, built);
+      pending = built;
+    }
+    return [...(await pending)];
   }
 
   async getRandomPokemon(

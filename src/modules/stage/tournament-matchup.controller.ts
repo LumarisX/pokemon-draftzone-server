@@ -16,6 +16,7 @@ import {
   SetMatchupAdvancementDto,
   SetMatchupNotesDto,
   SetMatchupScheduleDto,
+  ReviewMatchupReportDto,
   SubmitMatchupReportDto,
 } from "./stage.dto";
 import { StageService } from "./stage.service";
@@ -121,6 +122,7 @@ export class TournamentMatchupController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
+    @Body() body: ReviewMatchupReportDto,
   ) {
     return this.stageService.reviewMatchupReport(
       leagueSlug,
@@ -128,6 +130,7 @@ export class TournamentMatchupController {
       matchupSlug,
       sub,
       true,
+      body?.submittedAt,
     );
   }
 
@@ -138,6 +141,7 @@ export class TournamentMatchupController {
     @Param("tournamentSlug") tournamentSlug: string,
     @Param("matchupSlug") matchupSlug: string,
     @User() sub: string,
+    @Body() body: ReviewMatchupReportDto,
   ) {
     return this.stageService.reviewMatchupReport(
       leagueSlug,
@@ -145,6 +149,7 @@ export class TournamentMatchupController {
       matchupSlug,
       sub,
       false,
+      body?.submittedAt,
     );
   }
 

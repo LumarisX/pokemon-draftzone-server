@@ -53,11 +53,6 @@ export class ArchiveMatchV1Entity {
   @Prop({ required: true })
   stage!: string;
 
-  // TODO(migrate-to-map): stored as `[pokemonId, stats]` tuples. Mongoose has
-  // no tuple element schema (`[[String, Schema]]` silently drops the data on
-  // read/save and throws a CastError on `$set` updates), so this is typed as
-  // Mixed and the tuple shape is enforced by the mapper. Migrate to
-  // `Map<string, ArchiveStatEntity>` once existing documents are converted.
   @Prop({ type: [MongooseSchema.Types.Mixed] })
   stats!: ArchiveStatTuple[];
 
@@ -72,9 +67,6 @@ export const ArchiveMatchV1Schema =
 
 @Schema({ _id: false })
 export class ArchiveMatchTeamV2Entity {
-  // TODO(migrate-to-map): see ArchiveMatchV1Entity.stats above. Stored as
-  // `[pokemonId, stats]` tuples via Mixed because Mongoose cannot model tuple
-  // element schemas; migrate to `Map<string, ArchiveStatEntity>`.
   @Prop({ type: [MongooseSchema.Types.Mixed], required: true })
   stats!: ArchiveStatTuple[];
 
@@ -196,9 +188,6 @@ export type ArchiveDocument = HydratedDocument<ArchiveEntity>;
   discriminatorKey: "archiveType",
 })
 export class ArchiveEntity {
-  // Populated by the `timestamps: true` / `discriminatorKey` schema options
-  // below, not @Prop() (re-declaring them would duplicate the auto-managed
-  // paths) -- declared here only so TS knows they exist on the document.
   createdAt?: Date;
   updatedAt?: Date;
   archiveType?: "ArchiveV1" | "ArchiveV2";
@@ -222,6 +211,7 @@ export class ArchiveEntity {
   team!: ArchivePokemonRefEntity[];
 }
 export const ArchiveSchema = SchemaFactory.createForClass(ArchiveEntity);
+ArchiveSchema.index({ owner: 1, createdAt: -1 });
 
 export type ArchiveV1Document = HydratedDocument<ArchiveV1Entity>;
 

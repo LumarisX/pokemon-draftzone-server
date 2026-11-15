@@ -23,9 +23,12 @@ import {
   HostedTournamentDocument,
   HostedTournamentEntity,
 } from "./hosted-tournament.schema";
+import { tournamentReadCache } from "./tournament-read-cache";
 
 @Injectable()
 export class HostedTournamentRepository {
+  private readonly readCache = tournamentReadCache;
+
   constructor(
     @InjectModel(HostedTournamentEntity.name)
     private readonly hostedTournamentModel: Model<HostedTournamentDocument>,
@@ -41,6 +44,41 @@ export class HostedTournamentRepository {
     leagueSlug: string,
     tournamentSlug: string,
   ): Promise<HostedTournament> {
+    const { doc, league, stages, meta } = await this.loadBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    return HostedTournamentMapper.fromDatabase(doc, league, stages, meta);
+  }
+
+  async findBySlugCached(
+    leagueSlug: string,
+    tournamentSlug: string,
+  ): Promise<HostedTournament> {
+    const key = JSON.stringify([leagueSlug, tournamentSlug]);
+    const hit = this.readCache.get(key);
+    if (hit)
+      return HostedTournamentMapper.fromDatabase(
+        this.hostedTournamentModel.hydrate(hit.doc),
+        hit.league,
+        hit.stages.map((stage) => this.stageRepo.hydrate(stage)),
+        hit.meta,
+      );
+
+    const { doc, league, stages, meta } = await this.loadBySlug(
+      leagueSlug,
+      tournamentSlug,
+    );
+    this.readCache.set(key, {
+      doc: doc.toObject(),
+      league: { owner: league.owner, slug: league.slug, name: league.name },
+      stages: stages.map((stage) => stage.toObject()),
+      meta,
+    });
+    return HostedTournamentMapper.fromDatabase(doc, league, stages, meta);
+  }
+
+  private async loadBySlug(leagueSlug: string, tournamentSlug: string) {
     const league = await this.leagueRepo.findBySlug(leagueSlug);
 
     const doc = await this.hostedTournamentModel
@@ -48,16 +86,11 @@ export class HostedTournamentRepository {
       .exec();
     if (!doc)
       throw new PDZError(ErrorCodes.TOURNAMENT.NOT_FOUND, { tournamentSlug });
-    const [stages, tierListMeta] = await Promise.all([
+    const [stages, meta] = await Promise.all([
       this.resolveStages(doc.stages),
       this.resolveTierListMeta(doc.tierList),
     ]);
-    return HostedTournamentMapper.fromDatabase(
-      doc,
-      league,
-      stages,
-      tierListMeta,
-    );
+    return { doc, league, stages, meta };
   }
 
   async findRulesBySlug(

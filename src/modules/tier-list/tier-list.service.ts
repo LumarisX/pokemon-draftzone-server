@@ -14,7 +14,7 @@ import {
 } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.schema";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { ID } from "@pkmn/data";
+import { ID, toID } from "@pkmn/data";
 import { Model, Types } from "mongoose";
 import { RevisionKind } from "./tier-list-revision.schema";
 import {
@@ -570,25 +570,25 @@ export class TierListService {
       .filter((specie) => !listed.has(specie.id))
       .map((specie) => ({ id: specie.id, name: specie.name }));
 
-    const placed = [...tierList.pokemon.entries()].filter(
-      ([id, entry]) => entry.tierId && ruleset.species.get(id),
-    );
-    const unusedMoves: string[] = [];
-    for (const move of tierList.banned.moves) {
-      let used = false;
-      for (const [id] of placed) {
-        if (await new PDZPokemon(id as ID, ruleset).canLearn(move)) {
-          used = true;
-          break;
-        }
-      }
-      if (!used) unusedMoves.push(move);
+    const placed = [...tierList.pokemon.entries()]
+      .filter(([id, entry]) => entry.tierId && ruleset.species.get(id))
+      .map(([id]) => new PDZPokemon(id as ID, ruleset));
+
+    let unusedMoves: string[] = [];
+    if (tierList.banned.moves.length && !placed.some((p) => p.id === "smeargle")) {
+      const learnable = new Set<string>();
+      for (const pokemon of placed)
+        for (const move of await pokemon.learnset()) learnable.add(move.id);
+      unusedMoves = tierList.banned.moves.filter(
+        (move) => !learnable.has(toID(move)),
+      );
     }
+
+    const placedAbilities = new Set(
+      placed.flatMap((pokemon) => Object.values(pokemon.abilities)),
+    );
     const unusedAbilities = tierList.banned.abilities.filter(
-      (ability) =>
-        !placed.some(([id]) =>
-          Object.values(new PDZPokemon(id as ID, ruleset).abilities).includes(ability),
-        ),
+      (ability) => !placedAbilities.has(ability),
     );
 
     const counts = new Map<string, number>();

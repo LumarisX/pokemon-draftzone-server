@@ -1,4 +1,4 @@
-import { Rulesets } from "@core/data/rulesets/rulesets";
+import { getRuleset, Rulesets } from "@core/data/rulesets/rulesets";
 import { ID } from "@pkmn/data";
 import { PDZPokemon } from "./pokemon.domain";
 
@@ -10,6 +10,77 @@ function mon(data: string | ({ id: string } & Record<string, any>)) {
 }
 
 describe("PDZPokemon", () => {
+  describe("learnset caching", () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    it("computes once per species and ruleset across Pokemon objects", async () => {
+      const ruleset = getRuleset("Gen9 NatDex");
+      const spy = jest.spyOn(ruleset.learnsets, "learnable");
+      const a = new PDZPokemon("rotom" as ID, ruleset);
+      const b = new PDZPokemon("rotom" as ID, ruleset);
+
+      const first = await a.learnset();
+      const second = await b.learnset();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(first.length).toBeGreaterThan(10);
+      expect(second.map((m) => m.id)).toEqual(first.map((m) => m.id));
+    });
+
+    it("matches an uncached computation", async () => {
+      const ruleset = getRuleset("Gen9 NatDex");
+      const raw = await ruleset.learnsets.learnable(
+        "gengar",
+        ruleset.restriction,
+      );
+      const learnset = await new PDZPokemon("gengar" as ID, ruleset).learnset();
+
+      expect(learnset.map((m) => m.id)).toEqual(Object.keys(raw ?? {}));
+      expect(learnset.every((m) => m.ruleset === ruleset)).toBe(true);
+    });
+
+    it("is unaffected by mutating a returned array", async () => {
+      const ruleset = getRuleset("Gen9 NatDex");
+      const first = await new PDZPokemon("gyarados" as ID, ruleset).learnset();
+      const length = first.length;
+      first.length = 0;
+      first.push(first[0]);
+
+      const second = await new PDZPokemon("gyarados" as ID, ruleset).learnset();
+
+      expect(second.length).toBe(length);
+    });
+
+    it("does not share entries across species or rulesets", async () => {
+      const natdex = getRuleset("Gen9 NatDex");
+      const alola = getRuleset("Alola Dex");
+      const spy = jest.spyOn(natdex.learnsets, "learnable");
+      const alolaSpy = jest.spyOn(alola.learnsets, "learnable");
+
+      await new PDZPokemon("snorlax" as ID, natdex).learnset();
+      await new PDZPokemon("blissey" as ID, natdex).learnset();
+      await new PDZPokemon("snorlax" as ID, alola).learnset();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(alolaSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not keep a rejected computation", async () => {
+      const ruleset = getRuleset("Gen9 NatDex");
+      const spy = jest
+        .spyOn(ruleset.learnsets, "learnable")
+        .mockRejectedValueOnce(new Error("boom"));
+
+      await expect(
+        new PDZPokemon("dragonite" as ID, ruleset).learnset(),
+      ).rejects.toThrow("boom");
+      const retry = await new PDZPokemon("dragonite" as ID, ruleset).learnset();
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(retry.length).toBeGreaterThan(10);
+    });
+  });
+
   describe("constructor", () => {
     it("populates species fields from the ruleset for a valid id", () => {
       const pikachu = mon("pikachu");

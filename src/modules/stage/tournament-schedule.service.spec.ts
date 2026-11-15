@@ -1,3 +1,4 @@
+import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -60,6 +61,7 @@ describe("TournamentScheduleService", () => {
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let advancement: { findStatus: jest.Mock };
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: TournamentScheduleService;
 
   const week1 = round("Week 1");
@@ -93,6 +95,10 @@ describe("TournamentScheduleService", () => {
       findIdsBySlugs: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<TeamRepository>;
 
+    draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DraftRepository>;
+
     advancement = {
       applyToTournament: jest.fn().mockResolvedValue(0),
       applyToStages: jest.fn().mockResolvedValue(0),
@@ -109,6 +115,7 @@ describe("TournamentScheduleService", () => {
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
         { provide: TeamRepository, useValue: teamRepo },
         { provide: BracketAdvancementService, useValue: advancement },
+        { provide: DraftRepository, useValue: draftRepo },
       ],
     }).compile();
 
@@ -117,6 +124,36 @@ describe("TournamentScheduleService", () => {
 
   const get = (options = {}) =>
     service.getSchedule("league-1", "tournament-1", options);
+
+  it("sends empty rosters for a blind pool to a viewer who may not see them", async () => {
+    const stage = buildStage();
+    const blind = {
+      _id: new Types.ObjectId(),
+      picksVisibleTo: "ownTeam",
+      status: "IN_PROGRESS",
+    };
+    draftRepo.findAllByTournament.mockResolvedValue([blind] as any);
+    stageRepo.findAllByTournament.mockResolvedValue([stage]);
+    const drafted = (name: string) => ({
+      ...team(name),
+      draftId: blind._id,
+      coaches: [],
+      pickLog: [{ pokemon: { id: "pikachu" } }],
+    });
+    matchupRepo.findByRoundsAcrossStages.mockResolvedValue([
+      buildMatchup(stage._id, week1._id, drafted("A"), drafted("B")),
+    ]);
+
+    const anonymous = await get();
+    const sides = anonymous.rounds[0].stages[0].matchups[0];
+    expect(sides.team1.draft).toEqual([]);
+    expect(sides.team2.draft).toEqual([]);
+
+    const organizer = await get({ sub: "auth0|owner" });
+    const seen = organizer.rounds[0].stages[0].matchups[0];
+    expect(seen.team1.draft.map((p) => p.id)).toEqual(["pikachu"]);
+    expect(seen.team2.draft.map((p) => p.id)).toEqual(["pikachu"]);
+  });
 
   it("returns every round, even ones with no matches, for an organizer view", async () => {
     const result = await get();

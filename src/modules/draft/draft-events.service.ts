@@ -11,20 +11,16 @@ type DraftPickSummary = {
 };
 
 export type DraftEventAudience = {
-  draftPublic: boolean;
   blindTeamId?: string;
 };
 
 export function draftAudience(
-  draft: { public?: boolean; picksVisibleTo?: PicksVisibleTo; status?: string },
+  draft: { picksVisibleTo?: PicksVisibleTo; status?: string },
   revealsTeamId?: string,
 ): DraftEventAudience {
-  return {
-    draftPublic: draft.public !== false,
-    ...(revealsTeamId && picksAreBlind(draft)
-      ? { blindTeamId: revealsTeamId }
-      : {}),
-  };
+  return revealsTeamId && picksAreBlind(draft)
+    ? { blindTeamId: revealsTeamId }
+    : {};
 }
 
 type AudiencedEvent = {

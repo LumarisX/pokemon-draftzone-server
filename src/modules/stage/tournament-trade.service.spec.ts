@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { DraftRepository } from "@modules/draft/draft.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { tierId } from "../tier-list/tier-list.test-ids";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
@@ -61,6 +62,7 @@ describe("TournamentTradeService", () => {
   let teamRepo: jest.Mocked<TeamRepository>;
   let tournamentRepo: jest.Mocked<HostedTournamentRepository>;
   let tierListRepo: jest.Mocked<TierListRepository>;
+  let draftRepo: jest.Mocked<DraftRepository>;
   let service: TournamentTradeService;
 
   beforeEach(async () => {
@@ -86,12 +88,17 @@ describe("TournamentTradeService", () => {
         .mockRejectedValue(new PDZError(ErrorCodes.TIER_LIST.NOT_FOUND)),
     } as unknown as jest.Mocked<TierListRepository>;
 
+    draftRepo = {
+      findAllByTournament: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<DraftRepository>;
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         TournamentTradeService,
         { provide: TeamRepository, useValue: teamRepo },
         { provide: HostedTournamentRepository, useValue: tournamentRepo },
         { provide: TierListRepository, useValue: tierListRepo },
+        { provide: DraftRepository, useValue: draftRepo },
       ],
     }).compile();
 
@@ -827,6 +834,42 @@ describe("TournamentTradeService", () => {
   });
 
   describe("getTrades", () => {
+    it("hides traded Pokémon of a blind pool from outsiders but not from the trading coaches or organizers", async () => {
+      const pool = {
+        _id: new Types.ObjectId(),
+        picksVisibleTo: "ownTeam",
+        status: "IN_PROGRESS",
+      };
+      const coach = { _id: new Types.ObjectId(), auth0Id: "auth0|coach-a" };
+      const teamA = buildTeam({ teamName: "A", draftId: pool._id, coaches: [coach] });
+      const teamB = buildTeam({ teamName: "B", draftId: pool._id });
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({
+          trades: [
+            buildTrade({
+              activeRound: 0,
+              side1: { team: teamA._id, pokemon: [{ id: "pikachu" }] },
+              side2: { team: teamB._id, pokemon: [{ id: "eevee" }] },
+            }),
+          ],
+        }),
+      );
+      teamRepo.findManyByIds.mockResolvedValue([teamA, teamB]);
+      draftRepo.findAllByTournament.mockResolvedValue([pool] as any);
+
+      const idsFor = async (sub?: string) => {
+        const trade = (
+          await service.getTrades("league-1", "tournament-1", undefined, sub)
+        ).rounds[0].trades[0] as any;
+        return [trade.side1.pokemon.length, trade.side2.pokemon.length];
+      };
+
+      expect(await idsFor()).toEqual([0, 0]);
+      expect(await idsFor("auth0|stranger")).toEqual([0, 0]);
+      expect(await idsFor("auth0|coach-a")).toEqual([1, 1]);
+      expect(await idsFor("auth0|owner")).toEqual([1, 1]);
+    });
+
     it("buckets each trade into its tournament round", async () => {
       const teamA = buildTeam({ teamName: "A" });
       const teamB = buildTeam({ teamName: "B" });

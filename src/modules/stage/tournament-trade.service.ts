@@ -9,7 +9,10 @@ import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
+import { DraftRepository } from "@modules/draft/draft.repository";
+import { canOnTeam } from "@modules/tournament/membership";
 import { getRosterByRound } from "./domain/roster";
+import { rosterVisibilityFor } from "./domain/roster-visibility";
 import {
   rosterContext,
   TradeLike,
@@ -26,12 +29,14 @@ export class TournamentTradeService {
     private readonly teamRepo: TeamRepository,
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly tierListRepo: TierListRepository,
+    private readonly draftRepo: DraftRepository,
   ) {}
 
   async getTrades(
     leagueSlug: string,
     tournamentSlug: string,
     teamSlug?: string | string[],
+    sub?: string,
   ) {
     const tournament = await this.tournamentRepo.findBySlug(
       leagueSlug,
@@ -61,7 +66,24 @@ export class TournamentTradeService {
       this.tierListRepo.findById(tournament.tierListId),
     );
 
-    const buildSide = (side: TradeLike["side1"]) => {
+    const canSeeRoster = rosterVisibilityFor(
+      tournament,
+      await this.draftRepo.findAllByTournament(tournament.id),
+      sub,
+    );
+    const involvesViewer = (trade: TradeLike) =>
+      [trade.side1, trade.side2].some((side) => {
+        const team = teamOf(side);
+        return !!team && canOnTeam(team, sub, "draft");
+      });
+    const revealsPicks = (trade: TradeLike) =>
+      involvesViewer(trade) ||
+      [trade.side1, trade.side2].every((side) => {
+        const team = teamOf(side);
+        return !team || canSeeRoster(team);
+      });
+
+    const buildSide = (side: TradeLike["side1"], reveal: boolean) => {
       const team = teamOf(side);
       return {
         team: team
@@ -72,7 +94,7 @@ export class TournamentTradeService {
               logo: team.logo,
             }
           : undefined,
-        pokemon: side.pokemon.map((p) => ({
+        pokemon: (reveal ? side.pokemon : []).map((p) => ({
           id: p.id,
           name: getName(p.id),
           tera: p.addons?.includes("Tera Captain") || false,
@@ -119,8 +141,8 @@ export class TournamentTradeService {
 
       rounds[activeRound].trades.push({
         id: trade._id?.toString(),
-        side1: buildSide(trade.side1),
-        side2: buildSide(trade.side2),
+        side1: buildSide(trade.side1, revealsPicks(trade)),
+        side2: buildSide(trade.side2, revealsPicks(trade)),
         activeRound,
         timestamp: trade.timestamp,
         status: trade.status,

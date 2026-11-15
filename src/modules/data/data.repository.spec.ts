@@ -62,6 +62,18 @@ describe("DataRepository", () => {
         "Ruleset Id not found: NotARealRuleset",
       );
     });
+
+    it("builds the species once per ruleset and returns a fresh array each call", () => {
+      const first = repository.getSpeciesForRuleset("Gen9 NatDex");
+      const second = new DataRepository().getSpeciesForRuleset("Gen9 NatDex");
+
+      expect(second).not.toBe(first);
+      expect(second[0]).toBe(first[0]);
+      first.pop();
+      expect(repository.getSpeciesForRuleset("Gen9 NatDex").length).toBe(
+        second.length,
+      );
+    });
   });
 
   describe("getRandomSpecies", () => {

@@ -1,3 +1,4 @@
+import { DraftRepository } from "@modules/draft/draft.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { MatchupReportEntity } from "@modules/matchup/sub-modules/league-matchup/league-matchup.schema";
 import { TeamRepository } from "@modules/team/team.repository";
@@ -7,6 +8,7 @@ import { Injectable } from "@nestjs/common";
 import { BracketAdvancementService } from "./bracket-advancement.service";
 import { buildMatchLabels } from "./domain/match-labels";
 import { scheduleMatchups } from "./domain/schedule-view";
+import { rosterVisibilityFor } from "./domain/roster-visibility";
 import { rosterContext } from "./domain/stage-axis";
 import { PopulatedStageMatchup } from "./domain/standings";
 import { StageRepository } from "./stage.repository";
@@ -31,6 +33,7 @@ export class TournamentScheduleService {
     private readonly tournamentRepo: HostedTournamentRepository,
     private readonly teamRepo: TeamRepository,
     private readonly advancement: BracketAdvancementService,
+    private readonly draftRepo: DraftRepository,
   ) {}
 
   async getSchedule(
@@ -106,6 +109,11 @@ export class TournamentScheduleService {
     }
 
     const roster = rosterContext(tournament);
+    const canSeeRoster = rosterVisibilityFor(
+      tournament,
+      await this.draftRepo.findAllByTournament(tournament.id),
+      options.sub,
+    );
 
     const view = axis
       .map((round, roundIndex) => ({ round, roundIndex }))
@@ -126,6 +134,7 @@ export class TournamentScheduleService {
             .map(({ stage, stageMatchups }) => {
               const scheduled = scheduleMatchups(stageMatchups, {
                 roster,
+                canSeeRoster,
                 roundIndex,
                 forfeitGameDiff: tournament.forfeit.gameDiff,
                 keepUnresolvedOpponent: hasTeamFilter,

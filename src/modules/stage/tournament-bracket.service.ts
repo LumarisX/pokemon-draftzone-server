@@ -661,6 +661,7 @@ export class TournamentBracketService {
         existing,
         sub,
         drawIsLive,
+        tournamentId,
       );
       resolved.push({
         ...base,
@@ -761,6 +762,7 @@ export class TournamentBracketService {
     existing: StageDocument | undefined,
     sub: string,
     drawIsLive: boolean,
+    tournamentId: string,
   ): Promise<{ seedOrder: string[]; newSeedingLog: StageSeedingEntity[] }> {
     const existingSeedOrder =
       existing && drawIsLive
@@ -802,6 +804,11 @@ export class TournamentBracketService {
         teamId: uniqueRequested.filter((id) => !found.has(id)).join(", "),
       });
     }
+    await this.assertTournamentTeams(
+      tournamentId,
+      uniqueRequested,
+      stageDto.name,
+    );
 
     if (existingSeedOrder.length === 0) {
       const { seedOrder, logEntries } = resolveSeedGroups(

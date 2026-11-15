@@ -128,6 +128,7 @@ export class SignUpDto {
 export class SignUpAnswerDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   questionId!: string;
 
   @IsArray()
@@ -140,22 +141,27 @@ export class SignUpAnswerDto {
 export class SignUpQuestionDependencyDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   questionId!: string;
 
   @IsString()
+  @MaxLength(200)
   equals!: string;
 }
 
 export class SignUpQuestionDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   id!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   label!: string;
 
   @IsString()
+  @MaxLength(500)
   @IsOptional()
   help?: string;
 
@@ -163,7 +169,9 @@ export class SignUpQuestionDto {
   type!: SignUpQuestionType;
 
   @IsArray()
+  @ArrayMaxSize(50)
   @IsString({ each: true })
+  @MaxLength(200, { each: true })
   @IsOptional()
   options?: string[];
 
@@ -295,10 +303,12 @@ export class UpdateCoachDetailsDto {
 export class TeamAssignmentDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   teamSlug!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   poolSlug?: string | null;
 
@@ -309,6 +319,7 @@ export class TeamAssignmentDto {
 
 export class AssignTeamsDto {
   @IsArray()
+  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => TeamAssignmentDto)
   assignments!: TeamAssignmentDto[];
@@ -316,14 +327,17 @@ export class AssignTeamsDto {
 
 export class RuleSectionDto {
   @IsString()
+  @MaxLength(200)
   title!: string;
 
   @IsString()
+  @MaxLength(20000)
   body!: string;
 }
 
 export class UpdateRulesDto {
   @IsArray()
+  @ArrayMaxSize(100)
   @ValidateNested({ each: true })
   @Type(() => RuleSectionDto)
   ruleSections!: RuleSectionDto[];
@@ -332,6 +346,7 @@ export class UpdateRulesDto {
 export class TierRequirementDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   tierId!: string;
 
   @IsInt()
@@ -351,6 +366,7 @@ export class PrizeShareDto {
 
   @IsInt()
   @Min(0)
+  @Max(100)
   percent!: number;
 }
 
@@ -374,9 +390,11 @@ export class TournamentDiscordSettingsDto {
 
 export class AdSkillLevelRangeDto {
   @IsString()
+  @MaxLength(32)
   from!: string;
 
   @IsString()
+  @MaxLength(32)
   to!: string;
 }
 
@@ -394,7 +412,9 @@ export class TournamentAdSettingsDto {
   prizeValue?: "0" | "1" | "2" | "3" | "4";
 
   @IsArray()
+  @ArrayMaxSize(200)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   platforms?: string[];
 }
@@ -455,10 +475,12 @@ export class TournamentMatchSettingsDto {
 export class UpdateHostedTournamentSettingsDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   @IsOptional()
   name?: string;
 
   @IsString()
+  @MaxLength(5000)
   @IsOptional()
   description?: string;
 
@@ -488,10 +510,12 @@ export class UpdateHostedTournamentSettingsDto {
   seasonEnd?: Date;
 
   @IsString()
+  @MaxLength(500)
   @IsOptional()
   discord?: string;
 
   @IsString()
+  @MaxLength(500)
   @IsOptional()
   logo?: string | null;
 
@@ -516,6 +540,7 @@ export class UpdateHostedTournamentSettingsDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   tierListId?: string;
 
@@ -526,15 +551,18 @@ export class UpdateHostedTournamentSettingsDto {
 
   @IsInt()
   @Min(0)
+  @Max(100000)
   @IsOptional()
   pointTotal?: number | null;
 
   @IsInt()
   @Min(1)
+  @Max(100000)
   @IsOptional()
   maxTeams?: number | null;
 
   @IsArray()
+  @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => SignUpQuestionDto)
   @IsOptional()
@@ -546,16 +574,19 @@ export class UpdateHostedTournamentSettingsDto {
 
   @IsInt()
   @Min(0)
+  @Max(100000)
   @IsOptional()
   tradePointLimit?: number | null;
 
   @IsArray()
+  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => TierRequirementDto)
   @IsOptional()
   tierRequirements?: TierRequirementDto[];
 
   @IsArray()
+  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => PrizeShareDto)
   @IsOptional()
@@ -580,6 +611,7 @@ export class UpdateHostedTournamentSettingsDto {
   logVisibility?: "participants" | "public";
 
   @IsArray()
+  @ArrayMaxSize(200)
   @IsIn(LOCKABLE_SECTIONS, { each: true })
   @IsOptional()
   unlocked?: LockableSection[];

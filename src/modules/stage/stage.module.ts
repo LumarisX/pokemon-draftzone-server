@@ -1,3 +1,4 @@
+import { DraftCoreModule } from "@modules/draft/draft-core.module";
 import { LeagueMatchupModule } from "@modules/matchup/sub-modules/league-matchup/league-matchup.module";
 import { TeamModule } from "@modules/team/team.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
@@ -18,6 +19,7 @@ import { TournamentTradeService } from "./tournament-trade.service";
 @Module({
   imports: [
     StageCoreModule,
+    DraftCoreModule,
     TeamModule,
     LeagueMatchupModule,
     TierListModule,

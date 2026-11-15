@@ -63,20 +63,24 @@ export class UpdateTierListSettingsDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   format?: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   @IsOptional()
   ruleset?: string;
 }
 
 export class TierListPokemonInputDto {
   @IsString()
+  @MaxLength(64)
   id!: string;
 
   @IsString()
+  @MaxLength(64)
   name!: string;
 
   @IsBoolean()
@@ -84,32 +88,42 @@ export class TierListPokemonInputDto {
   banned?: boolean;
 
   @IsString()
+  @MaxLength(2000)
   @IsOptional()
   notes?: string;
 
   @IsArray()
+  @ArrayMaxSize(500)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   bannedAbilities?: string[];
 
   @IsArray()
+  @ArrayMaxSize(40)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   formes?: string[];
 }
 
 export class TierListTierInputDto {
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   id?: string;
 
   @IsString()
+  @MaxLength(64)
   name!: string;
 
   @IsInt()
+  @Min(-999)
+  @Max(9999)
   cost!: number;
 
   @IsArray()
+  @ArrayMaxSize(2000)
   @ValidateNested({ each: true })
   @Type(() => TierListPokemonInputDto)
   pokemon!: TierListPokemonInputDto[];
@@ -117,6 +131,7 @@ export class TierListTierInputDto {
 
 export class UpdateTierListDto {
   @IsArray()
+  @ArrayMaxSize(60)
   @ValidateNested({ each: true })
   @Type(() => TierListTierInputDto)
   tiers!: TierListTierInputDto[];
@@ -147,10 +162,12 @@ export class BrowseTierListsDto {
   q?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   format?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   ruleset?: string;
 
@@ -178,6 +195,7 @@ export class BrowseTierListsDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(100000)
   @IsOptional()
   skip?: number;
 }
@@ -195,10 +213,12 @@ export class CreateTierListDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   format!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   ruleset!: string;
 
   @IsString()
@@ -215,13 +235,16 @@ export class CreateTierListDto {
   tags?: string[];
 
   @IsArray()
+  @ArrayMaxSize(60)
   @ValidateNested({ each: true })
   @Type(() => TierListTierInputDto)
   @IsOptional()
   tiers?: TierListTierInputDto[];
 
   @IsArray()
+  @ArrayMaxSize(500)
   @IsString({ each: true })
+  @MaxLength(64, { each: true })
   @IsOptional()
   bannedMoves?: string[];
 }
@@ -242,6 +265,7 @@ export class RevertTierListDto {
 
 export class CompareTierListDto {
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   with?: string;
 

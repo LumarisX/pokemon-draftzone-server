@@ -20,6 +20,8 @@ import { ClientSession, Connection, Types } from "mongoose";
 import { actingCoach, activeCoaches } from "@modules/tournament/membership";
 import {
   DraftDto,
+  DraftStateAction,
+  isDraftStateAction,
   SetDraftOrderDto,
   UpdateDraftSettingsDto,
 } from "./draft.dto";
@@ -28,18 +30,12 @@ import { draftAudience, DraftEventsService } from "./draft-events.service";
 import { duplicatesAllowed, picksAreBlind } from "./domain/pick-visibility";
 import type { DraftPickUpdatedEvent } from "./draft-events.service";
 import {
-  calculateCanDraft,
-  calculateCanDraftCounts,
-  calculateCurrentPick,
   calculateTeamTimer,
   cancelSkipTime,
   canTeamDraft,
-  generatePickOrder,
   getCurrentPickingTeam,
-  getCurrentPositionInRound,
   getCurrentRound,
   getDocumentId,
-  getDraftOrder,
   getPokemonIdFromDraft,
   getTeamPickSlot,
   isPreDraftStatus,
@@ -51,7 +47,9 @@ import {
   getPickCost,
   isDraftComplete,
   isTeamDoneDrafting,
+  owedPicks,
 } from "./domain/tier-cost";
+import { turnState } from "./domain/turn-state";
 
 type DeferredSideEffect = () => void | Promise<void>;
 const sessionSideEffects = new WeakMap<ClientSession, DeferredSideEffect[]>();
@@ -108,13 +106,28 @@ function queueSideEffect(
   sessionSideEffects.set(session, existingEffects);
 }
 
+const sideEffectLogger = new Logger("DraftSideEffects");
+
 async function flushSideEffects(session: ClientSession) {
   const effects = sessionSideEffects.get(session) || [];
   sessionSideEffects.delete(session);
   for (const effect of effects) {
-    await effect();
+    try {
+      await effect();
+    } catch (error) {
+      sideEffectLogger.error(
+        "A draft side effect failed after its change was saved",
+        error instanceof Error ? error.stack : error,
+      );
+    }
   }
 }
+
+export type SkipOutcome = "skipped" | "stale" | "busy";
+
+export type ExpectedTurn = { counter: number; skipTime?: Date };
+
+const SKIP_TIME_TOLERANCE_MS = 1000;
 
 function clearSideEffects(session: ClientSession) {
   sessionSideEffects.delete(session);
@@ -180,12 +193,6 @@ export class DraftEngineService {
     team: PopulatedTeam,
     detail: Pick<DraftPickUpdatedEvent, "round" | "pokemon" | "previous">,
   ) {
-    const pickOrder = generatePickOrder(
-      getDraftOrder(draft),
-      tournament.draftCount.max,
-      draft.orderProgression,
-    );
-
     this.draftEvents.emitDraftPickUpdated({
       tournamentSlug: tournament.slug,
       poolSlug: draft.slug,
@@ -196,10 +203,34 @@ export class DraftEngineService {
         name: team.teamName,
         draft: this.rosterSummary(tournament, team),
       },
-      canDraftTeams: calculateCanDraft(draft, pickOrder),
-      canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
-      currentPick: calculateCurrentPick(draft),
+      ...turnState(tournament, draft),
     });
+  }
+
+  private onClockTeam(tournament: PopulatedTournament, draft: PopulatedDraft) {
+    if (!draft.sequentialTurns) return null;
+    return getCurrentPickingTeam(draft, tournament.draftCount.max);
+  }
+
+  private setTurnClock(
+    draft: PopulatedDraft,
+    team: PopulatedTeam | null,
+    seconds?: number,
+  ) {
+    if (!team || !draft.sequentialTurns || draft.noTimer) {
+      draft.skipTime = undefined;
+      draft.remainingTime = undefined;
+      return;
+    }
+    const length =
+      seconds ?? calculateTeamTimer(draft.timerLength, team.skipCount || 0);
+    if (draft.status === "IN_PROGRESS") {
+      draft.skipTime = new Date(Date.now() + length * 1000);
+      draft.remainingTime = undefined;
+    } else {
+      draft.skipTime = undefined;
+      draft.remainingTime = length;
+    }
   }
 
   private async sendDiscordPickUpdate(
@@ -307,7 +338,7 @@ export class DraftEngineService {
     session?: ClientSession,
   ): Promise<void> {
     if (!draft.sequentialTurns) return;
-    if (!(await canTeamDraft(draft, team))) return;
+    if (!(await canTeamDraft(draft, team, tournament.draftCount.max))) return;
 
     const queuedPicks = await this.currentTeamPicks(
       tournament,
@@ -356,7 +387,11 @@ export class DraftEngineService {
 
       if (
         !isOrganizerOverride &&
-        !(await canTeamDraft(currentDraft, currentTeam))
+        !(await canTeamDraft(
+          currentDraft,
+          currentTeam,
+          tournament.draftCount.max,
+        ))
       ) {
         throw new PDZError(ErrorCodes.DRAFT.NOT_YOUR_TURN);
       }
@@ -422,15 +457,6 @@ export class DraftEngineService {
       );
       await this.recordSnipes(currentDraft, snipeCount, session);
 
-      const initialTeamOrder = getDraftOrder(currentDraft);
-      const pickOrder = generatePickOrder(
-        initialTeamOrder,
-        tournament.draftCount.max,
-        currentDraft.orderProgression,
-      );
-      const canDraftTeams = calculateCanDraft(currentDraft, pickOrder);
-      const canDraftCounts = calculateCanDraftCounts(currentDraft, pickOrder);
-
       const pokemonTierMap = createPokemonTierMap(tournament);
       const draftPicks = await Promise.all(
         currentTeam.pickLog.map(async (p) => ({
@@ -459,14 +485,12 @@ export class DraftEngineService {
             team: { id: currentTeamId, name: currentTeam.teamName },
             pool: currentDraft.name,
           },
-          canDraftTeams,
-          canDraftCounts,
           team: {
             id: currentTeamId,
             name: currentTeam.teamName,
             draft: draftPicks,
           },
-          currentPick: calculateCurrentPick(currentDraft),
+          ...turnState(tournament, currentDraft),
         });
       });
 
@@ -490,24 +514,62 @@ export class DraftEngineService {
       Object.assign(draft, currentDraft.toObject());
       Object.assign(team, currentTeam.toObject());
 
-      if (newSession) {
-        await session.commitTransaction();
-        await flushSideEffects(session);
-      }
+      if (newSession) await session.commitTransaction();
     } catch (error) {
       if (newSession) {
         await session.abortTransaction().catch(() => undefined);
         clearSideEffects(session);
+        session.endSession();
       }
       if (isTransactionConflict(error))
         throw new PDZError(ErrorCodes.DRAFT.CHANGED);
       throw error;
-    } finally {
-      if (newSession) {
-        clearSideEffects(session);
-        session.endSession();
-      }
     }
+
+    if (newSession) {
+      session.endSession();
+      await flushSideEffects(session);
+    }
+  }
+
+  private async lockDraft(draft: PopulatedDraft, session: ClientSession) {
+    const fresh = await this.connection
+      .model<DraftDocument>(DraftEntity.name)
+      .findOneAndUpdate(
+        { _id: draft._id },
+        { $inc: { pickVersion: 1 } },
+        { session, projection: { counter: 1, status: 1, skipTime: 1 } },
+      )
+      .lean()
+      .exec();
+    if (!fresh) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+    return fresh;
+  }
+
+  private async inDraftTransaction<T>(
+    draft: PopulatedDraft,
+    work: (session: ClientSession) => Promise<T>,
+  ): Promise<T> {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+    let result: T;
+    try {
+      const fresh = await this.lockDraft(draft, session);
+      if (fresh.counter !== draft.counter || fresh.status !== draft.status)
+        throw new PDZError(ErrorCodes.DRAFT.CHANGED);
+      result = await work(session);
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction().catch(() => undefined);
+      clearSideEffects(session);
+      session.endSession();
+      if (isTransactionConflict(error))
+        throw new PDZError(ErrorCodes.DRAFT.CHANGED);
+      throw error;
+    }
+    session.endSession();
+    await flushSideEffects(session);
+    return result;
   }
 
   private async claimPick(
@@ -516,16 +578,7 @@ export class DraftEngineService {
     session: ClientSession,
     checkTurn: boolean,
   ) {
-    const fresh = await this.connection
-      .model<DraftDocument>(DraftEntity.name)
-      .findOneAndUpdate(
-        { _id: draft._id },
-        { $inc: { pickVersion: 1 } },
-        { session, projection: { counter: 1, status: 1 } },
-      )
-      .lean()
-      .exec();
-    if (!fresh) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+    const fresh = await this.lockDraft(draft, session);
 
     if (
       checkTurn &&
@@ -674,62 +727,39 @@ export class DraftEngineService {
     session?: ClientSession,
   ) {
     if (!tournament.draftCount.max) return;
+    if (draft.status !== "IN_PROGRESS" && draft.status !== "PAUSED") return;
 
     if (isDraftComplete(tournament, draft)) {
       await this.completeDraft(tournament, draft, session);
       return;
     }
 
-    if (!draft.sequentialTurns) return;
+    const onClock = this.onClockTeam(tournament, draft);
+    if (!onClock || !onClock._id.equals(team._id)) return;
 
-    const currentRound = Math.floor(draft.counter / draft.teams.length);
-    const currentPickingTeam = getCurrentPickingTeam(draft);
-    if (
-      !currentPickingTeam ||
-      !currentPickingTeam._id.equals(team._id) ||
-      currentPickingTeam.pickLog.length < currentRound + 1
-    )
+    const filledTurn = onClock.pickLog.length >= getCurrentRound(draft) + 1;
+    if (filledTurn || isTeamDoneDrafting(tournament, draft, onClock)) {
+      await this.advanceSequentialCounter(tournament, draft, session);
       return;
-
-    await this.advanceSequentialCounter(tournament, draft, session);
-  }
-
-  private async skipToNextActiveTeam(
-    tournament: PopulatedTournament,
-    draft: PopulatedDraft,
-    pickOrder: PopulatedTeam[],
-    session?: ClientSession,
-  ): Promise<PopulatedTeam | null> {
-    let nextTeam = getCurrentPickingTeam(draft);
-    if (!nextTeam) return null;
-
-    let skippedTeams = 0;
-    const maxSkips = draft.teams.length;
-
-    while (await isTeamDoneDrafting(tournament, draft, nextTeam)) {
-      skippedTeams++;
-      if (skippedTeams > maxSkips || draft.counter >= pickOrder.length - 1)
-        return null;
-
-      const fullTeam = await this.teamRepo.findByIdOrNull(nextTeam._id);
-      if (fullTeam) {
-        fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
-        await fullTeam.save({ session });
-        const teamIndex = draft.teams.findIndex((t) =>
-          t._id.equals(fullTeam._id),
-        );
-        if (teamIndex !== -1) draft.teams[teamIndex] = fullTeam;
-      }
-
-      draft.counter++;
-      nextTeam = getCurrentPickingTeam(draft);
-      if (!nextTeam) return null;
     }
 
-    await nextTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
-      "primaryCoach",
-      "coaches",
-    ]);
+    this.setTurnClock(draft, onClock);
+    await draft.save({ session });
+    queueSideEffect(session, async () => {
+      await this.agendaService.resumeSkipPick(tournament, draft);
+      this.emitCounter(tournament, draft, onClock);
+    });
+  }
+
+  private skipToNextActiveTeam(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+  ): PopulatedTeam | null {
+    let nextTeam = this.onClockTeam(tournament, draft);
+    while (nextTeam && isTeamDoneDrafting(tournament, draft, nextTeam)) {
+      draft.counter++;
+      nextTeam = this.onClockTeam(tournament, draft);
+    }
     return nextTeam;
   }
 
@@ -738,97 +768,100 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     session?: ClientSession,
   ) {
-    const initialTeamOrder = getDraftOrder(draft);
-    const pickOrder = generatePickOrder(
-      initialTeamOrder,
-      tournament.draftCount.max,
-      draft.orderProgression,
-    );
-
-    if (draft.status !== "IN_PROGRESS") return;
-
+    if (draft.status !== "IN_PROGRESS" && draft.status !== "PAUSED") return;
     draft.counter++;
+    await this.openNextTurn(tournament, draft, session, { announce: true });
+  }
 
-    if (draft.counter >= pickOrder.length) {
-      await this.completeDraft(tournament, draft, session);
-      return;
-    }
-
-    const nextTeam = await this.skipToNextActiveTeam(
-      tournament,
-      draft,
-      pickOrder,
-      session,
-    );
+  private async openNextTurn(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    session: ClientSession | undefined,
+    options: { announce: boolean; resumeSeconds?: number },
+  ) {
+    const counterBefore = draft.counter;
+    const nextTeam = this.skipToNextActiveTeam(tournament, draft);
     if (!nextTeam) {
-      await this.completeDraft(tournament, draft, session);
+      await this.holdForOwedPicks(tournament, draft, session);
       return;
     }
 
-    if (draft.noTimer) {
-      draft.skipTime = undefined;
-    } else {
-      const newSkipTime = new Date();
-      newSkipTime.setSeconds(
-        newSkipTime.getSeconds() +
-          calculateTeamTimer(draft.timerLength, nextTeam.skipCount || 0),
-      );
-      draft.skipTime = newSkipTime;
-    }
-    draft.remainingTime = undefined;
-
-    if (session) {
-      queueSideEffect(session, () =>
-        this.agendaService.resumeSkipPick(tournament, draft),
-      );
-    } else {
-      await this.agendaService.resumeSkipPick(tournament, draft);
-    }
-
-    const nextTeamPicks = await this.currentTeamPicks(
-      tournament,
+    const moved = draft.counter !== counterBefore;
+    await nextTeam.populate<{
+      primaryCoach: CoachDocument;
+      coaches: CoachDocument[];
+    }>(["primaryCoach", "coaches"]);
+    this.setTurnClock(
       draft,
       nextTeam,
-      session,
+      moved ? undefined : options.resumeSeconds,
     );
-    if (nextTeamPicks) {
-      await draft.save({ session });
-      await this.draftPokemon(
+    queueSideEffect(session, () =>
+      this.agendaService.resumeSkipPick(tournament, draft),
+    );
+
+    if (draft.status === "IN_PROGRESS") {
+      const queued = await this.currentTeamPicks(
         tournament,
         draft,
         nextTeam,
-        nextTeamPicks[0],
         session,
       );
-    } else {
-      queueSideEffect(session, async () => {
-        this.draftEvents.emitDraftCounter({
-          tournamentSlug: tournament.slug,
-          poolSlug: draft.slug,
-          audience: draftAudience(draft),
-          currentPick: calculateCurrentPick(draft),
-          nextTeam: nextTeam._id.toString(),
-          canDraftTeams: calculateCanDraft(draft, pickOrder),
-          canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
-        });
-
-        if (draft.channelId) {
-          const channelId = draft.channelId;
-          const nextCoachMention = await this.discordService.resolveMention(
-            channelId,
-            nextTeam.primaryCoach.discordName,
-          );
-          const mentionText = nextCoachMention
-            ? `${nextCoachMention}, it is now your turn!`
-            : "It is now your turn!";
-          await this.discordService.sendMessage(channelId, {
-            content: mentionText,
-          });
-        }
-      });
-
-      await draft.save({ session });
+      if (queued) {
+        await draft.save({ session });
+        await this.draftPokemon(tournament, draft, nextTeam, queued[0], session);
+        return;
+      }
     }
+
+    const announce =
+      draft.status === "IN_PROGRESS" && (options.announce || moved);
+    queueSideEffect(session, async () => {
+      this.emitCounter(tournament, draft, nextTeam);
+      if (announce) await this.announceTurn(draft, nextTeam);
+    });
+    await draft.save({ session });
+  }
+
+  private async announceTurn(draft: PopulatedDraft, team: PopulatedTeam) {
+    if (!draft.channelId) return;
+    const mention = await this.discordService.resolveMention(
+      draft.channelId,
+      team.primaryCoach?.discordName,
+    );
+    await this.discordService.sendMessage(draft.channelId, {
+      content: mention
+        ? `${mention}, it is now your turn!`
+        : `${team.teamName}, it is now your turn!`,
+    });
+  }
+
+  private async holdForOwedPicks(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    session: ClientSession | undefined,
+  ) {
+    if (isDraftComplete(tournament, draft)) {
+      await this.completeDraft(tournament, draft, session);
+      return;
+    }
+
+    draft.skipTime = undefined;
+    draft.remainingTime = undefined;
+    await draft.save({ session });
+
+    const owed = owedPicks(tournament, draft);
+    queueSideEffect(session, async () => {
+      await this.agendaService.cancelSkipPick(draft);
+      this.emitCounter(tournament, draft, null);
+      if (!draft.channelId || draft.status !== "IN_PROGRESS" || !owed.length)
+        return;
+      await this.discordService.sendMessage(draft.channelId, {
+        content: `Every turn has been taken. Waiting on owed picks from ${owed
+          .map(({ team, count }) => `${team.teamName} (${count})`)
+          .join(", ")}.`,
+      });
+    });
   }
 
   private async completeDraft(
@@ -872,73 +905,97 @@ export class DraftEngineService {
     });
   }
 
+  private sameDeadline(a: Date | undefined, b: Date | undefined) {
+    if (!a || !b) return !a && !b;
+    return (
+      Math.abs(new Date(a).getTime() - new Date(b).getTime()) <=
+      SKIP_TIME_TOLERANCE_MS
+    );
+  }
+
   async skipCurrentPick(
     tournament: PopulatedTournament,
     draft: PopulatedDraft,
-  ) {
-    if (draft.status !== "IN_PROGRESS") return false;
+    expected: ExpectedTurn = { counter: draft.counter },
+  ): Promise<SkipOutcome> {
+    if (draft.status !== "IN_PROGRESS" || draft.counter !== expected.counter)
+      return "stale";
 
-    const team = getCurrentPickingTeam(draft);
+    const team = this.onClockTeam(tournament, draft);
+    if (!team) return "stale";
 
-    if (!team) {
-      this.logger.warn(
-        `skipCurrentPick: getCurrentPickingTeam returned null for draft ${draft._id} ` +
-          `(teams=${draft.teams.length}, counter=${draft.counter}, status=${draft.status})`,
-      );
-      return false;
-    }
-
-    const fullTeam = await this.teamRepo.findByIdOrNull(team._id);
-    const teamName = fullTeam?.teamName || "Unknown Team";
-
-    if (fullTeam) {
-      fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
-
-      await fullTeam.save();
-
-      const teamIndex = draft.teams.findIndex((t) =>
-        t._id.equals(fullTeam._id),
-      );
-      if (teamIndex !== -1) {
-        draft.teams[teamIndex] = fullTeam;
+    const session = await this.connection.startSession();
+    session.startTransaction();
+    try {
+      const fresh = await this.lockDraft(draft, session);
+      const onExpectedTurn =
+        fresh.status === "IN_PROGRESS" &&
+        fresh.counter === expected.counter &&
+        (expected.skipTime === undefined ||
+          this.sameDeadline(fresh.skipTime, expected.skipTime));
+      if (!onExpectedTurn) {
+        await session.abortTransaction();
+        session.endSession();
+        return "stale";
       }
-    }
 
-    draft.eventLog.push({
-      eventType: "SKIP",
-      details: `${teamName} was skipped`,
-      timestamp: new Date(),
-    });
+      const fullTeam = await this.teamRepo.findByIdOrNull(team._id);
+      const teamName = fullTeam?.teamName || "Unknown Team";
 
-    await draft.save();
+      if (fullTeam) {
+        fullTeam.skipCount = (fullTeam.skipCount || 0) + 1;
+        await fullTeam.save({ session });
+        const teamIndex = draft.teams.findIndex((t) =>
+          t._id.equals(fullTeam._id),
+        );
+        if (teamIndex !== -1) draft.teams[teamIndex] = fullTeam;
+      }
 
-    const newTimerLength = fullTeam
-      ? calculateTeamTimer(draft.timerLength, fullTeam.skipCount)
-      : draft.timerLength;
-
-    this.draftEvents.emitDraftSkip({
-      tournamentSlug: tournament.slug,
-      poolSlug: draft.slug,
-      audience: draftAudience(draft),
-      teamName,
-      skipCount: fullTeam?.skipCount || 1,
-      newTimerLength,
-    });
-
-    if (draft.channelId) {
-      const coachMention = await this.discordService.resolveMention(
-        draft.channelId,
-        fullTeam?.primaryCoach?.discordName,
-      );
-      const coachLabel = coachMention ?? "coach";
-      this.discordService.sendMessage(draft.channelId, {
-        content: `${teamName} (${coachLabel}) was skipped!`,
+      draft.eventLog.push({
+        eventType: "SKIP",
+        details: `${teamName} was skipped`,
+        timestamp: new Date(),
       });
+
+      const newTimerLength = fullTeam
+        ? calculateTeamTimer(draft.timerLength, fullTeam.skipCount)
+        : draft.timerLength;
+
+      queueSideEffect(session, async () => {
+        this.draftEvents.emitDraftSkip({
+          tournamentSlug: tournament.slug,
+          poolSlug: draft.slug,
+          audience: draftAudience(draft),
+          teamName,
+          skipCount: fullTeam?.skipCount || 1,
+          newTimerLength,
+        });
+
+        if (draft.channelId) {
+          const coachMention = await this.discordService.resolveMention(
+            draft.channelId,
+            fullTeam?.primaryCoach?.discordName,
+          );
+          await this.discordService.sendMessage(draft.channelId, {
+            content: `${teamName} (${coachMention ?? "coach"}) was skipped!`,
+          });
+        }
+      });
+
+      await draft.save({ session });
+      await this.advanceSequentialCounter(tournament, draft, session);
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction().catch(() => undefined);
+      clearSideEffects(session);
+      session.endSession();
+      if (isTransactionConflict(error)) return "busy";
+      throw error;
     }
 
-    await this.advanceSequentialCounter(tournament, draft);
-
-    return true;
+    session.endSession();
+    await flushSideEffects(session);
+    return "skipped";
   }
 
   async undraftPokemon(
@@ -1022,43 +1079,80 @@ export class DraftEngineService {
       });
     }
 
-    const fillsCurrentTurn =
-      !replaced &&
-      draft.sequentialTurns &&
-      round === getCurrentRound(draft) &&
-      !!getCurrentPickingTeam(draft)?._id.equals(currentTeam._id);
+    await this.inDraftTransaction(draft, async (session) => {
+      currentTeam.pickLog.splice(round, 0, {
+        pokemon: { id: toID(pick.pokemonId) },
+        picker: replaced?.picker ?? pickerFor(currentTeam),
+        addons: pick.addons,
+        timestamp: replaced?.timestamp ?? new Date(),
+      });
 
-    currentTeam.pickLog.splice(round, 0, {
-      pokemon: { id: toID(pick.pokemonId) },
-      picker: replaced?.picker ?? pickerFor(currentTeam),
-      addons: pick.addons,
-      timestamp: replaced?.timestamp ?? new Date(),
+      await currentTeam.save({ session });
+
+      await this.removePokemonFromPicks(
+        draft,
+        pick.pokemonId,
+        session,
+        currentTeam._id.toString(),
+      );
+
+      const detail = {
+        round,
+        pokemon: this.pickSummary(tournament, pick),
+        previous: replaced
+          ? this.pickSummary(tournament, {
+              pokemonId: getPokemonIdFromDraft(replaced),
+              addons: replaced.addons,
+            })
+          : undefined,
+      };
+      queueSideEffect(session, async () => {
+        this.emitPickUpdated(tournament, draft, currentTeam, detail);
+        await this.sendDiscordPickUpdate(
+          tournament,
+          draft,
+          currentTeam,
+          detail,
+        );
+      });
+
+      if (!replaced)
+        await this.handlePostPickState(
+          tournament,
+          draft,
+          currentTeam,
+          session,
+        );
     });
+  }
 
-    await currentTeam.save();
+  private emitCounter(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    currentTeam: PopulatedTeam | null | undefined,
+  ) {
+    this.draftEvents.emitDraftCounter({
+      tournamentSlug: tournament.slug,
+      poolSlug: draft.slug,
+      audience: draftAudience(draft),
+      nextTeam: currentTeam?._id.toString() ?? "",
+      ...turnState(tournament, draft),
+    });
+  }
 
-    await this.removePokemonFromPicks(
-      draft,
-      pick.pokemonId,
-      undefined,
-      currentTeam._id.toString(),
-    );
+  async restartClock(tournament: PopulatedTournament, draft: PopulatedDraft) {
+    if (draft.status !== "IN_PROGRESS" || draft.noTimer) return;
+    const currentTeam = this.onClockTeam(tournament, draft);
+    if (!currentTeam) return;
 
-    const detail = {
-      round,
-      pokemon: this.pickSummary(tournament, pick),
-      previous: replaced
-        ? this.pickSummary(tournament, {
-            pokemonId: getPokemonIdFromDraft(replaced),
-            addons: replaced.addons,
-          })
-        : undefined,
-    };
-    this.emitPickUpdated(tournament, draft, currentTeam, detail);
-    await this.sendDiscordPickUpdate(tournament, draft, currentTeam, detail);
-
-    if (fillsCurrentTurn)
-      await this.handlePostPickState(tournament, draft, currentTeam);
+    await this.inDraftTransaction(draft, async (session) => {
+      this.setTurnClock(draft, currentTeam);
+      await draft.save({ session });
+      queueSideEffect(session, async () => {
+        await this.agendaService.resumeSkipPick(tournament, draft);
+        this.emitCounter(tournament, draft, currentTeam);
+      });
+    });
   }
 
   async setCurrentPick(
@@ -1067,6 +1161,11 @@ export class DraftEngineService {
     round: number,
     position: number,
   ) {
+    if (draft.status === "COMPLETED")
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "This draft is complete. Reopen it before moving the turn.",
+      });
+
     const teamCount = draft.teams.length;
     if (!teamCount)
       throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
@@ -1087,78 +1186,71 @@ export class DraftEngineService {
         reason: `Position must be between 1 and ${teamCount}.`,
       });
 
-    const previousCounter = draft.counter;
-    draft.counter = round * teamCount + position;
-    const movedForward = draft.counter > previousCounter;
+    await this.inDraftTransaction(draft, async (session) => {
+      const previousCounter = draft.counter;
+      draft.counter = round * teamCount + position;
+      const movedForward = draft.counter > previousCounter;
 
-    const currentTeam = getCurrentPickingTeam(draft);
-    const teamTimer = currentTeam
-      ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
-      : (draft.timerLength ?? 30);
+      const currentTeam = this.onClockTeam(tournament, draft);
+      this.setTurnClock(draft, currentTeam);
 
-    if (draft.noTimer) {
-      draft.skipTime = undefined;
-      draft.remainingTime = undefined;
-    } else if (draft.status === "IN_PROGRESS") {
-      const newSkipTime = new Date();
-      newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-      draft.skipTime = newSkipTime;
-      draft.remainingTime = undefined;
-    } else {
-      draft.skipTime = undefined;
-      draft.remainingTime = teamTimer;
-    }
+      await draft.save({ session });
 
-    await draft.save();
-    await this.agendaService.resumeSkipPick(tournament, draft);
-
-    const pickOrder = generatePickOrder(
-      getDraftOrder(draft),
-      tournament.draftCount.max,
-      draft.orderProgression,
-    );
-    this.draftEvents.emitDraftCounter({
-      tournamentSlug: tournament.slug,
-      poolSlug: draft.slug,
-      audience: draftAudience(draft),
-      currentPick: calculateCurrentPick(draft),
-      nextTeam: currentTeam?._id.toString() ?? "",
-      canDraftTeams: calculateCanDraft(draft, pickOrder),
-      canDraftCounts: calculateCanDraftCounts(draft, pickOrder),
-    });
-
-    if (draft.channelId && currentTeam) {
-      const channelId = draft.channelId;
-      await currentTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
-      "primaryCoach",
-      "coaches",
-    ]);
-      const coachMention = await this.discordService.resolveMention(
-        channelId,
-        currentTeam.primaryCoach?.discordName,
-      );
-      const embed = new EmbedBuilder()
-        .setTitle(
-          movedForward
-            ? `The draft was skipped ahead to ${currentTeam.teamName}`
-            : `The draft is back on ${currentTeam.teamName}`,
-        )
-        .setColor(0xffde00)
-        .setURL(this.draftUrl(tournament, draft))
-        .addFields([
-          { name: "Round", value: `${round + 1}`, inline: true },
-          { name: "Position", value: `${position + 1}`, inline: true },
-        ])
-        .setTimestamp();
-      const verb = movedForward ? "skipped the draft ahead" : "moved the draft back";
-      await this.discordService.sendMessage(channelId, {
-        content:
-          draft.status === "IN_PROGRESS"
-            ? `An organizer ${verb} — ${coachMention ?? "coach"}, it is now your turn!`
-            : `An organizer ${verb} to ${coachMention ?? "this coach"}'s turn.`,
-        embeds: [embed],
+      queueSideEffect(session, async () => {
+        await this.agendaService.resumeSkipPick(tournament, draft);
+        this.emitCounter(tournament, draft, currentTeam);
+        if (draft.channelId && currentTeam)
+          await this.announceMovedTurn(
+            tournament,
+            draft,
+            currentTeam,
+            { round, position },
+            movedForward,
+          );
       });
-    }
+    });
+  }
+
+  private async announceMovedTurn(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    currentTeam: PopulatedTeam,
+    slot: { round: number; position: number },
+    movedForward: boolean,
+  ) {
+    if (!draft.channelId) return;
+    const channelId = draft.channelId;
+    await currentTeam.populate<{
+      primaryCoach: CoachDocument;
+      coaches: CoachDocument[];
+    }>(["primaryCoach", "coaches"]);
+    const coachMention = await this.discordService.resolveMention(
+      channelId,
+      currentTeam.primaryCoach?.discordName,
+    );
+    const embed = new EmbedBuilder()
+      .setTitle(
+        movedForward
+          ? `The draft was skipped ahead to ${currentTeam.teamName}`
+          : `The draft is back on ${currentTeam.teamName}`,
+      )
+      .setColor(0xffde00)
+      .setURL(this.draftUrl(tournament, draft))
+      .addFields([
+        { name: "Round", value: `${slot.round + 1}`, inline: true },
+        { name: "Position", value: `${slot.position + 1}`, inline: true },
+      ])
+      .setTimestamp();
+    const verb = movedForward
+      ? "skipped the draft ahead"
+      : "moved the draft back";
+    await this.discordService.sendMessage(channelId, {
+      content:
+        draft.status === "IN_PROGRESS"
+          ? `An organizer ${verb} — ${coachMention ?? "coach"}, it is now your turn!`
+          : `An organizer ${verb} to ${coachMention ?? "this coach"}'s turn.`,
+      embeds: [embed],
+    });
   }
 
   async batchDraftPokemon(
@@ -1228,102 +1320,161 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     state: string,
   ) {
-    const statusActions: Record<"play" | "pause", () => Promise<void>> = {
-      play: async () => {
-        draft.status = "IN_PROGRESS";
-        const currentTeam = getCurrentPickingTeam(draft);
-
-        if (draft.noTimer) {
-          draft.skipTime = undefined;
-          draft.remainingTime = undefined;
-        } else {
-          const teamTimer = currentTeam
-            ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
-            : (draft.timerLength ?? 30);
-          const secondsToAdd = draft.remainingTime ?? teamTimer;
-          const newSkipTime = new Date();
-          newSkipTime.setSeconds(newSkipTime.getSeconds() + secondsToAdd);
-          draft.skipTime = newSkipTime;
-          draft.remainingTime = undefined;
-        }
-
-        await draft.save();
-
-        const queuedPicks = currentTeam
-          ? await this.currentTeamPicks(tournament, draft, currentTeam)
-          : null;
-        if (currentTeam && queuedPicks?.length) {
-          await this.draftPokemon(
-            tournament,
-            draft,
-            currentTeam,
-            queuedPicks[0],
-          );
-          return;
-        }
-
-        await this.agendaService.resumeSkipPick(tournament, draft);
-      },
-      pause: async () => {
-        draft.status = "PAUSED";
-        cancelSkipTime(draft);
-        draft.skipTime = undefined;
-        await this.agendaService.cancelSkipPick(draft);
-      },
-    };
-
-    if (state !== "play" && state !== "pause") {
-      return;
-    }
-
-    const action = statusActions[state];
-    if (typeof action !== "function") {
-      return;
-    }
+    if (!isDraftStateAction(state)) return;
+    if (!this.assertTransition(draft, state)) return;
 
     const counterBeforeAction = draft.counter;
 
-    await action();
-    await draft.save();
-    this.draftEvents.emitDraftStatus({
-      tournamentSlug: tournament.slug,
-      poolSlug: draft.slug,
-      audience: draftAudience(draft),
-      status: draft.status,
-      noTimer: draft.noTimer,
-      currentPick: calculateCurrentPick(draft),
-    });
+    await this.inDraftTransaction(draft, async (session) => {
+      if (state === "play") await this.play(tournament, draft, session);
+      else if (state === "pause") this.pause(draft, session);
+      else if (state === "finish")
+        await this.finish(tournament, draft, session);
+      else this.reopen(draft);
 
-    const statusLabel =
-      draft.status === "IN_PROGRESS"
-        ? "started"
-        : draft.status === "PAUSED"
-          ? "paused"
-          : draft.status.toLowerCase();
+      await draft.save({ session });
 
-    if (draft.channelId) {
-      const turnText = await this.openingTurnText(
-        draft,
-        state,
-        counterBeforeAction,
-      );
-      await this.discordService.sendMessage(draft.channelId, {
-        content: `The draft is now ${statusLabel}.${turnText}`,
+      queueSideEffect(session, async () => {
+        this.draftEvents.emitDraftStatus({
+          tournamentSlug: tournament.slug,
+          poolSlug: draft.slug,
+          audience: draftAudience(draft),
+          status: draft.status,
+          noTimer: draft.noTimer,
+          currentPick: turnState(tournament, draft).currentPick,
+        });
+
+        if (!draft.channelId || state === "finish") return;
+        if (state === "reopen") {
+          await this.discordService.sendMessage(draft.channelId, {
+            content:
+              "An organizer reopened the draft. It is paused until they resume it.",
+          });
+          return;
+        }
+        const statusLabel =
+          draft.status === "IN_PROGRESS"
+            ? "started"
+            : draft.status === "PAUSED"
+              ? "paused"
+              : draft.status.toLowerCase();
+        const turnText = await this.openingTurnText(
+          tournament,
+          draft,
+          state,
+          counterBeforeAction,
+        );
+        await this.discordService.sendMessage(draft.channelId, {
+          content: `The draft is now ${statusLabel}.${turnText}`,
+        });
       });
+    });
+  }
+
+  private async play(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    session: ClientSession,
+  ) {
+    const resumeSeconds = draft.remainingTime;
+    draft.status = "IN_PROGRESS";
+
+    if (!draft.sequentialTurns) {
+      this.setTurnClock(draft, null);
+      queueSideEffect(session, async () => {
+        await this.agendaService.cancelSkipPick(draft);
+      });
+      return;
     }
+
+    await this.openNextTurn(tournament, draft, session, {
+      announce: false,
+      resumeSeconds,
+    });
+  }
+
+  private async finish(
+    tournament: PopulatedTournament,
+    draft: PopulatedDraft,
+    session: ClientSession,
+  ) {
+    const owed = owedPicks(tournament, draft);
+    draft.eventLog.push({
+      eventType: "FINISH",
+      details: owed.length
+        ? `An organizer finished the draft with picks still owed by ${owed
+            .map(({ team, count }) => `${team.teamName} (${count})`)
+            .join(", ")}`
+        : "An organizer finished the draft",
+      timestamp: new Date(),
+    });
+    await this.completeDraft(tournament, draft, session);
+  }
+
+  private pause(draft: PopulatedDraft, session: ClientSession) {
+    draft.status = "PAUSED";
+    cancelSkipTime(draft);
+    draft.skipTime = undefined;
+    queueSideEffect(session, async () => {
+      await this.agendaService.cancelSkipPick(draft);
+    });
+  }
+
+  private reopen(draft: PopulatedDraft) {
+    draft.status = "PAUSED";
+    draft.skipTime = undefined;
+    draft.remainingTime = undefined;
+    draft.eventLog.push({
+      eventType: "REOPEN",
+      details: "An organizer reopened the draft",
+      timestamp: new Date(),
+    });
+  }
+
+  private assertTransition(draft: PopulatedDraft, state: DraftStateAction) {
+    const status = draft.status;
+    if (state === "play") {
+      if (status === "IN_PROGRESS") return false;
+      if (status === "COMPLETED")
+        throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+          reason: "This draft is complete. Reopen it before resuming.",
+        });
+      return true;
+    }
+    if (state === "pause") {
+      if (status === "PAUSED") return false;
+      if (status !== "IN_PROGRESS")
+        throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+          reason: "Only a running draft can be paused.",
+        });
+      return true;
+    }
+    if (state === "finish") {
+      if (status === "COMPLETED") return false;
+      if (status !== "IN_PROGRESS" && status !== "PAUSED")
+        throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+          reason: "Only a draft that has started can be finished.",
+        });
+      return true;
+    }
+    if (status !== "COMPLETED")
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "Only a completed draft can be reopened.",
+      });
+    return true;
   }
 
   private async openingTurnText(
+    tournament: PopulatedTournament,
     draft: PopulatedDraft,
-    state: "play" | "pause",
+    state: DraftStateAction,
     counterBeforeAction: number,
   ): Promise<string> {
     if (state !== "play") return "";
     if (draft.status !== "IN_PROGRESS") return "";
-    if (!draft.sequentialTurns) return "";
     if (draft.counter !== counterBeforeAction) return "";
 
-    const currentTeam = getCurrentPickingTeam(draft);
+    const currentTeam = this.onClockTeam(tournament, draft);
     if (!currentTeam || !draft.channelId) return "";
 
     await currentTeam.populate<{ primaryCoach: CoachDocument; coaches: CoachDocument[] }>([
@@ -1371,7 +1522,6 @@ export class DraftEngineService {
     if (dto.allowRemovals !== undefined)
       draft.allowRemovals = dto.allowRemovals;
     if (dto.timerLength !== undefined) draft.timerLength = dto.timerLength;
-    if (dto.public !== undefined) draft.public = dto.public;
     if (dto.draftStart !== undefined)
       draft.draftStart = dto.draftStart ? new Date(dto.draftStart) : undefined;
     if (dto.draftEnd !== undefined)
@@ -1445,34 +1595,28 @@ export class DraftEngineService {
     draft: PopulatedDraft,
     noTimer: boolean,
   ) {
-    draft.noTimer = noTimer;
+    await this.inDraftTransaction(draft, async (session) => {
+      draft.noTimer = noTimer;
 
-    if (draft.status === "IN_PROGRESS") {
-      if (noTimer) {
-        draft.skipTime = undefined;
-        draft.remainingTime = undefined;
-      } else {
-        const currentTeam = getCurrentPickingTeam(draft);
-        const teamTimer = currentTeam
-          ? calculateTeamTimer(draft.timerLength, currentTeam.skipCount || 0)
-          : (draft.timerLength ?? 30);
-        const newSkipTime = new Date();
-        newSkipTime.setSeconds(newSkipTime.getSeconds() + teamTimer);
-        draft.skipTime = newSkipTime;
-        draft.remainingTime = undefined;
+      if (draft.status === "IN_PROGRESS") {
+        this.setTurnClock(draft, this.onClockTeam(tournament, draft));
+        queueSideEffect(session, () =>
+          this.agendaService.resumeSkipPick(tournament, draft),
+        );
       }
-      await this.agendaService.resumeSkipPick(tournament, draft);
-    }
 
-    await draft.save();
+      await draft.save({ session });
 
-    this.draftEvents.emitDraftStatus({
-      tournamentSlug: tournament.slug,
-      poolSlug: draft.slug,
-      audience: draftAudience(draft),
-      status: draft.status,
-      noTimer: draft.noTimer,
-      currentPick: calculateCurrentPick(draft),
+      queueSideEffect(session, () => {
+        this.draftEvents.emitDraftStatus({
+          tournamentSlug: tournament.slug,
+          poolSlug: draft.slug,
+          audience: draftAudience(draft),
+          status: draft.status,
+          noTimer: draft.noTimer,
+          currentPick: turnState(tournament, draft).currentPick,
+        });
+      });
     });
   }
 }

@@ -7,6 +7,7 @@ import {
   IsEmail,
   IsOptional,
   IsArray,
+  MaxLength,
 } from "class-validator";
 
 export class UserSettingsDto {
@@ -15,18 +16,22 @@ export class UserSettingsDto {
   shinyUnlock?: boolean;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   spriteSet?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   theme?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   ldMode?: string;
 
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   themeOverride?: string;
 }

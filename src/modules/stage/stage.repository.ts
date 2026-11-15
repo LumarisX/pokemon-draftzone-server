@@ -115,6 +115,10 @@ export class StageRepository {
     await this.stageModel.bulkWrite(ops as never);
   }
 
+  hydrate(raw: object): StageDocument {
+    return this.stageModel.hydrate(raw);
+  }
+
   teamIdsInSeedOrder(stage: StageDocument): Types.ObjectId[] {
     return stage.teamIds ?? [];
   }

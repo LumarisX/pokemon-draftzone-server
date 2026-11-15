@@ -8,7 +8,13 @@ import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writ
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { assertCan } from "@modules/tournament/tournament-policy";
+import { DraftDocument, DraftEntity } from "@modules/draft/draft.schema";
+import { canSeeTeamPicks, picksAreBlind } from "@modules/draft/domain/pick-visibility";
+import { getLatestRoster } from "@modules/stage/domain/roster";
+import { rosterContext } from "@modules/stage/domain/stage-axis";
 import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import { Types } from "mongoose";
 import { TierListAccessService } from "./tier-list-access.service";
 import { TierListHistoryService } from "./tier-list-history.service";
@@ -30,8 +36,16 @@ export type RequirementPlan = {
   kept: boolean;
 };
 
+type PoolSnapshot = {
+  _id: Types.ObjectId;
+  picksVisibleTo?: "everyone" | "ownTeam";
+  status?: string;
+};
+
+const DRAFT_RUNNING_STATUSES = ["IN_PROGRESS", "PAUSED", "COMPLETED"];
+
 export type AffectedPick = {
-  team: string;
+  team?: string;
   pokemonId: string;
   name: string;
   from: number | null;
@@ -53,6 +67,8 @@ export class TournamentTierListService {
     private readonly teamRepo: TeamRepository,
     private readonly logWriter: TournamentLogWriter,
     private readonly transactions: TransactionRunner,
+    @InjectModel(DraftEntity.name)
+    private readonly draftModel: Model<DraftDocument>,
   ) {}
 
   private async organizerContext(
@@ -98,21 +114,57 @@ export class TournamentTierListService {
     return { plan, requirements };
   }
 
+  private async poolsOf(tournament: HostedTournament): Promise<PoolSnapshot[]> {
+    try {
+      const drafts = await this.draftModel
+        .find({ tournamentId: tournament.id })
+        .select("picksVisibleTo status")
+        .lean()
+        .exec();
+      return drafts.map((draft) => ({
+        _id: draft._id,
+        picksVisibleTo: draft.picksVisibleTo,
+        status: draft.status,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   private async affectedPicks(
     tournament: HostedTournament,
     current: TierList | null,
     incoming: TierListState,
-  ): Promise<{ draftStarted: boolean; picks: AffectedPick[] }> {
+    sub: string,
+  ): Promise<{
+    draftStarted: boolean;
+    preview: AffectedPick[];
+    record: AffectedPick[];
+  }> {
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
+    const pools = await this.poolsOf(tournament);
     const tierCost = new Map(incoming.tiers.map((tier) => [tier.id, tier.cost]));
-    const picks: AffectedPick[] = [];
-    let draftStarted = false;
+    const rosters = rosterContext(tournament);
+    const preview: AffectedPick[] = [];
+    const record: AffectedPick[] = [];
+    let draftStarted = pools.some((pool) =>
+      DRAFT_RUNNING_STATUSES.includes(pool.status ?? ""),
+    );
 
     for (const team of teams) {
-      for (const pick of (team.picks ?? []).flat()) {
-        draftStarted = true;
-        const from = current?.getPokemonCost(pick.pokemonId, pick.addons) ?? null;
-        const entry = incoming.pokemon[pick.pokemonId];
+      const roster = getLatestRoster(team, rosters);
+      if (roster.length > 0) draftStarted = true;
+      const pool = team.draftId
+        ? pools.find((candidate) => candidate._id.equals(team.draftId!))
+        : undefined;
+      const blind = team.draftId ? !pool || picksAreBlind(pool) : false;
+      const organizerMaySee = pool
+        ? canSeeTeamPicks(tournament, pool, team, sub)
+        : !blind;
+
+      for (const pick of roster) {
+        const from = current?.getPokemonCost(pick.id, pick.addons) ?? null;
+        const entry = incoming.pokemon[pick.id];
         const addon = pick.addons?.length
           ? entry?.addons?.find((candidate) => candidate.name === pick.addons![0])
           : undefined;
@@ -120,16 +172,19 @@ export class TournamentTierListService {
           ? null
           : (addon?.cost ?? (entry.tierId ? (tierCost.get(entry.tierId) ?? null) : null));
         if (from === to) continue;
-        picks.push({
-          team: team.teamName,
-          pokemonId: pick.pokemonId,
-          name: entry?.name ?? current?.pokemon.get(pick.pokemonId)?.name ?? pick.pokemonId,
+        const affected = {
+          pokemonId: pick.id,
+          name: entry?.name ?? current?.pokemon.get(pick.id)?.name ?? pick.id,
           from,
           to,
-        });
+        };
+        preview.push(
+          organizerMaySee ? { team: team.teamName, ...affected } : affected,
+        );
+        record.push(blind ? affected : { team: team.teamName, ...affected });
       }
     }
-    return { draftStarted, picks };
+    return { draftStarted, preview, record };
   }
 
   async preview(
@@ -146,10 +201,11 @@ export class TournamentTierListService {
     const { tierList: incoming } = await this.access.resolve(fromSlug, sub, "view");
     const incomingState = toState(incoming);
     const { plan } = this.planRequirements(tournament, current, incomingState);
-    const { draftStarted, picks } = await this.affectedPicks(
+    const { draftStarted, preview: picks } = await this.affectedPicks(
       tournament,
       current,
       incomingState,
+      sub,
     );
 
     return {
@@ -200,7 +256,12 @@ export class TournamentTierListService {
 
     const state = source ? toState(source) : emptyState();
     const { plan, requirements } = this.planRequirements(tournament, current, state);
-    const { picks } = await this.affectedPicks(tournament, current, state);
+    const { record: picks } = await this.affectedPicks(
+      tournament,
+      current,
+      state,
+      sub,
+    );
 
     const copy = await this.transactions.run(async () => {
       const created = await this.tierListRepo.create({

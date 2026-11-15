@@ -5,7 +5,6 @@ import {
   PopulatedTournament,
 } from "@modules/draft/draft.repository";
 import { canOnTeam } from "@modules/tournament/membership";
-import { isStaff } from "@modules/tournament/tournament-policy";
 import {
   calculateCanDraftCounts,
   generatePickOrder,
@@ -16,6 +15,7 @@ import {
   isPreDraftStatus,
 } from "./pick-order";
 import { canSeeAllPicks } from "./pick-visibility";
+import { owedPicks } from "./tier-cost";
 
 const RECENT_PICK_COUNT = 4;
 const MIN_CONSIDERED_GAP_SECONDS = 2;
@@ -41,6 +41,7 @@ export type PoolOverview = {
   progress?: { done: number; total: number };
   currentRound?: number;
   onTheClock?: PoolTeamRef;
+  owedPicks?: { team: PoolTeamRef; count: number }[];
   skipTime?: Date;
   noTimer: boolean;
   draftStart?: Date;
@@ -148,18 +149,6 @@ function picksUntilYourTurn(
   return undefined;
 }
 
-export function isTournamentMember(
-  tournament: PopulatedTournament,
-  teams: PopulatedTeam[],
-  sub: string | undefined,
-): boolean {
-  if (!sub) return false;
-  if (isStaff(tournament, sub)) return true;
-  return teams.some(
-    (team) => team.status === "approved" && canOnTeam(team, sub, "chat"),
-  );
-}
-
 export function summarizePool(
   tournament: PopulatedTournament,
   draft: PopulatedDraft,
@@ -174,7 +163,11 @@ export function summarizePool(
   const picksHidden = !canSeeAllPicks(tournament, draft, sub);
 
   const picks = timedPicks(draft);
-  const onTheClock = sequentialLive ? getCurrentPickingTeam(draft) : null;
+  const onTheClock = sequentialLive
+    ? getCurrentPickingTeam(draft, rounds)
+    : null;
+  const owed =
+    sequentialLive && !onTheClock ? owedPicks(tournament, draft) : [];
 
   return {
     poolSlug: draft.slug,
@@ -194,6 +187,14 @@ export function summarizePool(
         }
       : {}),
     ...(onTheClock ? { onTheClock: teamRef(onTheClock) } : {}),
+    ...(owed.length
+      ? {
+          owedPicks: owed.map(({ team, count }) => ({
+            team: teamRef(team),
+            count,
+          })),
+        }
+      : {}),
     ...(live && draft.skipTime ? { skipTime: draft.skipTime } : {}),
     noTimer: draft.noTimer,
     draftStart: draft.draftStart,

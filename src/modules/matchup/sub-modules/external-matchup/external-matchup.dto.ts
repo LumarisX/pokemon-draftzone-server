@@ -50,6 +50,7 @@ export function IsMatchStatTuple(validationOptions?: ValidationOptions) {
       validator: {
         validate(value: any) {
           if (!Array.isArray(value)) return false;
+          if (value.length > 60) return false;
           return value.every(
             (item) =>
               Array.isArray(item) &&
@@ -98,15 +99,18 @@ export class MatchStatPropertiesDto {
 export class ExternalMatchupDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   stage!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   teamName!: string;
 
   @Transform(({ value }) => (value === "" ? undefined : value))
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   @IsOptional()
   coach?: string;
 
@@ -117,16 +121,19 @@ export class ExternalMatchupDto {
 
   @Transform(({ value }) => (value === "" || value === null ? undefined : value))
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   opponentTimezone?: string;
 
   @IsArray()
+  @ArrayMaxSize(15)
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ExternalMatchDto)
   matches!: ExternalMatchDto[];
 
   @IsArray()
+  @ArrayMaxSize(60)
   @ValidateNested({ each: true })
   @Type(() => PokemonDto)
   team!: PokemonDto[];
@@ -140,20 +147,24 @@ export class MatchSchedulePatchDto {
 
   @Transform(({ value }) => (value === "" || value === null ? undefined : value))
   @IsString()
+  @MaxLength(64)
   @IsOptional()
   opponentTimezone?: string;
 }
 
 export class ScorePatchDto {
   @IsString()
+  @MaxLength(2000)
   @IsOptional()
   aTeamPaste?: string;
 
   @IsString()
+  @MaxLength(2000)
   @IsOptional()
   bTeamPaste?: string;
 
   @IsArray()
+  @ArrayMaxSize(15)
   @ValidateNested({ each: true })
   @Type(() => ExternalMatchDto)
   matches!: ExternalMatchDto[];

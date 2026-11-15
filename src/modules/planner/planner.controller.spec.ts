@@ -27,6 +27,7 @@ describe("PlannerController", () => {
   let controller: PlannerController;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockedGetTeamCoverage.mockResolvedValue({ coverage: true });
     mockedGetTeamMoves.mockResolvedValue({ moves: true });
     mockedSummarizeTeam.mockReturnValue({ summary: true });
@@ -36,7 +37,10 @@ describe("PlannerController", () => {
 
   describe("getPlanner", () => {
     it("splits the comma-separated team string and resolves each id against the requested ruleset", async () => {
-      await controller.getPlanner("Gen9 NatDex", "pikachu,charizard");
+      await controller.getPlanner({
+        ruleset: "Gen9 NatDex",
+        team: "pikachu,charizard",
+      });
 
       const team = mockedSummarizeTeam.mock.calls[0][0];
       expect(team.map((p: any) => p.id)).toEqual(["pikachu", "charizard"]);
@@ -44,7 +48,7 @@ describe("PlannerController", () => {
     });
 
     it("builds a single-entry team when the team string has no commas", async () => {
-      await controller.getPlanner("Gen9 NatDex", "pikachu");
+      await controller.getPlanner({ ruleset: "Gen9 NatDex", team: "pikachu" });
 
       const team = mockedSummarizeTeam.mock.calls[0][0];
       expect(team).toHaveLength(1);
@@ -52,7 +56,10 @@ describe("PlannerController", () => {
     });
 
     it("forwards the same constructed team to typechart, movechart, and coverage", async () => {
-      await controller.getPlanner("Gen9 NatDex", "pikachu,charizard");
+      await controller.getPlanner({
+        ruleset: "Gen9 NatDex",
+        team: "pikachu,charizard",
+      });
 
       const team = mockedSummarizeTeam.mock.calls[0][0];
       expect(mockedGetTeamTypechart).toHaveBeenCalledWith(team);
@@ -61,7 +68,10 @@ describe("PlannerController", () => {
     });
 
     it("assembles the response from each collaborator, with an always-empty recommended list", async () => {
-      const result = await controller.getPlanner("Gen9 NatDex", "pikachu");
+      const result = await controller.getPlanner({
+        ruleset: "Gen9 NatDex",
+        team: "pikachu",
+      });
 
       expect(result).toEqual({
         typechart: { typechart: true },
@@ -74,14 +84,35 @@ describe("PlannerController", () => {
 
     it("rejects with SPECIES.NOT_FOUND when the team string contains an unknown Pokemon id", async () => {
       await expect(
-        controller.getPlanner("Gen9 NatDex", "notarealpokemon"),
+        controller.getPlanner({
+          ruleset: "Gen9 NatDex",
+          team: "notarealpokemon",
+        }),
       ).rejects.toMatchObject({ code: "SPC-001" });
+    });
+
+    it("rejects with VAL-002 before analysis when the team is empty", async () => {
+      await expect(
+        controller.getPlanner({ ruleset: "Gen9 NatDex", team: " , ," }),
+      ).rejects.toMatchObject({ code: "VAL-002" });
+      expect(mockedSummarizeTeam).not.toHaveBeenCalled();
+    });
+
+    it("rejects with VAL-002 before analysis when the team has 21 entries", async () => {
+      const team = Array.from({ length: 21 }, () => "pikachu").join(",");
+      await expect(
+        controller.getPlanner({ ruleset: "Gen9 NatDex", team }),
+      ).rejects.toMatchObject({ code: "VAL-002" });
+      expect(mockedSummarizeTeam).not.toHaveBeenCalled();
     });
 
     it("rejects with FORMAT.NOT_FOUND-style error when the ruleset id is unknown", async () => {
       let error: unknown;
       try {
-        await controller.getPlanner("NotARealRuleset", "pikachu");
+        await controller.getPlanner({
+          ruleset: "NotARealRuleset",
+          team: "pikachu",
+        });
       } catch (e) {
         error = e;
       }

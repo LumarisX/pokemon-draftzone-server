@@ -8,6 +8,7 @@ import {
 } from "@modules/tier-list/tier-list.schema";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, SchemaTypes, Types } from "mongoose";
+import { tournamentReadCache } from "./tournament-read-cache";
 
 @Schema({ _id: false })
 export class OrganizerNameEntity {
@@ -486,3 +487,23 @@ export const HostedTournamentSchema = SchemaFactory.createForClass(
 );
 
 HostedTournamentSchema.index({ "discordLinkCode.hash": 1 }, { sparse: true });
+HostedTournamentSchema.index({ "staff.sub": 1 });
+HostedTournamentSchema.index({ "adSettings.advertise": 1, signUpDeadline: 1 });
+
+const clearTournamentReads = () => tournamentReadCache.clear();
+HostedTournamentSchema.post("save", clearTournamentReads);
+HostedTournamentSchema.post(
+  [
+    "updateOne",
+    "updateMany",
+    "findOneAndUpdate",
+    "findOneAndReplace",
+    "replaceOne",
+    "deleteOne",
+    "deleteMany",
+    "findOneAndDelete",
+  ],
+  clearTournamentReads,
+);
+HostedTournamentSchema.post("insertMany", clearTournamentReads);
+HostedTournamentSchema.post("bulkWrite", clearTournamentReads);

@@ -26,8 +26,14 @@ export class TournamentTradeController {
     @Param("leagueSlug") leagueSlug: string,
     @Param("tournamentSlug") tournamentSlug: string,
     @Query("teamSlug") teamSlug?: string | string[],
+    @User() sub?: string,
   ) {
-    return this.tradeService.getTrades(leagueSlug, tournamentSlug, teamSlug);
+    return this.tradeService.getTrades(
+      leagueSlug,
+      tournamentSlug,
+      teamSlug,
+      sub,
+    );
   }
 
   @Post()

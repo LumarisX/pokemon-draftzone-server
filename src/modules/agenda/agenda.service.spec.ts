@@ -63,7 +63,11 @@ function buildAgendaStub(stored: StoredJob[] = []) {
   return { agenda, stored };
 }
 
-function buildService(nodeEnv: string, stored: StoredJob[] = []) {
+function buildService(
+  nodeEnv: string,
+  stored: StoredJob[] = [],
+  runningDrafts: Record<string, unknown>[] = [],
+) {
   const { agenda } = buildAgendaStub(stored);
 
   const configService = {
@@ -72,20 +76,29 @@ function buildService(nodeEnv: string, stored: StoredJob[] = []) {
 
   const draftRepo = {
     findById: jest.fn().mockResolvedValue(null),
+    findRunningTimed: jest.fn().mockResolvedValue(runningDrafts),
+    findPopulatedById: jest.fn(async (id: string) =>
+      runningDrafts.find((draft) => String(draft._id) === id),
+    ),
   } as any;
+  const hostedTournamentRepo = {
+    findById: jest.fn(async (id: string) => ({ id, tierListId: "tier-list" })),
+  } as any;
+  const tierListRepo = { findById: jest.fn().mockResolvedValue({}) } as any;
+  const draftEngine = { restartClock: jest.fn().mockResolvedValue(undefined) };
 
   const service = new AgendaService(
     agenda,
     draftRepo,
-    {} as any,
-    {} as any,
+    hostedTournamentRepo,
+    tierListRepo,
     {} as any,
     {} as any,
     configService,
-    {} as any,
+    draftEngine as any,
   );
 
-  return { service, agenda, draftRepo, stored };
+  return { service, agenda, draftRepo, draftEngine, stored };
 }
 
 describe("AgendaService.onModuleInit", () => {
@@ -119,12 +132,22 @@ describe("AgendaService.onModuleInit", () => {
     );
   });
 
-  it("starts the agenda client in both environments", async () => {
+  it("starts the agenda client outside development", async () => {
     const { service, agenda } = buildService("production");
 
     await service.onModuleInit();
 
     expect(agenda.start).toHaveBeenCalled();
+  });
+
+  it("never starts the agenda client in development, including when scheduling", async () => {
+    const { service, agenda } = buildService("development");
+
+    await service.onModuleInit();
+    await service.cancelSkipPick({ _id: "draft-1" } as any);
+    await service.onModuleDestroy();
+
+    expect(agenda.start).not.toHaveBeenCalled();
   });
 
   it("drops skip jobs on startup when the draft no longer has a running timer", async () => {
@@ -141,6 +164,71 @@ describe("AgendaService.onModuleInit", () => {
     await service.onModuleInit();
 
     expect(stored).toHaveLength(0);
+  });
+
+  it("recreates a missing skip job for a running draft whose deadline is ahead", async () => {
+    const skipTime = new Date(Date.now() + 60_000);
+    const { service, stored, draftEngine } = buildService("production", [], [
+      {
+        _id: "draft-1",
+        tournamentId: "tournament-1",
+        status: "IN_PROGRESS",
+        noTimer: false,
+        skipTime,
+      },
+    ]);
+
+    await service.onModuleInit();
+
+    const picks = stored.filter((job) => job.name === "skip-draft-pick");
+    expect(picks).toHaveLength(1);
+    expect(picks[0].nextRunAt).toEqual(skipTime);
+    expect(draftEngine.restartClock).not.toHaveBeenCalled();
+  });
+
+  it("restarts the clock, never skips, when the deadline passed while the server was down", async () => {
+    const overdue = {
+      _id: "draft-1",
+      tournamentId: "tournament-1",
+      status: "IN_PROGRESS",
+      noTimer: false,
+      skipTime: new Date(Date.now() - 60_000),
+    };
+    const stored: StoredJob[] = [
+      {
+        _id: "job-a",
+        name: "skip-draft-pick",
+        nextRunAt: overdue.skipTime,
+        data: { draftId: "draft-1", skipTime: overdue.skipTime },
+      },
+    ];
+    const { service, draftEngine } = buildService("production", stored, [
+      overdue,
+    ]);
+
+    await service.onModuleInit();
+
+    expect(stored).toHaveLength(0);
+    expect(draftEngine.restartClock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "tournament-1" }),
+      overdue,
+    );
+  });
+
+  it("reconciles before the runner starts, so an overdue job cannot fire first", async () => {
+    const { service, agenda, draftRepo } = buildService("production");
+    const order: string[] = [];
+    draftRepo.findRunningTimed.mockImplementation(async () => {
+      order.push("reconcile");
+      return [];
+    });
+    (agenda.start as jest.Mock).mockImplementation(async () => {
+      order.push("start");
+    });
+
+    await service.onModuleInit();
+
+    expect(order).toEqual(["reconcile", "start"]);
   });
 });
 

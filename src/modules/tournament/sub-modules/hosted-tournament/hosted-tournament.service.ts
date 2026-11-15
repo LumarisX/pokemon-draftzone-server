@@ -212,8 +212,7 @@ export class HostedTournamentService {
         (team.coaches ?? []).some(
           (seat) => seat.auth0Id === sub && !!seat.completedAt,
         ),
-      ...(teamDraft &&
-      (teamDraft.public !== false || canSeeHidden || viewerIsCoach)
+      ...(teamDraft
         ? { pool: { poolSlug: teamDraft.slug, name: teamDraft.name } }
         : {}),
       ...(viewerIsCoach
@@ -381,7 +380,7 @@ export class HostedTournamentService {
 
   private computeOutcomes(
     tournament: HostedTournament,
-    options: { final?: boolean } = {},
+    options: { final?: boolean; publicOnly?: boolean } = {},
   ) {
     return computeTournamentOutcomes(
       {
@@ -391,14 +390,6 @@ export class HostedTournamentService {
       },
       tournament,
       options,
-    );
-  }
-
-  private async recordOutcomes(tournament: HostedTournament): Promise<void> {
-    const { results } = await this.computeOutcomes(tournament, { final: true });
-    await this.teamRepo.setOutcomes(
-      tournament.id,
-      new Map(results.map((result) => [result.teamId, result])),
     );
   }
 
@@ -433,7 +424,9 @@ export class HostedTournamentService {
       };
     }
 
-    const { seasons } = await this.computeOutcomes(tournament);
+    const { seasons } = await this.computeOutcomes(tournament, {
+      publicOnly: true,
+    });
     const season = seasons.get(team._id.toString()) ?? {
       teamId: team._id.toString(),
       matches: [],
@@ -501,15 +494,7 @@ export class HostedTournamentService {
       tournamentSlug,
     );
 
-    const canSeeAllDrafts = sub
-      ? can(tournament, sub, "viewHidden") ||
-        (await this.findSignupForTournament(sub, tournament.id))?.team
-          .status === "approved"
-      : false;
-
-    const drafts = canSeeAllDrafts
-      ? await this.draftRepo.findAllByTournament(tournament.id)
-      : await this.draftRepo.findPublicByTournament(tournament.id);
+    const drafts = await this.draftRepo.findAllByTournament(tournament.id);
 
     return {
       name: tournament.name,
@@ -981,14 +966,36 @@ export class HostedTournamentService {
 
     const pool = await this.seatingPool(tournament, dto.poolSlug);
 
-    const decided = await this.transactions.run(async () => {
+    const outcome = await this.transactions.run(async () => {
+      const fresh = await this.applicationRepo.findInTournament(
+        tournament.id,
+        applicationId,
+      );
+      if (fresh.resultingTeamId)
+        return {
+          seated: false as const,
+          decided: await this.applicationRepo.decide(applicationId, {
+            status: "approved",
+            decidedBy: sub,
+          }),
+        };
       await this.reserveRosterRoom(tournament);
-      return this.seatTeam(tournament, application, sub, pool, dto.teamName);
+      return {
+        seated: true as const,
+        decided: await this.seatTeam(
+          tournament,
+          fresh,
+          sub,
+          pool,
+          dto.teamName,
+        ),
+      };
     });
 
-    this.announceCoachSeated(tournament, application.discordName);
+    if (outcome.seated)
+      this.announceCoachSeated(tournament, application.discordName);
 
-    return decided;
+    return outcome.decided;
   }
 
   async seatAtRandom(
@@ -1037,9 +1044,26 @@ export class HostedTournamentService {
     );
 
     await this.transactions.run(async () => {
+      const fresh = await Promise.all(
+        placements.map(({ item }) =>
+          this.applicationRepo.findInTournament(
+            tournament.id,
+            item._id.toString(),
+          ),
+        ),
+      );
+      const alreadySeated = fresh.filter(
+        (application) => application.resultingTeamId,
+      );
+      if (alreadySeated.length)
+        throw new PDZError(ErrorCodes.TOURNAMENT.APPLICATION_HAS_TEAM, {
+          applicationIds: alreadySeated.map((application) =>
+            application._id.toString(),
+          ),
+        });
       await this.reserveRosterRoom(tournament, placements.length);
-      for (const { item, pool } of placements)
-        await this.seatTeam(tournament, item, sub, pool);
+      for (const [index, { pool }] of placements.entries())
+        await this.seatTeam(tournament, fresh[index], sub, pool);
     });
 
     for (const { item } of placements)
@@ -1415,6 +1439,13 @@ export class HostedTournamentService {
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const poolsBySlug = new Map(drafts.map((d) => [d.slug, d]));
+    const poolsById = new Map(drafts.map((d) => [d._id.toString(), d]));
+    const draftingInTurns = (draftId: Types.ObjectId | null | undefined) => {
+      const pool = draftId ? poolsById.get(draftId.toString()) : undefined;
+      return pool?.sequentialTurns && !isPreDraftStatus(pool.status)
+        ? pool
+        : undefined;
+    };
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
     const teamsBySlug = new Map(teams.map((team) => [team.slug, team]));
 
@@ -1441,9 +1472,19 @@ export class HostedTournamentService {
           tournamentSlug: tournament.slug,
         });
 
+      const draftId = targetPool?._id ?? null;
+      if ((team.draftId?.toString() ?? null) !== (draftId?.toString() ?? null)) {
+        const locked =
+          draftingInTurns(team.draftId) ?? draftingInTurns(draftId);
+        if (locked)
+          throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+            reason: `${locked.name} is already drafting in turns, so ${team.teamName} cannot move in or out of it. Drop the team instead.`,
+          });
+      }
+
       planned.push({
         team,
-        draftId: targetPool?._id ?? null,
+        draftId,
         status: assignment.status,
       });
     }
@@ -1891,11 +1932,17 @@ export class HostedTournamentService {
       }));
     if (dto.prizeSplit !== undefined) update["prizeSplit"] = dto.prizeSplit;
     if (dto.adSettings !== undefined) update["adSettings"] = dto.adSettings;
+    let outcomeWrite: "record" | "clear" | null = null;
+    let outcomes: Awaited<
+      ReturnType<HostedTournamentService["computeOutcomes"]>
+    >["results"] = [];
     if (dto.completed === true && !tournament.completed) {
-      await this.recordOutcomes(tournament);
+      outcomes = (await this.computeOutcomes(tournament, { final: true }))
+        .results;
+      outcomeWrite = "record";
       update["completedAt"] = new Date();
     } else if (dto.completed === false && tournament.completed) {
-      await this.teamRepo.clearOutcomes(tournament.id);
+      outcomeWrite = "clear";
       update["completedAt"] = null;
       update["archived"] = null;
     }
@@ -1920,6 +1967,13 @@ export class HostedTournamentService {
       (await this.teamRepo.countApprovedByTournament(tournament.id)) > 0;
 
     await this.transactions.run(async () => {
+      if (outcomeWrite === "record")
+        await this.teamRepo.setOutcomes(
+          tournament.id,
+          new Map(outcomes.map((result) => [result.teamId, result])),
+        );
+      else if (outcomeWrite === "clear")
+        await this.teamRepo.clearOutcomes(tournament.id);
       await this.tournamentRepo.updateSettings(tournament.id, update);
       for (const section of new Set(dto.unlocked ?? []))
         await this.logWriter.record(tournament, sub, {

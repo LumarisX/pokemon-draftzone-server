@@ -1,8 +1,10 @@
 import mongoose, { Model } from "mongoose";
 import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentMapper } from "./external-tournament.mapper";
 import { ExternalTournamentRepository } from "./external-tournament.repository";
+import { ExternalMatchupDocument } from "../../../matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ExternalTournamentDocument } from "./external-tournament.schema";
 
 jest.mock("./external-tournament.mapper", () => ({
@@ -36,6 +38,9 @@ describe("ExternalTournamentRepository", () => {
   let save: jest.Mock;
   let findOneAndUpdate: jest.Mock;
   let model: jest.Mocked<Model<ExternalTournamentDocument>>;
+  let findOneAndDelete: jest.Mock;
+  let deleteMany: jest.Mock;
+  let matchupModel: jest.Mocked<Model<ExternalMatchupDocument>>;
   let repository: ExternalTournamentRepository;
 
   beforeEach(() => {
@@ -47,7 +52,15 @@ describe("ExternalTournamentRepository", () => {
     model = Object.assign(modelConstructor, {
       findOneAndUpdate,
     }) as unknown as jest.Mocked<Model<ExternalTournamentDocument>>;
-    repository = new ExternalTournamentRepository(model);
+    findOneAndDelete = jest.fn();
+    deleteMany = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ deletedCount: 2 }),
+    });
+    Object.assign(model, { findOneAndDelete });
+    matchupModel = { deleteMany } as unknown as jest.Mocked<
+      Model<ExternalMatchupDocument>
+    >;
+    repository = new ExternalTournamentRepository(model, matchupModel);
     mockedMapper.toDatabasePayload.mockReturnValue({ persisted: true } as any);
   });
 
@@ -106,6 +119,34 @@ describe("ExternalTournamentRepository", () => {
       save.mockRejectedValue(impostor);
 
       await expect(repository.create(tournament)).rejects.toBe(impostor);
+    });
+  });
+
+  describe("deleteBySlugAndOwner", () => {
+    it("deletes the tournament and the matchups that reference its id", async () => {
+      const id = new mongoose.Types.ObjectId();
+      findOneAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: id }),
+      });
+
+      await repository.deleteBySlugAndOwner("ppdl", "auth0|owner");
+
+      expect(findOneAndDelete).toHaveBeenCalledWith({
+        owner: { $eq: "auth0|owner" },
+        slug: { $eq: "ppdl" },
+      });
+      expect(deleteMany).toHaveBeenCalledWith({ "aTeam._id": id });
+    });
+
+    it("throws DRAFT.NOT_FOUND and deletes no matchups for an unknown slug", async () => {
+      findOneAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        repository.deleteBySlugAndOwner("missing", "auth0|owner"),
+      ).rejects.toMatchObject({ code: ErrorCodes.DRAFT.NOT_FOUND.code });
+      expect(deleteMany).not.toHaveBeenCalled();
     });
   });
 

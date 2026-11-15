@@ -32,7 +32,7 @@ export const UserSettingsSchema =
 
 @Schema({ timestamps: true, collection: "users" })
 export class UserEntity {
-  @Prop({ type: String, required: true, trim: true })
+  @Prop({ type: String, required: true, trim: true, unique: true, index: true })
   auth0Sub!: string;
 
   @Prop({ type: String, trim: true })

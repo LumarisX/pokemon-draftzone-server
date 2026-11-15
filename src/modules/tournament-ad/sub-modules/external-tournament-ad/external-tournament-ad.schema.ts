@@ -91,3 +91,5 @@ export class ExternalTournamentAdEntity {
 export const ExternalTournamentAdSchema = SchemaFactory.createForClass(
   ExternalTournamentAdEntity,
 );
+ExternalTournamentAdSchema.index({ status: 1, closesAt: 1 });
+ExternalTournamentAdSchema.index({ owner: 1, createdAt: -1 });

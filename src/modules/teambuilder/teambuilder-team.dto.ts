@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsIn,
@@ -9,9 +10,39 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  registerDecorator,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { TEAM_CONTEXT_TYPES, TeamContextType } from "./teambuilder-team.schema";
+import {
+  TEAM_CONTEXT_TYPES,
+  TEAM_MAX_SETS,
+  TeamContextType,
+} from "./teambuilder-team.schema";
+
+function IsNullableMoveList() {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: "isNullableMoveList",
+      target: object.constructor,
+      propertyName,
+      validator: {
+        validate(value: unknown) {
+          return (
+            Array.isArray(value) &&
+            value.every(
+              (move) =>
+                move === null ||
+                (typeof move === "string" && move.length <= 64),
+            )
+          );
+        },
+        defaultMessage() {
+          return "moves must be strings of at most 64 characters or null.";
+        },
+      },
+    });
+  };
+}
 
 export class SetStatsDto {
   @IsInt() @Min(0) @Max(255) hp!: number;
@@ -41,7 +72,10 @@ export class PokemonSetDto {
 
   @IsOptional() @IsString() @MaxLength(32) teraType?: string;
 
-  @IsArray() moves!: (string | null)[];
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsNullableMoveList()
+  moves!: (string | null)[];
 
   @ValidateNested() @Type(() => SetStatsDto) ivs!: SetStatsDto;
 
@@ -77,6 +111,7 @@ export class SaveTeamDto {
   @IsInt() @Min(1) @Max(100) level!: number;
 
   @IsArray()
+  @ArrayMaxSize(TEAM_MAX_SETS)
   @ValidateNested({ each: true })
   @Type(() => PokemonSetDto)
   sets!: PokemonSetDto[];

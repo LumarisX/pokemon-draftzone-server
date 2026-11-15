@@ -3,9 +3,12 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { generateSlug } from "@core/slug";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import mongoose, { ClientSession, Model, Types } from "mongoose";
+import mongoose, { Model, Types } from "mongoose";
 import { ExternalMatchupMapper } from "../../../matchup/sub-modules/external-matchup/external-matchup.mapper";
-import { ExternalMatchupDocument } from "../../../matchup/sub-modules/external-matchup/external-matchup.schema";
+import {
+  ExternalMatchupDocument,
+  ExternalMatchupEntity,
+} from "../../../matchup/sub-modules/external-matchup/external-matchup.schema";
 import { ExternalTournament } from "./external-tournament.domain";
 import { ExternalTournamentMapper } from "./external-tournament.mapper";
 import {
@@ -20,6 +23,8 @@ export class ExternalTournamentRepository {
   constructor(
     @InjectModel(ExternalTournamentEntity.name)
     private readonly tournamentModel: Model<ExternalTournamentDocument>,
+    @InjectModel(ExternalMatchupEntity.name)
+    private readonly matchupModel: Model<ExternalMatchupDocument>,
   ) {}
 
   async findByOwner(owner: string): Promise<ExternalTournament[]> {
@@ -154,13 +159,11 @@ export class ExternalTournamentRepository {
     );
   }
 
-  async deleteBySlugAndOwner(
-    slug: string,
-    ownerId: string,
-    session?: ClientSession,
-  ): Promise<mongoose.DeleteResult> {
-    const query = this.tournamentModel.deleteOne({ owner: ownerId, slug });
-    if (session) query.session(session);
-    return query.exec();
+  async deleteBySlugAndOwner(slug: string, ownerId: string): Promise<void> {
+    const deleted = await this.tournamentModel
+      .findOneAndDelete({ owner: { $eq: ownerId }, slug: { $eq: slug } })
+      .exec();
+    if (!deleted) throw new PDZError(ErrorCodes.DRAFT.NOT_FOUND);
+    await this.matchupModel.deleteMany({ "aTeam._id": deleted._id }).exec();
   }
 }

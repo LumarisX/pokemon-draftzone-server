@@ -83,3 +83,5 @@ export class ExternalMatchupEntity {
 export const ExternalMatchupSchema = SchemaFactory.createForClass(
   ExternalMatchupEntity,
 );
+
+ExternalMatchupSchema.index({ "aTeam._id": 1 });

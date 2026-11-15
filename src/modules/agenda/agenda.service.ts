@@ -19,14 +19,15 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Agenda, Job } from "agenda";
+import { Agenda, Job, JobParameters } from "agenda";
 import { Types } from "mongoose";
 import { AGENDA_CLIENT } from "./agenda.constants";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-const SKIP_RETRY_DELAY_MS = 60 * 1000;
+const SKIP_RETRY_DELAY_MS = 5 * 1000;
 const SKIP_MAX_RETRIES = 10;
 const SKIP_TIME_TOLERANCE_MS = 1000;
+const SWEEP_INTERVAL_MS = 60 * 1000;
 
 const SKIP_PICK_JOB = "skip-draft-pick";
 const SKIP_REMINDER_JOB = "skip-draft-reminder";
@@ -36,12 +37,21 @@ type SkipJobData = {
   tournamentId: string;
   draftId: string;
   skipTime?: string | Date;
+  counter?: number;
   retryCount?: number;
 };
+
+function jobStillCounts(job: JobParameters): boolean {
+  if (job.lockedAt || job.nextRunAt) return true;
+  if (!job.lastFinishedAt) return false;
+  return !job.failedAt || job.failedAt < job.lastFinishedAt;
+}
 
 @Injectable()
 export class AgendaService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AgendaService.name);
+  private sweepTimer?: ReturnType<typeof setInterval>;
+  private sweeping = false;
 
   constructor(
     @Inject(AGENDA_CLIENT) private readonly agenda: Agenda,
@@ -66,21 +76,74 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       this.handleCleanupFileUploads(),
     );
 
-    await this.agenda.start();
-
     if (this.isDev()) {
-      this.logger.log("Skipping recurring jobs in development mode");
+      this.logger.log(
+        "Job runner not started in development mode; recurring jobs skipped",
+      );
       return;
     }
 
     await this.reconcileDraftJobs();
+
+    await this.agenda.start();
+
+    this.sweepTimer = setInterval(
+      () => void this.ensureDraftJobs(),
+      SWEEP_INTERVAL_MS,
+    );
+    this.sweepTimer.unref?.();
 
     await this.agenda.every("0 3 * * *", "cleanup-file-uploads");
     this.logger.log("Scheduled recurring file upload cleanup job");
   }
 
   async onModuleDestroy() {
+    if (this.sweepTimer) clearInterval(this.sweepTimer);
+    this.sweepTimer = undefined;
     await this.agenda.stop();
+  }
+
+  async ensureDraftJobs(): Promise<number> {
+    if (this.sweeping) return 0;
+    this.sweeping = true;
+    try {
+      const running = (await this.draftRepo.findRunningTimed()).filter(
+        (draft) => !!draft.skipTime,
+      );
+      if (!running.length) return 0;
+
+      const { jobs } = await this.agenda.queryJobs({ name: SKIP_PICK_JOB });
+      let recreated = 0;
+      for (const draft of running) {
+        const draftId = this.draftIdOf(draft);
+        const covered = jobs.some((job) => {
+          const data = job.data as SkipJobData | undefined;
+          return (
+            String(data?.draftId) === draftId &&
+            !!data?.skipTime &&
+            Math.abs(
+              new Date(data.skipTime).getTime() - draft.skipTime!.getTime(),
+            ) <= SKIP_TIME_TOLERANCE_MS &&
+            jobStillCounts(job)
+          );
+        });
+        if (covered) continue;
+
+        await this.resumeSkipPick({ id: String(draft.tournamentId) }, draft);
+        recreated += 1;
+      }
+
+      if (recreated)
+        this.logger.warn(
+          `Recreated ${recreated} missing skip-draft-pick job(s)`,
+        );
+      return recreated;
+    } catch (error) {
+      this.logger.error("Failed to check draft jobs", error);
+      return 0;
+    } finally {
+      this.sweeping = false;
+    }
   }
 
   private isDev(): boolean {
@@ -100,14 +163,16 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleSkipDraftPick(job: Job) {
+    const data = job.attrs.data as SkipJobData;
     const {
       tournamentId,
       draftId,
       skipTime: expectedSkipTime,
+      counter: expectedCounter,
       retryCount = 0,
-    } = job.attrs.data as SkipJobData;
+    } = data;
     this.logger.log(
-      `skip-draft-pick fired for draft ${draftId} (expectedSkipTime=${expectedSkipTime ? new Date(expectedSkipTime).toISOString() : "none"}, retryCount=${retryCount}, isDev=${this.isDev()})`,
+      `skip-draft-pick fired for draft ${draftId} (expectedSkipTime=${expectedSkipTime ? new Date(expectedSkipTime).toISOString() : "none"}, counter=${expectedCounter ?? "none"}, retryCount=${retryCount}, isDev=${this.isDev()})`,
     );
     if (this.isDev()) return;
     const tournament = await this.findPopulatedTournament(tournamentId);
@@ -133,11 +198,12 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       draft.status !== "IN_PROGRESS" ||
       draft.noTimer ||
       !draft.skipTime ||
-      (driftMs !== undefined && driftMs > SKIP_TIME_TOLERANCE_MS)
+      (driftMs !== undefined && driftMs > SKIP_TIME_TOLERANCE_MS) ||
+      (expectedCounter !== undefined && draft.counter !== expectedCounter)
     ) {
       this.logger.warn(
         `Discarding stale skip-draft-pick job for draft ${draft.name} ` +
-          `(status=${draft.status}, noTimer=${draft.noTimer}, draft.skipTime=${draft.skipTime?.toISOString() ?? "none"}, driftMs=${driftMs ?? "n/a"})`,
+          `(status=${draft.status}, noTimer=${draft.noTimer}, draft.skipTime=${draft.skipTime?.toISOString() ?? "none"}, driftMs=${driftMs ?? "n/a"}, counter=${draft.counter}, expectedCounter=${expectedCounter ?? "n/a"})`,
       );
       await job.remove();
       return;
@@ -146,24 +212,11 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Executing skip-draft-pick for tournament ${tournament.name}, draft ${draft.name}`,
     );
-    const skipped = await this.draftEngine.skipCurrentPick(tournament, draft);
-    if (skipped) {
-      return;
-    }
-
-    const latestDraft = await this.draftRepo.findById(draftId);
-    if (
-      !latestDraft ||
-      latestDraft.status !== "IN_PROGRESS" ||
-      !latestDraft.skipTime
-    ) {
-      return;
-    }
-
-    const retryTime = new Date(Date.now() + SKIP_RETRY_DELAY_MS);
-    if (latestDraft.skipTime.getTime() > retryTime.getTime()) {
-      return;
-    }
+    const outcome = await this.draftEngine.skipCurrentPick(tournament, draft, {
+      counter: expectedCounter ?? draft.counter,
+      skipTime: expectedSkipTime ? new Date(expectedSkipTime) : undefined,
+    });
+    if (outcome !== "busy") return;
 
     if (retryCount >= SKIP_MAX_RETRIES) {
       this.logger.warn(
@@ -173,16 +226,21 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.logger.warn(
-      `skip-draft-pick no-op for tournament ${tournament.name}, draft ${draft.name}; retrying in 1 minute (${retryCount + 1}/${SKIP_MAX_RETRIES})`,
+      `skip-draft-pick for tournament ${tournament.name}, draft ${draft.name} met a concurrent change; retrying (${retryCount + 1}/${SKIP_MAX_RETRIES})`,
     );
-    job.schedule(retryTime);
-    job.attrs.data = {
-      tournamentId,
-      draftId,
-      skipTime: latestDraft.skipTime,
-      retryCount: retryCount + 1,
-    } satisfies SkipJobData;
-    await job.save();
+    await this.agenda
+      .create(SKIP_PICK_JOB, { ...data, retryCount: retryCount + 1 })
+      .unique(this.uniqueKey({ ...data, retryCount: retryCount + 1 }))
+      .schedule(new Date(Date.now() + SKIP_RETRY_DELAY_MS))
+      .save();
+  }
+
+  private uniqueKey(data: SkipJobData) {
+    return {
+      "data.draftId": data.draftId,
+      "data.skipTime": data.skipTime,
+      "data.retryCount": data.retryCount ?? 0,
+    };
   }
 
   private async handleSkipDraftReminder(job: Job) {
@@ -215,7 +273,9 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
         return;
     }
 
-    const currentTeam = getCurrentPickingTeam(draft);
+    const currentTeam = draft.sequentialTurns
+      ? getCurrentPickingTeam(draft, tournament.draftCount.max)
+      : null;
     if (!currentTeam || !draft.channelId) return;
 
     const coach = currentTeam.primaryCoach;
@@ -274,7 +334,7 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
   ) {
     const job = await this.agenda
       .create(name, data)
-      .unique({ "data.draftId": draftId })
+      .unique(this.uniqueKey(data))
       .schedule(runAt)
       .save();
 
@@ -291,19 +351,7 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     return job;
   }
 
-  async scheduleSkipPick(
-    tournament: PopulatedTournament,
-    draft: DraftDocument,
-  ) {
-    const skipTime = new Date();
-    skipTime.setSeconds(skipTime.getSeconds() + draft.timerLength!);
-    draft.skipTime = skipTime;
-    draft.remainingTime = undefined;
-    await this.resumeSkipPick(tournament, draft);
-  }
-
   async cancelSkipPick(draft: DraftDocument) {
-    await this.agenda.start();
     const draftId = this.draftIdOf(draft);
     let removed = 0;
     for (const name of DRAFT_JOB_NAMES) {
@@ -312,8 +360,10 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     return removed;
   }
 
-  async resumeSkipPick(tournament: PopulatedTournament, draft: DraftDocument) {
-    await this.agenda.start();
+  async resumeSkipPick(
+    tournament: Pick<PopulatedTournament, "id">,
+    draft: DraftDocument,
+  ) {
     const draftId = this.draftIdOf(draft);
     const skipTime = draft.skipTime;
 
@@ -334,13 +384,15 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       tournamentId: tournament.id,
       draftId,
       skipTime,
+      counter: draft.counter,
+      retryCount: 0,
     });
 
     await this.syncSkipReminder(tournament, draftId, skipTime);
   }
 
   private async syncSkipReminder(
-    tournament: PopulatedTournament,
+    tournament: Pick<PopulatedTournament, "id">,
     draftId: string,
     skipTime: Date,
   ) {
@@ -359,55 +411,57 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
 
   private async reconcileDraftJobs() {
     try {
-      const groups = new Map<string, { id: string; runAt: number }[]>();
-      for (const name of DRAFT_JOB_NAMES) {
-        const { jobs } = await this.agenda.queryJobs({ name });
-        for (const job of jobs) {
-          const draftId = (job.data as SkipJobData | undefined)?.draftId;
-          if (!draftId) continue;
-          const key = `${name}|${String(draftId)}`;
-          groups.set(key, [
-            ...(groups.get(key) ?? []),
-            { id: String(job._id), runAt: job.nextRunAt?.getTime() ?? 0 },
-          ]);
-        }
-      }
+      const now = Date.now();
+      const running = await this.draftRepo.findRunningTimed();
+      const onTime = running.filter(
+        (draft) => !!draft.skipTime && draft.skipTime.getTime() > now,
+      );
+      const overdue = running.filter((draft) => !onTime.includes(draft));
+      const keepJobsFor = new Set(onTime.map((draft) => this.draftIdOf(draft)));
 
       let removed = 0;
-      for (const [key, jobs] of groups) {
-        const [name, draftId] = key.split("|");
-        const draft = Types.ObjectId.isValid(draftId)
-          ? await this.draftRepo.findById(draftId)
-          : null;
-        const skipTime = draft?.skipTime;
-        const timerRunning =
-          !!draft && draft.status === "IN_PROGRESS" && !draft.noTimer && !!skipTime;
-
-        let doomed: string[];
-        if (!timerRunning || !skipTime) {
-          doomed = jobs.map((job) => job.id);
-        } else {
-          const target =
-            name === SKIP_PICK_JOB
-              ? skipTime.getTime()
-              : skipTime.getTime() - ONE_HOUR_MS;
-          const keep = jobs.reduce((best, job) =>
-            Math.abs(job.runAt - target) < Math.abs(best.runAt - target)
-              ? job
-              : best,
-          );
-          doomed = jobs.filter((job) => job.id !== keep.id).map((job) => job.id);
-        }
-
-        if (!doomed.length) continue;
-        removed += await this.agenda.cancel({ ids: doomed });
+      for (const name of DRAFT_JOB_NAMES) {
+        const { jobs } = await this.agenda.queryJobs({ name });
+        const doomed = jobs
+          .filter(
+            (job) =>
+              !keepJobsFor.has(
+                String((job.data as SkipJobData | undefined)?.draftId),
+              ),
+          )
+          .map((job) => String(job._id));
+        if (doomed.length) removed += await this.agenda.cancel({ ids: doomed });
       }
 
-      if (removed) {
-        this.logger.warn(`Reconciled draft jobs on startup: removed ${removed}`);
+      for (const draft of onTime)
+        await this.resumeSkipPick(
+          { id: String(draft.tournamentId) },
+          draft,
+        );
+
+      let restarted = 0;
+      for (const draft of overdue)
+        if (await this.restartOverdueClock(draft)) restarted += 1;
+
+      if (removed || restarted) {
+        this.logger.warn(
+          `Reconciled draft jobs on startup: removed ${removed}, restarted ${restarted} overdue clock(s)`,
+        );
       }
     } catch (error) {
       this.logger.error("Failed to reconcile draft jobs on startup", error);
     }
+  }
+
+  private async restartOverdueClock(draft: DraftDocument): Promise<boolean> {
+    const tournament = await this.findPopulatedTournament(
+      String(draft.tournamentId),
+    );
+    const populated = await nullIfNotFound(
+      this.draftRepo.findPopulatedById(this.draftIdOf(draft)),
+    );
+    if (!tournament || !populated) return false;
+    await this.draftEngine.restartClock(tournament, populated);
+    return true;
   }
 }

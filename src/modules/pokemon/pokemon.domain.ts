@@ -68,6 +68,23 @@ type FullCoverage = {
   special: { [key: string]: FullCoverageMove[] };
 };
 
+const learnsetCache = new WeakMap<Ruleset, Map<ID, Promise<PDZMove[]>>>();
+const moveCache = new WeakMap<Ruleset, Map<string, PDZMove>>();
+
+function sharedMove(moveId: string, ruleset: Ruleset): PDZMove {
+  let moves = moveCache.get(ruleset);
+  if (!moves) {
+    moves = new Map();
+    moveCache.set(ruleset, moves);
+  }
+  let move = moves.get(moveId);
+  if (!move) {
+    move = new PDZMove(moveId as ID, ruleset);
+    moves.set(moveId, move);
+  }
+  return move;
+}
+
 export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   effectType!: "Pokemon";
   kind!: "Species";
@@ -606,19 +623,30 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   }
 
   async learnset(): Promise<PDZMove[]> {
-    const learnsetPromise = (async () => {
-      const learnset = await this.ruleset.learnsets.learnable(
-        this.id,
-        this.ruleset.restriction,
-      );
-      if (!learnset) return [];
-
-      const moves: PDZMove[] = Object.keys(learnset).map(
-        (move) => new PDZMove(move as ID, this.ruleset),
-      );
-      return moves;
-    })();
-    return learnsetPromise;
+    let bySpecies = learnsetCache.get(this.ruleset);
+    if (!bySpecies) {
+      bySpecies = new Map();
+      learnsetCache.set(this.ruleset, bySpecies);
+    }
+    let pending = bySpecies.get(this.id);
+    if (!pending) {
+      const cache = bySpecies;
+      const id = this.id;
+      const ruleset = this.ruleset;
+      pending = (async () => {
+        const learnset = await ruleset.learnsets.learnable(
+          id,
+          ruleset.restriction,
+        );
+        if (!learnset) return [];
+        return Object.keys(learnset).map((move) => sharedMove(move, ruleset));
+      })();
+      pending.catch(() => {
+        if (cache.get(id) === pending) cache.delete(id);
+      });
+      cache.set(id, pending);
+    }
+    return [...(await pending)];
   }
 
   async canLearn(moveString: string): Promise<boolean> {

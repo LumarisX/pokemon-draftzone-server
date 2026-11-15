@@ -52,7 +52,6 @@ function contactFor(team: PopulatedTeam, viewer: MatchupViewer) {
 
 function reportView(report: MatchupReportEntity) {
   return {
-    submittedBy: report.submittedBy,
     submittedByName: report.submittedByName ?? "A coach",
     submittedAt: report.submittedAt,
     teamId: report.team?.toString(),

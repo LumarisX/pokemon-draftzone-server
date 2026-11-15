@@ -22,7 +22,6 @@ export type DraftPick = {
 
 export type DraftRound = DraftPick[];
 
-/** Legacy drafts may carry statuses like NOT_STARTED, so treat anything not active/finished as pre-draft. */
 export function isPreDraftStatus(status: string): boolean {
   return !["IN_PROGRESS", "PAUSED", "COMPLETED"].includes(status);
 }
@@ -67,13 +66,6 @@ export function getDraftOrder(draft: PopulatedDraft): PopulatedTeam[] {
   return shuffled;
 }
 
-/**
- * Generates the full pick order for a draft.
- * @param initialTeamOrder - The initial order of teams.
- * @param numberOfRounds - The total number of rounds in the draft.
- * @param orderProgression - The style of the draft ('snake' or 'linear').
- * @returns An array of PopulatedTeam representing the pick order.
- */
 export function generatePickOrder(
   initialTeamOrder: PopulatedTeam[],
   numberOfRounds: number,
@@ -90,12 +82,6 @@ export function generatePickOrder(
   return pickOrder;
 }
 
-/**
- * Builds the draft board, both as a flat list and structured into rounds.
- * @param draft - The draft document.
- * @param pickOrder - The generated pick order.
- * @returns An object containing the flat draft board and the draft rounds.
- */
 export async function buildDraftBoards(
   draft: PopulatedDraft,
   pickOrder: PopulatedTeam[],
@@ -137,12 +123,6 @@ export async function buildDraftBoards(
   return { flatDraftBoard, draftRounds };
 }
 
-/**
- * Determines which teams are eligible to make a draft pick.
- * @param draft - The draft document.
- * @param pickOrder - The generated pick order.
- * @returns An array of team IDs that are eligible to draft.
- */
 export function calculateCanDraft(
   draft: PopulatedDraft,
   pickOrder: PopulatedTeam[],
@@ -152,37 +132,27 @@ export function calculateCanDraft(
 
   if (!draft.sequentialTurns) return pickOrder.map((t) => t._id.toString());
 
-  if (draft.orderProgression === "snake") {
-    const initialTeamOrder = getDraftOrder(draft);
-    if (!initialTeamOrder || initialTeamOrder.length === 0) return canDraft;
+  const initialTeamOrder = getDraftOrder(draft);
+  if (!initialTeamOrder || initialTeamOrder.length === 0) return canDraft;
 
-    const picksExpected = new Map<string, number>();
-    const counterLimit = Math.min(draft.counter, pickOrder.length);
-    for (let i = 0; i < counterLimit; i++) {
-      if (i >= pickOrder.length) break;
-      const teamId = pickOrder[i]._id.toString();
-      picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
-    }
-
-    for (const team of initialTeamOrder) {
-      const teamId = team._id.toString();
-      const expected = picksExpected.get(teamId) || 0;
-      if (team.pickLog.length < expected) {
-        canDraft.push(teamId);
-      }
-    }
-
-    if (draft.counter < pickOrder.length) {
-      const currentPickingTeamId = pickOrder[draft.counter]._id.toString();
-      if (!canDraft.includes(currentPickingTeamId)) {
-        canDraft.push(currentPickingTeamId);
-      }
-    }
-    return canDraft;
+  const picksExpected = new Map<string, number>();
+  const counterLimit = Math.min(draft.counter, pickOrder.length);
+  for (let i = 0; i < counterLimit; i++) {
+    const teamId = pickOrder[i]._id.toString();
+    picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
   }
 
-  // Todo: Add support for linear draft
+  for (const team of initialTeamOrder) {
+    const teamId = team._id.toString();
+    const expected = picksExpected.get(teamId) || 0;
+    if (team.pickLog.length < expected) canDraft.push(teamId);
+  }
 
+  if (draft.counter < pickOrder.length) {
+    const currentPickingTeamId = pickOrder[draft.counter]._id.toString();
+    if (!canDraft.includes(currentPickingTeamId))
+      canDraft.push(currentPickingTeamId);
+  }
   return canDraft;
 }
 
@@ -210,36 +180,34 @@ export function calculateCanDraftCounts(
     return counts;
   }
 
-  if (draft.orderProgression === "snake") {
-    const initialTeamOrder = getDraftOrder(draft);
-    if (!initialTeamOrder || initialTeamOrder.length === 0) return counts;
+  const initialTeamOrder = getDraftOrder(draft);
+  if (!initialTeamOrder || initialTeamOrder.length === 0) return counts;
 
-    const picksExpected = new Map<string, number>();
-    const counterLimit = Math.min(draft.counter, pickOrder.length);
-    for (let i = 0; i < counterLimit; i++) {
-      const teamId = pickOrder[i]._id.toString();
-      picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
-    }
-
-    const currentPickingTeamId =
-      draft.counter < pickOrder.length
-        ? pickOrder[draft.counter]._id.toString()
-        : undefined;
-
-    for (const team of initialTeamOrder) {
-      const teamId = team._id.toString();
-      let expected = picksExpected.get(teamId) || 0;
-      if (teamId === currentPickingTeamId) expected += 1;
-      const deficit = expected - team.pickLog.length;
-      if (deficit > 0) counts[teamId] = deficit;
-    }
-
-    return counts;
+  const picksExpected = new Map<string, number>();
+  const counterLimit = Math.min(draft.counter, pickOrder.length);
+  for (let i = 0; i < counterLimit; i++) {
+    const teamId = pickOrder[i]._id.toString();
+    picksExpected.set(teamId, (picksExpected.get(teamId) || 0) + 1);
   }
 
-  // Todo: Add support for linear draft
+  const currentPickingTeamId =
+    draft.counter < pickOrder.length
+      ? pickOrder[draft.counter]._id.toString()
+      : undefined;
+
+  for (const team of initialTeamOrder) {
+    const teamId = team._id.toString();
+    let expected = picksExpected.get(teamId) || 0;
+    if (teamId === currentPickingTeamId) expected += 1;
+    const deficit = expected - team.pickLog.length;
+    if (deficit > 0) counts[teamId] = deficit;
+  }
 
   return counts;
+}
+
+export function turnsRemain(draft: PopulatedDraft, rounds: number): boolean {
+  return draft.counter < rounds * draft.teams.length;
 }
 
 export function calculateCurrentPick(draft: PopulatedDraft) {
@@ -260,9 +228,11 @@ export function getCurrentPositionInRound(draft: PopulatedDraft) {
 
 export function getCurrentPickingTeam(
   draft: PopulatedDraft,
+  rounds: number,
 ): PopulatedTeam | null {
   const teams = getDraftOrder(draft);
   if (!teams || teams.length === 0) return null;
+  if (!turnsRemain(draft, rounds)) return null;
 
   const currentRound = getCurrentRound(draft);
   const currentPositionInRound = getCurrentPositionInRound(draft);
@@ -279,13 +249,6 @@ export function getCurrentPickingTeam(
   return pickingOrder[currentPositionInRound];
 }
 
-/**
- * The round/position a team's own Nth pick fills, independent of the draft's
- * live counter. Needed because a team can use their turn to fill a make-up
- * pick for a round they fell behind on — at that moment the shared counter is
- * already on a later round than the slot this specific pick actually fills.
- * `pickIndex` is 0-based (team.pickLog.length - 1 for the pick just made).
- */
 export function getTeamPickSlot(
   draft: PopulatedDraft,
   team: PopulatedTeam,
@@ -315,12 +278,13 @@ export function calculateTeamTimer(
 export async function canTeamDraft(
   draft: PopulatedDraft,
   team: PopulatedTeam,
+  rounds: number,
 ): Promise<boolean> {
-  if (draft.status !== "IN_PROGRESS") {
-    return false;
-  }
+  if (draft.status !== "IN_PROGRESS") return false;
+  if (team.pickLog.length >= rounds) return false;
 
   if (!draft.sequentialTurns) return true;
+  if (!turnsRemain(draft, rounds)) return true;
 
   const teams = getDraftOrder(draft);
   const teamsCount = teams.length;
@@ -353,11 +317,6 @@ export function isAlreadyDrafted(draft: PopulatedDraft, pokemonId: string) {
   );
 }
 
-/**
- * Banks the time left on the current turn so it can be handed back on unpause.
- * Leaves `remainingTime` unset when there is no deadline to bank (timer off, or
- * nothing scheduled) — a `0` there would make the next play skip immediately.
- */
 export function cancelSkipTime(draft: PopulatedDraft) {
   if (!draft.skipTime) {
     draft.remainingTime = undefined;

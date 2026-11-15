@@ -4,7 +4,11 @@ import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournam
 import { MessageEvent } from "@nestjs/common";
 import { Types } from "mongoose";
 import { Subscription } from "rxjs";
-import { DraftStreamService, HEARTBEAT_MS } from "./draft-stream.service";
+import {
+  ACCESS_RECHECK_MS,
+  DraftStreamService,
+  HEARTBEAT_MS,
+} from "./draft-stream.service";
 
 const TOURNAMENT_ID = new Types.ObjectId().toString();
 const TOURNAMENT_SLUG = "spring-cup";
@@ -56,11 +60,11 @@ describe("DraftStreamService", () => {
     return received;
   }
 
-  function completed(draftPublic: boolean, blindTeamId?: string) {
+  function completed() {
     return {
       tournamentSlug: TOURNAMENT_SLUG,
       poolSlug: "pool-a",
-      audience: { draftPublic, ...(blindTeamId ? { blindTeamId } : {}) },
+      audience: {},
       poolName: "Pool A",
     };
   }
@@ -68,10 +72,10 @@ describe("DraftStreamService", () => {
   const ofType = (received: MessageEvent[], type: string) =>
     received.filter((message) => message.type === type);
 
-  it("sends a public draft's events to everyone, without the audience", async () => {
+  it("sends a draft's events to everyone, without the audience", async () => {
     const anonymous = await listen(null);
 
-    service.onDraftCompleted(completed(true));
+    service.onDraftCompleted(completed());
 
     const [message] = ofType(anonymous, "league.draft.completed");
     expect(message.data).toMatchObject({ poolName: "Pool A" });
@@ -84,33 +88,9 @@ describe("DraftStreamService", () => {
       slug: "autumn-cup",
     } as HostedTournament);
 
-    service.onDraftCompleted(completed(true));
+    service.onDraftCompleted(completed());
 
     expect(other).toEqual([]);
-  });
-
-  it("sends a private draft's events only to staff and approved coaches", async () => {
-    const anonymous = await listen(null);
-    const stranger = await listen("auth0|stranger");
-    const owner = await listen("auth0|owner");
-    coachOf(new Types.ObjectId());
-    const coach = await listen("auth0|coach");
-
-    service.onDraftCompleted(completed(false));
-
-    expect(anonymous).toEqual([]);
-    expect(stranger).toEqual([]);
-    expect(ofType(owner, "league.draft.completed")).toHaveLength(1);
-    expect(ofType(coach, "league.draft.completed")).toHaveLength(1);
-  });
-
-  it("does not count a pending or dropped team as membership", async () => {
-    coachOf(new Types.ObjectId(), "dropped");
-    const dropped = await listen("auth0|dropped");
-
-    service.onDraftCompleted(completed(false));
-
-    expect(dropped).toEqual([]);
   });
 
   it("sends a keepalive comment on an idle stream", async () => {
@@ -129,7 +109,7 @@ describe("DraftStreamService", () => {
       return {
         tournamentSlug: TOURNAMENT_SLUG,
         poolSlug: "pool-a",
-        audience: { draftPublic: true, blindTeamId: blindTeamId.toString() },
+        audience: { blindTeamId: blindTeamId.toString() },
         pick: { team: "Team A", pool: "pool-a", pokemon: { id: "pikachu" } },
         team: {
           id: blindTeamId.toString(),
@@ -139,6 +119,50 @@ describe("DraftStreamService", () => {
         pokemon: { id: "pikachu" },
       } as never;
     }
+
+    it("stops showing a coach their team's picks once they are dropped mid-stream", async () => {
+      jest.useFakeTimers();
+      coachOf(blindTeamId);
+      const received: MessageEvent[] = [];
+      const stream = await service.streamFor(tournament, "auth0|picker");
+      subscriptions.push(stream.subscribe((message) => received.push(message)));
+
+      service.onDraftAdded(pickEvent());
+      expect(ofType(received, "league.draft.added")[0].data).toHaveProperty(
+        "pokemon",
+      );
+
+      coachOf(blindTeamId, "dropped");
+      await jest.advanceTimersByTimeAsync(ACCESS_RECHECK_MS);
+      service.onDraftAdded(pickEvent());
+
+      expect(ofType(received, "league.draft.added")[1].data).not.toHaveProperty(
+        "pokemon",
+      );
+    });
+
+    it("stops showing a removed organizer every pick", async () => {
+      jest.useFakeTimers();
+      const staffed = {
+        ...tournament,
+        staff: [{ sub: "auth0|organizer", role: "organizer" }],
+      } as unknown as HostedTournament;
+      const received: MessageEvent[] = [];
+      const stream = await service.streamFor(
+        staffed,
+        "auth0|organizer",
+        async () => tournament,
+      );
+      subscriptions.push(stream.subscribe((message) => received.push(message)));
+
+      service.onDraftAdded(pickEvent());
+      await jest.advanceTimersByTimeAsync(ACCESS_RECHECK_MS);
+      service.onDraftAdded(pickEvent());
+
+      const [before, after] = ofType(received, "league.draft.added");
+      expect(before.data).toHaveProperty("pokemon");
+      expect(after.data).not.toHaveProperty("pokemon");
+    });
 
     it("hides the pick from everyone but the picking team and staff", async () => {
       const anonymous = await listen(null);
@@ -187,7 +211,10 @@ describe("DraftStreamService", () => {
     it("sends unredacted status events in a blind draft", async () => {
       const anonymous = await listen(null);
 
-      service.onDraftCompleted(completed(true, blindTeamId.toString()));
+      service.onDraftCompleted({
+        ...completed(),
+        audience: { blindTeamId: blindTeamId.toString() },
+      });
 
       expect(ofType(anonymous, "league.draft.completed")[0].data).toMatchObject(
         { poolName: "Pool A" },

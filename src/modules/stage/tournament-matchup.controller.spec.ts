@@ -89,11 +89,13 @@ describe("TournamentMatchupController", () => {
       decision === "approve"
         ? controller.approveMatchupReport.bind(controller)
         : controller.rejectMatchupReport.bind(controller);
+    const submittedAt = "2026-11-14T20:00:00.000Z";
     const result = await call(
       "league-1",
       "tournament-1",
       "matchup-1",
       "auth0|owner",
+      { submittedAt },
     );
 
     expect(service.reviewMatchupReport).toHaveBeenCalledWith(
@@ -102,6 +104,7 @@ describe("TournamentMatchupController", () => {
       "matchup-1",
       "auth0|owner",
       approve,
+      submittedAt,
     );
     expect(result).toBe(response);
   });

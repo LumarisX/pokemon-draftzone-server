@@ -80,16 +80,20 @@ export class DraftRepository {
     return this.draftModel.findById(draftId).exec();
   }
 
+  async findRunningTimed(): Promise<DraftDocument[]> {
+    return this.draftModel
+      .find({
+        status: "IN_PROGRESS",
+        sequentialTurns: true,
+        noTimer: { $ne: true },
+      })
+      .exec();
+  }
+
   async findManyByIds(
     draftIds: (Types.ObjectId | string)[],
   ): Promise<DraftDocument[]> {
     return this.draftModel.find({ _id: { $in: draftIds } }).exec();
-  }
-
-  async findPublicByTournament(
-    tournamentId: Types.ObjectId | string,
-  ): Promise<DraftDocument[]> {
-    return this.draftModel.find({ tournamentId, public: true }).exec();
   }
 
   async findAllByTournament(
@@ -125,14 +129,12 @@ export class DraftRepository {
   async create(data: {
     tournamentId: Types.ObjectId | string;
     name: string;
-    public?: boolean;
     draftStart?: Date;
     draftEnd?: Date;
   }): Promise<DraftDocument> {
     return this.draftModel.create({
       tournamentId: new Types.ObjectId(data.tournamentId.toString()),
       name: data.name,
-      public: data.public ?? false,
       draftStart: data.draftStart,
       draftEnd: data.draftEnd,
     });

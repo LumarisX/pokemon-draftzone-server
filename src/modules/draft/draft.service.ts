@@ -13,11 +13,7 @@ import { StageRepository } from "@modules/stage/stage.repository";
 import { StageDocument } from "@modules/stage/stage.schema";
 import { TeamRepository } from "@modules/team/team.repository";
 import { canOnTeam } from "@modules/tournament/membership";
-import {
-  assertCan,
-  can,
-  isStaff,
-} from "@modules/tournament/tournament-policy";
+import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
 import { Types } from "mongoose";
 import { getLatestRoster } from "../stage/domain/roster";
@@ -30,7 +26,7 @@ import {
 } from "../stage/domain/standings";
 import { getDraftOrder, isPreDraftStatus } from "./domain/pick-order";
 import { canSeeTeamPicks } from "./domain/pick-visibility";
-import { isTournamentMember, summarizePool } from "./domain/pool-overview";
+import { summarizePool } from "./domain/pool-overview";
 import { getDraftDetails, isCoach } from "./domain/team-summary";
 import { DraftEngineService } from "./draft-engine.service";
 import {
@@ -76,38 +72,6 @@ export class DraftService {
     return { tournament, draft };
   }
 
-  private async isMember(
-    tournament: PopulatedTournament,
-    sub: string | undefined,
-  ): Promise<boolean> {
-    if (!sub) return false;
-    if (isStaff(tournament, sub)) return true;
-    const teams = await this.teamRepo.findAllByTournament(tournament.id);
-    return isTournamentMember(tournament, teams, sub);
-  }
-
-  private async loadVisibleContext(
-    leagueSlug: string,
-    tournamentSlug: string,
-    poolSlug: string,
-    sub: string | undefined,
-  ) {
-    const context = await this.loadContext(
-      leagueSlug,
-      tournamentSlug,
-      poolSlug,
-    );
-    if (
-      context.draft.public === false &&
-      !(await this.isMember(context.tournament, sub))
-    )
-      throw new PDZError(ErrorCodes.TOURNAMENT.POOL_NOT_FOUND, {
-        poolSlug,
-        tournamentSlug,
-      });
-    return context;
-  }
-
   private async resolveStage(
     tournamentId: Types.ObjectId,
     stageSlug?: string,
@@ -134,11 +98,10 @@ export class DraftService {
     poolSlug: string,
     sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadVisibleContext(
+    const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-      sub,
     );
     return getDraftDetails(tournament, draft, sub);
   }
@@ -149,11 +112,10 @@ export class DraftService {
     poolSlug: string,
     sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadVisibleContext(
+    const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-      sub,
     );
 
     const allPicks = await Promise.all(
@@ -203,11 +165,10 @@ export class DraftService {
     poolSlug: string,
     sub: string | undefined,
   ) {
-    const { tournament, draft } = await this.loadVisibleContext(
+    const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-      sub,
     );
 
     const orderProgression = draft.orderProgression;
@@ -264,11 +225,10 @@ export class DraftService {
     poolSlug: string,
     sub: string | undefined,
   ): Promise<unknown[]> {
-    const { tournament, draft } = await this.loadVisibleContext(
+    const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-      sub,
     );
 
     const ruleset = tournament.tierList.ruleset;
@@ -492,10 +452,7 @@ export class DraftService {
       leagueSlug,
       tournamentSlug,
     );
-    const member = await this.isMember(tournament, sub);
-    const drafts = (
-      await this.draftRepo.findAllByTournament(tournament.id)
-    ).filter((draft) => draft.public !== false || member);
+    const drafts = await this.draftRepo.findAllByTournament(tournament.id);
     const populated = await Promise.all(
       drafts.map(async (draft) =>
         Object.assign(draft, {
@@ -554,7 +511,6 @@ export class DraftService {
     const draft = await this.draftRepo.create({
       tournamentId: tournament.id,
       name,
-      public: dto.public,
       draftStart: start,
       draftEnd: end,
     });
@@ -714,7 +670,12 @@ export class DraftService {
     );
     assertCan(tournament, sub, "manageDrafts");
 
-    await this.draftEngine.skipCurrentPick(tournament, draft);
+    const outcome = await this.draftEngine.skipCurrentPick(tournament, draft);
+    if (outcome === "busy") throw new PDZError(ErrorCodes.DRAFT.CHANGED);
+    if (outcome === "stale")
+      throw new PDZError(ErrorCodes.DRAFT.INVALID_STATE, {
+        reason: "There is no turn to skip.",
+      });
     return { message: "Skip successful." };
   }
 
@@ -725,11 +686,10 @@ export class DraftService {
     sub: string | undefined,
     stageSlug?: string,
   ) {
-    const { tournament, draft } = await this.loadVisibleContext(
+    const { tournament, draft } = await this.loadContext(
       leagueSlug,
       tournamentSlug,
       poolSlug,
-      sub,
     );
 
     const stageDoc = await this.resolveStage(draft.tournamentId, stageSlug);

@@ -35,7 +35,7 @@ export class CoachEntity {
   @Prop({ required: true, default: false })
   confirmed!: boolean;
 
-  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "TeamEntity", required: true, index: true })
   teamId!: Types.ObjectId;
 
   @Prop({ default: () => new Date() })

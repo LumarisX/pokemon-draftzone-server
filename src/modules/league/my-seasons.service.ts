@@ -350,7 +350,9 @@ export class MySeasonsService {
       live && pool.sequentialTurns
         ? await this.draftRepo.findPopulatedById(pool._id)
         : null;
-    const picking = populated ? getCurrentPickingTeam(populated) : null;
+    const picking = populated
+      ? getCurrentPickingTeam(populated, tournament.draftCount?.max ?? 0)
+      : null;
     const current = populated ? calculateCurrentPick(populated) : null;
     return {
       status: pool.status,

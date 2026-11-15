@@ -109,7 +109,6 @@ describe("getDraftOrder", () => {
     const result = getDraftOrder(draft);
 
     expect(result.map((t: any) => t.teamName)).toEqual(["C", "A", "B", "D"]);
-    // Same input always produces the same order (seeded by draft._id).
     expect(getDraftOrder(draft).map((t: any) => t.teamName)).toEqual(["C", "A", "B", "D"]);
   });
 
@@ -238,7 +237,6 @@ describe("buildDraftBoards", () => {
 
     const { flatDraftBoard } = await buildDraftBoards(draft, pickOrder);
 
-    // order: A, B, B, A (snake) -> A's 1st pick, B's 1st pick, B has no 2nd pick, A's 2nd pick
     expect(flatDraftBoard[0].pokemon?.id).toBe("pikachu");
     expect(flatDraftBoard[1].pokemon?.id).toBe("bulbasaur");
     expect(flatDraftBoard[2].pokemon).toBeUndefined();
@@ -277,7 +275,6 @@ describe("calculateCanDraft", () => {
   });
 
   it("allows a lagging team to catch up alongside the current picker", () => {
-    // Counter is at 1 (B's turn), but A hasn't actually recorded its round-0 pick yet.
     const teamA = buildTeam({ teamName: "A", pickLog: [] });
     const teamB = buildTeam({ teamName: "B", pickLog: [] });
     const teamC = buildTeam({ teamName: "C", pickLog: [] });
@@ -305,12 +302,16 @@ describe("calculateCanDraft", () => {
     expect(result).toEqual([teamB._id.toString()]);
   });
 
-  it("returns an empty array for linear progression (not yet implemented)", () => {
-    const teams = [buildTeam(), buildTeam()];
-    const draft = buildDraft({ teams, orderProgression: "linear" });
+  it("follows the turn order for linear progression", () => {
+    const teamA = buildTeam({ teamName: "A", pickLog: [pick("pikachu")] });
+    const teamB = buildTeam({ teamName: "B", pickLog: [pick("squirtle")] });
+    const teams = [teamA, teamB];
+    const draft = buildDraft({ teams, orderProgression: "linear", counter: 2 });
     const pickOrder = generatePickOrder(teams, 2, "linear");
 
-    expect(calculateCanDraft(draft, pickOrder)).toEqual([]);
+    expect(calculateCanDraft(draft, pickOrder)).toEqual([
+      teamA._id.toString(),
+    ]);
   });
 });
 
@@ -330,7 +331,6 @@ describe("calculateCanDraftCounts", () => {
     const draft = buildDraft({ teams, sequentialTurns: false });
     const pickOrder = generatePickOrder(teams, 2, "snake");
 
-    // No turn order to wait on, so both of A and B's 2 rounds are draftable now.
     expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
       [teamA._id.toString()]: 2,
       [teamB._id.toString()]: 2,
@@ -367,8 +367,6 @@ describe("calculateCanDraftCounts", () => {
   });
 
   it("gives a lagging team a count of 2 to catch up on a full backlog", () => {
-    // order: A, B, C, C, B, A. Counter is at 5 (A's 2nd turn), but A never
-    // recorded its round-0 pick, so it owes 2 picks; B and C kept up.
     const teamA = buildTeam({ teamName: "A", pickLog: [] });
     const teamB = buildTeam({
       teamName: "B",
@@ -400,12 +398,31 @@ describe("calculateCanDraftCounts", () => {
     });
   });
 
-  it("returns an empty map for linear progression (not yet implemented)", () => {
-    const teams = [buildTeam(), buildTeam()];
-    const draft = buildDraft({ teams, orderProgression: "linear" });
+  it("counts a skipped team's backlog for linear progression", () => {
+    const teamA = buildTeam({ teamName: "A", pickLog: [] });
+    const teamB = buildTeam({ teamName: "B", pickLog: [pick("squirtle")] });
+    const teams = [teamA, teamB];
+    const draft = buildDraft({ teams, orderProgression: "linear", counter: 2 });
     const pickOrder = generatePickOrder(teams, 2, "linear");
 
-    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({});
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 2,
+    });
+  });
+
+  it("counts what each team owes once every turn has run", () => {
+    const teamA = buildTeam({ teamName: "A", pickLog: [pick("pikachu")] });
+    const teamB = buildTeam({
+      teamName: "B",
+      pickLog: [pick("squirtle"), pick("wartortle")],
+    });
+    const teams = [teamA, teamB];
+    const draft = buildDraft({ teams, counter: 4 });
+    const pickOrder = generatePickOrder(teams, 2, "snake");
+
+    expect(calculateCanDraftCounts(draft, pickOrder)).toEqual({
+      [teamA._id.toString()]: 1,
+    });
   });
 });
 
@@ -432,25 +449,23 @@ describe("getCurrentPickingTeam", () => {
 
   it("returns null when there are no teams", () => {
     const draft = buildDraft({ teams: [] });
-    expect(getCurrentPickingTeam(draft)).toBeNull();
+    expect(getCurrentPickingTeam(draft, 2)).toBeNull();
   });
 
   it("picks by position within the (non-reversed) round for an even round", () => {
     const draft = buildDraft({ teams, counter: 1 });
-    expect(getCurrentPickingTeam(draft)?.teamName).toBe("B");
+    expect(getCurrentPickingTeam(draft, 2)?.teamName).toBe("B");
   });
 
   it("reverses the order for odd (snake) rounds", () => {
-    const draft = buildDraft({ teams, counter: 3 }); // round 1, position 0
-    expect(getCurrentPickingTeam(draft)?.teamName).toBe("C");
+    const draft = buildDraft({ teams, counter: 3 });
+    expect(getCurrentPickingTeam(draft, 2)?.teamName).toBe("C");
   });
 
-  it("wraps the position via counter modulo team count rather than running off the end", () => {
-    // With a single team, position is always counter % 1 === 0, so this
-    // never actually returns null in practice (the length-guard inside
-    // getCurrentPickingTeam is unreachable given how position is derived).
-    const draft = buildDraft({ teams: [teamA], counter: 1 });
-    expect(getCurrentPickingTeam(draft)?.teamName).toBe("A");
+  it("returns null once every turn has been taken", () => {
+    const draft = buildDraft({ teams, counter: 6 });
+    expect(getCurrentPickingTeam(draft, 2)).toBeNull();
+    expect(getCurrentPickingTeam(draft, 3)?.teamName).toBe("A");
   });
 });
 
@@ -482,34 +497,51 @@ describe("canTeamDraft", () => {
 
   it("returns false when the draft isn't in progress", async () => {
     const draft = buildDraft({ teams, status: "PAUSED", counter: 1 });
-    await expect(canTeamDraft(draft, teamB)).resolves.toBe(false);
+    await expect(canTeamDraft(draft, teamB, 2)).resolves.toBe(false);
   });
 
   it("allows the current picker who hasn't picked yet this round", async () => {
     const draft = buildDraft({ teams, counter: 1 });
-    await expect(canTeamDraft(draft, teamB)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, teamB, 2)).resolves.toBe(true);
   });
 
   it("disallows the current picker once they've already picked this round", async () => {
     const pickedB = buildTeam({ teamName: "B", pickLog: [pick("pikachu")] });
     const draft = buildDraft({ teams: [teamA, pickedB, teamC], counter: 1 });
-    await expect(canTeamDraft(draft, pickedB)).resolves.toBe(false);
+    await expect(canTeamDraft(draft, pickedB, 2)).resolves.toBe(false);
   });
 
   it("disallows a team whose turn in this round hasn't come up yet", async () => {
     const draft = buildDraft({ teams, counter: 1 });
-    await expect(canTeamDraft(draft, teamC)).resolves.toBe(false);
+    await expect(canTeamDraft(draft, teamC, 2)).resolves.toBe(false);
   });
 
   it("allows any team immediately when turns aren't sequential", async () => {
     const draft = buildDraft({ teams, sequentialTurns: false });
-    await expect(canTeamDraft(draft, teamA)).resolves.toBe(true);
-    await expect(canTeamDraft(draft, teamC)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, teamA, 2)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, teamC, 2)).resolves.toBe(true);
   });
 
   it("allows a team that's behind to catch up", async () => {
     const draft = buildDraft({ teams, counter: 1 });
-    await expect(canTeamDraft(draft, teamA)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, teamA, 2)).resolves.toBe(true);
+  });
+
+  it("disallows a full roster even when turns aren't sequential", async () => {
+    const full = buildTeam({ pickLog: [pick("pikachu"), pick("raichu")] });
+    const draft = buildDraft({ teams: [full], sequentialTurns: false });
+    await expect(canTeamDraft(draft, full, 2)).resolves.toBe(false);
+  });
+
+  it("lets a team that owes picks make them up after every turn has run", async () => {
+    const owing = buildTeam({ teamName: "A", pickLog: [pick("pikachu")] });
+    const done = buildTeam({
+      teamName: "B",
+      pickLog: [pick("squirtle"), pick("wartortle")],
+    });
+    const draft = buildDraft({ teams: [owing, done], counter: 4 });
+    await expect(canTeamDraft(draft, owing, 2)).resolves.toBe(true);
+    await expect(canTeamDraft(draft, done, 2)).resolves.toBe(false);
   });
 });
 
@@ -542,7 +574,6 @@ describe("cancelSkipTime", () => {
   });
 
   it("leaves remainingTime unset when there is no skipTime", () => {
-    // A banked 0 would make the next play() skip the coach immediately.
     const draft = buildDraft({ skipTime: undefined, remainingTime: 42 });
 
     cancelSkipTime(draft);

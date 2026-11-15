@@ -1,11 +1,13 @@
 import { MatchupAdvancement, Walkover } from "./advancement";
 import { MatchLabel } from "./match-labels";
 import { getRosterByRound } from "./roster";
+import { RosterVisibility } from "./roster-visibility";
 import { RosterContext } from "./stage-axis";
 import { hasResolvedSides, PopulatedStageMatchup } from "./standings";
 
 export interface ScheduleViewOptions {
   roster: RosterContext;
+  canSeeRoster: RosterVisibility;
   roundIndex: number;
   forfeitGameDiff: number;
   keepUnresolvedOpponent?: boolean;
@@ -18,6 +20,7 @@ function rosterFor(
   team: PopulatedStageMatchup["side1"]["team"],
   options: ScheduleViewOptions,
 ) {
+  if (!options.canSeeRoster(team!)) return [];
   return getRosterByRound(team!, options.roster, options.roundIndex).map(
     (pokemon) => ({
       id: pokemon.id,

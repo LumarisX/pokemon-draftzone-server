@@ -2,10 +2,23 @@ import { CoachRepository } from "@modules/coach/coach.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { isActiveCoach } from "@modules/tournament/membership";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
-import { can, isStaff } from "@modules/tournament/tournament-policy";
+import { can } from "@modules/tournament/tournament-policy";
 import { Injectable, MessageEvent } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
-import { filter, interval, map, merge, Observable, Subject } from "rxjs";
+import {
+  catchError,
+  exhaustMap,
+  filter,
+  from,
+  ignoreElements,
+  interval,
+  map,
+  merge,
+  Observable,
+  of,
+  Subject,
+  tap,
+} from "rxjs";
 import {
   DraftAddedEvent,
   DraftCompletedEvent,
@@ -17,6 +30,7 @@ import {
 } from "./draft-events.service";
 
 export const HEARTBEAT_MS = 25_000;
+export const ACCESS_RECHECK_MS = 60_000;
 
 type StreamPayload = {
   tournamentSlug: string;
@@ -26,13 +40,11 @@ type StreamPayload = {
 type EventData = Record<string, unknown>;
 
 export type StreamAccess = {
-  member: boolean;
   seesAllPicks: boolean;
   teamIds: Set<string>;
 };
 
 const NO_ACCESS: StreamAccess = {
-  member: false,
   seesAllPicks: false,
   teamIds: new Set(),
 };
@@ -65,27 +77,38 @@ export class DraftStreamService {
   async streamFor(
     tournament: HostedTournament,
     sub: string | null,
+    reloadTournament: () => Promise<HostedTournament> = async () => tournament,
   ): Promise<Observable<MessageEvent>> {
-    const access = await this.accessFor(tournament, sub);
+    let access = await this.accessFor(tournament, sub);
     const events = this.events$.pipe(
       filter(({ payload }) => payload.tournamentSlug === tournament.slug),
       map(({ type, payload }) => this.messageFor(type, payload, access)),
-      filter((message): message is MessageEvent => message !== null),
     );
     const heartbeat = interval(HEARTBEAT_MS).pipe(
       map((): MessageEvent => ({ comment: "keepalive" })),
     );
-    return merge(events, heartbeat);
+    if (!sub) return merge(events, heartbeat);
+
+    const recheck = interval(ACCESS_RECHECK_MS).pipe(
+      exhaustMap(() =>
+        from(
+          reloadTournament().then((fresh) => this.accessFor(fresh, sub)),
+        ).pipe(catchError(() => of(NO_ACCESS))),
+      ),
+      tap((fresh) => {
+        access = fresh;
+      }),
+      ignoreElements(),
+    );
+    return merge(events, heartbeat, recheck);
   }
 
   private messageFor(
     type: string,
     payload: StreamPayload,
     access: StreamAccess,
-  ): MessageEvent | null {
+  ): MessageEvent {
     const { audience, ...data } = payload;
-    if (!audience.draftPublic && !access.member) return null;
-
     const hidden =
       !!audience.blindTeamId &&
       !access.seesAllPicks &&
@@ -117,7 +140,6 @@ export class DraftStreamService {
         .map((team) => team._id.toString()),
     );
     return {
-      member: isStaff(tournament, sub) || teamIds.size > 0,
       seesAllPicks: can(tournament, sub, "manageDrafts"),
       teamIds,
     };

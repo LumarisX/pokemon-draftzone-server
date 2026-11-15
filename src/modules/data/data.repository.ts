@@ -1,5 +1,6 @@
 import { _getFormats, getFormats } from "@core/data/formats/formats";
 import {
+  Ruleset,
   getRuleset,
   getRulesets,
   getRulesetsGrouped,
@@ -9,6 +10,8 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { PDZMove } from "@modules/move/move.domain";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { Injectable } from "@nestjs/common";
+
+const speciesCache = new WeakMap<Ruleset, PDZPokemon[]>();
 
 @Injectable()
 export class DataRepository {
@@ -30,7 +33,14 @@ export class DataRepository {
 
   getSpeciesForRuleset(rulesetId: string): PDZPokemon[] {
     const ruleset = getRuleset(rulesetId);
-    return Array.from(ruleset.species).map((s) => new PDZPokemon(s, ruleset));
+    let species = speciesCache.get(ruleset);
+    if (!species) {
+      species = Array.from(ruleset.species).map(
+        (s) => new PDZPokemon(s, ruleset),
+      );
+      speciesCache.set(ruleset, species);
+    }
+    return [...species];
   }
 
   getRandomSpecies(

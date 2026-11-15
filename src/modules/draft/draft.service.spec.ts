@@ -252,20 +252,6 @@ describe("DraftService", () => {
       expect(result[0].picks.map((pick) => pick.pokemon.id)).toEqual(["pikachu"]);
     });
 
-    it("treats a private pool as missing for people outside the tournament", async () => {
-      const tournament = buildTournament({ owner: "auth0|owner", staff: [] });
-      const draft = buildDraft({ teams: [buildTeam()], public: false });
-      draftRepo.findTournament.mockResolvedValue(tournament);
-      draftRepo.findDraft.mockResolvedValue(draft);
-      teamRepo.findAllByTournament.mockResolvedValue([]);
-
-      await expect(
-        service.getPicks("league-1", "tournament-1", "draft-1", "auth0|stranger"),
-      ).rejects.toMatchObject({ code: "TRN-020" });
-      await expect(
-        service.getPicks("league-1", "tournament-1", "draft-1", "auth0|owner"),
-      ).resolves.toBeDefined();
-    });
   });
 
   describe("getOrder", () => {
@@ -604,10 +590,25 @@ describe("DraftService", () => {
       draftRepo.findTournament.mockResolvedValue(tournament);
       draftRepo.findDraft.mockResolvedValue(draft);
 
+      draftEngine.skipCurrentPick.mockResolvedValue("skipped");
+
       const result = await service.skipPick("league-1", "tournament-1", "draft-1", "auth0|owner");
 
       expect(draftEngine.skipCurrentPick).toHaveBeenCalledWith(tournament, draft);
       expect(result).toEqual({ message: "Skip successful." });
+    });
+
+    it.each([
+      ["stale", "DR-"],
+      ["busy", "DR-013"],
+    ] as const)("does not report success when the skip was %s", async (outcome, code) => {
+      draftRepo.findTournament.mockResolvedValue(buildTournament({ owner: "auth0|owner" }));
+      draftRepo.findDraft.mockResolvedValue(buildDraft());
+      draftEngine.skipCurrentPick.mockResolvedValue(outcome);
+
+      await expect(
+        service.skipPick("league-1", "tournament-1", "draft-1", "auth0|owner"),
+      ).rejects.toMatchObject({ code: expect.stringContaining(code) });
     });
   });
 

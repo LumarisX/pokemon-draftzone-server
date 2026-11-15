@@ -489,17 +489,3 @@ function getSpecie(gen: Generation, pokemonName: string): Specie {
   return specie;
 }
 
-export function validateUrl(url: string): boolean {
-  const pattern =
-    /^(https:\/\/)?replay\.pokemonshowdown\.com\/[a-zA-Z0-9\-._~:/?#[\]\\@!$&'()*+,;=]+$/;
-  return pattern.test(url);
-}
-
-export function formatUrl(url: string): string {
-  if (!url) return url;
-  if (!url.startsWith("https://")) {
-    url = `https://${url}`;
-  }
-  const plainUrl = url.split("?")[0].split("#")[0];
-  return plainUrl;
-}

@@ -4,7 +4,7 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { toID } from "@pkmn/data";
-import { Model, Types } from "mongoose";
+import { Model, PipelineStage, Types } from "mongoose";
 import { TierList, TierListAccess, TierListMember } from "./tier-list.domain";
 import { TierListMapper } from "./tier-list.mapper";
 import {
@@ -69,6 +69,95 @@ export type NewTierList = {
 };
 
 const PRESET = { tournament: { $exists: false } };
+
+const TOP_POKEMON = 8;
+
+type PokemonSummary = {
+  topPokemon: { id: string; name: string }[];
+  pokemonCount: number;
+};
+
+type BrowseRow = Record<string, unknown> & {
+  _pokemonCount: number;
+  _topPokemon: { id: string; name: string }[];
+};
+
+export function summarizePokemon(tierList: TierList): PokemonSummary {
+  const topTier = [...tierList.tiers].sort((a, b) => b.cost - a.cost)[0];
+  const listed = [...tierList.pokemon.entries()].filter(
+    ([, entry]) => entry.tierId && !entry.banned,
+  );
+  return {
+    topPokemon: topTier
+      ? listed
+          .filter(([, entry]) => entry.tierId === topTier.id)
+          .map(([id, entry]) => ({ id, name: entry.name }))
+          .slice(0, TOP_POKEMON)
+      : [],
+    pokemonCount: listed.length,
+  };
+}
+
+const BROWSE_SUMMARY_STAGES: PipelineStage[] = [
+  {
+    $addFields: {
+      _top: {
+        $reduce: {
+          input: { $ifNull: ["$tiers", []] },
+          initialValue: null,
+          in: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$$value", null] },
+                  { $gt: ["$$this.cost", "$$value.cost"] },
+                ],
+              },
+              "$$this",
+              "$$value",
+            ],
+          },
+        },
+      },
+      _listed: {
+        $filter: {
+          input: { $objectToArray: { $ifNull: ["$pokemon", {}] } },
+          as: "entry",
+          cond: {
+            $and: [
+              { $ne: [{ $ifNull: ["$$entry.v.tierId", null] }, null] },
+              { $ne: ["$$entry.v.banned", true] },
+            ],
+          },
+        },
+      },
+    },
+  },
+  {
+    $addFields: {
+      _pokemonCount: { $size: "$_listed" },
+      _topPokemon: {
+        $slice: [
+          {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$_listed",
+                  as: "entry",
+                  cond: { $eq: ["$$entry.v.tierId", "$_top._id"] },
+                },
+              },
+              as: "entry",
+              in: { id: "$$entry.k", name: "$$entry.v.name" },
+            },
+          },
+          TOP_POKEMON,
+        ],
+      },
+    },
+  },
+  { $unset: ["pokemon", "_top", "_listed"] },
+];
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -202,19 +291,29 @@ export class TierListRepository {
             : { updatedAt: -1 };
 
     const query = { $and: conditions };
-    const [docs, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.tierListModel
-        .find(query)
-        .sort(sort)
-        .skip(filter.skip)
-        .limit(filter.limit)
+        .aggregate<BrowseRow>([
+          { $match: query },
+          { $sort: sort },
+          { $skip: filter.skip },
+          { $limit: filter.limit },
+          ...BROWSE_SUMMARY_STAGES,
+        ])
         .exec(),
       this.tierListModel.countDocuments(query).exec(),
     ]);
 
-    const sources = await this.sourcesFor(docs);
+    const docs = rows.map(({ _pokemonCount, _topPokemon, ...row }) => ({
+      doc: this.tierListModel.hydrate({ ...row, pokemon: {} }),
+      pokemonCount: _pokemonCount,
+      topPokemon: _topPokemon,
+    }));
+    const sources = await this.sourcesFor(docs.map(({ doc }) => doc));
     return {
-      rows: docs.map((doc) => this.toSummary(doc, filter.sub, sources)),
+      rows: docs.map(({ doc, pokemonCount, topPokemon }) =>
+        this.toSummary(doc, filter.sub, sources, { pokemonCount, topPokemon }),
+      ),
       total,
     };
   }
@@ -253,22 +352,15 @@ export class TierListRepository {
     doc: TierListDocument,
     sub: string | undefined,
     sources: Map<string, { slug: string; name: string; visible: boolean }> = new Map(),
+    counted?: PokemonSummary,
   ): TierListSummary {
     const tierList = TierListMapper.fromDatabase(doc);
     const access = tierList.presetAccess(sub);
     const source = doc.copiedFrom
       ? sources.get(doc.copiedFrom.toString())
       : undefined;
-    const topTier = [...tierList.tiers].sort((a, b) => b.cost - a.cost)[0];
-    const topPokemon = topTier
-      ? [...tierList.pokemon.entries()]
-          .filter(([, entry]) => entry.tierId === topTier.id && !entry.banned)
-          .map(([id, entry]) => ({ id, name: entry.name }))
-          .slice(0, 8)
-      : [];
-    const tiered = [...tierList.pokemon.values()].filter(
-      (entry) => entry.tierId && !entry.banned,
-    ).length;
+    const { topPokemon, pokemonCount: tiered } =
+      counted ?? summarizePokemon(tierList);
 
     return {
       id: tierList.id,

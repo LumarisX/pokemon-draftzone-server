@@ -1,6 +1,9 @@
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   IsArray,
+  Max,
+  Min,
   IsBoolean,
   IsNumber,
   ValidateNested,
@@ -24,6 +27,8 @@ export class TeamStatDataDto {
   stats!: MatchStatData[];
 
   @IsNumber()
+  @Min(0)
+  @Max(99)
   score!: number;
 }
 
@@ -33,6 +38,7 @@ export class MatchPokemonRefDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(64)
   pokemon!: string;
 }
 
@@ -90,6 +96,7 @@ export class ExternalMatchDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(500)
   @IsOptional()
   replay?: string;
 
@@ -98,6 +105,7 @@ export class ExternalMatchDto {
   winner?: MatchWinner;
 
   @IsArray()
+  @ArrayMaxSize(60)
   @IsOptional()
   @ValidateNested({ each: true })
   @HasUniqueVictims()
