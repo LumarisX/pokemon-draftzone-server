@@ -6,6 +6,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { Test } from "@nestjs/testing";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { ChatController } from "./chat.controller";
+import { ChatReportService } from "./chat-report.service";
 import { ChatService } from "./chat.service";
 
 const CHAT_LIMIT = 20;
@@ -24,6 +25,10 @@ describe("ChatController posting limit over HTTP", () => {
           provide: ChatService,
           useValue: { postMessage: jest.fn().mockResolvedValue({ ok: true }) },
         },
+        {
+          provide: ChatReportService,
+          useValue: { report: jest.fn().mockResolvedValue({ ok: true }) },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -37,7 +42,7 @@ describe("ChatController posting limit over HTTP", () => {
       })
       .compile();
 
-    app = moduleRef.createNestApplication({ logger: false });
+    app =moduleRef.createNestApplication({ logger: false });
     app.useGlobalFilters(new BusinessExceptionFilter());
     await app.listen(0);
     baseUrl = (await app.getUrl()).replace("[::1]", "localhost");
@@ -69,5 +74,25 @@ describe("ChatController posting limit over HTTP", () => {
     expect(body.error.code).toBe("SYS-006");
 
     expect((await post("auth0|quiet")).status).toBe(201);
+  });
+
+  it("gives reports a tighter per-user budget", async () => {
+    const report = (sub: string) =>
+      fetch(
+        `${baseUrl}/leagues/spring/tournaments/spring-cup/chat/messages/m1/report`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-test-sub": sub },
+          body: JSON.stringify({ reason: "spam" }),
+        },
+      );
+
+    for (let i = 0; i < 6; i++) {
+      expect((await report("auth0|reporter")).status).toBe(201);
+    }
+    const refused = await report("auth0|reporter");
+    expect(refused.status).toBe(429);
+    expect((await refused.json()).error.code).toBe("SYS-006");
+    expect((await report("auth0|other")).status).toBe(201);
   });
 });

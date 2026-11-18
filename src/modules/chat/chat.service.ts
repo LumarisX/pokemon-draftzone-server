@@ -7,6 +7,7 @@ import { isActiveCoach } from "@modules/tournament/membership";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { can } from "@modules/tournament/tournament-policy";
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
 import { PostChatMessageDto } from "./chat.dto";
@@ -34,7 +35,40 @@ export class ChatService {
     private readonly teamRepo: TeamRepository,
     private readonly coachRepo: CoachRepository,
     private readonly matchupRepo: LeagueMatchupRepository,
+    private readonly userService: UserService,
   ) {}
+
+  async resolveReadableMessage(
+    leagueSlug: string,
+    tournamentSlug: string,
+    messageId: string,
+    sub: string,
+  ) {
+    if (!isValidObjectId(messageId))
+      throw new PDZError(ErrorCodes.VALIDATION.INVALID_PARAMS, {
+        reason: "Invalid message ID",
+      });
+
+    const message = await this.chatRepo.findById(messageId);
+    if (!message || message.deletedAt)
+      throw new PDZError(ErrorCodes.CHAT.MESSAGE_NOT_FOUND, { messageId });
+
+    const { tournament, room, viewer } = await this.resolveRoom(
+      leagueSlug,
+      tournamentSlug,
+      message.channel,
+      message.target,
+      sub,
+    );
+    if (message.tournament.toString() !== tournament.id)
+      throw new PDZError(ErrorCodes.CHAT.MESSAGE_NOT_FOUND, { messageId });
+    if (!canReadChannel(message.channel, room.target, viewer))
+      throw new PDZError(ErrorCodes.CHAT.FORBIDDEN, {
+        channel: message.channel,
+      });
+
+    return { tournament, message, viewer };
+  }
 
   async getMessages(
     leagueSlug: string,
@@ -61,11 +95,17 @@ export class ChatService {
       target: room.target,
     });
 
+    const profileIds = await this.userService.profileIdsFor(
+      messages.map((message) => message.author),
+    );
+
     return {
       channel,
       target: room.target || undefined,
       canPost: canWriteChannel(channel, room.target, viewer),
-      messages: messages.map((message) => this.toView(message, viewer)),
+      messages: messages.map((message) =>
+        this.toView(message, viewer, profileIds),
+      ),
     };
   }
 
@@ -104,7 +144,8 @@ export class ChatService {
       text,
     });
 
-    return { message: this.toView(message, viewer) };
+    const profileIds = await this.userService.profileIdsFor([sub]);
+    return { message: this.toView(message, viewer, profileIds) };
   }
 
   async deleteMessage(
@@ -254,11 +295,13 @@ export class ChatService {
   private toView(
     message: TournamentMessageDocument,
     viewer: ChatViewer & { authorName?: string },
+    profileIds: ReadonlyMap<string, string>,
   ) {
     const isViewer = !!viewer.sub && message.author === viewer.sub;
     return {
       id: message._id.toString(),
       author: message.authorName,
+      authorProfileId: profileIds.get(message.author),
       role: message.authorRole,
       teamId: message.team?.toString(),
       text: message.text,

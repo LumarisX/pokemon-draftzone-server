@@ -14,13 +14,73 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { PostChatMessageDto } from "./chat.dto";
+import { ChatReportService } from "./chat-report.service";
+import {
+  PostChatMessageDto,
+  ReportChatMessageDto,
+  ResolveChatReportDto,
+} from "./chat.dto";
 import { ChatService } from "./chat.service";
 import { ChatChannel } from "./chat.schema";
 
 @Controller("leagues/:leagueSlug/tournaments/:tournamentSlug/chat")
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly reportService: ChatReportService,
+  ) {}
+
+  @Get("reports")
+  @UseGuards(JwtAuthGuard)
+  async getReports(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @User() sub: string,
+  ) {
+    return this.reportService.listForTournament(
+      leagueSlug,
+      tournamentSlug,
+      sub,
+    );
+  }
+
+  @Post("reports/:reportId/resolve")
+  @UseGuards(JwtAuthGuard)
+  async resolveReport(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("reportId") reportId: string,
+    @User() sub: string,
+    @Body() body: ResolveChatReportDto,
+  ) {
+    return this.reportService.resolveForTournament(
+      leagueSlug,
+      tournamentSlug,
+      reportId,
+      sub,
+      body.action,
+    );
+  }
+
+  @Post("messages/:messageId/report")
+  @UseGuards(JwtAuthGuard, UserThrottlerGuard)
+  @SkipGlobalThrottle()
+  @Throttle({ default: { ttl: 60_000, limit: 6 } })
+  async reportMessage(
+    @Param("leagueSlug") leagueSlug: string,
+    @Param("tournamentSlug") tournamentSlug: string,
+    @Param("messageId") messageId: string,
+    @User() sub: string,
+    @Body() body: ReportChatMessageDto,
+  ) {
+    return this.reportService.report(
+      leagueSlug,
+      tournamentSlug,
+      messageId,
+      sub,
+      body,
+    );
+  }
 
   @Get(":channel")
   @OptionalAuth()

@@ -46,6 +46,7 @@ import { TournamentApplicationDocument } from "@modules/tournament-application/t
 import { actingCoach, isActiveCoach } from "@modules/tournament/membership";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { Injectable } from "@nestjs/common";
+import { UserService } from "@modules/user/user.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Types } from "mongoose";
 import {
@@ -116,6 +117,7 @@ export class HostedTournamentService {
     private readonly events: EventEmitter2,
     private readonly logWriter: TournamentLogWriter,
     private readonly identities: TeamIdentityRepository,
+    private readonly userService: UserService,
   ) {}
 
   async removeParticipant(
@@ -194,11 +196,13 @@ export class HostedTournamentService {
       !team.nameLockedBy &&
       !!actingCoach(team, sub, "manageRoster") &&
       (await this.mayChangeIdentity(team.identityId, sub));
+    const coachProfileIds = await this.userService.profileIdsFor([coach.auth0Id]);
     const identity = {
       id: team._id.toString(),
       slug: team.slug,
       baseName: team.baseName ?? team.teamName,
       coachId: coach._id.toString(),
+      coachProfileId: coachProfileIds.get(coach.auth0Id),
       isCoach: viewerIsCoach,
       canEditTeam,
       canManageTeam,
@@ -574,6 +578,9 @@ export class HostedTournamentService {
     );
 
     const context = rosterContext(tournament);
+    const coachProfileIds = await this.userService.profileIdsFor(
+      teams.map((team) => team.primaryCoach.auth0Id),
+    );
 
     return {
       teams: teams.map((team) => {
@@ -583,6 +590,7 @@ export class HostedTournamentService {
           slug: team.slug,
           teamName: team.teamName,
           coachName: team.primaryCoach.name,
+          coachProfileId: coachProfileIds.get(team.primaryCoach.auth0Id),
           logo: team.logo,
           pickCount: team.pickLog?.length ?? 0,
           status: team.status,
@@ -635,6 +643,9 @@ export class HostedTournamentService {
       : [];
     const pokemonStandings = await calculatePokemonStandings(matchups);
     const rounds = roster.rounds;
+    const coachProfileIds = await this.userService.profileIdsFor(
+      teams.map((team) => team.primaryCoach.auth0Id),
+    );
 
     const composed = await Promise.all(
       teams
@@ -658,6 +669,7 @@ export class HostedTournamentService {
               slug: team.slug,
               name: team.teamName,
               coach: team.primaryCoach.name,
+              coachProfileId: coachProfileIds.get(team.primaryCoach.auth0Id),
               logo: team.logo,
               timezone: team.primaryCoach.timezone,
               isCoach: isCoachedBy(team, sub, "chat"),
@@ -878,6 +890,11 @@ export class HostedTournamentService {
       dto.answers ?? [],
     );
 
+    const discordName = await this.userService.claimSignUpDiscordName(
+      sub,
+      dto.discordName,
+    );
+
     const preferredIdentityId = await this.identities.record(
       sub,
       teamName,
@@ -889,7 +906,7 @@ export class HostedTournamentService {
       auth0Id: sub,
       name: dto.name,
       gameName: dto.gameName,
-      discordName: dto.discordName,
+      discordName,
       timezone: dto.timezone,
       experience: answerText(answers, EXPERIENCE_QUESTION_ID),
       droppedBefore: answerBool(answers, DROPPED_BEFORE_QUESTION_ID),
@@ -905,7 +922,7 @@ export class HostedTournamentService {
 
     this.events.emit(TOURNAMENT_EVENTS.applicationSubmitted, {
       tournament,
-      signUp: { ...dto, teamName, logo },
+      signUp: { ...dto, discordName, teamName, logo },
       answers,
     } satisfies ApplicationSubmittedEvent);
 
@@ -1322,17 +1339,20 @@ export class HostedTournamentService {
     const teams = await this.teamRepo.findAllByTournament(tournament.id);
 
     if (!can(tournament, sub, "manageParticipants")) {
-      return teams
-        .filter((team) => team.status === "approved")
-        .map((team) => ({
-          id: team.primaryCoach?._id.toString(),
-          teamId: team._id.toString(),
-          teamSlug: team.slug,
-          teamName: team.teamName,
-          coachName: team.primaryCoach.name,
-          logo: team.logo,
-          status: team.status,
-        }));
+      const approved = teams.filter((team) => team.status === "approved");
+      const coachProfileIds = await this.userService.profileIdsFor(
+        approved.map((team) => team.primaryCoach?.auth0Id),
+      );
+      return approved.map((team) => ({
+        id: team.primaryCoach?._id.toString(),
+        teamId: team._id.toString(),
+        teamSlug: team.slug,
+        teamName: team.teamName,
+        coachName: team.primaryCoach.name,
+        coachProfileId: coachProfileIds.get(team.primaryCoach.auth0Id),
+        logo: team.logo,
+        status: team.status,
+      }));
     }
 
     const drafts = await this.draftRepo.findAllByTournament(tournament.id);
@@ -1349,6 +1369,9 @@ export class HostedTournamentService {
       tournament.id,
     );
     const teamById = new Map(teams.map((team) => [team._id.toString(), team]));
+    const applicantProfileIds = await this.userService.profileIdsFor(
+      applications.map((application) => application.auth0Id),
+    );
     const questionLabels = new Map(
       tournament.signUpQuestions.map((question) => [
         question.id,
@@ -1387,6 +1410,7 @@ export class HostedTournamentService {
           teamId: team?._id.toString(),
           teamSlug: team?.slug,
           name: coach?.name ?? application.name,
+          profileId: applicantProfileIds.get(application.auth0Id),
           gameName: coach?.gameName ?? application.gameName,
           discordName,
           timezone: coach?.timezone ?? application.timezone,
@@ -1524,10 +1548,12 @@ export class HostedTournamentService {
     if (!team || team.tournamentId.toString() !== tournament.id)
       throw new PDZError(ErrorCodes.TOURNAMENT.COACH_NOT_FOUND, { coachId });
 
+    const coachProfileIds = await this.userService.profileIdsFor([coach.auth0Id]);
     return {
       id: coach._id.toString(),
       teamName: team.teamName,
       coachName: coach.name,
+      coachProfileId: coachProfileIds.get(coach.auth0Id),
       logo: team.logo,
       status: team.status,
     };

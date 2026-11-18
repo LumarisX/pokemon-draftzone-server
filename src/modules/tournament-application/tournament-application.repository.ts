@@ -104,6 +104,26 @@ export class TournamentApplicationRepository {
       .exec();
   }
 
+  async findAllByApplicant(
+    auth0Id: string,
+  ): Promise<TournamentApplicationDocument[]> {
+    return this.applicationModel.find({ auth0Id: { $eq: auth0Id } }).exec();
+  }
+
+  async setDiscordName(
+    applicationIds: (Types.ObjectId | string)[],
+    discordName: string,
+  ): Promise<number> {
+    if (applicationIds.length === 0) return 0;
+    const result = await this.applicationModel
+      .updateMany(
+        { _id: { $in: applicationIds.map((id) => this.toObjectId(id)) } },
+        { $set: { discordName } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
   async findBlockingApplication(
     tournamentId: Types.ObjectId | string,
     auth0Id: string,

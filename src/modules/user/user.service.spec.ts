@@ -1,6 +1,11 @@
 import { AppCacheService } from "@core/cache/app-cache.service";
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { createCache } from "cache-manager";
-import { User, UserSettings } from "./user.domain";
+import { AccountIdentityService } from "./account-identity.service";
+import { DiscordNameSyncService } from "./discord-name-sync.service";
+import { User, UserProfile, UserSettings } from "./user.domain";
+import { UserSignInRepository } from "./user-sign-in.repository";
 import { UserSettingsDto } from "./user.dto";
 import { UserRepository } from "./user.repository";
 import { UserService } from "./user.service";
@@ -16,6 +21,7 @@ function buildUser(overrides: Partial<ConstructorParameters<typeof User>[0]> = {
 
 describe("UserService", () => {
   let userRepo: jest.Mocked<UserRepository>;
+  let discordNameSync: jest.Mocked<DiscordNameSyncService>;
   let service: UserService;
 
   beforeEach(() => {
@@ -23,23 +29,153 @@ describe("UserService", () => {
       getUserBySub: jest.fn(),
       updateSettings: jest.fn(),
       updateUser: jest.fn(),
+      getOrCreateUserBySub: jest.fn(),
+      applyChanges: jest.fn(),
+      profileOwnerSub: jest.fn().mockResolvedValue(null),
+      findPublicCardById: jest.fn().mockResolvedValue(null),
+      findNamesByAccounts: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<UserRepository>;
-    service = new UserService(userRepo, new AppCacheService(createCache()));
+    discordNameSync = {
+      propagateToRunningSignUps: jest
+        .fn()
+        .mockResolvedValue({ coaches: 0, applications: 0 }),
+    } as unknown as jest.Mocked<DiscordNameSyncService>;
+    service = new UserService(
+      userRepo,
+      new AppCacheService(createCache()),
+      new AccountIdentityService({ get: () => undefined } as any),
+      discordNameSync,
+      {} as UserSignInRepository,
+    );
+  });
+
+  describe("claimSignUpDiscordName", () => {
+    beforeEach(() => {
+      userRepo.applyChanges.mockResolvedValue(buildUser());
+    });
+
+    it("returns the account's Discord name and ignores the submitted one", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "profile#1" }) }),
+      );
+
+      const name = await service.claimSignUpDiscordName(
+        "auth0|user-1",
+        "typed#2",
+      );
+
+      expect(name).toBe("profile#1");
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it("saves the submitted name to the profile when the account has none", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      const name = await service.claimSignUpDiscordName(
+        "auth0|user-1",
+        "  typed#2 ",
+      );
+
+      expect(name).toBe("typed#2");
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: { "profile.discordName": "typed#2" },
+        unset: [],
+      });
+    });
+
+    it("rejects a sign-up with neither a profile name nor a submitted one", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await expect(
+        service.claimSignUpDiscordName("auth0|user-1", undefined),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
+        status: 400,
+      });
+      await expect(
+        service.claimSignUpDiscordName("auth0|user-1", "   "),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it("rejects a submitted name over the profile limit", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await expect(
+        service.claimSignUpDiscordName("auth0|user-1", "x".repeat(38)),
+      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
+    });
+  });
+
+  describe("discord name propagation", () => {
+    beforeEach(() => {
+      userRepo.applyChanges.mockResolvedValue(buildUser());
+    });
+
+    it("updates running sign-ups when the name changes to a new value", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "old#1" }) }),
+      );
+
+      await service.updateProfile("auth0|user-1", { discordName: " new#2 " });
+
+      expect(discordNameSync.propagateToRunningSignUps).toHaveBeenCalledWith(
+        "auth0|user-1",
+        "new#2",
+      );
+    });
+
+    it("updates running sign-ups again when the same name is re-sent, so a failed update can be retried", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "same#1" }) }),
+      );
+
+      await service.updateProfile("auth0|user-1", { discordName: "same#1" });
+
+      expect(discordNameSync.propagateToRunningSignUps).toHaveBeenCalledWith(
+        "auth0|user-1",
+        "same#1",
+      );
+    });
+
+    it("leaves existing sign-ups alone when the name is cleared", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "old#1" }) }),
+      );
+
+      await service.updateProfile("auth0|user-1", { discordName: null });
+      await service.updateProfile("auth0|user-1", { discordName: "  " });
+
+      expect(discordNameSync.propagateToRunningSignUps).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for other profile fields", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", { gameName: "AshK" });
+
+      expect(discordNameSync.propagateToRunningSignUps).not.toHaveBeenCalled();
+    });
   });
 
   describe("getSettings", () => {
     it("returns the user's settings when present", async () => {
       const settings = new UserSettings({ theme: "dark" });
-      userRepo.getUserBySub.mockResolvedValue(buildUser({ settings }));
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser({ settings }));
 
       const result = await service.getSettings("auth0|user-1");
 
-      expect(userRepo.getUserBySub).toHaveBeenCalledWith("auth0|user-1");
+      expect(userRepo.getOrCreateUserBySub).toHaveBeenCalledWith(
+        "auth0|user-1",
+        expect.any(Date),
+      );
       expect(result).toBe(settings);
     });
 
     it("defaults to an empty object when the user has no settings", async () => {
-      userRepo.getUserBySub.mockResolvedValue(buildUser({ settings: undefined }));
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ settings: undefined }),
+      );
 
       const result = await service.getSettings("auth0|user-1");
 
@@ -86,7 +222,6 @@ describe("UserService", () => {
       await service.updateSettings("auth0|user-1", { theme: "classic" });
       await service.getMe("auth0|user-1");
 
-      // getMe (miss), updateSettings' own read, then getMe again post-invalidation
       expect(userRepo.getUserBySub).toHaveBeenCalledTimes(3);
     });
   });
@@ -145,6 +280,324 @@ describe("UserService", () => {
       await service.getMe("auth0|user-2");
 
       expect(userRepo.getUserBySub).toHaveBeenCalledTimes(2);
+    });
+
+    it("still throws USER.NOT_FOUND for a missing user", async () => {
+      userRepo.getUserBySub.mockRejectedValue(
+        new PDZError(ErrorCodes.USER.NOT_FOUND),
+      );
+
+      await expect(service.getMe("auth0|nobody")).rejects.toMatchObject({
+        code: ErrorCodes.USER.NOT_FOUND.code,
+      });
+      expect(userRepo.getOrCreateUserBySub).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getOrCreateMe", () => {
+    it("creates the user through the repository when missing", async () => {
+      const user = buildUser();
+      userRepo.getOrCreateUserBySub.mockResolvedValue(user);
+
+      const result = await service.getOrCreateMe("auth0|user-1");
+
+      expect(userRepo.getOrCreateUserBySub).toHaveBeenCalledWith(
+        "auth0|user-1",
+        expect.any(Date),
+      );
+      expect(result).toBe(user);
+      expect(userRepo.getUserBySub).not.toHaveBeenCalled();
+    });
+
+    it("serves repeated reads from the cache", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.getOrCreateMe("auth0|user-1");
+      await service.getOrCreateMe("auth0|user-1");
+
+      expect(userRepo.getOrCreateUserBySub).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("profileIdsFor", () => {
+    it("asks once for the de-duplicated ids and maps each account to its profile id", async () => {
+      userRepo.findNamesByAccounts.mockResolvedValue(
+        new Map([
+          ["a", { profileId: "p-a", displayName: "Ash", username: null }],
+          ["b", { profileId: "p-b", displayName: null, username: null }],
+        ]),
+      );
+
+      const ids = await service.profileIdsFor(["a", "b", "a", undefined, null, ""]);
+
+      expect(userRepo.findNamesByAccounts).toHaveBeenCalledTimes(1);
+      expect(userRepo.findNamesByAccounts).toHaveBeenCalledWith(["a", "b"]);
+      expect([...ids]).toEqual([
+        ["a", "p-a"],
+        ["b", "p-b"],
+      ]);
+    });
+
+    it("omits accounts that have no row", async () => {
+      userRepo.findNamesByAccounts.mockResolvedValue(
+        new Map([["a", { profileId: "p-a", displayName: null, username: null }]]),
+      );
+
+      const ids = await service.profileIdsFor(["a", "ghost"]);
+
+      expect(ids.has("ghost")).toBe(false);
+    });
+
+    it("skips the query when there is nobody to look up", async () => {
+      expect((await service.profileIdsFor([undefined])).size).toBe(0);
+      expect(userRepo.findNamesByAccounts).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("resetDisplayName", () => {
+    const PROFILE_ID = "0123456789abcdef01234567";
+
+    it("sets Coach and four digits and clears the cache", async () => {
+      userRepo.profileOwnerSub.mockResolvedValue("auth0|target");
+      userRepo.applyChanges.mockResolvedValue(buildUser());
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+      await service.getOrCreateMe("auth0|target");
+
+      const result = await service.resetDisplayName(PROFILE_ID);
+
+      expect(result).toEqual({
+        accountId: "auth0|target",
+        profileId: PROFILE_ID,
+        displayName: expect.stringMatching(/^Coach \d{4}$/),
+      });
+      expect(userRepo.profileOwnerSub).toHaveBeenCalledWith(PROFILE_ID);
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|target", {
+        set: { displayName: result.displayName },
+      });
+      await service.getOrCreateMe("auth0|target");
+      expect(userRepo.getOrCreateUserBySub).toHaveBeenCalledTimes(2);
+    });
+
+    it("answers 404 for an unknown profile id and changes nothing", async () => {
+      userRepo.profileOwnerSub.mockResolvedValue(null);
+
+      await expect(service.resetDisplayName(PROFILE_ID)).rejects.toMatchObject({
+        code: ErrorCodes.USER.ACCOUNT_NOT_FOUND.code,
+        status: 404,
+      });
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it.each(["", "ash", "x".repeat(80), 42, undefined])(
+      "answers 404 for the malformed profile id %j without a lookup",
+      async (raw) => {
+        await expect(service.resetDisplayName(raw)).rejects.toMatchObject({
+          code: ErrorCodes.USER.ACCOUNT_NOT_FOUND.code,
+        });
+        expect(userRepo.profileOwnerSub).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("findPublicCard", () => {
+    const PROFILE_ID = "0123456789abcdef01234567";
+    const card = {
+      accountId: "acct-1",
+      profileId: PROFILE_ID,
+      displayName: "Ash",
+      username: "Ash",
+      joined: new Date("2026-01-01"),
+      privateProfile: false,
+    };
+
+    it("looks the profile id up as given", async () => {
+      userRepo.findPublicCardById.mockResolvedValue(card);
+
+      await expect(service.findPublicCard(PROFILE_ID)).resolves.toBe(card);
+      expect(userRepo.findPublicCardById).toHaveBeenCalledWith(PROFILE_ID);
+    });
+
+    it("accepts an upper-case ObjectId", async () => {
+      userRepo.findPublicCardById.mockResolvedValue(card);
+
+      await expect(
+        service.findPublicCard(PROFILE_ID.toUpperCase()),
+      ).resolves.toBe(card);
+    });
+
+    it("answers account not found for an unknown profile id", async () => {
+      userRepo.findPublicCardById.mockResolvedValue(null);
+
+      await expect(service.findPublicCard(PROFILE_ID)).rejects.toMatchObject({
+        code: ErrorCodes.USER.ACCOUNT_NOT_FOUND.code,
+        status: 404,
+      });
+    });
+
+    it.each([
+      "",
+      "ash",
+      "0123456789abcdef0123456",
+      "0123456789abcdef012345678",
+      "0123456789abcdef0123456g",
+      " 0123456789abcdef01234567",
+      "x".repeat(80),
+      42,
+      undefined,
+    ])(
+      "answers account not found for the malformed id %j without a lookup",
+      async (raw) => {
+        await expect(service.findPublicCard(raw)).rejects.toMatchObject({
+          code: ErrorCodes.USER.ACCOUNT_NOT_FOUND.code,
+          status: 404,
+        });
+        expect(userRepo.findPublicCardById).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("updateProfile", () => {
+    beforeEach(() => {
+      userRepo.applyChanges.mockResolvedValue(buildUser());
+    });
+
+    it("saves trimmed profile fields under profile.*", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", {
+        discordName: " ash#1 ",
+        gameName: "AshK",
+        timezone: "America/New_York",
+      });
+
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: {
+          "profile.discordName": "ash#1",
+          "profile.gameName": "AshK",
+          "profile.timezone": "America/New_York",
+        },
+        unset: [],
+      });
+    });
+
+    it.each([true, false])("saves privateProfile %s", async (value) => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", { privateProfile: value });
+
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: { privateProfile: value },
+        unset: [],
+      });
+    });
+
+    it("accepts UTC as a time zone", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", { timezone: "UTC" });
+
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: { "profile.timezone": "UTC" },
+        unset: [],
+      });
+    });
+
+    it("rejects an unknown time zone", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await expect(
+        service.updateProfile("auth0|user-1", { timezone: "Mars/Olympus" }),
+      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
+    });
+
+    it("rejects an over-long Discord name and game name", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await expect(
+        service.updateProfile("auth0|user-1", { discordName: "x".repeat(38) }),
+      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
+      await expect(
+        service.updateProfile("auth0|user-1", { gameName: "x".repeat(33) }),
+      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it("clears a field sent as null or an empty string", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", {
+        discordName: null,
+        gameName: "  ",
+        timezone: "",
+      });
+
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: {},
+        unset: [
+          "profile.discordName",
+          "profile.gameName",
+          "profile.timezone",
+        ],
+      });
+    });
+
+    it("validates and saves the display name", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.updateProfile("auth0|user-1", { displayName: " Ash K " });
+
+      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
+        set: { displayName: "Ash K" },
+        unset: [],
+      });
+    });
+
+    it("rejects an invalid display name", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await expect(
+        service.updateProfile("auth0|user-1", { displayName: "A" }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.USER.INVALID_DISPLAY_NAME.code,
+      });
+    });
+
+    it("refuses to clear the display name", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ displayName: "Ash" }),
+      );
+
+      await expect(
+        service.updateProfile("auth0|user-1", { displayName: null }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.USER.INVALID_DISPLAY_NAME.code,
+      });
+      await expect(
+        service.updateProfile("auth0|user-1", { displayName: "" }),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.USER.INVALID_DISPLAY_NAME.code,
+      });
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing when no field is present", async () => {
+      const current = buildUser();
+      userRepo.getOrCreateUserBySub.mockResolvedValue(current);
+
+      const result = await service.updateProfile("auth0|user-1", {});
+
+      expect(result).toBe(current);
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
+    });
+
+    it("invalidates the cached user after a write", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+
+      await service.getOrCreateMe("auth0|user-1");
+      await service.updateProfile("auth0|user-1", { gameName: "AshK" });
+      await service.getOrCreateMe("auth0|user-1");
+
+      expect(userRepo.getOrCreateUserBySub).toHaveBeenCalledTimes(3);
     });
   });
 });

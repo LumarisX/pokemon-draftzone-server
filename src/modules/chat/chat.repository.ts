@@ -48,6 +48,13 @@ export class ChatRepository {
     return this.messageModel.findById(messageId).exec();
   }
 
+  async findByIds(
+    messageIds: (Types.ObjectId | string)[],
+  ): Promise<TournamentMessageDocument[]> {
+    if (messageIds.length === 0) return [];
+    return this.messageModel.find({ _id: { $in: messageIds } }).exec();
+  }
+
   async create(
     input: CreateChatMessageInput,
   ): Promise<TournamentMessageDocument> {

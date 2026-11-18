@@ -1,3 +1,5 @@
+import { PDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
 import { ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtAuthGuard } from "./jwt-auth.guard";
@@ -96,5 +98,30 @@ describe("JwtAuthGuard.handleRequest", () => {
 
       expect(logSpy).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("JwtAuthGuard.handleRequest with a blocked sign-in", () => {
+  const blocked = () => new PDZError(ErrorCodes.USER.SIGN_IN_BLOCKED);
+
+  it("rethrows the blocked error as a 403 with its code on a protected route", () => {
+    const guard = new JwtAuthGuard(buildReflector(false));
+
+    let thrown: unknown;
+    try {
+      guard.handleRequest(blocked(), null, null, buildContext());
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(PDZError);
+    expect((thrown as PDZError).getStatus()).toBe(403);
+    expect((thrown as PDZError).code).toBe("USR-011");
+  });
+
+  it("treats the blocked sign-in as signed out on an optional-auth route", () => {
+    const guard = new JwtAuthGuard(buildReflector(true));
+
+    expect(guard.handleRequest(blocked(), null, null, buildContext())).toBeNull();
   });
 });

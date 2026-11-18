@@ -9,7 +9,10 @@ export const TOURNAMENT_EVENTS = {
 
 export type ApplicationSubmittedEvent = {
   tournament: HostedTournament;
-  signUp: SignUpDto & { teamName: string };
+  signUp: Omit<SignUpDto, "discordName"> & {
+    teamName: string;
+    discordName: string;
+  };
   answers: SubmittedAnswer[];
 };
 

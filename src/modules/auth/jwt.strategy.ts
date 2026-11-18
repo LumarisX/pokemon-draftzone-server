@@ -1,3 +1,4 @@
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { PassportStrategy } from "@nestjs/passport";
@@ -15,7 +16,10 @@ interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
-  constructor(private configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly userService: UserService,
+  ) {
     const issuer = configService.get<string>("AUTH0_ISSUER") ?? "";
     super({
       secretOrKeyProvider: passportJwtSecret({
@@ -31,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   }
 
   async validate(payload: JwtPayload) {
-    return { sub: payload.sub };
+    const sub = await this.userService.resolveAccount(payload.sub);
+    return { sub, signIn: payload.sub };
   }
 }

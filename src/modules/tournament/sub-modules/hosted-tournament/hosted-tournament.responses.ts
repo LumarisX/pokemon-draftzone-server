@@ -34,6 +34,7 @@ export type TeamPageResponse = {
   slug: string;
   baseName: string;
   coachId: string;
+  coachProfileId?: string;
   isCoach: boolean;
   canEditTeam: boolean;
   canManageTeam: boolean;
@@ -82,6 +83,7 @@ export type TeamListResponse = {
     slug: string;
     teamName: string;
     coachName: string;
+    coachProfileId?: string;
     logo: string | undefined;
     pickCount: number;
     status: TeamStatus;
@@ -96,6 +98,7 @@ export type PoolGroupTeam = {
   slug: string;
   name: string;
   coach: string;
+  coachProfileId?: string;
   logo: string | undefined;
   timezone: string;
   isCoach: boolean;

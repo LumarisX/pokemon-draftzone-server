@@ -1,5 +1,5 @@
 import { Auth0UserDto, UserSettingsDto } from "./user.dto";
-import { User, UserSettings } from "./user.domain";
+import { User, UserProfile, UserSettings } from "./user.domain";
 import { UserMapper, UserSettingsMapper } from "./user.mapper";
 import { UserEntity, UserSettingsEntity } from "./user.schema";
 
@@ -13,11 +13,75 @@ describe("UserMapper.toClientPayload", () => {
 
     expect(UserMapper.toClientPayload(user)).toEqual({
       sub: "auth0|user-1",
+      profileId: null,
+      displayName: null,
+      profile: { discordName: null, gameName: null, timezone: null },
+      privateProfile: false,
+      roles: [],
       settings,
       joined,
       lastLogin,
       lastCheckedAdsAt,
     });
+  });
+
+  it("exposes privateProfile and reads it back from the database entity", () => {
+    const user = new User({
+      sub: "auth0|user-1",
+      joined: new Date(),
+      lastLogin: new Date(),
+      privateProfile: true,
+    });
+
+    expect(UserMapper.toClientPayload(user).privateProfile).toBe(true);
+
+    const entity = {
+      auth0Sub: "auth0|user-1",
+      joined: new Date(),
+      lastLogin: new Date(),
+      lastCheckedAdsAt: new Date(),
+      roles: [],
+      settings: {},
+      privateProfile: true,
+    } as UserEntity;
+    expect(UserMapper.fromDatabase(entity).privateProfile).toBe(true);
+  });
+
+  it("never exposes the provider username", () => {
+    const user = new User({
+      sub: "auth0|user-1",
+      joined: new Date(),
+      lastLogin: new Date(),
+      username: "Provider Name",
+    });
+
+    expect(UserMapper.toClientPayload(user)).not.toHaveProperty("username");
+  });
+
+  it("returns the stored identity and the profile id", () => {
+    const user = new User({
+      sub: "oauth2|discord|1",
+      profileId: "0123456789abcdef01234567",
+      joined: new Date(),
+      lastLogin: new Date(),
+      username: "Ash Ketchum",
+      displayName: "Ash",
+      profile: new UserProfile({ discordName: "ash#1", timezone: "UTC" }),
+    });
+
+    const payload = UserMapper.toClientPayload(user);
+
+    expect(payload.profileId).toBe("0123456789abcdef01234567");
+    expect(payload.displayName).toBe("Ash");
+    expect(payload).not.toHaveProperty("avatar");
+    expect(payload.profile).toEqual({
+      discordName: "ash#1",
+      gameName: null,
+      timezone: "UTC",
+    });
+    expect(payload).not.toHaveProperty("handle");
+    expect(payload).not.toHaveProperty("suggestedHandle");
+    expect(payload).not.toHaveProperty("suggestedDisplayName");
   });
 });
 
@@ -42,6 +106,17 @@ describe("UserMapper.fromAuth0", () => {
     expect(result.username).toBe("ash");
     expect(result.joined).toEqual(new Date("2026-01-01T00:00:00.000Z"));
     expect(result.lastLogin).toEqual(new Date("2026-02-01T00:00:00.000Z"));
+  });
+
+  it("accepts a payload without username, settings or emailVerified", () => {
+    const result = UserMapper.fromAuth0({
+      auth0Sub: "google-oauth2|1",
+      lastLogin: "2026-02-01T00:00:00.000Z",
+      joined: "2026-01-01T00:00:00.000Z",
+    });
+
+    expect(result.sub).toBe("google-oauth2|1");
+    expect(result.username).toBeUndefined();
   });
 
   it("doesn't carry over settings from the Auth0 payload", () => {
@@ -78,6 +153,26 @@ describe("UserMapper.fromDatabase", () => {
     expect(result.settings).toEqual(
       new UserSettings({ shinyUnlock: true, spriteSet: "showdown" }),
     );
+  });
+
+  it("maps the identity fields and profile", () => {
+    const result = UserMapper.fromDatabase(
+      buildEntity({
+        username: "Provider",
+        displayName: "Ash",
+        profile: { discordName: "ash#1", gameName: "AshK", timezone: "UTC" },
+      }),
+    );
+
+    expect(result.username).toBe("Provider");
+    expect(result.displayName).toBe("Ash");
+    expect(result.profile).toEqual(
+      new UserProfile({ discordName: "ash#1", gameName: "AshK", timezone: "UTC" }),
+    );
+  });
+
+  it("leaves the profile undefined when the entity has none", () => {
+    expect(UserMapper.fromDatabase(buildEntity()).profile).toBeUndefined();
   });
 
   it("defaults settings to an empty UserSettings when the entity has none", () => {

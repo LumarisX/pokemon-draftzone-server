@@ -4,6 +4,8 @@ import { MySeasonsService } from "@modules/league/my-seasons.service";
 import { PokemonMapper } from "@modules/pokemon/pokemon.mapper";
 import { ExternalTournament } from "@modules/tournament/sub-modules/external-tournament/external-tournament.domain";
 import { ExternalTournamentRepository } from "@modules/tournament/sub-modules/external-tournament/external-tournament.repository";
+import { displayNameOrFallback } from "@modules/user/user.identity";
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import {
   achievementsFrom,
@@ -12,6 +14,8 @@ import {
   ProfileRecord,
   ProfileSeason,
 } from "./profile.domain";
+
+export type ProfileViewer = "owner" | "public";
 
 function externalRecord(tournament: ExternalTournament): ProfileRecord {
   const score = tournament.getScore();
@@ -24,16 +28,44 @@ export class ProfileService {
     private readonly seasons: MySeasonsService,
     private readonly externalRepo: ExternalTournamentRepository,
     private readonly archiveRepo: ArchiveRepository,
+    private readonly users: UserService,
   ) {}
 
-  async getProfile(sub: string) {
-    const [hosted, externalActive, externalCompleted, archives] =
+  async getPublicProfile(profileId: unknown, viewer: string | undefined) {
+    const card = await this.users.findPublicCard(profileId);
+    const isYou = viewer !== undefined && viewer === card.accountId;
+    const visible = isYou || !card.privateProfile;
+    return {
+      profileId: card.profileId,
+      displayName: displayNameOrFallback(card.displayName, card.username),
+      joined: card.joined.toISOString(),
+      private: card.privateProfile,
+      isYou,
+      profile: visible
+        ? await this.getProfile(card.accountId, isYou ? "owner" : "public")
+        : null,
+    };
+  }
+
+  async getProfile(sub: string, viewer: ProfileViewer = "owner") {
+    const owner = viewer === "owner";
+    const [hostedAll, externalActive, externalCompleted, archives] =
       await Promise.all([
         this.seasons.hosted(sub),
-        this.externalRepo.findByOwner(sub),
-        this.externalRepo.findCompletedByOwner(sub),
-        this.archiveRepo.findAllByOwner(sub),
+        owner ? this.externalRepo.findByOwner(sub) : [],
+        owner ? this.externalRepo.findCompletedByOwner(sub) : [],
+        owner ? this.archiveRepo.findAllByOwner(sub) : [],
       ]);
+
+    const hosted = owner
+      ? hostedAll
+      : {
+          ...hostedAll,
+          tournaments: hostedAll.tournaments.filter(
+            (season) =>
+              season.completedByOrganizer && season.phase === "completed",
+          ),
+        };
 
     const hostedRecord = (
       season: (typeof hosted.tournaments)[number],

@@ -3,6 +3,7 @@ import { CoachRepository } from "@modules/coach/coach.repository";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
+import { UserService } from "@modules/user/user.service";
 import { Types } from "mongoose";
 import { ChatRepository } from "./chat.repository";
 import { ChatService } from "./chat.service";
@@ -33,6 +34,7 @@ describe("ChatService", () => {
   let coachRepo: jest.Mocked<CoachRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let chatRepo: jest.Mocked<ChatRepository>;
+  let userService: jest.Mocked<UserService>;
   let service: ChatService;
 
   beforeEach(() => {
@@ -49,6 +51,9 @@ describe("ChatService", () => {
     teamRepo = {
       findManyByIds: jest.fn(),
     } as unknown as jest.Mocked<TeamRepository>;
+    userService = {
+      profileIdsFor: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as jest.Mocked<UserService>;
     const tournament = {
       id: TOURNAMENT_ID.toString(),
       owner: "auth0|owner",
@@ -64,6 +69,7 @@ describe("ChatService", () => {
       teamRepo,
       coachRepo,
       {} as LeagueMatchupRepository,
+      userService,
     );
   });
 
@@ -105,6 +111,69 @@ describe("ChatService", () => {
       ).rejects.toMatchObject({ code: ErrorCodes.CHAT.FORBIDDEN.code });
     },
   );
+
+  it("adds each author's profile id to the messages with one lookup", async () => {
+    seat();
+    chatRepo.findByRoom.mockResolvedValue([
+      {
+        _id: new Types.ObjectId(),
+        author: "auth0|a",
+        authorName: "Ash",
+        authorRole: "coach",
+        text: "hi",
+        createdAt: new Date(),
+      },
+      {
+        _id: new Types.ObjectId(),
+        author: "auth0|b",
+        authorName: "Misty",
+        authorRole: "coach",
+        text: "yo",
+        createdAt: new Date(),
+      },
+      {
+        _id: new Types.ObjectId(),
+        author: "auth0|a",
+        authorName: "Ash",
+        authorRole: "coach",
+        text: "again",
+        createdAt: new Date(),
+      },
+    ] as never);
+    userService.profileIdsFor.mockResolvedValue(new Map([["auth0|a", "p-ash"]]));
+
+    const result = await service.getMessages(
+      "league",
+      "tournament",
+      "tournament",
+      undefined,
+      "auth0|coach",
+    );
+
+    expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+    expect(result.messages.map((m) => m.authorProfileId)).toEqual([
+      "p-ash",
+      undefined,
+      "p-ash",
+    ]);
+  });
+
+  it("returns the poster's profile id on a new message", async () => {
+    seat();
+    userService.profileIdsFor.mockResolvedValue(
+      new Map([["auth0|coach", "p-casey"]]),
+    );
+
+    const { message } = await service.postMessage(
+      "league",
+      "tournament",
+      "tournament",
+      "auth0|coach",
+      { text: "gl hf" },
+    );
+
+    expect(message.authorProfileId).toBe("p-casey");
+  });
 
   it("signs a message with the poster's own name, not the primary coach's", async () => {
     seat();

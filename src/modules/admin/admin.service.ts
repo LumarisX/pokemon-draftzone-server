@@ -1,4 +1,7 @@
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
+import { AdminAuditRepository } from "./admin-audit.repository";
+import { ResetDisplayNameDto } from "./admin.dto";
 import {
   AdminRepository,
   AgeSegment,
@@ -31,7 +34,23 @@ export interface UserTimeSeries {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly adminRepository: AdminRepository) {}
+  constructor(
+    private readonly adminRepository: AdminRepository,
+    private readonly userService: UserService,
+    private readonly auditRepository: AdminAuditRepository,
+  ) {}
+
+  async resetDisplayName(actor: string, dto: ResetDisplayNameDto) {
+    const { accountId, profileId, displayName } =
+      await this.userService.resetDisplayName(dto.profileId);
+    await this.auditRepository.append({
+      actor,
+      action: "user.reset-display-name",
+      target: accountId,
+      details: { profileId, displayName, note: dto.note },
+    });
+    return { reset: true, profileId, displayName };
+  }
 
   async getSummary(): Promise<UserStatsSummary> {
     const now = Date.now();
@@ -101,7 +120,6 @@ export class AdminService {
   }
 }
 
-/** Returns counts in canonical order, inserting zeros for absent keys. */
 function orderAndFill<K extends string>(
   rows: KeyedCount<K>[],
   order: K[],

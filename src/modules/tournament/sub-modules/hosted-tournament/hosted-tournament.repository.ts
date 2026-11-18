@@ -128,6 +128,23 @@ export class HostedTournamentRepository {
     return !!doc?.completedAt || doc?.archived === true;
   }
 
+  async findFinishedIds(
+    tournamentIds: (Types.ObjectId | string)[],
+  ): Promise<Set<string>> {
+    if (tournamentIds.length === 0) return new Set();
+    const docs = await this.hostedTournamentModel
+      .find(
+        {
+          _id: { $in: tournamentIds },
+          $or: [{ completedAt: { $ne: null } }, { archived: true }],
+        },
+        { _id: 1 },
+      )
+      .lean()
+      .exec();
+    return new Set(docs.map((doc) => doc._id.toString()));
+  }
+
   async findById(
     tournamentId: Types.ObjectId | string,
   ): Promise<HostedTournament> {

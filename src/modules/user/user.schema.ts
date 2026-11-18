@@ -30,6 +30,20 @@ export class UserSettingsEntity {
 export const UserSettingsSchema =
   SchemaFactory.createForClass(UserSettingsEntity);
 
+@Schema({ _id: false })
+export class UserProfileEntity {
+  @Prop({ type: String })
+  discordName?: string;
+
+  @Prop({ type: String })
+  gameName?: string;
+
+  @Prop({ type: String })
+  timezone?: string;
+}
+export const UserProfileSchema =
+  SchemaFactory.createForClass(UserProfileEntity);
+
 @Schema({ timestamps: true, collection: "users" })
 export class UserEntity {
   @Prop({ type: String, required: true, trim: true, unique: true, index: true })
@@ -37,6 +51,15 @@ export class UserEntity {
 
   @Prop({ type: String, trim: true })
   username?: string;
+
+  @Prop({ type: String })
+  displayName?: string;
+
+  @Prop({ type: UserProfileSchema })
+  profile?: UserProfileEntity;
+
+  @Prop({ type: Boolean })
+  privateProfile?: boolean;
 
   @Prop({ type: [String], enum: UserRole, default: [] })
   roles!: UserRole[];

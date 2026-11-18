@@ -10,6 +10,7 @@ import {
   can,
   isStaff,
 } from "@modules/tournament/tournament-policy";
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import { createHash } from "crypto";
 import { Types } from "mongoose";
@@ -37,6 +38,7 @@ export class TournamentOrganizerService {
     private readonly inviteRepo: OrganizerInviteRepository,
     private readonly teamRepo: TeamRepository,
     private readonly coachRepo: CoachRepository,
+    private readonly userService: UserService,
   ) {}
 
   async getOrganizers(leagueSlug: string, tournamentSlug: string, sub: string) {
@@ -241,12 +243,14 @@ export class TournamentOrganizerService {
           this.promotableCoaches(tournament, new Set(organizerSubs)),
         ])
       : [[], []];
+    const profileIds = await this.userService.profileIdsFor(organizerSubs);
 
     return {
       canEdit,
       organizers: organizerSubs.map((organizerSub) => ({
         sub: organizerSub,
         name: tournament.staffName(organizerSub),
+        profileId: profileIds.get(organizerSub),
         isOwner: organizerSub === tournament.owner,
         isYou: organizerSub === sub,
       })),

@@ -12,9 +12,24 @@ export class UserSettings {
   }
 }
 
+export class UserProfile {
+  discordName?: string;
+  gameName?: string;
+  timezone?: string;
+
+  constructor(init?: Partial<UserProfile>) {
+    Object.assign(this, init);
+  }
+}
+
 export class User {
   readonly sub: string;
+  readonly signIn?: string;
+  readonly profileId?: string;
   username?: string;
+  displayName?: string;
+  profile?: UserProfile;
+  privateProfile?: boolean;
   roles?: UserRole[];
   settings?: UserSettings;
   joined: Date;
@@ -22,15 +37,25 @@ export class User {
   lastCheckedAdsAt?: Date;
   constructor(props: {
     sub: string;
+    signIn?: string;
+    profileId?: string;
     joined: Date;
     lastLogin: Date;
     username?: string;
+    displayName?: string;
+    profile?: UserProfile;
+    privateProfile?: boolean;
     roles?: UserRole[];
     settings?: UserSettings;
     lastCheckedAdsAt?: Date;
   }) {
     this.sub = props.sub;
+    this.signIn = props.signIn;
+    this.profileId = props.profileId;
     this.username = props.username;
+    this.displayName = props.displayName;
+    this.profile = props.profile;
+    this.privateProfile = props.privateProfile;
     this.roles = props.roles;
     this.settings = props.settings;
     this.joined = props.joined;

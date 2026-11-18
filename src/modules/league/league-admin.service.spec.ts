@@ -1,4 +1,5 @@
 import { hashInviteToken } from "@modules/tournament/sub-modules/hosted-tournament/tournament-organizer.service";
+import { UserService } from "@modules/user/user.service";
 import { Types } from "mongoose";
 import { LeagueAdminInviteRepository } from "./league-admin-invite.repository";
 import { LeagueAdminService } from "./league-admin.service";
@@ -31,6 +32,7 @@ function buildInvite(overrides: Record<string, unknown> = {}) {
 describe("LeagueAdminService", () => {
   let leagueRepo: jest.Mocked<LeagueRepository>;
   let inviteRepo: jest.Mocked<LeagueAdminInviteRepository>;
+  let userService: jest.Mocked<UserService>;
   let service: LeagueAdminService;
 
   beforeEach(() => {
@@ -49,7 +51,10 @@ describe("LeagueAdminService", () => {
       release: jest.fn().mockResolvedValue(undefined),
       deletePending: jest.fn().mockResolvedValue(true),
     } as unknown as jest.Mocked<LeagueAdminInviteRepository>;
-    service = new LeagueAdminService(leagueRepo, inviteRepo);
+    userService = {
+      profileIdsFor: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as jest.Mocked<UserService>;
+    service = new LeagueAdminService(leagueRepo, inviteRepo, userService);
   });
 
   it("shows the admin list to admins but hides pending invites from them", async () => {
@@ -60,6 +65,32 @@ describe("LeagueAdminService", () => {
       { sub: "auth0|admin", name: "Brock", isYou: true },
     ]);
     expect(inviteRepo.findPendingByLeague).not.toHaveBeenCalled();
+  });
+
+  it("adds each admin's profile id from one batched lookup", async () => {
+    leagueRepo.findBySlug.mockResolvedValue(
+      buildLeague({
+        admins: [
+          { sub: "auth0|admin", name: "Brock" },
+          { sub: "auth0|second", name: "Misty" },
+        ],
+      }),
+    );
+    userService.profileIdsFor.mockResolvedValue(
+      new Map([["auth0|second", "p-misty"]]),
+    );
+
+    const result = await service.getAdmins("springleague", "auth0|owner");
+
+    expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+    expect(userService.profileIdsFor).toHaveBeenCalledWith([
+      "auth0|admin",
+      "auth0|second",
+    ]);
+    expect(result.admins.map((admin) => admin.profileId)).toEqual([
+      undefined,
+      "p-misty",
+    ]);
   });
 
   it("keeps the admin list from anyone outside the league", async () => {

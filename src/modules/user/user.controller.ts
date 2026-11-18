@@ -1,7 +1,8 @@
 import { User } from "@core/decorators/user.decorator";
 import { JwtAuthGuard } from "@modules/auth/jwt-auth.guard";
 import { Body, Controller, Get, Patch, UseGuards } from "@nestjs/common";
-import { UserSettingsDto } from "./user.dto";
+import { UpdateProfileDto, UserSettingsDto } from "./user.dto";
+import { UserMapper } from "./user.mapper";
 import { UserService } from "./user.service";
 
 @Controller("users")
@@ -21,6 +22,13 @@ export class UserController {
 
   @Get("me")
   async getMe(@User() sub: string) {
-    return this.userService.getMe(sub);
+    return UserMapper.toClientPayload(await this.userService.getOrCreateMe(sub));
+  }
+
+  @Patch("profile")
+  async updateProfile(@User() sub: string, @Body() body: UpdateProfileDto) {
+    return UserMapper.toClientPayload(
+      await this.userService.updateProfile(sub, body),
+    );
   }
 }

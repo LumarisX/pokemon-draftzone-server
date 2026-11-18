@@ -2,6 +2,7 @@ import { ErrorCodes } from "@core/pdz-error-codes";
 import { CoachRepository } from "@modules/coach/coach.repository";
 import { DraftCount } from "@modules/tier-list/tier-list.domain";
 import { TeamRepository } from "@modules/team/team.repository";
+import { UserService } from "@modules/user/user.service";
 import { Types } from "mongoose";
 import { HostedTournament } from "./hosted-tournament.domain";
 import { HostedTournamentRepository } from "./hosted-tournament.repository";
@@ -75,9 +76,13 @@ describe("TournamentOrganizerService", () => {
   let inviteRepo: jest.Mocked<OrganizerInviteRepository>;
   let teamRepo: jest.Mocked<TeamRepository>;
   let coachRepo: jest.Mocked<CoachRepository>;
+  let userService: jest.Mocked<UserService>;
   let service: TournamentOrganizerService;
 
   beforeEach(() => {
+    userService = {
+      profileIdsFor: jest.fn().mockResolvedValue(new Map()),
+    } as unknown as jest.Mocked<UserService>;
     tournament = buildTournament();
     tournamentRepo = {
       findBySlug: jest.fn().mockResolvedValue(tournament),
@@ -111,6 +116,7 @@ describe("TournamentOrganizerService", () => {
       inviteRepo,
       teamRepo,
       coachRepo,
+      userService,
     );
   });
 
@@ -124,8 +130,45 @@ describe("TournamentOrganizerService", () => {
 
       expect(result.organizers).toEqual([
         { sub: OWNER, name: "Brock", isOwner: true, isYou: false },
-        { sub: ORGANIZER, name: "Nurse Joy", isOwner: false, isYou: true },
-        { sub: OTHER_ORGANIZER, name: null, isOwner: false, isYou: false },
+        {
+          sub: ORGANIZER,
+          name: "Nurse Joy",
+          isOwner: false,
+          isYou: true,
+        },
+        {
+          sub: OTHER_ORGANIZER,
+          name: null,
+          isOwner: false,
+          isYou: false,
+        },
+      ]);
+    });
+
+    it("adds each organizer's profile id from one batched lookup", async () => {
+      userService.profileIdsFor.mockResolvedValue(
+        new Map([
+          [OWNER, "p-brock"],
+          [OTHER_ORGANIZER, "p-joy"],
+        ]),
+      );
+
+      const result = await service.getOrganizers(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        ORGANIZER,
+      );
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(userService.profileIdsFor).toHaveBeenCalledWith([
+        OWNER,
+        ORGANIZER,
+        OTHER_ORGANIZER,
+      ]);
+      expect(result.organizers.map((entry) => entry.profileId)).toEqual([
+        "p-brock",
+        undefined,
+        "p-joy",
       ]);
     });
 

@@ -325,6 +325,74 @@ export const ErrorCodes = {
       status: 404,
       message: "User not found",
     },
+    INVALID_DISPLAY_NAME: {
+      code: "USR-006",
+      status: 400,
+      message:
+        "A display name is 2 to 24 characters, starts and ends with a letter or number, and may contain spaces and _ - . '",
+    },
+    INVALID_PROFILE: {
+      code: "USR-007",
+      status: 400,
+      message: "That profile detail is not valid",
+    },
+    ACCOUNT_NOT_FOUND: {
+      code: "USR-010",
+      status: 404,
+      message: "No account has that profile id",
+    },
+    SIGN_IN_BLOCKED: {
+      code: "USR-011",
+      status: 403,
+      message: "This sign-in has been locked. Contact an admin.",
+    },
+    ACCOUNT_TOOLS_UNAVAILABLE: {
+      code: "USR-012",
+      status: 409,
+      message:
+        "Locking and transferring accounts needs internal account ids, which are not switched on",
+    },
+    TRANSFER_SAME_ACCOUNT: {
+      code: "USR-013",
+      status: 400,
+      message: "Choose two different accounts",
+    },
+    TRANSFER_NEW_ACCOUNT_BLOCKED: {
+      code: "USR-014",
+      status: 409,
+      message: "The new account's sign-in is locked, so it can't be transferred",
+    },
+    TRANSFER_NEW_ACCOUNT_HAS_SIGN_INS: {
+      code: "USR-015",
+      status: 409,
+      message: "The new account has other sign-ins attached to it",
+    },
+    TRANSFER_NEW_ACCOUNT_REDIRECTED: {
+      code: "USR-016",
+      status: 409,
+      message: "The new account's sign-in already reaches a different account",
+    },
+    TRANSFER_NEW_ACCOUNT_NOT_EMPTY: {
+      code: "USR-017",
+      status: 409,
+      message:
+        "The new account already has data, so it can't be transferred. Merging used accounts is a manual job.",
+    },
+    NOTHING_TO_UNDO: {
+      code: "USR-018",
+      status: 404,
+      message: "That account has no transfer to undo",
+    },
+    OWNER_REQUIRED: {
+      code: "USR-019",
+      status: 403,
+      message: "Only an owner can do that to an owner or admin account",
+    },
+    CANNOT_ACT_ON_SELF: {
+      code: "USR-020",
+      status: 400,
+      message: "You can't do that to your own account",
+    },
   },
   MOVE: {
     NOT_FOUND: {
@@ -398,6 +466,16 @@ export const ErrorCodes = {
       code: "CH-004",
       status: 403,
       message: "This chat is turned off for this tournament",
+    },
+    CANNOT_REPORT_OWN: {
+      code: "CH-005",
+      status: 400,
+      message: "You can't report your own message",
+    },
+    REPORT_NOT_FOUND: {
+      code: "CH-006",
+      status: 404,
+      message: "Report not found",
     },
   },
   REPLAY: {

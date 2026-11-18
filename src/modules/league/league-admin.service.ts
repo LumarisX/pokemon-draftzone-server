@@ -2,6 +2,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { generateSlug } from "@core/slug";
 import { hashInviteToken } from "@modules/tournament/sub-modules/hosted-tournament/tournament-organizer.service";
+import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import { leagueRole } from "./league-access";
 import { LeagueAdminInviteRepository } from "./league-admin-invite.repository";
@@ -18,6 +19,7 @@ export class LeagueAdminService {
   constructor(
     private readonly leagueRepo: LeagueRepository,
     private readonly inviteRepo: LeagueAdminInviteRepository,
+    private readonly userService: UserService,
   ) {}
 
   async getAdmins(leagueSlug: string, sub: string) {
@@ -155,13 +157,18 @@ export class LeagueAdminService {
     const invites = isOwner
       ? await this.inviteRepo.findPendingByLeague(league._id)
       : [];
+    const admins = league.admins ?? [];
+    const profileIds = await this.userService.profileIdsFor(
+      admins.map((admin) => admin.sub),
+    );
 
     return {
       canEdit: isOwner,
       ownerIsYou: isOwner,
-      admins: (league.admins ?? []).map((admin) => ({
+      admins: admins.map((admin) => ({
         sub: admin.sub,
         name: admin.name,
+        profileId: profileIds.get(admin.sub),
         isYou: admin.sub === sub,
       })),
       invites: invites.map((invite) => ({

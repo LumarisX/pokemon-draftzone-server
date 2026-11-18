@@ -21,6 +21,8 @@ import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { TournamentLogWriter } from "@modules/tournament-log/tournament-log.writer";
 import { UploadFolder } from "@modules/upload/upload-folder.enum";
 import { UploadsService } from "@modules/upload/upload.service";
+import { UserService } from "@modules/user/user.service";
+import { PDZError } from "@core/pdz-error";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { Types } from "mongoose";
 import { HostedTournament, TierRequirement } from "./hosted-tournament.domain";
@@ -37,8 +39,15 @@ const SUB = "auth0|coach-1";
 const logWriter = { record: jest.fn() } as unknown as TournamentLogWriter;
 const IDENTITY_ID = new Types.ObjectId();
 let identityRepo: jest.Mocked<TeamIdentityRepository>;
+let userService: jest.Mocked<UserService>;
 
 beforeEach(() => {
+  userService = {
+    claimSignUpDiscordName: jest
+      .fn()
+      .mockImplementation(async (_sub: string, submitted?: string) => submitted),
+    profileIdsFor: jest.fn().mockResolvedValue(new Map()),
+  } as unknown as jest.Mocked<UserService>;
   identityRepo = {
     record: jest.fn().mockResolvedValue(IDENTITY_ID),
     findOwned: jest.fn().mockResolvedValue(null),
@@ -208,6 +217,7 @@ describe("HostedTournamentService signup", () => {
       events,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -553,6 +563,55 @@ describe("HostedTournamentService signup", () => {
         expect.objectContaining({ tournament, signUp: dto }),
       );
       expect(discordService.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("stores the account's Discord name instead of the submitted one", async () => {
+      userService.claimSignUpDiscordName.mockResolvedValue("profile#0001");
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto({ discordName: "typed#9999" }),
+      );
+
+      expect(userService.claimSignUpDiscordName).toHaveBeenCalledWith(
+        SUB,
+        "typed#9999",
+      );
+      expect(applicationRepo.create.mock.calls[0][0].discordName).toBe(
+        "profile#0001",
+      );
+      expect(events.emit).toHaveBeenCalledWith(
+        "tournament.application.submitted",
+        expect.objectContaining({
+          signUp: expect.objectContaining({ discordName: "profile#0001" }),
+        }),
+      );
+    });
+
+    it("creates no application when the account has no Discord name to use", async () => {
+      userService.claimSignUpDiscordName.mockRejectedValue(
+        new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
+          field: "discordName",
+        }),
+      );
+
+      await expect(
+        service.createSignup(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          SUB,
+          buildSignUpDto({ discordName: undefined }),
+        ),
+      ).rejects.toMatchObject({
+        code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
+      });
+      expect(applicationRepo.create).not.toHaveBeenCalled();
     });
 
     it("claims the logo as the applicant's own team-logo upload", async () => {
@@ -1554,6 +1613,7 @@ describe("HostedTournamentService removeParticipant", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -1657,6 +1717,7 @@ describe("HostedTournamentService settings", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
     (logWriter.record as jest.Mock).mockClear();
   });
@@ -2060,6 +2121,7 @@ describe("HostedTournamentService coach details", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -2238,6 +2300,7 @@ describe("HostedTournamentService updateTeam", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -2639,6 +2702,7 @@ describe("HostedTournamentService team identity library", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -2760,6 +2824,7 @@ describe("HostedTournamentService assignTeams", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
   });
 
@@ -2930,7 +2995,11 @@ describe("HostedTournamentService teams", () => {
     teamName: string,
     pokemonIds: string[],
   ) {
-    const coach = { _id: new Types.ObjectId(), name: `${teamName} coach` };
+    const coach = {
+      _id: new Types.ObjectId(),
+      name: `${teamName} coach`,
+      auth0Id: `auth0|${teamName.toLowerCase().replace(/\s+/g, "-")}`,
+    };
     return {
       _id: id,
       slug: `${teamName.toLowerCase().replace(/\s+/g, "-")}-slug`,
@@ -3007,6 +3076,7 @@ describe("HostedTournamentService teams", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
     return { service, matchupRepo, stageRepo, teamRepo };
   }
@@ -3284,6 +3354,125 @@ describe("HostedTournamentService teams", () => {
     });
   });
 
+  describe("coach profile ids", () => {
+    const teams = () => [
+      buildTeam(TEAM_ID, "Team One", ["pikachu"]),
+      buildTeam(OTHER_TEAM_ID, "Team Two", ["eevee"]),
+    ];
+
+    beforeEach(() => {
+      userService.profileIdsFor.mockResolvedValue(
+        new Map([["auth0|team-one", "p-one"]]),
+      );
+    });
+
+    it("listTeams adds coachProfileId from one lookup", async () => {
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: teams(),
+      });
+
+      const result = await service.listTeams(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(result.teams.map((team) => team.coachProfileId)).toEqual([
+        "p-one",
+        undefined,
+      ]);
+    });
+
+    it("listTeamsByPool adds coachProfileId from one lookup", async () => {
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: teams(),
+      });
+
+      const result = await service.listTeamsByPool(LEAGUE_KEY, TOURNAMENT_KEY);
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(
+        result.pools.flatMap((pool) =>
+          pool.teams.map((team) => team.coachProfileId),
+        ),
+      ).toEqual(["p-one", undefined]);
+    });
+
+    it("getTeam adds coachProfileId beside the coach name", async () => {
+      const { service } = buildService({
+        tournament: buildTournament(),
+        team: teams()[0],
+      });
+
+      const result = await service.getTeam(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "team-one-slug",
+      );
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(result).toMatchObject({
+        coach: "Team One coach",
+        coachProfileId: "p-one",
+      });
+    });
+
+    it("getCoaches adds coachProfileId for the public list in one lookup", async () => {
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: teams(),
+      });
+
+      const result = (await service.getCoaches(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        undefined,
+      )) as { coachName: string; coachProfileId?: string }[];
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(
+        result.map((entry) => [entry.coachName, entry.coachProfileId]),
+      ).toEqual([
+        ["Team One coach", "p-one"],
+        ["Team Two coach", undefined],
+      ]);
+    });
+
+    it("getCoaches adds profileId to each applicant on the organizer's list in one lookup", async () => {
+      const applications = [
+        { _id: new Types.ObjectId(), auth0Id: "auth0|team-one", name: "Ash", answers: [] },
+        { _id: new Types.ObjectId(), auth0Id: "auth0|other", name: "Misty", answers: [] },
+      ];
+      const { service } = buildService({
+        tournament: buildTournament(),
+        teams: [],
+        drafts: [],
+      });
+      (service as any).applicationRepo = {
+        findAllByTournament: jest.fn().mockResolvedValue(applications),
+      };
+      (service as any).discordService = {
+        findMember: jest.fn().mockResolvedValue(null),
+      };
+      (service as any).s3Service = { isEnabled: jest.fn().mockReturnValue(false) };
+
+      const result = (await service.getCoaches(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        "auth0|owner",
+      )) as { signups: { name: string; profileId?: string }[] };
+
+      expect(userService.profileIdsFor).toHaveBeenCalledTimes(1);
+      expect(userService.profileIdsFor).toHaveBeenCalledWith([
+        "auth0|team-one",
+        "auth0|other",
+      ]);
+      expect(result.signups.map((entry) => [entry.name, entry.profileId])).toEqual([
+        ["Ash", "p-one"],
+        ["Misty", undefined],
+      ]);
+    });
+  });
+
   describe("getStandings", () => {
     const roundId = new Types.ObjectId();
     const groupStage = {
@@ -3464,6 +3653,7 @@ describe("HostedTournamentService getInfo", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
 
     teamRepo.findManyByIds.mockImplementation(async () => [
@@ -3531,6 +3721,7 @@ describe("HostedTournamentService completing a tournament", () => {
       silentEvents,
       logWriter,
       identityRepo,
+      userService,
     );
     computeOutcomes = jest.fn(async () => {
       transactions.log.push("compute");

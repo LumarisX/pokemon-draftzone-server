@@ -75,6 +75,26 @@ export class CoachRepository {
     return this.coachModel.find({ auth0Id }).exec();
   }
 
+  async findRunningByAuth0Id(auth0Id: string): Promise<CoachDocument[]> {
+    return this.coachModel
+      .find({ auth0Id: { $eq: auth0Id }, leftAt: null, completedAt: null })
+      .exec();
+  }
+
+  async setDiscordName(
+    coachIds: (Types.ObjectId | string)[],
+    discordName: string,
+  ): Promise<number> {
+    if (coachIds.length === 0) return 0;
+    const result = await this.coachModel
+      .updateMany(
+        { _id: { $in: coachIds.map((id) => this.toObjectId(id)) } },
+        { $set: { discordName } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
   async create(data: CreateCoachInput): Promise<CoachDocument> {
     const coach = new this.coachModel({
       ...data,

@@ -36,6 +36,32 @@ export class UserSettingsDto {
   themeOverride?: string;
 }
 
+export class UpdateProfileDto {
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  displayName?: string | null;
+
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  discordName?: string | null;
+
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  gameName?: string | null;
+
+  @IsString()
+  @MaxLength(200)
+  @IsOptional()
+  timezone?: string | null;
+
+  @IsBoolean()
+  @IsOptional()
+  privateProfile?: boolean;
+}
+
 export class Auth0UserDto {
   @IsString()
   @IsNotEmpty()
@@ -48,11 +74,13 @@ export class Auth0UserDto {
   joined!: string;
 
   @IsObject()
-  settings!: Record<string, any>;
+  @IsOptional()
+  settings?: Record<string, any>;
 
   @IsString()
   @IsNotEmpty()
-  username!: string;
+  @IsOptional()
+  username?: string;
 
   @IsArray()
   @IsOptional()
@@ -64,7 +92,8 @@ export class Auth0UserDto {
   email?: string;
 
   @IsBoolean()
-  emailVerified!: boolean;
+  @IsOptional()
+  emailVerified?: boolean;
 
   @IsString()
   @IsOptional()

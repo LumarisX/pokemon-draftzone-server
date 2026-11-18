@@ -6,6 +6,7 @@ import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/host
 import { HostingAccessModule } from "@modules/tournament/sub-modules/hosted-tournament/hosting-access.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { UploadsModule } from "@modules/upload/upload.module";
+import { UserModule } from "@modules/user/user.module";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { StageCoreModule } from "@modules/stage/stage-core.module";
@@ -39,6 +40,7 @@ import {
     HostingAccessModule,
     UploadsModule,
     StageCoreModule,
+    UserModule,
   ],
   controllers: [LeagueController, LeagueAdminController, HallOfFameController],
   providers: [

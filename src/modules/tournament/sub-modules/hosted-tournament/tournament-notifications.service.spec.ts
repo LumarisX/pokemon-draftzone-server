@@ -3,8 +3,7 @@ import { DiscordService } from "@modules/discord/discord.service";
 import { TournamentApplicationRepository } from "@modules/tournament-application/tournament-application.repository";
 import { EventEmitter2, EventEmitterModule } from "@nestjs/event-emitter";
 import { Test } from "@nestjs/testing";
-import { SignUpDto } from "./hosted-tournament.dto";
-import { TOURNAMENT_EVENTS } from "./tournament-events";
+import { ApplicationSubmittedEvent, TOURNAMENT_EVENTS } from "./tournament-events";
 import { TournamentNotificationsService } from "./tournament-notifications.service";
 
 function buildTournament(discordSettings?: Record<string, unknown>) {
@@ -23,7 +22,7 @@ const SIGN_UP = {
   discordName: "ash#1234",
   timezone: "America/Los_Angeles",
   confirm: true,
-} as SignUpDto & { teamName: string };
+} as ApplicationSubmittedEvent["signUp"];
 
 const LINKED = {
   guildId: "guild-1",

@@ -84,9 +84,9 @@ export class SignUpDto {
   gameName!: string;
 
   @IsString()
-  @MinLength(1)
   @MaxLength(SIGN_UP_LIMITS.discordName)
-  discordName!: string;
+  @IsOptional()
+  discordName?: string;
 
   @ValidateIf((dto: SignUpDto) => !dto.identity)
   @IsString()

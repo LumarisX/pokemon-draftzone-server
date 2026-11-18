@@ -9,6 +9,7 @@ import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { TournamentApplicationModule } from "@modules/tournament-application/tournament-application.module";
 import { TournamentLogCoreModule } from "@modules/tournament-log/tournament-log-core.module";
 import { UploadsModule } from "@modules/upload/upload.module";
+import { UserModule } from "@modules/user/user.module";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { MongooseModule } from "@nestjs/mongoose";
@@ -51,6 +52,7 @@ import { TournamentOrganizerService } from "./tournament-organizer.service";
     UploadsModule,
     TournamentLogCoreModule,
     TeamIdentityModule,
+    UserModule,
   ],
   controllers: [
     HostedTournamentController,

@@ -1,6 +1,11 @@
-import { User, UserSettings } from "./user.domain";
+import { User, UserProfile, UserSettings } from "./user.domain";
 import { Auth0UserDto, UserSettingsDto } from "./user.dto";
-import { UserEntity, UserRole, UserSettingsEntity } from "./user.schema";
+import {
+  UserEntity,
+  UserProfileEntity,
+  UserRole,
+  UserSettingsEntity,
+} from "./user.schema";
 
 const KNOWN_ROLES = new Set<string>(Object.values(UserRole));
 
@@ -13,8 +18,15 @@ export class UserMapper {
   static toClientPayload(user: User) {
     return {
       sub: user.sub,
-      username: user.username,
-      roles: user.roles,
+      profileId: user.profileId ?? null,
+      displayName: user.displayName ?? null,
+      profile: {
+        discordName: user.profile?.discordName ?? null,
+        gameName: user.profile?.gameName ?? null,
+        timezone: user.profile?.timezone ?? null,
+      },
+      privateProfile: user.privateProfile ?? false,
+      roles: user.roles ?? [],
       settings: user.settings,
       joined: user.joined,
       lastLogin: user.lastLogin,
@@ -25,6 +37,7 @@ export class UserMapper {
   static fromAuth0(data: Auth0UserDto): User {
     return new User({
       sub: data.auth0Sub,
+      signIn: data.auth0Sub,
       username: data.username,
       roles: toUserRoles(data.roles),
       lastLogin: new Date(data.lastLogin),
@@ -32,15 +45,34 @@ export class UserMapper {
     });
   }
 
-  static fromDatabase(entity: UserEntity): User {
+  static fromDatabase(
+    entity: UserEntity & { _id?: unknown },
+    internalIds = false,
+  ): User {
     return new User({
-      sub: entity.auth0Sub,
+      sub: internalIds ? String(entity._id) : entity.auth0Sub,
+      signIn: entity.auth0Sub,
+      profileId: entity._id === undefined ? undefined : String(entity._id),
       username: entity.username,
+      displayName: entity.displayName,
+      profile: UserProfileMapper.fromDatabase(entity.profile),
+      privateProfile: entity.privateProfile,
       roles: entity.roles ?? [],
       settings: UserSettingsMapper.fromDatabase(entity.settings),
       joined: entity.joined,
       lastLogin: entity.lastLogin,
       lastCheckedAdsAt: entity.lastCheckedAdsAt,
+    });
+  }
+}
+
+export class UserProfileMapper {
+  static fromDatabase(entity?: UserProfileEntity): UserProfile | undefined {
+    if (!entity) return undefined;
+    return new UserProfile({
+      discordName: entity.discordName,
+      gameName: entity.gameName,
+      timezone: entity.timezone,
     });
   }
 }
