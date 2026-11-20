@@ -30,6 +30,11 @@ const OWNED_COLLECTIONS: ReadonlyArray<{ collection: string; field: string }> = 
   { collection: "leagueads", field: "owner" },
 ];
 
+const UNFINISHED = {
+  completedAt: { $in: [null] },
+  archived: { $ne: true },
+};
+
 const PERSONAL_FIELDS_TO_CLEAR = ["gameName", "timezone"] as const;
 const PERSONAL_FIELDS_TO_UNSET = ["discordName", "discordId"] as const;
 
@@ -45,17 +50,25 @@ export class AccountDeletionRepository {
     return mongoStore(this.connection.db!);
   }
 
-  async ownedLeagues(accountId: string): Promise<LeagueRef[]> {
+  async openOwnedTournaments(accountId: string): Promise<TournamentRef[]> {
     const leagues = await this.connection
       .collection("leagues")
       .find({ owner: { $eq: accountId } } as never, {
-        projection: { slug: 1, name: 1 },
+        projection: { _id: 1 },
       })
       .toArray();
-    return leagues.map((league) => ({
-      leagueSlug: String(league.slug),
-      leagueName: String(league.name),
-    }));
+    if (leagues.length === 0) return [];
+    const tournaments = await this.connection
+      .collection("leaguetournaments")
+      .find(
+        {
+          league: { $in: leagues.map((league) => league._id) },
+          ...UNFINISHED,
+        } as never,
+        { projection: { slug: 1, name: 1, league: 1 } },
+      )
+      .toArray();
+    return this.withLeagues(tournaments);
   }
 
   async openStaffSeats(accountId: string): Promise<TournamentRef[]> {
@@ -64,7 +77,7 @@ export class AccountDeletionRepository {
       .find(
         {
           "staff.sub": { $eq: accountId },
-          completedAt: { $in: [null] },
+          ...UNFINISHED,
         } as never,
         { projection: { slug: 1, name: 1, league: 1 } },
       )
@@ -99,7 +112,7 @@ export class AccountDeletionRepository {
       .find(
         {
           _id: { $in: tournamentIds.map((id) => new Types.ObjectId(id)) },
-          completedAt: { $in: [null] },
+          ...UNFINISHED,
         } as never,
         { projection: { slug: 1, name: 1, league: 1 } },
       )

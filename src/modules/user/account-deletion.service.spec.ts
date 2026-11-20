@@ -32,13 +32,19 @@ const SEAT: TournamentRef = {
   tournamentSlug: "s4",
   tournamentName: "Season 4",
 };
+const OTHER_SEAT: TournamentRef = {
+  leagueSlug: "bpl",
+  leagueName: "BPL",
+  tournamentSlug: "s12",
+  tournamentName: "Season 12",
+};
 
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
 
 interface Options {
-  leagues?: LeagueRef[];
+  owned?: TournamentRef[];
   staff?: TournamentRef[];
   coaching?: TournamentRef[];
   scheduled?: boolean;
@@ -212,7 +218,7 @@ function setup(options: Options = {}) {
 
   const repository = {
     store: jest.fn(() => memoryStore(collections)),
-    ownedLeagues: jest.fn(async () => options.leagues ?? []),
+    openOwnedTournaments: jest.fn(async () => options.owned ?? []),
     openStaffSeats: jest.fn(async () => options.staff ?? []),
     openCoachSeats: jest.fn(async () => options.coaching ?? []),
     deleteOwnedRecords: jest.fn(async () => {
@@ -347,27 +353,31 @@ describe("AccountDeletionService blockers", () => {
     expect(await service.blockers(ACC)).toEqual([]);
   });
 
-  it("names the league an account owns", async () => {
-    const { service } = setup({ leagues: [LEAGUE] });
+  it("names an unfinished season in a league the account owns as an organizer seat", async () => {
+    const { service } = setup({ owned: [SEAT] });
 
-    expect(await service.blockers(ACC)).toEqual([{ kind: "league-owner", ...LEAGUE }]);
+    expect(await service.blockers(ACC)).toEqual([{ kind: "organizer", ...SEAT }]);
   });
 
-  it("names open organizer and coach seats with their tournament", async () => {
-    const { service } = setup({ staff: [SEAT], coaching: [SEAT] });
+  it("lists each tournament once, organizer over coach", async () => {
+    const { service } = setup({
+      owned: [SEAT],
+      staff: [SEAT],
+      coaching: [SEAT, OTHER_SEAT],
+    });
 
     expect(await service.blockers(ACC)).toEqual([
       { kind: "organizer", ...SEAT },
-      { kind: "coach", ...SEAT },
+      { kind: "coach", ...OTHER_SEAT },
     ]);
   });
 
   it("is reported with the schedule state", async () => {
-    const { service } = setup({ leagues: [LEAGUE], scheduled: true });
+    const { service } = setup({ owned: [SEAT], scheduled: true });
 
     expect(await service.status(ACC)).toEqual({
       scheduledFor: DUE_AT.toISOString(),
-      blockers: [{ kind: "league-owner", ...LEAGUE }],
+      blockers: [{ kind: "organizer", ...SEAT }],
     });
   });
 });
@@ -384,15 +394,15 @@ describe("AccountDeletionService schedule and cancel", () => {
   });
 
   it("refuses with the blockers and writes nothing", async () => {
-    const { service, user } = setup({ leagues: [LEAGUE], coaching: [SEAT] });
+    const { service, user } = setup({ owned: [SEAT], coaching: [OTHER_SEAT] });
 
     const failure = await service.schedule(ACC, NOW).catch((error) => error);
 
     expect(failure).toBeInstanceOf(PDZError);
     expect(failure.code).toBe(ErrorCodes.USER.DELETION_BLOCKED.code);
     expect(failure.details.blockers).toEqual([
-      { kind: "league-owner", ...LEAGUE },
-      { kind: "coach", ...SEAT },
+      { kind: "organizer", ...SEAT },
+      { kind: "coach", ...OTHER_SEAT },
     ]);
     expect(user.deletion).toBeUndefined();
   });

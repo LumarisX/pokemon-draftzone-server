@@ -13,6 +13,7 @@ import {
 import {
   AccountDeletionRepository,
   PENDING_AUTH0_DELETIONS,
+  TournamentRef,
 } from "./account-deletion.repository";
 import { MERGE_SKIPPED_COLLECTIONS } from "./account-merge.service";
 import { Auth0AccountClient } from "./auth0-account.client";
@@ -28,14 +29,10 @@ export const DELETION_SKIPPED_COLLECTIONS: ReadonlySet<string> = new Set([
   PENDING_AUTH0_DELETIONS,
 ]);
 
-export type DeletionBlockerKind = "league-owner" | "organizer" | "coach";
+export type DeletionBlockerKind = "organizer" | "coach";
 
-export interface DeletionBlocker {
+export interface DeletionBlocker extends TournamentRef {
   kind: DeletionBlockerKind;
-  leagueSlug: string;
-  leagueName: string;
-  tournamentSlug?: string;
-  tournamentName?: string;
 }
 
 export interface DeletionStatus {
@@ -105,20 +102,19 @@ export class AccountDeletionService {
   }
 
   async blockers(accountId: string): Promise<DeletionBlocker[]> {
-    const [leagues, staff, coaching] = await Promise.all([
-      this.repository.ownedLeagues(accountId),
+    const [owned, staff, coaching] = await Promise.all([
+      this.repository.openOwnedTournaments(accountId),
       this.repository.openStaffSeats(accountId),
       this.repository.openCoachSeats(accountId),
     ]);
-    return [
-      ...leagues.map(
-        (league): DeletionBlocker => ({ kind: "league-owner", ...league }),
-      ),
-      ...staff.map(
-        (seat): DeletionBlocker => ({ kind: "organizer", ...seat }),
-      ),
-      ...coaching.map((seat): DeletionBlocker => ({ kind: "coach", ...seat })),
-    ];
+    const blockers = new Map<string, DeletionBlocker>();
+    const add = (kind: DeletionBlockerKind, seat: TournamentRef) => {
+      const key = `${seat.leagueSlug}/${seat.tournamentSlug}`;
+      if (!blockers.has(key)) blockers.set(key, { kind, ...seat });
+    };
+    [...owned, ...staff].forEach((seat) => add("organizer", seat));
+    coaching.forEach((seat) => add("coach", seat));
+    return [...blockers.values()];
   }
 
   async runDue(now: Date = new Date()): Promise<DeletionRunResult> {
