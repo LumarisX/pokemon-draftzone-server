@@ -84,57 +84,54 @@ describe("PDZMove", () => {
     });
   });
 
-  describe("tags", () => {
+  describe("roleTags", () => {
     it("has no tags for a plain attack with no modifiers", () => {
-      expect(move("tackle").tags).toEqual(new Set());
+      expect(move("tackle").roleTags).toEqual(new Set());
     });
 
     it("tags priority moves", () => {
-      expect(move("quickattack").tags).toEqual(new Set(["Priority"]));
+      expect(move("quickattack").roleTags).toEqual(new Set(["Priority"]));
     });
 
     it("tags stat-boosting moves as Setup", () => {
-      expect(move("swordsdance").tags).toEqual(new Set(["Setup"]));
+      expect(move("swordsdance").roleTags).toEqual(new Set(["Setup"]));
     });
 
     it("tags forced-switch moves as Disruption", () => {
-      expect(move("whirlwind").tags).toEqual(new Set(["Disruption"]));
+      expect(move("whirlwind").roleTags).toEqual(new Set(["Disruption"]));
     });
 
     it("tags self-switching moves as Momentum", () => {
-      expect(move("voltswitch").tags).toEqual(new Set(["Momentum"]));
+      expect(move("voltswitch").roleTags).toEqual(new Set(["Momentum"]));
     });
 
     it("tags moves that directly inflict a status as Status", () => {
-      expect(move("thunderwave").tags).toEqual(new Set(["Status"]));
+      expect(move("thunderwave").roleTags).toEqual(new Set(["Status"]));
     });
 
     it("tags weather-setting moves as Field Manipulation", () => {
-      expect(move("raindance").tags).toEqual(new Set(["Field Manipulation"]));
+      expect(move("raindance").roleTags).toEqual(new Set(["Field Manipulation"]));
     });
 
     it("tags a guaranteed negative-speed secondary as Speed Control", () => {
-      expect(move("icywind").tags).toEqual(new Set(["Speed Control"]));
+      expect(move("icywind").roleTags).toEqual(new Set(["Speed Control"]));
     });
 
     it("tags a high-chance status secondary as Status", () => {
-      // nuzzle: 100% chance to paralyze on hit
-      expect(move("nuzzle").tags).toEqual(new Set(["Status"]));
+      expect(move("nuzzle").roleTags).toEqual(new Set(["Status"]));
     });
 
     it("doesn't tag a low-chance status secondary as Status", () => {
-      // thunderbolt: only a 10% chance to paralyze, below the reliability threshold
-      expect(move("thunderbolt").tags).toEqual(new Set());
+      expect(move("thunderbolt").roleTags).toEqual(new Set());
     });
 
     it("pulls hardcoded tags from the curated move list", () => {
-      expect(move("stealthrock").tags).toEqual(new Set(["Hazard Control"]));
-      expect(move("tailwind").tags).toEqual(new Set(["Speed Control"]));
+      expect(move("stealthrock").roleTags).toEqual(new Set(["Hazard Control"]));
+      expect(move("tailwind").roleTags).toEqual(new Set(["Speed Control"]));
     });
 
     it("combines a curated tag with a derived tag when both apply", () => {
-      // taunt is curated as Disruption and has no other modifiers that would add tags
-      expect(move("taunt").tags).toEqual(new Set(["Disruption"]));
+      expect(move("taunt").roleTags).toEqual(new Set(["Disruption"]));
     });
   });
 });

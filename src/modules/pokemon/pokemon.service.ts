@@ -154,7 +154,7 @@ export class PokemonService {
       for (const tier of tierFallbackOrder) {
         if (selectedPokemon.length >= count) break;
         const tierSpecies = speciesList.filter((pokemon) =>
-          this.isTierMatch(pokemon[tierLabel], tier),
+          this.isTierMatch(pokemon[tierLabel] || pokemon.tier, tier),
         );
         if (!tierSpecies.length) continue;
         pullFromGroups(this.groupSpeciesByBaseForm(tierSpecies, ruleset));
@@ -166,7 +166,7 @@ export class PokemonService {
     return selectedPokemon.map((pokemon) => ({
       id: pokemon.id,
       name: pokemon.name,
-      tier: pokemon[tierLabel],
+      tier: pokemon[tierLabel] || pokemon.tier,
       types: pokemon.types,
       baseStats: pokemon.baseStats,
       abilities: Object.values(pokemon.abilities),

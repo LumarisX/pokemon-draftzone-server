@@ -33,7 +33,7 @@ export async function getTeamMoves(team: PDZPokemon[]) {
   const allTags = new Set<string>();
   const moves = Array.from(combinedLearnset.values())
     .map(({ move, pokemon }) => {
-      const tags = move.tags;
+      const tags = move.roleTags;
       tags.forEach((tag) => allTags.add(tag));
       return {
         ...move.toData(),

@@ -1,4 +1,4 @@
-import { Data, Generation, ID, Learnsets, Move } from "@pkmn/data";
+import { Data, Generation, ID, Learnsets, Move, Specie } from "@pkmn/data";
 import { Dex, ModData, ModdedDex } from "@pkmn/dex";
 import {
   CHAMPIONS_NATDEX_DATA,
@@ -6,7 +6,7 @@ import {
   ChampionsRegulation,
 } from "../../../mods/champions";
 import * as InsDex from "../../../mods/insurgance";
-import { LEGENDS_ZA_DATA } from "../../../mods/legends";
+import { hasLegendsZALearnset, LEGENDS_ZA_DATA } from "../../../mods/legends";
 import * as RRDex from "../../../mods/radicalred";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
@@ -85,6 +85,14 @@ type ExistFilter = {
   };
 };
 
+export function isGmaxForme(forme: string | undefined): boolean {
+  return /(^|-)Gmax$/.test(forme ?? "");
+}
+
+function isGmax(d: Data) {
+  return d.kind === "Species" && isGmaxForme(d.forme);
+}
+
 function _exists(d: Data, filters: ExistFilter = {}) {
   if (!d.exists) return false;
   if (d.kind === "Ability" && d.id === "noability") return false;
@@ -135,13 +143,13 @@ function _exists(d: Data, filters: ExistFilter = {}) {
 
 function ROM_EXISTS(d: Data) {
   return _exists(d, {
-    nonstandard: ["CAP", "Custom", "Future"],
+    nonstandard: ["CAP", "Custom", "Future", "Legends"],
   });
 }
 
 function CHAMPIONS_EXISTS(d: Data) {
   if (d.kind === "Species") {
-    if (d.forme === "Gmax") return false;
+    if (isGmax(d)) return false;
     if (d.isNonstandard) return false;
     if (d.tier === "Illegal" || d.tier === "Unreleased") return false;
   }
@@ -157,7 +165,7 @@ function CHAMPIONS_EXISTS(d: Data) {
 
 function NATDEX_EXISTS(d: Data) {
   return _exists(d, {
-    nonstandard: ["CAP", "Custom", "Future"],
+    nonstandard: ["CAP", "Custom", "Future", "Legends"],
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
@@ -172,7 +180,7 @@ function GEN9_NATDEX_EXISTS(d: Data) {
 
 function ZA_EXISTS(d: Data) {
   return _exists(d, {
-    nonstandard: ["CAP", "Custom"],
+    nonstandard: ["CAP", "Custom", "Legends"],
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
@@ -183,7 +191,7 @@ function ZA_EXISTS(d: Data) {
 
 function CAP_EXISTS(d: Data) {
   return _exists(d, {
-    nonstandard: ["Custom", "Future"],
+    nonstandard: ["Custom", "Future", "Legends"],
     species: {
       unobtainable: NATDEX_UNOBTAINABLE_SPECIES,
       cosmetic: COSMETIC_SPECIES,
@@ -195,6 +203,7 @@ function CAP_EXISTS(d: Data) {
 function DRAFT_EXISTS(d: Data) {
   if (!NATDEX_EXISTS(d)) return false;
   if ("isNonstandard" in d && d.isNonstandard) return false;
+  if (isGmax(d)) return false;
   return !("tier" in d && ["Illegal"].includes(d.tier));
 }
 
@@ -232,12 +241,96 @@ export const DEFAULT_RULESET_ID: RulesetId = RULESET_IDS.CHAMP_MC;
 
 type Restriction = "Pentagon" | "Plus" | "Galar" | "Paldea";
 
-class FallbackLearnsets extends Learnsets {
+type LearnsetSpecies = Pick<
+  Specie,
+  | "id"
+  | "name"
+  | "exists"
+  | "gen"
+  | "baseSpecies"
+  | "changesFrom"
+  | "prevo"
+  | "isNonstandard"
+>;
+
+export type OwnLearnsetFilter = (speciesId: ID) => boolean;
+
+const LEARNSET_PARENT_OVERRIDES: Readonly<Record<string, string>> = {
+  rockruff: "rockruffdusk",
+  lycanrocdusk: "rockruffdusk",
+  gastrodoneast: "gastrodon",
+  pumpkaboosuper: "pumpkaboo",
+};
+
+class ShowdownLearnsets extends Learnsets {
+  constructor(
+    gen: Generation,
+    private readonly hasOwnLearnset: OwnLearnsetFilter = () => true,
+  ) {
+    super(gen, gen.dex, gen.exists);
+  }
+
+  private get inheritsFromPrevo(): boolean {
+    return !this.gen.dex.modid.startsWith("champions");
+  }
+
+  async *all(species: Specie) {
+    const checked = new Set<ID>();
+    let current = this.dexSpecies(species.name);
+    while (current?.exists && !checked.has(current.id)) {
+      checked.add(current.id);
+      const learnset = await this.ownLearnset(current);
+      if (learnset) {
+        yield learnset;
+        current = this.learnsetParent(current);
+        continue;
+      }
+      const base = current.changesFrom || current.baseSpecies;
+      if (base !== current.name) {
+        current = this.dexSpecies(base);
+        continue;
+      }
+      if (current.isNonstandard || !current.prevo) return;
+      const prevo = this.dexSpecies(current.prevo);
+      if (!prevo || !(await this.ownLearnset(prevo))) return;
+      current = prevo;
+    }
+  }
+
+  private async ownLearnset(species: LearnsetSpecies) {
+    if (!this.hasOwnLearnset(species.id)) return undefined;
+    const learnset = await this.get(species.id);
+    return learnset?.learnset ? learnset : undefined;
+  }
+
+  private learnsetParent(
+    species: LearnsetSpecies,
+  ): LearnsetSpecies | undefined {
+    const override = LEARNSET_PARENT_OVERRIDES[species.id];
+    if (override && this.inheritsFromPrevo) return this.dexSpecies(override);
+    if (species.prevo) {
+      if (!this.inheritsFromPrevo) return undefined;
+      const prevo = this.dexSpecies(species.prevo);
+      return prevo && prevo.gen <= Math.max(2, this.gen.num) ? prevo : undefined;
+    }
+    if (species.changesFrom && species.baseSpecies !== "Kyurem") {
+      return this.dexSpecies(species.changesFrom);
+    }
+    return undefined;
+  }
+
+  private dexSpecies(name: string): LearnsetSpecies | undefined {
+    const species = this.gen.dex.species.get(name);
+    return species.exists ? species : undefined;
+  }
+}
+
+class FallbackLearnsets extends ShowdownLearnsets {
   constructor(
     gen: Generation,
     private readonly fallback: Generation,
   ) {
-    super(gen, gen.dex, gen.exists);
+    super(gen);
   }
 
   async learnable(name: string, restriction?: Restriction) {
@@ -289,6 +382,7 @@ export class Ruleset extends Generation {
       restriction?: Restriction;
       isNatDex?: boolean;
       learnsetFallback?: Generation;
+      hasOwnLearnset?: OwnLearnsetFilter;
     },
   ) {
     super(dex, exists);
@@ -296,11 +390,11 @@ export class Ruleset extends Generation {
     this.restriction = options?.restriction;
     this.isNatDex = options?.isNatDex ?? false;
     this.statSystem = options?.statSystem ?? DEFAULT_STAT_SYSTEM_ID;
-    if (options?.learnsetFallback) {
-      Object.assign(this, {
-        learnsets: new FallbackLearnsets(this, options.learnsetFallback),
-      });
-    }
+    Object.assign(this, {
+      learnsets: options?.learnsetFallback
+        ? new FallbackLearnsets(this, options.learnsetFallback)
+        : new ShowdownLearnsets(this, options?.hasOwnLearnset),
+    });
   }
 
   get statRules(): StatSystem {
@@ -396,6 +490,7 @@ export const Rulesets: {
         (d: Data) =>
           !(!ZA_EXISTS(d) || (d.kind === "Species" && d.forme === "Gmax")),
         RULESET_IDS.ZA_NATDEX,
+        { hasOwnLearnset: hasLegendsZALearnset },
       ),
     },
   },

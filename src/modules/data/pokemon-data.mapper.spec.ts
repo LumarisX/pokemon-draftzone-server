@@ -104,18 +104,18 @@ describe("PokemonDataMapper.toDto", () => {
     expect(pikachu.learns.length).toBeGreaterThan(0);
   });
 
-  describe("BUG: isGigantamax always reports false", () => {
-    it("reports false even for a species that can actually Gigantamax", async () => {
-      // PokemonDataMapper reads `specie.isGigantamax`, but the real field
-      // (from @pkmn/data) is `canGigantamax` (which holds the G-Max move
-      // name, e.g. "G-Max Vine Lash"). `isGigantamax` is never set, so
-      // `Boolean(specie.isGigantamax)` is always false.
-      const venusaur = mon("venusaur");
-      expect(venusaur.canGigantamax).toBe("G-Max Vine Lash");
+  describe("isGigantamax", () => {
+    const GEN8_NAT_DEX = Rulesets["Gen 8"]["National Dex"].ruleset;
+    const gen8 = (id: string) =>
+      PokemonDataMapper.toDto(new PDZPokemon(id as ID, GEN8_NAT_DEX));
 
-      const dto = await PokemonDataMapper.toDto(venusaur);
+    it("is true for a Gigantamax forme", async () => {
+      expect((await gen8("venusaurgmax")).isGigantamax).toBe(true);
+      expect((await gen8("urshifurapidstrikegmax")).isGigantamax).toBe(true);
+    });
 
-      expect(dto.isGigantamax).toBe(false);
+    it("is false for the base forme that can Gigantamax", async () => {
+      expect((await gen8("venusaur")).isGigantamax).toBe(false);
     });
   });
 

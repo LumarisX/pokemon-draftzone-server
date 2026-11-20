@@ -115,6 +115,7 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   isPrimal?: boolean;
   battleOnly?: SpeciesName | SpeciesName[];
   isGigantamax?: MoveName;
+  placeholderFor?: SpeciesName;
   requiredAbility?: AbilityName;
   requiredItem?: ItemName;
   requiredItems?: ItemName[];
@@ -207,6 +208,7 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
     } else {
       this.abilities = specie.abilities;
     }
+    this.natDexTier = specie.natDexTier || specie.tier;
     this.bst = getBST(specie);
     this.cst = getCST(specie);
   }
@@ -219,11 +221,7 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
       : (this.ruleset.species
           .get(this.baseSpecies)!
           .formeOrder?.findIndex(
-            (name) =>
-              name ===
-              (this.isNonstandard === "Gigantamax"
-                ? this.baseSpecies
-                : this.name),
+            (name) => name === (this.placeholderFor || this.name),
           ) ?? 0);
   }
 

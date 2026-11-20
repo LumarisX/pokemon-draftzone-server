@@ -12,4 +12,4 @@ cache/*
 reports/*
 vendor/
 src/modules/replay-analyzer/__fixtures__/*
-src/modules/replay-analyzer/__snapshots__/*
+__snapshots__/

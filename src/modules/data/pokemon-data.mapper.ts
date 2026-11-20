@@ -1,3 +1,4 @@
+import { isGmaxForme } from "@core/data/rulesets/rulesets";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import {
   PokemonDataDto,
@@ -52,7 +53,7 @@ export class PokemonDataMapper {
       evolved: !specie.nfe,
       isMega: Boolean(specie.isMega),
       isPrimal: Boolean(specie.isPrimal),
-      isGigantamax: Boolean(specie.isGigantamax),
+      isGigantamax: isGmaxForme(specie.forme),
       prevo: specie.prevo ?? "",
       evos: specie.evos ?? [],
       requiredAbility: specie.requiredAbility ?? "",

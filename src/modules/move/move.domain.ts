@@ -177,8 +177,9 @@ export class PDZMove implements Move {
     | "Unobtainable"
     | "CAP"
     | "LGPE"
+    | "Legends"
     | "Custom"
-    | "Gigantamax"
+    | "Gmax"
     | null;
   duration?: number | undefined;
   inherit?: boolean | undefined;
@@ -334,7 +335,7 @@ export class PDZMove implements Move {
     );
   }
 
-  get tags(): Set<string> {
+  get roleTags(): Set<string> {
     const tags = new Set<string>(
       this.id in moveList ? [...moveList[this.id]] : [],
     );

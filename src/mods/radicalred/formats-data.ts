@@ -51,7 +51,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UU",
   },
   venusaurgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   charmander: {
@@ -115,7 +115,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UUBL",
   },
   charizardgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   squirtle: {
@@ -164,7 +164,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Uber",
   },
   blastoisegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   caterpie: {
@@ -215,7 +215,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UU",
   },
   butterfreegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   weedle: {
@@ -599,7 +599,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   pikachugmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   raichu: {
@@ -969,7 +969,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "LC",
   },
   meowthgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   persian: {
@@ -1201,7 +1201,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   machampgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   bellsprout: {
@@ -1643,7 +1643,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Uber",
   },
   gengargmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   onix: {
@@ -1722,7 +1722,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "OU",
   },
   kinglergmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   voltorb: {
@@ -2307,7 +2307,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   laprasgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   ditto: {
@@ -2325,7 +2325,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Illegal",
   },
   eeveegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   vaporeon: {
@@ -2537,7 +2537,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NUBL",
   },
   snorlaxgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   articuno: {
@@ -9231,7 +9231,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   garbodorgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   zorua: {
@@ -13292,7 +13292,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UU",
   },
   melmetalgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   grookey: {
@@ -13323,7 +13323,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UU",
   },
   rillaboomgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   scorbunny: {
@@ -13356,7 +13356,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Uber",
   },
   cinderacegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   sobble: {
@@ -13387,7 +13387,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   inteleongmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   skwovet: {
@@ -13434,7 +13434,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "OU",
   },
   corviknightgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   blipbug: {
@@ -13480,7 +13480,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   orbeetlegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   nickit: {
@@ -13601,7 +13601,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Uber",
   },
   drednawgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   yamper: {
@@ -13670,7 +13670,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   coalossalgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   applin: {
@@ -13717,7 +13717,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UUBL",
   },
   flapplegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   appletun: {
@@ -13751,7 +13751,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   appletungmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   silicobra: {
@@ -13798,7 +13798,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   sandacondagmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   cramorant: {
@@ -13875,11 +13875,11 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "Uber",
   },
   toxtricitygmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   toxtricitylowkeygmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   sizzlipede: {
@@ -13929,7 +13929,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   centiskorchgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   clobbopus: {
@@ -14006,7 +14006,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   hatterenegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   impidimp: {
@@ -14044,7 +14044,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "RU",
   },
   grimmsnarlgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   obstagoon: {
@@ -14207,7 +14207,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   alcremiegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   falinks: {
@@ -14427,7 +14427,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "NU",
   },
   copperajahgmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   dracozolt: {
@@ -14552,7 +14552,7 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     isNonstandard: "Past",
   },
   duraludongmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   dreepy: {
@@ -14750,11 +14750,11 @@ export const FormatsData: ModdedSpeciesFormatsDataTable = {
     tier: "UU",
   },
   urshifugmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   urshifurapidstrikegmax: {
-    isNonstandard: "Gigantamax",
+    isNonstandard: "Gmax",
     tier: "AG",
   },
   zarude: {
