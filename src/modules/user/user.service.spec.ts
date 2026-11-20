@@ -288,6 +288,27 @@ describe("UserService", () => {
       ]);
     });
 
+    it("omits accounts with a scheduled deletion so they carry no profile link", async () => {
+      userRepo.findNamesByAccounts.mockResolvedValue(
+        new Map([
+          [
+            "a",
+            {
+              profileId: "p-a",
+              displayName: "Ash",
+              username: null,
+              deletionScheduled: true,
+            },
+          ],
+          ["b", { profileId: "p-b", displayName: null, username: null }],
+        ]),
+      );
+
+      const ids = await service.profileIdsFor(["a", "b"]);
+
+      expect([...ids]).toEqual([["b", "p-b"]]);
+    });
+
     it("omits accounts that have no row", async () => {
       userRepo.findNamesByAccounts.mockResolvedValue(
         new Map([["a", { profileId: "p-a", displayName: null, username: null }]]),

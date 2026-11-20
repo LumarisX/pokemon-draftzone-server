@@ -317,6 +317,7 @@ function setup() {
     {} as never,
     config,
     draftEngine as never,
+    {} as never,
   );
 
   return { agenda, repository, service, draft, skips, draftEngine };

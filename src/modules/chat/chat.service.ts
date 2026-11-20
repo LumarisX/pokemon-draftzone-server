@@ -7,6 +7,10 @@ import { isActiveCoach } from "@modules/tournament/membership";
 import { HostedTournament } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.domain";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { can } from "@modules/tournament/tournament-policy";
+import {
+  DELETED_ACCOUNT_NAME,
+  isTombstoneId,
+} from "@modules/user/user.identity";
 import { UserService } from "@modules/user/user.service";
 import { Injectable } from "@nestjs/common";
 import { isValidObjectId, Types } from "mongoose";
@@ -300,7 +304,10 @@ export class ChatService {
     const isViewer = !!viewer.sub && message.author === viewer.sub;
     return {
       id: message._id.toString(),
-      author: message.authorName,
+      author:
+        isTombstoneId(message.author) && message.authorRole !== "coach"
+          ? DELETED_ACCOUNT_NAME
+          : message.authorName,
       authorProfileId: profileIds.get(message.author),
       role: message.authorRole,
       teamId: message.team?.toString(),

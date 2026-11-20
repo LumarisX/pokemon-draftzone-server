@@ -61,6 +61,20 @@ export class UserDiscordEntity {
 export const UserDiscordSchema =
   SchemaFactory.createForClass(UserDiscordEntity);
 
+@Schema({ _id: false })
+export class UserDeletionEntity {
+  @Prop({ type: Date, required: true })
+  requestedAt!: Date;
+
+  @Prop({ type: Date, required: true })
+  scheduledFor!: Date;
+
+  @Prop({ type: String })
+  tombstone?: string;
+}
+export const UserDeletionSchema =
+  SchemaFactory.createForClass(UserDeletionEntity);
+
 @Schema({ timestamps: true, collection: "users" })
 export class UserEntity {
   @Prop({ type: String, required: true, trim: true, unique: true, index: true })
@@ -81,6 +95,9 @@ export class UserEntity {
   @Prop({ type: Boolean })
   privateProfile?: boolean;
 
+  @Prop({ type: UserDeletionSchema })
+  deletion?: UserDeletionEntity;
+
   @Prop({ type: [String], enum: UserRole, default: [] })
   roles!: UserRole[];
 
@@ -99,3 +116,4 @@ export class UserEntity {
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);
 UserSchema.index({ "discord.id": 1 }, { unique: true, sparse: true });
+UserSchema.index({ "deletion.scheduledFor": 1 }, { sparse: true });

@@ -76,6 +76,13 @@ export class UserSignInRepository {
     return result.modifiedCount === 1;
   }
 
+  async removeAllByAccount(accountId: string): Promise<number> {
+    const result = await this.model
+      .deleteMany({ accountId: { $eq: accountId } })
+      .exec();
+    return result.deletedCount;
+  }
+
   async remove(signIn: string, accountId: string): Promise<boolean> {
     const result = await this.model
       .deleteOne({ signIn: { $eq: signIn }, accountId: { $eq: accountId } })

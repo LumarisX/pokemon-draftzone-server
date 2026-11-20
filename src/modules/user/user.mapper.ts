@@ -34,6 +34,9 @@ export class UserMapper {
           }
         : null,
       privateProfile: user.privateProfile ?? false,
+      deletionScheduledFor: user.deletion
+        ? new Date(user.deletion.scheduledFor).toISOString()
+        : null,
       roles: user.roles ?? [],
       settings: user.settings,
       joined: user.joined,
@@ -73,6 +76,12 @@ export class UserMapper {
           }
         : undefined,
       privateProfile: entity.privateProfile,
+      deletion: entity.deletion
+        ? {
+            requestedAt: entity.deletion.requestedAt,
+            scheduledFor: entity.deletion.scheduledFor,
+          }
+        : undefined,
       roles: entity.roles ?? [],
       settings: UserSettingsMapper.fromDatabase(entity.settings),
       joined: entity.joined,

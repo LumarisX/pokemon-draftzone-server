@@ -158,6 +158,40 @@ describe("ChatService", () => {
     ]);
   });
 
+  it("keeps a deleted coach's name and shows other deleted authors as Deleted Account", async () => {
+    seat();
+    const message = (author: string, authorName: string, authorRole: string) => ({
+      _id: new Types.ObjectId(),
+      author,
+      authorName,
+      authorRole,
+      text: "hi",
+      createdAt: new Date(),
+    });
+    chatRepo.findByRoom.mockResolvedValue([
+      message("deleted:aa", "Ash", "coach"),
+      message("deleted:aa", "Organizer", "organizer"),
+      message("deleted:bb", "Spectator", "spectator"),
+      message("auth0|live", "Spectator", "spectator"),
+    ] as never);
+    userService.profileIdsFor.mockResolvedValue(new Map());
+
+    const result = await service.getMessages(
+      "league",
+      "tournament",
+      "tournament",
+      undefined,
+      "auth0|coach",
+    );
+
+    expect(result.messages.map((m) => m.author)).toEqual([
+      "Ash",
+      "Deleted Account",
+      "Deleted Account",
+      "Spectator",
+    ]);
+  });
+
   it("returns the poster's profile id on a new message", async () => {
     seat();
     userService.profileIdsFor.mockResolvedValue(

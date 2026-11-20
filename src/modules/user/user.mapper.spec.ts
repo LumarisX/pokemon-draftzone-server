@@ -18,6 +18,7 @@ describe("UserMapper.toClientPayload", () => {
       profile: { gameName: null, timezone: null },
       discord: null,
       privateProfile: false,
+      deletionScheduledFor: null,
       roles: [],
       settings,
       joined,

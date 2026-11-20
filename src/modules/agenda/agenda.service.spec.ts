@@ -96,6 +96,7 @@ function buildService(
     {} as any,
     configService,
     draftEngine as any,
+    {} as any,
   );
 
   return { service, agenda, draftRepo, draftEngine, stored };

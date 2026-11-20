@@ -11,7 +11,10 @@ import { TournamentApplicationModule } from "@modules/tournament-application/tou
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { AccountIdentityService } from "./account-identity.service";
+import { AccountDeletionRepository } from "./account-deletion.repository";
+import { AccountDeletionService } from "./account-deletion.service";
 import { AccountFootprintService } from "./account-footprint.service";
+import { Auth0AccountClient } from "./auth0-account.client";
 import { AccountMergeOfferService } from "./account-merge-offer.service";
 import { AccountMergeRepository } from "./account-merge.repository";
 import { AccountMergeService } from "./account-merge.service";
@@ -58,6 +61,9 @@ import { UserService } from "./user.service";
     AccountMergeRepository,
     AccountMergeOfferService,
     AccountMergeService,
+    AccountDeletionRepository,
+    AccountDeletionService,
+    Auth0AccountClient,
     AdminAuditRepository,
   ],
   exports: [
@@ -67,6 +73,7 @@ import { UserService } from "./user.service";
     UserSignInRepository,
     AccountFootprintService,
     AccountMergeService,
+    AccountDeletionService,
   ],
 })
 export class UserModule {}

@@ -1,3 +1,4 @@
+import { AccountDeletionService } from "./account-deletion.service";
 import { AccountMergeService } from "./account-merge.service";
 import { UserController } from "./user.controller";
 import { User } from "./user.domain";
@@ -15,6 +16,7 @@ describe("UserController", () => {
   let service: jest.Mocked<UserService>;
   let controller: UserController;
   let merges: jest.Mocked<AccountMergeService>;
+  let deletions: jest.Mocked<AccountDeletionService>;
 
   beforeEach(() => {
     service = {
@@ -30,7 +32,56 @@ describe("UserController", () => {
       updateProfile: jest.fn(),
     } as unknown as jest.Mocked<UserService>;
     merges = { merge: jest.fn() } as unknown as jest.Mocked<AccountMergeService>;
-    controller = new UserController(service, merges);
+    deletions = {
+      status: jest.fn(),
+      schedule: jest.fn(),
+      cancel: jest.fn(),
+    } as unknown as jest.Mocked<AccountDeletionService>;
+    controller = new UserController(service, merges, deletions);
+  });
+
+  it("serves the deletion status, schedule and cancel routes", async () => {
+    deletions.status.mockResolvedValue({ scheduledFor: null, blockers: [] });
+    deletions.schedule.mockResolvedValue({ scheduledFor: "2026-12-20T00:00:00.000Z" });
+    deletions.cancel.mockResolvedValue({ scheduledFor: null });
+
+    expect(await controller.getDeletion("acct-1")).toEqual({
+      scheduledFor: null,
+      blockers: [],
+    });
+    expect(await controller.scheduleDeletion("acct-1")).toEqual({
+      scheduledFor: "2026-12-20T00:00:00.000Z",
+    });
+    expect(await controller.cancelDeletion("acct-1")).toEqual({
+      scheduledFor: null,
+    });
+    expect(deletions.schedule).toHaveBeenCalledWith("acct-1");
+  });
+
+  it("reports the scheduled deletion date in the me payload", async () => {
+    service.getMeConnected.mockResolvedValue(
+      new User({
+        sub: "acct-1",
+        joined: new Date("2026-01-01"),
+        lastLogin: new Date("2026-02-01"),
+        deletion: {
+          requestedAt: new Date("2026-11-20T00:00:00.000Z"),
+          scheduledFor: new Date("2026-12-20T00:00:00.000Z"),
+        },
+      }),
+    );
+
+    const result: any = await controller.getMe("acct-1");
+
+    expect(result.deletionScheduledFor).toBe("2026-12-20T00:00:00.000Z");
+  });
+
+  it("reports no scheduled deletion as null", async () => {
+    service.getMeConnected.mockResolvedValue(buildUser());
+
+    const result: any = await controller.getMe("auth0|user-1");
+
+    expect(result.deletionScheduledFor).toBeNull();
   });
 
   it("mergeAccounts forwards the offer and answers with the me payload", async () => {

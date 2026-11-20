@@ -101,6 +101,29 @@ describe.each([["auth0"], ["internal"]])("UserRepository in %s mode", (mode) => 
     });
   });
 
+  it("leaves out accounts with a scheduled deletion when building a public card", async () => {
+    userModel.findOne.mockReturnValue(execResult(null));
+
+    expect(await repo.findPublicCardById(ACCOUNT)).toBeNull();
+
+    expect(userModel.findOne.mock.calls[0][0]).toEqual({
+      _id: new Types.ObjectId(ACCOUNT),
+      deletion: { $exists: false },
+    });
+  });
+
+  it("flags names of accounts with a scheduled deletion", async () => {
+    userModel.find.mockReturnValue(
+      execResult([
+        row({ deletion: { requestedAt: new Date(), scheduledFor: new Date() } }),
+      ]),
+    );
+
+    const names = await repo.findNamesByAccounts([ACCOUNT]);
+
+    expect([...names.values()][0].deletionScheduled).toBe(true);
+  });
+
   it("answers null for a public card with a malformed or unknown profile id", async () => {
     userModel.findOne.mockReturnValue(execResult(null));
 
@@ -134,7 +157,7 @@ describe.each([["auth0"], ["internal"]])("UserRepository in %s mode", (mode) => 
       internal
         ? { _id: { $in: [new Types.ObjectId(ACCOUNT)] } }
         : { auth0Sub: { $in: [ACCOUNT] } },
-      { auth0Sub: 1, username: 1, displayName: 1 },
+      { auth0Sub: 1, username: 1, displayName: 1, deletion: 1 },
     );
   });
 
@@ -159,11 +182,13 @@ describe.each([["auth0"], ["internal"]])("UserRepository in %s mode", (mode) => 
       profileId: ACCOUNT,
       displayName: "Ash",
       username: "Ash",
+      deletionScheduled: false,
     });
     expect(names.get(second)).toEqual({
       profileId: "65f0c0ffee0000000000abce",
       displayName: null,
       username: null,
+      deletionScheduled: false,
     });
   });
 

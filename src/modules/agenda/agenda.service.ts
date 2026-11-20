@@ -10,6 +10,7 @@ import { DiscordService } from "@modules/discord/discord.service";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
 import { UploadsService } from "@modules/upload/upload.service";
+import { AccountDeletionService } from "@modules/user/account-deletion.service";
 import {
   forwardRef,
   Inject,
@@ -63,6 +64,7 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => DraftEngineService))
     private readonly draftEngine: DraftEngineService,
+    private readonly accountDeletion: AccountDeletionService,
   ) {}
 
   async onModuleInit() {
@@ -74,6 +76,10 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
     );
     this.agenda.define("cleanup-file-uploads", () =>
       this.handleCleanupFileUploads(),
+    );
+
+    this.agenda.define("purge-deleted-accounts", () =>
+      this.handlePurgeDeletedAccounts(),
     );
 
     if (this.isDev()) {
@@ -95,6 +101,9 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
 
     await this.agenda.every("0 3 * * *", "cleanup-file-uploads");
     this.logger.log("Scheduled recurring file upload cleanup job");
+
+    await this.agenda.every("0 4 * * *", "purge-deleted-accounts");
+    this.logger.log("Scheduled recurring account deletion job");
   }
 
   async onModuleDestroy() {
@@ -297,6 +306,17 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (error) {
       this.logger.error("File upload cleanup error:", error);
+    }
+  }
+
+  private async handlePurgeDeletedAccounts() {
+    try {
+      const { purged, blocked, failed } = await this.accountDeletion.runDue();
+      this.logger.log(
+        `Account deletion: ${purged} deleted, ${blocked} blocked, ${failed} failed`,
+      );
+    } catch (error) {
+      this.logger.error("Account deletion error:", error);
     }
   }
 

@@ -443,6 +443,17 @@ export const ErrorCodes = {
       status: 409,
       message: "That merge can't be undone because the old account id is in use again",
     },
+    DELETION_BLOCKED: {
+      code: "USR-032",
+      status: 409,
+      message:
+        "This account can't be deleted yet. Hand off or leave what is listed first.",
+    },
+    DELETION_IN_PROGRESS: {
+      code: "USR-033",
+      status: 409,
+      message: "This account is already being deleted and can't be kept.",
+    },
   },
   MOVE: {
     NOT_FOUND: {

@@ -51,6 +51,7 @@ export class UserService {
     const names = await this.namesFor(accountIds);
     const profileIds = new Map<string, string>();
     for (const [accountId, person] of names) {
+      if (person.deletionScheduled) continue;
       profileIds.set(accountId, person.profileId);
     }
     return profileIds;

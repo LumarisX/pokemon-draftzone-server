@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
+import { AccountDeletionService } from "./account-deletion.service";
 import { AccountMergeService } from "./account-merge.service";
 import {
   DiscordCallbackDto,
@@ -26,6 +27,7 @@ export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly merges: AccountMergeService,
+    private readonly deletions: AccountDeletionService,
   ) {}
 
   @Get("settings")
@@ -41,6 +43,21 @@ export class UserController {
   @Get("me")
   async getMe(@User() sub: string) {
     return UserMapper.toClientPayload(await this.userService.getMeConnected(sub));
+  }
+
+  @Get("me/deletion")
+  async getDeletion(@User() sub: string) {
+    return this.deletions.status(sub);
+  }
+
+  @Post("me/deletion")
+  async scheduleDeletion(@User() sub: string) {
+    return this.deletions.schedule(sub);
+  }
+
+  @Delete("me/deletion")
+  async cancelDeletion(@User() sub: string) {
+    return this.deletions.cancel(sub);
   }
 
   @Patch("profile")

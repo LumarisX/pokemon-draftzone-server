@@ -5,6 +5,7 @@ import { DraftModule } from "@modules/draft/draft.module";
 import { HostedTournamentCoreModule } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament-core.module";
 import { TierListModule } from "@modules/tier-list/tier-list.module";
 import { UploadsModule } from "@modules/upload/upload.module";
+import { UserModule } from "@modules/user/user.module";
 import { forwardRef, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Agenda } from "agenda";
@@ -18,6 +19,7 @@ import { AgendaService } from "./agenda.service";
     TierListModule,
     DiscordModule,
     UploadsModule,
+    UserModule,
   ],
   providers: [
     {

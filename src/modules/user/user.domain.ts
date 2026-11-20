@@ -29,6 +29,11 @@ export interface UserDiscord {
   refreshedAt: Date;
 }
 
+export interface UserDeletion {
+  requestedAt: Date;
+  scheduledFor: Date;
+}
+
 export class User {
   readonly sub: string;
   readonly signIn?: string;
@@ -38,6 +43,7 @@ export class User {
   profile?: UserProfile;
   discord?: UserDiscord;
   privateProfile?: boolean;
+  deletion?: UserDeletion;
   roles?: UserRole[];
   settings?: UserSettings;
   joined: Date;
@@ -54,6 +60,7 @@ export class User {
     profile?: UserProfile;
     discord?: UserDiscord;
     privateProfile?: boolean;
+    deletion?: UserDeletion;
     roles?: UserRole[];
     settings?: UserSettings;
     lastCheckedAdsAt?: Date;
@@ -66,6 +73,7 @@ export class User {
     this.displayName = props.displayName;
     this.profile = props.profile;
     this.privateProfile = props.privateProfile;
+    this.deletion = props.deletion;
     this.roles = props.roles;
     this.settings = props.settings;
     this.joined = props.joined;

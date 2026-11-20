@@ -3,6 +3,12 @@ export const GAME_NAME_MAX = 32;
 export const DISPLAY_NAME_MIN = 2;
 export const DISPLAY_NAME_MAX = 24;
 export const FALLBACK_DISPLAY_NAME = "Coach";
+export const DELETED_ACCOUNT_NAME = "Deleted Account";
+export const TOMBSTONE_PREFIX = "deleted:";
+
+export function isTombstoneId(value: unknown): boolean {
+  return typeof value === "string" && value.startsWith(TOMBSTONE_PREFIX);
+}
 
 const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N} _\-.']*[\p{L}\p{N}])?$/u;
 const DISPLAY_NAME_DISALLOWED = /[^\p{L}\p{N} _\-.']/gu;

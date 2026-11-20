@@ -9,6 +9,7 @@ export const ADMIN_AUDIT_ACTIONS = [
   "account.transfer-undo",
   "account.merge",
   "account.merge-undo",
+  "account.delete",
 ] as const;
 
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];

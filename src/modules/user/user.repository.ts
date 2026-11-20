@@ -25,6 +25,16 @@ export interface PersonNames {
   profileId: string;
   displayName: string | null;
   username: string | null;
+  deletionScheduled?: boolean;
+}
+
+export interface DueDeletion {
+  accountId: string;
+  profileId: string;
+  signIn: string;
+  requestedAt: Date;
+  scheduledFor: Date;
+  tombstone: string | null;
 }
 
 export interface PublicCard {
@@ -160,7 +170,7 @@ export class UserRepository {
       filter = { auth0Sub: { $in: subs } };
     }
     return this.userModel
-      .find(filter, { auth0Sub: 1, username: 1, displayName: 1 })
+      .find(filter, { auth0Sub: 1, username: 1, displayName: 1, deletion: 1 })
       .exec();
   }
 
@@ -175,9 +185,34 @@ export class UserRepository {
           profileId: String(doc._id),
           displayName: doc.displayName ?? null,
           username: doc.username ?? null,
+          deletionScheduled: Boolean(doc.deletion),
         },
       ]),
     );
+  }
+
+  async findDueDeletions(now: Date): Promise<DueDeletion[]> {
+    const docs = await this.userModel
+      .find({ "deletion.scheduledFor": { $lte: now } })
+      .lean()
+      .exec();
+    return docs.map((doc) => ({
+      accountId: this.identity.internal ? String(doc._id) : doc.auth0Sub,
+      profileId: String(doc._id),
+      signIn: doc.auth0Sub,
+      requestedAt: doc.deletion!.requestedAt,
+      scheduledFor: doc.deletion!.scheduledFor,
+      tombstone: doc.deletion!.tombstone ?? null,
+    }));
+  }
+
+  async findRawByAccount(
+    accountId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const filter = this.byAccount(accountId);
+    if (!filter) return null;
+    const doc = await this.userModel.findOne(filter).lean().exec();
+    return doc ? (doc as unknown as Record<string, unknown>) : null;
   }
 
   async updateUser(user: User): Promise<UserDocument> {
@@ -287,7 +322,10 @@ export class UserRepository {
     if (!OBJECT_ID_PATTERN.test(profileId)) return null;
     const doc = await this.userModel
       .findOne(
-        { _id: new Types.ObjectId(profileId) },
+        {
+          _id: new Types.ObjectId(profileId),
+          deletion: { $exists: false },
+        },
         {
           auth0Sub: 1,
           username: 1,
@@ -362,6 +400,18 @@ export class UserRepository {
       .deleteOne({ ...filter, auth0Sub: { $eq: signIn } })
       .exec();
     return result.deletedCount === 1;
+  }
+
+  async cancelDeletion(accountId: string): Promise<boolean> {
+    const filter = this.byAccount(accountId);
+    if (!filter) return false;
+    const result = await this.userModel
+      .updateOne(
+        { ...filter, "deletion.tombstone": { $exists: false } },
+        { $unset: { deletion: "" } },
+      )
+      .exec();
+    return result.matchedCount > 0;
   }
 
   private byAccount(accountId: string): Record<string, unknown> | null {
