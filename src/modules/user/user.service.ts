@@ -4,12 +4,11 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { Injectable } from "@nestjs/common";
 import { AccountIdentityService } from "./account-identity.service";
-import { DiscordNameSyncService } from "./discord-name-sync.service";
+import { DiscordConnectService } from "./discord-connect.service";
 import { UserSignInRepository } from "./user-sign-in.repository";
 import { User, UserSettings } from "./user.domain";
 import { UpdateProfileDto, UserSettingsDto } from "./user.dto";
 import {
-  DISCORD_NAME_MAX,
   GAME_NAME_MAX,
   isValidTimeZone,
   normalizeDisplayName,
@@ -28,8 +27,8 @@ export class UserService {
     private readonly userRepository: UserRepository,
     private readonly appCache: AppCacheService,
     private readonly identity: AccountIdentityService,
-    private readonly discordNameSync: DiscordNameSyncService,
     private readonly signIns: UserSignInRepository,
+    private readonly discordConnect: DiscordConnectService,
   ) {}
 
   private readonly signInEpochs = new Map<string, number>();
@@ -83,22 +82,33 @@ export class UserService {
     return { accountId, profileId, displayName };
   }
 
-  async claimSignUpDiscordName(
-    sub: string,
-    submitted: string | undefined,
-  ): Promise<string> {
+  async getMeConnected(sub: string): Promise<User> {
     const user = await this.getOrCreateMe(sub);
-    const stored = user.profile?.discordName;
-    if (stored) return stored;
+    return this.discordConnect.reconcile(sub, user);
+  }
 
-    const trimmed = submitted?.trim() ?? "";
-    if (trimmed === "") {
-      throw new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
-        field: "discordName",
-      });
+  async claimSignUpDiscord(
+    sub: string,
+    requireDiscord: boolean,
+  ): Promise<{ discordName?: string; discordId?: string }> {
+    const user = await this.getMeConnected(sub);
+    if (user.discord) {
+      return { discordName: user.discord.username, discordId: user.discord.id };
     }
-    await this.updateProfile(sub, { discordName: trimmed });
-    return trimmed;
+    if (requireDiscord) throw new PDZError(ErrorCodes.USER.DISCORD_REQUIRED);
+    return {};
+  }
+
+  async connectDiscord(sub: string, returnTo?: string) {
+    return this.discordConnect.startConnect(sub, returnTo);
+  }
+
+  async completeDiscordConnect(sub: string, code: string, state: string) {
+    return this.discordConnect.completeConnect(sub, code, state);
+  }
+
+  async disconnectDiscord(sub: string): Promise<User> {
+    return this.discordConnect.disconnect(sub);
   }
 
   async resolveAccount(signIn: string): Promise<string> {
@@ -229,14 +239,6 @@ export class UserService {
     }
 
     this.applyProfileText(
-      "discordName",
-      "Discord name",
-      DISCORD_NAME_MAX,
-      dto.discordName,
-      set,
-      unset,
-    );
-    this.applyProfileText(
       "gameName",
       "Game name",
       GAME_NAME_MAX,
@@ -269,16 +271,11 @@ export class UserService {
       unset,
     });
     await this.appCache.invalidate(CacheKeys.user(sub));
-
-    const discordName = set["profile.discordName"];
-    if (typeof discordName === "string") {
-      await this.discordNameSync.propagateToRunningSignUps(sub, discordName);
-    }
     return updated;
   }
 
   private applyProfileText(
-    field: "discordName" | "gameName",
+    field: "gameName",
     label: string,
     max: number,
     value: string | null | undefined,

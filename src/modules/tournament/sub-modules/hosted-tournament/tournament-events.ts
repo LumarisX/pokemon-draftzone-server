@@ -9,14 +9,14 @@ export const TOURNAMENT_EVENTS = {
 
 export type ApplicationSubmittedEvent = {
   tournament: HostedTournament;
-  signUp: Omit<SignUpDto, "discordName"> & {
+  signUp: SignUpDto & {
     teamName: string;
-    discordName: string;
+    discordName?: string;
   };
   answers: SubmittedAnswer[];
 };
 
 export type CoachSeatedEvent = {
   tournament: HostedTournament;
-  discordName?: string;
+  discordId?: string;
 };

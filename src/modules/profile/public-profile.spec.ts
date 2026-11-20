@@ -1,5 +1,6 @@
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import { AccountMergeService } from "@modules/user/account-merge.service";
 import { UserService } from "@modules/user/user.service";
 import { PublicProfileController } from "./public-profile.controller";
 import { ProfileService } from "./profile.service";
@@ -61,6 +62,7 @@ describe("ProfileService public profiles", () => {
   let externalRepo: { findByOwner: jest.Mock; findCompletedByOwner: jest.Mock };
   let archiveRepo: { findAllByOwner: jest.Mock };
   let users: { findPublicCard: jest.Mock };
+  let merges: { keptProfileFor: jest.Mock };
   let service: ProfileService;
 
   beforeEach(() => {
@@ -104,12 +106,39 @@ describe("ProfileService public profiles", () => {
     };
     archiveRepo = { findAllByOwner: jest.fn().mockResolvedValue([]) };
     users = { findPublicCard: jest.fn().mockResolvedValue(card()) };
+    merges = { keptProfileFor: jest.fn().mockResolvedValue(null) };
     service = new ProfileService(
       seasons as any,
       externalRepo as any,
       archiveRepo as any,
       users as unknown as UserService,
+      merges as unknown as AccountMergeService,
     );
+  });
+
+  it("answers a merged-away profile id with the kept account's profile", async () => {
+    const KEPT = "fedcba987654321001234567";
+    users.findPublicCard.mockImplementation(async (id: string) => {
+      if (id === KEPT) return card({ profileId: KEPT });
+      throw new PDZError(ErrorCodes.USER.ACCOUNT_NOT_FOUND);
+    });
+    merges.keptProfileFor.mockResolvedValue(KEPT);
+
+    const result = await service.getPublicProfile(PROFILE_ID, undefined);
+
+    expect(result.profileId).toBe(KEPT);
+    expect(merges.keptProfileFor).toHaveBeenCalledWith(PROFILE_ID);
+  });
+
+  it("keeps the not found answer when the id was never merged", async () => {
+    users.findPublicCard.mockRejectedValue(
+      new PDZError(ErrorCodes.USER.ACCOUNT_NOT_FOUND),
+    );
+    merges.keptProfileFor.mockResolvedValue(null);
+
+    await expect(
+      service.getPublicProfile(PROFILE_ID, undefined),
+    ).rejects.toMatchObject({ code: "USR-010" });
   });
 
   it("returns exactly the documented keys for a public profile", async () => {

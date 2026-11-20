@@ -54,8 +54,11 @@ export class TournamentApplicationEntity {
   @Prop({ required: true })
   gameName!: string;
 
-  @Prop({ required: true })
-  discordName!: string;
+  @Prop({ type: String })
+  discordName?: string;
+
+  @Prop({ type: String })
+  discordId?: string;
 
   @Prop({ required: true })
   timezone!: string;

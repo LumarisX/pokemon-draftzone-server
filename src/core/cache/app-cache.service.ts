@@ -31,6 +31,16 @@ export class AppCacheService {
     return promise;
   }
 
+  async set<T>(key: string, value: T, ttlMs: number): Promise<void> {
+    await this.cache.set(key, value, ttlMs);
+  }
+
+  async take<T>(key: string): Promise<T | undefined> {
+    const hit = await this.cache.get<T>(key);
+    await this.cache.del(key);
+    return hit === null ? undefined : hit;
+  }
+
   async invalidate(...keys: string[]): Promise<void> {
     await Promise.all(keys.map((key) => this.cache.del(key)));
   }

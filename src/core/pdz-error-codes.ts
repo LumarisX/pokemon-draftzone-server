@@ -381,7 +381,7 @@ export const ErrorCodes = {
     NOTHING_TO_UNDO: {
       code: "USR-018",
       status: 404,
-      message: "That account has no transfer to undo",
+      message: "That account has no transfer or merge to undo",
     },
     OWNER_REQUIRED: {
       code: "USR-019",
@@ -392,6 +392,56 @@ export const ErrorCodes = {
       code: "USR-020",
       status: 400,
       message: "You can't do that to your own account",
+    },
+    DISCORD_NOT_CONFIGURED: {
+      code: "USR-021",
+      status: 503,
+      message: "Connecting Discord is not set up on this server",
+    },
+    DISCORD_ALREADY_CONNECTED: {
+      code: "USR-022",
+      status: 409,
+      message: "That Discord account is already connected",
+    },
+    DISCORD_STATE_INVALID: {
+      code: "USR-023",
+      status: 400,
+      message: "That Discord approval expired or is not yours. Start again.",
+    },
+    DISCORD_EXCHANGE_FAILED: {
+      code: "USR-024",
+      status: 502,
+      message: "Discord did not confirm the connection. Try again.",
+    },
+    DISCORD_SIGN_IN_CANNOT_DISCONNECT: {
+      code: "USR-025",
+      status: 400,
+      message: "You sign in with Discord, so it can't be disconnected",
+    },
+    DISCORD_REQUIRED: {
+      code: "USR-026",
+      status: 403,
+      message: "This tournament needs a connected Discord account to sign up",
+    },
+    MERGE_OFFER_INVALID: {
+      code: "USR-028",
+      status: 400,
+      message: "That merge offer expired or is not yours. Connect Discord again.",
+    },
+    MERGE_UNAVAILABLE: {
+      code: "USR-029",
+      status: 503,
+      message: "Merging accounts is not available right now",
+    },
+    MERGE_BLOCKED: {
+      code: "USR-030",
+      status: 409,
+      message: "These accounts can't be merged yet",
+    },
+    MERGE_UNDO_CONFLICT: {
+      code: "USR-031",
+      status: 409,
+      message: "That merge can't be undone because the old account id is in use again",
     },
   },
   MOVE: {

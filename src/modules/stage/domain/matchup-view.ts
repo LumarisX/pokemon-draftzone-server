@@ -23,6 +23,7 @@ export interface MatchupDetailOptions extends ScheduleViewOptions {
   stage: { id: string; slug: string; name: string };
   round: { name: string; matchDeadline?: Date } | null;
   viewer: MatchupViewer;
+  viewerSeated?: boolean;
 }
 
 function resultsView(results: MatchResultEntity[]) {
@@ -41,8 +42,12 @@ function resultsView(results: MatchResultEntity[]) {
   }));
 }
 
-function contactFor(team: PopulatedTeam, viewer: MatchupViewer) {
-  const visible = viewer.isOrganizer || viewer.side !== null;
+function contactFor(
+  team: PopulatedTeam,
+  viewer: MatchupViewer,
+  seated: boolean,
+) {
+  const visible = viewer.isOrganizer || viewer.side !== null || seated;
   return {
     coachId: team.primaryCoach._id.toString(),
     timezone: team.primaryCoach.timezone,
@@ -77,17 +82,18 @@ export function toMatchupDetail(
 ) {
   const base = toScheduleMatchup(matchup, options);
   const { viewer } = options;
+  const seated = options.viewerSeated === true;
 
   return {
     ...base,
     team1: {
       ...base.team1,
-      ...contactFor(matchup.side1.team, viewer),
+      ...contactFor(matchup.side1.team, viewer, seated),
       paste: matchup.side1.paste,
     },
     team2: {
       ...base.team2,
-      ...contactFor(matchup.side2.team, viewer),
+      ...contactFor(matchup.side2.team, viewer, seated),
       paste: matchup.side2.paste,
     },
     label: matchup.label ?? base.label,

@@ -46,7 +46,6 @@ export type LockableSection = (typeof LOCKABLE_SECTIONS)[number];
 export const SIGN_UP_LIMITS = {
   name: 64,
   gameName: 32,
-  discordName: 64,
   teamName: 64,
   timezone: 64,
   logo: 256,
@@ -82,11 +81,6 @@ export class SignUpDto {
   @MinLength(1)
   @MaxLength(SIGN_UP_LIMITS.gameName)
   gameName!: string;
-
-  @IsString()
-  @MaxLength(SIGN_UP_LIMITS.discordName)
-  @IsOptional()
-  discordName?: string;
 
   @ValidateIf((dto: SignUpDto) => !dto.identity)
   @IsString()
@@ -283,11 +277,6 @@ export class UpdateCoachDetailsDto {
   @MaxLength(SIGN_UP_LIMITS.gameName)
   @IsOptional()
   gameName?: string;
-
-  @IsString()
-  @MaxLength(SIGN_UP_LIMITS.discordName)
-  @IsOptional()
-  discordName?: string;
 
   @IsString()
   @MaxLength(SIGN_UP_LIMITS.timezone)
@@ -571,6 +560,10 @@ export class UpdateHostedTournamentSettingsDto {
   @IsIn(SIGNUP_ACCESS_MODES)
   @IsOptional()
   signUpAccess?: SignUpAccessMode;
+
+  @IsBoolean()
+  @IsOptional()
+  requireDiscord?: boolean;
 
   @IsInt()
   @Min(0)

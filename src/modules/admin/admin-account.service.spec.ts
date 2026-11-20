@@ -1,5 +1,6 @@
 import { AccountFootprintService } from "@modules/user/account-footprint.service";
 import { AccountIdentityService } from "@modules/user/account-identity.service";
+import { AccountMergeService } from "@modules/user/account-merge.service";
 import {
   SignInRow,
   UserSignInRepository,
@@ -116,6 +117,9 @@ function setup(
     patchDetails: jest.fn(async () => undefined),
     findOpenTransfers: jest.fn(async (): Promise<any[]> => []),
   };
+  const merges = {
+    undo: jest.fn(async () => ({ undone: true as const })),
+  };
   const identity = {
     internal: options.internal ?? true,
   } as unknown as AccountIdentityService;
@@ -127,8 +131,19 @@ function setup(
     userService as unknown as UserService,
     footprints as unknown as AccountFootprintService,
     audit as unknown as AdminAuditRepository,
+    merges as unknown as AccountMergeService,
   );
-  return { service, rows, signIns, users, userService, footprints, audit, log };
+  return {
+    service,
+    rows,
+    signIns,
+    users,
+    userService,
+    footprints,
+    audit,
+    merges,
+    log,
+  };
 }
 
 function leaks(value: unknown): boolean {
@@ -153,6 +168,7 @@ describe("AdminAccountService in auth0 mode", () => {
         }),
     ],
     ["undo", (s: AdminAccountService) => s.undoTransfer(ADMIN, { profileId: "old_coach", note: "n" })],
+    ["undo merge", (s: AdminAccountService) => s.undoMerge(ADMIN, { profileId: "old_coach", note: "n" })],
   ])("refuses %s with a 409 and touches nothing", async (_name, run) => {
     const ctx = setup({ internal: false });
 
@@ -649,5 +665,49 @@ describe("AdminAccountService.undoTransfer", () => {
     await expect(
       ctx.service.undoTransfer(ADMIN, { profileId: "old_coach", note: "n" }),
     ).rejects.toMatchObject({ code: "USR-018" });
+  });
+});
+
+describe("AdminAccountService.undoMerge", () => {
+  it("hands the kept account to the merge service", async () => {
+    const ctx = setup();
+
+    const result = await ctx.service.undoMerge(ADMIN, {
+      profileId: "old_coach",
+      note: "wrong person",
+    });
+
+    expect(result).toEqual({ undone: true });
+    expect(ctx.merges.undo).toHaveBeenCalledWith(ADMIN, OLD_ID, "wrong person");
+  });
+
+  it("refuses an unknown account", async () => {
+    const ctx = setup();
+
+    await expect(
+      ctx.service.undoMerge(ADMIN, { profileId: "nobody", note: "n" }),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(ctx.merges.undo).not.toHaveBeenCalled();
+  });
+
+  it("refuses an admin acting on their own account", async () => {
+    const ctx = setup();
+    ctx.users.findAccountByProfileId.mockResolvedValue(
+      account({ accountId: ADMIN, profileId: "admin" }),
+    );
+
+    await expect(
+      ctx.service.undoMerge(ADMIN, { profileId: "admin", note: "n" }),
+    ).rejects.toMatchObject({ code: "USR-020" });
+    expect(ctx.merges.undo).not.toHaveBeenCalled();
+  });
+
+  it("lets only an owner undo a merge into an admin account", async () => {
+    const ctx = setup({ oldRoles: [UserRole.ADMIN], actorRoles: [UserRole.ADMIN] });
+
+    await expect(
+      ctx.service.undoMerge(ADMIN, { profileId: "old_coach", note: "n" }),
+    ).rejects.toMatchObject({ code: "USR-019" });
+    expect(ctx.merges.undo).not.toHaveBeenCalled();
   });
 });

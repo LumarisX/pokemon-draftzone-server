@@ -248,10 +248,9 @@ export class DraftEngineService {
       "primaryCoach",
       "coaches",
     ]);
-    const coachMention = await this.discordService.resolveMention(
-      channelId,
-      team.primaryCoach?.discordName,
-    );
+    const coachMention =
+      this.discordService.mention(team.primaryCoach?.discordId) ??
+      team.primaryCoach?.name;
 
     const title = pokemon
       ? previous
@@ -668,10 +667,9 @@ export class DraftEngineService {
       "coaches",
     ]);
 
-    const coachMention = await this.discordService.resolveMention(
-      channelId,
-      team.primaryCoach?.discordName,
-    );
+    const coachMention =
+      this.discordService.mention(team.primaryCoach?.discordId) ??
+      team.primaryCoach?.name;
     const messageContent = `${pokemonName} was drafted by ${coachMention ?? "a coach"}.`;
 
     const color = pokemonSpecie?.types[0]
@@ -825,10 +823,7 @@ export class DraftEngineService {
 
   private async announceTurn(draft: PopulatedDraft, team: PopulatedTeam) {
     if (!draft.channelId) return;
-    const mention = await this.discordService.resolveMention(
-      draft.channelId,
-      team.primaryCoach?.discordName,
-    );
+    const mention = this.discordService.mention(team.primaryCoach?.discordId);
     await this.discordService.sendMessage(draft.channelId, {
       content: mention
         ? `${mention}, it is now your turn!`
@@ -972,10 +967,9 @@ export class DraftEngineService {
         });
 
         if (draft.channelId) {
-          const coachMention = await this.discordService.resolveMention(
-            draft.channelId,
-            fullTeam?.primaryCoach?.discordName,
-          );
+          const coachMention =
+            this.discordService.mention(fullTeam?.primaryCoach?.discordId) ??
+            fullTeam?.primaryCoach?.name;
           await this.discordService.sendMessage(draft.channelId, {
             content: `${teamName} (${coachMention ?? "coach"}) was skipped!`,
           });
@@ -1224,10 +1218,9 @@ export class DraftEngineService {
       primaryCoach: CoachDocument;
       coaches: CoachDocument[];
     }>(["primaryCoach", "coaches"]);
-    const coachMention = await this.discordService.resolveMention(
-      channelId,
-      currentTeam.primaryCoach?.discordName,
-    );
+    const coachMention =
+      this.discordService.mention(currentTeam.primaryCoach?.discordId) ??
+      currentTeam.primaryCoach?.name;
     const embed = new EmbedBuilder()
       .setTitle(
         movedForward
@@ -1481,9 +1474,8 @@ export class DraftEngineService {
       "primaryCoach",
       "coaches",
     ]);
-    const mention = await this.discordService.resolveMention(
-      draft.channelId,
-      currentTeam.primaryCoach?.discordName,
+    const mention = this.discordService.mention(
+      currentTeam.primaryCoach?.discordId,
     );
     return ` ${mention ?? currentTeam.teamName}, it is now your turn!`;
   }

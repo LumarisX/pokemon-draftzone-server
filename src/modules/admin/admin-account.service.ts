@@ -5,6 +5,7 @@ import {
   isEmptyFootprint,
 } from "@modules/user/account-footprint.service";
 import { AccountIdentityService } from "@modules/user/account-identity.service";
+import { AccountMergeService } from "@modules/user/account-merge.service";
 import { UserSignInRepository } from "@modules/user/user-sign-in.repository";
 import { AccountRecord, UserRepository } from "@modules/user/user.repository";
 import { UserRole } from "@modules/user/user.schema";
@@ -34,6 +35,7 @@ export class AdminAccountService {
     private readonly userService: UserService,
     private readonly footprints: AccountFootprintService,
     private readonly audit: AdminAuditRepository,
+    private readonly merges: AccountMergeService,
   ) {}
 
   async describe(profileId: string): Promise<AccountDescription> {
@@ -230,6 +232,16 @@ export class AdminAccountService {
       return { undone: true };
     }
     throw new PDZError(ErrorCodes.USER.NOTHING_TO_UNDO);
+  }
+
+  async undoMerge(
+    actor: string,
+    dto: AccountNoteDto,
+  ): Promise<{ undone: true }> {
+    this.requireInternalIds();
+    const kept = await this.requireAccount(dto.profileId);
+    await this.requireMayActOn(actor, kept);
+    return this.merges.undo(actor, kept.accountId, dto.note);
   }
 
   private async rollbackTransfer(

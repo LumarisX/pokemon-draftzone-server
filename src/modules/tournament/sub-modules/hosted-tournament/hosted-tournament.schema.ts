@@ -446,6 +446,9 @@ export class HostedTournamentEntity {
   })
   signUpAccess!: SignUpAccessMode;
 
+  @Prop({ type: Boolean })
+  requireDiscord?: boolean;
+
   @Prop()
   signUpToken?: string;
 

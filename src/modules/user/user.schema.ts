@@ -44,6 +44,23 @@ export class UserProfileEntity {
 export const UserProfileSchema =
   SchemaFactory.createForClass(UserProfileEntity);
 
+@Schema({ _id: false })
+export class UserDiscordEntity {
+  @Prop({ type: String, required: true })
+  id!: string;
+
+  @Prop({ type: String, required: true })
+  username!: string;
+
+  @Prop({ type: Date, required: true })
+  connectedAt!: Date;
+
+  @Prop({ type: Date, required: true })
+  refreshedAt!: Date;
+}
+export const UserDiscordSchema =
+  SchemaFactory.createForClass(UserDiscordEntity);
+
 @Schema({ timestamps: true, collection: "users" })
 export class UserEntity {
   @Prop({ type: String, required: true, trim: true, unique: true, index: true })
@@ -57,6 +74,9 @@ export class UserEntity {
 
   @Prop({ type: UserProfileSchema })
   profile?: UserProfileEntity;
+
+  @Prop({ type: UserDiscordSchema })
+  discord?: UserDiscordEntity;
 
   @Prop({ type: Boolean })
   privateProfile?: boolean;
@@ -78,3 +98,4 @@ export class UserEntity {
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserEntity);
+UserSchema.index({ "discord.id": 1 }, { unique: true, sparse: true });

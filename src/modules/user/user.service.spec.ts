@@ -3,7 +3,7 @@ import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import { createCache } from "cache-manager";
 import { AccountIdentityService } from "./account-identity.service";
-import { DiscordNameSyncService } from "./discord-name-sync.service";
+import { DiscordConnectService } from "./discord-connect.service";
 import { User, UserProfile, UserSettings } from "./user.domain";
 import { UserSignInRepository } from "./user-sign-in.repository";
 import { UserSettingsDto } from "./user.dto";
@@ -21,7 +21,7 @@ function buildUser(overrides: Partial<ConstructorParameters<typeof User>[0]> = {
 
 describe("UserService", () => {
   let userRepo: jest.Mocked<UserRepository>;
-  let discordNameSync: jest.Mocked<DiscordNameSyncService>;
+  let discordConnect: jest.Mocked<DiscordConnectService>;
   let service: UserService;
 
   beforeEach(() => {
@@ -35,126 +35,76 @@ describe("UserService", () => {
       findPublicCardById: jest.fn().mockResolvedValue(null),
       findNamesByAccounts: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<UserRepository>;
-    discordNameSync = {
-      propagateToRunningSignUps: jest
-        .fn()
-        .mockResolvedValue({ coaches: 0, applications: 0 }),
-    } as unknown as jest.Mocked<DiscordNameSyncService>;
+    discordConnect = {
+      reconcile: jest.fn(async (_sub: string, user: User) => user),
+    } as unknown as jest.Mocked<DiscordConnectService>;
     service = new UserService(
       userRepo,
       new AppCacheService(createCache()),
       new AccountIdentityService({ get: () => undefined } as any),
-      discordNameSync,
       {} as UserSignInRepository,
+      discordConnect,
     );
   });
 
-  describe("claimSignUpDiscordName", () => {
-    beforeEach(() => {
-      userRepo.applyChanges.mockResolvedValue(buildUser());
-    });
+  describe("claimSignUpDiscord", () => {
+    const connected = {
+      id: "123456789012345678",
+      username: "ash",
+      connectedAt: new Date("2026-11-01"),
+      refreshedAt: new Date("2026-11-01"),
+    };
 
-    it("returns the account's Discord name and ignores the submitted one", async () => {
+    it("stores the connected Discord name and id", async () => {
       userRepo.getOrCreateUserBySub.mockResolvedValue(
-        buildUser({ profile: new UserProfile({ discordName: "profile#1" }) }),
+        buildUser({ discord: connected }),
       );
 
-      const name = await service.claimSignUpDiscordName(
-        "auth0|user-1",
-        "typed#2",
-      );
+      const claimed = await service.claimSignUpDiscord("auth0|user-1", true);
 
-      expect(name).toBe("profile#1");
+      expect(claimed).toEqual({
+        discordName: "ash",
+        discordId: "123456789012345678",
+      });
       expect(userRepo.applyChanges).not.toHaveBeenCalled();
     });
 
-    it("saves the submitted name to the profile when the account has none", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
-
-      const name = await service.claimSignUpDiscordName(
-        "auth0|user-1",
-        "  typed#2 ",
+    it("refuses a sign-up that requires Discord when none is connected", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "typed#1" }) }),
       );
 
-      expect(name).toBe("typed#2");
-      expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
-        set: { "profile.discordName": "typed#2" },
-        unset: [],
-      });
-    });
-
-    it("rejects a sign-up with neither a profile name nor a submitted one", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
-
       await expect(
-        service.claimSignUpDiscordName("auth0|user-1", undefined),
+        service.claimSignUpDiscord("auth0|user-1", true),
       ).rejects.toMatchObject({
-        code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
-        status: 400,
+        code: ErrorCodes.USER.DISCORD_REQUIRED.code,
+        status: 403,
       });
-      await expect(
-        service.claimSignUpDiscordName("auth0|user-1", "   "),
-      ).rejects.toMatchObject({ status: 400 });
-      expect(userRepo.applyChanges).not.toHaveBeenCalled();
     });
 
-    it("rejects a submitted name over the profile limit", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+    it("stores no Discord name for an unconnected account when Discord is not required, even with a stored profile name", async () => {
+      userRepo.getOrCreateUserBySub.mockResolvedValue(
+        buildUser({ profile: new UserProfile({ discordName: "typed#1" }) }),
+      );
 
-      await expect(
-        service.claimSignUpDiscordName("auth0|user-1", "x".repeat(38)),
-      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
+      const claimed = await service.claimSignUpDiscord("auth0|user-1", false);
+
+      expect(claimed).toEqual({});
     });
   });
 
-  describe("discord name propagation", () => {
+  describe("updateProfile and Discord names", () => {
     beforeEach(() => {
       userRepo.applyChanges.mockResolvedValue(buildUser());
-    });
-
-    it("updates running sign-ups when the name changes to a new value", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(
-        buildUser({ profile: new UserProfile({ discordName: "old#1" }) }),
-      );
-
-      await service.updateProfile("auth0|user-1", { discordName: " new#2 " });
-
-      expect(discordNameSync.propagateToRunningSignUps).toHaveBeenCalledWith(
-        "auth0|user-1",
-        "new#2",
-      );
-    });
-
-    it("updates running sign-ups again when the same name is re-sent, so a failed update can be retried", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(
-        buildUser({ profile: new UserProfile({ discordName: "same#1" }) }),
-      );
-
-      await service.updateProfile("auth0|user-1", { discordName: "same#1" });
-
-      expect(discordNameSync.propagateToRunningSignUps).toHaveBeenCalledWith(
-        "auth0|user-1",
-        "same#1",
-      );
-    });
-
-    it("leaves existing sign-ups alone when the name is cleared", async () => {
-      userRepo.getOrCreateUserBySub.mockResolvedValue(
-        buildUser({ profile: new UserProfile({ discordName: "old#1" }) }),
-      );
-
-      await service.updateProfile("auth0|user-1", { discordName: null });
-      await service.updateProfile("auth0|user-1", { discordName: "  " });
-
-      expect(discordNameSync.propagateToRunningSignUps).not.toHaveBeenCalled();
-    });
-
-    it("does nothing for other profile fields", async () => {
       userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
+    });
 
-      await service.updateProfile("auth0|user-1", { gameName: "AshK" });
+    it("ignores a Discord name sent in the profile", async () => {
+      await service.updateProfile("auth0|user-1", {
+        discordName: "typed#2",
+      } as any);
 
-      expect(discordNameSync.propagateToRunningSignUps).not.toHaveBeenCalled();
+      expect(userRepo.applyChanges).not.toHaveBeenCalled();
     });
   });
 
@@ -465,14 +415,12 @@ describe("UserService", () => {
       userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
 
       await service.updateProfile("auth0|user-1", {
-        discordName: " ash#1 ",
         gameName: "AshK",
         timezone: "America/New_York",
       });
 
       expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
         set: {
-          "profile.discordName": "ash#1",
           "profile.gameName": "AshK",
           "profile.timezone": "America/New_York",
         },
@@ -510,12 +458,9 @@ describe("UserService", () => {
       ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
     });
 
-    it("rejects an over-long Discord name and game name", async () => {
+    it("rejects an over-long game name", async () => {
       userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
 
-      await expect(
-        service.updateProfile("auth0|user-1", { discordName: "x".repeat(38) }),
-      ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
       await expect(
         service.updateProfile("auth0|user-1", { gameName: "x".repeat(33) }),
       ).rejects.toMatchObject({ code: ErrorCodes.USER.INVALID_PROFILE.code });
@@ -526,18 +471,13 @@ describe("UserService", () => {
       userRepo.getOrCreateUserBySub.mockResolvedValue(buildUser());
 
       await service.updateProfile("auth0|user-1", {
-        discordName: null,
         gameName: "  ",
         timezone: "",
       });
 
       expect(userRepo.applyChanges).toHaveBeenCalledWith("auth0|user-1", {
         set: {},
-        unset: [
-          "profile.discordName",
-          "profile.gameName",
-          "profile.timezone",
-        ],
+        unset: ["profile.gameName", "profile.timezone"],
       });
     });
 

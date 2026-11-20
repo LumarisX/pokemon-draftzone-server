@@ -7,6 +7,8 @@ export const ADMIN_AUDIT_ACTIONS = [
   "account.unlock",
   "account.transfer",
   "account.transfer-undo",
+  "account.merge",
+  "account.merge-undo",
 ] as const;
 
 export type AdminAuditAction = (typeof ADMIN_AUDIT_ACTIONS)[number];

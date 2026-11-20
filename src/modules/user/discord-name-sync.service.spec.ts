@@ -26,6 +26,7 @@ describe("DiscordNameSyncService.propagateToRunningSignUps", () => {
     coachRepo = {
       findRunningByAuth0Id: jest.fn().mockResolvedValue([]),
       setDiscordName: jest.fn().mockResolvedValue(0),
+      setDiscordIdentity: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<CoachRepository>;
     teamRepo = {
       findManyByIds: jest.fn().mockResolvedValue([]),
@@ -33,6 +34,7 @@ describe("DiscordNameSyncService.propagateToRunningSignUps", () => {
     applicationRepo = {
       findAllByApplicant: jest.fn().mockResolvedValue([]),
       setDiscordName: jest.fn().mockResolvedValue(0),
+      setDiscordIdentity: jest.fn().mockResolvedValue(0),
     } as unknown as jest.Mocked<TournamentApplicationRepository>;
     tournamentRepo = {
       findFinishedIds: jest.fn().mockResolvedValue(new Set()),
@@ -163,5 +165,81 @@ describe("DiscordNameSyncService.propagateToRunningSignUps", () => {
 
     expect(coachRepo.findRunningByAuth0Id).toHaveBeenCalledTimes(1);
     expect(tournamentRepo.findFinishedIds).toHaveBeenCalledWith([]);
+  });
+
+  it("carries the Discord id to running coach rows and applications", async () => {
+    const application = {
+      _id: id(),
+      tournamentId: live.tournament,
+      status: "pending",
+    };
+    coachRepo.findRunningByAuth0Id.mockResolvedValue([
+      { _id: live.coach, teamId: live.team },
+    ] as any);
+    teamRepo.findManyByIds.mockResolvedValue([
+      { _id: live.team, tournamentId: live.tournament },
+    ] as any);
+    applicationRepo.findAllByApplicant.mockResolvedValue([application] as any);
+
+    await service.propagateToRunningSignUps(ACCOUNT, NEW_NAME, "123456789012345678");
+
+    expect(coachRepo.setDiscordIdentity).toHaveBeenCalledWith(
+      [live.coach.toString()],
+      NEW_NAME,
+      "123456789012345678",
+    );
+    expect(applicationRepo.setDiscordIdentity).toHaveBeenCalledWith(
+      [application._id.toString()],
+      NEW_NAME,
+      "123456789012345678",
+    );
+  });
+});
+
+describe("DiscordNameSyncService.clearRunningDiscordIds", () => {
+  it("removes the id from running coach rows and applications only", async () => {
+    const live = { tournament: id(), team: id(), coach: id() };
+    const finished = { tournament: id(), team: id(), coach: id() };
+    const coachRepo = {
+      findRunningByAuth0Id: jest.fn().mockResolvedValue([
+        { _id: live.coach, teamId: live.team },
+        { _id: finished.coach, teamId: finished.team },
+      ]),
+      clearDiscordId: jest.fn().mockResolvedValue(1),
+    };
+    const teamRepo = {
+      findManyByIds: jest.fn().mockResolvedValue([
+        { _id: live.team, tournamentId: live.tournament },
+        { _id: finished.team, tournamentId: finished.tournament },
+      ]),
+    };
+    const pending = { _id: id(), tournamentId: live.tournament, status: "pending" };
+    const oldPending = {
+      _id: id(),
+      tournamentId: finished.tournament,
+      status: "pending",
+    };
+    const applicationRepo = {
+      findAllByApplicant: jest.fn().mockResolvedValue([pending, oldPending]),
+      clearDiscordId: jest.fn().mockResolvedValue(1),
+    };
+    const tournamentRepo = {
+      findFinishedIds: jest
+        .fn()
+        .mockResolvedValue(new Set([finished.tournament.toString()])),
+    };
+    const service = new DiscordNameSyncService(
+      coachRepo as unknown as CoachRepository,
+      teamRepo as unknown as TeamRepository,
+      applicationRepo as unknown as TournamentApplicationRepository,
+      tournamentRepo as unknown as HostedTournamentRepository,
+    );
+
+    await service.clearRunningDiscordIds(ACCOUNT);
+
+    expect(coachRepo.clearDiscordId).toHaveBeenCalledWith([live.coach.toString()]);
+    expect(applicationRepo.clearDiscordId).toHaveBeenCalledWith([
+      pending._id.toString(),
+    ]);
   });
 });

@@ -22,6 +22,13 @@ export class UserProfile {
   }
 }
 
+export interface UserDiscord {
+  id: string;
+  username: string;
+  connectedAt: Date;
+  refreshedAt: Date;
+}
+
 export class User {
   readonly sub: string;
   readonly signIn?: string;
@@ -29,6 +36,7 @@ export class User {
   username?: string;
   displayName?: string;
   profile?: UserProfile;
+  discord?: UserDiscord;
   privateProfile?: boolean;
   roles?: UserRole[];
   settings?: UserSettings;
@@ -44,11 +52,13 @@ export class User {
     username?: string;
     displayName?: string;
     profile?: UserProfile;
+    discord?: UserDiscord;
     privateProfile?: boolean;
     roles?: UserRole[];
     settings?: UserSettings;
     lastCheckedAdsAt?: Date;
   }) {
+    this.discord = props.discord;
     this.sub = props.sub;
     this.signIn = props.signIn;
     this.profileId = props.profileId;

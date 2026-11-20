@@ -107,6 +107,7 @@ export class HostedTournamentMapper {
       maxTeams: doc.maxTeams,
       signUpQuestions: doc.signUpQuestions ?? [],
       signUpAccess: doc.signUpAccess ?? "open",
+      requireDiscord: doc.requireDiscord === true,
       signUpToken: doc.signUpToken,
       tradePointLimit: doc.tradePointLimit,
       tierRequirements: doc.tierRequirements.map(
@@ -186,6 +187,7 @@ export class HostedTournamentMapper {
       maxTeams: tournament.maxTeams,
       signUpQuestions: tournament.signUpQuestions,
       signUpAccess: tournament.signUpAccess,
+      requireDiscord: tournament.requireDiscord,
       signUpToken: tournament.signUpToken,
       tradePointLimit: tournament.tradePointLimit,
       tierRequirements: tournament.tierRequirements,

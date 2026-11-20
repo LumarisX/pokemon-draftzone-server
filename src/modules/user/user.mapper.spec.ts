@@ -15,7 +15,8 @@ describe("UserMapper.toClientPayload", () => {
       sub: "auth0|user-1",
       profileId: null,
       displayName: null,
-      profile: { discordName: null, gameName: null, timezone: null },
+      profile: { gameName: null, timezone: null },
+      discord: null,
       privateProfile: false,
       roles: [],
       settings,
@@ -75,7 +76,6 @@ describe("UserMapper.toClientPayload", () => {
     expect(payload.displayName).toBe("Ash");
     expect(payload).not.toHaveProperty("avatar");
     expect(payload.profile).toEqual({
-      discordName: "ash#1",
       gameName: null,
       timezone: "UTC",
     });

@@ -47,6 +47,8 @@ export type TeamPageResponse = {
   pool?: { poolSlug: string; name: string };
   gameName?: string;
   discordName?: string;
+  discordConnected?: boolean;
+  coachDiscordName?: string;
   name: string;
   timezone: string;
   coach: string;

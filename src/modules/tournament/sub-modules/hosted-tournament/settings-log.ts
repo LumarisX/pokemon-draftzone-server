@@ -103,6 +103,11 @@ const WATCHED: Watched[] = [
   },
   { field: "signUpAccess", label: "Sign-up access", before: (t) => t.signUpAccess },
   {
+    field: "requireDiscord",
+    label: "Require Discord",
+    before: (t) => t.requireDiscord,
+  },
+  {
     field: "matchSettings",
     label: "Match settings",
     before: (t) => ({

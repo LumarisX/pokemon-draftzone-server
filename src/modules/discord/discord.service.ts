@@ -44,8 +44,6 @@ export type DiscordCommandHandler = (
   interaction: ChatInputCommandInteraction,
 ) => Promise<void>;
 
-type MemberIndex = Map<string, DiscordMemberSummary>;
-
 export type DiscordTargets = {
   guildId?: string;
   roleId?: string;
@@ -66,23 +64,12 @@ const PRIVILEGED_PERMISSIONS = [
   PermissionFlagsBits.MentionEveryone,
 ];
 
-const MEMBER_INDEX_TTL_MS = 60_000;
-const MENTION_PATTERN = /^<@!?(\d{17,20})>$/;
 const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
 
 @Injectable()
 export class DiscordService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DiscordService.name);
   private ready = false;
-
-  private readonly memberIndexCache = new Map<
-    string,
-    { expiresAt: number; index: MemberIndex }
-  >();
-  private readonly pendingIndexFetches = new Map<
-    string,
-    Promise<MemberIndex | null>
-  >();
 
   private readonly buttonHandlers = new Map<string, DiscordButtonHandler>();
   private readonly commandHandlers = new Map<string, DiscordCommandHandler>();
@@ -125,15 +112,35 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
 
   async findMember(
     guildId: string,
-    discordName?: string,
+    discordId?: string,
   ): Promise<DiscordMemberSummary | null> {
-    const trimmed = discordName?.trim();
-    if (!trimmed || !this.isEnabled()) return null;
+    if (!discordId || !SNOWFLAKE_PATTERN.test(discordId) || !this.isEnabled())
+      return null;
 
-    const index = await this.getMemberIndex(guildId);
-    return index
-      ? this.findInIndex(index, trimmed)
-      : this.findLive(guildId, trimmed);
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(discordId).catch(() => null);
+      return member ? this.toSummary(member) : null;
+    } catch (error) {
+      this.logger.warn(`Failed to look up member in guild ${guildId}`, error);
+      return null;
+    }
+  }
+
+  mention(discordId?: string): string | null {
+    if (!discordId || !SNOWFLAKE_PATTERN.test(discordId)) return null;
+    return `<@${discordId}>`;
+  }
+
+  async fetchUser(userId: string): Promise<{ id: string; username: string } | null> {
+    if (!SNOWFLAKE_PATTERN.test(userId) || !this.isEnabled()) return null;
+    try {
+      const user = await this.client.users.fetch(userId, { force: true });
+      return { id: user.id, username: user.username };
+    } catch (error) {
+      this.logger.warn(`Failed to fetch Discord user ${userId}`, error);
+      return null;
+    }
   }
 
   async grantRole(
@@ -320,176 +327,6 @@ export class DiscordService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.warn(`Failed to send message to channel ${channelId}`, error);
       return false;
-    }
-  }
-
-  /**
-   * Resolves a coach's Discord name to a `<@id>` mention, looked up within
-   * the guild of the given channel. Falls back to `@name` (or null if no
-   * name was given) when the integration is disabled or no match is found.
-   */
-  async resolveMention(
-    channelId: string,
-    discordName?: string,
-  ): Promise<string | null> {
-    const trimmed = discordName?.trim();
-    if (!trimmed) return null;
-
-    if (MENTION_PATTERN.test(trimmed)) return trimmed;
-    const numericId = trimmed.replace(/^@/, "");
-    if (SNOWFLAKE_PATTERN.test(numericId)) return `<@${numericId}>`;
-
-    const fallback = `@${trimmed.replace(/^@/, "")}`;
-    if (!this.isEnabled()) return fallback;
-
-    try {
-      const channel = await this.client.channels.fetch(channelId);
-      const guildId =
-        channel && "guild" in channel ? channel.guild?.id : undefined;
-      if (!guildId) return fallback;
-
-      const member = await this.findMember(guildId, trimmed);
-      return member ? `<@${member.id}>` : fallback;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to resolve mention in channel ${channelId}`,
-        error,
-      );
-      return fallback;
-    }
-  }
-
-  private async getMemberIndex(guildId: string): Promise<MemberIndex | null> {
-    const cached = this.memberIndexCache.get(guildId);
-    if (cached && cached.expiresAt > Date.now()) return cached.index;
-
-    const pending = this.pendingIndexFetches.get(guildId);
-    if (pending) return pending;
-
-    const fetchPromise = this.buildMemberIndex(guildId).finally(() => {
-      this.pendingIndexFetches.delete(guildId);
-    });
-    this.pendingIndexFetches.set(guildId, fetchPromise);
-    return fetchPromise;
-  }
-
-  private async buildMemberIndex(guildId: string): Promise<MemberIndex | null> {
-    try {
-      const guild = await this.client.guilds.fetch(guildId);
-      const members = await guild.members.fetch();
-      const index: MemberIndex = new Map();
-
-      for (const member of members.values()) {
-        const summary = this.toSummary(member);
-        this.addIndexKey(index, member.id, summary);
-        this.addIndexKey(index, member.user.username, summary);
-        this.addIndexKey(index, member.user.globalName ?? undefined, summary);
-        this.addIndexKey(index, member.displayName, summary);
-        this.addIndexKey(index, member.user.tag, summary);
-        if (member.user.tag?.includes("#")) {
-          this.addIndexKey(index, member.user.tag.split("#")[0], summary);
-        }
-      }
-
-      this.memberIndexCache.set(guildId, {
-        expiresAt: Date.now() + MEMBER_INDEX_TTL_MS,
-        index,
-      });
-      return index;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to build member index for guild ${guildId}`,
-        error,
-      );
-      return null;
-    }
-  }
-
-  private addIndexKey(
-    index: MemberIndex,
-    key: string | undefined | null,
-    summary: DiscordMemberSummary,
-  ) {
-    if (!key) return;
-    const normalized = key.trim().toLowerCase();
-    if (normalized) index.set(normalized, summary);
-  }
-
-  private findInIndex(
-    index: MemberIndex,
-    discordName: string,
-  ): DiscordMemberSummary | null {
-    const mentionMatch = discordName.match(MENTION_PATTERN);
-    if (mentionMatch) return index.get(mentionMatch[1]) ?? null;
-
-    const numericId = discordName.replace(/^@/, "");
-    if (SNOWFLAKE_PATTERN.test(numericId)) return index.get(numericId) ?? null;
-
-    const normalized = discordName.replace(/^@/, "").trim().toLowerCase();
-    const usernameOnly = normalized.includes("#")
-      ? normalized.split("#")[0]
-      : normalized;
-
-    return index.get(normalized) ?? index.get(usernameOnly) ?? null;
-  }
-
-  private async findLive(
-    guildId: string,
-    discordName: string,
-  ): Promise<DiscordMemberSummary | null> {
-    try {
-      const guild = await this.client.guilds.fetch(guildId);
-
-      const mentionMatch = discordName.match(MENTION_PATTERN);
-      const numericId = discordName.replace(/^@/, "");
-      if (mentionMatch || SNOWFLAKE_PATTERN.test(numericId)) {
-        const member = await guild.members
-          .fetch(mentionMatch ? mentionMatch[1] : numericId)
-          .catch(() => null);
-        return member ? this.toSummary(member) : null;
-      }
-
-      const normalized = discordName.replace(/^@/, "").trim().toLowerCase();
-      const usernameOnly = normalized.includes("#")
-        ? normalized.split("#")[0]
-        : normalized;
-
-      const matches = (member: GuildMember) => {
-        const username = member.user.username?.toLowerCase();
-        const display = member.displayName?.toLowerCase();
-        const globalName = member.user.globalName?.toLowerCase();
-        const tag = member.user.tag?.toLowerCase();
-        return (
-          username === normalized ||
-          username === usernameOnly ||
-          display === normalized ||
-          display === usernameOnly ||
-          globalName === normalized ||
-          globalName === usernameOnly ||
-          tag === normalized
-        );
-      };
-
-      let member = guild.members.cache.find(matches);
-      if (!member) {
-        const fetched = await guild.members.fetch({
-          query: usernameOnly,
-          limit: 10,
-        });
-        member = fetched.find(matches);
-      }
-      if (!member && normalized !== usernameOnly) {
-        const fetched = await guild.members.fetch({
-          query: normalized,
-          limit: 10,
-        });
-        member = fetched.find(matches);
-      }
-
-      return member ? this.toSummary(member) : null;
-    } catch (error) {
-      this.logger.warn(`Failed to look up member in guild ${guildId}`, error);
-      return null;
     }
   }
 

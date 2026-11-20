@@ -21,7 +21,51 @@ export class DiscordNameSyncService {
   async propagateToRunningSignUps(
     accountId: string,
     discordName: string,
+    discordId?: string,
   ): Promise<DiscordNameSyncResult> {
+    const { runningCoachIds, runningApplicationIds } =
+      await this.findRunning(accountId);
+    const [coachCount, applicationCount] = await Promise.all(
+      discordId
+        ? [
+            this.coachRepo.setDiscordIdentity(
+              runningCoachIds,
+              discordName,
+              discordId,
+            ),
+            this.applicationRepo.setDiscordIdentity(
+              runningApplicationIds,
+              discordName,
+              discordId,
+            ),
+          ]
+        : [
+            this.coachRepo.setDiscordName(runningCoachIds, discordName),
+            this.applicationRepo.setDiscordName(
+              runningApplicationIds,
+              discordName,
+            ),
+          ],
+    );
+    return { coaches: coachCount, applications: applicationCount };
+  }
+
+  async clearRunningDiscordIds(
+    accountId: string,
+  ): Promise<DiscordNameSyncResult> {
+    const { runningCoachIds, runningApplicationIds } =
+      await this.findRunning(accountId);
+    const [coachCount, applicationCount] = await Promise.all([
+      this.coachRepo.clearDiscordId(runningCoachIds),
+      this.applicationRepo.clearDiscordId(runningApplicationIds),
+    ]);
+    return { coaches: coachCount, applications: applicationCount };
+  }
+
+  private async findRunning(accountId: string): Promise<{
+    runningCoachIds: string[];
+    runningApplicationIds: string[];
+  }> {
     const [coaches, applications] = await Promise.all([
       this.coachRepo.findRunningByAuth0Id(accountId),
       this.applicationRepo.findAllByApplicant(accountId),
@@ -63,10 +107,6 @@ export class DiscordNameSyncService {
       })
       .map((application) => application._id.toString());
 
-    const [coachCount, applicationCount] = await Promise.all([
-      this.coachRepo.setDiscordName(runningCoachIds, discordName),
-      this.applicationRepo.setDiscordName(runningApplicationIds, discordName),
-    ]);
-    return { coaches: coachCount, applications: applicationCount };
+    return { runningCoachIds, runningApplicationIds };
   }
 }

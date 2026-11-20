@@ -15,7 +15,8 @@ export type CreateTournamentApplicationInput = {
   auth0Id: string;
   name: string;
   gameName: string;
-  discordName: string;
+  discordName?: string;
+  discordId?: string;
   timezone: string;
   experience: string;
   droppedBefore: boolean;
@@ -124,6 +125,34 @@ export class TournamentApplicationRepository {
     return result.modifiedCount;
   }
 
+  async setDiscordIdentity(
+    applicationIds: (Types.ObjectId | string)[],
+    discordName: string,
+    discordId: string,
+  ): Promise<number> {
+    if (applicationIds.length === 0) return 0;
+    const result = await this.applicationModel
+      .updateMany(
+        { _id: { $in: applicationIds.map((id) => this.toObjectId(id)) } },
+        { $set: { discordName, discordId } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
+  async clearDiscordId(
+    applicationIds: (Types.ObjectId | string)[],
+  ): Promise<number> {
+    if (applicationIds.length === 0) return 0;
+    const result = await this.applicationModel
+      .updateMany(
+        { _id: { $in: applicationIds.map((id) => this.toObjectId(id)) } },
+        { $unset: { discordId: "" } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
   async findBlockingApplication(
     tournamentId: Types.ObjectId | string,
     auth0Id: string,
@@ -150,6 +179,7 @@ export class TournamentApplicationRepository {
       name: data.name,
       gameName: data.gameName,
       discordName: data.discordName,
+      discordId: data.discordId,
       timezone: data.timezone,
       experience: data.experience,
       droppedBefore: data.droppedBefore,

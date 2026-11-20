@@ -7,6 +7,25 @@ export const FALLBACK_DISPLAY_NAME = "Coach";
 const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N} _\-.']*[\p{L}\p{N}])?$/u;
 const DISPLAY_NAME_DISALLOWED = /[^\p{L}\p{N} _\-.']/gu;
 
+const DISCORD_SIGN_IN_PATTERN = /^oauth2\|discord\|(\d{17,20})$/;
+
+export type SignInProvider = "discord" | "google" | "email" | "other";
+
+export function discordIdFromSignIn(
+  signIn: string | undefined | null,
+): string | null {
+  const match = signIn ? DISCORD_SIGN_IN_PATTERN.exec(signIn) : null;
+  return match ? match[1] : null;
+}
+
+export function signInProvider(signIn: string | undefined | null): SignInProvider {
+  if (!signIn) return "other";
+  if (signIn.startsWith("oauth2|discord|")) return "discord";
+  if (signIn.startsWith("google-oauth2|")) return "google";
+  if (signIn.startsWith("auth0|")) return "email";
+  return "other";
+}
+
 export function normalizeDisplayName(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const trimmed = raw.trim();

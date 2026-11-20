@@ -2,7 +2,7 @@ import { AppCacheService } from "@core/cache/app-cache.service";
 import { CacheKeys } from "@core/cache/cache-keys";
 import { createCache } from "cache-manager";
 import { AccountIdentityService } from "./account-identity.service";
-import { DiscordNameSyncService } from "./discord-name-sync.service";
+import { DiscordConnectService } from "./discord-connect.service";
 import { UserSignInRepository } from "./user-sign-in.repository";
 import { User } from "./user.domain";
 import { UserRepository } from "./user.repository";
@@ -37,8 +37,8 @@ describe("UserService.resolveAccount", () => {
       repo as unknown as UserRepository,
       cache,
       identity(mode),
-      {} as DiscordNameSyncService,
       signIns as unknown as UserSignInRepository,
+      {} as DiscordConnectService,
     );
   }
 
@@ -183,8 +183,8 @@ describe("UserService.resolveAccount", () => {
       repo as unknown as UserRepository,
       { invalidate } as unknown as AppCacheService,
       identity("internal"),
-      {} as DiscordNameSyncService,
       signIns as unknown as UserSignInRepository,
+      {} as DiscordConnectService,
     );
 
     await service.invalidateSignIn("google-oauth2|1", ACCOUNT, TARGET);
@@ -217,8 +217,8 @@ describe("UserService.syncUser invalidation", () => {
       repo as unknown as UserRepository,
       cache as unknown as AppCacheService,
       identity(mode),
-      {} as DiscordNameSyncService,
       signIns as unknown as UserSignInRepository,
+      {} as DiscordConnectService,
     );
     return { repo, cache, signIns, service };
   }

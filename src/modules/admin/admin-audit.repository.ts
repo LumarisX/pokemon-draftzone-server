@@ -63,4 +63,42 @@ export class AdminAuditRepository {
       details: doc.details ?? {},
     }));
   }
+
+  async findOpenMerges(target: string): Promise<StoredAdminAudit[]> {
+    const docs = await this.auditModel
+      .find({
+        target: { $eq: target },
+        action: "account.merge",
+        "details.undoneAt": { $exists: false },
+        "details.state": { $eq: "applied" },
+      })
+      .sort({ createdAt: -1 })
+      .limit(OPEN_TRANSFER_LIMIT)
+      .exec();
+    return docs.map((doc) => ({
+      id: String(doc._id),
+      target: doc.target,
+      details: doc.details ?? {},
+    }));
+  }
+
+  async findAppliedMergeFrom(
+    fromAccountId: string,
+  ): Promise<StoredAdminAudit | null> {
+    const doc = await this.auditModel
+      .findOne({
+        action: "account.merge",
+        "details.fromAccountId": { $eq: fromAccountId },
+        "details.undoneAt": { $exists: false },
+        "details.state": { $eq: "applied" },
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+    if (!doc) return null;
+    return {
+      id: String(doc._id),
+      target: doc.target,
+      details: doc.details ?? {},
+    };
+  }
 }

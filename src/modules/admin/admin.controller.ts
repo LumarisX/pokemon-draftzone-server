@@ -61,6 +61,11 @@ export class AdminController {
     return this.accounts.undoTransfer(sub, body);
   }
 
+  @Post("accounts/merge/undo")
+  undoAccountMerge(@User() sub: string, @Body() body: AccountNoteDto) {
+    return this.accounts.undoMerge(sub, body);
+  }
+
   @Get("accounts/:profileId")
   describeAccount(@Param("profileId") profileId: string) {
     return this.accounts.describe(profileId);

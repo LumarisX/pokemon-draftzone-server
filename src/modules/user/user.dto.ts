@@ -7,6 +7,7 @@ import {
   IsEmail,
   IsOptional,
   IsArray,
+  IsIn,
   MaxLength,
 } from "class-validator";
 
@@ -45,11 +46,6 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(200)
   @IsOptional()
-  discordName?: string | null;
-
-  @IsString()
-  @MaxLength(200)
-  @IsOptional()
   gameName?: string | null;
 
   @IsString()
@@ -60,6 +56,35 @@ export class UpdateProfileDto {
   @IsBoolean()
   @IsOptional()
   privateProfile?: boolean;
+}
+
+export class DiscordConnectDto {
+  @IsString()
+  @MaxLength(512)
+  @IsOptional()
+  returnTo?: string;
+}
+
+export class DiscordCallbackDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  code!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  state!: string;
+}
+
+export class MergeAccountsDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(512)
+  token!: string;
+
+  @IsIn(["current", "other"])
+  keep!: "current" | "other";
 }
 
 export class Auth0UserDto {

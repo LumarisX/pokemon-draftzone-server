@@ -43,9 +43,7 @@ let userService: jest.Mocked<UserService>;
 
 beforeEach(() => {
   userService = {
-    claimSignUpDiscordName: jest
-      .fn()
-      .mockImplementation(async (_sub: string, submitted?: string) => submitted),
+    claimSignUpDiscord: jest.fn().mockResolvedValue({}),
     profileIdsFor: jest.fn().mockResolvedValue(new Map()),
   } as unknown as jest.Mocked<UserService>;
   identityRepo = {
@@ -93,7 +91,6 @@ function buildSignUpDto(overrides: Partial<SignUpDto> = {}): SignUpDto {
   return {
     name: "Ash Ketchum",
     gameName: "AshK",
-    discordName: "ash#1234",
     teamName: "Team Rocket",
     timezone: "America/Los_Angeles",
     confirm: true,
@@ -297,6 +294,7 @@ describe("HostedTournamentService signup", () => {
           name: "Ash Ketchum",
           gameName: "AshK",
           discordName: "ash#1234",
+          discordId: "123456789012345678",
           timezone: "America/Los_Angeles",
           signedUpAt: new Date("2026-01-05"),
           teamId,
@@ -327,7 +325,7 @@ describe("HostedTournamentService signup", () => {
       expect(result.inDiscordServer).toBe(true);
       expect(discordService.findMember).toHaveBeenCalledWith(
         "guild-1",
-        "ash#1234",
+        "123456789012345678",
       );
     });
   });
@@ -537,7 +535,6 @@ describe("HostedTournamentService signup", () => {
         auth0Id: SUB,
         name: dto.name,
         gameName: dto.gameName,
-        discordName: dto.discordName,
         timezone: dto.timezone,
         experience: "5 years of competitive Pokemon",
         droppedBefore: false,
@@ -565,8 +562,11 @@ describe("HostedTournamentService signup", () => {
       expect(discordService.sendMessage).not.toHaveBeenCalled();
     });
 
-    it("stores the account's Discord name instead of the submitted one", async () => {
-      userService.claimSignUpDiscordName.mockResolvedValue("profile#0001");
+    it("stores the connected Discord's name and id", async () => {
+      userService.claimSignUpDiscord.mockResolvedValue({
+        discordName: "profile#0001",
+        discordId: "123456789012345678",
+      });
       applicationRepo.create.mockResolvedValue({
         _id: new Types.ObjectId(),
         status: "pending",
@@ -576,15 +576,15 @@ describe("HostedTournamentService signup", () => {
         LEAGUE_KEY,
         TOURNAMENT_KEY,
         SUB,
-        buildSignUpDto({ discordName: "typed#9999" }),
+        buildSignUpDto(),
       );
 
-      expect(userService.claimSignUpDiscordName).toHaveBeenCalledWith(
-        SUB,
-        "typed#9999",
-      );
+      expect(userService.claimSignUpDiscord).toHaveBeenCalledWith(SUB, false);
       expect(applicationRepo.create.mock.calls[0][0].discordName).toBe(
         "profile#0001",
+      );
+      expect(applicationRepo.create.mock.calls[0][0].discordId).toBe(
+        "123456789012345678",
       );
       expect(events.emit).toHaveBeenCalledWith(
         "tournament.application.submitted",
@@ -594,24 +594,47 @@ describe("HostedTournamentService signup", () => {
       );
     });
 
-    it("creates no application when the account has no Discord name to use", async () => {
-      userService.claimSignUpDiscordName.mockRejectedValue(
-        new PDZError(ErrorCodes.VALIDATION.MISSING_FIELD, {
-          field: "discordName",
-        }),
+    it("stores no Discord name or id without a connection", async () => {
+      userService.claimSignUpDiscord.mockResolvedValue({});
+      applicationRepo.create.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        status: "pending",
+      } as any);
+
+      await service.createSignup(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        SUB,
+        buildSignUpDto(),
+      );
+
+      expect(applicationRepo.create.mock.calls[0][0].discordName).toBeUndefined();
+      expect(applicationRepo.create.mock.calls[0][0].discordId).toBeUndefined();
+    });
+
+    it("refuses a sign-up that requires Discord from an account without one, and claims nothing", async () => {
+      tournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ requireDiscord: true }),
+      );
+      userService.claimSignUpDiscord.mockRejectedValue(
+        new PDZError(ErrorCodes.USER.DISCORD_REQUIRED),
       );
 
       await expect(
-        service.createSignup(
-          LEAGUE_KEY,
-          TOURNAMENT_KEY,
-          SUB,
-          buildSignUpDto({ discordName: undefined }),
-        ),
+        service.createSignup(LEAGUE_KEY, TOURNAMENT_KEY, SUB, buildSignUpDto()),
       ).rejects.toMatchObject({
-        code: ErrorCodes.VALIDATION.MISSING_FIELD.code,
+        code: ErrorCodes.USER.DISCORD_REQUIRED.code,
+        status: 403,
       });
+
+      expect(userService.claimSignUpDiscord).toHaveBeenCalledWith(SUB, true);
       expect(applicationRepo.create).not.toHaveBeenCalled();
+      expect(uploads.claimUpload).not.toHaveBeenCalled();
+    });
+
+    it("reads a tournament without the field as not requiring Discord", () => {
+      expect(buildTournament().requireDiscord).toBe(false);
+      expect(buildTournament({ requireDiscord: true }).requireDiscord).toBe(true);
     });
 
     it("claims the logo as the applicant's own team-logo upload", async () => {
@@ -895,7 +918,9 @@ describe("HostedTournamentService signup", () => {
     });
 
     it("announces the seated coach on approval, without waiting on Discord", async () => {
-      applicationRepo.findInTournament.mockResolvedValue(buildApplication());
+      applicationRepo.findInTournament.mockResolvedValue(
+        buildApplication({ discordId: "123456789012345678" }),
+      );
       teamRepo.create.mockResolvedValue(buildCreatedTeam());
       coachRepo.create.mockResolvedValue({ _id: new Types.ObjectId() } as any);
 
@@ -909,7 +934,7 @@ describe("HostedTournamentService signup", () => {
 
       expect(events.emit).toHaveBeenCalledWith("tournament.coach.seated", {
         tournament,
-        discordName: "ash#1234",
+        discordId: "123456789012345678",
       });
       expect(discordService.findMember).not.toHaveBeenCalled();
       expect(discordService.grantRole).not.toHaveBeenCalled();
@@ -2199,6 +2224,47 @@ describe("HostedTournamentService coach details", () => {
     expect(teamRepo.update).not.toHaveBeenCalled();
   });
 
+  describe("editing a coach's details", () => {
+    beforeEach(() => {
+      coachRepo.findByIdOrNull.mockResolvedValue({
+        _id: COACH_ID,
+        auth0Id: "auth0|coach",
+        teamId: TEAM_ID,
+        discordId: "123456789012345678",
+        discordName: "ash_k",
+      } as never);
+    });
+
+    it("saves the details a coach sends", async () => {
+      await service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|coach",
+        { gameName: "AshK2" },
+      );
+
+      expect(coachRepo.update).toHaveBeenCalledWith(COACH_ID, {
+        gameName: "AshK2",
+      });
+    });
+
+    it("still lets an organizer edit other details", async () => {
+      await service.updateCoachDetails(
+        LEAGUE_KEY,
+        TOURNAMENT_KEY,
+        COACH_ID.toString(),
+        "auth0|owner",
+        { timezone: "UTC+1" },
+      );
+
+      expect(coachRepo.update).toHaveBeenCalledWith(COACH_ID, {
+        timezone: "UTC+1",
+      });
+    });
+
+  });
+
   it("refuses a coach whose team belongs to another tournament", async () => {
     teamRepo.findByIdOrNull.mockResolvedValue({
       _id: TEAM_ID,
@@ -3039,6 +3105,7 @@ describe("HostedTournamentService teams", () => {
       findAllByTournament: jest.fn().mockResolvedValue(overrides.teams ?? []),
       findById: jest.fn().mockResolvedValue(overrides.team),
       findBySlug: jest.fn().mockResolvedValue(overrides.team),
+      isCoachSeatedInTournament: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<TeamRepository>;
     const drafts = (overrides.drafts ?? []) as { _id: Types.ObjectId }[];
     const draftRepo = {
@@ -3351,6 +3418,83 @@ describe("HostedTournamentService teams", () => {
 
       expect(result).not.toHaveProperty("matchups");
       expect(JSON.stringify(result)).not.toContain("auth0|rival");
+    });
+
+    describe("the coach's Discord name", () => {
+      const teamWithDiscord = () => {
+        const team = buildTeam(TEAM_ID, "Team One", ["pikachu"]);
+        team.primaryCoach = { ...team.primaryCoach, discordName: "ash" } as never;
+        return team;
+      };
+
+      it("is hidden from a signed-out visitor", async () => {
+        const { service, teamRepo } = buildService({
+          tournament: buildTournament(),
+          team: teamWithDiscord(),
+        });
+
+        const result = await service.getTeam(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          "team-one-slug",
+        );
+
+        expect(result).not.toHaveProperty("coachDiscordName");
+        expect(teamRepo.isCoachSeatedInTournament).not.toHaveBeenCalled();
+      });
+
+      it("is shown to an organizer", async () => {
+        const { service } = buildService({
+          tournament: buildTournament(),
+          team: teamWithDiscord(),
+        });
+
+        const result = await service.getTeam(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          "team-one-slug",
+          "auth0|owner",
+        );
+
+        expect(result.coachDiscordName).toBe("ash");
+      });
+
+      it("is shown to a coach seated in the same tournament", async () => {
+        const { service, teamRepo } = buildService({
+          tournament: buildTournament(),
+          team: teamWithDiscord(),
+        });
+        teamRepo.isCoachSeatedInTournament.mockResolvedValue(true);
+
+        const result = await service.getTeam(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          "team-one-slug",
+          "auth0|team-two",
+        );
+
+        expect(teamRepo.isCoachSeatedInTournament).toHaveBeenCalledWith(
+          "tournament-1",
+          "auth0|team-two",
+        );
+        expect(result.coachDiscordName).toBe("ash");
+      });
+
+      it("is hidden from a coach seated only in another tournament", async () => {
+        const { service } = buildService({
+          tournament: buildTournament(),
+          team: teamWithDiscord(),
+        });
+
+        const result = await service.getTeam(
+          LEAGUE_KEY,
+          TOURNAMENT_KEY,
+          "team-one-slug",
+          "auth0|elsewhere",
+        );
+
+        expect(result).not.toHaveProperty("coachDiscordName");
+      });
     });
   });
 

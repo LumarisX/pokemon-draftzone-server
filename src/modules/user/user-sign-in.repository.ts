@@ -66,6 +66,16 @@ export class UserSignInRepository {
     return result.upsertedCount === 1;
   }
 
+  async repoint(signIn: string, from: string, to: string): Promise<boolean> {
+    const result = await this.model
+      .updateOne(
+        { signIn: { $eq: signIn }, accountId: { $eq: from } },
+        { $set: { accountId: to } },
+      )
+      .exec();
+    return result.modifiedCount === 1;
+  }
+
   async remove(signIn: string, accountId: string): Promise<boolean> {
     const result = await this.model
       .deleteOne({ signIn: { $eq: signIn }, accountId: { $eq: accountId } })

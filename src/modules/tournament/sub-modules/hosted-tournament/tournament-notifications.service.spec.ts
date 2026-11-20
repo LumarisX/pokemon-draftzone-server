@@ -74,6 +74,21 @@ describe("TournamentNotificationsService", () => {
       );
     });
 
+    it("shows an unconnected sign-up as not connected", async () => {
+      await service.announceSignUp({
+        tournament: buildTournament(LINKED),
+        signUp: { ...SIGN_UP, discordName: undefined },
+        answers: [],
+      });
+
+      const embed = (discord.sendMessage.mock.calls[0][1].embeds![0] as any).toJSON();
+      expect(embed.fields).toContainEqual({
+        name: "Discord Name",
+        value: "Not connected",
+        inline: true,
+      });
+    });
+
     it("does nothing without a sign-up channel", async () => {
       await service.announceSignUp({
         tournament: buildTournament(),
@@ -98,16 +113,25 @@ describe("TournamentNotificationsService", () => {
   });
 
   describe("grantCoachRole", () => {
-    it("grants the coach role to the member it finds", async () => {
+    it("skips the grant without a lookup when the coach has no connected Discord", async () => {
       await service.grantCoachRole({
         tournament: buildTournament(LINKED),
-        discordName: " ash#1234 ",
       });
 
-      expect(discord.findMember).toHaveBeenCalledWith("guild-1", "ash#1234");
+      expect(discord.findMember).not.toHaveBeenCalled();
+      expect(discord.grantRole).not.toHaveBeenCalled();
+    });
+
+    it("grants by Discord id without any name lookup", async () => {
+      await service.grantCoachRole({
+        tournament: buildTournament(LINKED),
+        discordId: "123456789012345678",
+      });
+
+      expect(discord.findMember).not.toHaveBeenCalled();
       expect(discord.grantRole).toHaveBeenCalledWith(
         "guild-1",
-        "member-1",
+        "123456789012345678",
         "role-1",
       );
     });
@@ -115,44 +139,31 @@ describe("TournamentNotificationsService", () => {
     it("honours autoGrantCoachRole: false", async () => {
       await service.grantCoachRole({
         tournament: buildTournament({ ...LINKED, autoGrantCoachRole: false }),
-        discordName: "ash#1234",
+        discordId: "123456789012345678",
       });
 
-      expect(discord.findMember).not.toHaveBeenCalled();
       expect(discord.grantRole).not.toHaveBeenCalled();
     });
 
     it.each([
-      ["no linked server", { coachRoleId: "role-1" }, "ash#1234"],
-      ["no coach role", { guildId: "guild-1" }, "ash#1234"],
-      ["no Discord name", LINKED, "  "],
-    ])("does nothing with %s", async (_, settings, discordName) => {
+      ["no linked server", { coachRoleId: "role-1" }],
+      ["no coach role", { guildId: "guild-1" }],
+    ])("does nothing with %s", async (_, settings) => {
       await service.grantCoachRole({
         tournament: buildTournament(settings),
-        discordName,
-      });
-
-      expect(discord.grantRole).not.toHaveBeenCalled();
-    });
-
-    it("grants nothing when the member isn't in the server", async () => {
-      discord.findMember.mockResolvedValue(null);
-
-      await service.grantCoachRole({
-        tournament: buildTournament(LINKED),
-        discordName: "ash#1234",
+        discordId: "123456789012345678",
       });
 
       expect(discord.grantRole).not.toHaveBeenCalled();
     });
 
     it("swallows a Discord failure", async () => {
-      discord.findMember.mockRejectedValue(new Error("gateway down"));
+      discord.grantRole.mockRejectedValue(new Error("gateway down"));
 
       await expect(
         service.grantCoachRole({
           tournament: buildTournament(LINKED),
-          discordName: "ash#1234",
+          discordId: "123456789012345678",
         }),
       ).resolves.toBeUndefined();
     });
@@ -179,18 +190,18 @@ describe("TournamentNotificationsService", () => {
       });
       bus.emit(TOURNAMENT_EVENTS.coachSeated, {
         tournament: buildTournament(LINKED),
-        discordName: "ash#1234",
+        discordId: "123456789012345678",
       });
 
       expect(discord.sendMessage).not.toHaveBeenCalled();
-      expect(discord.findMember).not.toHaveBeenCalled();
+      expect(discord.grantRole).not.toHaveBeenCalled();
 
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(discord.sendMessage).toHaveBeenCalledTimes(1);
       expect(discord.grantRole).toHaveBeenCalledWith(
         "guild-1",
-        "member-1",
+        "123456789012345678",
         "role-1",
       );
       await moduleRef.close();

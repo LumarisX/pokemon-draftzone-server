@@ -2,6 +2,7 @@ import { TransactionRunner } from "@core/database/transaction-runner";
 import { ErrorCodes } from "@core/pdz-error-codes";
 import mongoose, { Types } from "mongoose";
 import { DraftRepository } from "../draft/draft.repository";
+import { TeamRepository } from "../team/team.repository";
 import { LeagueMatchupRepository } from "../matchup/sub-modules/league-matchup/league-matchup.repository";
 import { HostedTournamentRepository } from "../tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { TierListRepository } from "../tier-list/tier-list.repository";
@@ -65,11 +66,15 @@ describe("StageService", () => {
   let tierListRepo: jest.Mocked<TierListRepository>;
   let advancement: jest.Mocked<BracketAdvancementService>;
   let draftRepo: jest.Mocked<DraftRepository>;
+  let teamRepo: jest.Mocked<TeamRepository>;
   let service: StageService;
   let transactionLog: string[];
 
   beforeEach(() => {
     transactionLog = [];
+    teamRepo = {
+      isCoachSeatedInTournament: jest.fn().mockResolvedValue(false),
+    } as unknown as jest.Mocked<TeamRepository>;
     stageRepo = {
       findAllByTournament: jest.fn(),
       findByIdOrNull: jest.fn(async () => buildStage()),
@@ -106,6 +111,7 @@ describe("StageService", () => {
           return result;
         },
       } as unknown as TransactionRunner,
+      teamRepo,
     );
 
     mockedGetRosterByRound.mockReturnValue([]);
@@ -553,6 +559,102 @@ describe("StageService", () => {
         status: "approved",
         forfeit: false,
       });
+    });
+  });
+
+  describe("coach Discord contact", () => {
+    const TOURNAMENT_ID = new Types.ObjectId();
+    const stageId = new Types.ObjectId();
+
+    function setup() {
+      hostedTournamentRepo.findBySlug.mockResolvedValue(
+        buildTournament({ id: TOURNAMENT_ID.toString() }),
+      );
+      draftRepo.findAllByTournament.mockResolvedValue([] as any);
+      matchupRepo.findBySlugPopulated.mockResolvedValue({
+        _id: new Types.ObjectId(),
+        slug: "match-1",
+        stage: stageId,
+        results: [],
+        side1: {
+          score: 0,
+          team: buildTeam({
+            coach: {
+              _id: new Types.ObjectId(),
+              auth0Id: "auth0|coach-1",
+              discordName: "ash",
+            },
+          }),
+        },
+        side2: {
+          score: 0,
+          team: buildTeam({
+            coach: {
+              _id: new Types.ObjectId(),
+              auth0Id: "auth0|coach-2",
+              discordName: "gary",
+            },
+          }),
+        },
+      } as any);
+      stageRepo.findByIdOrNull.mockResolvedValue(
+        buildStage({ _id: stageId, tournamentId: TOURNAMENT_ID }),
+      );
+      mockedGetRosterByRound.mockReturnValue([]);
+    }
+
+    const detailFor = (sub?: string) =>
+      service.getMatchupDetail("league-1", "tournament-1", "match-1", sub);
+
+    it("hides both names from a signed-out visitor", async () => {
+      setup();
+
+      const detail = await detailFor();
+
+      expect(detail.team1).not.toHaveProperty("discordName");
+      expect(detail.team2).not.toHaveProperty("discordName");
+      expect(teamRepo.isCoachSeatedInTournament).not.toHaveBeenCalled();
+    });
+
+    it("shows both names to an organizer", async () => {
+      setup();
+
+      const detail = await detailFor("auth0|owner");
+
+      expect(detail.team1.discordName).toBe("ash");
+      expect(detail.team2.discordName).toBe("gary");
+    });
+
+    it("shows both names to a coach on one side", async () => {
+      setup();
+
+      const detail = await detailFor("auth0|coach-1");
+
+      expect(detail.team1.discordName).toBe("ash");
+      expect(detail.team2.discordName).toBe("gary");
+    });
+
+    it("shows both names to a coach seated elsewhere in the tournament", async () => {
+      setup();
+      teamRepo.isCoachSeatedInTournament.mockResolvedValue(true);
+
+      const detail = await detailFor("auth0|coach-3");
+
+      expect(teamRepo.isCoachSeatedInTournament).toHaveBeenCalledWith(
+        TOURNAMENT_ID.toString(),
+        "auth0|coach-3",
+      );
+      expect(detail.team1.discordName).toBe("ash");
+      expect(detail.team2.discordName).toBe("gary");
+    });
+
+    it("hides both names from a coach of another tournament", async () => {
+      setup();
+
+      const detail = await detailFor("auth0|coach-elsewhere");
+
+      expect(detail.team1).not.toHaveProperty("discordName");
+      expect(detail.team2).not.toHaveProperty("discordName");
     });
   });
 

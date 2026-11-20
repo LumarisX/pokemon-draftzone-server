@@ -83,7 +83,11 @@ function buildTeam(overrides: Record<string, unknown> = {}) {
   const team: any = {
     _id: new Types.ObjectId(),
     teamName: "Team Rocket",
-    coach: { _id: new Types.ObjectId(), discordName: "ash#1234" },
+    coach: {
+      _id: new Types.ObjectId(),
+      name: "Ash",
+      discordName: "ash#1234",
+    },
     pickLog: [],
     picks: [],
     skipCount: 0,
@@ -137,7 +141,7 @@ describe("DraftEngineService", () => {
       isPokemonTakenInDraft: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<TeamRepository>;
     discordService = {
-      resolveMention: jest.fn().mockResolvedValue(null),
+      mention: jest.fn().mockReturnValue(null),
       sendMessage: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<DiscordService>;
     draftEvents = {
@@ -541,16 +545,56 @@ describe("DraftEngineService", () => {
         pokemonId: "pikachu",
       });
 
-      expect(discordService.resolveMention).toHaveBeenCalledWith(
-        "channel-1",
-        "ash#1234",
-      );
       expect(discordService.sendMessage).toHaveBeenCalledWith(
         "channel-1",
         expect.objectContaining({
           content: expect.stringContaining("Pikachu was drafted"),
         }),
       );
+    });
+
+    it("names an unconnected coach in plain text without a mention or a lookup", async () => {
+      const tierList = buildTierList();
+      const team = buildTeam();
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], channelId: "channel-1" });
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      expect(discordService.mention).toHaveBeenCalledWith(undefined);
+      expect(discordService.sendMessage).toHaveBeenCalledWith(
+        "channel-1",
+        expect.objectContaining({
+          content: "Pikachu was drafted by Ash.",
+        }),
+      );
+    });
+
+    it("pings by Discord id when the coach connected Discord", async () => {
+      const tierList = buildTierList();
+      const team = buildTeam({
+        primaryCoach: {
+          _id: new Types.ObjectId(),
+          discordName: "ash#1234",
+          discordId: "123456789012345678",
+        },
+      });
+      const tournament = buildTournament({
+        tierList,
+        draftCount: new DraftCount({ min: 1, max: 2 }),
+      });
+      const draft = buildDraft({ teams: [team], channelId: "channel-1" });
+
+      await engine.draftPokemon(tournament, draft, team, {
+        pokemonId: "pikachu",
+      });
+
+      expect(discordService.mention).toHaveBeenCalledWith("123456789012345678");
     });
 
     it("links the pick embed to this draft's own league, tournament, and draft", async () => {
@@ -1618,7 +1662,7 @@ describe("DraftEngineService", () => {
     });
 
     it("play: pings the coach who is on the clock so the draft opens with a turn call", async () => {
-      discordService.resolveMention.mockResolvedValue("<@ash>");
+      discordService.mention.mockReturnValue("<@ash>");
       const team = buildTeam();
       const tournament = buildTournament({
         tierList: buildTierList(),

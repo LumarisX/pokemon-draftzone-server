@@ -197,6 +197,11 @@ export class HostedTournamentService {
       !!actingCoach(team, sub, "manageRoster") &&
       (await this.mayChangeIdentity(team.identityId, sub));
     const coachProfileIds = await this.userService.profileIdsFor([coach.auth0Id]);
+    const canSeeCoachDiscord =
+      !!sub &&
+      (viewerIsCoach ||
+        can(tournament, sub, "manageParticipants") ||
+        (await this.teamRepo.isCoachSeatedInTournament(tournament.id, sub)));
     const identity = {
       id: team._id.toString(),
       slug: team.slug,
@@ -220,8 +225,13 @@ export class HostedTournamentService {
         ? { pool: { poolSlug: teamDraft.slug, name: teamDraft.name } }
         : {}),
       ...(viewerIsCoach
-        ? { gameName: coach.gameName, discordName: coach.discordName }
+        ? {
+            gameName: coach.gameName,
+            discordName: coach.discordName,
+            discordConnected: Boolean(coach.discordId),
+          }
         : {}),
+      ...(canSeeCoachDiscord ? { coachDiscordName: coach.discordName } : {}),
     };
 
     const draftRoster: TeamPageResponse["draft"] = (
@@ -522,6 +532,7 @@ export class HostedTournamentService {
       draftCount: tournament.draftCount,
       pointTotal: tournament.pointTotal,
       signUpAccess: tournament.signUpAccess,
+      requireDiscord: tournament.requireDiscord,
       signUpQuestions: activeQuestions(tournament.signUpQuestions).map(
         (question) => ({
           id: question.id,
@@ -766,7 +777,7 @@ export class HostedTournamentService {
   ) {
     const guildId = tournament.discordSettings?.guildId;
     const member = guildId
-      ? await this.discordService.findMember(guildId, application.discordName)
+      ? await this.discordService.findMember(guildId, application.discordId)
       : null;
 
     return {
@@ -813,7 +824,7 @@ export class HostedTournamentService {
 
     const guildId = tournament.discordSettings?.guildId;
     const member = guildId
-      ? await this.discordService.findMember(guildId, coach.discordName)
+      ? await this.discordService.findMember(guildId, coach.discordId)
       : null;
     const inDiscordServer = Boolean(member);
 
@@ -868,6 +879,9 @@ export class HostedTournamentService {
         tournamentId: tournament.id,
       });
 
+    const { discordName, discordId } =
+      await this.userService.claimSignUpDiscord(sub, tournament.requireDiscord);
+
     const identity = dto.identity
       ? await this.identityFor(dto.identity, sub)
       : null;
@@ -890,11 +904,6 @@ export class HostedTournamentService {
       dto.answers ?? [],
     );
 
-    const discordName = await this.userService.claimSignUpDiscordName(
-      sub,
-      dto.discordName,
-    );
-
     const preferredIdentityId = await this.identities.record(
       sub,
       teamName,
@@ -907,6 +916,7 @@ export class HostedTournamentService {
       name: dto.name,
       gameName: dto.gameName,
       discordName,
+      discordId,
       timezone: dto.timezone,
       experience: answerText(answers, EXPERIENCE_QUESTION_ID),
       droppedBefore: answerBool(answers, DROPPED_BEFORE_QUESTION_ID),
@@ -977,7 +987,7 @@ export class HostedTournamentService {
         status: "approved",
         decidedBy: sub,
       });
-      this.announceCoachSeated(tournament, application.discordName);
+      this.announceCoachSeated(tournament, application);
       return decided;
     }
 
@@ -1009,8 +1019,7 @@ export class HostedTournamentService {
       };
     });
 
-    if (outcome.seated)
-      this.announceCoachSeated(tournament, application.discordName);
+    if (outcome.seated) this.announceCoachSeated(tournament, application);
 
     return outcome.decided;
   }
@@ -1084,7 +1093,7 @@ export class HostedTournamentService {
     });
 
     for (const { item } of placements)
-      this.announceCoachSeated(tournament, item.discordName);
+      this.announceCoachSeated(tournament, item);
 
     return {
       seated: placements.map(({ item, pool }) => ({
@@ -1127,6 +1136,7 @@ export class HostedTournamentService {
       name: application.name,
       gameName: application.gameName,
       discordName: application.discordName,
+      discordId: application.discordId,
       timezone: application.timezone,
       teamId,
       experience: application.experience,
@@ -1192,6 +1202,7 @@ export class HostedTournamentService {
         name: application.name,
         gameName: application.gameName,
         discordName: application.discordName,
+        discordId: application.discordId,
         timezone: application.timezone,
         teamId: team._id,
         experience: application.experience,
@@ -1235,7 +1246,7 @@ export class HostedTournamentService {
       return { incoming, updated, teamName };
     });
 
-    this.announceCoachSeated(tournament, application.discordName);
+    this.announceCoachSeated(tournament, application);
 
     return {
       teamId: updated._id.toString(),
@@ -1390,11 +1401,12 @@ export class HostedTournamentService {
             )
           : undefined;
         const discordName = coach?.discordName ?? application.discordName;
+        const discordId = coach?.discordId ?? application.discordId;
         const poolSlug = team?.draftId
           ? poolSlugsById.get(team.draftId.toString())
           : undefined;
         const member = guildId
-          ? await this.discordService.findMember(guildId, discordName)
+          ? await this.discordService.findMember(guildId, discordId)
           : null;
         const inDiscordServer = Boolean(member);
         const hasDiscordRole = Boolean(
@@ -1413,6 +1425,7 @@ export class HostedTournamentService {
           profileId: applicantProfileIds.get(application.auth0Id),
           gameName: coach?.gameName ?? application.gameName,
           discordName,
+          discordConnected: Boolean(discordId),
           timezone: coach?.timezone ?? application.timezone,
           experience: application.experience,
           dropped: application.droppedBefore
@@ -1948,6 +1961,8 @@ export class HostedTournamentService {
         update["signUpTokenRotatedAt"] = new Date();
       }
     }
+    if (dto.requireDiscord !== undefined)
+      update["requireDiscord"] = dto.requireDiscord;
     if (dto.tradePointLimit !== undefined)
       update["tradePointLimit"] = dto.tradePointLimit;
     if (dto.tierRequirements !== undefined)
@@ -2022,11 +2037,11 @@ export class HostedTournamentService {
 
   private announceCoachSeated(
     tournament: HostedTournament,
-    discordName: string | undefined,
+    seated: { discordId?: string },
   ) {
     this.events.emit(TOURNAMENT_EVENTS.coachSeated, {
       tournament,
-      discordName,
+      discordId: seated.discordId,
     } satisfies CoachSeatedEvent);
   }
 }

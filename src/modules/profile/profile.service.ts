@@ -1,3 +1,6 @@
+import { isPDZError } from "@core/pdz-error";
+import { ErrorCodes } from "@core/pdz-error-codes";
+import { AccountMergeService } from "@modules/user/account-merge.service";
 import { ArchiveMapper } from "@modules/archive/archive.mapper";
 import { ArchiveRepository } from "@modules/archive/archive.repository";
 import { MySeasonsService } from "@modules/league/my-seasons.service";
@@ -29,10 +32,24 @@ export class ProfileService {
     private readonly externalRepo: ExternalTournamentRepository,
     private readonly archiveRepo: ArchiveRepository,
     private readonly users: UserService,
+    private readonly merges: AccountMergeService,
   ) {}
 
+  private async findCard(profileId: unknown) {
+    try {
+      return await this.users.findPublicCard(profileId);
+    } catch (error) {
+      if (!isPDZError(error) || error.code !== ErrorCodes.USER.ACCOUNT_NOT_FOUND.code) {
+        throw error;
+      }
+      const kept = await this.merges.keptProfileFor(profileId);
+      if (!kept) throw error;
+      return this.users.findPublicCard(kept);
+    }
+  }
+
   async getPublicProfile(profileId: unknown, viewer: string | undefined) {
-    const card = await this.users.findPublicCard(profileId);
+    const card = await this.findCard(profileId);
     const isYou = viewer !== undefined && viewer === card.accountId;
     const visible = isYou || !card.privateProfile;
     return {

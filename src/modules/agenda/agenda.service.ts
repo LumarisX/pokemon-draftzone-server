@@ -280,11 +280,8 @@ export class AgendaService implements OnModuleInit, OnModuleDestroy {
 
     const coach = currentTeam.primaryCoach;
     const teamName = currentTeam.teamName ?? "Unknown Team";
-    const coachMention = await this.discordService.resolveMention(
-      draft.channelId,
-      coach?.discordName,
-    );
-    const coachLabel = coachMention ?? "coach";
+    const coachLabel =
+      this.discordService.mention(coach?.discordId) ?? coach?.name ?? "coach";
     await this.discordService.sendMessage(draft.channelId, {
       content: `${teamName} (${coachLabel}) has 1 hour remaining!`,
     });

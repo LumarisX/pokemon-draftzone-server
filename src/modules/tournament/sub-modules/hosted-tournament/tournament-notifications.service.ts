@@ -64,7 +64,7 @@ export class TournamentNotificationsService {
         .addFields(
           { name: "Team Name", value: signUp.teamName, inline: true },
           { name: "In-Game Name", value: signUp.gameName, inline: true },
-          { name: "Discord Name", value: signUp.discordName, inline: true },
+          { name: "Discord Name", value: signUp.discordName || "Not connected", inline: true },
           { name: "Timezone", value: signUp.timezone, inline: true },
           ...answerFields,
         );
@@ -88,20 +88,15 @@ export class TournamentNotificationsService {
   @OnEvent(TOURNAMENT_EVENTS.coachSeated, { async: true })
   async grantCoachRole({
     tournament,
-    discordName,
+    discordId,
   }: CoachSeatedEvent): Promise<void> {
     try {
       const { guildId, coachRoleId, autoGrantCoachRole } =
         tournament.discordSettings ?? {};
       if (autoGrantCoachRole === false) return;
+      if (!guildId || !coachRoleId || !discordId) return;
 
-      const handle = discordName?.trim();
-      if (!handle || !guildId || !coachRoleId) return;
-
-      const member = await this.discordService.findMember(guildId, handle);
-      if (member) {
-        await this.discordService.grantRole(guildId, member.id, coachRoleId);
-      }
+      await this.discordService.grantRole(guildId, discordId, coachRoleId);
     } catch (error) {
       this.logger.error(
         `Failed to grant the coach role: ${(error as Error).message}`,

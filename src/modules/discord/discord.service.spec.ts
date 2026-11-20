@@ -194,75 +194,53 @@ describe("DiscordService", () => {
   });
 
   describe("findMember", () => {
-    it("matches by username, display name, global name, and tag", async () => {
-      const member = buildMember({
-        id: "member-1",
-        username: "ashk",
-        globalName: "Ash Ketchum",
-        displayName: "Ash",
-        tag: "ashk#1234",
-      });
-      const { service } = await buildEnabledService([member]);
-
-      await expect(service.findMember(GUILD_ID, "ashk")).resolves.toMatchObject(
-        {
-          id: "member-1",
-        },
-      );
-      await expect(
-        service.findMember(GUILD_ID, "Ash Ketchum"),
-      ).resolves.toMatchObject({ id: "member-1" });
-      await expect(
-        service.findMember(GUILD_ID, "ashk#1234"),
-      ).resolves.toMatchObject({ id: "member-1" });
-    });
-
-    it("matches by raw snowflake id and mention format", async () => {
+    it("finds a member by id with their role ids", async () => {
       const member = buildMember({
         id: "123456789012345678",
         username: "ashk",
+        roleIds: ["role-1"],
       });
       const { service } = await buildEnabledService([member]);
 
       await expect(
         service.findMember(GUILD_ID, "123456789012345678"),
-      ).resolves.toMatchObject({ id: "123456789012345678" });
-      await expect(
-        service.findMember(GUILD_ID, "<@123456789012345678>"),
-      ).resolves.toMatchObject({ id: "123456789012345678" });
+      ).resolves.toEqual({ id: "123456789012345678", roleIds: ["role-1"] });
     });
 
-    it("returns null when no member matches", async () => {
+    it("returns null for an id that is not in the server", async () => {
       const { service } = await buildEnabledService([
-        buildMember({ id: "member-1", username: "someone-else" }),
+        buildMember({ id: "123456789012345678", username: "someone-else" }),
+      ]);
+
+      await expect(
+        service.findMember(GUILD_ID, "223456789012345678"),
+      ).resolves.toBeNull();
+    });
+
+    it("never looks a member up by name", async () => {
+      const { service, guild } = await buildEnabledService([
+        buildMember({ id: "123456789012345678", username: "ashk" }),
       ]);
 
       await expect(service.findMember(GUILD_ID, "ashk")).resolves.toBeNull();
+      await expect(service.findMember(GUILD_ID, undefined)).resolves.toBeNull();
+      expect(guild.members.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("mention", () => {
+    it("turns an id into a mention and needs no lookup", async () => {
+      const { service, guild } = await buildEnabledService([]);
+
+      expect(service.mention("123456789012345678")).toBe("<@123456789012345678>");
+      expect(guild.members.fetch).not.toHaveBeenCalled();
     });
 
-    it("caches the member index per guild and only fetches members once within the TTL", async () => {
-      const { service, guild } = await buildEnabledService([
-        buildMember({ id: "member-1", username: "ashk" }),
-      ]);
+    it("returns null without an id or with a name", async () => {
+      const { service } = await buildEnabledService([]);
 
-      await service.findMember(GUILD_ID, "ashk");
-      await service.findMember(GUILD_ID, "ashk");
-
-      expect(guild.members.fetch).toHaveBeenCalledTimes(1);
-    });
-
-    it("coalesces concurrent lookups for the same guild into one fetch", async () => {
-      const { service, guild } = await buildEnabledService([
-        buildMember({ id: "member-1", username: "ashk" }),
-        buildMember({ id: "member-2", username: "misty" }),
-      ]);
-
-      await Promise.all([
-        service.findMember(GUILD_ID, "ashk"),
-        service.findMember(GUILD_ID, "misty"),
-      ]);
-
-      expect(guild.members.fetch).toHaveBeenCalledTimes(1);
+      expect(service.mention(undefined)).toBeNull();
+      expect(service.mention("ashk")).toBeNull();
     });
   });
 

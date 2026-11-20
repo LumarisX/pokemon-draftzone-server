@@ -16,7 +16,7 @@ import {
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { isCoachedBy } from "@modules/team/team.domain";
 import { actingCoach } from "@modules/tournament/membership";
-import { PopulatedTeam } from "@modules/team/team.repository";
+import { PopulatedTeam, TeamRepository } from "@modules/team/team.repository";
 import { HostedTournamentRepository } from "@modules/tournament/sub-modules/hosted-tournament/hosted-tournament.repository";
 import { assertCan, can } from "@modules/tournament/tournament-policy";
 import { TierListRepository } from "@modules/tier-list/tier-list.repository";
@@ -57,6 +57,7 @@ export class StageService {
     private readonly advancement: BracketAdvancementService,
     private readonly draftRepo: DraftRepository,
     private readonly transactions: TransactionRunner,
+    private readonly teamRepo: TeamRepository,
   ) {}
 
   private async rosterVisibility(
@@ -256,7 +257,13 @@ export class StageService {
       canSchedule: isOrganizer || side !== null,
     };
 
-    return { stageDoc, tournament, matchupDoc, viewer };
+    const seated =
+      side !== null ||
+      (!!sub &&
+        !isOrganizer &&
+        (await this.teamRepo.isCoachSeatedInTournament(tournament.id, sub)));
+
+    return { stageDoc, tournament, matchupDoc, viewer, seated };
   }
 
   async getMatchupDetail(
@@ -265,7 +272,7 @@ export class StageService {
     matchupSlug: string,
     sub?: string,
   ) {
-    const { stageDoc, tournament, matchupDoc, viewer } =
+    const { stageDoc, tournament, matchupDoc, viewer, seated } =
       await this.loadMatchupContext(
         leagueSlug,
         tournamentSlug,
@@ -276,6 +283,7 @@ export class StageService {
     const { roundIndex, roundDoc } = this.matchupRound(tournament, matchupDoc);
 
     return toMatchupDetail(matchupDoc, {
+      viewerSeated: seated,
       roster: rosterContext(tournament),
       canSeeRoster: await this.rosterVisibility(tournament, sub),
       roundIndex,

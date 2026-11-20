@@ -135,6 +135,25 @@ export class TeamRepository {
     return this.findByIdOrNull(coach.teamId);
   }
 
+  async isCoachSeatedInTournament(
+    tournamentId: Types.ObjectId | string,
+    auth0Id: string,
+  ): Promise<boolean> {
+    const coachModel = this.teamModel.db.model<CoachDocument>("CoachEntity");
+    const coaches = await coachModel
+      .find({ auth0Id: { $eq: auth0Id }, leftAt: null }, { teamId: 1 })
+      .exec();
+    if (coaches.length === 0) return false;
+    const seated = await this.teamModel
+      .exists({
+        _id: { $in: coaches.map((coach) => coach.teamId) },
+        tournamentId,
+        status: "approved",
+      })
+      .exec();
+    return seated !== null;
+  }
+
   async findAllByDraft(
     draftId: Types.ObjectId | string,
   ): Promise<PopulatedTeam[]> {

@@ -220,6 +220,7 @@ export class HostedTournament {
   maxTeams?: number;
   signUpQuestions: SignUpQuestionEntity[];
   signUpAccess: SignUpAccessMode;
+  requireDiscord: boolean;
   signUpToken?: string;
   tradePointLimit?: number;
   tierRequirements: TierRequirement[];
@@ -265,6 +266,7 @@ export class HostedTournament {
     maxTeams?: number;
     signUpQuestions?: SignUpQuestionEntity[];
     signUpAccess?: SignUpAccessMode;
+    requireDiscord?: boolean;
     signUpToken?: string;
     tradePointLimit?: number;
     tierRequirements: TierRequirement[];
@@ -309,6 +311,7 @@ export class HostedTournament {
     this.maxTeams = props.maxTeams;
     this.signUpQuestions = props.signUpQuestions ?? [];
     this.signUpAccess = props.signUpAccess ?? "open";
+    this.requireDiscord = props.requireDiscord === true;
     this.signUpToken = props.signUpToken;
     this.tradePointLimit = props.tradePointLimit;
     this.tierRequirements = props.tierRequirements;

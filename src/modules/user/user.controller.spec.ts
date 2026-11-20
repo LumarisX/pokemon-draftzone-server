@@ -1,13 +1,20 @@
+import { AccountMergeService } from "./account-merge.service";
 import { UserController } from "./user.controller";
 import { User } from "./user.domain";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { UpdateProfileDto, UserSettingsDto } from "./user.dto";
+import {
+  DiscordCallbackDto,
+  MergeAccountsDto,
+  UpdateProfileDto,
+  UserSettingsDto,
+} from "./user.dto";
 import { UserService } from "./user.service";
 
 describe("UserController", () => {
   let service: jest.Mocked<UserService>;
   let controller: UserController;
+  let merges: jest.Mocked<AccountMergeService>;
 
   beforeEach(() => {
     service = {
@@ -16,9 +23,38 @@ describe("UserController", () => {
       syncUser: jest.fn(),
       getMe: jest.fn(),
       getOrCreateMe: jest.fn(),
+      getMeConnected: jest.fn(),
+      connectDiscord: jest.fn(),
+      completeDiscordConnect: jest.fn(),
+      disconnectDiscord: jest.fn(),
       updateProfile: jest.fn(),
     } as unknown as jest.Mocked<UserService>;
-    controller = new UserController(service);
+    merges = { merge: jest.fn() } as unknown as jest.Mocked<AccountMergeService>;
+    controller = new UserController(service, merges);
+  });
+
+  it("mergeAccounts forwards the offer and answers with the me payload", async () => {
+    merges.merge.mockResolvedValue({ user: buildUser() });
+
+    const result: any = await controller.mergeAccounts("acct-1", {
+      token: "tok",
+      keep: "other",
+    });
+
+    expect(merges.merge).toHaveBeenCalledWith("acct-1", "tok", "other");
+    expect(result.me.sub).toBe("auth0|user-1");
+  });
+
+  it.each([
+    [{ token: "t", keep: "current" }, 0],
+    [{ token: "t", keep: "other" }, 0],
+    [{ token: "t", keep: "both" }, 1],
+    [{ keep: "other" }, 1],
+    [{ token: "", keep: "other" }, 1],
+  ])("validates the merge body %j", async (body, errors) => {
+    const dto = plainToInstance(MergeAccountsDto, body);
+
+    expect(await validate(dto)).toHaveLength(errors);
   });
 
   it("getSettings forwards the authenticated sub", async () => {
@@ -54,11 +90,11 @@ describe("UserController", () => {
   }
 
   it("getMe gets or creates the user and returns the client payload", async () => {
-    service.getOrCreateMe.mockResolvedValue(buildUser());
+    service.getMeConnected.mockResolvedValue(buildUser());
 
     const result: any = await controller.getMe("auth0|user-1");
 
-    expect(service.getOrCreateMe).toHaveBeenCalledWith("auth0|user-1");
+    expect(service.getMeConnected).toHaveBeenCalledWith("auth0|user-1");
     expect(service.getMe).not.toHaveBeenCalled();
     expect(result.profileId).toBe("0123456789abcdef01234567");
     expect(result.displayName).toBe("Ash");
@@ -118,4 +154,58 @@ describe("UserController", () => {
     expect(await validate(dto)).toHaveLength(errors);
   });
 
+  it("connectDiscord forwards the sub and returnTo and returns the url", async () => {
+    service.connectDiscord.mockResolvedValue({ url: "https://discord.com/x" });
+
+    const result = await controller.connectDiscord("auth0|user-1", {
+      returnTo: "/leagues/a",
+    });
+
+    expect(service.connectDiscord).toHaveBeenCalledWith(
+      "auth0|user-1",
+      "/leagues/a",
+    );
+    expect(result).toEqual({ url: "https://discord.com/x" });
+  });
+
+  it("discordCallback returns the me payload and where to go next", async () => {
+    service.completeDiscordConnect.mockResolvedValue({
+      user: buildUser(),
+      returnTo: "/settings",
+    });
+
+    const result: any = await controller.discordCallback("auth0|user-1", {
+      code: "c",
+      state: "s",
+    });
+
+    expect(service.completeDiscordConnect).toHaveBeenCalledWith(
+      "auth0|user-1",
+      "c",
+      "s",
+    );
+    expect(result.returnTo).toBe("/settings");
+    expect(result.me.sub).toBe("auth0|user-1");
+    expect(result.me.discord).toBeNull();
+  });
+
+  it("disconnectDiscord returns the me payload", async () => {
+    service.disconnectDiscord.mockResolvedValue(buildUser());
+
+    const result: any = await controller.disconnectDiscord("auth0|user-1");
+
+    expect(service.disconnectDiscord).toHaveBeenCalledWith("auth0|user-1");
+    expect(result.sub).toBe("auth0|user-1");
+  });
+
+  it.each([
+    [{ code: "c", state: "s" }, 0],
+    [{ code: "c" }, 1],
+    [{ state: "s" }, 1],
+    [{ code: "", state: "s" }, 1],
+  ])("validates the callback body %j", async (body, errors) => {
+    const dto = plainToInstance(DiscordCallbackDto, body);
+
+    expect(await validate(dto)).toHaveLength(errors);
+  });
 });

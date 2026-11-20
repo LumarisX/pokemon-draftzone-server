@@ -261,6 +261,26 @@ describe("UserRepository in internal mode", () => {
       expect(options).toMatchObject({ upsert: true });
     });
 
+    it("counts a Discord sign-in as holding its Discord before it is backfilled", async () => {
+      userModel.findOne.mockReturnValue(
+        execResult({ _id: new Types.ObjectId(ACCOUNT), auth0Sub: "oauth2|discord|42" }),
+      );
+
+      expect(await repo.findDiscordHolder("42")).toEqual({
+        accountId: ACCOUNT,
+        signIn: "oauth2|discord|42",
+      });
+      expect(userModel.findOne).toHaveBeenCalledWith(
+        {
+          $or: [
+            { "discord.id": { $eq: "42" } },
+            { auth0Sub: { $eq: "oauth2|discord|42" } },
+          ],
+        },
+        { auth0Sub: 1 },
+      );
+    });
+
     it("retries once when the webhook creates the row first", async () => {
       userModel.findOne.mockReturnValue(execResult(null));
       userModel.findOneAndUpdate

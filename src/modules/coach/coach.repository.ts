@@ -10,7 +10,8 @@ export type CreateCoachInput = {
   auth0Id: string;
   name: string;
   gameName: string;
-  discordName: string;
+  discordName?: string;
+  discordId?: string;
   timezone: string;
   teamId: Types.ObjectId | string;
   experience: string;
@@ -90,6 +91,32 @@ export class CoachRepository {
       .updateMany(
         { _id: { $in: coachIds.map((id) => this.toObjectId(id)) } },
         { $set: { discordName } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
+  async setDiscordIdentity(
+    coachIds: (Types.ObjectId | string)[],
+    discordName: string,
+    discordId: string,
+  ): Promise<number> {
+    if (coachIds.length === 0) return 0;
+    const result = await this.coachModel
+      .updateMany(
+        { _id: { $in: coachIds.map((id) => this.toObjectId(id)) } },
+        { $set: { discordName, discordId } },
+      )
+      .exec();
+    return result.modifiedCount;
+  }
+
+  async clearDiscordId(coachIds: (Types.ObjectId | string)[]): Promise<number> {
+    if (coachIds.length === 0) return 0;
+    const result = await this.coachModel
+      .updateMany(
+        { _id: { $in: coachIds.map((id) => this.toObjectId(id)) } },
+        { $unset: { discordId: "" } },
       )
       .exec();
     return result.modifiedCount;

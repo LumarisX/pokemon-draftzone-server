@@ -234,14 +234,44 @@ export class UserRepository {
       );
     }
 
-    const doc = await this.userModel
-      .findOneAndUpdate(filter, update, {
-        returnDocument: "after",
-      })
-      .exec();
+    let doc: UserDocument | null;
+    try {
+      doc = await this.userModel
+        .findOneAndUpdate(filter, update, {
+          returnDocument: "after",
+        })
+        .exec();
+    } catch (error) {
+      if (isDuplicateKey(error))
+        throw new PDZError(ErrorCodes.USER.DISCORD_ALREADY_CONNECTED, {
+          heldBy: "other",
+        });
+      throw error;
+    }
 
     if (!doc) throw new PDZError(ErrorCodes.USER.NOT_FOUND);
     return this.toDomain(doc);
+  }
+
+  async findDiscordHolder(
+    discordId: string,
+  ): Promise<{ accountId: string; signIn: string } | null> {
+    const doc = await this.userModel
+      .findOne(
+        {
+          $or: [
+            { "discord.id": { $eq: discordId } },
+            { auth0Sub: { $eq: `oauth2|discord|${discordId}` } },
+          ],
+        },
+        { auth0Sub: 1 },
+      )
+      .exec();
+    if (!doc) return null;
+    return {
+      accountId: this.identity.internal ? String(doc._id) : doc.auth0Sub,
+      signIn: doc.auth0Sub,
+    };
   }
 
   async profileOwnerSub(profileId: string): Promise<string | null> {
@@ -286,6 +316,21 @@ export class UserRepository {
       .findOne({ _id: new Types.ObjectId(profileId) })
       .exec();
     return doc ? toAccountRecord(doc) : null;
+  }
+
+  async findRawAccount(accountId: string): Promise<Record<string, unknown> | null> {
+    if (!OBJECT_ID_PATTERN.test(accountId)) return null;
+    const doc = await this.userModel
+      .findOne({ _id: new Types.ObjectId(accountId) })
+      .lean()
+      .exec();
+    return doc ? (doc as unknown as Record<string, unknown>) : null;
+  }
+
+  async restoreRawAccount(doc: Record<string, unknown>): Promise<void> {
+    await this.userModel.collection.replaceOne({ _id: doc._id as never }, doc, {
+      upsert: true,
+    });
   }
 
   async accountExists(accountId: string): Promise<boolean> {
