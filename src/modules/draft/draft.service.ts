@@ -6,6 +6,7 @@ import { DiscordService } from "@modules/discord/discord.service";
 import { getTeamCoverage } from "@modules/matchup/domain/coverage";
 import { getTeamMoves } from "@modules/matchup/domain/movechart";
 import { summarizeTeam } from "@modules/matchup/domain/summary";
+import { tierListScorer } from "@modules/tier-list/tier-list.domain";
 import { getTeamTypechart } from "@modules/matchup/domain/typechart";
 import { LeagueMatchupRepository } from "@modules/matchup/sub-modules/league-matchup/league-matchup.repository";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
@@ -232,6 +233,7 @@ export class DraftService {
     );
 
     const ruleset = tournament.tierList.ruleset;
+    const scoreOf = tierListScorer(tournament.tierList);
     const roster = rosterContext(tournament);
     const visible = draft.teams
       .map((team: PopulatedTeam, index) => ({ team, index }))
@@ -242,7 +244,12 @@ export class DraftService {
           (pokemon) => new PDZPokemon({ id: pokemon.id }, ruleset),
         );
         const typechart = getTeamTypechart(draftTeam);
-        const summary = summarizeTeam(draftTeam);
+        const summary = summarizeTeam(
+          draftTeam,
+          undefined,
+          undefined,
+          scoreOf,
+        );
         return {
           info: { name: team.teamName, index, id: team._id.toString() },
           typechart,

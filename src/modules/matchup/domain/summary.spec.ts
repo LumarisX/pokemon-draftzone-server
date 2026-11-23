@@ -16,7 +16,7 @@ describe("summarizeTeam", () => {
     expect(result.coach).toBe("Giovanni");
   });
 
-  it("includes each Pokemon's abilities, baseStats, bst, cst, types, and index in team order", () => {
+  it("includes each Pokemon's abilities, baseStats, bst, scores, types, and index in team order", () => {
     const pikachu = mon("pikachu");
     const charizard = mon("charizard");
 
@@ -28,27 +28,39 @@ describe("summarizeTeam", () => {
       abilities: pikachu.getAbilities(),
       baseStats: pikachu.baseStats,
       bst: pikachu.bst,
-      cst: pikachu.cst,
+      scores: pikachu.scores,
       types: pikachu.types,
       index: 0,
     });
     expect(result.team[1]).toMatchObject({ id: "charizard", index: 1 });
   });
 
-  it("computes mean/median/min/max across hp/atk/def/spa/spd/spe/bst/cst for an odd-sized team", () => {
-    // Pikachu hp 35, Charizard hp 78, Mew hp 100 -> sorted [35, 78, 100].
+  it("computes mean/median/min/max across the base stats and bst for an odd-sized team", () => {
     const result = summarizeTeam([mon("pikachu"), mon("charizard"), mon("mew")]);
 
-    expect(result.stats).toEqual({
-      mean: { hp: 71, atk: 80, def: 73, spa: 86, spd: 78, spe: 97, bst: 485, cst: 486 },
-      median: { hp: 78, atk: 84, def: 78, spa: 100, spd: 85, spe: 100, bst: 534, cst: 537 },
-      min: { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90, bst: 320, cst: 320 },
-      max: { hp: 100, atk: 100, def: 100, spa: 109, spd: 100, spe: 100, bst: 600, cst: 600 },
+    expect(result.stats).toMatchObject({
+      mean: { hp: 71, atk: 80, def: 73, spa: 86, spd: 78, spe: 97, bst: 485 },
+      median: { hp: 78, atk: 84, def: 78, spa: 100, spd: 85, spe: 100, bst: 534 },
+      min: { hp: 35, atk: 55, def: 40, spa: 50, spd: 50, spe: 90, bst: 320 },
+      max: { hp: 100, atk: 100, def: 100, spa: 109, spd: 100, spe: 100, bst: 600 },
     });
   });
 
+  it("aggregates each score across the team", () => {
+    const team = [mon("pikachu"), mon("charizard"), mon("mew")];
+    const overall = team.map((pokemon) => pokemon.scores.overall);
+
+    const result = summarizeTeam(team);
+
+    expect(result.stats!.max.overall).toBe(Math.max(...overall));
+    expect(result.stats!.min.overall).toBe(Math.min(...overall));
+    expect(result.stats!.mean.power).toBeCloseTo(
+      team.reduce((sum, pokemon) => sum + pokemon.scores.power, 0) / 3,
+      3,
+    );
+  });
+
   it("averages the two middle values for an even-sized team's median", () => {
-    // hp values [35 (Pikachu), 78 (Charizard)] sorted -> median is their average.
     const result = summarizeTeam([mon("pikachu"), mon("charizard")]);
 
     expect(result.stats!.median.hp).toBe(Math.round((35 + 78) / 2));
@@ -62,7 +74,7 @@ describe("summarizeTeam", () => {
     expect(result.team).toEqual([]);
   });
 
-  it("computes abilities, baseStats, bst, cst, and types for each draft forme", () => {
+  it("computes abilities, baseStats, bst, scores, and types for each draft forme", () => {
     const pikachu = new PDZPokemon(
       { id: "pikachu", draftFormes: ["raichu" as any] },
       NAT_DEX,
@@ -79,9 +91,23 @@ describe("summarizeTeam", () => {
         abilities: raichu.getAbilities(),
         baseStats: raichu.baseStats,
         bst: raichu.bst,
-        cst: raichu.cst,
+        scores: raichu.scores,
       },
     ]);
+  });
+
+  it("uses the given scorer for the team, its formes and the aggregates", () => {
+    const fixed = { power: 1, bulk: 2, speed: 3, overall: 4 };
+    const pikachu = new PDZPokemon(
+      { id: "pikachu", draftFormes: ["raichu" as any] },
+      NAT_DEX,
+    );
+
+    const result = summarizeTeam([pikachu], undefined, undefined, () => fixed);
+
+    expect(result.team[0].scores).toEqual(fixed);
+    expect(result.team[0].draftFormes?.[0]).toMatchObject({ scores: fixed });
+    expect(result.stats!.max.overall).toBe(4);
   });
 
   it("falls back to the bare id when a draft forme can't be resolved", () => {

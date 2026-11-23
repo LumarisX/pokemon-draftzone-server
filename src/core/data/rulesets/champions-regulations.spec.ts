@@ -1,7 +1,7 @@
 import { CHAMPIONS_REGULATION_SOURCES } from "../../../mods/champions";
 import { Ruleset, Rulesets } from "./rulesets";
 
-const REGULATIONS = ["M-A", "M-B", "M-C"] as const;
+const REGULATIONS = ["M-A", "M-B", "M-C", "M-D"] as const;
 
 const ruleset = (regulation: (typeof REGULATIONS)[number]): Ruleset =>
   Rulesets["Champions"][regulation].ruleset;
@@ -25,12 +25,31 @@ describe("champions regulation legality", () => {
     const mc = speciesIds("M-C");
     for (const id of ma) expect(mb.has(id)).toBe(true);
     for (const id of mb) expect(mc.has(id)).toBe(true);
+    for (const id of mc) expect(speciesIds("M-D").has(id)).toBe(true);
   });
 
   it("grows by the expected amount each regulation", () => {
     expect(speciesIds("M-A").size).toBe(278);
     expect(speciesIds("M-B").size).toBe(316);
     expect(speciesIds("M-C").size).toBe(351);
+    expect(speciesIds("M-D").size).toBe(359);
+  });
+
+  it("adds Heatran, the Latis, Tatsugiri and their megas in M-D", () => {
+    const added = [
+      "heatran",
+      "heatranmega",
+      "latias",
+      "latiasmega",
+      "latios",
+      "latiosmega",
+      "tatsugiri",
+      "tatsugiricurlymega",
+    ];
+    for (const id of added) {
+      expect(speciesIds("M-C").has(id)).toBe(false);
+      expect(speciesIds("M-D").has(id)).toBe(true);
+    }
   });
 
   it("gates later-regulation species", () => {
@@ -59,9 +78,14 @@ describe("champions regulation items", () => {
     const mc = itemIds("M-C");
     for (const id of ma) expect(mb.has(id)).toBe(true);
     for (const id of mb) expect(mc.has(id)).toBe(true);
+    for (const id of mc) expect(itemIds("M-D").has(id)).toBe(true);
   });
 
   it("gates mega stones with the species they evolve", () => {
+    for (const stone of ["heatranite", "latiasite", "latiosite", "tatsugirinite"]) {
+      expect(itemIds("M-C").has(stone)).toBe(false);
+      expect(itemIds("M-D").has(stone)).toBe(true);
+    }
     expect(itemIds("M-A").has("eelektrossite")).toBe(false);
     expect(itemIds("M-B").has("eelektrossite")).toBe(true);
     expect(itemIds("M-B").has("salamencite")).toBe(false);
@@ -90,6 +114,50 @@ describe("champions regulation moves", () => {
     expect(ruleset("M-A").moves.get("strengthsap")?.pp).toBe(10);
     expect(ruleset("M-B").moves.get("strengthsap")?.pp).toBe(10);
     expect(ruleset("M-C").moves.get("strengthsap")?.pp).toBe(5);
+    expect(ruleset("M-D").moves.get("strengthsap")?.pp).toBe(5);
+  });
+
+  it("applies the M-D Rock Slide change only to M-D", () => {
+    const mc = ruleset("M-C").moves.get("rockslide");
+    const md = ruleset("M-D").moves.get("rockslide");
+    expect(mc?.accuracy).toBe(90);
+    expect(mc?.secondary?.chance).toBe(30);
+    expect(md?.accuracy).toBe(95);
+    expect(md?.secondary?.chance).toBe(20);
+    expect(md?.secondary?.volatileStatus).toBe("flinch");
+  });
+
+  it("applies the M-D accuracy changes only to M-D", () => {
+    for (const move of ["screech", "steelwing", "metalsound", "frostbreath"]) {
+      expect(ruleset("M-C").moves.get(move)?.accuracy).not.toBe(100);
+      expect(ruleset("M-D").moves.get(move)?.accuracy).toBe(100);
+    }
+  });
+
+  it("adds the announced moves in M-D without dropping existing ones", async () => {
+    const learns = (regulation: "M-C" | "M-D", species: string, move: string) =>
+      ruleset(regulation).learnsets.canLearn(species, move);
+    const gains: [string, string][] = [
+      ["rotomwash", "psychup"],
+      ["annihilape", "psychup"],
+      ["emboar", "slackoff"],
+      ["hydreigon", "roost"],
+      ["emolga", "tailwind"],
+      ["umbreon", "wonderroom"],
+      ["glaceon", "playrough"],
+    ];
+    for (const [species, move] of gains) {
+      expect(await learns("M-C", species, move)).toBe(false);
+      expect(await learns("M-D", species, move)).toBe(true);
+    }
+    expect(await learns("M-D", "rotomwash", "hydropump")).toBe(true);
+    expect(await learns("M-D", "umbreon", "foulplay")).toBe(true);
+  });
+
+  it("gives Heatran a learnset in M-D", async () => {
+    expect(
+      await ruleset("M-D").learnsets.canLearn("heatran", "magmastorm"),
+    ).toBe(true);
   });
 });
 

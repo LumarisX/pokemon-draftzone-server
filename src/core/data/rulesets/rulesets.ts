@@ -20,7 +20,8 @@ import {
 const CHAMPIONS_MOD_IDS: Record<ChampionsRegulation, string> = {
   "M-A": "championsrega",
   "M-B": "championsregb",
-  "M-C": "champions",
+  "M-C": "championsregc",
+  "M-D": "championsregd",
 };
 
 const championsDex = (regulation: ChampionsRegulation): ModdedDex =>
@@ -212,6 +213,7 @@ const RULESET_IDS = {
   CHAMP_MA: "Champions MA",
   CHAMP_MB: "Champions MB",
   CHAMP_MC: "Champions MC",
+  CHAMP_MD: "Champions MD",
   CHAMP_NATDEX: "Champions NatDex",
   ZA_NATDEX: "ZA NatDex",
   GEN9_NATDEX: "Gen9 NatDex",
@@ -419,6 +421,16 @@ export const Rulesets: {
   };
 } = {
   Champions: {
+    "M-D": {
+      id: RULESET_IDS.CHAMP_MD,
+      desc: "Only Pokémon allowed in Champions Regulation M-D.",
+      ruleset: new Ruleset(
+        championsDex("M-D"),
+        CHAMPIONS_EXISTS,
+        RULESET_IDS.CHAMP_MD,
+        { statSystem: "statPoints" },
+      ),
+    },
     "M-C": {
       id: RULESET_IDS.CHAMP_MC,
       desc: "Only Pokémon allowed in Champions Regulation M-C.",

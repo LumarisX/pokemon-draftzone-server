@@ -1,3 +1,5 @@
+import { StatScores } from "./domain/specie-stats";
+
 export interface PokemonDataDto {
   id: string;
   name: string;
@@ -43,7 +45,8 @@ export interface PokemonDataDto {
   num: number;
   tags: string[];
   bst: number;
-  cst: number;
+  scores: StatScores;
+  scoreStats: PokemonDataDto["baseStats"];
 }
 
 export interface RandomPokemonDto {

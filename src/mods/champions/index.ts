@@ -3,14 +3,34 @@ import * as Substrate from "@pkmn/mods/champions";
 import * as MA from "./ma";
 import * as MB from "./mb";
 import * as MC from "./mc";
+import * as MD from "./md";
 import { VendoredSource } from "../ps-source";
 
-export type ChampionsRegulation = "M-A" | "M-B" | "M-C";
+export type ChampionsRegulation = "M-A" | "M-B" | "M-C" | "M-D";
+
+type VendoredRegulation = Exclude<ChampionsRegulation, "M-D">;
 
 type Table = Record<string, unknown> | undefined;
 
 const layer = (base: Table, over: Table): Table =>
   over ? { ...base, ...over } : base;
+
+type LearnsetEntry = { learnset?: Record<string, string[]> };
+
+const withAddedMoves = (base: Table, additions: Table): Table => {
+  const merged: Record<string, unknown> = { ...base };
+  for (const [id, entry] of Object.entries(additions ?? {})) {
+    const current = (merged[id] ?? {}) as LearnsetEntry;
+    merged[id] = {
+      ...current,
+      learnset: {
+        ...current.learnset,
+        ...(entry as LearnsetEntry).learnset,
+      },
+    };
+  }
+  return merged;
+};
 
 const mc = {
   ...(Substrate as unknown as Record<string, unknown>),
@@ -18,6 +38,17 @@ const mc = {
   Learnsets: MC.Learnsets,
   Items: MC.Items,
   Moves: MC.Moves,
+};
+
+const md = {
+  ...mc,
+  FormatsData: layer(MC.FormatsData as Table, MD.FormatsData as Table),
+  Learnsets: withAddedMoves(
+    MC.Learnsets as Table,
+    MD.LearnsetAdditions as Table,
+  ),
+  Items: layer(MC.Items as Table, MD.Items as Table),
+  Moves: layer(MC.Moves as Table, MD.Moves as Table),
 };
 
 const mb = {
@@ -63,10 +94,10 @@ const withParentAvailability = (table: Table): Table =>
   );
 
 const natdex = {
-  ...mc,
-  FormatsData: onlyChampionsLegal(mc.FormatsData as Table),
-  Items: withParentAvailability(mc.Items as Table),
-  Moves: withParentAvailability(mc.Moves as Table),
+  ...md,
+  FormatsData: onlyChampionsLegal(md.FormatsData as Table),
+  Items: withParentAvailability(md.Items as Table),
+  Moves: withParentAvailability(md.Moves as Table),
 };
 
 export const CHAMPIONS_NATDEX_DATA = natdex as ModData;
@@ -75,10 +106,11 @@ export const CHAMPIONS_REGULATION_DATA: Record<ChampionsRegulation, ModData> = {
   "M-A": ma as unknown as ModData,
   "M-B": mb as unknown as ModData,
   "M-C": mc as unknown as ModData,
+  "M-D": md as unknown as ModData,
 };
 
 export const CHAMPIONS_REGULATION_SOURCES: Record<
-  ChampionsRegulation,
+  VendoredRegulation,
   VendoredSource
 > = {
   "M-A": MA.SOURCE,

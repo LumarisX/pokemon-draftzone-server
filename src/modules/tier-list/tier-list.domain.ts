@@ -1,5 +1,13 @@
 import { getFormat, Format } from "@core/data/formats/formats";
 import { getRuleset, Ruleset } from "@core/data/rulesets/rulesets";
+import {
+  buildScorePool,
+  getScores,
+  ScoredSpecie,
+  ScorePool,
+  scoreEntry,
+  StatScores,
+} from "@modules/data/domain/specie-stats";
 import { Types } from "mongoose";
 import { TierListRole, TierListVisibility } from "./tier-list.schema";
 
@@ -316,4 +324,29 @@ export class TierList {
       abilities: Array.from(nextBannedAbilities),
     };
   }
+}
+
+export function tierListScorer(
+  tierList: TierList,
+): (specie: ScoredSpecie) => StatScores {
+  const pool = tierListScorePool(tierList);
+  return (specie) =>
+    getScores(
+      scoreEntry(specie, tierList.ruleset.species, tierList.banned.abilities),
+      pool,
+    );
+}
+
+export function tierListScorePool(tierList: TierList): ScorePool {
+  const tierIds = new Set(tierList.tiers.map((tier) => tier.id));
+  const entries = Array.from(tierList.pokemon.entries())
+    .filter(
+      ([, entry]) => !entry.banned && !!entry.tierId && tierIds.has(entry.tierId),
+    )
+    .map(([id]) => tierList.ruleset.species.get(id))
+    .filter((specie) => !!specie)
+    .map((specie) =>
+      scoreEntry(specie, tierList.ruleset.species, tierList.banned.abilities),
+    );
+  return buildScorePool(entries);
 }

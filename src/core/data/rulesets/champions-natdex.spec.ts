@@ -1,7 +1,7 @@
 import { getRuleset, getRulesets, Ruleset } from "./rulesets";
 
 const natdex = (): Ruleset => getRuleset("Champions NatDex");
-const head = (): Ruleset => getRuleset("Champions MC");
+const head = (): Ruleset => getRuleset("Champions MD");
 const gen9 = (): Ruleset => getRuleset("Gen9 NatDex");
 
 const ids = (entries: Iterable<{ id: string }>): Set<string> => {
@@ -72,7 +72,7 @@ describe("champions national dex", () => {
   });
 
   it("leaves the champions regulation itself untouched", () => {
-    expect(ids(head().species).size).toBe(351);
+    expect(ids(head().species).size).toBe(359);
     expect(ids(gen9().species).size).toBe(1258);
   });
 });

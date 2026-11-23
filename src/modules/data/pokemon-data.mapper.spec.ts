@@ -39,7 +39,7 @@ describe("PokemonDataMapper.toDto", () => {
     expect(dto.spd).toBe(pikachu.baseStats.spd);
     expect(dto.spe).toBe(pikachu.baseStats.spe);
     expect(dto.bst).toBe(pikachu.bst);
-    expect(dto.cst).toBe(pikachu.cst);
+    expect(dto.scores).toEqual(pikachu.scores);
   });
 
   it("computes evolved as the inverse of nfe", async () => {

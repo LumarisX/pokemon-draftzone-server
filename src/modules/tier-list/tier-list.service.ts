@@ -3,6 +3,12 @@ import { getFormat } from "@core/data/formats/formats";
 import { getRuleset } from "@core/data/rulesets/rulesets";
 import { PDZError } from "@core/pdz-error";
 import { ErrorCodes } from "@core/pdz-error-codes";
+import {
+  getScores,
+  ScorePool,
+  scoreEntry,
+  StatScores,
+} from "@modules/data/domain/specie-stats";
 import { PDZPokemon } from "@modules/pokemon/pokemon.domain";
 import { TeamRepository } from "@modules/team/team.repository";
 import { TournamentLogType } from "@modules/tournament-log/tournament-log.schema";
@@ -37,6 +43,7 @@ import {
   ClientTierInput,
   TierList,
   TierListPokemon,
+  tierListScorePool,
   UNTIERED_TIER_NAME,
 } from "./tier-list.domain";
 import { TierListMapper } from "./tier-list.mapper";
@@ -55,6 +62,7 @@ type TierPokemonView = {
   types: readonly string[];
   abilities: string[];
   bst: number;
+  scores: StatScores;
   stats: unknown;
   notes?: string;
   addons?: unknown[];
@@ -668,6 +676,7 @@ export class TierListService {
   ): Promise<TierView[]> {
     const ruleset = tierList.ruleset;
     const assignedPokemon = new Set<string>();
+    const pool = tierListScorePool(tierList);
 
     const tiers: TierView[] = await Promise.all(
       tierList.tiers.map(async (tier) => {
@@ -679,7 +688,7 @@ export class TierListService {
           pokemonEntries.map(async ([pokemonId, data]) => {
             assignedPokemon.add(pokemonId);
             const specie = new PDZPokemon(pokemonId as ID, ruleset);
-            return this.toPokemonView(specie, data, tierList.banned);
+            return this.toPokemonView(specie, data, tierList.banned, pool);
           }),
         );
 
@@ -699,6 +708,14 @@ export class TierListService {
             types: draftSpecie.types,
             abilities: Object.values(draftSpecie.abilities),
             bst: draftSpecie.bst,
+            scores: getScores(
+              scoreEntry(
+                draftSpecie,
+                ruleset.species,
+                tierList.banned.abilities,
+              ),
+              pool,
+            ),
             stats: draftSpecie.baseStats,
             ...(data?.banned && { draftBanned: true }),
           };
@@ -713,7 +730,7 @@ export class TierListService {
         const bannedPokemon = await Promise.all(
           bannedEntries.map(([pokemonId, data]) => {
             const specie = new PDZPokemon(pokemonId as ID, ruleset);
-            return this.toPokemonView(specie, data, tierList.banned);
+            return this.toPokemonView(specie, data, tierList.banned, pool);
           }),
         );
         tiers.unshift({ name: BANNED_TIER_NAME, pokemon: bannedPokemon });
@@ -727,6 +744,7 @@ export class TierListService {
     specie: PDZPokemon,
     data: TierListPokemon,
     banned: { moves: string[]; abilities: string[] },
+    pool: ScorePool,
   ): Promise<TierPokemonView> {
     const learnableMoves = await Promise.all(
       banned.moves.map(async (move) => ({
@@ -747,6 +765,10 @@ export class TierListService {
       types: specie.types,
       abilities: Object.values(specie.abilities),
       bst: specie.bst,
+      scores: getScores(
+        scoreEntry(specie, specie.ruleset.species, banned.abilities),
+        pool,
+      ),
       stats: specie.baseStats,
       notes: data.notes,
       ...(data.banned && { draftBanned: true }),

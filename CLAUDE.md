@@ -162,6 +162,14 @@ Two rules keep this honest:
   M-A is pinned to its final commit for that reason. When the next regulation lands,
   vendor the outgoing one *before* bumping `@pkmn/mods`.
 
+M-D (`md/`) is the exception: upstream had not published it yet, so it is a
+**hand-written** delta over M-C (Heatran, Latias, Latios and Tatsugiri with their Megas and
+stones — only Heatran was announced, the rest are the owner's guess — and the 2026-12-02
+patch's move and learnset changes; `md/learnsets.ts` lists only added moves, merged into
+M-C's movepools) and Champions NatDex reads from it. When upstream
+lands M-D, `data/mods/champions` becomes M-D: vendor M-C into its own pinned dir first,
+then regenerate and drop the hand-written layer.
+
 `CHAMPIONS_EXISTS` treats any `isNonstandard` item as illegal, unlike `_exists`,
 which exempts `Past` items that have an `itemUser` — that exemption is right for
 NatDex and wrong for a regulation, where `Past` means "not in this regulation".

@@ -27,7 +27,14 @@ import {
 } from "@pkmn/dex-types";
 import { abilityModifiers } from "@modules/data/domain/ability-modifiers";
 import { getEffectivePower } from "@modules/data/domain/move-power";
-import { getBST, getCST } from "@modules/data/domain/specie-stats";
+import {
+  getBST,
+  effectiveStats,
+  getScores,
+  rulesetScorePool,
+  scoreEntry,
+  StatScores,
+} from "@modules/data/domain/specie-stats";
 
 export type DraftOptions = {
   shiny?: boolean;
@@ -149,7 +156,8 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
   capt?: Partial<{ tera: TypeName[]; z: TypeName[]; dmax: boolean }>;
   ruleset: Ruleset;
   bst: number;
-  cst: number;
+  scores: StatScores;
+  scoreStats: StatsTable;
   inheritsFrom!: ID;
   formes?: SpeciesName[];
   evoRegion?: "Alola" | "Galar";
@@ -210,7 +218,9 @@ export class PDZPokemon implements Specie, Pokemon, DraftOptions {
     }
     this.natDexTier = specie.natDexTier || specie.tier;
     this.bst = getBST(specie);
-    this.cst = getCST(specie);
+    const entry = scoreEntry(this, ruleset.species);
+    this.scores = getScores(entry, rulesetScorePool(ruleset));
+    this.scoreStats = effectiveStats(entry);
   }
 
   get formeNum() {

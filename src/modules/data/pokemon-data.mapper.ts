@@ -70,7 +70,8 @@ export class PokemonDataMapper {
       num: specie.num,
       tags: [...specie.tags],
       bst: specie.bst,
-      cst: specie.cst,
+      scores: specie.scores,
+      scoreStats: specie.scoreStats,
     };
   }
 
