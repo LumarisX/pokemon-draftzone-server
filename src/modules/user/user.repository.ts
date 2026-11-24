@@ -157,7 +157,14 @@ export class UserRepository {
     return (await this.userModel.findById(doc._id).exec()) ?? doc;
   }
 
-  async findManyBySubs(subs: string[]): Promise<UserDocument[]> {
+  async findManyBySubs(
+    subs: string[],
+  ): Promise<
+    Pick<
+      UserDocument,
+      "_id" | "auth0Sub" | "username" | "displayName" | "deletion"
+    >[]
+  > {
     if (subs.length === 0) return [];
     let filter: Record<string, unknown>;
     if (this.identity.internal) {
